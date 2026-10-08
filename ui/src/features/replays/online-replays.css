@@ -271,7 +271,26 @@ button.vault-input {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
+  gap: var(--space-3);
+}
+
+/* The page length beside the view switch: a label and a short select, the
+   same height as the switch so the line stays one row. */
+.online-replay-page-size {
+  display: inline-flex;
+  align-items: center;
   gap: var(--space-2);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.online-replay-page-size select {
+  width: auto;
+  min-width: 64px;
+  height: 34px;
+  min-height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .online-replay-status-note {
@@ -415,10 +434,10 @@ button.vault-input {
 .replay-card-corner {
   display: flex;
   flex: none;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-  font-size: 11px;
+  align-items: flex-start;
+}
+
+.replay-card-id {
   font-variant-numeric: tabular-nums;
 }
 
@@ -466,6 +485,18 @@ button.vault-input {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: var(--space-3);
   row-gap: 0;
+}
+
+/* The count and, with "Game result" on (issue 454), the outcome after it. */
+.replay-card-team-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.replay-card-team-summary .replay-team-outcome {
+  height: 18px;
+  padding: 0 6px;
 }
 
 .replay-card-team-title {
@@ -544,31 +575,13 @@ button.vault-input {
   font-size: 11px;
 }
 
+/* `.btn-primary` gives the colours, hover and disabled state; this only makes
+   it a little larger than a toolbar button, as the card's one action. */
 .replay-card-watch {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 26px;
-  padding: 0 10px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-raised);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 12px;
+  min-height: 36px;
+  padding: 0 18px;
+  font-size: 13px;
   font-weight: 600;
-  cursor: pointer;
-  transition: background-color 100ms ease, border-color 100ms ease;
-}
-
-.replay-card-watch:hover:not(:disabled) {
-  background: var(--color-surface-hover);
-  border-color: var(--color-text);
-}
-
-.replay-card-watch:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 .replay-stars {
@@ -2760,12 +2773,19 @@ input.replay-options-filter {
   font-variant-numeric: tabular-nums;
 }
 
-/* Two teams: no "vs" box between them. Its column stays, empty, so the cards
-   keep the distance it gave them. */
+/* Two teams: no "vs" box between them, a thin line instead, from the
+   headings down past the cards. Its column keeps the width the box had, so
+   the cards keep the distance it gave them. */
 .replay-detail-teams[data-titles-above="true"][data-layout="versus"] > .replay-detail-versus {
   grid-column: 2;
-  grid-row: 2;
-  visibility: hidden;
+  grid-row: 1 / span 2;
+  align-self: stretch;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(var(--color-border), var(--color-border)) center / 1px 100% no-repeat;
+  color: transparent;
+  font-size: 0;
 }
 
 /* Placed outright, so the "vs" placed above cannot push a team out of its

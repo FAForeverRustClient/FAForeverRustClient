@@ -214,11 +214,17 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
     case "accountSearchCleared":
       return { ...state, accountSearch: { query: "", matches: [], status: { type: "idle" } } };
 
+    // The eligibility notice belongs to the open event, so anything about an
+    // event that is no longer open, started or answered, is dropped rather than
+    // drawn under the wrong heading.
     case "ratingChecking":
+      if (state.selectedId !== event.payload.tournamentId) return state;
       return { ...state, ratingCheck: null, ratingCheckStatus: { type: "loading" } };
     case "ratingChecked":
+      if (state.selectedId !== event.payload.tournamentId) return state;
       return { ...state, ratingCheck: event.payload.check, ratingCheckStatus: { type: "ready" } };
     case "ratingCheckFailed":
+      if (state.selectedId !== event.payload.tournamentId) return state;
       return {
         ...state,
         ratingCheckStatus: {
@@ -227,12 +233,17 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
         },
       };
     // A new request drops the previous player's table at once, so one entrant's
-    // ratings never show under another's name.
+    // ratings never show under another's name. The table is the open event's,
+    // like the eligibility notice, so one asked in an event left behind is
+    // dropped too.
     case "playerRatingsLoading":
+      if (state.selectedId !== event.payload.tournamentId) return state;
       return { ...state, playerRatings: null, playerRatingsStatus: { type: "loading" } };
     case "playerRatingsLoaded":
+      if (state.selectedId !== event.payload.tournamentId) return state;
       return { ...state, playerRatings: event.payload.ratings, playerRatingsStatus: { type: "ready" } };
     case "playerRatingsFailed":
+      if (state.selectedId !== event.payload.tournamentId) return state;
       return {
         ...state,
         playerRatingsStatus: {
@@ -296,7 +307,9 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
     case "articleImageUploaded":
       return { ...state, site: { ...state.site, articleImage: event.payload.url } };
     case "descImageUploaded":
-      return { ...state, descImage: event.payload.url };
+      return { ...state, descImage: { requestId: event.payload.requestId, url: event.payload.url } };
+    case "descImageUploadFailed":
+      return { ...state, descImage: { requestId: event.payload.requestId, url: null } };
     case "templateLoading":
       return { ...state, template: null, templateStatus: { type: "loading" } };
     case "templateLoaded":

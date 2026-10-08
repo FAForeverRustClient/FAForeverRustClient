@@ -102,6 +102,13 @@ describe("mapping a Discord scheduled event", () => {
     expect(entryOf(night, dojo)).not.toBeNull();
   });
 
+  it("recognises the service on its FAF host as well as its old one", () => {
+    const olympics = scheduled({
+      description: "Signup: https://tournaments.faforever.com/t/2910276f77",
+    });
+    expect(alreadyATournament(olympics, dojo)).toBe(true);
+  });
+
   it("reads the signup address out of an external event's location too", () => {
     const streamed = scheduled({
       entity_type: 3,

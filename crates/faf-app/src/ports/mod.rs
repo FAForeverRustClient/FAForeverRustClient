@@ -14,6 +14,7 @@ pub mod discord;
 pub mod error;
 pub mod events;
 pub mod galactic_war;
+pub mod game_cache;
 pub mod guides;
 pub mod ice;
 pub mod leaderboard;
@@ -21,6 +22,7 @@ pub mod lobby;
 pub mod map_generator;
 pub mod maps;
 pub mod mods;
+pub mod notification_sounds;
 pub mod paths;
 pub mod player_card;
 pub mod process;
@@ -45,6 +47,7 @@ pub use discord::{DiscordPort, DiscordRequest};
 pub use error::RequestError;
 pub use events::EventsPort;
 pub use galactic_war::{GalacticWarPort, InstallProgress};
+pub use game_cache::GameCachePort;
 pub use guides::{DeviceCode, GuidesPort};
 pub use ice::{ConnectivitySession, IceDebugWindows, IceParams, IcePort, RelayMsg};
 pub use leaderboard::LeaderboardPort;
@@ -52,21 +55,29 @@ pub use lobby::{LobbyPort, LobbyUpdate, ServerNoticeStyle};
 pub use map_generator::{GeneratorUpdate, MapGeneratorPort};
 pub use maps::{MapSearchPage, MapsPort};
 pub use mods::{ModPrepFailure, ModSearchPage, ModsPort};
+pub use notification_sounds::NotificationSoundsPort;
 pub use paths::PathsPort;
 pub use player_card::PlayerCardPort;
 pub use process::{
     DiscoveredInstallPaths, GameLaunchParams, InstallPresence, ProcessPort, ReplayMetadata,
 };
-pub use replay::{PreparationSink, ReplayPort, VaultSearchResult, DEFAULT_LOCAL_REPLAY_LIMIT};
+pub use replay::{
+    PreparationSink, ReplayDetailsPort, ReplayLibraryPort, ReplayPlaybackPort, ReplayVaultPort,
+    VaultSearchResult, DEFAULT_LOCAL_REPLAY_LIMIT,
+};
 pub use reporting::{GameParticipation, ReportPlayerRequest, ReportingPort};
 pub use reviews::{ReviewPage, ReviewsPort};
 pub use settings::SettingsPort;
 pub use streams::StreamsPort;
-pub use tourney::TourneyPort;
+pub use tourney::{
+    TourneyChatPort, TourneyEntryPort, TourneyMapsPort, TourneyMatchPort, TourneyOrganiserPort,
+    TourneyReadPort, TourneySitePort,
+};
 pub use training::TrainingPort;
 pub use tutorials::TutorialsPort;
 pub use updater::{
-    GamePreparation, GameUpdaterPort, PreparationPhase, PreparationStep, UpdateProgress,
+    GamePreparation, GameUpdaterPort, InstalledBuild, PreparationPhase, PreparationStep,
+    UpdateProgress,
 };
 pub use uploads::UploadsPort;
 
@@ -92,7 +103,14 @@ pub struct Ports {
     /// Brings the live install up to date before a launch. Paired with
     /// `process`: it patches the very install `process` is about to run.
     pub updater: Arc<dyn GameUpdaterPort>,
-    pub replay: Arc<dyn ReplayPort>,
+    /// The replay ports, one per capability (see [`replay`]), so a test fakes
+    /// the one it exercises and takes the inert default for the rest.
+    pub replay_vault: Arc<dyn ReplayVaultPort>,
+    pub replay_library: Arc<dyn ReplayLibraryPort>,
+    pub replay_details: Arc<dyn ReplayDetailsPort>,
+    /// Launches a replay on the `process` port above, after preparing the
+    /// replay install it targets.
+    pub replay_playback: Arc<dyn ReplayPlaybackPort>,
     pub maps: Arc<dyn MapsPort>,
     pub map_generator: Arc<dyn MapGeneratorPort>,
     pub mods: Arc<dyn ModsPort>,
@@ -107,7 +125,17 @@ pub struct Ports {
     pub clan: Arc<dyn ClanPort>,
     pub reporting: Arc<dyn ReportingPort>,
     pub reviews: Arc<dyn ReviewsPort>,
-    pub tourney: Arc<dyn TourneyPort>,
+    /// The tournament service's ports, one per capability (see [`tourney`]).
+    /// The real client and the offline fake fill every one from a single
+    /// instance, so a write through one is seen by a read through another; a
+    /// test replaces the one it exercises and keeps the fake for the rest.
+    pub tourney_read: Arc<dyn TourneyReadPort>,
+    pub tourney_entry: Arc<dyn TourneyEntryPort>,
+    pub tourney_match: Arc<dyn TourneyMatchPort>,
+    pub tourney_maps: Arc<dyn TourneyMapsPort>,
+    pub tourney_chat: Arc<dyn TourneyChatPort>,
+    pub tourney_organiser: Arc<dyn TourneyOrganiserPort>,
+    pub tourney_site: Arc<dyn TourneySitePort>,
     /// Whether FAF's own Twitch channel is broadcasting. The only port whose
     /// correct answer on most builds is "nothing, forever": Twitch requires an
     /// application's own credentials, which a public repository cannot hold, so
@@ -137,6 +165,12 @@ pub struct Ports {
     /// `process` and `updater`: Galactic War is not Forged Alliance and does
     /// not go through the lobby.
     pub galactic_war: Arc<dyn GalacticWarPort>,
+    /// The game-files cache the settings tab measures, expires and clears.
+    /// A port so a test that loads settings cannot reach the real one.
+    pub game_cache: Arc<dyn GameCachePort>,
+    /// The sounds a player added, for removing one. See
+    /// [`notification_sounds::NotificationSoundsPort`].
+    pub notification_sounds: Arc<dyn NotificationSoundsPort>,
     /// True when `auth` is the offline stub rather than real FAF OAuth.
     ///
     /// A property of the bundle rather than of any one port: it is how the

@@ -20,8 +20,9 @@ pub enum LeaderboardMode {
 #[serde(rename_all = "camelCase")]
 pub struct RatingLeaderboard {
     pub id: i32,
+    /// The board's technical name. The UI names it from its catalogue
+    /// (`leaderboardLabel`), so no display name travels with it.
     pub technical_name: String,
-    pub name: String,
     pub description: String,
 }
 
@@ -29,8 +30,9 @@ pub struct RatingLeaderboard {
 #[serde(rename_all = "camelCase")]
 pub struct League {
     pub id: i32,
+    /// The league's technical name (`1v1_league`, ...), which the UI names
+    /// from its catalogue.
     pub technical_name: String,
-    pub name: String,
     pub description: String,
 }
 
@@ -40,8 +42,9 @@ pub struct LeagueSeason {
     pub id: i32,
     pub league_id: i32,
     pub leaderboard_id: i32,
+    /// What the UI words as "Season 12". There is no name beside it: the
+    /// one this used to carry was English written here.
     pub season_number: i32,
-    pub name: String,
     pub start_date: String,
     pub end_date: String,
     pub placement_games: i32,
@@ -52,9 +55,16 @@ pub struct LeagueSeason {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LeaderboardTier {
-    pub name: String,
+    /// The division's name key as the API sends it (`bronze`, `grandmaster`).
+    ///
+    /// An identifier the UI names from its catalogue, never a label. Empty
+    /// when the API left the division out of the response.
     pub division: String,
+    /// The subdivision's name key (`I`, `II`, ...), a Roman numeral the UI
+    /// shows as sent.
     pub subdivision: String,
+    /// Division index, then subdivision index. Unique within a season, which
+    /// makes it the tier's identity as well as its order.
     pub division_order: i32,
     pub highest_score: i32,
     pub image_url: Option<String>,
@@ -78,7 +88,13 @@ pub struct LeaderboardEntry {
     pub games_played: i32,
     pub won_games: Option<i32>,
     pub update_time: Option<String>,
+    /// The placement's division name key (`bronze`, ...), as on
+    /// [`LeaderboardTier::division`]. `None` on a rating board.
     pub division: Option<String>,
+    /// The placement's subdivision name key (`I`, `II`, ...).
+    pub subdivision: Option<String>,
+    /// The tier this entry is placed in, the same number as its
+    /// [`LeaderboardTier::division_order`].
     pub division_order: Option<i32>,
     pub highest_score: Option<i32>,
     pub division_image_url: Option<String>,
@@ -348,6 +364,10 @@ pub fn reduce(state: &mut LeaderboardState, event: &LeaderboardEvent) {
             state.seasons.clear();
             state.season_entries.clear();
             state.tiers.clear();
+            // The board those entries belonged to is gone with them. Left at
+            // `Loading`, a league with no seasons (or whose seasons fail)
+            // never asks for a board, so nothing would ever end the spinner.
+            state.season_status = LeaderboardStatus::Idle;
         }
         LeaderboardEvent::SeasonsLoaded { league_id, seasons } => {
             state.selected_league_id = Some(*league_id);
@@ -441,6 +461,7 @@ mod tests {
                 won_games: None,
                 update_time: None,
                 division: None,
+                subdivision: None,
                 division_order: None,
                 highest_score: None,
                 division_image_url: None,

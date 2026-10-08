@@ -1,17 +1,19 @@
-import type { ClientUpdateState, UpdatePreferences } from "../../ipc/bindings";
+import type { ClientUpdateState, UpdatePreferencesPatch } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { Button } from "../../design-system/Button";
 import { useAppStore } from "../../store/store";
 import { isUpdateBusy } from "../../store/reducers/clientUpdate";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { hourCycleOptions } from "../../shared/format/clock";
+import { clientIntlTag } from "../../shared/format/dates";
 import "../updates/updates.css";
 import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
-const save = (preferences: UpdatePreferences) =>
+const save = (patch: UpdatePreferencesPatch) =>
   ipc.send({
     kind: "Settings",
-    command: { type: "setUpdates", payload: { preferences } },
+    command: { type: "patchUpdates", payload: { patch } },
   });
 
 const checkNow = () => ipc.send({ kind: "ClientUpdate", command: { type: "check" } });
@@ -29,7 +31,7 @@ export function UpdatesSettingsSection() {
       >
         <SettingsSwitch
           checked={preferences.automatic}
-          onChange={(automatic) => void save({ ...preferences, automatic })}
+          onChange={(automatic) => void save({ automatic })}
           label={t("settings.updates.checkUpdatesAt")}
         />
       </SettingRow>
@@ -39,7 +41,7 @@ export function UpdatesSettingsSection() {
       >
         <SettingsSwitch
           checked={preferences.preRelease}
-          onChange={(preRelease) => void save({ ...preferences, preRelease })}
+          onChange={(preRelease) => void save({ preRelease })}
           label={t("settings.updates.includePreReleases")}
         />
       </SettingRow>
@@ -118,12 +120,12 @@ function formatChecked(timestamp: string | undefined): string {
   if (!timestamp) return "";
   const at = new Date(timestamp);
   if (Number.isNaN(at.getTime())) return "";
-  // Explicitly English, matching the notification centre's clock: the
-  // repository's rule is that no view inherits the operating system's locale
-  // while the catalogue is the only place language is chosen.
-  return new Intl.DateTimeFormat("en-US", {
+  // The client's language, never the operating system's, and the player's
+  // 24- or 12-hour clock like every other time of day the client prints (#425).
+  return new Intl.DateTimeFormat(clientIntlTag(), {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
+    ...hourCycleOptions(),
   }).format(at);
 }

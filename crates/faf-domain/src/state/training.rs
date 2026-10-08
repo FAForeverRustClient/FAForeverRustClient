@@ -25,16 +25,16 @@
 //! a queue that cannot record its own verdict is a screen that lies. See
 //! `docs/training-features.md`.
 //!
-//! The catalogue itself is small on purpose. Two sources fill it: FAF's own
-//! tutorial API (already modelled in [`crate::state::tutorials`]) and an
-//! optional remote manifest. Nothing about the shape here assumes which.
+//! The catalogue itself comes from one place: a manifest in the guides
+//! repository, with the copy shipped in the client as the floor. Nothing about
+//! the shape here assumes which of the two is on screen.
 
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use crate::state::{AppState, Tutorial};
+use crate::state::{AppState, LocalReplay, LocalReplayPlayer, MatchmakerPlayerProfile};
 
 /// The FAF forum, which is where both routing paths land.
 pub const FORUM_BASE: &str = "https://forum.faforever.com";
@@ -416,19 +416,105 @@ pub fn leaderboard_word(mode: &str) -> &str {
     }
 }
 
+/// The maps that ship with the game, by the folder a replay names them by.
+///
+/// A replay header records the folder (`SCMP_009`) and the catalogue speaks in
+/// the name a player reads ("Seton's Clutch"). Nothing in either string says
+/// they are the same map, so without this table no official map a player
+/// played was ever recognised. Names as the Python client lists them
+/// (`model/game.py`, `OFFICIAL_MAPS`). Mirrored by `OFFICIAL_MAPS` in
+/// `ui/src/shared/rules/trainingRules.ts`.
+pub const OFFICIAL_MAPS: [(&str, &str); 54] = [
+    ("scmp_001", "Burial Mounds"),
+    ("scmp_002", "Concord Lake"),
+    ("scmp_003", "Drake's Ravine"),
+    ("scmp_004", "Emerald Crater"),
+    ("scmp_005", "Gentleman's Reef"),
+    ("scmp_006", "Ian's Cross"),
+    ("scmp_007", "Open Palms"),
+    ("scmp_008", "Seraphim Glaciers"),
+    ("scmp_009", "Seton's Clutch"),
+    ("scmp_010", "Sung Island"),
+    ("scmp_011", "The Great Void"),
+    ("scmp_012", "Theta Passage"),
+    ("scmp_013", "Winter Duel"),
+    ("scmp_014", "The Bermuda Locket"),
+    ("scmp_015", "Fields Of Isis"),
+    ("scmp_016", "Canis River"),
+    ("scmp_017", "Syrtis Major"),
+    ("scmp_018", "Sentry Point"),
+    ("scmp_019", "Finn's Revenge"),
+    ("scmp_020", "Roanoke Abyss"),
+    ("scmp_021", "Alpha 7 Quarantine"),
+    ("scmp_022", "Artic Refuge"),
+    ("scmp_023", "Varga Pass"),
+    ("scmp_024", "Crossfire Canal"),
+    ("scmp_025", "Saltrock Colony"),
+    ("scmp_026", "Vya-3 Protectorate"),
+    ("scmp_027", "The Scar"),
+    ("scmp_028", "Hanna Oasis"),
+    ("scmp_029", "Betrayal Ocean"),
+    ("scmp_030", "Frostmill Ruins"),
+    ("scmp_031", "Four-Leaf Clover"),
+    ("scmp_032", "The Wilderness"),
+    ("scmp_033", "White Fire"),
+    ("scmp_034", "High Noon"),
+    ("scmp_035", "Paradise"),
+    ("scmp_036", "Blasted Rock"),
+    ("scmp_037", "Sludge"),
+    ("scmp_038", "Ambush Pass"),
+    ("scmp_039", "Four-Corners"),
+    ("scmp_040", "The Ditch"),
+    ("x1mp_001", "Crag Dunes"),
+    ("x1mp_002", "Williamson's Bridge"),
+    ("x1mp_003", "Snoey Triangle"),
+    ("x1mp_004", "Haven Reef"),
+    ("x1mp_005", "The Dark Heart"),
+    ("x1mp_006", "Daroza's Sanctuary"),
+    ("x1mp_007", "Strip Mine"),
+    ("x1mp_008", "Thawing Glacier"),
+    ("x1mp_009", "Liberiam Battles"),
+    ("x1mp_010", "Shards"),
+    ("x1mp_011", "Shuriken Island"),
+    ("x1mp_012", "Debris"),
+    ("x1mp_014", "Flooded Strip Mine"),
+    ("x1mp_017", "Eye Of The Storm"),
+];
+
+/// The name a player reads for an official map's folder, written any of the
+/// ways a folder reaches the client (`scmp_009`, `SCMP_009`, `SCMP 009`).
+pub fn official_map_name(folder: &str) -> Option<&'static str> {
+    let folded = fold_map(folder);
+    if folded.is_empty() {
+        return None;
+    }
+    OFFICIAL_MAPS
+        .iter()
+        .find(|(id, _)| fold_map(id) == folded)
+        .map(|(_, name)| *name)
+}
+
+/// Case folded, everything but ASCII letters and digits dropped.
+fn fold_map(map: &str) -> String {
+    map.chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .flat_map(|c| c.to_lowercase())
+        .collect()
+}
+
 /// Map names compared without the punctuation and prefixes that differ between
 /// the vault, the replay header and the way people write them down.
 ///
 /// `scmp_009`, `SCMP 009` and `Setons Clutch` all reach this function from real
-/// data for the same map; folding case, dropping non-alphanumerics and dropping
-/// the `scmp`/`x1mp` folder prefixes is what makes the loose match above catch
-/// the cases a player would expect it to.
+/// data for the same map. An official map's folder is first translated to its
+/// name through [`OFFICIAL_MAPS`], so both sides of a comparison fold to
+/// `setonsclutch`; then case is folded and non-alphanumerics dropped. A folder
+/// the table does not know still loses its `scmp`/`x1mp` prefix, as before.
 pub fn normalise_map(map: &str) -> String {
-    let folded: String = map
-        .chars()
-        .filter(|c| c.is_ascii_alphanumeric())
-        .flat_map(|c| c.to_lowercase())
-        .collect();
+    if let Some(name) = official_map_name(map) {
+        return fold_map(name);
+    }
+    let folded = fold_map(map);
     for prefix in ["scmp", "x1mp"] {
         if let Some(rest) = folded.strip_prefix(prefix) {
             return rest.to_string();
@@ -450,6 +536,10 @@ pub enum TrainingSource {
     Bundled,
     /// Fetched from the configured manifest.
     Remote,
+    /// The last manifest this client fetched, read back from disk because the
+    /// configured one could not be reached. The community's catalogue, but
+    /// possibly not its newest version.
+    Cached,
 }
 
 /// The community destinations the hub routes to.
@@ -1006,14 +1096,28 @@ pub const PROFILE_REPLAY_WINDOW: usize = 40;
 ///
 /// - the account name and, when the matchmaker profile has been opened, the
 ///   per-leaderboard ratings;
-/// - the local replay archive, which is this player's own recent games and
-///   carries the map, the mod, their faction and their displayed rating in each
-///   file's header.
+/// - the local replay archive, which carries the map, the mod, every player's
+///   faction and their displayed rating in each file's header.
 ///
 /// Nothing is fetched for the sake of a recommendation. That is the point: a
 /// hub that had to download a profile before it could suggest anything would be
 /// blank for the first seconds of every visit.
+///
+/// The player card's matchmaker profile only counts when it is this account's;
+/// see [`profile_from`] for the training hub's own copy.
 pub fn profile_from_state(state: &AppState) -> TrainingProfile {
+    profile_from(state, None)
+}
+
+/// [`profile_from_state`], with this account's matchmaker profile as the
+/// training hub fetched it for itself.
+///
+/// The player card is one shared slot, and whoever opened a card from chat is
+/// looking at somebody else's. So the hub keeps its own copy rather than
+/// loading this account into that slot, and passes it here. `own` wins when it
+/// belongs to the signed-in account; the player card is the fallback, and
+/// either is ignored when it belongs to anybody else.
+pub fn profile_from(state: &AppState, own: Option<&MatchmakerPlayerProfile>) -> TrainingProfile {
     let me = state
         .auth
         .player
@@ -1021,10 +1125,11 @@ pub fn profile_from_state(state: &AppState) -> TrainingProfile {
         .map(|player| player.name.clone())
         .unwrap_or_default();
 
+    let ladder = own_matchmaker_profile(state, own);
     let mut profile = TrainingProfile {
         player: me.clone(),
-        rating: matchmaker_rating(state),
-        ratings: ratings_by_mode(state),
+        rating: ladder.and_then(matchmaker_rating),
+        ratings: ladder.map(ratings_by_mode).unwrap_or_default(),
         ..TrainingProfile::default()
     };
 
@@ -1033,26 +1138,31 @@ pub fn profile_from_state(state: &AppState) -> TrainingProfile {
     let mut factions = Tally::default();
     let mut ratings: Vec<i32> = Vec::new();
 
-    for replay in state.replays.local.iter().take(PROFILE_REPLAY_WINDOW) {
+    // Only games this account played in. The archive also holds replays the
+    // player downloaded to watch, and a stranger's 4v4 on a map this player
+    // has never touched says nothing about what they should learn next. The
+    // header lists everyone in the game, so the account's own row is both the
+    // test and the source of the faction and rating below.
+    let own_games = state
+        .replays
+        .local
+        .iter()
+        .filter_map(|replay| own_row(replay, &me).map(|mine| (replay, mine)))
+        .take(PROFILE_REPLAY_WINDOW);
+
+    for (replay, mine) in own_games {
         profile.games_seen += 1;
         if !replay.map.is_empty() {
-            maps.add(&replay.map);
+            // The name a player reads, so "based on your games on" says
+            // "Seton's Clutch" rather than a folder name.
+            maps.add(official_map_name(&replay.map).unwrap_or(&replay.map));
         }
         modes.add(&game_mode_of(replay.num_players, &replay.mod_name));
-
-        // The header records every player; only ours says anything about us.
-        let mine = replay
-            .teams
-            .iter()
-            .flat_map(|team| team.players.iter())
-            .find(|player| !me.is_empty() && player.name.eq_ignore_ascii_case(&me));
-        if let Some(mine) = mine {
-            if let Some(faction) = mine.faction.and_then(faction_name) {
-                factions.add(faction);
-            }
-            if let Some(rating) = mine.rating.filter(|value| *value > 0) {
-                ratings.push(rating);
-            }
+        if let Some(faction) = mine.faction.and_then(faction_name) {
+            factions.add(faction);
+        }
+        if let Some(rating) = mine.rating.filter(|value| *value > 0) {
+            ratings.push(rating);
         }
     }
 
@@ -1072,6 +1182,40 @@ pub fn profile_from_state(state: &AppState) -> TrainingProfile {
     }
 
     profile
+}
+
+/// This account's row in a replay header, if it played in that game.
+///
+/// By name, because that is all a header records. Nobody signed in means no
+/// row is anybody's: without an account there is no telling a game this
+/// player recorded from one they downloaded.
+pub fn own_row<'a>(replay: &'a LocalReplay, me: &str) -> Option<&'a LocalReplayPlayer> {
+    if me.is_empty() {
+        return None;
+    }
+    replay
+        .teams
+        .iter()
+        .flat_map(|team| team.players.iter())
+        .find(|player| player.name.eq_ignore_ascii_case(me))
+}
+
+/// The matchmaker profile that describes the signed-in account, if one is
+/// loaded: the hub's own copy first, then the player card's.
+fn own_matchmaker_profile<'a>(
+    state: &'a AppState,
+    own: Option<&'a MatchmakerPlayerProfile>,
+) -> Option<&'a MatchmakerPlayerProfile> {
+    let me = state.auth.player.as_ref()?;
+    // Someone else's card says nothing about us, whichever slot it is in.
+    own.filter(|profile| profile.player_id == me.id)
+        .or_else(|| {
+            state
+                .player_card
+                .matchmaker_profile
+                .as_ref()
+                .filter(|profile| profile.player_id == me.id)
+        })
 }
 
 /// The signed-in account's headline rating, when the matchmaker profile for it
@@ -1102,17 +1246,7 @@ pub fn mode_of_leaderboard(technical_name: &str) -> Option<&'static str> {
 }
 
 /// This account's rating in each mode it has one for.
-fn ratings_by_mode(state: &AppState) -> BTreeMap<String, i32> {
-    let Some(me) = state.auth.player.as_ref() else {
-        return BTreeMap::new();
-    };
-    let Some(profile) = state.player_card.matchmaker_profile.as_ref() else {
-        return BTreeMap::new();
-    };
-    if profile.player_id != me.id {
-        return BTreeMap::new(); // Someone else's card is open.
-    }
-
+fn ratings_by_mode(profile: &MatchmakerPlayerProfile) -> BTreeMap<String, i32> {
     profile
         .ratings
         .iter()
@@ -1126,12 +1260,7 @@ fn ratings_by_mode(state: &AppState) -> BTreeMap<String, i32> {
         .collect()
 }
 
-fn matchmaker_rating(state: &AppState) -> Option<i32> {
-    let me = state.auth.player.as_ref()?;
-    let profile = state.player_card.matchmaker_profile.as_ref()?;
-    if profile.player_id != me.id {
-        return None; // Someone else's card is open; it says nothing about us.
-    }
+fn matchmaker_rating(profile: &MatchmakerPlayerProfile) -> Option<i32> {
     let by_name = |wanted: &str| {
         profile
             .ratings
@@ -1213,20 +1342,9 @@ impl Tally {
 }
 
 // ---------------------------------------------------------------------------
-// Lessons: FAF's tutorial API as catalogue entries
+// Pictures
 // ---------------------------------------------------------------------------
 
-/// Prefix for ids derived from a FAF tutorial, so a manifest can address one.
-pub const LESSON_ID_PREFIX: &str = "faf-tutorial-";
-
-/// Turn FAF's own tutorial catalogue into training resources.
-///
-/// The tutorials API carries a title, a briefing, a category and, for the
-/// video and written-guide categories, a link. What it does not carry is any of
-/// the metadata this hub filters and recommends on, so the tags are inferred
-/// from the words the author already wrote. That is a fallback and is meant to
-/// be overridden: a manifest entry naming the same `tutorialId` replaces the
-/// derived one wholesale (see [`merge_catalogue`]).
 /// The still image a video host publishes for a link, if this is one.
 ///
 /// YouTube only, and deliberately: it is where practically all of FAF's video
@@ -1279,189 +1397,6 @@ fn youtube_id(url: &str) -> Option<&str> {
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'))
     .then_some(id)
-}
-
-pub fn lesson_resources(
-    tutorials: &[Tutorial],
-    category_name: impl Fn(Option<i32>) -> String,
-) -> Vec<TrainingResource> {
-    tutorials
-        .iter()
-        .map(|tutorial| {
-            let category = category_name(tutorial.category_id);
-            let text = format!("{} {} {}", tutorial.title, tutorial.description, category);
-            let playable = tutorial.is_playable();
-            TrainingResource {
-                id: format!("{LESSON_ID_PREFIX}{}", tutorial.id),
-                title: tutorial.title.clone(),
-                summary: tutorial.description.clone(),
-                kind: if playable {
-                    TrainingKind::Lesson
-                } else if is_video_link(&tutorial.link_url) {
-                    TrainingKind::Video
-                } else {
-                    TrainingKind::Guide
-                },
-                level: derive_level(&text),
-                url: if playable {
-                    String::new()
-                } else {
-                    tutorial.link_url.clone()
-                },
-                // FAF's tutorial API already publishes a map preview for a
-                // lesson, which is the best picture available for it.
-                image_url: tutorial.image_url.clone(),
-                tutorial_id: Some(tutorial.id),
-                author: String::new(),
-                topics: derive_topics(&text),
-                maps: Vec::new(),
-                game_modes: Vec::new(),
-                factions: derive_factions(&text),
-                ..TrainingResource::default()
-            }
-        })
-        .collect()
-}
-
-fn is_video_link(url: &str) -> bool {
-    let url = url.to_lowercase();
-    ["youtube.com", "youtu.be", "twitch.tv", "vimeo.com"]
-        .iter()
-        .any(|host| url.contains(host))
-}
-
-/// Topics inferred from the words an author used.
-///
-/// A keyword table, and openly a heuristic: it exists so a catalogue that
-/// carries no tags is still filterable on the day it loads, not as a substitute
-/// for tags. Each group is the vocabulary FAF itself uses for that subject.
-pub fn derive_topics(text: &str) -> Vec<TrainingTopic> {
-    const TABLE: [(TrainingTopic, &[&str]); 10] = [
-        (
-            TrainingTopic::Economy,
-            &["eco", "mass", "energy", "power", "extractor", "fabricator"],
-        ),
-        (
-            TrainingTopic::BuildOrder,
-            &["build order", "buildorder", "opening", "template", "queue"],
-        ),
-        (
-            TrainingTopic::Micro,
-            &["micro", "dodge", "kiting", "control group", "reclaim"],
-        ),
-        (
-            TrainingTopic::Strategy,
-            &[
-                "strategy",
-                "tactic",
-                "snipe",
-                "turtle",
-                "rush",
-                "transition",
-            ],
-        ),
-        (
-            TrainingTopic::ArmyComposition,
-            &[
-                "composition",
-                "counter",
-                "unit mix",
-                "t2",
-                "t3",
-                "experimental",
-            ],
-        ),
-        (
-            TrainingTopic::MapControl,
-            &[
-                "map control",
-                "expansion",
-                "territory",
-                "spread",
-                "position",
-            ],
-        ),
-        (
-            TrainingTopic::Scouting,
-            &["scout", "intel", "radar", "vision", "omni"],
-        ),
-        (
-            TrainingTopic::Factions,
-            &["uef", "aeon", "cybran", "seraphim", "faction"],
-        ),
-        (
-            TrainingTopic::Teamplay,
-            &["team", "2v2", "3v3", "4v4", "ally", "share"],
-        ),
-        (
-            TrainingTopic::Interface,
-            &["hotkey", "keybind", "interface", "ui", "camera", "option"],
-        ),
-    ];
-
-    let text = text.to_lowercase();
-    TABLE
-        .iter()
-        .filter(|(_, words)| words.iter().any(|word| text.contains(word)))
-        .map(|(topic, _)| *topic)
-        .collect()
-}
-
-/// A level inferred from the words an author used, when they are explicit
-/// enough to be worth acting on.
-pub fn derive_level(text: &str) -> Option<TrainingLevel> {
-    let text = text.to_lowercase();
-    let has = |words: &[&str]| words.iter().any(|word| text.contains(word));
-    if has(&["advanced", "high level", "expert", "1800", "2000"]) {
-        return Some(TrainingLevel::Advanced);
-    }
-    if has(&["intermediate", "improve", "next step"]) {
-        return Some(TrainingLevel::Intermediate);
-    }
-    if has(&[
-        "beginner",
-        "basics",
-        "getting started",
-        "introduction",
-        "first",
-        "new player",
-    ]) {
-        return Some(TrainingLevel::Beginner);
-    }
-    None
-}
-
-fn derive_factions(text: &str) -> Vec<String> {
-    let text = text.to_lowercase();
-    ["uef", "aeon", "cybran", "seraphim"]
-        .iter()
-        .filter(|faction| text.contains(*faction))
-        .map(|faction| faction.to_string())
-        .collect()
-}
-
-/// The library: manifest entries first, then every lesson the manifest did not
-/// already describe.
-///
-/// A manifest entry naming a `tutorialId` wins outright rather than merging
-/// field by field. Half a merge would be worse than either half: an entry whose
-/// tags come from a curator and whose level comes from a keyword table is not
-/// something anyone can reason about.
-pub fn merge_catalogue(
-    catalogue: &[TrainingResource],
-    lessons: Vec<TrainingResource>,
-) -> Vec<TrainingResource> {
-    let described: Vec<i32> = catalogue
-        .iter()
-        .filter_map(|entry| entry.tutorial_id)
-        .collect();
-    let mut merged = catalogue.to_vec();
-    merged.extend(
-        lessons
-            .into_iter()
-            .filter(|lesson| lesson.tutorial_id.is_none_or(|id| !described.contains(&id))),
-    );
-    merged
 }
 
 // ---------------------------------------------------------------------------
@@ -2068,9 +2003,13 @@ mod tests {
         // The vault says `scmp_009`, a replay header says `SCMP 009`, and an
         // author writes "Setons Clutch". A filter that only did equality would
         // match none of them against each other.
-        assert_eq!(normalise_map("SCMP_009"), "009");
-        assert_eq!(normalise_map("scmp 009"), "009");
+        // The folder is the official map's id, so it folds to the map's name
+        // rather than to a number that matches nothing.
+        assert_eq!(normalise_map("SCMP_009"), "setonsclutch");
+        assert_eq!(normalise_map("scmp 009"), "setonsclutch");
         assert_eq!(normalise_map("Seton's Clutch"), "setonsclutch");
+        // A folder the table does not know still loses its prefix.
+        assert_eq!(normalise_map("scmp_tut_1"), "tut1");
 
         let guide = TrainingResource {
             maps: vec!["Setons Clutch".into()],
@@ -2078,7 +2017,18 @@ mod tests {
         };
         assert!(guide.covers_map("setons clutch"));
         assert!(guide.covers_map("Setons"), "a prefix a player would type");
+        assert!(guide.covers_map("scmp_009"), "the folder a replay names");
         assert!(!guide.covers_map("Astro Crater"));
+        assert!(!guide.covers_map("scmp_007"), "another official map");
+    }
+
+    #[test]
+    fn an_official_map_folder_resolves_to_the_name_a_player_reads() {
+        assert_eq!(official_map_name("scmp_009"), Some("Seton's Clutch"));
+        assert_eq!(official_map_name("SCMP_009"), Some("Seton's Clutch"));
+        assert_eq!(official_map_name("x1mp_014"), Some("Flooded Strip Mine"));
+        assert_eq!(official_map_name("Seton's Clutch"), None);
+        assert_eq!(official_map_name(""), None);
     }
 
     #[test]
@@ -2391,7 +2341,6 @@ mod tests {
                 ratings: vec![PlayerRatingSummary {
                     leaderboard_id: 1,
                     technical_name: "global".into(),
-                    name: "Global".into(),
                     rating: 1320,
                     mean: 1400.0,
                     deviation: 80.0,
@@ -2425,7 +2374,6 @@ mod tests {
                 ratings: vec![PlayerRatingSummary {
                     leaderboard_id: 1,
                     technical_name: "global".into(),
-                    name: "Global".into(),
                     rating: 2100,
                     mean: 2100.0,
                     deviation: 40.0,
@@ -2441,6 +2389,100 @@ mod tests {
         assert_eq!(profile_from_state(&state).rating, None);
     }
 
+    /// A replay of a game this account did not play: downloaded to watch.
+    fn foreign(map: &str) -> LocalReplay {
+        let mut replay = local(map, 8, Some(2), Some(2000));
+        replay.recorder = "Carol".into();
+        replay.teams[0].players[0].name = "Carol".into();
+        replay
+    }
+
+    #[test]
+    fn a_downloaded_game_the_player_was_not_in_does_not_shape_the_profile() {
+        // The archive holds every replay the client wrote or downloaded. A
+        // stranger's game says nothing about what this player plays.
+        let state = state_with(vec![
+            foreign("Gap of Rohan"),
+            local("Astro Crater", 2, Some(1), Some(900)),
+            foreign("Gap of Rohan"),
+        ]);
+        let me = profile_from_state(&state);
+        assert_eq!(me.games_seen, 1);
+        assert_eq!(me.maps, vec!["Astro Crater"]);
+        assert_eq!(me.game_modes, vec!["1v1"]);
+        assert_eq!(me.factions, vec!["uef"]);
+        assert_eq!(me.rating, Some(900));
+    }
+
+    #[test]
+    fn without_an_account_no_replay_is_anybody_s() {
+        let mut state = state_with(vec![local("Astro Crater", 2, Some(1), Some(900))]);
+        state.auth.player = None;
+        let me = profile_from_state(&state);
+        assert_eq!(me.games_seen, 0);
+        assert!(me.maps.is_empty());
+    }
+
+    #[test]
+    fn a_replay_on_an_official_map_counts_toward_a_guide_naming_it() {
+        // Twenty Seton's entries in the catalogue were never recommended to a
+        // player whose replays all said `scmp_009`.
+        let state = state_with(vec![local("SCMP_009", 8, Some(1), Some(1100))]);
+        let profile = profile_from_state(&state);
+        assert_eq!(profile.maps, vec!["Seton's Clutch"]);
+
+        let guide = TrainingResource {
+            maps: vec!["Setons Clutch".into()],
+            ..resource("a")
+        };
+        assert!(
+            score(&guide, &profile) > score(&resource("b"), &profile),
+            "the map match counts"
+        );
+    }
+
+    fn matchmaker(player_id: i32, global: i32) -> MatchmakerPlayerProfile {
+        MatchmakerPlayerProfile {
+            player_id,
+            login: String::new(),
+            country: String::new(),
+            clan_tag: String::new(),
+            avatar_url: String::new(),
+            avatar_tooltip: String::new(),
+            games_played: 10,
+            ratings: vec![PlayerRatingSummary {
+                leaderboard_id: 1,
+                technical_name: "global".into(),
+                rating: global,
+                mean: f64::from(global),
+                deviation: 50.0,
+                games_played: 10,
+                won_games: 5,
+                update_time: String::new(),
+            }],
+            league_placements: Vec::new(),
+            warnings: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn the_hub_s_own_copy_of_the_ratings_wins_and_a_stranger_s_never_counts() {
+        // The hub fetches this account's ratings into a slot of its own, so a
+        // stranger's card open from chat stays open and does not count.
+        let mut state = state_with(vec![]);
+        state.player_card = PlayerCardState {
+            matchmaker_profile: Some(matchmaker(99, 2100)),
+            ..PlayerCardState::default()
+        };
+        let own = matchmaker(7, 1320);
+        assert_eq!(profile_from(&state, Some(&own)).rating, Some(1320));
+        assert_eq!(profile_from(&state, None).rating, None);
+
+        // An own copy for an account that has since signed out is not ours.
+        let stale = matchmaker(8, 1500);
+        assert_eq!(profile_from(&state, Some(&stale)).rating, None);
+    }
+
     #[test]
     fn a_non_faf_featured_mod_names_the_mode_itself() {
         // "4v4" would be a lie about a co-op mission with four players in it.
@@ -2453,99 +2495,6 @@ mod tests {
     #[test]
     fn a_profile_from_an_empty_client_says_so() {
         assert!(profile_from_state(&AppState::default()).is_empty());
-    }
-
-    // -- lessons -----------------------------------------------------------
-
-    fn tutorial(id: i32, title: &str, description: &str, playable: bool, link: &str) -> Tutorial {
-        Tutorial {
-            id,
-            title: title.into(),
-            description: description.into(),
-            link_url: link.into(),
-            image_url: String::new(),
-            ordinal: 1,
-            launchable: playable,
-            map_folder_name: if playable {
-                "scmp_tut".into()
-            } else {
-                String::new()
-            },
-            technical_name: if playable {
-                "tut".into()
-            } else {
-                String::new()
-            },
-            category_id: Some(1),
-        }
-    }
-
-    #[test]
-    fn a_faf_lesson_becomes_a_catalogue_entry_with_inferred_tags() {
-        let lessons = lesson_resources(
-            &[tutorial(
-                7,
-                "Economy basics",
-                "Learn how mass and energy work for a new player.",
-                true,
-                "",
-            )],
-            |_| "Basics".to_string(),
-        );
-        let entry = &lessons[0];
-        assert_eq!(entry.id, "faf-tutorial-7");
-        assert_eq!(entry.kind, TrainingKind::Lesson);
-        assert_eq!(entry.tutorial_id, Some(7));
-        assert_eq!(entry.level, Some(TrainingLevel::Beginner));
-        assert!(entry.topics.contains(&TrainingTopic::Economy));
-        assert!(entry.is_lesson());
-    }
-
-    #[test]
-    fn a_tutorial_that_is_really_a_youtube_link_is_catalogued_as_a_video() {
-        // FAF publishes whole tutorial categories that are pointers to videos.
-        // Listing those as lessons would offer a start button for something the
-        // client cannot start.
-        let lessons = lesson_resources(
-            &[tutorial(
-                9,
-                "Advanced eco management",
-                "A video by a high level player.",
-                false,
-                "https://www.youtube.com/watch?v=abc",
-            )],
-            |_| "Video tutorials".to_string(),
-        );
-        assert_eq!(lessons[0].kind, TrainingKind::Video);
-        assert_eq!(lessons[0].url, "https://www.youtube.com/watch?v=abc");
-        assert_eq!(lessons[0].level, Some(TrainingLevel::Advanced));
-        assert!(!lessons[0].is_lesson());
-    }
-
-    #[test]
-    fn a_curated_entry_replaces_the_lesson_it_describes() {
-        // The whole reason a manifest entry carries `tutorialId`: a curator's
-        // tags must not be merged with a keyword table's guesses.
-        let curated = vec![TrainingResource {
-            id: "setons-build".into(),
-            title: "Seton's build order".into(),
-            tutorial_id: Some(7),
-            maps: vec!["Setons Clutch".into()],
-            ..TrainingResource::default()
-        }];
-        let lessons = lesson_resources(
-            &[
-                tutorial(7, "Lesson", "", true, ""),
-                tutorial(8, "Other", "", true, ""),
-            ],
-            |_| String::new(),
-        );
-
-        let merged = merge_catalogue(&curated, lessons);
-        assert_eq!(
-            merged.iter().map(|r| r.id.as_str()).collect::<Vec<_>>(),
-            vec!["setons-build", "faf-tutorial-8"]
-        );
     }
 
     // -- composing a post --------------------------------------------------

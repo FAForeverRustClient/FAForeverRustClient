@@ -2,6 +2,7 @@
 // share, and the map art both lead with.
 
 import { useState } from "react";
+import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
 import type { ReplayTeam, VaultReplay } from "../../ipc/bindings";
 import { formatAgeOrDate, formatDate, formatShortDateTime } from "../../shared/format/dates";
@@ -14,6 +15,7 @@ import { replayMapKey, replayMapPresentation } from "./coopReplayMap";
 import { useAppStore } from "../../store/store";
 import { useGameRating } from "./useGameRating";
 import { playerCount, ReplayCardRoster, mergeReplayTeamsWithLocal } from "./ReplayRoster";
+import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
 /**
@@ -147,7 +149,7 @@ export function ReplayMetaFact({
   return (
     <span className="replay-meta-fact" title={detail ? `${label}: ${detail}` : label}>
       <Icon name={icon} size={13} />
-      <span>{value || "N/A"}</span>
+      <span>{value || t("common.notAvailable")}</span>
     </span>
   );
 }
@@ -237,6 +239,7 @@ export function ReplayLibraryCard({
   replay,
   watched,
   selected = false,
+  showResults = false,
   watch,
   onOpen,
   onDoubleClick,
@@ -245,6 +248,8 @@ export function ReplayLibraryCard({
   replay: ReplayCardData;
   watched: boolean;
   selected?: boolean;
+  /** Outcomes and rating changes on the lineup. See `ReplayCardRoster`. */
+  showResults?: boolean;
   /** The footer's action. See `ReplayCardWatch`. */
   watch?: ReplayCardWatch;
   onOpen: () => void;
@@ -307,14 +312,20 @@ export function ReplayLibraryCard({
         <div className="replay-card-top">
           <div className="replay-card-header">
             <span className="replay-card-title" title={cardTitle.full} aria-label={cardTitle.full}>{cardTitle.display}</span>
-            <span className="replay-card-submap muted">{t("replays.card.onMap", { map: presentation.displayName || replay.map })}</span>
+            {/* The id at the end of the map line: it says which replay this
+                is, and kept under Watch it read as part of the button. */}
+            <span className="replay-card-submap muted">
+              {t("replays.card.onMap", { map: presentation.displayName || replay.map })}
+              {replay.idLabel && <span className="replay-card-id"> · {replay.idLabel}</span>}
+            </span>
           </div>
-          {/* The way in, in the top-right corner beside the title it plays,
-              and under it the id that says which replay this is. */}
-          <div className="replay-card-corner">
-            {watch && (
-              <button
-                type="button"
+          {/* The way in, in the top-right corner beside the title it plays:
+              the client's own primary button, as Watch is in the replay's
+              detail dialog, rather than a style of its own. */}
+          {watch && (
+            <div className="replay-card-corner">
+              <Button
+                variant="primary"
                 className="replay-card-watch"
                 disabled={watch.disabled}
                 aria-label={watch.ariaLabel}
@@ -327,14 +338,13 @@ export function ReplayLibraryCard({
                 }}
                 onDoubleClick={(event) => event.stopPropagation()}
               >
-                <Icon name="play" size={13} />
+                <Icon name="play" size={15} />
                 <span>{watch.label}</span>
-              </button>
-            )}
-            <span className="muted">{replay.idLabel}</span>
-          </div>
+              </Button>
+            </div>
+          )}
         </div>
-        <ReplayCardRoster teams={replay.teams} onPlayerMenu={onPlayerMenu} />
+        <ReplayCardRoster teams={replay.teams} showResults={showResults} onPlayerMenu={onPlayerMenu} />
         {replay.footerNote && (
           <div className="replay-card-footer">
             <span className="muted">{replay.footerNote}</span>
@@ -349,6 +359,7 @@ export function ReplayCard({
   replay,
   watched,
   busy = false,
+  showResults = false,
   onOpen,
   onDoubleClick,
   onWatch,
@@ -358,6 +369,8 @@ export function ReplayCard({
   watched: boolean;
   /** A game is already starting, so a second "watch" would go nowhere. */
   busy?: boolean;
+  /** The vault's "Game result" switch (#454). */
+  showResults?: boolean;
   onOpen: () => void;
   onDoubleClick?: () => void;
   onWatch?: () => void;
@@ -397,6 +410,7 @@ export function ReplayCard({
         footerNote: replay.replayAvailable ? "" : t("replays.card.notUploaded"),
       }}
       watched={watched}
+      showResults={showResults}
       watch={watch}
       onOpen={onOpen}
       onDoubleClick={onDoubleClick}

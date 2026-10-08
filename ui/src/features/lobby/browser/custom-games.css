@@ -24,40 +24,18 @@
   flex: 1;
 }
 
-/* The fold arrow (issues 370 and 377) is a tab on the details panel's left
-   edge: it fills the gap between the list and the panel, takes the panel's
-   own surface and border, and is open on the panel's side, overlapping the
-   panel's border by a pixel so the two read as one piece. It belongs to the
-   panel without lying over the list or over the panel's contents. Folded
-   away, it stays where the panel's edge was, against the right of the gap.
-   It points at where the panel goes: right to fold it away, left to bring
-   it back. */
-.custom-games-detail-toggle {
-  position: absolute;
-  top: 12px;
-  right: -1px;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  width: calc(100% + 1px);
-  height: 40px;
+/* The details panel's fold (issues 370 and 377), at the toolbar's end: an
+   icon button the size of the view switch beside it, lit while the panel is
+   shown, as the view switch lights the view in use. */
+.play-detail-toggle {
+  width: 34px;
   padding: 0;
-  border: 1px solid var(--color-border);
-  border-right: 0;
-  border-radius: var(--radius-md) 0 0 var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-muted);
-  cursor: pointer;
+  color: var(--color-subtle);
 }
 
-.custom-games-detail-toggle:hover,
-.custom-games-detail-toggle:focus-visible {
-  background: var(--color-surface-hover);
+.play-detail-toggle[aria-pressed="true"] {
   color: var(--color-text);
-}
-
-.custom-games-detail-toggle[aria-expanded="false"] svg {
-  transform: rotate(180deg);
+  background: var(--color-surface-raised);
 }
 
 /* Across the whole width, list and detail columns both. Confined to the list
@@ -556,8 +534,7 @@
 /* Lower half of the preview, where it reads as an action on the map without
    covering the terrain the player is looking at. Opaque, unlike the ghost
    button it is built from: over map art a transparent control is unreadable. */
-.game-map-preview-wrap > .game-map-preview-action,
-.game-preview-dialog-map > .game-preview-dialog-map-action {
+.game-map-preview-wrap > .game-map-preview-action {
   position: absolute;
   right: var(--space-3);
   bottom: var(--space-3);
@@ -568,8 +545,7 @@
   box-shadow: 0 2px 10px rgb(0 0 0 / 45%);
 }
 
-.game-map-preview-wrap > .game-map-preview-action:hover:not(:disabled),
-.game-preview-dialog-map > .game-preview-dialog-map-action:hover:not(:disabled) {
+.game-map-preview-wrap > .game-map-preview-action:hover:not(:disabled) {
   background: var(--color-surface-hover);
 }
 

@@ -298,12 +298,17 @@
   scrollbar-gutter: stable;
 }
 
-/* A share of the table each, rather than as wide as their content. The other
-   boards' ratings arrive after the ranking itself, so every one of these
-   columns read "N/A" first and four digits a moment later, and auto-sized
-   columns re-flowed the whole row sideways when they did. */
-.leaderboard-table th.leaderboard-board-column {
-  width: 7%;
+/* As wide as the value they will hold, from the start. The other boards'
+   ratings arrive after the ranking itself, so every one of these columns
+   reads "N/A" first and four digits a moment later, and a column sized by its
+   content moved everything to its right when they landed. A share of the
+   table (7%) did not stop it: at the default window that share is narrower
+   than either value, and a column is never narrower than its content. Five
+   tabular digits plus the cell's padding covers any rating, so the numbers
+   arrive into room already kept for them. `ch` is the cell's own digit, bold
+   in the ranked column. */
+.leaderboard-table td.leaderboard-board-column {
+  width: calc(5ch + 2 * var(--space-3));
 }
 
 /* The pager's row, held open before it has anything to show: it renders

@@ -177,7 +177,7 @@ export function ConsolePage(props: ConsoleProps) {
                   <th>{t("tournaments.console.action")}</th>
                   <th>{t("tournaments.console.tournament")}</th>
                   <th>{t("tournaments.console.who")}</th>
-                  <th>IP</th>
+                  <th>{t("tournaments.console.ipColumn")}</th>
                 </tr>
               </thead>
               <tbody>

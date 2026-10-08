@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../../design-system/Icon";
 import type { VaultMap } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
+import { useTranslation } from "../../i18n/useTranslation";
 import { FactionIcon } from "./FactionIcon";
 import {
   isGeneratedMap,
@@ -52,6 +53,7 @@ export function MapThumbnail({
   url: ownUrl,
   iconSize,
 }: Props) {
+  const { t } = useTranslation();
   // Subscribed rather than read through the shared fallback: the mission
   // catalogue loads after a tile renders, and a mission's own folder is the
   // only place a campaign map's art exists.
@@ -90,7 +92,7 @@ export function MapThumbnail({
         <img
           className={className}
           src={localPreview}
-          alt={`${presentation.displayName} preview`}
+          alt={t("common.mapPreview", { name: presentation.displayName })}
           loading="lazy"
           decoding="async"
         />
@@ -105,7 +107,7 @@ export function MapThumbnail({
         <span
           className={`${placeholderClassName} coop-map-tile-badge`}
           data-faction={faction}
-          aria-label={`${presentation.displayName} preview`}
+          aria-label={t("common.mapPreview", { name: presentation.displayName })}
         >
           {isCustomFaction ? (
             <Icon name="maps" size={iconSize ?? (large ? 34 : 20)} />
@@ -117,7 +119,7 @@ export function MapThumbnail({
     }
 
     return (
-      <span className={placeholderClassName} aria-label={`${presentation.displayName} preview unavailable`}>
+      <span className={placeholderClassName} aria-label={t("common.mapPreviewUnavailable", { name: presentation.displayName })}>
         <Icon name="maps" size={iconSize ?? (large ? 34 : 18)} />
       </span>
     );
@@ -127,7 +129,7 @@ export function MapThumbnail({
     <img
       className={className}
       src={url}
-      alt={`${presentation.displayName} preview`}
+      alt={t("common.mapPreview", { name: presentation.displayName })}
       loading="lazy"
       decoding="async"
       onError={() => {

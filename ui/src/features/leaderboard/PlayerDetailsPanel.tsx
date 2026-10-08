@@ -9,6 +9,7 @@ import { requestReplaySearch } from "../../shared/replaySearchIntent";
 import { openPlayerCard } from "../../shared/playerCardActions";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerName, includesName } from "../../shared/components/nameColors";
+import { tierLabel } from "../../shared/leagueNames";
 
 interface PlayerDetailsPanelProps {
   entry: LeaderboardEntry | null;
@@ -64,12 +65,12 @@ export function PlayerDetailsPanel({ entry, heading }: PlayerDetailsPanelProps) 
       <h3>{title}</h3>
       <div className="leaderboard-player-identity">
         <div className="leaderboard-player-copy">
-          <div className="leaderboard-player-name"><PlayerName name={entry.playerName} /></div>
+          <div className="leaderboard-player-name"><PlayerName name={entry.playerName || t("common.unknown")} /></div>
           {(entry.divisionMediumImageUrl || entry.divisionImageUrl) && (
             <div className="leaderboard-player-division">
               <img
                 src={entry.divisionMediumImageUrl || entry.divisionImageUrl || ""}
-                alt={entry.division ?? ""}
+                alt={entry.division === null ? "" : tierLabel(entry.division, entry.subdivision)}
                 width={64}
                 height={32}
                 loading="lazy"

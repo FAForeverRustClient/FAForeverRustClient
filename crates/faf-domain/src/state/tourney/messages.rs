@@ -229,34 +229,45 @@ pub enum TourneyAdmin {
     },
 }
 
+/// Everything the tournament tab can ask for, in two halves: the writes,
+/// which the command policy runs one at a time, and the rest.
+///
+/// The split is in the type so that the set of writes is stated once. The
+/// policy, the service's router and the write handler each match on
+/// [`TourneyWrite`] whole, so a new write lands in all three by being added
+/// there, and none of them needs a fallback arm for commands it never sees.
+///
+/// Untagged, so the wire format is the one the two halves already have:
+/// `{ type, payload }`, with no extra layer naming the half. Every `type`
+/// belongs to exactly one of them, which is what lets the untagged
+/// deserializer pick the right one.
+// Not boxed: the enum is the size the single enum it replaced already was, a
+// command is moved once per dispatch, and a box would cost every construction
+// site an allocation for nothing. `AppCommand` makes the same call.
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(untagged)]
+pub enum TourneyCommand {
+    Read(TourneyRead),
+    Write(TourneyWrite),
+}
+
+/// The tournament commands that are not serialised writes: reads, what the
+/// pane shows, and the two account-level writes that touch no event (the
+/// Discord handle and the news badge), which therefore run alongside anything.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
-pub enum TourneyCommand {
+pub enum TourneyRead {
     Load,
     #[serde(rename_all = "camelCase")]
     Select {
         tournament_id: String,
     },
-    /// Enter as the signed-in player. The primary action of the whole tab.
-    ///
-    /// The rating is the player's own, and only an unrated event takes one:
-    /// there the service refuses a signup without it. Everywhere else it is
-    /// fetched from FAF and this is `None`.
     /// Read the open event again without saying so: a pick phase changes
     /// under the reader, and announcing a load every few seconds would blink
     /// the pane. The website polls the same way.
     #[serde(rename_all = "camelCase")]
     RefreshDetail {
-        tournament_id: String,
-    },
-    #[serde(rename_all = "camelCase")]
-    SignUp {
-        tournament_id: String,
-        rating: Option<i32>,
-    },
-    /// Decline an invitation (`decline_invite`).
-    #[serde(rename_all = "camelCase")]
-    DeclineInvite {
         tournament_id: String,
     },
     /// Ask whether this account would get in, without entering
@@ -278,23 +289,11 @@ pub enum TourneyCommand {
     LoadCopySources,
     /// The named formats a director may host (`presets`).
     LoadPresets,
-    /// Attach a picture pasted into the event's text (`add_desc_image`); the
-    /// answer's path is then inserted where it was pasted.
-    #[serde(rename_all = "camelCase")]
-    UploadDescImage {
-        tournament_id: String,
-        data_url: String,
-    },
     /// Read one of the site's documents: the account, the pending bar, the
     /// Hall of Fame, the console, or an access status.
     #[serde(rename_all = "camelCase")]
     LoadSite {
         read: SiteRead,
-    },
-    /// One write to the site, then a reload of what it touched.
-    #[serde(rename_all = "camelCase")]
-    SiteWrite {
-        write: SiteWrite,
     },
     /// Another event's whole document, to fill the create form from
     /// ("Fill from this"), read without opening it.
@@ -307,6 +306,114 @@ pub enum TourneyCommand {
     LoadCopySource {
         tournament_id: String,
     },
+    /// Load the room list for the open event.
+    #[serde(rename_all = "camelCase")]
+    LoadChat {
+        tournament_id: String,
+    },
+    /// Open one room and read it.
+    #[serde(rename_all = "camelCase")]
+    OpenRoom {
+        tournament_id: String,
+        room_id: String,
+    },
+    /// Re-read the open room and the room list, without saying so.
+    ///
+    /// The service has no push of any kind: it is HTTP, and the website polls.
+    /// Without this the tab can send a message and never receive one, which
+    /// looks like a working chat until somebody else types.
+    ///
+    /// Distinct from [`Self::OpenRoom`] because it must be silent: announcing a
+    /// load every few seconds would blink the room out and back, and would
+    /// fight the reader's scroll position.
+    #[serde(rename_all = "camelCase")]
+    RefreshChat {
+        tournament_id: String,
+        room_id: String,
+    },
+    /// Keep one room open beside whatever section is showing, or let it go
+    /// with `None`. Read at once, silently; it is kept fresh the way the open
+    /// room is, with `RefreshChat`.
+    #[serde(rename_all = "camelCase")]
+    PinRoom {
+        tournament_id: String,
+        room_id: Option<String>,
+    },
+    LoadArticles,
+    /// Ask whether this account may host, which gates the create button.
+    LoadHosting,
+    /// Read this account's own Discord handle off the service.
+    LoadProfile,
+    /// Set or clear the Discord handle. Empty clears it.
+    SetDiscord {
+        handle: String,
+    },
+    /// Find FAF accounts whose name starts with what has been typed.
+    ///
+    /// Reuses the same batch account lookup the player card and the leaderboard
+    /// read: an organiser adding an entrant is choosing a person, and the client
+    /// already knows how to show one. A blank or too-short query clears the list
+    /// instead of asking the API for everybody.
+    SearchAccounts {
+        query: String,
+    },
+    /// Drop the results: somebody was picked, or the field was left.
+    ClearAccountSearch,
+    /// Ask FAF for the current name of every entrant (`check_renames`). Reads
+    /// only; taking a new name is [`TourneyAdmin::ApplyRenames`].
+    #[serde(rename_all = "camelCase")]
+    CheckRenames {
+        tournament_id: String,
+    },
+    /// Load every series, for the picker and the series list.
+    LoadSeries,
+    /// Open one series and read its editions.
+    #[serde(rename_all = "camelCase")]
+    OpenSeries {
+        series_id: String,
+    },
+    /// Close it again, back to the list.
+    CloseSeries,
+    /// Clear this account's unread badge, on every device.
+    #[serde(rename_all = "camelCase")]
+    MarkNewsRead {
+        tournament_id: String,
+    },
+    DismissActionError,
+}
+
+/// Every tournament write: the commands that change an event, its entrants,
+/// teams, matches, maps, chat or news, a series, or the site. Serial in the
+/// command policy (`Key::TourneyWrite`), because the server recomputes the
+/// bracket on each one, and each ends by reading back what it changed.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(tag = "type", content = "payload", rename_all = "camelCase")]
+pub enum TourneyWrite {
+    /// Enter as the signed-in player. The primary action of the whole tab.
+    ///
+    /// The rating is the player's own, and only an unrated event takes one:
+    /// there the service refuses a signup without it. Everywhere else it is
+    /// fetched from FAF and this is `None`.
+    #[serde(rename_all = "camelCase")]
+    SignUp {
+        tournament_id: String,
+        rating: Option<i32>,
+    },
+    /// Decline an invitation (`decline_invite`).
+    #[serde(rename_all = "camelCase")]
+    DeclineInvite { tournament_id: String },
+    /// Attach a picture pasted into the event's text (`add_desc_image`); the
+    /// answer's path is then inserted where it was pasted.
+    #[serde(rename_all = "camelCase")]
+    UploadDescImage {
+        tournament_id: String,
+        data_url: String,
+        /// The form's id for this paste, handed back with the answer.
+        request_id: u32,
+    },
+    /// One write to the site, then a reload of what it touched.
+    #[serde(rename_all = "camelCase")]
+    SiteWrite { write: SiteWrite },
     /// Ban an entrant from this event and, where the service still allows
     /// it, take them out in the same step: what an organiser means by "kick".
     ///
@@ -328,9 +435,7 @@ pub enum TourneyCommand {
     /// block rather than passed in: the server hands out that id, and a client
     /// that supplied its own could only ever be wrong about it.
     #[serde(rename_all = "camelCase")]
-    Withdraw {
-        tournament_id: String,
-    },
+    Withdraw { tournament_id: String },
     /// Check this account's team in, or take it back.
     #[serde(rename_all = "camelCase")]
     CheckIn {
@@ -362,17 +467,6 @@ pub enum TourneyCommand {
         tournament_id: String,
         report: MatchReport,
     },
-    /// Load the room list for the open event.
-    #[serde(rename_all = "camelCase")]
-    LoadChat {
-        tournament_id: String,
-    },
-    /// Open one room and read it.
-    #[serde(rename_all = "camelCase")]
-    OpenRoom {
-        tournament_id: String,
-        room_id: String,
-    },
     #[serde(rename_all = "camelCase")]
     PostChat {
         tournament_id: String,
@@ -383,34 +477,9 @@ pub enum TourneyCommand {
         #[serde(default)]
         reply_to: Option<String>,
     },
-    /// Re-read the open room and the room list, without saying so.
-    ///
-    /// The service has no push of any kind: it is HTTP, and the website polls.
-    /// Without this the tab can send a message and never receive one, which
-    /// looks like a working chat until somebody else types.
-    ///
-    /// Distinct from [`Self::OpenRoom`] because it must be silent: announcing a
-    /// load every few seconds would blink the room out and back, and would
-    /// fight the reader's scroll position.
-    #[serde(rename_all = "camelCase")]
-    RefreshChat {
-        tournament_id: String,
-        room_id: String,
-    },
-    /// Keep one room open beside whatever section is showing, or let it go
-    /// with `None`. Read at once, silently; it is kept fresh the way the open
-    /// room is, with `RefreshChat`.
-    #[serde(rename_all = "camelCase")]
-    PinRoom {
-        tournament_id: String,
-        room_id: Option<String>,
-    },
     /// Start a team and captain it.
     #[serde(rename_all = "camelCase")]
-    CreateTeam {
-        tournament_id: String,
-        name: String,
-    },
+    CreateTeam { tournament_id: String, name: String },
     /// Ask a team for a place. The captain answers; there is no instant join,
     /// because the server removed that path.
     #[serde(rename_all = "camelCase")]
@@ -449,9 +518,7 @@ pub enum TourneyCommand {
     /// Leave the team. The last member out dissolves it, and a departing
     /// captain hands the armband to the next member.
     #[serde(rename_all = "camelCase")]
-    LeaveTeam {
-        tournament_id: String,
-    },
+    LeaveTeam { tournament_id: String },
     /// Take the team apart, as its captain or an organiser.
     #[serde(rename_all = "camelCase")]
     DisbandTeam {
@@ -523,15 +590,9 @@ pub enum TourneyCommand {
     },
     /// Ask somebody to enter, by FAF name.
     #[serde(rename_all = "camelCase")]
-    InvitePlayer {
-        tournament_id: String,
-        name: String,
-    },
+    InvitePlayer { tournament_id: String, name: String },
     #[serde(rename_all = "camelCase")]
-    Uninvite {
-        tournament_id: String,
-        faf_id: i32,
-    },
+    Uninvite { tournament_id: String, faf_id: i32 },
     /// Set the seeding, at random or in a given order.
     #[serde(rename_all = "camelCase")]
     Reseed {
@@ -562,31 +623,9 @@ pub enum TourneyCommand {
         tournament_id: String,
         news_id: String,
     },
-    LoadArticles,
-    /// Ask whether this account may host, which gates the create button.
-    LoadHosting,
-    /// Read this account's own Discord handle off the service.
-    LoadProfile,
-    /// Set or clear the Discord handle. Empty clears it.
-    SetDiscord {
-        handle: String,
-    },
-    /// Find FAF accounts whose name starts with what has been typed.
-    ///
-    /// Reuses the same batch account lookup the player card and the leaderboard
-    /// read: an organiser adding an entrant is choosing a person, and the client
-    /// already knows how to show one. A blank or too-short query clears the list
-    /// instead of asking the API for everybody.
-    SearchAccounts {
-        query: String,
-    },
-    /// Drop the results: somebody was picked, or the field was left.
-    ClearAccountSearch,
     /// Create an event. It becomes the open one, so the organiser lands in it
     /// rather than back at an unchanged list.
-    Create {
-        draft: TourneyDraft,
-    },
+    Create { draft: TourneyDraft },
     /// Change an existing event's settings. Only the fields a draft carries;
     /// the best-of plan and the veto configuration stay on the website.
     #[serde(rename_all = "camelCase")]
@@ -596,9 +635,7 @@ pub enum TourneyCommand {
     },
     /// Make a draft event visible to everyone.
     #[serde(rename_all = "camelCase")]
-    Publish {
-        tournament_id: String,
-    },
+    Publish { tournament_id: String },
     /// Move the event along: form teams, draw the bracket, or go back.
     #[serde(rename_all = "camelCase")]
     Advance {
@@ -611,9 +648,7 @@ pub enum TourneyCommand {
     /// Hide the event. Restorable by a site admin, which is why it is not
     /// called delete.
     #[serde(rename_all = "camelCase")]
-    Archive {
-        tournament_id: String,
-    },
+    Archive { tournament_id: String },
     /// Bind a map pool to a round, or clear it with an empty `pool_id`.
     #[serde(rename_all = "camelCase")]
     AssignPool {
@@ -629,9 +664,7 @@ pub enum TourneyCommand {
     },
     /// Take back the last pick.
     #[serde(rename_all = "camelCase")]
-    DraftUndo {
-        tournament_id: String,
-    },
+    DraftUndo { tournament_id: String },
     /// Mark which entrants captain a team, before the draft starts.
     #[serde(rename_all = "camelCase")]
     SetCaptains {
@@ -683,12 +716,6 @@ pub enum TourneyCommand {
         tournament_id: String,
         config: FactionVetoConfig,
     },
-    /// Ask FAF for the current name of every entrant (`check_renames`). Reads
-    /// only; taking a new name is [`TourneyAdmin::ApplyRenames`].
-    #[serde(rename_all = "camelCase")]
-    CheckRenames {
-        tournament_id: String,
-    },
     /// One of the organiser's single-call changes. See [`TourneyAdmin`].
     #[serde(rename_all = "camelCase")]
     Administer {
@@ -730,24 +757,11 @@ pub enum TourneyCommand {
         tournament_id: String,
         pool: PoolDraft,
     },
-    /// Load every series, for the picker and the series list.
-    LoadSeries,
-    /// Open one series and read its editions.
-    #[serde(rename_all = "camelCase")]
-    OpenSeries {
-        series_id: String,
-    },
-    /// Close it again, back to the list.
-    CloseSeries,
     /// Create a series, or rename one that exists.
-    SaveSeries {
-        draft: SeriesDraft,
-    },
+    SaveSeries { draft: SeriesDraft },
     /// Delete a series. Its editions are unfiled, not deleted.
     #[serde(rename_all = "camelCase")]
-    DeleteSeries {
-        series_id: String,
-    },
+    DeleteSeries { series_id: String },
     /// File this event under a series, or take it out with `None`.
     #[serde(rename_all = "camelCase")]
     SetSeries {
@@ -837,12 +851,18 @@ pub enum TourneyCommand {
         body: String,
         important: bool,
     },
-    /// Clear this account's unread badge, on every device.
-    #[serde(rename_all = "camelCase")]
-    MarkNewsRead {
-        tournament_id: String,
-    },
-    DismissActionError,
+}
+
+impl From<TourneyRead> for TourneyCommand {
+    fn from(command: TourneyRead) -> Self {
+        Self::Read(command)
+    }
+}
+
+impl From<TourneyWrite> for TourneyCommand {
+    fn from(command: TourneyWrite) -> Self {
+        Self::Write(command)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -946,19 +966,42 @@ pub enum TourneyEvent {
     },
     /// The organiser picked somebody, or left the field: drop the list.
     AccountSearchCleared,
-    RatingChecking,
+    /// The eligibility check for one event started. Each of the three carries
+    /// the event it is about, because the answer can arrive after the reader
+    /// has moved to another one, and a verdict is only true of the event it
+    /// was asked for.
+    #[serde(rename_all = "camelCase")]
+    RatingChecking {
+        tournament_id: String,
+    },
+    #[serde(rename_all = "camelCase")]
     RatingChecked {
+        tournament_id: String,
         check: RatingCheck,
     },
+    #[serde(rename_all = "camelCase")]
     RatingCheckFailed {
+        tournament_id: String,
         reason: String,
         kind: RequestFailureKind,
     },
-    PlayerRatingsLoading,
+    /// One entrant's ratings table. Like the eligibility check, each of the
+    /// three names the event it was asked in: the table belongs to the open
+    /// event's entrant, and an answer can arrive after the organiser moved on.
+    /// The entrant itself is on the answer (`ratings.player_id`), which is what
+    /// the dialog matches against.
+    #[serde(rename_all = "camelCase")]
+    PlayerRatingsLoading {
+        tournament_id: String,
+    },
+    #[serde(rename_all = "camelCase")]
     PlayerRatingsLoaded {
+        tournament_id: String,
         ratings: EntrantRatings,
     },
+    #[serde(rename_all = "camelCase")]
     PlayerRatingsFailed {
+        tournament_id: String,
         reason: String,
         kind: RequestFailureKind,
     },
@@ -988,9 +1031,18 @@ pub enum TourneyEvent {
     ArticleImageUploaded {
         url: String,
     },
-    /// A picture pasted into an event's text was stored; its path.
+    /// A picture pasted into an event's text was stored; its path, and the
+    /// paste it answers.
+    #[serde(rename_all = "camelCase")]
     DescImageUploaded {
+        request_id: u32,
         url: String,
+    },
+    /// A pasted picture could not be stored. Its own event, so the form can
+    /// say which one failed rather than waiting for an answer that never comes.
+    #[serde(rename_all = "camelCase")]
+    DescImageUploadFailed {
+        request_id: u32,
     },
     TemplateLoading,
     TemplateLoaded {

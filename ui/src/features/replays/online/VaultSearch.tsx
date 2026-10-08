@@ -36,7 +36,7 @@ import {
   isRecentBound,
   isoDaysAgo,
 } from "../../../shared/replayQuery";
-import { AdvancedReplayFilters, ReplaySearchSliders, ReplayTypeAndPageSize } from "./AdvancedReplayFilters";
+import { AdvancedReplayFilters, ReplayGameTypeField, ReplaySearchSliders } from "./AdvancedReplayFilters";
 import { replayGameModes, selectedGameModes, withGameModes } from "./replayGameModes";
 import { activeReplayPreset, SHORT_GAME_MINUTES } from "../replayPresets";
 import { FriendReplayPicker } from "./FriendReplayPicker";
@@ -83,6 +83,11 @@ interface Props {
   onSearch: (query: ReplayQuery) => void;
 }
 
+/** A query's filters, without the page it is on or how long its pages are. */
+function filtersKey(query: ReplayQuery): string {
+  return JSON.stringify({ ...query, page: 0, pageSize: 0 });
+}
+
 export function VaultSearch({ featuredMods, leaderboards, self, friends, initialQuery, onSearch }: Props) {
   const { t } = useTranslation();
   const [form, setForm] = useState<ReplayQuery>(initialQuery);
@@ -112,11 +117,22 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
   // effect used to answer that by throwing away whatever was half typed into
   // the form: set a rating range, have the store update for an unrelated
   // reason, watch the slider snap back.
+  //
+  // Nor when only the paging moved. Turning a page or changing the results per
+  // page re-runs the executed query, and resetting the form to it threw away
+  // filters the user had set but not searched for yet.
   const appliedQuery = useRef(JSON.stringify(initialQuery));
+  const appliedFilters = useRef(filtersKey(initialQuery));
   useEffect(() => {
     const incoming = JSON.stringify(initialQuery);
     if (incoming === appliedQuery.current) return;
     appliedQuery.current = incoming;
+    const incomingFilters = filtersKey(initialQuery);
+    if (incomingFilters === appliedFilters.current) {
+      setForm((current) => ({ ...current, pageSize: initialQuery.pageSize }));
+      return;
+    }
+    appliedFilters.current = incomingFilters;
     setForm(initialQuery);
     setRecentOnly(isRecentBound(initialQuery.after));
   }, [initialQuery]);
@@ -242,6 +258,24 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
           />
         </label>
 
+        {/* The lobby title, up here beside player and map rather than behind
+            "More filters" (#415). Two players who met in a tournament have
+            usually played many other games against each other, and the title
+            ("... Cup Final", "Round 3") is what tells those apart. It was in
+            the advanced panel all along, where nobody found it. A contains
+            match, like the map. */}
+        <label className="vault-field vault-field-grow search-panel-field search-panel-field-grow">
+          <span className="vault-field-label search-panel-label">{t("replays.search.gameTitle")}</span>
+          <input
+            className="vault-input search-panel-control"
+            type="search"
+            value={form.title}
+            placeholder={t("replays.search.anyTitle")}
+            title={t("replays.search.titleTooltip")}
+            onChange={(e) => set("title", e.target.value)}
+          />
+        </label>
+
         <label className="vault-field vault-search-replay-id search-panel-field">
           <span className="vault-field-label search-panel-label">{t("replays.search.replayId")}</span>
           <input
@@ -294,7 +328,7 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
           </div>
         </div>
 
-        <ReplayTypeAndPageSize form={form} featuredMods={featuredMods} set={set} />
+        <ReplayGameTypeField form={form} featuredMods={featuredMods} set={set} />
         </div>
 
         <Button type="submit" variant="primary" className="vault-search-submit search-panel-submit">

@@ -68,9 +68,9 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
+        type: "patchBrowsing",
         payload: {
-          preferences: { ...useAppStore.getState().state.settings.browsing, liveReplayView: mode },
+          patch: { liveReplayView: mode },
         },
       },
     });
@@ -96,13 +96,12 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   useEffect(() => {
     if (!filtersDirty.current) return;
     const timer = window.setTimeout(() => {
-      const current = useAppStore.getState().state.settings.browsing;
       filtersDirty.current = false;
       ipc.send({
         kind: "Settings",
         command: {
-          type: "setBrowsing",
-          payload: { preferences: { ...current, liveReplayFilters: filters } },
+          type: "patchBrowsing",
+          payload: { patch: { liveReplayFilters: filters } },
         },
       });
     }, 200);
@@ -205,12 +204,21 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   // list that refreshes itself every few seconds asks nothing the second time,
   // and only while this tab is open. The answers are shared with the detail
   // panel, which is why opening one costs nothing after this.
+  //
+  // "Asked" is remembered here as well as in state. The backend marks each
+  // game as being looked up with an event of its own, and every one of those
+  // re-ran this effect while the rest were still unmarked: a page of
+  // seventy-five cards sent about seventy overlapping requests, which filled
+  // every command slot the backend has, and a click on another tab waited
+  // behind them for as long as the vault took to answer.
+  const askedLookups = useRef(new Set<number>());
   useEffect(() => {
     if (viewMode !== "tiles") return;
     const unknown = visibleGames
       .map(({ game }) => game.id)
-      .filter((id) => !lookups?.[id]);
+      .filter((id) => !lookups?.[id] && !askedLookups.current.has(id));
     if (unknown.length === 0) return;
+    for (const id of unknown) askedLookups.current.add(id);
     ipc.send({ kind: "Replays", command: { type: "lookUpOnlineMany", payload: { uids: unknown } } });
   }, [lookups, viewMode, visibleGames]);
 
@@ -274,7 +282,8 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
         onClear={() => {
           setVisibleCount(LIVE_REPLAY_BATCH_SIZE);
           filtersDirty.current = true;
-          setFilters(DEFAULT_LIVE_FILTERS);
+          // Clearing the filters is not a change of mind about keeping them.
+          setFilters({ ...DEFAULT_LIVE_FILTERS, remember: filters.remember ?? false });
         }}
       />
       {filteredGames.length === 0 ? (

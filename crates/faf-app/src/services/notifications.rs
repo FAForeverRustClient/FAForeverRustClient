@@ -2,10 +2,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use faf_domain::state::{
     ClientNotification, NotificationAction, NotificationCommand, NotificationEvent,
-    NotificationKind,
+    NotificationKind, NotificationText,
 };
 
 use crate::runtime::{EventSink, ServiceCtx};
+
+/// Short for the call sites: `notifications::Text::new("notifications.msg.x")`.
+pub use faf_domain::state::NotificationText as Text;
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -27,7 +30,23 @@ pub fn add(
     if !out.with_state(|state| state.settings.notifications.enabled) {
         return;
     }
-    emit(out, kind, title, body, action);
+    emit(out, kind, None, title, body, action);
+}
+
+/// `add` with the catalog entry the UI translates it from (#458). `title`
+/// and `body` are the same text in English.
+pub fn add_text(
+    out: &EventSink,
+    kind: NotificationKind,
+    text: NotificationText,
+    title: impl Into<String>,
+    body: impl Into<String>,
+    action: Option<NotificationAction>,
+) {
+    if !out.with_state(|state| state.settings.notifications.enabled) {
+        return;
+    }
+    emit(out, kind, Some(text), title, body, action);
 }
 
 /// Retain an operational message even when optional event alerts are disabled.
@@ -40,12 +59,25 @@ pub fn add_required(
     body: impl Into<String>,
     action: Option<NotificationAction>,
 ) {
-    emit(out, kind, title, body, action);
+    emit(out, kind, None, title, body, action);
+}
+
+/// `add_required` with the catalog entry the UI translates it from (#458).
+pub fn add_required_text(
+    out: &EventSink,
+    kind: NotificationKind,
+    text: NotificationText,
+    title: impl Into<String>,
+    body: impl Into<String>,
+    action: Option<NotificationAction>,
+) {
+    emit(out, kind, Some(text), title, body, action);
 }
 
 fn emit(
     out: &EventSink,
     kind: NotificationKind,
+    text: Option<NotificationText>,
     title: impl Into<String>,
     body: impl Into<String>,
     action: Option<NotificationAction>,
@@ -61,6 +93,7 @@ fn emit(
             created_at,
             read: false,
             action,
+            text,
         },
     });
 }

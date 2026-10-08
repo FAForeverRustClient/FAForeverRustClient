@@ -1,10 +1,15 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { CATALOGUES } from "./catalog";
 import { de } from "./catalog/de";
 import type { Message } from "./catalog/en";
 import { en } from "./catalog/en";
-import { formatNumber, translateIn } from ".";
+import {
+  formatNumber,
+  translateCoopMissionDescription,
+  translateCoopMissionName,
+  translateIn,
+} from ".";
 import { isLocale, LOCALE_KEYS } from "./locales";
 import { getLocale, resetLocaleForTests, setLocale, subscribeToLocale } from "./store";
 
@@ -85,6 +90,89 @@ describe("translateIn", () => {
       .toBe("Replay 27456965");
     expect(translateIn("de", "status.replay.subject", { uid: 27456965 }))
       .toBe("Replay 27456965");
+  });
+});
+
+const COOP_MAP_FOLDERS = [
+  "scca_coop_a01", "scca_coop_a02", "scca_coop_a03", "scca_coop_a04", "scca_coop_a05", "scca_coop_a06",
+  "scca_coop_e01", "scca_coop_e02", "scca_coop_e03", "scca_coop_e04", "scca_coop_e05", "scca_coop_e06",
+  "scca_coop_r01", "scca_coop_r02", "scca_coop_r03", "scca_coop_r04", "scca_coop_r05", "scca_coop_r06",
+  "x1ca_coop_001", "x1ca_coop_002", "x1ca_coop_003", "x1ca_coop_004", "x1ca_coop_005", "x1ca_coop_006",
+  "faf_coop_fort_clarke_assault", "faf_coop_havens_invasion", "faf_coop_novax_station_assault",
+  "faf_coop_operation_blockade", "faf_coop_operation_golden_crystals", "faf_coop_operation_holy_raid",
+  "faf_coop_operation_ioz_shavoh_kael", "faf_coop_operation_overlord_surth_velsok", "faf_coop_operation_rebels_rest",
+  "faf_coop_operation_red_revenge", "faf_coop_operation_rescue", "faf_coop_operation_tha_atha_aez",
+  "faf_coop_operation_tight_spot", "faf_coop_operation_trident", "faf_coop_operation_uhthe_thuum_qai",
+  "faf_coop_operation_yath_aez", "faf_coop_prothyon_16", "faf_coop_theta_civilian_rescue",
+] as const;
+
+const COOP_MAP_FOLDERS_USING_API_BRIEFINGS: readonly string[] = [
+  "faf_coop_operation_trident",
+  "faf_coop_operation_blockade",
+  "faf_coop_operation_holy_raid",
+  "faf_coop_operation_golden_crystals",
+] as const;
+
+describe("co-op mission catalogue lookup", () => {
+  beforeEach(() => setLocale("ru"));
+
+  it.each(COOP_MAP_FOLDERS)("resolves the %s mission name by map folder", (folder) => {
+    expect(translateCoopMissionName(`${folder}.v0021`, "API mission title"))
+      .not.toBe("API mission title");
+  });
+
+  it.each(COOP_MAP_FOLDERS.filter(
+    (folder) => !COOP_MAP_FOLDERS_USING_API_BRIEFINGS.includes(folder),
+  ))("resolves the %s description by map folder", (folder) => {
+    expect(translateCoopMissionDescription(folder, "API mission description"))
+      .not.toBe("API mission description");
+  });
+
+  it.each(COOP_MAP_FOLDERS_USING_API_BRIEFINGS)(
+    "keeps the API briefing for %s when Russian catalogue text is not a briefing",
+    (folder) => {
+      const apiBriefing = `API briefing for ${folder}`;
+      expect(translateCoopMissionDescription(folder, apiBriefing)).toBe(apiBriefing);
+    },
+  );
+
+  it("normalizes folder paths and version suffixes", () => {
+    expect(translateCoopMissionName("maps/SCCA_Coop_R03.v0021", "Renamed by API"))
+      .toBe("\u0414\u0435\u0444\u0440\u0430\u0433\u043c\u0435\u043d\u0442\u0430\u0446\u0438\u044f (Defrag)");
+  });
+
+  it("does not use the display name as a translation key", () => {
+    expect(translateCoopMissionName("unknown_map", "Dawn")).toBe("Dawn");
+  });
+
+  it("keeps the API name and description for unknown maps", () => {
+    expect(translateCoopMissionName("new_api_map.v0001", "New mission"))
+      .toBe("New mission");
+    expect(translateCoopMissionDescription("new_api_map.v0001", "New briefing"))
+      .toBe("New briefing");
+  });
+
+  it("uses the name catalogue and API briefing when the active locale has no translation", () => {
+    setLocale("de");
+    expect(translateCoopMissionName("scca_coop_a01.v0001", "API title")).toBe("Joust");
+    expect(translateCoopMissionDescription("faf_coop_operation_trident", "API description"))
+      .toBe("API description");
+    expect(translateCoopMissionDescription("faf_coop_operation_blockade", "API briefing"))
+      .toBe("API briefing");
+  });
+
+  it("uses catalogue names that include the original English text in Russian", () => {
+    expect(translateCoopMissionName("x1ca_coop_002", "API title"))
+      .toBe("\u0420\u0430\u0441\u0441\u0432\u0435\u0442 (Dawn)");
+    expect(translateCoopMissionName("x1ca_coop_001", "API title"))
+      .toBe("\u0427\u0451\u0440\u043d\u044b\u0439 \u0434\u0435\u043d\u044c (Black Day)");
+    expect(translateCoopMissionName("scca_coop_e06", "API title"))
+      .toBe("\u041a\u0430\u043c\u0435\u043d\u043d\u0430\u044f \u0441\u0442\u0435\u043d\u0430 (Stone Wall)");
+  });
+
+  it("translates the mission briefing from the map-folder key", () => {
+    expect(translateCoopMissionDescription("scca_coop_e01", "English source description"))
+      .toBe("\u041f\u043e \u0434\u0430\u043d\u043d\u044b\u043c \u0440\u0430\u0437\u0432\u0435\u0434\u043a\u0438, \u0434\u0432\u0430 \u043a\u043e\u043c\u0430\u043d\u0434\u0443\u044e\u0449\u0438\u0445 \u041a\u0438\u0431\u0440\u0430\u043d\u043e\u0432 \u0441\u043e\u0432\u0435\u0440\u0448\u0438\u043b\u0438 \u043f\u0435\u0440\u0435\u0445\u043e\u0434 \u0447\u0435\u0440\u0435\u0437 \u0432\u0440\u0430\u0442\u0430 \u043d\u0430 \u041a\u0430\u043f\u0435\u043b\u043b\u0443 \u0431\u043e\u043b\u0435\u0435 \u0447\u0430\u0441\u0430 \u043d\u0430\u0437\u0430\u0434. \u041c\u044b \u043f\u043e\u043b\u0430\u0433\u0430\u0435\u043c, \u0447\u0442\u043e \u043e\u043d\u0438 \u043f\u044b\u0442\u0430\u044e\u0442\u0441\u044f \u0440\u0430\u0437\u0436\u0435\u0447\u044c \u043d\u0435\u0434\u043e\u0432\u043e\u043b\u044c\u0441\u0442\u0432\u043e \u0441\u0440\u0435\u0434\u0438 \u0441\u0438\u043c\u0431\u0438\u043e\u043d\u0442\u043e\u0432.");
   });
 });
 

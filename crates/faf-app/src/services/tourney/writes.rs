@@ -1,117 +1,57 @@
-//! Tournament orchestration: reading the list, entering an event, playing it.
-//!
-//! Reads and writes have different shapes. A read is fire-and-forget with a
-//! generation token, so only the newest answer lands. A write is serialised and
-//! always ends by reloading from the server rather than patching the local
-//! copy: confirming a score moves the winner into the next match, eliminates
-//! the loser and can finish the tournament outright, and none of that is in the
-//! response. Any local simulation of it would drift within one round.
+//! Tournament writes: every command that changes an event, its entrants, its
+//! teams, maps, pools and news, or the series, and the helpers that announce
+//! each one, run it under the shared write serialisation and reload from the
+//! server afterwards. The chat post comes through here like every other write
+//! and is run by `chat`, which owns the room it reloads.
 
 use faf_domain::state::{
-    AccessKind, CopySourceMaps, MatchReport, PoolDraft, SeedOrder, SeriesDraft, SiteRead,
-    TourneyAction, TourneyActionFailure, TourneyAdmin, TourneyCommand, TourneyDraft, TourneyEvent,
+    MatchReport, PoolDraft, SeedOrder, SeriesDraft, TourneyAction, TourneyActionFailure,
+    TourneyAdmin, TourneyDraft, TourneyEvent, TourneyWrite,
 };
 
 use crate::ports::RequestError;
 use crate::runtime::{EventSink, ServiceCtx};
 
-pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
+use super::chat::{post_chat, read_room};
+use super::reads::{load, load_detail, load_series, open_series};
+use super::site::reload_site;
+
+/// Every write. Exhaustive over [`TourneyWrite`], so a new write does not
+/// compile until it has an arm here.
+pub(super) async fn handle(cmd: TourneyWrite, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
-        TourneyCommand::Load => load(ctx, out).await,
-
-        TourneyCommand::Select { tournament_id } => {
-            out.emit(TourneyEvent::Selected {
-                tournament_id: tournament_id.clone(),
-            });
-            // Selecting is what makes a detail worth having; requiring the UI to
-            // dispatch both would let the two drift apart.
-            load_detail(&tournament_id, ctx, out).await;
-        }
-
-        TourneyCommand::RefreshDetail { tournament_id } => {
-            let generation = ctx.tourney_detail_generation.begin();
-            match ctx.ports.tourney.detail(&tournament_id).await {
-                Ok(event) if ctx.tourney_detail_generation.is_current(generation) => {
-                    out.emit(TourneyEvent::DetailLoaded {
-                        event: Box::new(event),
-                    });
-                }
-                Ok(_) => {}
-                Err(error) => tracing::debug!(%error, "a silent tournament refresh failed"),
-            }
-        }
-
-        TourneyCommand::SignUp {
+        TourneyWrite::SignUp {
             tournament_id,
             rating,
         } => {
             write(TourneyAction::SigningUp, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.sign_up(&tournament_id, rating).await }
+                async move {
+                    ctx.ports
+                        .tourney_entry
+                        .sign_up(&tournament_id, rating)
+                        .await
+                }
             })
             .await;
         }
 
-        TourneyCommand::DeclineInvite { tournament_id } => {
+        TourneyWrite::DeclineInvite { tournament_id } => {
             write(TourneyAction::DecliningInvite, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.decline_invite(&tournament_id).await }
+                async move { ctx.ports.tourney_entry.decline_invite(&tournament_id).await }
             })
             .await;
         }
 
-        TourneyCommand::CheckRating { tournament_id } => {
-            out.emit(TourneyEvent::RatingChecking);
-            match ctx.ports.tourney.check_rating(&tournament_id).await {
-                Ok(check) => out.emit(TourneyEvent::RatingChecked { check }),
-                Err(error) => out.emit(TourneyEvent::RatingCheckFailed {
-                    reason: error.to_string(),
-                    kind: error.kind(),
-                }),
-            }
-        }
-
-        TourneyCommand::LoadPlayerRatings {
-            tournament_id,
-            player_id,
-            refresh,
-        } => {
-            out.emit(TourneyEvent::PlayerRatingsLoading);
-            match ctx
-                .ports
-                .tourney
-                .player_ratings(&tournament_id, &player_id, refresh)
-                .await
-            {
-                Ok(ratings) => out.emit(TourneyEvent::PlayerRatingsLoaded { ratings }),
-                Err(error) => out.emit(TourneyEvent::PlayerRatingsFailed {
-                    reason: error.to_string(),
-                    kind: error.kind(),
-                }),
-            }
-        }
-
-        TourneyCommand::LoadCopySources => {
-            out.emit(TourneyEvent::CopySourcesLoading);
-            match ctx.ports.tourney.copy_sources().await {
-                Ok(sources) => out.emit(TourneyEvent::CopySourcesLoaded { sources }),
-                Err(error) => out.emit(TourneyEvent::CopySourcesFailed {
-                    reason: error.to_string(),
-                    kind: error.kind(),
-                }),
-            }
-        }
-
-        TourneyCommand::LoadSite { read } => load_site(read, ctx, out).await,
-
-        TourneyCommand::SiteWrite { write } => {
+        TourneyWrite::SiteWrite { write } => {
             // An import names the tournament it made, which then opens; a
             // picture upload names its path, which the editor inserts.
             let answer = std::sync::Arc::new(std::sync::Mutex::new(None::<String>));
             let held = answer.clone();
             let sent = write.clone();
             write_selecting(TourneyAction::SiteWriting, ctx, out, async move {
-                let (opened, image) = ctx.ports.tourney.site_write(&sent).await?;
+                let (opened, image) = ctx.ports.tourney_site.site_write(&sent).await?;
                 if let Ok(mut slot) = held.lock() {
                     *slot = image;
                 }
@@ -127,48 +67,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
 
-        TourneyCommand::LoadPresets => match ctx.ports.tourney.presets().await {
-            Ok(presets) => out.emit(TourneyEvent::PresetsLoaded { presets }),
-            // Silent, like the rules pages: without them the form is the
-            // form, only without the shortcut.
-            Err(error) => tracing::warn!(%error, "could not load the tournament presets"),
-        },
-
-        // Read like a map source, without opening it: the form fills from it
-        // while whatever event is open stays open.
-        TourneyCommand::LoadTemplate { tournament_id } => {
-            out.emit(TourneyEvent::TemplateLoading);
-            match ctx.ports.tourney.detail(&tournament_id).await {
-                Ok(event) => out.emit(TourneyEvent::TemplateLoaded {
-                    event: Box::new(event),
-                }),
-                Err(error) => out.emit(TourneyEvent::TemplateFailed {
-                    reason: error.to_string(),
-                    kind: error.kind(),
-                }),
-            }
-        }
-
-        // The source's own detail, read without opening it: the open event
-        // stays the one the maps are imported into.
-        TourneyCommand::LoadCopySource { tournament_id } => {
-            out.emit(TourneyEvent::CopySourceLoading);
-            match ctx.ports.tourney.detail(&tournament_id).await {
-                Ok(event) => out.emit(TourneyEvent::CopySourceLoaded {
-                    source: CopySourceMaps {
-                        tournament_id,
-                        maps: event.map_db,
-                        pools: event.map_pools,
-                    },
-                }),
-                Err(error) => out.emit(TourneyEvent::CopySourceFailed {
-                    reason: error.to_string(),
-                    kind: error.kind(),
-                }),
-            }
-        }
-
-        TourneyCommand::BanPlayer {
+        TourneyWrite::BanPlayer {
             tournament_id,
             player_id,
             faf_id,
@@ -189,10 +88,13 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                         reason,
                         expires,
                     };
-                    ctx.ports.tourney.administer(&tournament_id, &ban).await?;
+                    ctx.ports
+                        .tourney_organiser
+                        .administer(&tournament_id, &ban)
+                        .await?;
                     if remove {
                         ctx.ports
-                            .tourney
+                            .tourney_entry
                             .withdraw(&tournament_id, &player_id)
                             .await?;
                     }
@@ -202,7 +104,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::Withdraw { tournament_id } => {
+        TourneyWrite::Withdraw { tournament_id } => {
             // Which entry to remove is the server's own answer, read back out of
             // the open event. A client that supplied its own id could only ever
             // be wrong about it, and the server would refuse it anyway.
@@ -218,23 +120,33 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             };
             write(TourneyAction::Withdrawing, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.withdraw(&tournament_id, &player_id).await }
+                async move {
+                    ctx.ports
+                        .tourney_entry
+                        .withdraw(&tournament_id, &player_id)
+                        .await
+                }
             })
             .await;
         }
 
-        TourneyCommand::CheckIn {
+        TourneyWrite::CheckIn {
             tournament_id,
             checked_in,
         } => {
             write(TourneyAction::CheckingIn, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.check_in(&tournament_id, checked_in).await }
+                async move {
+                    ctx.ports
+                        .tourney_entry
+                        .check_in(&tournament_id, checked_in)
+                        .await
+                }
             })
             .await;
         }
 
-        TourneyCommand::AnswerReport {
+        TourneyWrite::AnswerReport {
             tournament_id,
             match_id,
             accept,
@@ -246,7 +158,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_match
                         .confirm_report(&tournament_id, &match_id, accept)
                         .await
                 }
@@ -254,7 +166,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::DecideReport {
+        TourneyWrite::DecideReport {
             tournament_id,
             report,
         } => {
@@ -266,7 +178,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let report = clean(report);
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_match
                         .decide_report(&tournament_id, &report)
                         .await
                 }
@@ -274,7 +186,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::SubmitReport {
+        TourneyWrite::SubmitReport {
             tournament_id,
             report,
         } => {
@@ -292,7 +204,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 };
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_match
                         .submit_report(&tournament_id, &report)
                         .await
                 }
@@ -300,141 +212,11 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::LoadChat { tournament_id } => load_rooms(&tournament_id, ctx, out).await,
-
-        TourneyCommand::OpenRoom {
-            tournament_id,
-            room_id,
-        } => {
-            out.emit(TourneyEvent::RoomOpened {
-                room_id: room_id.clone(),
-            });
-            read_room(&tournament_id, &room_id, ctx, out).await;
-        }
-
-        TourneyCommand::PinRoom {
-            tournament_id,
-            room_id,
-        } => {
-            out.emit(TourneyEvent::RoomPinned {
-                room_id: room_id.clone(),
-            });
-            // Read straight away and silently: the open room's loading state
-            // is not this room's to change.
-            if let Some(room_id) = room_id {
-                match ctx.ports.tourney.chat_read(&tournament_id, &room_id).await {
-                    Ok(posts) => out.emit(TourneyEvent::ChatLoaded { room_id, posts }),
-                    Err(error) => {
-                        tracing::debug!(%error, "a pinned tournament chat could not be read");
-                    }
-                }
-            }
-        }
-
-        TourneyCommand::RefreshChat {
-            tournament_id,
-            room_id,
-        } => {
-            // Both halves, because they answer different questions: the room
-            // is what is being read, and the list carries the unread counts,
-            // the `@` marks and the organiser bells for every other room.
-            //
-            // Silent throughout. A failed poll is logged and dropped rather
-            // than shown: the room on screen is still the last good one, and a
-            // banner every few seconds on a flaky connection would be worse
-            // than the gap it reports.
-            match ctx.ports.tourney.chat_read(&tournament_id, &room_id).await {
-                Ok(posts) => out.emit(TourneyEvent::ChatLoaded { room_id, posts }),
-                Err(error) => {
-                    tracing::debug!(%error, "a tournament chat poll came back empty-handed");
-                    return;
-                }
-            }
-            if let Ok(rooms) = ctx.ports.tourney.chat_rooms(&tournament_id).await {
-                out.emit(TourneyEvent::ChatRoomsLoaded { rooms });
-            }
-        }
-
-        TourneyCommand::PostChat {
-            tournament_id,
-            room_id,
-            body,
-            reply_to,
-        } => {
-            if body.trim().is_empty() {
-                return;
-            }
-            let action = TourneyAction::PostingChat {
-                room_id: room_id.clone(),
-            };
-            // A post reloads the room rather than the whole tournament: nothing
-            // about the bracket changed, and refetching it would make typing a
-            // message the most expensive thing in the tab.
-            out.emit(TourneyEvent::ActionStarted {
-                action: action.clone(),
-            });
-            let _guard = ctx.tourney_mutation.acquire().await;
-            match ctx
-                .ports
-                .tourney
-                .chat_post(&tournament_id, &room_id, body.trim(), reply_to.as_deref())
-                .await
-            {
-                Ok(()) => {
-                    out.emit(TourneyEvent::ActionSucceeded {
-                        action,
-                        select: None,
-                    });
-                    read_room(&tournament_id, &room_id, ctx, out).await;
-                    load_rooms(&tournament_id, ctx, out).await;
-                }
-                Err(error) => out.emit(failed(action, &error)),
-            }
-        }
-
-        TourneyCommand::LoadHosting => match ctx.ports.tourney.hosting().await {
-            Ok(hosting) => out.emit(TourneyEvent::HostingLoaded { hosting }),
-            // Silent: not knowing means the create button stays hidden, which
-            // is the same as not being allowed and is the safer of the two.
-            Err(error) => tracing::warn!(%error, "could not read the hosting status"),
-        },
-
-        TourneyCommand::LoadProfile => {
-            // The whole account now, not the handle alone: its roles decide
-            // which of the site's pages and consoles are offered.
-            load_site(SiteRead::Account, ctx, out).await;
-            match ctx.ports.tourney.profile().await {
-                Ok(discord) => out.emit(TourneyEvent::DiscordLoaded { discord }),
-                // Silent, like the hosting status: not knowing the handle only means
-                // the signup dialog opens on an empty field, and saying so would be
-                // an error banner about something nobody asked for.
-                Err(error) => tracing::warn!(%error, "could not read the tournament profile"),
-            }
-        }
-
-        TourneyCommand::SetDiscord { handle } => {
-            match ctx.ports.tourney.set_discord(&handle).await {
-                Ok(discord) => out.emit(TourneyEvent::DiscordLoaded { discord }),
-                // Loud, unlike the read: somebody typed this and pressed save.
-                Err(error) => out.emit(failed(TourneyAction::SavingProfile, &error)),
-            }
-        }
-
-        TourneyCommand::SearchAccounts { query } => search_accounts(&query, ctx, out).await,
-
-        TourneyCommand::ClearAccountSearch => {
-            // Bump the generation as well as clearing: a request already in
-            // flight must not repopulate the list after the organiser picked
-            // somebody and the field closed.
-            ctx.tourney_account_search_generation.begin();
-            out.emit(TourneyEvent::AccountSearchCleared);
-        }
-
-        TourneyCommand::Create { draft } => {
+        TourneyWrite::Create { draft } => {
             write_selecting(TourneyAction::Creating, ctx, out, {
                 let draft = trimmed_draft(draft);
                 async move {
-                    let id = ctx.ports.tourney.create(&draft).await?;
+                    let id = ctx.ports.tourney_organiser.create(&draft).await?;
                     // Pictures pasted before the event existed go up now, and
                     // the text is saved again with their paths in place of
                     // the tokens. A failure leaves the event created, as the
@@ -442,7 +224,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                     if !draft.pending_images.is_empty() {
                         let mut placed = Vec::new();
                         for image in &draft.pending_images {
-                            match ctx.ports.tourney.upload_desc_image(&id, &image.data_url).await {
+                            match ctx.ports.tourney_organiser.upload_desc_image(&id, &image.data_url).await {
                                 Ok(url) if !url.is_empty() => placed.push((image.token.clone(), url)),
                                 Ok(_) => {}
                                 Err(error) => tracing::warn!(%error, "a pasted picture could not be stored"),
@@ -450,7 +232,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                         }
                         if !placed.is_empty() {
                             let swapped = draft.with_images_placed(&placed);
-                            if let Err(error) = ctx.ports.tourney.edit_info(&id, &swapped).await {
+                            if let Err(error) = ctx.ports.tourney_organiser.edit_info(&id, &swapped).await {
                                 tracing::warn!(%error, "the text with the pasted pictures could not be saved");
                             }
                         }
@@ -461,9 +243,10 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::UploadDescImage {
+        TourneyWrite::UploadDescImage {
             tournament_id,
             data_url,
+            request_id,
         } => {
             let stored = std::sync::Arc::new(std::sync::Mutex::new(None::<String>));
             let held = stored.clone();
@@ -472,7 +255,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 async move {
                     let url = ctx
                         .ports
-                        .tourney
+                        .tourney_organiser
                         .upload_desc_image(&tournament_id, &data_url)
                         .await?;
                     if let Ok(mut slot) = held.lock() {
@@ -482,32 +265,40 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 }
             })
             .await;
-            if let Some(url) = stored.lock().ok().and_then(|mut slot| slot.take()) {
-                out.emit(TourneyEvent::DescImageUploaded { url });
+            // Answered either way: `write` reports a failure as the panel's
+            // action error, which says nothing about which paste it was.
+            match stored.lock().ok().and_then(|mut slot| slot.take()) {
+                Some(url) => out.emit(TourneyEvent::DescImageUploaded { request_id, url }),
+                None => out.emit(TourneyEvent::DescImageUploadFailed { request_id }),
             }
         }
 
-        TourneyCommand::EditInfo {
+        TourneyWrite::EditInfo {
             tournament_id,
             draft,
         } => {
             write(TourneyAction::Editing, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 let draft = trimmed_draft(draft);
-                async move { ctx.ports.tourney.edit_info(&tournament_id, &draft).await }
+                async move {
+                    ctx.ports
+                        .tourney_organiser
+                        .edit_info(&tournament_id, &draft)
+                        .await
+                }
             })
             .await;
         }
 
-        TourneyCommand::Publish { tournament_id } => {
+        TourneyWrite::Publish { tournament_id } => {
             write(TourneyAction::Publishing, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.publish(&tournament_id).await }
+                async move { ctx.ports.tourney_organiser.publish(&tournament_id).await }
             })
             .await;
         }
 
-        TourneyCommand::Advance {
+        TourneyWrite::Advance {
             tournament_id,
             phase,
             config,
@@ -517,7 +308,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let config = config.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_match
                         .advance(&tournament_id, phase, config.as_ref())
                         .await
                 }
@@ -525,10 +316,10 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::Archive { tournament_id } => {
+        TourneyWrite::Archive { tournament_id } => {
             write(TourneyAction::Archiving, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.archive(&tournament_id).await }
+                async move { ctx.ports.tourney_organiser.archive(&tournament_id).await }
             })
             .await;
         }
@@ -537,7 +328,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
         // team moves people between lists the response never mentions: a member
         // joining clears their outstanding requests everywhere, and the last
         // one leaving dissolves the team.
-        TourneyCommand::CreateTeam {
+        TourneyWrite::CreateTeam {
             tournament_id,
             name,
         } => {
@@ -548,7 +339,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_entry
                         .create_team(&tournament_id, name.trim())
                         .await
                 }
@@ -556,7 +347,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::RequestJoin {
+        TourneyWrite::RequestJoin {
             tournament_id,
             team_id,
         } => {
@@ -567,7 +358,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_entry
                         .request_join(&tournament_id, &team_id)
                         .await
                 }
@@ -575,7 +366,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::CancelJoin {
+        TourneyWrite::CancelJoin {
             tournament_id,
             team_id,
         } => {
@@ -586,7 +377,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_entry
                         .cancel_join(&tournament_id, &team_id)
                         .await
                 }
@@ -594,7 +385,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::RespondJoin {
+        TourneyWrite::RespondJoin {
             tournament_id,
             team_id,
             player_id,
@@ -607,7 +398,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_entry
                         .respond_join(&tournament_id, &team_id, &player_id, accept)
                         .await
                 }
@@ -615,7 +406,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::InviteToTeam {
+        TourneyWrite::InviteToTeam {
             tournament_id,
             team_id,
             player_id,
@@ -627,7 +418,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_entry
                         .invite_to_team(&tournament_id, &team_id, &player_id)
                         .await
                 }
@@ -635,7 +426,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::RespondInvite {
+        TourneyWrite::RespondInvite {
             tournament_id,
             team_id,
             accept,
@@ -647,7 +438,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_entry
                         .respond_invite(&tournament_id, &team_id, accept)
                         .await
                 }
@@ -655,15 +446,15 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::LeaveTeam { tournament_id } => {
+        TourneyWrite::LeaveTeam { tournament_id } => {
             write(TourneyAction::LeavingTeam, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.leave_team(&tournament_id).await }
+                async move { ctx.ports.tourney_entry.leave_team(&tournament_id).await }
             })
             .await;
         }
 
-        TourneyCommand::DisbandTeam {
+        TourneyWrite::DisbandTeam {
             tournament_id,
             team_id,
         } => {
@@ -674,7 +465,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_entry
                         .disband_team(&tournament_id, &team_id)
                         .await
                 }
@@ -682,7 +473,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::RenameTeam {
+        TourneyWrite::RenameTeam {
             tournament_id,
             team_id,
             name,
@@ -694,7 +485,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_entry
                         .rename_team(&tournament_id, &team_id, name.trim())
                         .await
                 }
@@ -706,7 +497,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
         // name, which the server resolves against a real account: there is no
         // free-typed entrant, and that is what keeps an entry attached to
         // somebody the client can show an avatar and a rating for.
-        TourneyCommand::AddPlayer {
+        TourneyWrite::AddPlayer {
             tournament_id,
             name,
             rating,
@@ -718,7 +509,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_entry
                         .add_player(&tournament_id, name.trim(), rating)
                         .await
                 }
@@ -726,7 +517,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::RespondSignup {
+        TourneyWrite::RespondSignup {
             tournament_id,
             player_id,
             accept,
@@ -738,7 +529,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_entry
                         .respond_signup(&tournament_id, &player_id, accept)
                         .await
                 }
@@ -746,7 +537,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::RemovePlayer {
+        TourneyWrite::RemovePlayer {
             tournament_id,
             player_id,
         } => {
@@ -758,12 +549,17 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             // that could disagree.
             write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.withdraw(&tournament_id, &player_id).await }
+                async move {
+                    ctx.ports
+                        .tourney_entry
+                        .withdraw(&tournament_id, &player_id)
+                        .await
+                }
             })
             .await;
         }
 
-        TourneyCommand::SetCaptain {
+        TourneyWrite::SetCaptain {
             tournament_id,
             team_id,
             player_id,
@@ -775,7 +571,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_entry
                         .set_captain(&tournament_id, &team_id, &player_id)
                         .await
                 }
@@ -783,7 +579,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::MovePlayer {
+        TourneyWrite::MovePlayer {
             tournament_id,
             player_id,
             team_id,
@@ -795,7 +591,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_entry
                         .move_player(&tournament_id, &player_id, team_id.as_deref())
                         .await
                 }
@@ -803,7 +599,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::EditPlayer {
+        TourneyWrite::EditPlayer {
             tournament_id,
             player_id,
             note,
@@ -820,7 +616,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let note = note.trim().to_string();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_entry
                         .edit_player(&tournament_id, &player_id, &note, rating)
                         .await
                 }
@@ -828,7 +624,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::InvitePlayer {
+        TourneyWrite::InvitePlayer {
             tournament_id,
             name,
         } => {
@@ -839,7 +635,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_entry
                         .invite_player(&tournament_id, name.trim())
                         .await
                 }
@@ -847,30 +643,40 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::Uninvite {
+        TourneyWrite::Uninvite {
             tournament_id,
             faf_id,
         } => {
             write(TourneyAction::Inviting, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.uninvite(&tournament_id, faf_id).await }
+                async move {
+                    ctx.ports
+                        .tourney_entry
+                        .uninvite(&tournament_id, faf_id)
+                        .await
+                }
             })
             .await;
         }
 
-        TourneyCommand::Reseed {
+        TourneyWrite::Reseed {
             tournament_id,
             order,
         } => {
             write(TourneyAction::Reseeding, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 let order = tidy_order(order);
-                async move { ctx.ports.tourney.reseed(&tournament_id, &order).await }
+                async move {
+                    ctx.ports
+                        .tourney_organiser
+                        .reseed(&tournament_id, &order)
+                        .await
+                }
             })
             .await;
         }
 
-        TourneyCommand::SplitDivisions {
+        TourneyWrite::SplitDivisions {
             tournament_id,
             divisions,
         } => {
@@ -878,7 +684,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_organiser
                         .split_divisions(&tournament_id, divisions.clamp(1, 6))
                         .await
                 }
@@ -886,7 +692,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::SetDivision {
+        TourneyWrite::SetDivision {
             tournament_id,
             team_id,
             division,
@@ -895,7 +701,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_organiser
                         .set_division(&tournament_id, &team_id, division)
                         .await
                 }
@@ -903,7 +709,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::PostNews {
+        TourneyWrite::PostNews {
             tournament_id,
             body,
             important,
@@ -915,7 +721,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_organiser
                         .post_news(&tournament_id, body.trim(), important)
                         .await
                 }
@@ -923,7 +729,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::DeleteNews {
+        TourneyWrite::DeleteNews {
             tournament_id,
             news_id,
         } => {
@@ -931,7 +737,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_organiser
                         .delete_news(&tournament_id, &news_id)
                         .await
                 }
@@ -939,14 +745,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::LoadArticles => match ctx.ports.tourney.articles().await {
-            Ok(articles) => out.emit(TourneyEvent::ArticlesLoaded { articles }),
-            // Silent: the rules pages are supporting text, and an error banner
-            // over a working bracket because a FAQ did not load would be noise.
-            Err(error) => tracing::warn!(%error, "could not load the tournament rules pages"),
-        },
-
-        TourneyCommand::AssignPool {
+        TourneyWrite::AssignPool {
             tournament_id,
             round_key,
             pool_id,
@@ -958,7 +757,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_maps
                         .assign_pool(&tournament_id, &round_key, &pool_id)
                         .await
                 }
@@ -966,7 +765,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::DraftPickPlayer {
+        TourneyWrite::DraftPickPlayer {
             tournament_id,
             player_id,
         } => {
@@ -974,7 +773,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_entry
                         .draft_pick(&tournament_id, &player_id)
                         .await
                 }
@@ -982,15 +781,15 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::DraftUndo { tournament_id } => {
+        TourneyWrite::DraftUndo { tournament_id } => {
             write(TourneyAction::Drafting, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.draft_undo(&tournament_id).await }
+                async move { ctx.ports.tourney_entry.draft_undo(&tournament_id).await }
             })
             .await;
         }
 
-        TourneyCommand::SetCaptains {
+        TourneyWrite::SetCaptains {
             tournament_id,
             player_ids,
         } => {
@@ -998,7 +797,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_entry
                         .set_captains(&tournament_id, &player_ids)
                         .await
                 }
@@ -1006,7 +805,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::ReportFfa {
+        TourneyWrite::ReportFfa {
             tournament_id,
             report,
         } => {
@@ -1015,12 +814,17 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             };
             write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.report_ffa(&tournament_id, &report).await }
+                async move {
+                    ctx.ports
+                        .tourney_match
+                        .report_ffa(&tournament_id, &report)
+                        .await
+                }
             })
             .await;
         }
 
-        TourneyCommand::VetoAct {
+        TourneyWrite::VetoAct {
             tournament_id,
             match_id,
             map_id,
@@ -1032,7 +836,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_maps
                         .veto_act(&tournament_id, &match_id, &map_id)
                         .await
                 }
@@ -1040,7 +844,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::VetoSetSides {
+        TourneyWrite::VetoSetSides {
             tournament_id,
             match_id,
             team_a,
@@ -1052,7 +856,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_maps
                         .veto_set_sides(&tournament_id, &match_id, &team_a)
                         .await
                 }
@@ -1060,7 +864,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::VetoUndo {
+        TourneyWrite::VetoUndo {
             tournament_id,
             match_id,
         } => {
@@ -1069,12 +873,17 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             };
             write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.veto_undo(&tournament_id, &match_id).await }
+                async move {
+                    ctx.ports
+                        .tourney_maps
+                        .veto_undo(&tournament_id, &match_id)
+                        .await
+                }
             })
             .await;
         }
 
-        TourneyCommand::FactionVeto {
+        TourneyWrite::FactionVeto {
             tournament_id,
             match_id,
             game,
@@ -1087,7 +896,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_maps
                         .faction_veto(&tournament_id, &match_id, game, faction)
                         .await
                 }
@@ -1095,7 +904,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::SetFactionVeto {
+        TourneyWrite::SetFactionVeto {
             tournament_id,
             config,
         } => {
@@ -1103,7 +912,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_maps
                         .set_faction_veto(&tournament_id, &config)
                         .await
                 }
@@ -1111,31 +920,23 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::CheckRenames { tournament_id } => {
-            out.emit(TourneyEvent::RenamesChecking);
-            match ctx.ports.tourney.check_renames(&tournament_id).await {
-                Ok(check) => out.emit(TourneyEvent::RenamesChecked { check }),
-                // Shown where the button is: the service's own sentence says
-                // when the organiser has to sign in again.
-                Err(error) => out.emit(TourneyEvent::RenamesCheckFailed {
-                    reason: error.to_string(),
-                    kind: error.kind(),
-                }),
-            }
-        }
-
-        TourneyCommand::Administer {
+        TourneyWrite::Administer {
             tournament_id,
             change,
         } => {
             write(TourneyAction::Administering, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.administer(&tournament_id, &change).await }
+                async move {
+                    ctx.ports
+                        .tourney_organiser
+                        .administer(&tournament_id, &change)
+                        .await
+                }
             })
             .await;
         }
 
-        TourneyCommand::SaveMap {
+        TourneyWrite::SaveMap {
             tournament_id,
             mut map,
         } => {
@@ -1159,12 +960,12 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
             write(TourneyAction::SavingMap, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.save_map(&tournament_id, &map).await }
+                async move { ctx.ports.tourney_maps.save_map(&tournament_id, &map).await }
             })
             .await;
         }
 
-        TourneyCommand::PublishMap {
+        TourneyWrite::PublishMap {
             tournament_id,
             map_id,
             published,
@@ -1176,7 +977,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_maps
                         .publish_map(&tournament_id, &map_id, published)
                         .await
                 }
@@ -1184,7 +985,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::DeleteMap {
+        TourneyWrite::DeleteMap {
             tournament_id,
             map_id,
         } => {
@@ -1193,12 +994,17 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             };
             write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.delete_map(&tournament_id, &map_id).await }
+                async move {
+                    ctx.ports
+                        .tourney_maps
+                        .delete_map(&tournament_id, &map_id)
+                        .await
+                }
             })
             .await;
         }
 
-        TourneyCommand::PublishPool {
+        TourneyWrite::PublishPool {
             tournament_id,
             pool_id,
             published,
@@ -1210,7 +1016,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_maps
                         .publish_pool(&tournament_id, &pool_id, published)
                         .await
                 }
@@ -1218,7 +1024,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::DeletePool {
+        TourneyWrite::DeletePool {
             tournament_id,
             pool_id,
         } => {
@@ -1229,7 +1035,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_maps
                         .delete_pool(&tournament_id, &pool_id)
                         .await
                 }
@@ -1237,34 +1043,33 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::SavePool {
+        TourneyWrite::SavePool {
             tournament_id,
             pool,
         } => {
             write(TourneyAction::SavingPool, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 let pool = trimmed(pool);
-                async move { ctx.ports.tourney.save_pool(&tournament_id, &pool).await }
+                async move {
+                    ctx.ports
+                        .tourney_maps
+                        .save_pool(&tournament_id, &pool)
+                        .await
+                }
             })
             .await;
         }
 
-        TourneyCommand::LoadSeries => load_series(ctx, out).await,
-
-        TourneyCommand::OpenSeries { series_id } => open_series(&series_id, ctx, out).await,
-
-        TourneyCommand::CloseSeries => out.emit(TourneyEvent::SeriesClosed),
-
-        TourneyCommand::SaveSeries { draft } => {
+        TourneyWrite::SaveSeries { draft } => {
             let draft = trimmed_series(draft);
             write_series(TourneyAction::SavingSeries, ctx, out, {
                 let draft = draft.clone();
-                async move { ctx.ports.tourney.save_series(&draft).await }
+                async move { ctx.ports.tourney_organiser.save_series(&draft).await }
             })
             .await;
         }
 
-        TourneyCommand::DeleteSeries { series_id } => {
+        TourneyWrite::DeleteSeries { series_id } => {
             let action = TourneyAction::DeletingSeries {
                 series_id: series_id.clone(),
             };
@@ -1274,12 +1079,12 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             // something that no longer exists.
             write_series(action, ctx, out, {
                 let series_id = series_id.clone();
-                async move { ctx.ports.tourney.delete_series(&series_id).await }
+                async move { ctx.ports.tourney_organiser.delete_series(&series_id).await }
             })
             .await;
         }
 
-        TourneyCommand::SetSeries {
+        TourneyWrite::SetSeries {
             tournament_id,
             series_id,
         } => {
@@ -1292,7 +1097,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let series_id = series_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_organiser
                         .set_series(&tournament_id, series_id.as_deref())
                         .await
                 }
@@ -1301,7 +1106,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             load_series(ctx, out).await;
         }
 
-        TourneyCommand::AddQualifier {
+        TourneyWrite::AddQualifier {
             tournament_id,
             qualifier_id,
             rule,
@@ -1311,7 +1116,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let qualifier_id = qualifier_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_organiser
                         .add_qualifier(&tournament_id, &qualifier_id, rule)
                         .await
                 }
@@ -1319,7 +1124,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::RemoveQualifier {
+        TourneyWrite::RemoveQualifier {
             tournament_id,
             link_id,
         } => {
@@ -1331,7 +1136,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let link_id = link_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_organiser
                         .remove_qualifier(&tournament_id, &link_id)
                         .await
                 }
@@ -1339,7 +1144,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::EditFormat {
+        TourneyWrite::EditFormat {
             tournament_id,
             format,
         } => {
@@ -1357,7 +1162,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let format = format.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_organiser
                         .edit_format(&tournament_id, &format, structural)
                         .await
                 }
@@ -1365,7 +1170,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::MuteChat {
+        TourneyWrite::MuteChat {
             tournament_id,
             faf_id,
             name,
@@ -1381,7 +1186,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let name = name.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_chat
                         .mute_chat(&tournament_id, faf_id, &name, muted)
                         .await
                 }
@@ -1389,7 +1194,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::DeleteChatPost {
+        TourneyWrite::DeleteChatPost {
             tournament_id,
             room_id,
             post_id,
@@ -1403,7 +1208,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let post_id = post_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_chat
                         .delete_chat_post(&tournament_id, &room_id, &post_id)
                         .await
                 }
@@ -1414,7 +1219,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             read_room(&tournament_id, &room_id, ctx, out).await;
         }
 
-        TourneyCommand::AddOrganiser {
+        TourneyWrite::AddOrganiser {
             tournament_id,
             faf_id,
             name,
@@ -1424,7 +1229,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let name = name.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_organiser
                         .add_organiser(&tournament_id, faf_id, &name)
                         .await
                 }
@@ -1432,7 +1237,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::SetCaster {
+        TourneyWrite::SetCaster {
             tournament_id,
             faf_id,
             name,
@@ -1444,7 +1249,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let name = name.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_organiser
                         .set_caster(&tournament_id, faf_id, &name, casting)
                         .await
                 }
@@ -1452,7 +1257,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::SetOrganiserVisibility {
+        TourneyWrite::SetOrganiserVisibility {
             tournament_id,
             faf_id,
             hidden,
@@ -1462,7 +1267,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_organiser
                         .set_organiser_visibility(&tournament_id, faf_id, hidden)
                         .await
                 }
@@ -1470,18 +1275,23 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::Abandon {
+        TourneyWrite::Abandon {
             tournament_id,
             abandoned,
         } => {
             write(TourneyAction::Abandoning, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.abandon(&tournament_id, abandoned).await }
+                async move {
+                    ctx.ports
+                        .tourney_organiser
+                        .abandon(&tournament_id, abandoned)
+                        .await
+                }
             })
             .await;
         }
 
-        TourneyCommand::EditNews {
+        TourneyWrite::EditNews {
             tournament_id,
             news_id,
             body,
@@ -1496,7 +1306,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 let body = body.clone();
                 async move {
                     ctx.ports
-                        .tourney
+                        .tourney_organiser
                         .edit_news(&tournament_id, &news_id, &body, important)
                         .await
                 }
@@ -1504,20 +1314,14 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::MarkNewsRead { tournament_id } => {
-            // Deliberately not a `write`: nothing on screen changes except a
-            // badge, and announcing it would blank the pane and reload the list
-            // for an act the reader did not ask for. A failure is logged rather
-            // than shown, for the same reason: the badge staying is not worth an
-            // error banner over the announcements it belongs to.
-            if let Err(error) = ctx.ports.tourney.mark_news_read(&tournament_id).await {
-                tracing::warn!(%error, "could not mark the tournament news as read");
-                return;
-            }
-            load_detail(&tournament_id, ctx, out).await;
-        }
-
-        TourneyCommand::DismissActionError => out.emit(TourneyEvent::ActionErrorDismissed),
+        // A write like the rest, serial under the same key, but its own shape:
+        // it reloads the room it posted in rather than the event.
+        TourneyWrite::PostChat {
+            tournament_id,
+            room_id,
+            body,
+            reply_to,
+        } => post_chat(tournament_id, room_id, body, reply_to, ctx, out).await,
     }
 }
 
@@ -1610,224 +1414,6 @@ fn my_player_id(tournament_id: &str, out: &EventSink) -> Option<String> {
     })
 }
 
-async fn load(ctx: &ServiceCtx, out: &EventSink) {
-    out.emit(TourneyEvent::Loading);
-    // Sent with every load rather than once at startup: it costs nothing, and
-    // the alternative is a tab whose images work only if the list was loaded
-    // through the one path that happened to announce it.
-    out.emit(TourneyEvent::AssetBase {
-        base: ctx.ports.tourney.asset_base(),
-    });
-    match ctx.ports.tourney.list().await {
-        Ok(mut events) => {
-            // Sorted here rather than in the view, because ordering is part of
-            // the state every consumer shares.
-            sort_events(&mut events, super::now_seconds());
-            out.emit(TourneyEvent::Loaded { events });
-        }
-        Err(error) => out.emit(TourneyEvent::LoadFailed {
-            reason: error.to_string(),
-            kind: error.kind(),
-        }),
-    }
-}
-
-/// The list, in the order every consumer reads it.
-///
-/// What a player can still act on comes first, and within one status the
-/// soonest event does: a signup that closes tomorrow is worth more than one
-/// three months out, which is the whole of what "closest upcoming first" asks
-/// for. Once a date is behind us it stops being a countdown and becomes an
-/// archive entry, so the past runs the other way, most recent first.
-///
-/// `now` is passed in rather than read here so the order is a pure function of
-/// its inputs and can be asserted without a clock.
-fn sort_events(events: &mut [faf_domain::state::Tourney], now: u32) {
-    events.sort_by(|left, right| {
-        rank(left.status)
-            .cmp(&rank(right.status))
-            .then_with(|| timing(left.event_date, now).cmp(&timing(right.event_date, now)))
-            .then_with(|| right.created_at.cmp(&left.created_at))
-    });
-}
-
-/// Where an event sits relative to now, as a sort key.
-///
-/// The derived `Ord` is the ordering: variants in declaration order, so
-/// everything still ahead outranks everything behind it, and an event with no
-/// date at all sorts last rather than being read as "happening imminently".
-/// [`Reverse`] on the past is what turns an archive the right way round.
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-enum Timing {
-    Upcoming(u32),
-    Past(std::cmp::Reverse<u32>),
-    Undated,
-}
-
-fn timing(event_date: Option<u32>, now: u32) -> Timing {
-    match event_date {
-        Some(at) if at >= now => Timing::Upcoming(at),
-        Some(at) => Timing::Past(std::cmp::Reverse(at)),
-        None => Timing::Undated,
-    }
-}
-
-/// Sort order for the list: what a player can still do something about first.
-fn rank(status: faf_domain::state::TourneyStatus) -> u8 {
-    use faf_domain::state::TourneyStatus::*;
-    match status {
-        Signup => 0,
-        Running => 1,
-        Drafted => 2,
-        Draft => 3,
-        Finished => 4,
-        Unknown => 5,
-    }
-}
-
-async fn load_detail(tournament_id: &str, ctx: &ServiceCtx, out: &EventSink) {
-    let generation = ctx.tourney_detail_generation.begin();
-    out.emit(TourneyEvent::DetailLoading);
-
-    let loaded = ctx.ports.tourney.detail(tournament_id).await;
-    if !ctx.tourney_detail_generation.is_current(generation) {
-        // A newer selection is already in flight; emitting now would overwrite
-        // its state with an older event's bracket.
-        return;
-    }
-    match loaded {
-        Ok(event) => {
-            let accounts: Vec<i32> = event
-                .players
-                .iter()
-                .filter_map(|player| player.faf_id)
-                .collect();
-            out.emit(TourneyEvent::DetailLoaded {
-                event: Box::new(event),
-            });
-            load_entrant_profiles(&accounts, generation, ctx, out).await;
-        }
-        Err(error) => out.emit(TourneyEvent::DetailLoadFailed {
-            reason: error.to_string(),
-            kind: error.kind(),
-        }),
-    }
-}
-
-/// Fetch the FAF accounts behind the entrants that carry one.
-///
-/// A second request after the detail rather than part of it, because the two
-/// come from different services: the tournament service owns the entry, FAF
-/// owns the player. A failure here is silent on purpose: the bracket is
-/// complete without avatars, and an error banner over a working tournament
-/// because a decoration did not load would be noise.
-async fn load_entrant_profiles(
-    accounts: &[i32],
-    generation: u64,
-    ctx: &ServiceCtx,
-    out: &EventSink,
-) {
-    if accounts.is_empty() {
-        out.emit(TourneyEvent::EntrantProfilesLoaded { profiles: vec![] });
-        return;
-    }
-    match ctx.ports.player_card.players_by_id(accounts).await {
-        Ok(profiles) => {
-            if ctx.tourney_detail_generation.is_current(generation) {
-                out.emit(TourneyEvent::EntrantProfilesLoaded { profiles });
-            }
-        }
-        Err(error) => tracing::warn!(%error, "could not load the entrants' FAF profiles"),
-    }
-}
-
-/// The shortest query worth asking the API about.
-///
-/// One letter matches a large share of the player base, and the list it returns
-/// is useless to pick from while costing a full request per keystroke.
-const MIN_ACCOUNT_QUERY: usize = 2;
-
-/// FAF accounts whose name starts with what the organiser typed.
-///
-/// Deliberately the *same* lookup the player card's picker uses
-/// (`PlayerCardPort::search_players`), not a tournament-specific one: an entrant
-/// is a FAF account, and the client already knows how to find and show one. The
-/// tournament service has no player search of its own worth using: it matches
-/// names exactly and answers "no such player", which is the refusal this
-/// removes.
-async fn search_accounts(query: &str, ctx: &ServiceCtx, out: &EventSink) {
-    let trimmed = query.trim();
-    if trimmed.chars().count() < MIN_ACCOUNT_QUERY {
-        // Bump the generation too, so an answer for a longer query typed a
-        // moment ago cannot land on the now-cleared field.
-        ctx.tourney_account_search_generation.begin();
-        out.emit(TourneyEvent::AccountSearchCleared);
-        return;
-    }
-    let generation = ctx.tourney_account_search_generation.begin();
-    out.emit(TourneyEvent::AccountSearchStarted {
-        query: trimmed.to_string(),
-    });
-
-    let found = ctx
-        .ports
-        .player_card
-        .search_players(trimmed, ACCOUNT_SEARCH_LIMIT)
-        .await;
-    if !ctx.tourney_account_search_generation.is_current(generation) {
-        return;
-    }
-    match found {
-        Ok(matches) => out.emit(TourneyEvent::AccountSearchLoaded {
-            query: trimmed.to_string(),
-            matches,
-        }),
-        // Said out loud rather than swallowed: unlike the avatars, this one is
-        // the answer to something the organiser just did, and an empty list that
-        // means "your session expired" would send them hunting for a typo.
-        Err(error) => out.emit(TourneyEvent::AccountSearchFailed {
-            query: trimmed.to_string(),
-            reason: error.to_string(),
-            kind: error.kind(),
-        }),
-    }
-}
-
-/// Enough rows to recognise the right person among similar names, few enough to
-/// scan without scrolling.
-const ACCOUNT_SEARCH_LIMIT: i32 = 8;
-
-/// The rooms of the open event.
-///
-/// Silent on failure for the same reason as the profiles: chat is beside the
-/// bracket, not the point of it.
-async fn load_rooms(tournament_id: &str, ctx: &ServiceCtx, out: &EventSink) {
-    match ctx.ports.tourney.chat_rooms(tournament_id).await {
-        Ok(rooms) => out.emit(TourneyEvent::ChatRoomsLoaded { rooms }),
-        Err(error) => tracing::warn!(%error, "could not load the tournament chat rooms"),
-    }
-}
-
-async fn read_room(tournament_id: &str, room_id: &str, ctx: &ServiceCtx, out: &EventSink) {
-    let generation = ctx.tourney_chat_generation.begin();
-    out.emit(TourneyEvent::ChatLoading);
-
-    let read = ctx.ports.tourney.chat_read(tournament_id, room_id).await;
-    if !ctx.tourney_chat_generation.is_current(generation) {
-        return;
-    }
-    match read {
-        Ok(posts) => out.emit(TourneyEvent::ChatLoaded {
-            room_id: room_id.to_string(),
-            posts,
-        }),
-        Err(error) => out.emit(TourneyEvent::ChatFailed {
-            reason: error.to_string(),
-            kind: error.kind(),
-        }),
-    }
-}
-
 /// Run one write, then resynchronise from the server.
 ///
 /// The shared shape of every mutation: announce it so the pane can disable
@@ -1854,16 +1440,21 @@ async fn write(
 ///
 /// Creation is the only one that does: everything else acts on the event
 /// already on screen, and the reload below re-reads whichever that is.
+///
+/// Every write, here and in [`write_series`] and the chat post, is serial in
+/// the command policy (`Key::TourneyWrite`): the server recomputes the bracket
+/// on every confirmed result, so two overlapping reports would each be
+/// answered against a bracket the other has already moved.
 async fn write_selecting(
     action: TourneyAction,
     ctx: &ServiceCtx,
     out: &EventSink,
     operation: impl std::future::Future<Output = Result<Option<String>, RequestError>>,
 ) {
+    crate::runtime::expect_admitted(crate::runtime::Key::TourneyWrite);
     out.emit(TourneyEvent::ActionStarted {
         action: action.clone(),
     });
-    let _guard = ctx.tourney_mutation.acquire().await;
 
     match operation.await {
         Ok(select) => {
@@ -1889,32 +1480,6 @@ fn selected_id(out: &EventSink) -> Option<String> {
     out.with_state(|state| state.tourney.selected_id.clone())
 }
 
-async fn load_series(ctx: &ServiceCtx, out: &EventSink) {
-    out.emit(TourneyEvent::SeriesLoading);
-    match ctx.ports.tourney.series().await {
-        Ok(series) => out.emit(TourneyEvent::SeriesLoaded { series }),
-        Err(error) => out.emit(TourneyEvent::SeriesFailed {
-            reason: error.to_string(),
-            kind: error.kind(),
-        }),
-    }
-}
-
-async fn open_series(series_id: &str, ctx: &ServiceCtx, out: &EventSink) {
-    match ctx.ports.tourney.series_detail(series_id).await {
-        Ok(detail) => out.emit(TourneyEvent::SeriesOpened {
-            detail: Box::new(detail),
-        }),
-        // Reported through the list's own status rather than swallowed: the
-        // pane it would have filled stays empty otherwise, with nothing saying
-        // why.
-        Err(error) => out.emit(TourneyEvent::SeriesFailed {
-            reason: error.to_string(),
-            kind: error.kind(),
-        }),
-    }
-}
-
 /// A write against the series collection rather than against one tournament.
 ///
 /// Reloads the series list instead of the event list, and re-reads the open
@@ -1926,10 +1491,10 @@ async fn write_series(
     out: &EventSink,
     operation: impl std::future::Future<Output = Result<(), RequestError>>,
 ) {
+    crate::runtime::expect_admitted(crate::runtime::Key::TourneyWrite);
     out.emit(TourneyEvent::ActionStarted {
         action: action.clone(),
     });
-    let _guard = ctx.tourney_mutation.acquire().await;
 
     match operation.await {
         Ok(()) => {
@@ -1958,55 +1523,7 @@ async fn write_series(
     }
 }
 
-/// Read one of the site's documents. The account and the pending bar load
-/// silently, like the hosting status; the pages say when they could not.
-async fn load_site(read: SiteRead, ctx: &ServiceCtx, out: &EventSink) {
-    out.emit(TourneyEvent::SiteLoading { read });
-    match ctx.ports.tourney.site_read(read).await {
-        Ok(document) => out.emit(TourneyEvent::SiteLoaded { document }),
-        Err(error) => {
-            tracing::warn!(%error, ?read, "could not read the tournament site");
-            out.emit(TourneyEvent::SiteLoadFailed {
-                read,
-                reason: error.to_string(),
-                kind: error.kind(),
-            });
-        }
-    }
-}
-
-/// After a site write: the account and the pending bar always, the hosting
-/// status, and the console and the open series where they are on screen.
-async fn reload_site(ctx: &ServiceCtx, out: &EventSink) {
-    load_site(SiteRead::Account, ctx, out).await;
-    load_site(SiteRead::Pending, ctx, out).await;
-    load_site(
-        SiteRead::Access {
-            kind: AccessKind::Host,
-        },
-        ctx,
-        out,
-    )
-    .await;
-    let (console, series) = out.with_state(|state| {
-        (
-            state.tourney.site.console.is_some(),
-            state
-                .tourney
-                .open_series
-                .as_ref()
-                .map(|series| series.id.clone()),
-        )
-    });
-    if console {
-        load_site(SiteRead::Console, ctx, out).await;
-    }
-    if let Some(series) = series {
-        open_series(&series, ctx, out).await;
-    }
-}
-
-fn failed(action: TourneyAction, error: &RequestError) -> TourneyEvent {
+pub(super) fn failed(action: TourneyAction, error: &RequestError) -> TourneyEvent {
     TourneyEvent::ActionFailed {
         failure: TourneyActionFailure {
             action,
@@ -2019,80 +1536,6 @@ fn failed(action: TourneyAction, error: &RequestError) -> TourneyEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use faf_domain::state::{Tourney, TourneyStatus};
-
-    #[test]
-    fn the_list_puts_what_a_player_can_still_join_first() {
-        let mut order = [
-            TourneyStatus::Finished,
-            TourneyStatus::Draft,
-            TourneyStatus::Signup,
-            TourneyStatus::Running,
-            TourneyStatus::Drafted,
-        ];
-        order.sort_by_key(|status| rank(*status));
-        assert_eq!(
-            order,
-            [
-                TourneyStatus::Signup,
-                TourneyStatus::Running,
-                TourneyStatus::Drafted,
-                TourneyStatus::Draft,
-                TourneyStatus::Finished,
-            ]
-        );
-    }
-
-    #[test]
-    fn the_soonest_event_in_a_group_is_the_one_at_the_top() {
-        // The complaint this answers: a signup three months out sat above one
-        // closing tomorrow, because the list was ordered newest-first.
-        const DAY: u32 = 86_400;
-        let now = 100 * DAY;
-        let at = |id: &str, event_date: Option<u32>| Tourney {
-            id: id.into(),
-            status: TourneyStatus::Signup,
-            event_date,
-            ..Tourney::default()
-        };
-        let mut events = vec![
-            at("far", Some(now + 90 * DAY)),
-            at("undated", None),
-            at("stale", Some(now - 5 * DAY)),
-            at("soon", Some(now + DAY)),
-            at("older", Some(now - 60 * DAY)),
-        ];
-        sort_events(&mut events, now);
-        let order: Vec<&str> = events.iter().map(|event| event.id.as_str()).collect();
-        // Ahead of us, soonest first; then the past, most recent first; then
-        // the one that never said when it happens.
-        assert_eq!(order, ["soon", "far", "stale", "older", "undated"]);
-    }
-
-    #[test]
-    fn what_a_player_can_join_still_outranks_what_is_happening_sooner() {
-        // Timing is the tie-break inside a status, not a replacement for it: a
-        // running event tonight does not push tomorrow's open signup down.
-        const DAY: u32 = 86_400;
-        let now = 100 * DAY;
-        let mut events = vec![
-            Tourney {
-                id: "running-tonight".into(),
-                status: TourneyStatus::Running,
-                event_date: Some(now),
-                ..Tourney::default()
-            },
-            Tourney {
-                id: "signup-tomorrow".into(),
-                status: TourneyStatus::Signup,
-                event_date: Some(now + DAY),
-                ..Tourney::default()
-            },
-        ];
-        sort_events(&mut events, now);
-        let order: Vec<&str> = events.iter().map(|event| event.id.as_str()).collect();
-        assert_eq!(order, ["signup-tomorrow", "running-tonight"]);
-    }
 
     #[test]
     fn a_phase_step_is_only_offered_where_the_server_takes_it() {

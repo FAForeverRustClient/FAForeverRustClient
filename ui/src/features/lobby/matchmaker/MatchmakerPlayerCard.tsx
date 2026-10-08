@@ -3,6 +3,7 @@ import type { MatchmakerPlayerProfile, MatchmakerQueue, PlayerCardStatus } from 
 import { flagSrc } from "../../../shared/countryFlags";
 import { useCountryLabel } from "../../../shared/hooks/useCountryLabel";
 import { openPlayerCard } from "../../../shared/playerCardActions";
+import { placementLabel } from "../../../shared/leagueNames";
 import { MatchmakerFactionPicker } from "./MatchmakerFactionPicker";
 import { formatNumber } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -65,7 +66,7 @@ export const MatchmakerPlayerCard = memo(function MatchmakerPlayerCard({
       <div className="matchmaker-player-identity">
         <div
           className="matchmaker-league-mark"
-          title={placement?.division || t(status === "loading" ? "lobby.playerCard.loadingPlacement" : "lobby.matchmaker.unplaced")}
+          title={placementLabel(placement) ?? t(status === "loading" ? "lobby.playerCard.loadingPlacement" : "lobby.matchmaker.unplaced")}
           aria-hidden
         >
           <img
@@ -113,7 +114,7 @@ export const MatchmakerPlayerCard = memo(function MatchmakerPlayerCard({
                 height={14}
               />
             )}
-            <span>{placement?.division || t(status === "loading" ? "lobby.playerCard.loadingPlacement" : "lobby.matchmaker.unplaced")}</span>
+            <span>{placementLabel(placement) ?? t(status === "loading" ? "lobby.playerCard.loadingPlacement" : "lobby.matchmaker.unplaced")}</span>
             <span>{profile ? t("lobby.playerCard.games", { count: formatNumber(profile.gamesPlayed) }) : t("lobby.playerCard.ratingsLoading")}</span>
           </div>
           {status === "failed" && <small className="matchmaker-profile-warning" title={error}>{t(profile ? "lobby.playerCard.refreshFailed" : "lobby.playerCard.unavailable")}</small>}

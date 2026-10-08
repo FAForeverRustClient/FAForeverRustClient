@@ -106,6 +106,38 @@ jobs:
       - name: cargo deny
         run: cargo deny check licenses bans sources
 
+  # GitHub lists every author and co-author on the default branch as a
+  # contributor, so a commit co-authored by an AI assistant or a bot account
+  # puts that account on the repository's page. Caught here, at the pull
+  # request, where removing the line means amending a commit message rather
+  # than rewriting develop. See scripts/check-commit-authors.mjs.
+  commit-authors:
+    name: Commit authors - people only
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: No AI or bot authors and co-authors
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            range="$BASE..$HEAD"
+          elif [ -n "$BEFORE" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            range="$BEFORE..$AFTER"
+          else
+            # A new branch, or a force-push whose old tip is gone: the whole
+            # history it now has.
+            range="$AFTER"
+          fi
+          node scripts/check-commit-authors.mjs "$range"
+
   frontend:
     name: Frontend - lint + typecheck + test + build
     runs-on: ubuntu-latest
@@ -126,6 +158,12 @@ jobs:
 
       - name: Architecture boundaries
         run: pnpm run architecture
+
+      # Every user-visible string goes through the i18n catalogue. The scanner
+      # lists any literal that still reads like copy; the budget is zero, so a
+      # hardcoded string fails the build instead of shipping untranslatable.
+      - name: No hardcoded user-facing strings
+        run: pnpm run i18n:check --list --max 0
 
       - name: No em dashes in source or project documentation
         run: |
@@ -196,17 +234,31 @@ jobs:
       - name: Cache cargo artifacts
         uses: Swatinem/rust-cache@v2
 
-      - name: Regenerate reducer conformance fixture
+      # Both fixtures come out of the same test run: the case fixture and the
+      # ordering fixture built from it. The frontend job reads them as checked
+      # in, so either one going stale would leave the TypeScript twins tested
+      # against expectations Rust no longer has.
+      - name: Regenerate reducer conformance fixtures
         run: |
-          if ! git ls-files --error-unmatch ui/src/store/__fixtures__/reducer-conformance.json >/dev/null; then
-            echo "::error file=ui/src/store/__fixtures__/reducer-conformance.json::Reducer conformance fixture is not tracked. Add it before relying on this job."
-            exit 1
-          fi
+          for fixture in reducer-conformance.json reducer-conformance-orderings.json; do
+            if ! git ls-files --error-unmatch "ui/src/store/__fixtures__/$fixture" >/dev/null; then
+              echo "::error file=ui/src/store/__fixtures__/$fixture::Reducer conformance fixture is not tracked. Add it before relying on this job."
+              exit 1
+            fi
+          done
           cargo test -p faf-domain --test conformance_fixtures
 
-      - name: Fail if the fixture is out of date
+      # `--stat` rather than the diff itself: the ordering fixture is one
+      # compact line of a few megabytes, and printing it helps nobody.
+      - name: Fail if a fixture is out of date
         run: |
-          if ! git diff --exit-code ui/src/store/__fixtures__/reducer-conformance.json; then
-            echo "::error file=ui/src/store/__fixtures__/reducer-conformance.json::Reducer conformance fixture is out of date. Run 'cargo test -p faf-domain --test conformance_fixtures' and commit the result."
-            exit 1
-          fi
+          stale=0
+          for fixture in reducer-conformance.json reducer-conformance-orderings.json; do
+            path="ui/src/store/__fixtures__/$fixture"
+            if ! git diff --quiet -- "$path"; then
+              git diff --stat -- "$path"
+              echo "::error file=$path::Reducer conformance fixture is out of date. Run 'cargo test -p faf-domain --test conformance_fixtures' and commit the result."
+              stale=1
+            fi
+          done
+          exit $stale

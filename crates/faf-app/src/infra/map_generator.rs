@@ -78,6 +78,19 @@ const MAX_LOG_BYTES: u64 = 1024 * 1024;
 /// somewhere in the 1.8 range.
 const RELEASES_PER_PAGE: u32 = 100;
 
+/// What the command builder picks from when the user selected several styles,
+/// symmetries or a density range but pinned no numeric seed.
+///
+/// The current time in milliseconds, which is what the builder used to read
+/// for itself. It is read here instead because the domain crate is kept free
+/// of clocks, so the same options always build the same command line there.
+fn fallback_seed() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
 /// How many pages to walk before giving up. Bounded so a malformed `Link`
 /// header cannot turn version resolution into an infinite request loop.
 const MAX_RELEASE_PAGES: u32 = 10;
@@ -399,12 +412,12 @@ impl NeroxisMapGenerator {
             total_bytes: None,
         }));
 
-        let response = self
-            .http
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| format!("could not reach the map generator download: {e}"))?;
+        let response = self.http.get(&url).send().await.map_err(|e| {
+            format!(
+                "could not reach the map generator download: {}",
+                crate::infra::http::describe_transport_error(&e)
+            )
+        })?;
         if !response.status().is_success() {
             return Err(format!(
                 "map generator {version} download returned {}",
@@ -441,7 +454,12 @@ impl NeroxisMapGenerator {
         use tokio::io::AsyncWriteExt as _;
         let write_result: Result<(), String> = async {
             while let Some(chunk) = stream.next().await {
-                let chunk = chunk.map_err(|e| format!("map generator download failed: {e}"))?;
+                let chunk = chunk.map_err(|e| {
+                    format!(
+                        "map generator download failed: {}",
+                        crate::infra::http::describe_transport_error(&e)
+                    )
+                })?;
                 downloaded = downloaded
                     .checked_add(chunk.len() as u64)
                     .ok_or_else(|| "map generator download is too large".to_string())?;
@@ -784,7 +802,12 @@ impl NeroxisMapGenerator {
                     .header(reqwest::header::ACCEPT, "application/vnd.github.v3+json")
                     .send()
                     .await
-                    .map_err(|e| format!("could not reach the map generator releases: {e}"))?;
+                    .map_err(|e| {
+                        format!(
+                            "could not reach the map generator releases: {}",
+                            crate::infra::http::describe_transport_error(&e)
+                        )
+                    })?;
                 if !response.status().is_success() {
                     return Err(format!(
                         "map generator releases returned {}",
@@ -1024,19 +1047,56 @@ impl NeroxisMapGenerator {
             options.preview_path = self.preview_dir().to_string_lossy().into_owned();
         }
 
-        let args = fail!(map_generator::build_arguments(
-            version,
-            map_name.as_deref(),
-            &options,
-            self.config.version_policy,
-        ));
+        // A batch whose selections leave something to choose becomes one run
+        // per map, each with its own pick (#414); otherwise this is the single
+        // run it always was. Reproducing by name never has a choice to make.
+        let batch = match map_name {
+            Some(_) => vec![options],
+            None => map_generator::plan_batch(&options, rand::random::<u64>),
+        };
+        // Every command line is built before anything is downloaded, so an
+        // unusable option is refused without side effects, as it always was.
+        let mut runs = Vec::with_capacity(batch.len());
+        for options in &batch {
+            runs.push(fail!(map_generator::build_arguments(
+                version,
+                map_name.as_deref(),
+                options,
+                self.config.version_policy,
+                fallback_seed(),
+            )));
+        }
         let jar = fail!(self.ensure_jar(version, tx).await);
         // A cancellation arriving during the download should stop us here
         // rather than starting a JVM nobody is waiting for.
         if self.is_cancelled() {
             return RunOutcome::Cancelled;
         }
-        self.run_generator(version, &jar, args, tx).await
+        if runs.len() == 1 {
+            let args = runs.pop().unwrap_or_default();
+            return self.run_generator(version, &jar, args, tx).await;
+        }
+
+        // Sequential on purpose: each run is a CPU-bound JVM, and running
+        // them side by side would only make every one of them slower.
+        let mut maps = Vec::new();
+        for args in runs {
+            match self.run_generator(version, &jar, args, tx).await {
+                RunOutcome::Generated(names) => maps.extend(names),
+                RunOutcome::Cancelled => return RunOutcome::Cancelled,
+                RunOutcome::Failed(reason) if maps.is_empty() => return RunOutcome::Failed(reason),
+                // The maps already written are real and on disk: say how far
+                // the batch got rather than presenting them as lost.
+                RunOutcome::Failed(reason) => {
+                    return RunOutcome::Failed(format!(
+                        "{reason} (after {} of {} maps were generated)",
+                        maps.len(),
+                        batch.len()
+                    ))
+                }
+            }
+        }
+        RunOutcome::Generated(maps)
     }
 
     /// Resolve options through the generator's own `--parse`, returning the map
@@ -1059,9 +1119,14 @@ impl NeroxisMapGenerator {
         let (tx, _rx) = mpsc::channel(8);
         let jar = self.ensure_jar(version, &tx).await?;
 
-        let mut args =
-            map_generator::build_arguments(version, None, options, self.config.version_policy)
-                .map_err(|e| e.to_string())?;
+        let mut args = map_generator::build_arguments(
+            version,
+            None,
+            options,
+            self.config.version_policy,
+            fallback_seed(),
+        )
+        .map_err(|e| e.to_string())?;
         // `--parse` prints and exits, so a viewer window would never open and
         // the debug dump would never be written: both only confuse the output.
         args.retain(|arg| arg != "--visualize" && arg != "--debug");

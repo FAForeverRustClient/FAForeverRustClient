@@ -27,22 +27,19 @@ import {
 /**
  * Persist part of the list's preferences.
  *
- * One write for everything that changes together: two writes in a row would
- * each start from the settings as they were before either, and the second
- * would put back what the first changed. An empty width or order list is the
+ * A nested patch, so only the fields named here are sent and the backend
+ * merges them into the list's current preferences. An empty width or order list is the
  * reset: the backend keeps it, and the readers take it as "the designed
  * layout", so a reset survives a restart the same way a drag does.
  */
 function saveBrowser(patch: Partial<CustomGameBrowserPreferences>): void {
-  const current = useAppStore.getState().state.settings.browsing;
   ipc.send({
     kind: "Settings",
     command: {
-      type: "setBrowsing",
+      type: "patchBrowsing",
       payload: {
-        preferences: {
-          ...current,
-          customGamesBrowser: { ...current.customGamesBrowser, ...patch },
+        patch: {
+          customGamesBrowser: patch,
         },
       },
     },

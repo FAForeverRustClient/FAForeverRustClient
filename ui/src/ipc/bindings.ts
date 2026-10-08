@@ -188,6 +188,32 @@ export type AppearancePreferences = {
 	 *  offers: it has no country for an account.
 	 */
 	replayFlags: boolean,
+	/**
+	 *  The picture behind the interface, as the name it was stored under in
+	 *  the client's `backgrounds` folder (#439). Empty is the theme's own
+	 *  background.
+	 */
+	backgroundImage: string,
+	/**
+	 *  How far the picture is darkened under the interface, in percent, so
+	 *  text stays readable over a bright one. Clamped to `0..=90`.
+	 */
+	backgroundDim: number,
+};
+
+/**  A change to [`AppearancePreferences`]. */
+export type AppearancePreferencesPatch = {
+	density?: UiDensity,
+	reduceMotion?: boolean,
+	uiScale?: number,
+	gameTileColumns?: number,
+	sidebarWidth?: number,
+	hoverPanels?: boolean,
+	hoverOpenDelayMs?: number,
+	hoverCloseDelayMs?: number,
+	replayFlags?: boolean,
+	backgroundImage?: string,
+	backgroundDim?: number,
 };
 
 /**  An archived tournament, hidden from everyone until restored. */
@@ -513,6 +539,10 @@ export type BrowsingPreferences = {
 	matchmakerRecentColumns: number[],
 	/**  The recent games' columns in the order they are drawn, the same way. */
 	matchmakerRecentOrder: number[],
+	/**  And for the party invite dialog's player list. */
+	matchmakerInviteColumns: number[],
+	/**  The invite list's columns in the order they are drawn, the same way. */
+	matchmakerInviteOrder: number[],
 	/**
 	 *  Named mod sets the host dialog can re-apply in one click.
 	 *
@@ -522,6 +552,16 @@ export type BrowsingPreferences = {
 	modPresets: ModPreset[],
 	/**  Visible column keys in the rating leaderboard table. */
 	leaderboardRatingColumns: string[],
+	/**
+	 *  Whether the rating leaderboard's player search also matches names a
+	 *  player used to go by (#424).
+	 *
+	 *  Off for a fresh install, because it turns a lookup into a list of
+	 *  candidates, but a way of searching rather than a fact about one search:
+	 *  somebody who ticks it ticks it every time, and the box reset itself
+	 *  whenever the tab was opened again.
+	 */
+	leaderboardIncludeFormerNames: boolean,
 	/**
 	 *  Last searched player username in the replay vault. When empty, defaults
 	 *  to the currently authenticated player name.
@@ -544,6 +584,46 @@ export type BrowsingPreferences = {
 	 *  is one-time and the old keys can be removed on a later confirmed load.
 	 */
 	legacyStorageMigrated: boolean,
+};
+
+/**
+ *  A change to [`BrowsingPreferences`], the group with the most writers:
+ *  nearly every list, vault and lobby view remembers something here.
+ */
+export type BrowsingPreferencesPatch = {
+	customGamesView?: CustomGameView,
+	replaysView?: CustomGameView,
+	liveReplayView?: CustomGameView,
+	matchmakerUnselectedQueues?: string[],
+	matchmakerFactions?: string[],
+	matchmakerChatWidth?: number,
+	favoriteMaps?: string[],
+	favoriteMods?: string[],
+	mapVaultPreset?: string,
+	modVaultPreset?: string,
+	mapVaultSort?: string,
+	modVaultSort?: string,
+	vaultPageSize?: number,
+	replayListColumns?: number[],
+	replayListOrder?: number[],
+	liveReplayColumns?: number[],
+	liveReplayOrder?: number[],
+	coopBoardColumns?: number[],
+	matchmakerRecentColumns?: number[],
+	matchmakerRecentOrder?: number[],
+	matchmakerInviteColumns?: number[],
+	matchmakerInviteOrder?: number[],
+	modPresets?: ModPreset[],
+	leaderboardRatingColumns?: string[],
+	leaderboardIncludeFormerNames?: boolean,
+	replayVaultPlayer?: string,
+	replayChatChannel?: string,
+	replayChatTransfers?: ReplayChatTransfers,
+	legacyStorageMigrated?: boolean,
+	customGamesBrowser?: CustomGameBrowserPreferencesPatch,
+	liveReplayFilters?: LiveReplayFiltersPatch,
+	hostGame?: HostGamePreferencesPatch,
+	hostCoop?: HostGamePreferencesPatch,
 };
 
 export type CachedGameVersion = {
@@ -1048,6 +1128,17 @@ export type ChatNameColors = {
 	players: { [key in string]: string },
 };
 
+/**  A change to some of the colours in [`ChatNameColors`]. */
+export type ChatNameColorsPatch = {
+	selfColor?: string,
+	friends?: string,
+	foes?: string,
+	moderators?: string,
+	admins?: string,
+	pings?: string,
+	players?: { [key in string]: string },
+};
+
 /**  One post in a tournament chat room. */
 export type ChatPost = {
 	id: string,
@@ -1139,6 +1230,27 @@ export type ChatPreferences = {
 	 *  without moving this field, by widening the value to a map.
 	 */
 	hiddenRosterCategories: string[],
+};
+
+/**  A change to [`ChatPreferences`]. */
+export type ChatPreferencesPatch = {
+	showJoinsParts?: boolean,
+	showTimestamps?: boolean,
+	use24HourTime?: boolean,
+	coloredNames?: boolean,
+	rosterWidth?: number,
+	fontSize?: number,
+	senderWidth?: number,
+	hideFoeMessages?: boolean,
+	visibleMessageLimit?: number,
+	autoJoinChannels?: string[],
+	autoJoinLanguageChannel?: boolean,
+	autoJoinNewbieChannel?: boolean,
+	newbieChannelGameThreshold?: number,
+	mutedPlayers?: string[],
+	readMarkers?: { [key in string]: string },
+	hiddenRosterCategories?: string[],
+	nameColors?: ChatNameColorsPatch,
 };
 
 /**  The quoted post above a reply. */
@@ -1407,6 +1519,13 @@ export type ClientNotification = {
 	createdAt: string,
 	read: boolean,
 	action: NotificationAction | null,
+	/**
+	 *  The catalog entry this notification is written from, when it has one.
+	 *  `title` and `body` stay the English text, for the OS notification
+	 *  before the UI has a language and for anything that reads them raw; the
+	 *  UI shows this translated instead (#458).
+	 */
+	text: NotificationText | null,
 };
 
 /**  A release that could be installed over the running client. */
@@ -1574,6 +1693,13 @@ export type ConnectivityPreferences = {
 	 *  to `Dynamic`, which behaves the same for every unmarked game.
 	 */
 	selectionVersion: number,
+};
+
+/**  A change to [`ConnectivityPreferences`]. */
+export type ConnectivityPreferencesPatch = {
+	adapter?: IceAdapter,
+	hostAdapter?: IceAdapter,
+	selectionVersion?: number,
 };
 
 /**  Which parts of the console the server lets this account use. */
@@ -1807,6 +1933,22 @@ export type CustomGameBrowserPreferences = {
 	detailHidden: boolean,
 };
 
+/**  A change to [`CustomGameBrowserPreferences`]. */
+export type CustomGameBrowserPreferencesPatch = {
+	sort?: CustomGameSort,
+	sortReversed?: boolean,
+	hidePrivate?: boolean,
+	hideModded?: boolean,
+	hideUnranked?: boolean,
+	hideFoes?: boolean,
+	applyFilters?: boolean,
+	rules?: CustomGameFilterRule[],
+	columnWidths?: number[],
+	columnOrder?: number[],
+	detailWidth?: number,
+	detailHidden?: boolean,
+};
+
 export type CustomGameFilterConstraint = "contains" | "starts" | "ends" | "equals" | "notEquals" | "above" | "below";
 
 export type CustomGameFilterField = "titleOrMap" | "title" | "host" | "map" | "mod" | "rating";
@@ -1858,6 +2000,14 @@ export type DebugPreferences = {
 	mapGeneratorWindow: boolean,
 };
 
+/**  A change to [`DebugPreferences`]. */
+export type DebugPreferencesPatch = {
+	iceAdapterDebugWindow?: boolean,
+	iceAdapterInfoWindow?: boolean,
+	iceAdapterConsoleWindow?: boolean,
+	mapGeneratorWindow?: boolean,
+};
+
 /**  Everything a generated map name reveals about how it was made. */
 export type DecodedMapName = {
 	/**  Generator release that produced it, e.g. `1.22.1`. */
@@ -1889,6 +2039,19 @@ export type DecodedMapName = {
 	 *  the caller wants anyway.
 	 */
 	generatedAt: string | null,
+	/**
+	 *  The generator settings this map was made with, ready to be saved as a
+	 *  preset (#421): size, spawns, teams, symmetry, style and densities, or
+	 *  the visibility preset of a tournament/blind/unexplored map. Never the
+	 *  seed or the release, because a preset is a recipe for *new* maps.
+	 *
+	 *  `None` when the name does not carry the whole recipe: no option bytes
+	 *  at all (the triple would only be the generator's defaults, guessed),
+	 *  an ordinal from a newer generator than this client's tables, or a
+	 *  layout this decoder does not recognise. Half a recipe saved as if it
+	 *  were the whole one would generate different maps without saying so.
+	 */
+	options: GeneratorOptions | null,
 };
 
 /**  The style half of a decoded name. */
@@ -1900,6 +2063,15 @@ export type DecodedStyle =
 { kind: "predefined"; style: string | null } |
 /**  The four component styles plus both densities. */
 { kind: "custom"; terrainStyle: string | null; textureStyle: string | null; resourceStyle: string | null; propStyle: string | null; reclaimDensity: number | null; resourceDensity: number | null };
+
+/**
+ *  What became of one pasted picture: its stored path, or `None` when it
+ *  could not be stored.
+ */
+export type DescImageAnswer = {
+	requestId: number,
+	url: string | null,
+};
 
 /**
  *  A device-flow login in progress.
@@ -1937,6 +2109,12 @@ export type DiscordPreferences = {
 	disallowJoins: boolean,
 };
 
+/**  A change to [`DiscordPreferences`]. */
+export type DiscordPreferencesPatch = {
+	enabled?: boolean,
+	disallowJoins?: boolean,
+};
+
 /**
  *  A captains draft in progress.
  *
@@ -1952,6 +2130,15 @@ export type Draft = {
 	current: number,
 	/**  The pick that can still be taken back. */
 	lastPick: DraftPick | null,
+};
+
+/**
+ *  A picture as the form hands it over: its name in the guide, and its bytes
+ *  as base64, which is what survives the trip through IPC as JSON.
+ */
+export type DraftImage = {
+	name: string,
+	data: string,
 };
 
 export type DraftPick = {
@@ -2164,6 +2351,15 @@ export type EventsEvent = { type: "loading" } | { type: "loaded"; payload: {
 export type EventsPreferences = {
 	weekStart: WeekStart,
 	reminders: EventReminder[],
+};
+
+/**
+ *  A change to [`EventsPreferences`]. The settings tab only ever names the
+ *  week start; the reminder list belongs to the Events tab's own commands.
+ */
+export type EventsPreferencesPatch = {
+	weekStart?: WeekStart,
+	reminders?: EventReminder[],
 };
 
 /**
@@ -2746,6 +2942,32 @@ export type GamePreferences = {
 	 *  library; without any of those it does nothing. Windows and Linux.
 	 */
 	steamPresence?: boolean,
+	/**
+	 *  Take the frame off Forged Alliance's window and stretch it over its
+	 *  monitor, for as long as the game runs (#445): the "borderless
+	 *  windowed" mode players used to get from a third-party script. Needs the
+	 *  game itself set to windowed. Off by default. Windows only.
+	 */
+	borderlessWindow?: boolean,
+};
+
+/**
+ *  A change to [`GamePreferences`]. The two cache limits are optional
+ *  preferences, so `null` for either is "no limit", not "unchanged".
+ */
+export type GamePreferencesPatch = {
+	additionalArguments?: string[],
+	launchWrapper?: string,
+	autoGenerateMaps?: boolean,
+	confirmDownloadsBeforeJoining?: boolean,
+	cacheLifetimeDays?: number | null,
+	cacheSizeAlertGb?: number | null,
+	cacheRollingBranches?: boolean,
+	pipeLiveReplay?: boolean,
+	keepGeneratedMaps?: boolean,
+	keepGeneratedMapsLimit?: number,
+	steamPresence?: boolean,
+	borderlessWindow?: boolean,
 };
 
 export type GeneralPreferences = {
@@ -2766,6 +2988,13 @@ export type GeneralPreferences = {
 	 *  asked for one, and because somebody who hosts under half a dozen
 	 *  rotating titles is served by it.
 	 */
+	rememberTypedEntries?: boolean,
+};
+
+/**  A change to [`GeneralPreferences`]; see `preference_patch!`. */
+export type GeneralPreferencesPatch = {
+	startPage?: Tab,
+	autoLogin?: boolean,
 	rememberTypedEntries?: boolean,
 };
 
@@ -2965,7 +3194,10 @@ export type GeneratorStatus = { type: "idle" } |
 
 /**  One pending submission, as the queue lists it. */
 export type GuideSubmission = {
-	/**  The issue number, which is what accept and reject address. */
+	/**
+	 *  The issue or pull request number, which is what accept and reject
+	 *  address. GitHub numbers both from one sequence, so it is unambiguous.
+	 */
 	number: number,
 	title: string,
 	/**  The prose half, with the JSON block removed: what a reviewer reads. */
@@ -2990,6 +3222,12 @@ export type GuideSubmission = {
 	 *  catalogue entry at it.
 	 */
 	guide: string | null,
+	/**
+	 *  Set when the submission is a pull request rather than an issue: a guide
+	 *  written in the client, committed with its pictures. `None` for an
+	 *  issue, which carries a link or a guide in its body and no files.
+	 */
+	pull: SubmissionPull | null,
 };
 
 export type GuidesAuthStatus = { type: "signedOut" } |
@@ -3036,9 +3274,14 @@ export type GuidesCommand =
  *  The draft travels rather than a finished entry: deriving one from the
  *  other (the id from the title, the numbers out of text fields) is a rule,
  *  and a rule the frontend also knew would be a rule written twice.
+ *
+ *  The pictures travel beside it and only here, once: the draft is handed
+ *  to the state after every pause in typing, and megabytes of base64 on
+ *  each of those would be the whole cost of the form.
  */
 { type: "submit"; payload: {
 	draft: ContributionDraft,
+	images?: DraftImage[],
 } };
 
 export type GuidesEvent =
@@ -3213,6 +3456,22 @@ export type HostGamePreferences = {
 };
 
 /**
+ *  A change to [`HostGamePreferences`]. Either rating bound may be `null`,
+ *  which is an open end rather than "unchanged".
+ */
+export type HostGamePreferencesPatch = {
+	title?: string,
+	featuredMod?: string,
+	visibility?: string,
+	map?: string,
+	passwordEnabled?: boolean,
+	password?: string,
+	enforceRatingRange?: boolean,
+	ratingMin?: number | null,
+	ratingMax?: number | null,
+};
+
+/**
  *  Whether this account may host a tournament at all.
  *
  *  Hosting is approval-only: the site admin grants it per account. Asked for
@@ -3345,6 +3604,12 @@ export type InstalledMap = {
 	height?: number,
 	version?: string | null,
 	description?: string | null,
+	/**
+	 *  When the folder was last written, RFC 3339: in practice when the map
+	 *  was downloaded, which is what "recently installed" sorts by (#453).
+	 *  `None` when the file system would not say.
+	 */
+	installedAt?: string | null,
 };
 
 /**
@@ -3449,7 +3714,17 @@ export type LeaderboardEntry = {
 	gamesPlayed: number,
 	wonGames: number | null,
 	updateTime: string | null,
+	/**
+	 *  The placement's division name key (`bronze`, ...), as on
+	 *  [`LeaderboardTier::division`]. `None` on a rating board.
+	 */
 	division: string | null,
+	/**  The placement's subdivision name key (`I`, `II`, ...). */
+	subdivision: string | null,
+	/**
+	 *  The tier this entry is placed in, the same number as its
+	 *  [`LeaderboardTier::division_order`].
+	 */
 	divisionOrder: number | null,
 	highestScore: number | null,
 	divisionImageUrl: string | null,
@@ -3529,9 +3804,22 @@ export type LeaderboardStatus = { type: "idle" } | { type: "loading" } | { type:
 } };
 
 export type LeaderboardTier = {
-	name: string,
+	/**
+	 *  The division's name key as the API sends it (`bronze`, `grandmaster`).
+	 *
+	 *  An identifier the UI names from its catalogue, never a label. Empty
+	 *  when the API left the division out of the response.
+	 */
 	division: string,
+	/**
+	 *  The subdivision's name key (`I`, `II`, ...), a Roman numeral the UI
+	 *  shows as sent.
+	 */
 	subdivision: string,
+	/**
+	 *  Division index, then subdivision index. Unique within a season, which
+	 *  makes it the tier's identity as well as its order.
+	 */
 	divisionOrder: number,
 	highestScore: number,
 	imageUrl: string | null,
@@ -3540,8 +3828,11 @@ export type LeaderboardTier = {
 
 export type League = {
 	id: number,
+	/**
+	 *  The league's technical name (`1v1_league`, ...), which the UI names
+	 *  from its catalogue.
+	 */
 	technicalName: string,
-	name: string,
 	description: string,
 };
 
@@ -3549,8 +3840,11 @@ export type LeagueSeason = {
 	id: number,
 	leagueId: number,
 	leaderboardId: number,
+	/**
+	 *  What the UI words as "Season 12". There is no name beside it: the
+	 *  one this used to carry was English written here.
+	 */
 	seasonNumber: number,
-	name: string,
 	startDate: string,
 	endDate: string,
 	placementGames: number,
@@ -3580,10 +3874,10 @@ export type LiveReplayFilters = {
 	hideModded: boolean,
 	hideSinglePlayer: boolean,
 	/**
-	 *  Hides the games the client can tell will rate nobody: an unranked map,
-	 *  a sim mod that is not on the ranked list, or a free-for-all. Lobby
-	 *  settings are not visible to any client, so this is the same question
-	 *  the game browser's own "Hide unranked" asks, and the same answer.
+	 *  Hides the games the client can tell will rate nobody: an unranked map
+	 *  or a sim mod that is not on the ranked list. Lobby settings are not
+	 *  visible to any client, so this is the same question the game browser's
+	 *  own "Hide unranked" asks, and the same answer.
 	 *
 	 *  `default` on this field alone rather than on the struct: a settings
 	 *  file written before this filter existed has every other key and not
@@ -3593,6 +3887,27 @@ export type LiveReplayFilters = {
 	 */
 	hideUnranked?: boolean,
 	friendsOnly: boolean,
+	/**
+	 *  Keep these filters when the client restarts (#447). Off unless asked
+	 *  for: a search typed yesterday that still hid games after a restart
+	 *  read as a bug, so by default the filters last one session. `default`
+	 *  for the same reason as `hide_unranked`.
+	 */
+	remember?: boolean,
+};
+
+/**  A change to [`LiveReplayFilters`]. */
+export type LiveReplayFiltersPatch = {
+	search?: string,
+	gameType?: string,
+	featuredMod?: string,
+	activePlayers?: string,
+	maxPlayers?: string,
+	hideModded?: boolean,
+	hideSinglePlayer?: boolean,
+	hideUnranked?: boolean,
+	friendsOnly?: boolean,
+	remember?: boolean,
 };
 
 /**
@@ -3841,7 +4156,7 @@ export type LobbyState = {
 	games: Game[],
 	/**
 	 *  Games currently in progress: not joinable, but watchable via a live
-	 *  replay (see `faf-app`'s `ReplayPort::watch_live`).
+	 *  replay (see `faf-app`'s `ReplayPlaybackPort::watch_live`).
 	 */
 	liveGames: Game[],
 	join: JoinState,
@@ -3968,6 +4283,19 @@ export type LocalReplayTeam = {
 	players: LocalReplayPlayer[],
 };
 
+/**
+ *  What the API said about a login nobody online answers to.
+ *
+ *  The user menu opens on names from replays, results and leaderboards, most
+ *  of them offline, and every account action (friend, foe, note) addresses the
+ *  player by id. `id` is `None` when the API knows no such account, which is
+ *  the answer for an IRC-only nickname.
+ */
+export type LoginLookup = {
+	login: string,
+	id: number | null,
+};
+
 /**  A map being added to or edited in a tournament's own map database. */
 export type MapDraft = {
 	/**  Empty to add a new map; an existing id edits that one. */
@@ -4068,6 +4396,8 @@ export type MapGeneratorCommand =
 { type: "savePreset"; payload: {
 	name: string,
 	options: GeneratorOptions,
+	/**  Handed back in [`MapGeneratorEvent::PresetSaveFinished`]. */
+	requestId?: number,
 } } |
 /**  Re-read the preset library from disk. */
 { type: "loadPresets" } | { type: "deletePreset"; payload: {
@@ -4118,6 +4448,11 @@ export type MapGeneratorEvent = { type: "statusChanged"; payload: {
  */
 { type: "presetsLoaded"; payload: {
 	presets: GeneratorPreset[],
+} } |
+/**  A SavePreset finished, stored or not, for the request that sent it. */
+{ type: "presetSaveFinished"; payload: {
+	requestId: number,
+	saved: boolean,
 } };
 
 export type MapGeneratorState = {
@@ -4175,6 +4510,12 @@ export type MapGeneratorState = {
 	helpText?: string,
 	/**  The saved preset library, newest first. Empty until loaded. */
 	presets?: GeneratorPreset[],
+	/**
+	 *  What became of the last preset save, named by the request that asked.
+	 *  The dialog used to call a save done once a new list held the name, and
+	 *  an unrelated refresh after a failed overwrite still held the old one.
+	 */
+	presetSave?: PresetSaveOutcome | null,
 };
 
 /**  Status of an install/uninstall action for one map folder. */
@@ -5390,6 +5731,36 @@ export type NotificationPreferences = {
 	mapPoolMutedQueues: string[],
 };
 
+/**  A change to [`NotificationPreferences`]. */
+export type NotificationPreferencesPatch = {
+	enabled?: boolean,
+	desktop?: boolean,
+	desktopAllKinds?: boolean,
+	sound?: boolean,
+	soundChoiceVersion?: number,
+	notifyWhenFocused?: boolean,
+	toastPosition?: ToastPosition,
+	matchFound?: boolean,
+	privateMessages?: boolean,
+	mentions?: boolean,
+	friendOnline?: boolean,
+	friendOffline?: boolean,
+	friendPlaying?: boolean,
+	newCustomGames?: boolean,
+	newCustomGamesFriendsOnly?: boolean,
+	gameFull?: boolean,
+	gameLaunched?: boolean,
+	reviewReminder?: boolean,
+	partyInvites?: boolean,
+	streamLive?: boolean,
+	mapGenerated?: boolean,
+	queueOpponentQueues?: string[],
+	volume?: number,
+	repeatCooldownSeconds?: number,
+	mapPoolMutedQueues?: string[],
+	sounds?: NotificationSoundChoicesPatch,
+};
+
 /**
  *  One of the tones the client ships with.
  *
@@ -5496,8 +5867,36 @@ export type NotificationSoundChoices = {
 	other: NotificationSound,
 };
 
+/**  A change to some of the per-kind tones in [`NotificationSoundChoices`]. */
+export type NotificationSoundChoicesPatch = {
+	matchFound?: NotificationSound,
+	privateMessage?: NotificationSound,
+	mention?: NotificationSound,
+	friendOnline?: NotificationSound,
+	friendOffline?: NotificationSound,
+	friendPlaying?: NotificationSound,
+	newCustomGame?: NotificationSound,
+	gameFull?: NotificationSound,
+	gameLaunched?: NotificationSound,
+	reviewReminder?: NotificationSound,
+	partyInvite?: NotificationSound,
+	other?: NotificationSound,
+};
+
 export type NotificationState = {
 	items: ClientNotification[],
+};
+
+/**
+ *  A notification's text as a catalog key and the values it is filled with.
+ *
+ *  The UI looks up `<key>.title` and `<key>.body` and fills each with
+ *  `params`. A side the catalog has no entry for falls back to the English
+ *  `title` or `body`, so a server-supplied reason is still shown as sent.
+ */
+export type NotificationText = {
+	key: string,
+	params: { [key in string]: string },
 };
 
 /**
@@ -5592,6 +5991,18 @@ export type PathPreferences = {
 	 *  Empty falls back to `$WINEPREFIX` and then to `~/.wine`, which is where
 	 *  a default `winecfg` prefix is.
 	 */
+	winePrefix?: string,
+};
+
+/**  A change to [`PathPreferences`]. */
+export type PathPreferencesPatch = {
+	vaultDir?: string,
+	mapsDir?: string,
+	modsDir?: string,
+	replaysDir?: string,
+	gamePrefsPath?: string,
+	mapGeneratorDir?: string,
+	javaPath?: string,
 	winePrefix?: string,
 };
 
@@ -5845,6 +6256,12 @@ export type PlayerCardCommand = { type: "open"; payload: {
 /**  Scan this player's games and fold them into per-map records. */
 { type: "loadMapStats"; payload: {
 	playerId: number,
+	/**
+	 *  Scan the whole history instead of the most recent games (#440).
+	 *  A long history is dozens of requests, so the profile opens on the
+	 *  recent ones and the reader asks for the rest.
+	 */
+	full?: boolean,
 } } |
 /**
  *  Look up the active league placements of these party members.
@@ -6026,15 +6443,25 @@ export type PlayerLeaguePlacement = {
 	/**
 	 *  The leaderboard's technical name (`ladder_1v1`, `tmm_2v2`, ...).
 	 *
-	 *  Kept beside the display name because the two are joined on: the
-	 *  matchmaker shows a division per queue, and matching a queue against
-	 *  "4v4 League" would tie that join to a string written for humans, which
-	 *  [`leaderboard_display_name`] has now changed once already.
+	 *  The only name a placement carries for its board. The matchmaker joins a
+	 *  queue to its division on it, and the UI names the board from its
+	 *  catalogue, so no text written for humans travels with it.
 	 */
 	technicalName: string,
-	leaderboard: string,
-	season: string,
+	/**  The season's number, which the UI words as "Season 12". */
+	seasonNumber: number,
+	/**
+	 *  The division's name key as the API sends it (`bronze`, `grandmaster`).
+	 *
+	 *  An identifier, not a label: the UI names it from its catalogue and
+	 *  prettifies a key it has never seen. Empty when the API left it out.
+	 */
 	division: string,
+	/**
+	 *  The subdivision's name key (`I`, `II`, ...), a Roman numeral the UI
+	 *  shows as sent.
+	 */
+	subdivision: string,
 	score: number,
 	/**
 	 *  The score that ends this subdivision, or zero when the API omitted it.
@@ -6214,8 +6641,11 @@ export type PlayerProfile = {
 
 export type PlayerRatingSummary = {
 	leaderboardId: number,
+	/**
+	 *  The leaderboard's technical name (`global`, `ladder_1v1`, ...). The UI
+	 *  names the board from its catalogue; there is no display name here.
+	 */
 	technicalName: string,
-	name: string,
 	rating: number,
 	mean: number | null,
 	deviation: number | null,
@@ -6340,6 +6770,31 @@ export type PoolStep = {
 };
 
 /**
+ *  The string lists the webview changes one entry at a time: a star, a mute,
+ *  a collapsed roster category, a chip.
+ *
+ *  They get their own command, [`SettingsCommand::SetListMember`], rather than
+ *  a `Patch*` field, because a patch replaces the whole list and the webview
+ *  can only build that list from its last snapshot. Two stars inside one round
+ *  trip sent `[A]` and then `[B]`, and only B survived. Naming the one entry
+ *  and whether it belongs lets the service apply it to the list as the backend
+ *  holds it.
+ */
+export type PreferenceList =
+/**  `browsing.favorite_maps`, by map folder name. */
+"favoriteMaps" |
+/**  `browsing.favorite_mods`, by mod uid. */
+"favoriteMods" |
+/**  `browsing.leaderboard_rating_columns`. */
+"leaderboardRatingColumns" |
+/**  `chat.muted_players`, by login. */
+"mutedPlayers" |
+/**  `chat.hidden_roster_categories`. */
+"hiddenRosterCategories" |
+/**  `chat.auto_join_channels`. */
+"autoJoinChannels";
+
+/**
  *  Which part of getting the install ready a preparation step belongs to.
  *
  *  The Python client's updater dialog gives each of these its own progress bar
@@ -6362,6 +6817,12 @@ export type PreparationPhase =
 "downloading" |
 /**  Staging the map. */
 "map";
+
+/**  The answer to one SavePreset. */
+export type PresetSaveOutcome = {
+	requestId: number,
+	saved: boolean,
+};
 
 /**
  *  The headline cash prize, where an event has one.
@@ -6527,8 +6988,11 @@ export type RatingKind = "global" | "ladder1v1" | "team2v2" | "team3v3" | "team4
 
 export type RatingLeaderboard = {
 	id: number,
+	/**
+	 *  The board's technical name. The UI names it from its catalogue
+	 *  (`leaderboardLabel`), so no display name travels with it.
+	 */
 	technicalName: string,
-	name: string,
 	description: string,
 };
 
@@ -7296,6 +7760,19 @@ export type ReplayQuery = {
 	pageSize: number,
 };
 
+/**
+ *  Why reading one replay file failed, and which replay it was.
+ *
+ *  The detail panel reads the details and the analysis on demand, and a reader
+ *  who opens one replay and then another has two reads in flight at once. A
+ *  bare reason in the state could not say whose it was, so the second panel
+ *  showed the first one's failure as its own.
+ */
+export type ReplayReadError = {
+	uid: number,
+	reason: string,
+};
+
 /**  One resource flow, for one player. */
 export type ReplayResourceStat = {
 	/**  `massin`, `massout`, `energyin`, `energyout`, `storage`. */
@@ -7381,18 +7858,27 @@ export type ReplayState = {
 	 *  when requested because parsing the command stream can be expensive.
 	 */
 	replayDetails?: { [key in number]: ReplayDetails },
-	detailsLoading?: number | null,
-	detailsError?: string | null,
 	/**
-	 *  The analysed replay, and only the most recent one.
+	 *  The replay whose details were asked for last, while that read runs.
+	 *  Only its failure is recorded: an older read still finishing describes a
+	 *  panel nobody is looking at.
+	 */
+	detailsLoading?: number | null,
+	detailsError?: ReplayReadError | null,
+	/**
+	 *  The analysed replay, and only the one asked for last.
 	 *
 	 *  One of these is megabytes of orders and targets. Keeping a map of them
 	 *  the way the details are kept would grow the state by a replay every
-	 *  time somebody opened a panel, so the newest answer replaces the last.
+	 *  time somebody opened a panel, so only the answer to the newest request
+	 *  is held. An older request finishing later is dropped rather than
+	 *  allowed to replace it: the newer panel would otherwise reject the
+	 *  stranger's analysis and sit on "reading" with nothing left coming.
 	 */
 	analysis?: ReplayAnalysis | null,
+	/**  The replay whose analysis was asked for last, while that read runs. */
 	analysisLoading?: number | null,
-	analysisError?: string | null,
+	analysisError?: ReplayReadError | null,
 	/**
 	 *  Vault answers for single game ids, keyed by that id. Filled by
 	 *  [`ReplayCommand::LookUpOnline`] on behalf of local replays; see
@@ -7865,12 +8351,12 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 	path: string,
 } } | { type: "setReplayGamePath"; payload: {
 	path: string,
-} } | { type: "setPaths"; payload: {
-	preferences: PathPreferences,
-} } | { type: "setGeneral"; payload: {
-	preferences: GeneralPreferences,
-} } | { type: "setAppearance"; payload: {
-	preferences: AppearancePreferences,
+} } | { type: "patchPaths"; payload: {
+	patch: PathPreferencesPatch,
+} } | { type: "patchGeneral"; payload: {
+	patch: GeneralPreferencesPatch,
+} } | { type: "patchAppearance"; payload: {
+	patch: AppearancePreferencesPatch,
 } } | { type: "setPlayerNote"; payload: {
 	player_id: number,
 	login: string,
@@ -7886,28 +8372,66 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 { type: "renameReplayTag"; payload: {
 	from: string,
 	to: string,
-} } | { type: "setNotifications"; payload: {
-	preferences: NotificationPreferences,
+} } | { type: "patchNotifications"; payload: {
+	patch: NotificationPreferencesPatch,
+} } |
+/**
+ *  Delete one sound the player added, after pointing every notification
+ *  that plays it back at a shipped tone.
+ *
+ *  One command rather than a settings write followed by a file delete in
+ *  the webview, because the order is the whole point: the file may only go
+ *  once no saved setting names it, and a webview firing both cannot know
+ *  when, or whether, the first one landed. Failure is reported as a
+ *  notification; the file is kept whenever the settings could not be
+ *  written first.
+ */
+{ type: "removeNotificationSound"; payload: {
+	name: string,
 } } |
 /**  Boxed, like the event it produces. */
-{ type: "setChat"; payload: {
-	preferences: ChatPreferences,
-} } | { type: "setGame"; payload: {
-	preferences: GamePreferences,
-} } | { type: "setDiscord"; payload: {
-	preferences: DiscordPreferences,
-} } | { type: "setConnectivity"; payload: {
-	preferences: ConnectivityPreferences,
-} } | { type: "setDebug"; payload: {
-	preferences: DebugPreferences,
-} } | { type: "setUpdates"; payload: {
-	preferences: UpdatePreferences,
-} } | { type: "setMapGenerator"; payload: {
+{ type: "patchChat"; payload: {
+	patch: ChatPreferencesPatch,
+} } | { type: "patchGame"; payload: {
+	patch: GamePreferencesPatch,
+} } | { type: "patchDiscord"; payload: {
+	patch: DiscordPreferencesPatch,
+} } | { type: "patchConnectivity"; payload: {
+	patch: ConnectivityPreferencesPatch,
+} } | { type: "patchDebug"; payload: {
+	patch: DebugPreferencesPatch,
+} } | { type: "patchUpdates"; payload: {
+	patch: UpdatePreferencesPatch,
+} } |
+/**
+ *  Whole, unlike the groups above: the generator options are one recipe
+ *  the dialog edits as a unit and saves as a unit.
+ */
+{ type: "setMapGenerator"; payload: {
 	preferences: GeneratorOptions,
-} } | { type: "setBrowsing"; payload: {
-	preferences: BrowsingPreferences,
-} } | { type: "setEvents"; payload: {
-	preferences: EventsPreferences,
+} } | { type: "patchBrowsing"; payload: {
+	patch: BrowsingPreferencesPatch,
+} } | { type: "patchEvents"; payload: {
+	patch: EventsPreferencesPatch,
+} } |
+/**  Add `value` to one string list (`member`), or remove it. */
+{ type: "setListMember"; payload: {
+	list: PreferenceList,
+	value: string,
+	member: boolean,
+} } |
+/**  Give one player's name a chat colour, or clear the one it has. */
+{ type: "setPlayerNameColor"; payload: {
+	player: string,
+	color: string | null,
+} } |
+/**  Save a named mod set, replacing one of the same name in place. */
+{ type: "saveModPreset"; payload: {
+	preset: ModPreset,
+} } |
+/**  Delete the named mod set. */
+{ type: "deleteModPreset"; payload: {
+	name: string,
 } } | { type: "checkInstalls" } | { type: "refreshGameCache" } | { type: "clearGameCache" };
 
 export type SettingsEvent = { type: "loaded"; payload: {
@@ -8233,6 +8757,14 @@ export type SocialCommand =
 	login: string,
 	relation: Relation,
 	member: boolean,
+} } |
+/**
+ *  Find the account behind a login nobody online answers to, so the user
+ *  menu can offer an offline player the same account actions as an
+ *  online one.
+ */
+{ type: "lookUpLogin"; payload: {
+	login: string,
 } };
 
 export type SocialEvent =
@@ -8267,7 +8799,15 @@ export type SocialEvent =
 	logins: string[],
 } } |
 /**  The lobby connection went away; relations are no longer authoritative. */
-{ type: "cleared" };
+{ type: "cleared" } |
+/**
+ *  The API answered an account lookup by login: the id, or `None` for a
+ *  login with no account behind it.
+ */
+{ type: "loginLookedUp"; payload: {
+	login: string,
+	id: number | null,
+} };
 
 /**  The player's own annotations: notes on players and on replays. */
 export type SocialPreferences = {
@@ -8282,6 +8822,8 @@ export type SocialState = {
 	foes: string[],
 	/**  Every FAF account currently announced online, sorted by login. */
 	players: PlayerProfile[],
+	/**  Accounts looked up by login for the user menu, oldest first. */
+	loginLookups: LoginLookup[],
 };
 
 /**
@@ -8388,6 +8930,28 @@ export type StyleConstraints = {
 	maxSpawnCount: number,
 	minNumTeams: number,
 	maxNumTeams: number,
+};
+
+/**  The files half of a submission that arrived as a pull request. */
+export type SubmissionPull = {
+	/**
+	 *  The commit the queue read. Accepting merges exactly this one and is
+	 *  refused if the pull request has moved on since, so what a trainer read
+	 *  is what goes in.
+	 */
+	headSha: string,
+	/**
+	 *  Where the guide is read at that commit. Its pictures are relative to
+	 *  it, so this is also what the queue resolves them against.
+	 */
+	guideUrl: string,
+	/**  The pictures it adds, as repository paths. */
+	images: string[],
+	/**
+	 *  Files that are neither the guide nor its pictures. Any at all and it
+	 *  cannot be accepted in one step: see [`foreign_files`].
+	 */
+	foreign: string[],
 };
 
 /**  Where a submission of our own ended up. */
@@ -9363,591 +9927,21 @@ export type TourneyCategory =
 /**  Run by FAF itself; the site-wide rules pages apply. */
 "official" | "community";
 
-export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
-	tournamentId: string,
-} } |
 /**
- *  Enter as the signed-in player. The primary action of the whole tab.
+ *  Everything the tournament tab can ask for, in two halves: the writes,
+ *  which the command policy runs one at a time, and the rest.
  *
- *  The rating is the player's own, and only an unrated event takes one:
- *  there the service refuses a signup without it. Everywhere else it is
- *  fetched from FAF and this is `None`.
- *  Read the open event again without saying so: a pick phase changes
- *  under the reader, and announcing a load every few seconds would blink
- *  the pane. The website polls the same way.
- */
-{ type: "refreshDetail"; payload: {
-	tournamentId: string,
-} } | { type: "signUp"; payload: {
-	tournamentId: string,
-	rating: number | null,
-} } |
-/**  Decline an invitation (`decline_invite`). */
-{ type: "declineInvite"; payload: {
-	tournamentId: string,
-} } |
-/**
- *  Ask whether this account would get in, without entering
- *  (`check_rating`).
- */
-{ type: "checkRating"; payload: {
-	tournamentId: string,
-} } |
-/**
- *  Read every leaderboard rating of one entrant (`player_ratings`),
- *  fetched from FAF again when `refresh` is set. Organiser only.
- */
-{ type: "loadPlayerRatings"; payload: {
-	tournamentId: string,
-	playerId: string,
-	refresh: boolean,
-} } |
-/**
- *  The events this account may import maps from (`my_tournaments`).
- *  The create form's "Copy from an existing tournament" reads the same.
- */
-{ type: "loadCopySources" } |
-/**  The named formats a director may host (`presets`). */
-{ type: "loadPresets" } |
-/**
- *  Attach a picture pasted into the event's text (`add_desc_image`); the
- *  answer's path is then inserted where it was pasted.
- */
-{ type: "uploadDescImage"; payload: {
-	tournamentId: string,
-	dataUrl: string,
-} } |
-/**
- *  Read one of the site's documents: the account, the pending bar, the
- *  Hall of Fame, the console, or an access status.
- */
-{ type: "loadSite"; payload: {
-	read: SiteRead,
-} } |
-/**  One write to the site, then a reload of what it touched. */
-{ type: "siteWrite"; payload: {
-	write: SiteWrite,
-} } |
-/**
- *  Another event's whole document, to fill the create form from
- *  ("Fill from this"), read without opening it.
- */
-{ type: "loadTemplate"; payload: {
-	tournamentId: string,
-} } |
-/**  One of those events' maps and pools, to choose from. */
-{ type: "loadCopySource"; payload: {
-	tournamentId: string,
-} } |
-/**
- *  Ban an entrant from this event and, where the service still allows
- *  it, take them out in the same step: what an organiser means by "kick".
+ *  The split is in the type so that the set of writes is stated once. The
+ *  policy, the service's router and the write handler each match on
+ *  [`TourneyWrite`] whole, so a new write lands in all three by being added
+ *  there, and none of them needs a fallback arm for commands it never sees.
  *
- *  The ban goes first. If the removal then fails they are banned and still
- *  listed, which is visible and can be finished by hand; the other order
- *  could leave them removed and free to enter again.
+ *  Untagged, so the wire format is the one the two halves already have:
+ *  `{ type, payload }`, with no extra layer naming the half. Every `type`
+ *  belongs to exactly one of them, which is what lets the untagged
+ *  deserializer pick the right one.
  */
-{ type: "banPlayer"; payload: {
-	tournamentId: string,
-	playerId: string,
-	fafId: number,
-	name: string,
-	reason: string,
-	/**  Unix seconds. */
-	expires: number | null,
-	remove: boolean,
-} } |
-/**
- *  Leave again. Which entry to remove is read from the open event's viewer
- *  block rather than passed in: the server hands out that id, and a client
- *  that supplied its own could only ever be wrong about it.
- */
-{ type: "withdraw"; payload: {
-	tournamentId: string,
-} } |
-/**  Check this account's team in, or take it back. */
-{ type: "checkIn"; payload: {
-	tournamentId: string,
-	checkedIn: boolean,
-} } |
-/**
- *  Agree with, or refuse, the score the opponent submitted.
- *
- *  An organiser may answer for either side.
- */
-{ type: "answerReport"; payload: {
-	tournamentId: string,
-	matchId: string,
-	accept: boolean,
-} } |
-/**  Set a result as an organiser, which needs no confirmation. */
-{ type: "decideReport"; payload: {
-	tournamentId: string,
-	report: MatchReport,
-} } |
-/**
- *  Submit a score as a player, for the other side to confirm.
- *
- *  `report_submit`: the score only goes up, and every new game needs its
- *  replay id. The winner and forfeit of `report` are not sent. Submitting
- *  again replaces a submission nobody has answered yet.
- */
-{ type: "submitReport"; payload: {
-	tournamentId: string,
-	report: MatchReport,
-} } |
-/**  Load the room list for the open event. */
-{ type: "loadChat"; payload: {
-	tournamentId: string,
-} } |
-/**  Open one room and read it. */
-{ type: "openRoom"; payload: {
-	tournamentId: string,
-	roomId: string,
-} } | { type: "postChat"; payload: {
-	tournamentId: string,
-	roomId: string,
-	body: string,
-	/**
-	 *  The post this answers, by id. The service snapshots it into the
-	 *  reply, and quietly drops the link if the post is not in the room.
-	 */
-	replyTo?: string | null,
-} } |
-/**
- *  Re-read the open room and the room list, without saying so.
- *
- *  The service has no push of any kind: it is HTTP, and the website polls.
- *  Without this the tab can send a message and never receive one, which
- *  looks like a working chat until somebody else types.
- *
- *  Distinct from [`Self::OpenRoom`] because it must be silent: announcing a
- *  load every few seconds would blink the room out and back, and would
- *  fight the reader's scroll position.
- */
-{ type: "refreshChat"; payload: {
-	tournamentId: string,
-	roomId: string,
-} } |
-/**
- *  Keep one room open beside whatever section is showing, or let it go
- *  with `None`. Read at once, silently; it is kept fresh the way the open
- *  room is, with `RefreshChat`.
- */
-{ type: "pinRoom"; payload: {
-	tournamentId: string,
-	roomId: string | null,
-} } |
-/**  Start a team and captain it. */
-{ type: "createTeam"; payload: {
-	tournamentId: string,
-	name: string,
-} } |
-/**
- *  Ask a team for a place. The captain answers; there is no instant join,
- *  because the server removed that path.
- */
-{ type: "requestJoin"; payload: {
-	tournamentId: string,
-	teamId: string,
-} } |
-/**  Withdraw an outstanding request. */
-{ type: "cancelJoin"; payload: {
-	tournamentId: string,
-	teamId: string,
-} } |
-/**  Answer somebody's request, as the captain. */
-{ type: "respondJoin"; payload: {
-	tournamentId: string,
-	teamId: string,
-	playerId: string,
-	accept: boolean,
-} } |
-/**  Ask a player to join, as the captain. */
-{ type: "inviteToTeam"; payload: {
-	tournamentId: string,
-	teamId: string,
-	playerId: string,
-} } |
-/**  Answer an invitation addressed to this account. */
-{ type: "respondInvite"; payload: {
-	tournamentId: string,
-	teamId: string,
-	accept: boolean,
-} } |
-/**
- *  Leave the team. The last member out dissolves it, and a departing
- *  captain hands the armband to the next member.
- */
-{ type: "leaveTeam"; payload: {
-	tournamentId: string,
-} } |
-/**  Take the team apart, as its captain or an organiser. */
-{ type: "disbandTeam"; payload: {
-	tournamentId: string,
-	teamId: string,
-} } | { type: "renameTeam"; payload: {
-	tournamentId: string,
-	teamId: string,
-	name: string,
-} } |
-/**
- *  Add an entrant by FAF name, as the organiser.
- *
- *  The name is looked up against FAF server-side; there is no free-typed
- *  entrant, which is what keeps an entry attached to a real account.
- */
-{ type: "addPlayer"; payload: {
-	tournamentId: string,
-	name: string,
-	/**
-	 *  Only used by an unrated tournament, where the server has no rating
-	 *  to fetch and asks the organiser for one.
-	 */
-	rating: number | null,
-} } |
-/**  Approve or decline a signup that is waiting, in request mode. */
-{ type: "respondSignup"; payload: {
-	tournamentId: string,
-	playerId: string,
-	accept: boolean,
-} } |
-/**  Take an entrant out, as the organiser. */
-{ type: "removePlayer"; payload: {
-	tournamentId: string,
-	playerId: string,
-} } |
-/**  Hand the armband to another member of a team. */
-{ type: "setCaptain"; payload: {
-	tournamentId: string,
-	teamId: string,
-	playerId: string,
-} } |
-/**
- *  Move an entrant to another team, or off every team.
- *
- *  `team_id` of `None` takes them out without removing them from the event,
- *  which is how a substitute is parked. Emptying a team dissolves it, and a
- *  departing captain's armband passes to the next member: the server does
- *  both, so the client reloads rather than guessing.
- */
-{ type: "movePlayer"; payload: {
-	tournamentId: string,
-	playerId: string,
-	teamId: string | null,
-} } |
-/**
- *  Attach a note to an entrant, and set their rating where the event has none.
- *
- *  Renaming is deliberately absent: identity comes from FAF and the server
- *  refuses it outright. A note is how a substitute or a late arrival gets
- *  labelled. The rating is accepted only by an unrated event.
- */
-{ type: "editPlayer"; payload: {
-	tournamentId: string,
-	playerId: string,
-	note: string,
-	/**  Only sent by an unrated event; the server refuses it otherwise. */
-	rating: number | null,
-} } |
-/**  Ask somebody to enter, by FAF name. */
-{ type: "invitePlayer"; payload: {
-	tournamentId: string,
-	name: string,
-} } | { type: "uninvite"; payload: {
-	tournamentId: string,
-	fafId: number,
-} } |
-/**  Set the seeding, at random or in a given order. */
-{ type: "reseed"; payload: {
-	tournamentId: string,
-	order: SeedOrder,
-} } |
-/**
- *  Split the field into divisions by combined rating, or back to one with
- *  a count of 1.
- */
-{ type: "splitDivisions"; payload: {
-	tournamentId: string,
-	divisions: number,
-} } | { type: "setDivision"; payload: {
-	tournamentId: string,
-	teamId: string,
-	division: number,
-} } | { type: "postNews"; payload: {
-	tournamentId: string,
-	body: string,
-	important: boolean,
-} } | { type: "deleteNews"; payload: {
-	tournamentId: string,
-	newsId: string,
-} } | { type: "loadArticles" } |
-/**  Ask whether this account may host, which gates the create button. */
-{ type: "loadHosting" } |
-/**  Read this account's own Discord handle off the service. */
-{ type: "loadProfile" } |
-/**  Set or clear the Discord handle. Empty clears it. */
-{ type: "setDiscord"; payload: {
-	handle: string,
-} } |
-/**
- *  Find FAF accounts whose name starts with what has been typed.
- *
- *  Reuses the same batch account lookup the player card and the leaderboard
- *  read: an organiser adding an entrant is choosing a person, and the client
- *  already knows how to show one. A blank or too-short query clears the list
- *  instead of asking the API for everybody.
- */
-{ type: "searchAccounts"; payload: {
-	query: string,
-} } |
-/**  Drop the results: somebody was picked, or the field was left. */
-{ type: "clearAccountSearch" } |
-/**
- *  Create an event. It becomes the open one, so the organiser lands in it
- *  rather than back at an unchanged list.
- */
-{ type: "create"; payload: {
-	draft: TourneyDraft,
-} } |
-/**
- *  Change an existing event's settings. Only the fields a draft carries;
- *  the best-of plan and the veto configuration stay on the website.
- */
-{ type: "editInfo"; payload: {
-	tournamentId: string,
-	draft: TourneyDraft,
-} } |
-/**  Make a draft event visible to everyone. */
-{ type: "publish"; payload: {
-	tournamentId: string,
-} } |
-/**  Move the event along: form teams, draw the bracket, or go back. */
-{ type: "advance"; payload: {
-	tournamentId: string,
-	phase: TourneyPhase,
-	/**
-	 *  The best-of plan, on `start_bracket` alone. `None` everywhere else,
-	 *  and on a draw that takes the service's own defaults.
-	 */
-	config: BracketConfig | null,
-} } |
-/**
- *  Hide the event. Restorable by a site admin, which is why it is not
- *  called delete.
- */
-{ type: "archive"; payload: {
-	tournamentId: string,
-} } |
-/**  Bind a map pool to a round, or clear it with an empty `pool_id`. */
-{ type: "assignPool"; payload: {
-	tournamentId: string,
-	roundKey: string,
-	poolId: string,
-} } |
-/**  Take the draft pick that is due. */
-{ type: "draftPickPlayer"; payload: {
-	tournamentId: string,
-	playerId: string,
-} } |
-/**  Take back the last pick. */
-{ type: "draftUndo"; payload: {
-	tournamentId: string,
-} } |
-/**  Mark which entrants captain a team, before the draft starts. */
-{ type: "setCaptains"; payload: {
-	tournamentId: string,
-	playerIds: string[],
-} } |
-/**  Record a free-for-all lobby: either who went through, or the points. */
-{ type: "reportFfa"; payload: {
-	tournamentId: string,
-	report: FfaReport,
-} } |
-/**  Take the veto step that is due: ban or pick the named map. */
-{ type: "vetoAct"; payload: {
-	tournamentId: string,
-	matchId: string,
-	/**  A map id from the run's `remaining`. */
-	mapId: string,
-} } |
-/**  Say which of the two teams is A, before the run starts. */
-{ type: "vetoSetSides"; payload: {
-	tournamentId: string,
-	matchId: string,
-	teamA: string,
-} } |
-/**  Take back the last step. The organiser's, for a misclick. */
-{ type: "vetoUndo"; payload: {
-	tournamentId: string,
-	matchId: string,
-} } |
-/**
- *  Make the faction ban or pick that is due for one game (`fveto_action`).
- *
- *  The two players' own: an organiser cannot act for them, because the
- *  choices are secret until both sides are done.
- */
-{ type: "factionVeto"; payload: {
-	tournamentId: string,
-	matchId: string,
-	game: number,
-	faction: TourneyFaction,
-} } |
-/**
- *  Switch faction vetoes on or off, or change their numbers
- *  (`fveto_config`). Applied to every match that has no result yet.
- */
-{ type: "setFactionVeto"; payload: {
-	tournamentId: string,
-	config: FactionVetoConfig,
-} } |
-/**
- *  Ask FAF for the current name of every entrant (`check_renames`). Reads
- *  only; taking a new name is [`TourneyAdmin::ApplyRenames`].
- */
-{ type: "checkRenames"; payload: {
-	tournamentId: string,
-} } |
-/**  One of the organiser's single-call changes. See [`TourneyAdmin`]. */
-{ type: "administer"; payload: {
-	tournamentId: string,
-	change: TourneyAdmin,
-} } |
-/**  Add a map to the event's own database, or edit one already in it. */
-{ type: "saveMap"; payload: {
-	tournamentId: string,
-	map: MapDraft,
-} } |
-/**  Show or hide one map. */
-{ type: "publishMap"; payload: {
-	tournamentId: string,
-	mapId: string,
-	published: boolean,
-} } | { type: "deleteMap"; payload: {
-	tournamentId: string,
-	mapId: string,
-} } |
-/**  Show or hide one pool. Publishing also publishes the maps in it. */
-{ type: "publishPool"; payload: {
-	tournamentId: string,
-	poolId: string,
-	published: boolean,
-} } | { type: "deletePool"; payload: {
-	tournamentId: string,
-	poolId: string,
-} } | { type: "savePool"; payload: {
-	tournamentId: string,
-	pool: PoolDraft,
-} } |
-/**  Load every series, for the picker and the series list. */
-{ type: "loadSeries" } |
-/**  Open one series and read its editions. */
-{ type: "openSeries"; payload: {
-	seriesId: string,
-} } |
-/**  Close it again, back to the list. */
-{ type: "closeSeries" } |
-/**  Create a series, or rename one that exists. */
-{ type: "saveSeries"; payload: {
-	draft: SeriesDraft,
-} } |
-/**  Delete a series. Its editions are unfiled, not deleted. */
-{ type: "deleteSeries"; payload: {
-	seriesId: string,
-} } |
-/**  File this event under a series, or take it out with `None`. */
-{ type: "setSeries"; payload: {
-	tournamentId: string,
-	seriesId: string | null,
-} } |
-/**  Link an event whose result feeds entrants into this one. */
-{ type: "addQualifier"; payload: {
-	tournamentId: string,
-	/**  The child event. */
-	qualifierId: string,
-	rule: QualifierRule,
-} } |
-/**
- *  Unlink one. Invites it already sent are kept, which is why this is not
- *  an undo.
- */
-{ type: "removeQualifier"; payload: {
-	tournamentId: string,
-	/**  The link's own id, not the child's. */
-	linkId: string,
-} } |
-/**  Change the shape of the competition, before the bracket is drawn. */
-{ type: "editFormat"; payload: {
-	tournamentId: string,
-	format: FormatDraft,
-} } |
-/**  Silence an account in the event's chat, or let it speak again. */
-{ type: "muteChat"; payload: {
-	tournamentId: string,
-	fafId: number,
-	/**
-	 *  Carried so the muted list can name them: the service stores the name
-	 *  alongside the id, having no other way to resolve it afterwards.
-	 */
-	name: string,
-	muted: boolean,
-} } |
-/**  Take one post out of a room. */
-{ type: "deleteChatPost"; payload: {
-	tournamentId: string,
-	roomId: string,
-	postId: string,
-} } |
-/**
- *  Give a FAF account organiser rights here.
- *
- *  There is no counterpart: taking them away is the site admin's, and the
- *  client cannot tell whether this account is one.
- */
-{ type: "addOrganiser"; payload: {
-	tournamentId: string,
-	fafId: number,
-	name: string,
-} } |
-/**
- *  Let a FAF account cast this event, or take that back.
- *
- *  One command for both directions: the two service endpoints differ only
- *  in whether a name rides along, and a pair of commands could disagree
- *  about which way the flag pointed.
- */
-{ type: "setCaster"; payload: {
-	tournamentId: string,
-	fafId: number,
-	name: string,
-	casting: boolean,
-} } |
-/**
- *  Show or hide one organiser in the public list. They stay an organiser
- *  either way.
- */
-{ type: "setOrganiserVisibility"; payload: {
-	tournamentId: string,
-	fafId: number,
-	hidden: boolean,
-} } |
-/**  Mark the event as called off, or take that back. */
-{ type: "abandon"; payload: {
-	tournamentId: string,
-	abandoned: boolean,
-} } |
-/**  Correct an announcement already posted. */
-{ type: "editNews"; payload: {
-	tournamentId: string,
-	newsId: string,
-	body: string,
-	important: boolean,
-} } |
-/**  Clear this account's unread badge, on every device. */
-{ type: "markNewsRead"; payload: {
-	tournamentId: string,
-} } | { type: "dismissActionError" };
+export type TourneyCommand = TourneyRead | TourneyWrite;
 
 /**
  *  A tournament as the organiser filled it in.
@@ -10143,14 +10137,37 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 	kind: RequestFailureKind,
 } } |
 /**  The organiser picked somebody, or left the field: drop the list. */
-{ type: "accountSearchCleared" } | { type: "ratingChecking" } | { type: "ratingChecked"; payload: {
+{ type: "accountSearchCleared" } |
+/**
+ *  The eligibility check for one event started. Each of the three carries
+ *  the event it is about, because the answer can arrive after the reader
+ *  has moved to another one, and a verdict is only true of the event it
+ *  was asked for.
+ */
+{ type: "ratingChecking"; payload: {
+	tournamentId: string,
+} } | { type: "ratingChecked"; payload: {
+	tournamentId: string,
 	check: RatingCheck,
 } } | { type: "ratingCheckFailed"; payload: {
+	tournamentId: string,
 	reason: string,
 	kind: RequestFailureKind,
-} } | { type: "playerRatingsLoading" } | { type: "playerRatingsLoaded"; payload: {
+} } |
+/**
+ *  One entrant's ratings table. Like the eligibility check, each of the
+ *  three names the event it was asked in: the table belongs to the open
+ *  event's entrant, and an answer can arrive after the organiser moved on.
+ *  The entrant itself is on the answer (`ratings.player_id`), which is what
+ *  the dialog matches against.
+ */
+{ type: "playerRatingsLoading"; payload: {
+	tournamentId: string,
+} } | { type: "playerRatingsLoaded"; payload: {
+	tournamentId: string,
 	ratings: EntrantRatings,
 } } | { type: "playerRatingsFailed"; payload: {
+	tournamentId: string,
 	reason: string,
 	kind: RequestFailureKind,
 } } | { type: "copySourcesLoading" } | { type: "copySourcesLoaded"; payload: {
@@ -10173,9 +10190,20 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 { type: "articleImageUploaded"; payload: {
 	url: string,
 } } |
-/**  A picture pasted into an event's text was stored; its path. */
+/**
+ *  A picture pasted into an event's text was stored; its path, and the
+ *  paste it answers.
+ */
 { type: "descImageUploaded"; payload: {
+	requestId: number,
 	url: string,
+} } |
+/**
+ *  A pasted picture could not be stored. Its own event, so the form can
+ *  say which one failed rather than waiting for an answer that never comes.
+ */
+{ type: "descImageUploadFailed"; payload: {
+	requestId: number,
 } } | { type: "templateLoading" } | { type: "templateLoaded"; payload: {
 	event: Tourney,
 } } | { type: "templateFailed"; payload: {
@@ -10429,6 +10457,137 @@ export type TourneyPreset = {
 };
 
 /**
+ *  The tournament commands that are not serialised writes: reads, what the
+ *  pane shows, and the two account-level writes that touch no event (the
+ *  Discord handle and the news badge), which therefore run alongside anything.
+ */
+export type TourneyRead = { type: "load" } | { type: "select"; payload: {
+	tournamentId: string,
+} } |
+/**
+ *  Read the open event again without saying so: a pick phase changes
+ *  under the reader, and announcing a load every few seconds would blink
+ *  the pane. The website polls the same way.
+ */
+{ type: "refreshDetail"; payload: {
+	tournamentId: string,
+} } |
+/**
+ *  Ask whether this account would get in, without entering
+ *  (`check_rating`).
+ */
+{ type: "checkRating"; payload: {
+	tournamentId: string,
+} } |
+/**
+ *  Read every leaderboard rating of one entrant (`player_ratings`),
+ *  fetched from FAF again when `refresh` is set. Organiser only.
+ */
+{ type: "loadPlayerRatings"; payload: {
+	tournamentId: string,
+	playerId: string,
+	refresh: boolean,
+} } |
+/**
+ *  The events this account may import maps from (`my_tournaments`).
+ *  The create form's "Copy from an existing tournament" reads the same.
+ */
+{ type: "loadCopySources" } |
+/**  The named formats a director may host (`presets`). */
+{ type: "loadPresets" } |
+/**
+ *  Read one of the site's documents: the account, the pending bar, the
+ *  Hall of Fame, the console, or an access status.
+ */
+{ type: "loadSite"; payload: {
+	read: SiteRead,
+} } |
+/**
+ *  Another event's whole document, to fill the create form from
+ *  ("Fill from this"), read without opening it.
+ */
+{ type: "loadTemplate"; payload: {
+	tournamentId: string,
+} } |
+/**  One of those events' maps and pools, to choose from. */
+{ type: "loadCopySource"; payload: {
+	tournamentId: string,
+} } |
+/**  Load the room list for the open event. */
+{ type: "loadChat"; payload: {
+	tournamentId: string,
+} } |
+/**  Open one room and read it. */
+{ type: "openRoom"; payload: {
+	tournamentId: string,
+	roomId: string,
+} } |
+/**
+ *  Re-read the open room and the room list, without saying so.
+ *
+ *  The service has no push of any kind: it is HTTP, and the website polls.
+ *  Without this the tab can send a message and never receive one, which
+ *  looks like a working chat until somebody else types.
+ *
+ *  Distinct from [`Self::OpenRoom`] because it must be silent: announcing a
+ *  load every few seconds would blink the room out and back, and would
+ *  fight the reader's scroll position.
+ */
+{ type: "refreshChat"; payload: {
+	tournamentId: string,
+	roomId: string,
+} } |
+/**
+ *  Keep one room open beside whatever section is showing, or let it go
+ *  with `None`. Read at once, silently; it is kept fresh the way the open
+ *  room is, with `RefreshChat`.
+ */
+{ type: "pinRoom"; payload: {
+	tournamentId: string,
+	roomId: string | null,
+} } | { type: "loadArticles" } |
+/**  Ask whether this account may host, which gates the create button. */
+{ type: "loadHosting" } |
+/**  Read this account's own Discord handle off the service. */
+{ type: "loadProfile" } |
+/**  Set or clear the Discord handle. Empty clears it. */
+{ type: "setDiscord"; payload: {
+	handle: string,
+} } |
+/**
+ *  Find FAF accounts whose name starts with what has been typed.
+ *
+ *  Reuses the same batch account lookup the player card and the leaderboard
+ *  read: an organiser adding an entrant is choosing a person, and the client
+ *  already knows how to show one. A blank or too-short query clears the list
+ *  instead of asking the API for everybody.
+ */
+{ type: "searchAccounts"; payload: {
+	query: string,
+} } |
+/**  Drop the results: somebody was picked, or the field was left. */
+{ type: "clearAccountSearch" } |
+/**
+ *  Ask FAF for the current name of every entrant (`check_renames`). Reads
+ *  only; taking a new name is [`TourneyAdmin::ApplyRenames`].
+ */
+{ type: "checkRenames"; payload: {
+	tournamentId: string,
+} } |
+/**  Load every series, for the picker and the series list. */
+{ type: "loadSeries" } |
+/**  Open one series and read its editions. */
+{ type: "openSeries"; payload: {
+	seriesId: string,
+} } |
+/**  Close it again, back to the list. */
+{ type: "closeSeries" } |
+/**  Clear this account's unread badge, on every device. */
+{ type: "markNewsRead"; payload: {
+	tournamentId: string,
+} } | { type: "dismissActionError" };
+
+/**
  *  A named grouping of tournaments.
  *
  *  Only a label, and worth saying plainly because the name invites a stronger
@@ -10602,10 +10761,12 @@ export type TourneyState = {
 	 */
 	site: TourneySite,
 	/**
-	 *  The last picture pasted into an event's text and stored, for the form
-	 *  to insert.
+	 *  The last answer to a picture pasted into an event's text, for the form
+	 *  to insert or report. It names the request it answers: the form sends one
+	 *  at a time and gives up on one that takes too long, and an answer that
+	 *  carried only the path was then credited to the next picture.
 	 */
-	descImage: string | null,
+	descImage: DescImageAnswer | null,
 	/**  The event the create form is being filled from, once read. */
 	template: Tourney | null,
 	templateStatus: TourneyLoadStatus,
@@ -10723,6 +10884,479 @@ export type TourneyViewer = {
 	 */
 	invited: boolean,
 };
+
+/**
+ *  Every tournament write: the commands that change an event, its entrants,
+ *  teams, matches, maps, chat or news, a series, or the site. Serial in the
+ *  command policy (`Key::TourneyWrite`), because the server recomputes the
+ *  bracket on each one, and each ends by reading back what it changed.
+ */
+export type TourneyWrite =
+/**
+ *  Enter as the signed-in player. The primary action of the whole tab.
+ *
+ *  The rating is the player's own, and only an unrated event takes one:
+ *  there the service refuses a signup without it. Everywhere else it is
+ *  fetched from FAF and this is `None`.
+ */
+{ type: "signUp"; payload: {
+	tournamentId: string,
+	rating: number | null,
+} } |
+/**  Decline an invitation (`decline_invite`). */
+{ type: "declineInvite"; payload: {
+	tournamentId: string,
+} } |
+/**
+ *  Attach a picture pasted into the event's text (`add_desc_image`); the
+ *  answer's path is then inserted where it was pasted.
+ */
+{ type: "uploadDescImage"; payload: {
+	tournamentId: string,
+	dataUrl: string,
+	/**  The form's id for this paste, handed back with the answer. */
+	requestId: number,
+} } |
+/**  One write to the site, then a reload of what it touched. */
+{ type: "siteWrite"; payload: {
+	write: SiteWrite,
+} } |
+/**
+ *  Ban an entrant from this event and, where the service still allows
+ *  it, take them out in the same step: what an organiser means by "kick".
+ *
+ *  The ban goes first. If the removal then fails they are banned and still
+ *  listed, which is visible and can be finished by hand; the other order
+ *  could leave them removed and free to enter again.
+ */
+{ type: "banPlayer"; payload: {
+	tournamentId: string,
+	playerId: string,
+	fafId: number,
+	name: string,
+	reason: string,
+	/**  Unix seconds. */
+	expires: number | null,
+	remove: boolean,
+} } |
+/**
+ *  Leave again. Which entry to remove is read from the open event's viewer
+ *  block rather than passed in: the server hands out that id, and a client
+ *  that supplied its own could only ever be wrong about it.
+ */
+{ type: "withdraw"; payload: {
+	tournamentId: string,
+} } |
+/**  Check this account's team in, or take it back. */
+{ type: "checkIn"; payload: {
+	tournamentId: string,
+	checkedIn: boolean,
+} } |
+/**
+ *  Agree with, or refuse, the score the opponent submitted.
+ *
+ *  An organiser may answer for either side.
+ */
+{ type: "answerReport"; payload: {
+	tournamentId: string,
+	matchId: string,
+	accept: boolean,
+} } |
+/**  Set a result as an organiser, which needs no confirmation. */
+{ type: "decideReport"; payload: {
+	tournamentId: string,
+	report: MatchReport,
+} } |
+/**
+ *  Submit a score as a player, for the other side to confirm.
+ *
+ *  `report_submit`: the score only goes up, and every new game needs its
+ *  replay id. The winner and forfeit of `report` are not sent. Submitting
+ *  again replaces a submission nobody has answered yet.
+ */
+{ type: "submitReport"; payload: {
+	tournamentId: string,
+	report: MatchReport,
+} } | { type: "postChat"; payload: {
+	tournamentId: string,
+	roomId: string,
+	body: string,
+	/**
+	 *  The post this answers, by id. The service snapshots it into the
+	 *  reply, and quietly drops the link if the post is not in the room.
+	 */
+	replyTo?: string | null,
+} } |
+/**  Start a team and captain it. */
+{ type: "createTeam"; payload: {
+	tournamentId: string,
+	name: string,
+} } |
+/**
+ *  Ask a team for a place. The captain answers; there is no instant join,
+ *  because the server removed that path.
+ */
+{ type: "requestJoin"; payload: {
+	tournamentId: string,
+	teamId: string,
+} } |
+/**  Withdraw an outstanding request. */
+{ type: "cancelJoin"; payload: {
+	tournamentId: string,
+	teamId: string,
+} } |
+/**  Answer somebody's request, as the captain. */
+{ type: "respondJoin"; payload: {
+	tournamentId: string,
+	teamId: string,
+	playerId: string,
+	accept: boolean,
+} } |
+/**  Ask a player to join, as the captain. */
+{ type: "inviteToTeam"; payload: {
+	tournamentId: string,
+	teamId: string,
+	playerId: string,
+} } |
+/**  Answer an invitation addressed to this account. */
+{ type: "respondInvite"; payload: {
+	tournamentId: string,
+	teamId: string,
+	accept: boolean,
+} } |
+/**
+ *  Leave the team. The last member out dissolves it, and a departing
+ *  captain hands the armband to the next member.
+ */
+{ type: "leaveTeam"; payload: {
+	tournamentId: string,
+} } |
+/**  Take the team apart, as its captain or an organiser. */
+{ type: "disbandTeam"; payload: {
+	tournamentId: string,
+	teamId: string,
+} } | { type: "renameTeam"; payload: {
+	tournamentId: string,
+	teamId: string,
+	name: string,
+} } |
+/**
+ *  Add an entrant by FAF name, as the organiser.
+ *
+ *  The name is looked up against FAF server-side; there is no free-typed
+ *  entrant, which is what keeps an entry attached to a real account.
+ */
+{ type: "addPlayer"; payload: {
+	tournamentId: string,
+	name: string,
+	/**
+	 *  Only used by an unrated tournament, where the server has no rating
+	 *  to fetch and asks the organiser for one.
+	 */
+	rating: number | null,
+} } |
+/**  Approve or decline a signup that is waiting, in request mode. */
+{ type: "respondSignup"; payload: {
+	tournamentId: string,
+	playerId: string,
+	accept: boolean,
+} } |
+/**  Take an entrant out, as the organiser. */
+{ type: "removePlayer"; payload: {
+	tournamentId: string,
+	playerId: string,
+} } |
+/**  Hand the armband to another member of a team. */
+{ type: "setCaptain"; payload: {
+	tournamentId: string,
+	teamId: string,
+	playerId: string,
+} } |
+/**
+ *  Move an entrant to another team, or off every team.
+ *
+ *  `team_id` of `None` takes them out without removing them from the event,
+ *  which is how a substitute is parked. Emptying a team dissolves it, and a
+ *  departing captain's armband passes to the next member: the server does
+ *  both, so the client reloads rather than guessing.
+ */
+{ type: "movePlayer"; payload: {
+	tournamentId: string,
+	playerId: string,
+	teamId: string | null,
+} } |
+/**
+ *  Attach a note to an entrant, and set their rating where the event has none.
+ *
+ *  Renaming is deliberately absent: identity comes from FAF and the server
+ *  refuses it outright. A note is how a substitute or a late arrival gets
+ *  labelled. The rating is accepted only by an unrated event.
+ */
+{ type: "editPlayer"; payload: {
+	tournamentId: string,
+	playerId: string,
+	note: string,
+	/**  Only sent by an unrated event; the server refuses it otherwise. */
+	rating: number | null,
+} } |
+/**  Ask somebody to enter, by FAF name. */
+{ type: "invitePlayer"; payload: {
+	tournamentId: string,
+	name: string,
+} } | { type: "uninvite"; payload: {
+	tournamentId: string,
+	fafId: number,
+} } |
+/**  Set the seeding, at random or in a given order. */
+{ type: "reseed"; payload: {
+	tournamentId: string,
+	order: SeedOrder,
+} } |
+/**
+ *  Split the field into divisions by combined rating, or back to one with
+ *  a count of 1.
+ */
+{ type: "splitDivisions"; payload: {
+	tournamentId: string,
+	divisions: number,
+} } | { type: "setDivision"; payload: {
+	tournamentId: string,
+	teamId: string,
+	division: number,
+} } | { type: "postNews"; payload: {
+	tournamentId: string,
+	body: string,
+	important: boolean,
+} } | { type: "deleteNews"; payload: {
+	tournamentId: string,
+	newsId: string,
+} } |
+/**
+ *  Create an event. It becomes the open one, so the organiser lands in it
+ *  rather than back at an unchanged list.
+ */
+{ type: "create"; payload: {
+	draft: TourneyDraft,
+} } |
+/**
+ *  Change an existing event's settings. Only the fields a draft carries;
+ *  the best-of plan and the veto configuration stay on the website.
+ */
+{ type: "editInfo"; payload: {
+	tournamentId: string,
+	draft: TourneyDraft,
+} } |
+/**  Make a draft event visible to everyone. */
+{ type: "publish"; payload: {
+	tournamentId: string,
+} } |
+/**  Move the event along: form teams, draw the bracket, or go back. */
+{ type: "advance"; payload: {
+	tournamentId: string,
+	phase: TourneyPhase,
+	/**
+	 *  The best-of plan, on `start_bracket` alone. `None` everywhere else,
+	 *  and on a draw that takes the service's own defaults.
+	 */
+	config: BracketConfig | null,
+} } |
+/**
+ *  Hide the event. Restorable by a site admin, which is why it is not
+ *  called delete.
+ */
+{ type: "archive"; payload: {
+	tournamentId: string,
+} } |
+/**  Bind a map pool to a round, or clear it with an empty `pool_id`. */
+{ type: "assignPool"; payload: {
+	tournamentId: string,
+	roundKey: string,
+	poolId: string,
+} } |
+/**  Take the draft pick that is due. */
+{ type: "draftPickPlayer"; payload: {
+	tournamentId: string,
+	playerId: string,
+} } |
+/**  Take back the last pick. */
+{ type: "draftUndo"; payload: {
+	tournamentId: string,
+} } |
+/**  Mark which entrants captain a team, before the draft starts. */
+{ type: "setCaptains"; payload: {
+	tournamentId: string,
+	playerIds: string[],
+} } |
+/**  Record a free-for-all lobby: either who went through, or the points. */
+{ type: "reportFfa"; payload: {
+	tournamentId: string,
+	report: FfaReport,
+} } |
+/**  Take the veto step that is due: ban or pick the named map. */
+{ type: "vetoAct"; payload: {
+	tournamentId: string,
+	matchId: string,
+	/**  A map id from the run's `remaining`. */
+	mapId: string,
+} } |
+/**  Say which of the two teams is A, before the run starts. */
+{ type: "vetoSetSides"; payload: {
+	tournamentId: string,
+	matchId: string,
+	teamA: string,
+} } |
+/**  Take back the last step. The organiser's, for a misclick. */
+{ type: "vetoUndo"; payload: {
+	tournamentId: string,
+	matchId: string,
+} } |
+/**
+ *  Make the faction ban or pick that is due for one game (`fveto_action`).
+ *
+ *  The two players' own: an organiser cannot act for them, because the
+ *  choices are secret until both sides are done.
+ */
+{ type: "factionVeto"; payload: {
+	tournamentId: string,
+	matchId: string,
+	game: number,
+	faction: TourneyFaction,
+} } |
+/**
+ *  Switch faction vetoes on or off, or change their numbers
+ *  (`fveto_config`). Applied to every match that has no result yet.
+ */
+{ type: "setFactionVeto"; payload: {
+	tournamentId: string,
+	config: FactionVetoConfig,
+} } |
+/**  One of the organiser's single-call changes. See [`TourneyAdmin`]. */
+{ type: "administer"; payload: {
+	tournamentId: string,
+	change: TourneyAdmin,
+} } |
+/**  Add a map to the event's own database, or edit one already in it. */
+{ type: "saveMap"; payload: {
+	tournamentId: string,
+	map: MapDraft,
+} } |
+/**  Show or hide one map. */
+{ type: "publishMap"; payload: {
+	tournamentId: string,
+	mapId: string,
+	published: boolean,
+} } | { type: "deleteMap"; payload: {
+	tournamentId: string,
+	mapId: string,
+} } |
+/**  Show or hide one pool. Publishing also publishes the maps in it. */
+{ type: "publishPool"; payload: {
+	tournamentId: string,
+	poolId: string,
+	published: boolean,
+} } | { type: "deletePool"; payload: {
+	tournamentId: string,
+	poolId: string,
+} } | { type: "savePool"; payload: {
+	tournamentId: string,
+	pool: PoolDraft,
+} } |
+/**  Create a series, or rename one that exists. */
+{ type: "saveSeries"; payload: {
+	draft: SeriesDraft,
+} } |
+/**  Delete a series. Its editions are unfiled, not deleted. */
+{ type: "deleteSeries"; payload: {
+	seriesId: string,
+} } |
+/**  File this event under a series, or take it out with `None`. */
+{ type: "setSeries"; payload: {
+	tournamentId: string,
+	seriesId: string | null,
+} } |
+/**  Link an event whose result feeds entrants into this one. */
+{ type: "addQualifier"; payload: {
+	tournamentId: string,
+	/**  The child event. */
+	qualifierId: string,
+	rule: QualifierRule,
+} } |
+/**
+ *  Unlink one. Invites it already sent are kept, which is why this is not
+ *  an undo.
+ */
+{ type: "removeQualifier"; payload: {
+	tournamentId: string,
+	/**  The link's own id, not the child's. */
+	linkId: string,
+} } |
+/**  Change the shape of the competition, before the bracket is drawn. */
+{ type: "editFormat"; payload: {
+	tournamentId: string,
+	format: FormatDraft,
+} } |
+/**  Silence an account in the event's chat, or let it speak again. */
+{ type: "muteChat"; payload: {
+	tournamentId: string,
+	fafId: number,
+	/**
+	 *  Carried so the muted list can name them: the service stores the name
+	 *  alongside the id, having no other way to resolve it afterwards.
+	 */
+	name: string,
+	muted: boolean,
+} } |
+/**  Take one post out of a room. */
+{ type: "deleteChatPost"; payload: {
+	tournamentId: string,
+	roomId: string,
+	postId: string,
+} } |
+/**
+ *  Give a FAF account organiser rights here.
+ *
+ *  There is no counterpart: taking them away is the site admin's, and the
+ *  client cannot tell whether this account is one.
+ */
+{ type: "addOrganiser"; payload: {
+	tournamentId: string,
+	fafId: number,
+	name: string,
+} } |
+/**
+ *  Let a FAF account cast this event, or take that back.
+ *
+ *  One command for both directions: the two service endpoints differ only
+ *  in whether a name rides along, and a pair of commands could disagree
+ *  about which way the flag pointed.
+ */
+{ type: "setCaster"; payload: {
+	tournamentId: string,
+	fafId: number,
+	name: string,
+	casting: boolean,
+} } |
+/**
+ *  Show or hide one organiser in the public list. They stay an organiser
+ *  either way.
+ */
+{ type: "setOrganiserVisibility"; payload: {
+	tournamentId: string,
+	fafId: number,
+	hidden: boolean,
+} } |
+/**  Mark the event as called off, or take that back. */
+{ type: "abandon"; payload: {
+	tournamentId: string,
+	abandoned: boolean,
+} } |
+/**  Correct an announcement already posted. */
+{ type: "editNews"; payload: {
+	tournamentId: string,
+	newsId: string,
+	body: string,
+	important: boolean,
+} };
 
 /**
  *  One member of FAF's training team.
@@ -11136,7 +11770,13 @@ export type TrainingSource =
 /**  Shipped with the client. */
 "bundled" |
 /**  Fetched from the configured manifest. */
-"remote";
+"remote" |
+/**
+ *  The last manifest this client fetched, read back from disk because the
+ *  configured one could not be reached. The community's catalogue, but
+ *  possibly not its newest version.
+ */
+"cached";
 
 export type TrainingState = {
 	resources: TrainingResource[],
@@ -11227,7 +11867,13 @@ export type TutorialLaunchStatus = { type: "idle" } | { type: "preparing"; paylo
 	detail: string,
 } } | { type: "launched"; payload: {
 	tutorialId: number,
-} } | { type: "failed"; payload: {
+} } |
+/**
+ *  Keyed by the lesson like the other two, so one lesson's failure is not
+ *  shown under every lesson the player opens afterwards.
+ */
+{ type: "failed"; payload: {
+	tutorialId: number,
 	reason: string,
 } };
 
@@ -11250,6 +11896,7 @@ export type TutorialsEvent = { type: "loading" } | { type: "loaded"; payload: {
 } } | { type: "launched"; payload: {
 	tutorialId: number,
 } } | { type: "launchFailed"; payload: {
+	tutorialId: number,
 	reason: string,
 } };
 
@@ -11299,8 +11946,18 @@ export type UpdatePreferences = {
 	/**
 	 *  Also offer prereleases. Java's `preReleaseCheckEnabled`, where it picks
 	 *  between two entirely separate check tasks.
+	 *
+	 *  On by default: every release of this client so far has been published
+	 *  as a prerelease, so a client on the stable channel was never offered
+	 *  one. A settings file that already stores the choice keeps it.
 	 */
 	preRelease: boolean,
+};
+
+/**  A change to [`UpdatePreferences`]. */
+export type UpdatePreferencesPatch = {
+	automatic?: boolean,
+	preRelease?: boolean,
 };
 
 export type UploadKind = "map" | "mod";

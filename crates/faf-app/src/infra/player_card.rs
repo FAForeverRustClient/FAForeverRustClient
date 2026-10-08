@@ -7,11 +7,11 @@ use faf_domain::protocol::game_outcome::{
     moved_a_rating, outcome_for, GameRows, PlayerRow, RatingChange,
 };
 use faf_domain::state::{
-    aggregate_map_stats, leaderboard_display_name, sort_league_placements, sort_rating_summaries,
-    AccountLookupMatch, ClanMember, MatchmakerPlayerProfile, PlayedGame, PlayerAchievement,
-    PlayerAchievementState, PlayerAvatar, PlayerCardProfile, PlayerClan, PlayerEventCount,
-    PlayerLeaguePlacement, PlayerMapStats, PlayerNameRecord, PlayerRatingSummary, PlayerSummary,
-    RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
+    aggregate_map_stats, sort_league_placements, sort_rating_summaries, AccountLookupMatch,
+    ClanMember, MatchmakerPlayerProfile, PlayedGame, PlayerAchievement, PlayerAchievementState,
+    PlayerAvatar, PlayerCardProfile, PlayerClan, PlayerEventCount, PlayerLeaguePlacement,
+    PlayerMapStats, PlayerNameRecord, PlayerRatingSummary, PlayerSummary, RatingHistoryPage,
+    RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
 };
 use serde_json::Value;
 
@@ -20,6 +20,7 @@ use crate::infra::jsonapi::{
     document_index as index, fetch_document, fetch_document_typed, rel_many, rel_one, value_f64,
     value_i32, value_string, JsonApiDoc, JsonApiResource as Resource, ResourceIndex as Index,
 };
+use crate::infra::league_keys::{division_key, subdivision_key};
 use crate::ports::{PlayerCardPort, RequestError};
 
 const MAX_PAGE_SIZE: usize = 10_000;
@@ -621,6 +622,27 @@ impl PlayerCardPort for PlayerCardClient {
     }
 
     async fn load_map_stats(&self, player_id: i32) -> Result<PlayerMapStats, String> {
+        self.scan_map_stats(player_id, MAX_HISTORY_GAMES).await
+    }
+
+    async fn load_recent_map_stats(
+        &self,
+        player_id: i32,
+        limit: usize,
+    ) -> Result<PlayerMapStats, String> {
+        self.scan_map_stats(player_id, limit.clamp(1, MAX_HISTORY_GAMES))
+            .await
+    }
+}
+
+impl PlayerCardClient {
+    /// The history scan behind both [`PlayerCardPort::load_map_stats`] and
+    /// its recent-games form, stopping after `max_games`.
+    async fn scan_map_stats(
+        &self,
+        player_id: i32,
+        max_games: usize,
+    ) -> Result<PlayerMapStats, String> {
         let token = self.token()?;
         let mut games: Vec<PlayedGame> = Vec::new();
         let mut truncated = false;
@@ -637,7 +659,14 @@ impl PlayerCardPort for PlayerCardClient {
                 truncated = true;
                 break;
             }
-            let last = (page + HISTORY_PAGE_CONCURRENCY - 1).min(MAX_HISTORY_PAGES);
+            // No more pages in a batch than the limit can use: a recent scan
+            // of a thousand games is ten pages, not the twelve three full
+            // batches would ask for. A server that pages shorter than asked
+            // still gets there, a page at a time past the estimate.
+            let wanted_pages = max_games.div_ceil(HISTORY_PAGE_SIZE).max(page);
+            let last = (page + HISTORY_PAGE_CONCURRENCY - 1)
+                .min(MAX_HISTORY_PAGES)
+                .min(wanted_pages);
             // Several pages at once. A full history is seventy-odd requests,
             // and one at a time is the whole of why opening a profile took a
             // minute where faftracker took seconds against the same API; it
@@ -654,8 +683,8 @@ impl PlayerCardPort for PlayerCardClient {
                     ended = true;
                 }
                 games.extend(rows);
-                if games.len() >= MAX_HISTORY_GAMES {
-                    games.truncate(MAX_HISTORY_GAMES);
+                if games.len() > max_games || (games.len() == max_games && !ended) {
+                    games.truncate(max_games);
                     truncated = true;
                     break 'scan;
                 }
@@ -985,36 +1014,6 @@ fn optional_number(resource: &Resource, name: &str) -> Option<f64> {
     resource.attributes.get(name).and_then(Value::as_f64)
 }
 
-fn display_key(value: &str) -> String {
-    let raw = value
-        .rsplit('.')
-        .next()
-        .unwrap_or(value)
-        .replace(['_', '-'], " ");
-    raw.split_whitespace()
-        .map(|word| {
-            let mut chars = word.chars();
-            chars
-                .next()
-                .map(|first| first.to_uppercase().chain(chars).collect::<String>())
-                .unwrap_or_default()
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn pretty_board(technical_name: &str, fallback: &str) -> String {
-    // One table, in the domain, shared with the leaderboard tab: these two
-    // used to name the same queue from two `match` arms, and had drifted.
-    if let Some(name) = leaderboard_display_name(technical_name) {
-        return name.to_string();
-    }
-    if !fallback.is_empty() {
-        return display_key(fallback);
-    }
-    display_key(technical_name)
-}
-
 fn parse_identity(doc: &JsonApiDoc, player: &Resource) -> Result<PlayerCardProfile, String> {
     let index = index(doc);
     let player_id = player
@@ -1127,7 +1126,6 @@ fn parse_ratings(doc: &JsonApiDoc) -> Vec<PlayerRatingSummary> {
             let technical_name = text(board, "technicalName");
             Some(PlayerRatingSummary {
                 leaderboard_id: board.id.parse().ok()?,
-                name: pretty_board(&technical_name, &text(board, "nameKey")),
                 technical_name,
                 rating: displayed_rating(number(rating, "rating")),
                 mean: number(rating, "mean"),
@@ -1252,16 +1250,11 @@ fn parse_placement_rows(doc: &JsonApiDoc) -> Vec<PlacementRow> {
                 player_id: integer(score, "loginId"),
                 order,
                 placement: PlayerLeaguePlacement {
-                    technical_name: technical_name.clone(),
-                    leaderboard: pretty_board(&technical_name, &text(board, "nameKey")),
-                    season: display_key(&text(season, "nameKey")),
-                    division: format!(
-                        "{} {}",
-                        display_key(&text(division, "nameKey")),
-                        display_key(&text(subdivision, "nameKey"))
-                    )
-                    .trim()
-                    .to_string(),
+                    technical_name,
+                    season_number: integer(season, "seasonNumber"),
+                    // Identifiers for the UI to name, not labels.
+                    division: division_key(&text(division, "nameKey")),
+                    subdivision: subdivision_key(&text(subdivision, "nameKey")),
                     score: integer(score, "score"),
                     highest_score: integer(subdivision, "highestScore"),
                     games_played: integer(score, "gameCount"),
@@ -1690,7 +1683,6 @@ impl PlayerCardPort for FakePlayerCard {
                 PlayerRatingSummary {
                     leaderboard_id: 1,
                     technical_name: "global".into(),
-                    name: "Global".into(),
                     rating: 1842,
                     mean: 2260.0,
                     deviation: 139.3,
@@ -1701,7 +1693,6 @@ impl PlayerCardPort for FakePlayerCard {
                 PlayerRatingSummary {
                     leaderboard_id: 2,
                     technical_name: "ladder_1v1".into(),
-                    name: "1v1".into(),
                     rating: 1710,
                     mean: 2120.0,
                     deviation: 136.7,
@@ -1712,9 +1703,9 @@ impl PlayerCardPort for FakePlayerCard {
             ],
             league_placements: vec![PlayerLeaguePlacement {
                 technical_name: "ladder_1v1".into(),
-                leaderboard: "1v1".into(),
-                season: "Season 12".into(),
-                division: "Diamond II".into(),
+                season_number: 12,
+                division: "diamond".into(),
+                subdivision: "II".into(),
                 score: 1470,
                 highest_score: 1600,
                 games_played: 38,
@@ -2073,7 +2064,7 @@ mod tests {
             ],
             "included": [
                 { "type": "leaderboard", "id": "b", "attributes": { "technicalName": "ladder_1v1" } },
-                { "type": "leagueSeason", "id": "s", "attributes": { "nameKey": "season_1" }, "relationships": { "leaderboard": { "data": { "type": "leaderboard", "id": "b" } } } },
+                { "type": "leagueSeason", "id": "s", "attributes": { "nameKey": "season_1", "seasonNumber": 1 }, "relationships": { "leaderboard": { "data": { "type": "leaderboard", "id": "b" } } } },
                 { "type": "leagueSeasonDivision", "id": "bronze", "attributes": { "nameKey": "bronze", "divisionIndex": 1 } },
                 { "type": "leagueSeasonDivision", "id": "diamond", "attributes": { "nameKey": "diamond", "divisionIndex": 4 } },
                 { "type": "leagueSeasonDivisionSubdivision", "id": "low", "attributes": { "nameKey": "ii", "subdivisionIndex": 2 }, "relationships": { "leagueSeasonDivision": { "data": { "type": "leagueSeasonDivision", "id": "bronze" } } } },
@@ -2082,8 +2073,13 @@ mod tests {
         })).unwrap();
 
         let placements = parse_placements(&doc);
-        assert_eq!(placements[0].division, "Diamond I");
-        assert_eq!(placements[1].division, "Bronze Ii");
+        // Name keys, normalised: the division lower-case, the Roman numeral
+        // upper-case. The UI names them.
+        assert_eq!(placements[0].division, "diamond");
+        assert_eq!(placements[0].subdivision, "I");
+        assert_eq!(placements[1].division, "bronze");
+        assert_eq!(placements[1].subdivision, "II");
+        assert_eq!(placements[0].season_number, 1);
         // The subdivision's ceiling, which is what the progress bar in the
         // matchmaker identity divides the score by.
         assert_eq!(placements[0].highest_score, 1500);
@@ -2111,7 +2107,7 @@ mod tests {
             ],
             "included": [
                 { "type": "leaderboard", "id": "b", "attributes": { "technicalName": "ladder_1v1" } },
-                { "type": "leagueSeason", "id": "s", "attributes": { "nameKey": "season_1" }, "relationships": { "leaderboard": { "data": { "type": "leaderboard", "id": "b" } } } },
+                { "type": "leagueSeason", "id": "s", "attributes": { "nameKey": "season_1", "seasonNumber": 1 }, "relationships": { "leaderboard": { "data": { "type": "leaderboard", "id": "b" } } } },
                 { "type": "leagueSeasonDivision", "id": "bronze", "attributes": { "nameKey": "bronze", "divisionIndex": 1 } },
                 { "type": "leagueSeasonDivision", "id": "diamond", "attributes": { "nameKey": "diamond", "divisionIndex": 4 } },
                 { "type": "leagueSeasonDivisionSubdivision", "id": "low", "attributes": { "nameKey": "ii", "subdivisionIndex": 2 }, "relationships": { "leagueSeasonDivision": { "data": { "type": "leagueSeasonDivision", "id": "bronze" } } } },
@@ -2122,9 +2118,9 @@ mod tests {
         let by_player = parse_placements_by_player(&doc);
         assert_eq!(by_player.len(), 2);
         // Each player's own list is still highest division first.
-        assert_eq!(by_player[&7][0].division, "Diamond I");
-        assert_eq!(by_player[&7][1].division, "Bronze Ii");
-        assert_eq!(by_player[&9][0].division, "Diamond I");
+        assert_eq!(by_player[&7][0].division, "diamond");
+        assert_eq!(by_player[&7][1].division, "bronze");
+        assert_eq!(by_player[&9][0].division, "diamond");
         assert_eq!(by_player[&9].len(), 1);
         // Nobody asked about is invented.
         assert!(!by_player.contains_key(&8));

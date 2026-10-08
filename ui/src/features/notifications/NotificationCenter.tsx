@@ -5,18 +5,24 @@ import { ipc } from "../../ipc/client";
 import { requestSettingsSection } from "../settings/settingsNavigation";
 import { native } from "../../ipc/native";
 import { openHttpsUrl } from "../../shared/externalLinks";
+import { useClockPreference } from "../../shared/format/clock";
+import { formatTime } from "../../shared/format/dates";
 import { useAppStore } from "../../store/store";
 import { renderFormattedText, stripHtmlTags } from "../chat/messages/chatFormat";
 import { playNotificationSound, soundForKind } from "./notificationSound";
 import { raisesOsNotification } from "./osNotifications";
 import { RepeatCooldown, happensInView } from "./notificationGate";
+import { notificationBody, notificationTitle } from "./notificationText";
 import "./notifications.css";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 
-const TOAST_DURATION_MS = 8_000;
-/** Not a timer id: `clearTimeout` ignores it, which is all it needs. */
-const WAITING_FOR_FOCUS = -1;
+/**
+ * How long a toast stays on screen (#455): long enough to read, short enough
+ * that a "player in range" alert is not still in the corner a minute later.
+ * The notification itself stays in the centre under the bell.
+ */
+const TOAST_DURATION_MS = 5_000;
 
 const markRead = (id: string) =>
   ipc.send({ kind: "Notifications", command: { type: "markRead", payload: { id } } });
@@ -138,13 +144,6 @@ async function runAction(item: ClientNotification) {
   markRead(item.id);
 }
 
-function formatTime(timestamp: string) {
-  const date = new Date(timestamp);
-  return Number.isNaN(date.getTime())
-    ? ""
-    : new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit" }).format(date);
-}
-
 function notificationTone(item: ClientNotification): string {
   if (item.kind === "error") return " is-error";
   if (item.kind === "serverWarning" || item.kind === "gameCacheAlert") return " is-warning";
@@ -156,6 +155,9 @@ export function NotificationCenter() {
   useLocale();
   const items = useAppStore((state) => state.state.notifications.items);
   const preferences = useAppStore((state) => state.state.settings.notifications);
+  // The centre is always mounted, so it subscribes to the clock preference
+  // rather than reading it once: flipping the switch redraws the cards (#425).
+  const use24HourTime = useClockPreference();
   const [open, setOpen] = useState(false);
   const [toastIds, setToastIds] = useState<string[]>([]);
   const processed = useRef(new Set<string>());
@@ -173,29 +175,13 @@ export function NotificationCenter() {
     setToastIds((current) => current.filter((candidate) => candidate !== id));
   }, []);
   const autoDismiss = useCallback((id: string) => {
-    const attempt = () => {
-      // Not while the window is in the background. The client sits behind a
-      // running game for most of a match, and a toast that expired there was
-      // marked read before anyone saw it, so the bell said nothing on the way
-      // back. It waits for the window instead, with no polling: one focus
-      // listener, then its usual time on screen.
-      if (!document.hasFocus()) {
-        const resume = () => {
-          window.removeEventListener("focus", resume);
-          timers.current.set(id, window.setTimeout(attempt, TOAST_DURATION_MS));
-        };
-        // A placeholder rather than no entry, so the scheduling effect below
-        // does not start a second timer for a toast that is only waiting.
-        timers.current.set(id, WAITING_FOR_FOCUS);
-        window.addEventListener("focus", resume);
-        return;
-      }
-      hideToast(id);
-      // Keep the notification in the history, but prevent an unread item from
-      // being surfaced again when another backend event refreshes the state.
-      markRead(id);
-    };
-    attempt();
+    // The toast goes either way: one that waited for the window to be focused
+    // stayed in the corner indefinitely, for as long as the client sat behind
+    // something else, and could only be clicked away (#455). What waits for
+    // the window is marking it read. A toast that expired in the background
+    // may not have been seen, so it stays unread and the bell still counts it.
+    hideToast(id);
+    if (document.hasFocus()) markRead(id);
   }, [hideToast]);
   const handleAction = useCallback((item: ClientNotification) => {
     hideToast(item.id);
@@ -280,7 +266,7 @@ export function NotificationCenter() {
         const focused = await native.isWindowFocused().catch(() => true);
         if (focused && !preferences.notifyWhenFocused) return;
         if (!await native.ensureNotificationPermission()) return;
-        leaving.forEach((item) => native.sendNotification(item.title, stripHtmlTags(item.body)));
+        leaving.forEach((item) => native.sendNotification(notificationTitle(item), stripHtmlTags(notificationBody(item))));
       })().catch(() => undefined);
     }
   }, [items, preferences]);
@@ -334,11 +320,11 @@ export function NotificationCenter() {
             ) : items.map((item) => (
               <article className={`notification-item${item.read ? " is-read" : ""}${notificationTone(item)}`} key={item.id}>
                 <button className="notification-content" type="button" onClick={() => handleAction(item)}>
-                  <span className="notification-item-head"><strong>{item.title}</strong><time>{formatTime(item.createdAt)}</time></span>
-                  <span className="notification-body">{renderFormattedText(item.body)}</span>
+                  <span className="notification-item-head"><strong>{notificationTitle(item)}</strong><time dateTime={item.createdAt}>{formatTime(item.createdAt, "", use24HourTime)}</time></span>
+                  <span className="notification-body">{renderFormattedText(notificationBody(item))}</span>
                   {actionContent(item.action)}
                 </button>
-                <button className="notification-dismiss" type="button" onClick={() => { hideToast(item.id); dismiss(item.id); }} aria-label={`Dismiss ${item.title}`}>
+                <button className="notification-dismiss" type="button" onClick={() => { hideToast(item.id); dismiss(item.id); }} aria-label={t("notifications.dismiss", { title: notificationTitle(item) })}>
                   <Icon name="close" size={12} />
                 </button>
               </article>
@@ -359,8 +345,8 @@ export function NotificationCenter() {
         {toasts.map((item) => (
           <article className={`notification-toast${notificationTone(item)}`} key={item.id}>
             <button type="button" onClick={() => handleAction(item)}>
-              <strong>{item.title}</strong>
-              <span className="notification-body">{renderFormattedText(item.body)}</span>
+              <strong>{notificationTitle(item)}</strong>
+              <span className="notification-body">{renderFormattedText(notificationBody(item))}</span>
               {actionContent(item.action)}
             </button>
             <button
@@ -370,7 +356,7 @@ export function NotificationCenter() {
                 hideToast(item.id);
                 dismiss(item.id);
               }}
-              aria-label={`Dismiss ${item.title}`}
+              aria-label={t("notifications.dismiss", { title: notificationTitle(item) })}
             >
               <Icon name="close" size={12} />
             </button>

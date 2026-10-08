@@ -10,7 +10,7 @@
 // the store and writes both back itself, so a dialog embedding it passes
 // nothing and cannot get the wiring subtly wrong.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
@@ -44,7 +44,11 @@ export function filterAndSortHostMods(
     .sort((a, b) => a.displayName.localeCompare(b.displayName) || a.uid.localeCompare(b.uid));
 }
 
-export function HostModsColumn() {
+/**
+ * Memoised. It takes no props, so a dialog redrawing around it (every keystroke
+ * in the lobby title) never reaches it; its own store reads still do.
+ */
+export const HostModsColumn = memo(function HostModsColumn() {
   const { t } = useTranslation();
   const installedMods = useAppStore((state) => state.state.mods.installed);
   const presets = useAppStore((state) => state.state.settings.browsing.modPresets);
@@ -68,12 +72,6 @@ export function HostModsColumn() {
   // Escape closes the presets menu and leaves the host dialog open: while
   // open, the menu is the top of the overlay stack.
   useOverlayLayer(presetsOpen, () => setPresetsOpen(false));
-
-  /// `setBrowsing` replaces the whole preferences bag, so a writer must start
-  /// from the newest copy rather than the one captured at render time. Saving a
-  /// preset and closing the dialog in quick succession would otherwise write the
-  /// preset straight back out again.
-  const currentBrowsing = () => useAppStore.getState().state.settings.browsing;
 
   const activeModsCount = useMemo(
     () => installedMods.filter((mod) => mod.enabled).length,
@@ -115,32 +113,22 @@ export function HostModsColumn() {
     setActiveMods(installedMods.filter((mod) => wanted.has(mod.uid)).map((mod) => mod.uid));
   };
 
-  const persistPresets = (modPresets: ModPreset[]) => {
+  // One preset per command, applied by the backend to the list it holds. A
+  // list rebuilt from this render's props lost a preset whenever two saves or
+  // deletes landed inside one round trip. The backend also overwrites a
+  // preset of the same name in place rather than moving it to the end: the
+  // list is a row of buttons, and having one jump position on every save is
+  // worse than it sounds once there are more than two.
+  const savePreset = (name: string, uids: string[]) => {
     ipc.send({
       kind: "Settings",
-      command: {
-        type: "setBrowsing",
-        payload: { preferences: { ...currentBrowsing(), modPresets } },
-      },
+      command: { type: "saveModPreset", payload: { preset: { name, uids } } },
     });
-  };
-
-  const savePreset = (name: string, uids: string[]) => {
-    const key = name.toLocaleLowerCase();
-    const existing = presets.findIndex((preset) => preset.name.toLocaleLowerCase() === key);
-    // Overwrite in place rather than moving the preset to the end: the list is
-    // a row of buttons, and having one jump position on every save is worse
-    // than it sounds once there are more than two.
-    persistPresets(
-      existing >= 0
-        ? presets.map((preset, index) => (index === existing ? { name, uids } : preset))
-        : [...presets, { name, uids }],
-    );
     setPresetModalOpen(false);
   };
 
   const deletePreset = (name: string) =>
-    persistPresets(presets.filter((preset) => preset.name !== name));
+    ipc.send({ kind: "Settings", command: { type: "deleteModPreset", payload: { name } } });
 
   // What the list shows is what Enable All / Disable All act on, which is how
   // the two mod kinds stay separately controllable without four buttons.
@@ -336,4 +324,4 @@ export function HostModsColumn() {
       )}
     </section>
   );
-}
+});

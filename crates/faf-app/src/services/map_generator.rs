@@ -31,9 +31,7 @@ const MAX_PREVIEWS_PER_REQUEST: usize = 16;
 pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         MapGeneratorCommand::GenerateNamed { map_name } => {
-            let Some(_guard) = ctx.map_generator_active.try_acquire() else {
-                return;
-            };
+            crate::runtime::expect_admitted(crate::runtime::Key::MapGenerator);
             // Announce the run before doing anything, so the status can never
             // still be reporting the *previous* run's result while this one is
             // under way. See `GeneratorStatus::Preparing`.
@@ -58,6 +56,10 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                 return;
             }
             let updates = ctx.ports.map_generator.generate_named(map_name).await;
+            // The same race as `Generate`'s, without a preflight to widen it.
+            if cancelled_before_start(out) {
+                ctx.ports.map_generator.cancel();
+            }
             // Kept or not on the same standing preference as a deliberate run.
             // This used to be exempt, on the grounds that a map reproduced for
             // a lobby join is not one the user sat down and asked for; with the
@@ -66,9 +68,7 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             drain(updates, ctx, out).await;
         }
         MapGeneratorCommand::Generate { options } => {
-            let Some(_guard) = ctx.map_generator_active.try_acquire() else {
-                return;
-            };
+            crate::runtime::expect_admitted(crate::runtime::Key::MapGenerator);
             out.emit(MapGeneratorEvent::StatusChanged {
                 status: GeneratorStatus::Preparing,
             });
@@ -82,7 +82,14 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             // documented escape hatch, and `--parse` would reject flags we
             // deliberately do not understand.
             if options.command_line_args.is_empty() {
-                match ctx.ports.map_generator.preflight(options.clone()).await {
+                let preflight = ctx.ports.map_generator.preflight(options.clone()).await;
+                // A run called off while it was being checked has no result to
+                // report either way: a refusal here would turn `Cancelled` into
+                // `Failed` and raise an error about options nobody is waiting on.
+                if cancelled_before_start(out) {
+                    return;
+                }
+                match preflight {
                     Ok(map_name) => out.emit(MapGeneratorEvent::NamePredicted { map_name }),
                     Err(reason) => {
                         out.emit(MapGeneratorEvent::StatusChanged {
@@ -101,7 +108,20 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                     }
                 }
             }
+            // A Cancel pressed during the preflight reached no run: the port
+            // only stops a run in flight, and starting one clears any earlier
+            // cancellation. The Cancel handler marks the status instead, and
+            // a run called off before it began is not started at all.
+            if cancelled_before_start(out) {
+                return;
+            }
             let updates = ctx.ports.map_generator.generate(options).await;
+            // A Cancel landing between the check above and the port clearing
+            // its flag would still be lost. Raised again, the run just started
+            // stops at its first look.
+            if cancelled_before_start(out) {
+                ctx.ports.map_generator.cancel();
+            }
             drain(updates, ctx, out).await;
         }
         MapGeneratorCommand::SetOptions { options } => {
@@ -213,8 +233,24 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                 ),
             }
         }
-        MapGeneratorCommand::Cancel => ctx.ports.map_generator.cancel(),
-        MapGeneratorCommand::SavePreset { name, options } => {
+        MapGeneratorCommand::Cancel => {
+            // Still preparing means no run has reached the port yet, so its
+            // flag alone would be cleared by the run that follows. Recorded on
+            // the status first, which `Generate` checks before it starts one;
+            // in that order, so a check that misses the status is one the
+            // flag below still reaches.
+            if out.with_state(|state| state.map_generator.status == GeneratorStatus::Preparing) {
+                out.emit(MapGeneratorEvent::StatusChanged {
+                    status: GeneratorStatus::Cancelled,
+                });
+            }
+            ctx.ports.map_generator.cancel();
+        }
+        MapGeneratorCommand::SavePreset {
+            name,
+            options,
+            request_id,
+        } => {
             match ctx.ports.map_generator.save_preset(&name, &options).await {
                 Ok(()) => {
                     // Saving a preset is also "these are my current options",
@@ -227,14 +263,26 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                     });
                     services::settings::persist(ctx, out).await;
                     reload_presets(ctx, out).await;
+                    // After the reload, so the list already holds the preset
+                    // when the dialog says it was saved.
+                    out.emit(MapGeneratorEvent::PresetSaveFinished {
+                        request_id,
+                        saved: true,
+                    });
                 }
-                Err(reason) => services::notifications::add(
-                    out,
-                    NotificationKind::Error,
-                    "Could not save the preset",
-                    reason,
-                    None,
-                ),
+                Err(reason) => {
+                    services::notifications::add(
+                        out,
+                        NotificationKind::Error,
+                        "Could not save the preset",
+                        reason,
+                        None,
+                    );
+                    out.emit(MapGeneratorEvent::PresetSaveFinished {
+                        request_id,
+                        saved: false,
+                    });
+                }
             }
         }
         MapGeneratorCommand::LoadPresets => reload_presets(ctx, out).await,
@@ -252,9 +300,7 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
         }
         MapGeneratorCommand::LoadOptions { version } => load_options(version, ctx, out).await,
         MapGeneratorCommand::CleanUp => {
-            let Some(_guard) = ctx.map_generator_active.try_acquire() else {
-                return;
-            };
+            crate::runtime::expect_admitted(crate::runtime::Key::MapGenerator);
             // Read the authoritative persisted setting here rather than
             // trusting the webview to supply the cleanup exclusion list.
             let settings = ctx.ports.settings.load().await;
@@ -264,26 +310,34 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             // one they asked the generator to hold on to as it ran.
             protected_maps.extend(settings.kept_generated_maps);
             match ctx.ports.map_generator.clean_up(&protected_maps).await {
-                Ok(0) => services::notifications::add(
+                Ok(0) => services::notifications::add_text(
                     out,
                     NotificationKind::MapGenerated,
+                    services::notifications::Text::new("notifications.msg.noGeneratedMaps"),
                     "Generated maps",
                     "There were no generated maps to remove.",
                     None,
                 ),
                 Ok(count) => {
-                    services::notifications::add(
+                    services::notifications::add_text(
                         out,
                         NotificationKind::MapGenerated,
+                        services::notifications::Text::new(
+                            "notifications.msg.generatedMapsRemoved",
+                        )
+                        .with("count", count),
                         "Generated maps removed",
                         format!("Removed {count} generated map(s)."),
                         None,
                     );
                     refresh_installed_maps(ctx, out).await;
                 }
-                Err(reason) => services::notifications::add(
+                Err(reason) => services::notifications::add_text(
                     out,
                     NotificationKind::Error,
+                    services::notifications::Text::new(
+                        "notifications.msg.generatedMapsRemoveFailed",
+                    ),
                     "Could not remove generated maps",
                     reason,
                     None,
@@ -291,6 +345,12 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             }
         }
     }
+}
+
+/// Whether Cancel was pressed while the run was still being prepared. See the
+/// `Cancel` arm: before a run exists, the status is where the request is kept.
+fn cancelled_before_start(out: &EventSink) -> bool {
+    out.with_state(|state| state.map_generator.status == GeneratorStatus::Cancelled)
 }
 
 /// Forward every status, and re-scan installed maps once a run succeeds.
@@ -315,6 +375,12 @@ async fn drain(
                 succeeded_maps = maps.clone();
                 announce_background_result(
                     out,
+                    match maps.as_slice() {
+                        [one] => services::notifications::Text::new("notifications.msg.mapReady")
+                            .with("name", one),
+                        many => services::notifications::Text::new("notifications.msg.mapsReady")
+                            .with("count", many.len()),
+                    },
                     "Map ready",
                     match maps.as_slice() {
                         [one] => one.clone(),
@@ -322,9 +388,10 @@ async fn drain(
                     },
                 );
             }
-            GeneratorStatus::Failed { reason } => services::notifications::add(
+            GeneratorStatus::Failed { reason } => services::notifications::add_text(
                 out,
                 NotificationKind::Error,
+                services::notifications::Text::new("notifications.msg.mapGenerationFailed"),
                 "Map generation failed",
                 reason.clone(),
                 None,
@@ -410,6 +477,8 @@ async fn evict_generated_maps(
     }
     announce_background_result(
         out,
+        services::notifications::Text::new("notifications.msg.generatedMapsTrimmed")
+            .with("count", evicted.len()),
         "Generated maps trimmed",
         format!(
             "Removed {} older generated map(s) to stay within the keep limit.",
@@ -426,9 +495,21 @@ async fn evict_generated_maps(
 /// unconditional, because they reply to a click, and failures stay
 /// unconditional because a lobby join blocked on a map that never arrives needs
 /// explaining whatever the switch says.
-fn announce_background_result(out: &EventSink, title: &str, body: String) {
+fn announce_background_result(
+    out: &EventSink,
+    text: services::notifications::Text,
+    title: &str,
+    body: String,
+) {
     if out.with_state(|state| state.settings.notifications.map_generated) {
-        services::notifications::add(out, NotificationKind::MapGenerated, title, body, None);
+        services::notifications::add_text(
+            out,
+            NotificationKind::MapGenerated,
+            text,
+            title,
+            body,
+            None,
+        );
     }
 }
 
@@ -444,7 +525,7 @@ async fn reload_presets(ctx: &ServiceCtx, out: &EventSink) {
 /// A generated map is a new folder on disk; the maps slice has to re-scan for
 /// it to count as installed anywhere else in the client.
 async fn refresh_installed_maps(ctx: &ServiceCtx, out: &EventSink) {
-    services::maps::handle(MapsCommand::LoadInstalled, ctx, out).await;
+    crate::runtime::run_command(MapsCommand::LoadInstalled.into(), ctx, out).await;
 }
 
 /// Fetch available versions and option lists the generator reports.

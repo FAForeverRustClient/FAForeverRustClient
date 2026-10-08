@@ -32,6 +32,7 @@ import type {
 import { ReplayActivityChart } from "./ReplayActivityChart";
 import { ReplayEventsPanel, ReplayPlayersPanel } from "./ReplayAnalysisPanels";
 import { ReplayGameStats } from "./ReplayGameStats";
+import { gameOptionLabel } from "./gameOptionLabels";
 import { ReplayHeatmap, type HeatmapMapAction } from "./ReplayHeatmap";
 import { FactionIcon } from "../../../shared/components/FactionIcon";
 import { PlayerName } from "../../../shared/components/nameColors";
@@ -252,10 +253,9 @@ export function ReplayInsights({
   const [chatTransfers, setChatTransfers] = useState<ReplayChatTransfers>(savedTransfers);
 
   const rememberChat = (patch: Pick<BrowsingPreferences, "replayChatChannel"> | Pick<BrowsingPreferences, "replayChatTransfers">) => {
-    const browsing = useAppStore.getState().state.settings.browsing;
     void ipc.send({
       kind: "Settings",
-      command: { type: "setBrowsing", payload: { preferences: { ...browsing, ...patch } } },
+      command: { type: "patchBrowsing", payload: { patch } },
     });
   };
 
@@ -320,7 +320,9 @@ export function ReplayInsights({
     if (!query) return options;
     return options.filter(
       (option) =>
-        option.key.toLowerCase().includes(query) || option.value.toLowerCase().includes(query),
+        option.key.toLowerCase().includes(query) ||
+        gameOptionLabel(option.key).toLowerCase().includes(query) ||
+        option.value.toLowerCase().includes(query),
     );
   }, [details?.gameOptions, optionFilter]);
 
@@ -461,12 +463,12 @@ export function ReplayInsights({
                               <PlayerName name={row.player} />
                             </span>
                           </td>
-                          <td>{row.rating === null ? "N/A" : row.rating}</td>
+                          <td>{row.rating === null ? t("common.notAvailable") : row.rating}</td>
                           <td className="replay-activity-count">{row.commands}</td>
                           <td>
                             <span className="replay-activity-rate">
                               <span className="replay-activity-rate-value">
-                                {row.perMinute === null ? "N/A" : formatDecimal(row.perMinute)}
+                                {row.perMinute === null ? t("common.notAvailable") : formatDecimal(row.perMinute)}
                               </span>
                               {/* The bar is the comparison the table is for:
                                   the numbers alone need reading twice to see
@@ -609,7 +611,7 @@ export function ReplayInsights({
                     {filteredOptions.length > 0 ? (
                       filteredOptions.map((option) => (
                         <tr key={option.key}>
-                          <td><strong>{option.key}</strong></td>
+                          <td title={option.key}><strong>{gameOptionLabel(option.key)}</strong></td>
                           <td>{option.value}</td>
                         </tr>
                       ))

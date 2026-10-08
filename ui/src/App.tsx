@@ -2,10 +2,12 @@
 // routes purely from state: logged in → the active tab, otherwise → Login. No router logic
 // beyond selecting a slice (ARCHITECTURE.md §4).
 
+import { useAppBackground } from "./shared/appBackground";
 import { useEffect, useRef, useState } from "react";
 import { ipc } from "./ipc/client";
 import { native } from "./ipc/native";
 import { RevisionedMirror } from "./ipc/revisionedMirror";
+import { measureEventApply } from "./ipc/eventCost";
 import { useAppStore } from "./store/store";
 import { t } from "./i18n";
 import { LoginView } from "./features/auth/LoginView";
@@ -16,7 +18,6 @@ import { StartupView } from "./features/shell/StartupView";
 import {
   clearLegacyBrowsingPreferences,
   migrateLegacyBrowsingPreferences,
-  normalizeBrowsingPreferences,
 } from "./shared/browsingPreferences";
 
 /** Never let a zoom failure take the shell down with it; the UI is still usable
@@ -61,6 +62,9 @@ export function App() {
     document.documentElement.dataset.density = appearance.density;
     document.documentElement.dataset.reducedMotion = String(appearance.reduceMotion);
   }, [appearance.density, appearance.reduceMotion, theme]);
+
+  // The player's own background picture, if one is set (#439).
+  useAppBackground(appearance.backgroundImage, appearance.backgroundDim);
 
   // Project friend and foe color preferences at the document root so token-driven
   // indicators (game tile borders, badges, chat elements) align.
@@ -132,11 +136,11 @@ export function App() {
     if (browsingMigrationStarted.current) return;
     browsingMigrationStarted.current = true;
     const storage = browserStorage();
-    const preferences = storage
+    const patch = storage
       ? migrateLegacyBrowsingPreferences(browsing, storage)
-      : normalizeBrowsingPreferences({ ...browsing, legacyStorageMigrated: true });
+      : { legacyStorageMigrated: true };
     void ipc
-      .dispatch({ kind: "Settings", command: { type: "setBrowsing", payload: { preferences } } })
+      .dispatch({ kind: "Settings", command: { type: "patchBrowsing", payload: { patch } } })
       .catch(() => {
         browsingMigrationStarted.current = false;
       });
@@ -145,11 +149,16 @@ export function App() {
   useEffect(() => {
     let active = true;
     let unlisten: (() => void) | undefined;
+    // Held here so the cleanup can stop a recovery retry it has scheduled:
+    // without that, StrictMode's discarded first run kept retrying snapshots
+    // into a store the second run now owns.
+    let mirror: RevisionedMirror | undefined;
 
     const bootstrap = async () => {
-      const mirror = new RevisionedMirror(
+      mirror = new RevisionedMirror(
         (state) => useAppStore.getState().hydrate(state),
-        (event) => useAppStore.getState().apply(event),
+        // Timed, so a slow page leaves numbers in the client log: see `eventCost`.
+        (event) => measureEventApply(event, (applied) => useAppStore.getState().apply(applied)),
         () => ipc.snapshot(),
         (error) => {
           if (active) {
@@ -162,7 +171,8 @@ export function App() {
       // Register before requesting the snapshot. Deltas that race the IPC
       // response are buffered by revision, and lag-recovery snapshots travel
       // on this same ordered channel.
-      const stopListening = await ipc.onMessage((message) => mirror.receive(message));
+      const current = mirror;
+      const stopListening = await ipc.onMessage((message) => current.receive(message));
       // StrictMode's double-invoke runs this effect's cleanup synchronously
       // before this `await` resolves, so `active` can already be false here.
       // Without this check the listener registered above would leak: never
@@ -175,7 +185,7 @@ export function App() {
       unlisten = stopListening;
       const snapshot = await ipc.snapshot();
       if (!active) return;
-      mirror.replace(snapshot);
+      current.replace(snapshot);
     };
 
     void bootstrap().catch((error: unknown) => {
@@ -185,6 +195,7 @@ export function App() {
     return () => {
       active = false;
       unlisten?.();
+      mirror?.dispose();
     };
   }, []);
 

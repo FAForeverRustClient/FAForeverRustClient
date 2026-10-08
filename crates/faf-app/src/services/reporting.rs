@@ -1,8 +1,17 @@
 use faf_domain::state::{NotificationKind, ReportingCommand, ReportingEvent};
 
 use crate::ports::{GameParticipation, ReportPlayerRequest};
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
 use crate::services::notifications;
+
+/// The reporting service's request generation. Owned by this service.
+#[derive(Default)]
+pub struct ReportingContext {
+    /// Only the newest open, history load or submission may land. Closing the
+    /// dialog or opening it for another player must not let a slower answer
+    /// about the previous one fill it.
+    generation: LatestRequest,
+}
 
 pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
@@ -16,35 +25,50 @@ pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
             if wanted.is_empty() {
                 return;
             }
+            // Claimed before the lookup rather than after it. The lookup is a
+            // network round trip, and in that time the user can close the
+            // dialog or open a report about somebody else; both bump the
+            // generation, and a lookup that answers afterwards must not reopen
+            // the form or swap the person it is about. A superseded failure is
+            // dropped too: a notification about a report nobody is filing any
+            // more is noise.
+            let generation = next_generation(ctx);
             let found = ctx
                 .ports
                 .player_card
                 .players_by_login(std::slice::from_ref(&wanted))
                 .await;
+            if !is_current(ctx, generation) {
+                return;
+            }
             match found {
                 Ok(players) => match players
                     .into_iter()
                     .find(|player| player.login.eq_ignore_ascii_case(&wanted))
                 {
                     Some(player) => {
-                        let generation = next_generation(ctx);
                         out.emit(ReportingEvent::Opened {
                             player_id: player.id,
                             login: player.login,
                         });
                         load_history(ctx, out, generation).await;
                     }
-                    None => notifications::add(
+                    None => notifications::add_text(
                         out,
                         NotificationKind::Error,
+                        notifications::Text::new("notifications.msg.reportNoAccount")
+                            .with("login", &wanted),
                         "Cannot report player",
                         format!("No FAF account is called {wanted}."),
                         None,
                     ),
                 },
-                Err(error) => notifications::add(
+                Err(error) => notifications::add_text(
                     out,
                     NotificationKind::Error,
+                    notifications::Text::new("notifications.msg.reportLookupFailed")
+                        .with("login", &wanted)
+                        .with("reason", &error),
                     "Cannot report player",
                     format!("Could not look up {wanted}: {error}"),
                     None,
@@ -95,22 +119,32 @@ pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
 
             out.emit(ReportingEvent::Submitting);
             if let Some(game_id) = game_id {
-                match ctx
+                let participation = ctx
                     .ports
                     .reporting
                     .game_participation(game_id, player_id)
-                    .await
-                {
+                    .await;
+                // A refusal is said only to the dialog that asked. Closing it
+                // and opening a report about somebody else during the check
+                // used to put this one's "did not participate" into the new
+                // dialog. A check that passed still submits, as before: the
+                // report was sent from a dialog the user has since closed.
+                let superseded = !is_current(ctx, generation);
+                match participation {
                     Ok(GameParticipation::GameNotFound) => {
-                        out.emit(ReportingEvent::Failed {
-                            reason: format!("Game #{game_id} was not found."),
-                        });
+                        if !superseded {
+                            out.emit(ReportingEvent::Failed {
+                                reason: format!("Game #{game_id} was not found."),
+                            });
+                        }
                         return;
                     }
                     Ok(GameParticipation::PlayerAbsent) => {
-                        out.emit(ReportingEvent::Failed {
-                            reason: format!("{login} did not participate in game #{game_id}."),
-                        });
+                        if !superseded {
+                            out.emit(ReportingEvent::Failed {
+                                reason: format!("{login} did not participate in game #{game_id}."),
+                            });
+                        }
                         return;
                     }
                     Ok(GameParticipation::PlayerPresent) => {}
@@ -139,9 +173,11 @@ pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
             match result {
                 Ok(()) => {
                     out.emit(ReportingEvent::Submitted);
-                    notifications::add(
+                    notifications::add_text(
                         out,
                         NotificationKind::ReportSubmitted,
+                        notifications::Text::new("notifications.msg.reportSubmitted")
+                            .with("login", &login),
                         "Report submitted",
                         format!("Your report about {login} was sent to the moderation team."),
                         None,
@@ -173,9 +209,9 @@ async fn load_history(ctx: &ServiceCtx, out: &EventSink, generation: u64) {
 }
 
 fn next_generation(ctx: &ServiceCtx) -> u64 {
-    ctx.reporting_generation.begin()
+    ctx.reporting.generation.begin()
 }
 
 fn is_current(ctx: &ServiceCtx, generation: u64) -> bool {
-    ctx.reporting_generation.is_current(generation)
+    ctx.reporting.generation.is_current(generation)
 }

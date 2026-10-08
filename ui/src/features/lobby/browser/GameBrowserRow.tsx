@@ -131,7 +131,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
                 className={simModsRanked ? "modded is-ranked" : "modded"}
                 title={t(simModsRanked ? "lobby.browser.simModsRanked" : "lobby.browser.simModsUnranked", { count: simModCount })}
               >
-                {simModCount} SIM
+                {t("lobby.browser.simModBadge", { count: simModCount })}
               </i>
             )}
             {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
@@ -203,7 +203,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
         </div>
 
         <div className="game-browser-rating-col">
-          <span>{game.averageRating || "N/A"}</span>
+          <span>{game.averageRating || t("common.notAvailable")}</span>
         </div>
 
         <div className="game-browser-age-col">

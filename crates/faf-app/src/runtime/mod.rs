@@ -12,155 +12,54 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use faf_domain::{AppCommand, AppEvent, AppState};
 use serde::Serialize;
-use tokio::sync::{broadcast, mpsc, oneshot};
+use tokio::sync::{broadcast, mpsc, oneshot, OwnedSemaphorePermit, Semaphore};
 
 use crate::ports::Ports;
 use crate::services;
 
+mod census;
+mod command_policy;
 mod policies;
+pub(crate) use command_policy::{end_turn, expect_admitted, Key};
+use command_policy::{CommandAdmission, Lane};
 pub use policies::{
-    AutoReconnect, CancelledJoin, LatestRequest, LoadedFromDisk, RunningGame, SerialMutation,
-    SingleFlight,
+    AutoReconnect, LatestRequest, LoadedFromDisk, LobbyOperation, LobbyOperations, RunningGame,
+    SerialMutation, SingleFlight,
 };
 
-/// Read-only context handed to every service: shared dependencies.
+/// Context handed to every service: shared dependencies plus one operational
+/// context per domain.
 ///
-/// Holds the [`Ports`] bundle (network, fs, process, auth…) injected at startup.
+/// Holds the [`Ports`] bundle (network, fs, process, auth...) injected at
+/// startup. Each service owns its context and that context's fields, which are
+/// private to the service's module, so only the owner can touch its request
+/// generations, locks and connection guards. Anything another service needs is
+/// a named method on the owner's context, so a cross-domain dependency is
+/// visible at the call.
 pub struct ServiceCtx {
     pub backend_version: String,
     pub ports: Ports,
-    /// Single-flight guard for the lobby connection while `Connect` owns an
-    /// active/connecting socket. A redundant request is dropped, so overlapping
-    /// connections cannot race and clobber each other's state.
-    pub lobby_active: SingleFlight,
-    /// A custom-game join stays single-flight from the first click until the
-    /// server accepts or rejects it. Preparation can take minutes, so a local
-    /// component disabled-state alone is not a concurrency boundary.
-    pub lobby_join_active: SingleFlight,
-    /// Whether the join that guard is holding has been called off.
-    pub lobby_join_cancelled: CancelledJoin,
-    /// The title of the game this client last asked the server to host, so
-    /// the launch order that answers it starts on the hosting preference.
-    /// Taken by that launch; see `launcher::launch`.
-    pub hosted_title: std::sync::Mutex<Option<String>>,
-    /// The game this client is currently playing, if any. Read when the lobby
-    /// socket comes back, so the server can be told to restore the game
-    /// session it dropped along with the connection.
-    pub running_game: RunningGame,
-    /// Same single-flight guard, for the chat connection.
-    pub chat_active: SingleFlight,
-    /// Whether [`services::reconnect`] should bring these sockets back after
-    /// an unexpected drop, so a user who hung up stays hung up while a laptop
-    /// resume does not.
-    pub lobby_auto_reconnect: AutoReconnect,
-    pub chat_auto_reconnect: AutoReconnect,
-    /// Generations cancel stale player-card requests when users rapidly switch players/queues.
-    pub player_card_profile_generation: LatestRequest,
-    pub player_card_matchmaker_generation: LatestRequest,
-    pub player_card_map_stats_generation: LatestRequest,
-    pub player_card_history_generation: LatestRequest,
-    /// Party placement lookups run one at a time. The panel sends the whole
-    /// party on every change, and the service skips ids it already knows, so
-    /// serialising them is what turns "already known" into "asked once": two
-    /// overlapping lookups would both find the map empty and both fetch.
-    pub party_placements_mutation: SerialMutation,
-    /// Global single-flight guards for operations whose adapters use a shared
-    /// temporary file or whose state machine only represents one operation.
-    pub uploads_active: SingleFlight,
-    pub client_update_active: SingleFlight,
-    /// One Galactic War install at a time: concurrent runs would share a
-    /// staging directory and race to write the same manifest.
-    pub galactic_war_active: SingleFlight,
-    /// Settings commands run concurrently. Serializing the snapshot + write
-    /// prevents an older command from reaching disk after a newer one.
-    pub settings_persist: SerialMutation,
-    /// Whether the settings file has been read yet. Nothing may be persisted
-    /// before it has, or a preference set during startup writes a document
-    /// made of defaults over the user's own.
-    pub settings_loaded: LoadedFromDisk,
-    /// When a composing notice was last sent per channel, so the composer can
-    /// report on every keystroke while the wire sees one line every few
-    /// seconds.
-    pub chat_typing_sent: std::sync::Mutex<std::collections::HashMap<String, u32>>,
-    /// Read markers can change on every channel click. Only the last click in
-    /// a short burst writes settings, while state updates remain immediate.
-    pub chat_read_marker_persist_generation: LatestRequest,
-    /// Generations discard replies from superseded leaderboard and co-op
-    /// requests. The runtime intentionally executes commands concurrently, so
-    /// request order is not response order.
-    pub leaderboard_catalog_generation: LatestRequest,
-    pub leaderboard_ratings_generation: LatestRequest,
-    pub leaderboard_seasons_generation: LatestRequest,
-    pub leaderboard_season_generation: LatestRequest,
-    pub coop_catalog_generation: LatestRequest,
-    pub coop_leaderboard_generation: LatestRequest,
-    pub auth_generation: LatestRequest,
-    pub auth_cancellation: std::sync::Mutex<Option<tokio_util::sync::CancellationToken>>,
-    pub reviews_generation: LatestRequest,
-    pub reporting_generation: LatestRequest,
-    /// Vault searches go out as fast as filters change, and a tab opened on a
-    /// mod from elsewhere sends two in the same frame: the remembered filters,
-    /// then the mod's name. Whichever answer arrived last used to win, which
-    /// was often the first question (#380).
-    pub maps_search_generation: LatestRequest,
-    pub mods_search_generation: LatestRequest,
-    /// Whether this session has compared the matchmaker map pools with the
-    /// ones last seen (#406). Once per run: pools change between releases,
-    /// not between reconnects.
-    pub map_pools_checked: std::sync::atomic::AtomicBool,
-    pub replay_vault_generation: LatestRequest,
-    pub replay_local_generation: LatestRequest,
-    /// The in-flight replay launch, so the overlay's Cancel button has
-    /// something to press. Same shape as `auth_cancellation`, and for the same
-    /// reason: dropping the future is the only thing that actually stops work
-    /// that is several awaits deep inside a port.
-    pub replay_cancellation: std::sync::Mutex<Option<tokio_util::sync::CancellationToken>>,
-    pub map_generator_active: SingleFlight,
-    pub tutorial_launch_active: SingleFlight,
-    /// The changelog tab re-mounts on every visit and asks for the index each
-    /// time. Without this, two quick visits both read a not-ready status and
-    /// both fetch the same index: the check on `ChangelogStatus::Ready` is a
-    /// check-then-act, and commands run concurrently.
-    pub changelog_active: SingleFlight,
-    /// Only the newest note may land. Clicking two releases in a row must not
-    /// leave the first one's text on screen because it answered second, and a
-    /// cached selection must not be overwritten by a slower earlier fetch.
-    pub changelog_entry_generation: LatestRequest,
-    /// A GitHub device-flow login polls for minutes. Pressing the button twice
-    /// must not leave two loops polling, because the second code would silently
-    /// invalidate the one on screen.
-    pub guides_login_active: SingleFlight,
-    /// Accepting and rejecting go one at a time. Two accepts would each read
-    /// the catalogue, each patch their own copy, and one would be refused by
-    /// the content hash; serialising means it never gets that far.
-    pub guides_verdict: SerialMutation,
-    /// Only the newest queue answer may land: every verdict reloads the queue,
-    /// so an older response arriving late would restore rows already decided.
-    pub guides_queue_generation: LatestRequest,
-    pub maps_mutation: SerialMutation,
-    pub mods_mutation: SerialMutation,
-    pub auth_mutation: SerialMutation,
-    /// Player and organiser writes go one at a time. The server recomputes the
-    /// bracket on every confirmed result, so two overlapping reports would each
-    /// be answered against a bracket the other has already moved.
-    pub tourney_mutation: SerialMutation,
-    /// Clan writes go one at a time, and each ends by reloading. Two
-    /// overlapping edits would otherwise reload in response order rather than
-    /// command order and leave the older answer standing.
-    pub clan_mutation: SerialMutation,
-    /// Only the newest invite-field answer may land: the field searches per
-    /// keystroke, and an earlier prefix arriving late would replace the list
-    /// with matches for something no longer typed.
-    pub clan_candidate_generation: LatestRequest,
-    /// Only the newest detail response may land: opening three events in a row
-    /// must not leave the first one's bracket on screen because it answered
-    /// last.
-    pub tourney_detail_generation: LatestRequest,
-    /// The same, for reading a chat room.
-    pub tourney_chat_generation: LatestRequest,
-    /// The same, for the organiser's account search: it fires per keystroke, so
-    /// answers overtaking each other is the normal case rather than the rare one.
-    pub tourney_account_search_generation: LatestRequest,
+    /// Which commands may run together, enforced. Here rather than in the
+    /// runtime loop alone so a service starting another service's command
+    /// goes through it as well: see [`run_command`].
+    pub(crate) admission: CommandAdmission,
+    pub lobby: services::lobby::LobbyContext,
+    pub chat: services::chat::ChatContext,
+    pub settings: services::settings::SettingsContext,
+    pub auth: services::auth::AuthContext,
+    pub player_card: services::player_card::PlayerCardContext,
+    pub leaderboard: services::leaderboard::LeaderboardContext,
+    pub coop: services::coop::CoopContext,
+    pub replays: services::replays::ReplaysContext,
+    pub tourney: services::tourney::TourneyContext,
+    pub reviews: services::reviews::ReviewsContext,
+    pub reporting: services::reporting::ReportingContext,
+    pub changelog: services::changelog::ChangelogContext,
+    pub guides: services::guides::GuidesContext,
+    pub training: services::training::TrainingContext,
+    pub maps: services::maps::MapsContext,
+    pub mods: services::mods::ModsContext,
+    pub clan: services::clan::ClanContext,
 }
 
 /// The sink a service emits events into.
@@ -201,6 +100,9 @@ pub struct VersionedSnapshot {
     pub state: AppState,
 }
 
+/// A reduction this slow, under the write lock, is worth a log line.
+const SLOW_REDUCE: std::time::Duration = std::time::Duration::from_millis(25);
+
 impl EventSink {
     /// Reduce an event into the authoritative state and broadcast it.
     ///
@@ -229,6 +131,7 @@ impl EventSink {
             .send_order
             .lock()
             .expect("event delivery lock poisoned");
+        let started = std::time::Instant::now();
         let revision = {
             let mut guard = self.state.write().expect("app state lock poisoned");
             faf_domain::reduce(&mut guard, &event);
@@ -236,6 +139,16 @@ impl EventSink {
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
                 .wrapping_add(1)
         };
+        // Every reader and every other emitter waits for this, so a reducer
+        // that has become expensive at a populated catalogue should say so.
+        let reduced = started.elapsed();
+        if reduced >= SLOW_REDUCE {
+            tracing::warn!(
+                event = %variant_name(&event),
+                milliseconds = reduced.as_millis() as u64,
+                "reducing an event held the state write lock this long"
+            );
+        }
         // Err only means "no subscribers yet": fine to ignore. The clone is
         // skipped when nobody is listening on the plain stream, because some
         // events carry the whole player directory and this would otherwise
@@ -286,6 +199,11 @@ impl EventSink {
 pub struct App {
     state: Arc<RwLock<AppState>>,
     cmd_tx: mpsc::Sender<QueuedCommand>,
+    /// Commands that call work off, kept apart so they never queue behind it.
+    /// See [`is_urgent`].
+    urgent_tx: mpsc::Sender<QueuedCommand>,
+    /// See [`ReleaseOrder`].
+    order: Arc<ReleaseOrder>,
     event_tx: broadcast::Sender<AppEvent>,
     versioned_event_tx: broadcast::Sender<VersionedEvent>,
     revision: Arc<AtomicU64>,
@@ -294,6 +212,8 @@ pub struct App {
 /// The command-processing loop. Spawn `run()` on any async runtime.
 pub struct AppLoop {
     cmd_rx: mpsc::Receiver<QueuedCommand>,
+    urgent_rx: mpsc::Receiver<QueuedCommand>,
+    order: Arc<ReleaseOrder>,
     ctx: ServiceCtx,
     sink: EventSink,
 }
@@ -301,6 +221,108 @@ pub struct AppLoop {
 struct QueuedCommand {
     command: AppCommand,
     completion: Option<oneshot::Sender<()>>,
+    /// When it was dispatched, from [`ReleaseOrder::stamp`].
+    seq: u64,
+    /// When it entered the queue, for the late-start warning in
+    /// [`spawn_command`].
+    queued_at: std::time::Instant,
+}
+
+/// Which half of a start/stop pair a command is, and what the pair acts on.
+#[derive(Debug, PartialEq, Eq)]
+enum PairHalf {
+    Start(String),
+    Release(String),
+}
+
+/// The pair a command belongs to, if any.
+///
+/// Releases travel in the urgent queue (see [`is_urgent`]) and starts in the
+/// ordinary one, so a release can overtake a start that was sent before it.
+/// Without this, "Play" then "Stop" under load ran the stop first and the
+/// start last, leaving the player queued after they had pressed Stop. The key
+/// names what both halves act on, so only a release of the same thing counts.
+fn pair_of(command: &AppCommand) -> Option<PairHalf> {
+    use faf_domain::state::{
+        AuthCommand, ChatCommand, GuidesCommand, LobbyCommand, MapGeneratorCommand, ReplayCommand,
+    };
+    let start = |key: &str| Some(PairHalf::Start(key.to_owned()));
+    let release = |key: &str| Some(PairHalf::Release(key.to_owned()));
+    match command {
+        AppCommand::Lobby(LobbyCommand::Join { .. } | LobbyCommand::Host { .. }) => start("join"),
+        AppCommand::Lobby(LobbyCommand::CancelJoin | LobbyCommand::DeclineModReplacement) => {
+            release("join")
+        }
+        AppCommand::Lobby(LobbyCommand::Connect) => start("lobby"),
+        AppCommand::Lobby(LobbyCommand::Disconnect) => release("lobby"),
+        AppCommand::Lobby(LobbyCommand::Matchmake {
+            queue_name,
+            start: true,
+        }) => Some(PairHalf::Start(format!("matchmake:{queue_name}"))),
+        AppCommand::Lobby(LobbyCommand::Matchmake {
+            queue_name,
+            start: false,
+        }) => Some(PairHalf::Release(format!("matchmake:{queue_name}"))),
+        AppCommand::Chat(ChatCommand::Connect { .. }) => start("chat"),
+        AppCommand::Chat(ChatCommand::Disconnect) => release("chat"),
+        AppCommand::Auth(
+            AuthCommand::Login { .. } | AuthCommand::LoginTest | AuthCommand::Restore,
+        ) => start("auth"),
+        AppCommand::Auth(
+            AuthCommand::CancelLogin | AuthCommand::Logout | AuthCommand::LogoutTest,
+        ) => release("auth"),
+        AppCommand::Guides(GuidesCommand::SignIn) => start("guides"),
+        AppCommand::Guides(GuidesCommand::CancelSignIn) => release("guides"),
+        AppCommand::MapGenerator(
+            MapGeneratorCommand::Generate { .. } | MapGeneratorCommand::GenerateNamed { .. },
+        ) => start("map-generator"),
+        AppCommand::MapGenerator(MapGeneratorCommand::Cancel) => release("map-generator"),
+        AppCommand::Replays(
+            ReplayCommand::WatchVault { .. }
+            | ReplayCommand::WatchLive { .. }
+            | ReplayCommand::OpenFile { .. },
+        ) => start("replay-watch"),
+        AppCommand::Replays(ReplayCommand::CancelWatch) => release("replay-watch"),
+        AppCommand::Replays(ReplayCommand::TrackLive { .. }) => start("live-tracking"),
+        AppCommand::Replays(ReplayCommand::CancelLiveTracking) => release("live-tracking"),
+        _ => None,
+    }
+}
+
+/// Dispatch order, so a start that a later release overtook is dropped.
+///
+/// Every command is stamped as it is dispatched; a release also records its
+/// stamp against its pair. When a start finally leaves the ordinary queue, a
+/// release of the same pair stamped after it means the user called it off
+/// before it ever ran, and running it now would undo that.
+#[derive(Debug, Default)]
+struct ReleaseOrder {
+    next: AtomicU64,
+    released: std::sync::Mutex<std::collections::HashMap<String, u64>>,
+}
+
+impl ReleaseOrder {
+    fn stamp(&self, command: &AppCommand) -> u64 {
+        let seq = self.next.fetch_add(1, std::sync::atomic::Ordering::AcqRel) + 1;
+        if let Some(PairHalf::Release(key)) = pair_of(command) {
+            self.released
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .insert(key, seq);
+        }
+        seq
+    }
+
+    fn superseded(&self, command: &AppCommand, seq: u64) -> bool {
+        let Some(PairHalf::Start(key)) = pair_of(command) else {
+            return false;
+        };
+        self.released
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(&key)
+            .is_some_and(|&released| released > seq)
+    }
 }
 
 impl App {
@@ -315,8 +337,10 @@ impl App {
         // behind. Lag here is self-feeding, so the cheapest thing to spend on
         // it is queue.
         let (versioned_event_tx, _) = broadcast::channel::<VersionedEvent>(1024);
-        let (cmd_tx, cmd_rx) = mpsc::channel::<QueuedCommand>(64);
+        let (cmd_tx, cmd_rx) = mpsc::channel::<QueuedCommand>(COMMAND_QUEUE);
+        let (urgent_tx, urgent_rx) = mpsc::channel::<QueuedCommand>(URGENT_QUEUE);
         let revision = Arc::new(AtomicU64::new(0));
+        let order = Arc::new(ReleaseOrder::default());
         let send_order = Arc::new(Mutex::new(()));
 
         let sink = EventSink {
@@ -329,76 +353,52 @@ impl App {
         let ctx = ServiceCtx {
             backend_version: backend_version.into(),
             ports,
-            lobby_active: SingleFlight::default(),
-            lobby_join_active: SingleFlight::default(),
-            lobby_join_cancelled: CancelledJoin::default(),
-            hosted_title: std::sync::Mutex::new(None),
-            running_game: RunningGame::default(),
-            chat_active: SingleFlight::default(),
-            lobby_auto_reconnect: AutoReconnect::default(),
-            chat_auto_reconnect: AutoReconnect::default(),
-            player_card_profile_generation: LatestRequest::default(),
-            player_card_matchmaker_generation: LatestRequest::default(),
-            player_card_map_stats_generation: LatestRequest::default(),
-            player_card_history_generation: LatestRequest::default(),
-            party_placements_mutation: SerialMutation::default(),
-            uploads_active: SingleFlight::default(),
-            client_update_active: SingleFlight::default(),
-            galactic_war_active: SingleFlight::default(),
-            settings_persist: SerialMutation::default(),
-            settings_loaded: LoadedFromDisk::default(),
-            chat_typing_sent: std::sync::Mutex::new(std::collections::HashMap::new()),
-            chat_read_marker_persist_generation: LatestRequest::default(),
-            leaderboard_catalog_generation: LatestRequest::default(),
-            leaderboard_ratings_generation: LatestRequest::default(),
-            leaderboard_seasons_generation: LatestRequest::default(),
-            leaderboard_season_generation: LatestRequest::default(),
-            coop_catalog_generation: LatestRequest::default(),
-            coop_leaderboard_generation: LatestRequest::default(),
-            auth_generation: LatestRequest::default(),
-            auth_cancellation: std::sync::Mutex::new(None),
-            reviews_generation: LatestRequest::default(),
-            reporting_generation: LatestRequest::default(),
-            maps_search_generation: LatestRequest::default(),
-            mods_search_generation: LatestRequest::default(),
-            map_pools_checked: std::sync::atomic::AtomicBool::new(false),
-            replay_vault_generation: LatestRequest::default(),
-            replay_local_generation: LatestRequest::default(),
-            replay_cancellation: std::sync::Mutex::new(None),
-            map_generator_active: SingleFlight::default(),
-            tutorial_launch_active: SingleFlight::default(),
-            changelog_active: SingleFlight::default(),
-            changelog_entry_generation: LatestRequest::default(),
-            guides_login_active: SingleFlight::default(),
-            guides_verdict: SerialMutation::default(),
-            guides_queue_generation: LatestRequest::default(),
-            maps_mutation: SerialMutation::default(),
-            mods_mutation: SerialMutation::default(),
-            auth_mutation: SerialMutation::default(),
-            tourney_mutation: SerialMutation::default(),
-            clan_mutation: SerialMutation::default(),
-            clan_candidate_generation: LatestRequest::default(),
-            tourney_detail_generation: LatestRequest::default(),
-            tourney_chat_generation: LatestRequest::default(),
-            tourney_account_search_generation: LatestRequest::default(),
+            admission: CommandAdmission::default(),
+            lobby: services::lobby::LobbyContext::default(),
+            chat: services::chat::ChatContext::default(),
+            settings: services::settings::SettingsContext::default(),
+            auth: services::auth::AuthContext::default(),
+            player_card: services::player_card::PlayerCardContext::default(),
+            leaderboard: services::leaderboard::LeaderboardContext::default(),
+            coop: services::coop::CoopContext::default(),
+            replays: services::replays::ReplaysContext::default(),
+            tourney: services::tourney::TourneyContext::default(),
+            reviews: services::reviews::ReviewsContext::default(),
+            reporting: services::reporting::ReportingContext::default(),
+            changelog: services::changelog::ChangelogContext::default(),
+            guides: services::guides::GuidesContext::default(),
+            training: services::training::TrainingContext::default(),
+            maps: services::maps::MapsContext::default(),
+            mods: services::mods::ModsContext::default(),
+            clan: services::clan::ClanContext::default(),
         };
 
         let app = Self {
             state,
             cmd_tx,
+            urgent_tx,
+            order: order.clone(),
             event_tx,
             versioned_event_tx,
             revision,
         };
-        let app_loop = AppLoop { cmd_rx, ctx, sink };
+        let app_loop = AppLoop {
+            cmd_rx,
+            urgent_rx,
+            order,
+            ctx,
+            sink,
+        };
         (app, app_loop)
     }
 
     /// Send a command into the loop, applying backpressure when the bounded
     /// queue is busy and reporting a stopped runtime to the caller.
     pub async fn dispatch(&self, cmd: AppCommand) -> Result<(), String> {
-        self.cmd_tx
+        self.queue_for(&cmd)
             .send(QueuedCommand {
+                queued_at: std::time::Instant::now(),
+                seq: self.order.stamp(&cmd),
                 command: cmd,
                 completion: None,
             })
@@ -413,8 +413,10 @@ impl App {
     /// persisted settings before announcing backend readiness.
     pub async fn dispatch_and_wait(&self, cmd: AppCommand) -> Result<(), String> {
         let (completion, finished) = oneshot::channel();
-        self.cmd_tx
+        self.queue_for(&cmd)
             .send(QueuedCommand {
+                queued_at: std::time::Instant::now(),
+                seq: self.order.stamp(&cmd),
                 command: cmd,
                 completion: Some(completion),
             })
@@ -427,8 +429,10 @@ impl App {
 
     /// Send a command without awaiting (for sync call sites like Tauri commands).
     pub fn try_dispatch(&self, cmd: AppCommand) -> Result<(), String> {
-        self.cmd_tx
+        self.queue_for(&cmd)
             .try_send(QueuedCommand {
+                queued_at: std::time::Instant::now(),
+                seq: self.order.stamp(&cmd),
                 command: cmd,
                 completion: None,
             })
@@ -440,6 +444,17 @@ impl App {
                     "application command loop is not running".to_string()
                 }
             })
+    }
+
+    /// The queue a command waits in. Cancellations get their own, so a
+    /// saturated ordinary queue cannot hold back the command meant to relieve
+    /// it.
+    fn queue_for(&self, cmd: &AppCommand) -> &mpsc::Sender<QueuedCommand> {
+        if is_urgent(cmd) {
+            &self.urgent_tx
+        } else {
+            &self.cmd_tx
+        }
     }
 
     /// Subscribe to the event stream (the Tauri shell forwards this to the frontend).
@@ -515,7 +530,7 @@ impl AppLoop {
     /// interactive login) never blocks the processing of other commands. Ordering
     /// of *state* changes is still well-defined: every mutation goes through the
     /// single [`EventSink::emit`] chokepoint.
-    pub async fn run(mut self) {
+    pub async fn run(self) {
         let ctx = Arc::new(self.ctx);
 
         // Discord Rich Presence is the one feature no command drives: the
@@ -540,81 +555,289 @@ impl AppLoop {
         // reaches a client nobody has restarted since Friday.
         services::client_update::spawn(ctx.clone(), self.sink.clone());
 
-        // A ceiling on service tasks running at once.
-        //
-        // The command queue bounds how many are *waiting*, not how many are
-        // running: every command that arrives is spawned immediately, so a
-        // render loop in the UI that dispatches on every frame would start an
-        // unbounded number of concurrent network requests. A few services hold
-        // their own single-flight guards; most do not, and a ceiling here
-        // means none of them has to.
-        //
-        // Wide enough that nothing a person does reaches it: a busy session is
-        // a handful of concurrent commands, and a permit is held only for the
-        // duration of one service call.
-        let permits = Arc::new(tokio::sync::Semaphore::new(MAX_CONCURRENT_COMMANDS));
+        // And how big the state has grown, written to the log now and then:
+        // see `census`.
+        census::spawn(self.sink.clone());
 
-        while let Some(queued) = self.cmd_rx.recv().await {
+        // And the training hub's recommendations follow what they are read
+        // from: a sign-in, a finished replay scan, a game that just ended.
+        services::training::spawn(ctx.clone(), self.sink.clone());
+
+        let sink = self.sink.clone();
+        // Admitted here, synchronously, as the command leaves its queue: see
+        // `CommandAdmission` for why the place is taken before the task starts.
+        let handle = move |command: AppCommand| {
             let ctx = ctx.clone();
-            let sink = self.sink.clone();
-            let permits = permits.clone();
-            let claimed = claim_generation(&queued.command, &ctx);
-            tokio::spawn(async move {
-                // Acquired inside the task, so the loop keeps draining the
-                // queue while services are busy: the waiting happens here, not
-                // in front of the channel.
-                let _permit = permits.acquire_owned().await;
-                CLAIMED_GENERATION
-                    .scope(claimed, dispatch(queued.command, &ctx, &sink))
-                    .await;
-                if let Some(completion) = queued.completion {
-                    let _ = completion.send(());
-                }
-            });
-        }
+            let sink = sink.clone();
+            let admission = command_policy::policy(&command).admission;
+            let turn = ctx.admission.admit(admission);
+            async move {
+                let Some(mut turn) = turn else {
+                    tracing::debug!("dropped a command whose kind is already running");
+                    return;
+                };
+                turn.ready().await;
+                command_policy::run_admitted(admission, turn, dispatch(command, &ctx, &sink)).await;
+            }
+        };
+        drive(
+            self.cmd_rx,
+            self.urgent_rx,
+            self.order,
+            PRODUCTION_LIMITS,
+            handle,
+        )
+        .await;
     }
 }
 
-tokio::task_local! {
-    /// The latest-request generation [`claim_generation`] took for the command
-    /// this task is running, if it took one.
-    static CLAIMED_GENERATION: Option<u64>;
-}
+/// How many ordinary commands may wait in the queue. Once it is full,
+/// [`App::dispatch`] waits and [`App::try_dispatch`] reports it.
+const COMMAND_QUEUE: usize = 64;
 
-/// Take a latest-request generation for a command in the order commands
-/// arrive, before its task is spawned.
-///
-/// Taken inside the task, the order was the scheduler's: tokio does not start
-/// two spawned tasks in the order they were spawned, and its slot for the
-/// newest task can even run it first. Two vault searches sent in one frame
-/// (#380: the remembered filters, then a mod's name) could then claim their
-/// generations the wrong way round, and the older question was the one
-/// allowed to answer.
-fn claim_generation(command: &AppCommand, ctx: &ServiceCtx) -> Option<u64> {
-    match command {
-        AppCommand::Maps(faf_domain::state::MapsCommand::SearchVault { .. }) => {
-            Some(ctx.maps_search_generation.begin())
-        }
-        AppCommand::Mods(faf_domain::state::ModsCommand::SearchVault { .. }) => {
-            Some(ctx.mods_search_generation.begin())
-        }
-        _ => None,
-    }
-}
+/// The same, for cancellations. Small: these are single clicks.
+const URGENT_QUEUE: usize = 16;
 
-/// The generation [`claim_generation`] took for the running command, if any.
-/// `None` outside the command loop, as in a test that calls a service
-/// directly, where the caller's own order is the order.
-pub(crate) fn claimed_generation() -> Option<u64> {
-    CLAIMED_GENERATION
-        .try_with(|claimed| *claimed)
-        .ok()
-        .flatten()
-}
-
-/// See [`AppLoop::run`]. Not a tuning knob: it exists so a runaway dispatcher
+/// See [`drive`]. Not a tuning knob: it exists so a runaway dispatcher
 /// cannot open a thousand sockets, and is far above any honest workload.
 const MAX_CONCURRENT_COMMANDS: usize = 64;
+
+/// Cancellations running at once. Each one only flips a flag or closes a
+/// socket, so a handful is plenty; the ceiling exists so that even these
+/// cannot pile up without bound.
+const MAX_CONCURRENT_URGENT: usize = 8;
+
+/// How much work [`drive`] lets run at once, per queue.
+#[derive(Debug, Clone, Copy)]
+struct Limits {
+    ordinary: usize,
+    urgent: usize,
+}
+
+const PRODUCTION_LIMITS: Limits = Limits {
+    ordinary: MAX_CONCURRENT_COMMANDS,
+    urgent: MAX_CONCURRENT_URGENT,
+};
+
+/// Whether a command waits in the priority queue. The lane is part of the
+/// command's policy: see [`command_policy::Lane`].
+fn is_urgent(command: &AppCommand) -> bool {
+    command_policy::policy(command).lane == Lane::Priority
+}
+
+/// Run commands from both queues until the ordinary one closes.
+///
+/// A permit is taken *before* a command leaves its queue, not inside the task
+/// that runs it. Taking it inside the task bounded how many ran but not how
+/// many waited: the loop kept draining the bounded channel into an unbounded
+/// pile of spawned tasks, each parked on the semaphore, so the channel's
+/// backpressure never reached the caller. Now a saturated pool leaves commands
+/// in the channel, the channel fills, and `dispatch` waits.
+///
+/// Urgent commands are checked first and draw on their own permits, so they
+/// are never stuck behind a full ordinary pool or a full ordinary queue.
+/// That lets a release overtake its own start, so a start the user has since
+/// called off is dropped here rather than run (see [`ReleaseOrder`]).
+async fn drive<H, F>(
+    mut ordinary: mpsc::Receiver<QueuedCommand>,
+    mut urgent: mpsc::Receiver<QueuedCommand>,
+    order: Arc<ReleaseOrder>,
+    limits: Limits,
+    handle: H,
+) where
+    H: Fn(AppCommand) -> F,
+    F: std::future::Future<Output = ()> + Send + 'static,
+{
+    let ordinary_permits = Arc::new(Semaphore::new(limits.ordinary));
+    let urgent_permits = Arc::new(Semaphore::new(limits.urgent));
+    let running = Running::default();
+    let mut ordinary_permit: Option<OwnedSemaphorePermit> = None;
+    let mut urgent_permit: Option<OwnedSemaphorePermit> = None;
+    let mut urgent_open = true;
+
+    loop {
+        tokio::select! {
+            biased;
+            acquired = urgent_permits.clone().acquire_owned(),
+                if urgent_open && urgent_permit.is_none() =>
+            {
+                urgent_permit = Some(acquired.expect("the urgent semaphore is never closed"));
+            }
+            queued = urgent.recv(), if urgent_open && urgent_permit.is_some() => match queued {
+                Some(queued) => spawn_command(queued, urgent_permit.take(), &handle, &running),
+                None => urgent_open = false,
+            },
+            acquired = ordinary_permits.clone().acquire_owned(), if ordinary_permit.is_none() => {
+                ordinary_permit = Some(acquired.expect("the command semaphore is never closed"));
+            }
+            queued = ordinary.recv(), if ordinary_permit.is_some() => match queued {
+                Some(queued) if order.superseded(&queued.command, queued.seq) => {
+                    // Keep the permit for the next command, and still answer
+                    // anyone waiting on this one: it is finished, by not running.
+                    tracing::debug!(seq = queued.seq, "dropped a start that a later release called off");
+                    if let Some(completion) = queued.completion {
+                        let _ = completion.send(());
+                    }
+                }
+                Some(queued) => spawn_command(queued, ordinary_permit.take(), &handle, &running),
+                None => break,
+            },
+        }
+    }
+}
+
+/// How late a command may start before it is logged. A click is a command, so
+/// half a second of waiting is already a client that ignored somebody.
+const LATE_START: std::time::Duration = std::time::Duration::from_millis(500);
+
+/// The commands running now: a short name and when each started.
+///
+/// Only read when a command starts late, to say what it waited behind. A tab
+/// that would not change for ten seconds left nothing in the log to say why;
+/// this names the work that held every slot.
+#[derive(Default, Clone)]
+struct Running(Arc<std::sync::Mutex<RunningCommands>>);
+
+#[derive(Default)]
+struct RunningCommands {
+    next: u64,
+    commands: std::collections::HashMap<u64, (String, std::time::Instant)>,
+}
+
+impl Running {
+    fn lock(&self) -> std::sync::MutexGuard<'_, RunningCommands> {
+        self.0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    fn start(&self, name: String) -> u64 {
+        let mut running = self.lock();
+        running.next += 1;
+        let id = running.next;
+        running
+            .commands
+            .insert(id, (name, std::time::Instant::now()));
+        id
+    }
+
+    fn finish(&self, id: u64) {
+        self.lock().commands.remove(&id);
+    }
+
+    /// The longest-running few, as "Maps::LoadVault 12.3s".
+    fn longest(&self, limit: usize) -> (usize, Vec<String>) {
+        let running = self.lock();
+        let mut all: Vec<_> = running.commands.values().collect();
+        all.sort_by_key(|(_, started)| *started);
+        let listed = all
+            .iter()
+            .take(limit)
+            .map(|(name, started)| format!("{name} {:.1}s", started.elapsed().as_secs_f32()))
+            .collect();
+        (all.len(), listed)
+    }
+}
+
+/// A command's slice and variant, as "Nav::SelectReplaysSection", without its
+/// payload.
+fn command_name(command: &AppCommand) -> String {
+    variant_name(command)
+}
+
+/// A command's or event's slice and variant, as "Lobby::GamesUpdated",
+/// without its payload. Read from the `Debug` text, cut off after a few dozen
+/// characters so a value carrying a picture or a whole catalogue costs no more
+/// to name than one that does not.
+fn variant_name(value: &impl std::fmt::Debug) -> String {
+    struct Capped(String);
+    impl std::fmt::Write for Capped {
+        fn write_str(&mut self, text: &str) -> std::fmt::Result {
+            let room = 96usize.saturating_sub(self.0.len());
+            self.0.extend(text.chars().take(room));
+            if self.0.len() >= 96 {
+                Err(std::fmt::Error)
+            } else {
+                Ok(())
+            }
+        }
+    }
+    let mut text = Capped(String::new());
+    let _ = std::fmt::write(&mut text, format_args!("{value:?}"));
+    let text = text.0;
+    let (slice, rest) = text.split_once('(').unwrap_or((text.as_str(), ""));
+    let variant: String = rest
+        .chars()
+        .take_while(|c| c.is_alphanumeric() || *c == '_')
+        .collect();
+    if variant.is_empty() {
+        slice.to_string()
+    } else {
+        format!("{slice}::{variant}")
+    }
+}
+
+/// Run one command on its own task, holding `permit` until it finishes.
+fn spawn_command<H, F>(
+    queued: QueuedCommand,
+    permit: Option<OwnedSemaphorePermit>,
+    handle: &H,
+    running: &Running,
+) where
+    H: Fn(AppCommand) -> F,
+    F: std::future::Future<Output = ()> + Send + 'static,
+{
+    let name = command_name(&queued.command);
+    let waited = queued.queued_at.elapsed();
+    if waited >= LATE_START {
+        let (count, longest) = running.longest(12);
+        tracing::warn!(
+            command = %name,
+            waited_seconds = waited.as_secs_f32(),
+            running = count,
+            ?longest,
+            "a command waited for a free slot before it could start"
+        );
+    }
+    let id = running.start(name);
+    let work = handle(queued.command);
+    let completion = queued.completion;
+    let running = running.clone();
+    tokio::spawn(async move {
+        let _permit = permit;
+        work.await;
+        running.finish(id);
+        if let Some(completion) = completion {
+            let _ = completion.send(());
+        }
+    });
+}
+
+/// Run a command from inside a service, under the same policy as one from the
+/// webview: a single-flight command is dropped while its kind runs, and a
+/// serial one waits its turn.
+///
+/// The way for one service to start another's command. Calling the other
+/// service's `handle` directly walks past the policy table, which is how the
+/// training tab's catalogue load used to start a second crawl beside the Maps
+/// tab's own.
+///
+/// Boxed because it recurses: a command run here may itself run another.
+pub(crate) fn run_command<'a>(
+    command: AppCommand,
+    ctx: &'a ServiceCtx,
+    out: &'a EventSink,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send + 'a>> {
+    let admission = command_policy::policy(&command).admission;
+    let turn = ctx.admission.admit(admission);
+    Box::pin(async move {
+        let Some(mut turn) = turn else {
+            return;
+        };
+        turn.ready().await;
+        command_policy::run_admitted(admission, turn, dispatch(command, ctx, out)).await;
+    })
+}
 
 /// Route a command to the owning service. One arm per slice (ARCHITECTURE.md §8).
 async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
@@ -682,6 +905,294 @@ mod tests {
             .expect_err("the next command must observe a full queue");
 
         assert!(error.contains("full"));
+
+        // A cancellation still gets through: it has a queue of its own.
+        app.try_dispatch(faf_domain::state::LobbyCommand::CancelJoin.into())
+            .expect("a cancellation must not wait behind a full ordinary queue");
+    }
+
+    #[test]
+    fn a_command_is_named_by_slice_and_variant_without_its_payload() {
+        assert_eq!(
+            command_name(&faf_domain::state::MapsCommand::LoadVault.into()),
+            "Maps::LoadVault"
+        );
+        let named = command_name(
+            &faf_domain::state::LobbyCommand::Join {
+                id: 42,
+                password: Some("secret".into()),
+                replace_mods: false,
+            }
+            .into(),
+        );
+        assert_eq!(named, "Lobby::Join");
+    }
+
+    #[test]
+    fn an_event_is_named_the_same_way() {
+        let event: AppEvent = faf_domain::state::MapsEvent::VaultLoading.into();
+        assert_eq!(variant_name(&event), "Maps::VaultLoading");
+    }
+
+    #[test]
+    fn only_the_releasing_half_of_a_command_pair_is_urgent() {
+        use faf_domain::state::LobbyCommand;
+
+        assert!(is_urgent(&LobbyCommand::CancelJoin.into()));
+        assert!(is_urgent(&LobbyCommand::Disconnect.into()));
+        assert!(is_urgent(
+            &LobbyCommand::Matchmake {
+                queue_name: "ladder1v1".into(),
+                start: false,
+            }
+            .into()
+        ));
+        assert!(!is_urgent(
+            &LobbyCommand::Matchmake {
+                queue_name: "ladder1v1".into(),
+                start: true,
+            }
+            .into()
+        ));
+        assert!(!is_urgent(&SessionCommand::Hello.into()));
+        // A tab click never waits behind work it is leaving.
+        assert!(is_urgent(
+            &faf_domain::state::NavCommand::SelectReplaysSection {
+                section: faf_domain::state::ReplaysSection::Online,
+            }
+            .into()
+        ));
+    }
+
+    /// Saturated work leaves later commands in the channel instead of piling
+    /// up as parked tasks, and a cancellation still runs past it.
+    #[tokio::test]
+    async fn a_saturated_pool_backs_up_into_the_channel_but_not_over_cancellations() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::time::Duration;
+
+        use faf_domain::state::LobbyCommand;
+
+        let (ordinary_tx, ordinary_rx) = mpsc::channel::<QueuedCommand>(2);
+        let (urgent_tx, urgent_rx) = mpsc::channel::<QueuedCommand>(2);
+        let started = Arc::new(AtomicUsize::new(0));
+        let gate = Arc::new(Semaphore::new(0));
+
+        let handle = {
+            let started = started.clone();
+            let gate = gate.clone();
+            move |command: AppCommand| {
+                let started = started.clone();
+                let gate = gate.clone();
+                async move {
+                    if !is_urgent(&command) {
+                        started.fetch_add(1, Ordering::SeqCst);
+                        // Held until the test opens the gate: saturated work.
+                        let _ = gate.acquire().await;
+                    }
+                }
+            }
+        };
+        let limits = Limits {
+            ordinary: 2,
+            urgent: 1,
+        };
+        let driver = tokio::spawn(drive(
+            ordinary_rx,
+            urgent_rx,
+            Arc::new(ReleaseOrder::default()),
+            limits,
+            handle,
+        ));
+
+        let queued = |command: AppCommand| QueuedCommand {
+            queued_at: std::time::Instant::now(),
+            command,
+            completion: None,
+            seq: 0,
+        };
+        // Two run, two more wait in the channel, which is then full.
+        for _ in 0..4 {
+            ordinary_tx
+                .send(queued(SessionCommand::Hello.into()))
+                .await
+                .expect("the loop is running");
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        assert_eq!(
+            started.load(Ordering::SeqCst),
+            2,
+            "only the permitted two run"
+        );
+        assert!(
+            matches!(
+                ordinary_tx.try_send(queued(SessionCommand::Hello.into())),
+                Err(mpsc::error::TrySendError::Full(_))
+            ),
+            "waiting work stays in the bounded channel"
+        );
+
+        let (completion, finished) = oneshot::channel();
+        urgent_tx
+            .send(QueuedCommand {
+                queued_at: std::time::Instant::now(),
+                command: LobbyCommand::CancelJoin.into(),
+                completion: Some(completion),
+                seq: 0,
+            })
+            .await
+            .expect("the loop is running");
+        tokio::time::timeout(Duration::from_secs(5), finished)
+            .await
+            .expect("a cancellation runs while the pool is saturated")
+            .expect("the cancellation completed");
+
+        // Releasing the work lets the queued commands through.
+        gate.add_permits(16);
+        drop(ordinary_tx);
+        drop(urgent_tx);
+        tokio::time::timeout(Duration::from_secs(5), driver)
+            .await
+            .expect("the loop ends once its queues close")
+            .expect("the loop did not panic");
+        // The last two were spawned before the loop ended; give them a moment
+        // to start.
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while started.load(Ordering::SeqCst) < 4 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("the queued commands ran once the pool freed up");
+    }
+
+    /// "Play" then "Stop" while the pool is busy: the stop overtakes the start
+    /// in its own queue, so the start must not run afterwards and requeue the
+    /// player. A start sent after the stop still runs.
+    #[tokio::test]
+    async fn a_start_overtaken_by_its_release_is_dropped() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::time::Duration;
+
+        use faf_domain::state::LobbyCommand;
+
+        let order = Arc::new(ReleaseOrder::default());
+        let matchmake = |start: bool| -> AppCommand {
+            LobbyCommand::Matchmake {
+                queue_name: "ladder1v1".into(),
+                start,
+            }
+            .into()
+        };
+        let queued = |command: AppCommand, completion| QueuedCommand {
+            queued_at: std::time::Instant::now(),
+            seq: order.stamp(&command),
+            command,
+            completion,
+        };
+
+        let (ordinary_tx, ordinary_rx) = mpsc::channel::<QueuedCommand>(4);
+        let (urgent_tx, urgent_rx) = mpsc::channel::<QueuedCommand>(4);
+        let starts = Arc::new(AtomicUsize::new(0));
+        let gate = Arc::new(tokio::sync::Semaphore::new(0));
+        let handle = {
+            let (starts, gate) = (starts.clone(), gate.clone());
+            move |command: AppCommand| {
+                let (starts, gate) = (starts.clone(), gate.clone());
+                async move {
+                    match command {
+                        AppCommand::Session(_) => drop(gate.acquire().await),
+                        AppCommand::Lobby(LobbyCommand::Matchmake { start: true, .. }) => {
+                            starts.fetch_add(1, Ordering::SeqCst);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        };
+        let limits = Limits {
+            ordinary: 1,
+            urgent: 1,
+        };
+        let driver = tokio::spawn(drive(ordinary_rx, urgent_rx, order.clone(), limits, handle));
+
+        // The only ordinary permit is busy, so "Play" waits in the queue.
+        ordinary_tx
+            .send(queued(SessionCommand::Hello.into(), None))
+            .await
+            .unwrap();
+        let (played, play_done) = oneshot::channel();
+        ordinary_tx
+            .send(queued(matchmake(true), Some(played)))
+            .await
+            .unwrap();
+        // "Stop" overtakes it.
+        urgent_tx
+            .send(queued(matchmake(false), None))
+            .await
+            .unwrap();
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        gate.add_permits(1);
+        tokio::time::timeout(Duration::from_secs(5), play_done)
+            .await
+            .expect("the dropped start still answers its caller")
+            .unwrap();
+        assert_eq!(
+            starts.load(Ordering::SeqCst),
+            0,
+            "the overtaken start never ran"
+        );
+
+        // Pressing Play again afterwards is a new start and runs.
+        let (replayed, replay_done) = oneshot::channel();
+        ordinary_tx
+            .send(queued(matchmake(true), Some(replayed)))
+            .await
+            .unwrap();
+        tokio::time::timeout(Duration::from_secs(5), replay_done)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            starts.load(Ordering::SeqCst),
+            1,
+            "a start sent after the stop runs"
+        );
+
+        drop(ordinary_tx);
+        drop(urgent_tx);
+        tokio::time::timeout(Duration::from_secs(5), driver)
+            .await
+            .unwrap()
+            .unwrap();
+    }
+
+    #[test]
+    fn releases_only_cancel_starts_of_the_same_pair() {
+        use faf_domain::state::LobbyCommand;
+
+        let matchmake = |queue: &str, start: bool| -> AppCommand {
+            LobbyCommand::Matchmake {
+                queue_name: queue.into(),
+                start,
+            }
+            .into()
+        };
+        let order = ReleaseOrder::default();
+        let start_a = matchmake("ladder1v1", true);
+        let start_b = matchmake("tmm2v2", true);
+        let (seq_a, seq_b) = (order.stamp(&start_a), order.stamp(&start_b));
+        order.stamp(&matchmake("ladder1v1", false));
+        assert!(order.superseded(&start_a, seq_a));
+        assert!(
+            !order.superseded(&start_b, seq_b),
+            "another queue's start is untouched"
+        );
+        assert!(
+            !order.superseded(&SessionCommand::Hello.into(), 0),
+            "unpaired commands always run"
+        );
     }
 
     #[tokio::test]

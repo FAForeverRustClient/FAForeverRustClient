@@ -19,20 +19,21 @@ export function useIsFavoriteMap(folderName: string): boolean {
 /**
  * Star or unstar a map by folder name.
  *
- * Reads the newest copy of the preferences, because `setBrowsing` replaces the
- * whole block and a copy captured at render time would put back whatever
- * changed since.
+ * Sends the one folder and the direction, which the backend applies to the
+ * list it holds. Sending the whole list, even one read fresh from the store,
+ * lost a star whenever two were clicked inside one round trip: both clicks
+ * started from the same list, so the second write did not hold the first.
  */
 export function toggleFavoriteMap(folderName: string, downloadUrl?: string) {
   const key = folderName.trim().toLocaleLowerCase();
   const current = useAppStore.getState().state.settings.browsing;
   const starred = current.favoriteMaps.some((favorite) => favorite.toLocaleLowerCase() === key);
-  const favoriteMaps = starred
-    ? current.favoriteMaps.filter((favorite) => favorite.toLocaleLowerCase() !== key)
-    : [...current.favoriteMaps, key];
   ipc.send({
     kind: "Settings",
-    command: { type: "setBrowsing", payload: { preferences: { ...current, favoriteMaps } } },
+    command: {
+      type: "setListMember",
+      payload: { list: "favoriteMaps", value: key, member: !starred },
+    },
   });
   if (!starred) installFavorite(folderName.trim(), downloadUrl);
 }

@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { mergeReplayTeamsWithLocal, parseOutcome, outcomeLabel, ReplayCardRoster, ReplayDetailRoster } from "./ReplayRoster";
+import { mergeReplayTeamsWithLocal, parseOutcome, outcomeLabel, ReplayCardRoster, ReplayDetailRoster, replayWinner } from "./ReplayRoster";
 import type { LocalReplayTeam, ReplayTeam } from "../../ipc/bindings";
 
 describe("ReplayRoster outcomes", () => {
@@ -344,5 +344,30 @@ describe("ReplayRoster outcomes", () => {
 
     const nonInteractiveMarkup = renderToStaticMarkup(<ReplayCardRoster teams={teams} interactive={false} />);
     expect(nonInteractiveMarkup).toContain('title="played as TheWeakie"');
+  });
+});
+
+describe("the vault's game result switch (#454)", () => {
+  const teams = [
+    { team: 2, players: [{ name: "Alice", faction: 1, rating: 1500, outcome: "VICTORY", score: 0 }] },
+    { team: 3, players: [{ name: "Bob", faction: 2, rating: 1500, outcome: "DEFEAT", score: 0 }] },
+  ] as ReplayTeam[];
+
+  it("puts the outcome on a card only when asked", () => {
+    expect(renderToStaticMarkup(<ReplayCardRoster teams={teams} />)).not.toContain("replay-team-outcome");
+    const shown = renderToStaticMarkup(<ReplayCardRoster teams={teams} showResults />);
+    expect(shown).toContain('class="replay-team-outcome victory"');
+    expect(shown).toContain('class="replay-team-outcome defeat"');
+  });
+
+  it("names the winner for a list row, and nothing when there is no result", () => {
+    expect(replayWinner(teams)).toBe("Won: Team 1");
+    const ffa = [{ team: 1, players: [
+      { name: "Alice", faction: 1, rating: 1500, outcome: "VICTORY", score: 0 },
+      { name: "Bob", faction: 2, rating: 1500, outcome: "DEFEAT", score: 0 },
+    ] }] as ReplayTeam[];
+    expect(replayWinner(ffa)).toBe("Won: Alice");
+    const unknown = [{ team: 2, players: [{ name: "Alice", faction: 1, rating: 1500, outcome: "", score: 0 }] }] as ReplayTeam[];
+    expect(replayWinner(unknown)).toBeNull();
   });
 });

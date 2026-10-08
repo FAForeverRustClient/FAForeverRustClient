@@ -35,6 +35,12 @@ export function reduceTutorials(state: TutorialsState, event: TutorialsEvent): T
         launch: { type: "launched", payload: { tutorialId: event.payload.tutorialId } },
       };
     case "launchFailed":
-      return { ...state, launch: { type: "failed", payload: { reason: event.payload.reason } } };
+      return {
+        ...state,
+        launch: {
+          type: "failed",
+          payload: { tutorialId: event.payload.tutorialId, reason: event.payload.reason },
+        },
+      };
   }
 }

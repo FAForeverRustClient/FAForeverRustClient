@@ -11,7 +11,8 @@
 
 import { useState } from "react";
 import { Button } from "../../../design-system/Button";
-import type { CaptainMode, PlayerSummary, Tourney, TourneyAdmin, TourneyPlayer } from "../../../ipc/bindings";
+import type { CaptainMode, PlayerSummary, Tourney, TourneyPlayer } from "../../../ipc/bindings";
+import type { OrganiserActions, TeamActions } from "../tourneyActions";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { PlayerChip } from "../PlayerChip";
 import {
@@ -27,11 +28,10 @@ interface DraftPanelProps {
   event: Tourney;
   profiles: PlayerSummary[];
   busy: boolean;
-  onPick: (playerId: string) => void;
-  onUndo: () => void;
-  onSetCaptains: (playerIds: string[]) => void;
-  onStart: () => void;
-  onAdmin: (change: TourneyAdmin) => void;
+  /** Picking, undoing a pick, and naming the captains. */
+  teams: Pick<TeamActions, "draftPick" | "draftUndo" | "setCaptains">;
+  /** Starting the draft, and the organiser's single-call changes. */
+  organiser: Pick<OrganiserActions, "advance" | "admin">;
 }
 
 export function DraftPanel(props: DraftPanelProps) {
@@ -67,7 +67,7 @@ export function DraftPanel(props: DraftPanelProps) {
     const ready = mode === "rating" ? validCount && ranked.length >= wanted : captains.length >= 2;
     const saveMode = (next: CaptainMode, typed: string) => {
       const parsed = Number.parseInt(typed, 10);
-      props.onAdmin({
+      props.organiser.admin({
         type: "setCaptainMode",
         payload: { mode: next, count: Number.isInteger(parsed) ? parsed : 0 },
       });
@@ -160,7 +160,7 @@ export function DraftPanel(props: DraftPanelProps) {
         )}
         <div className="tournament-detail-actions">
           {mode === "manual" && (
-            <Button disabled={busy} onClick={() => props.onSetCaptains(captains)}>
+            <Button disabled={busy} onClick={() => props.teams.setCaptains(captains)}>
               {t("tournaments.draft.saveCaptains")}
             </Button>
           )}
@@ -169,7 +169,7 @@ export function DraftPanel(props: DraftPanelProps) {
           <Button
             variant="primary"
             disabled={busy || !ready}
-            onClick={() => props.onStart()}
+            onClick={() => props.organiser.advance("startDraft")}
           >
             {t("tournaments.draft.start")}
           </Button>
@@ -201,7 +201,7 @@ export function DraftPanel(props: DraftPanelProps) {
           </span>
         )}
         {mayUndoPick(event) && (
-          <Button disabled={busy} onClick={props.onUndo}>
+          <Button disabled={busy} onClick={props.teams.draftUndo}>
             {t("tournaments.draft.undo")}
           </Button>
         )}
@@ -218,7 +218,7 @@ export function DraftPanel(props: DraftPanelProps) {
               {/* Live only for whoever is on the clock. Everyone else reads the
                   same pool, which is how a draft is followed. */}
               {mine && (
-                <Button disabled={busy} onClick={() => props.onPick(player.id)}>
+                <Button disabled={busy} onClick={() => props.teams.draftPick(player.id)}>
                   {t("tournaments.draft.pick")}
                 </Button>
               )}

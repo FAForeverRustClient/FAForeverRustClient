@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
@@ -23,7 +23,11 @@ export interface NamedMapGeneration {
  */
 export function useNamedMapGeneration(mapName: string | undefined | null): NamedMapGeneration {
   const { t } = useTranslation();
-  const maps = useAppStore((state) => state.state.maps);
+  // The installed list only, not the whole maps slice: this runs once per map
+  // tile, and the slice changes with every catalogue page, preview and lookup,
+  // which redrew every tile's button and rescanned the installed list each
+  // time.
+  const installedMaps = useAppStore((state) => state.state.maps.installed);
   const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
   const mapGenPreviews = useAppStore((state) => state.state.mapGenerator.previews);
 
@@ -37,11 +41,13 @@ export function useNamedMapGeneration(mapName: string | undefined | null): Named
     mapGenPreviews?.[name.toLowerCase()]
   );
 
-  const installed = maps.installed.some(
-    (map) =>
-      map.folderName.toLowerCase() === name.toLowerCase() ||
-      map.folderName.toLowerCase().startsWith(`${name.toLowerCase()}.`),
-  );
+  const installed = useMemo(() => {
+    const wanted = name.toLowerCase();
+    return installedMaps.some((map) => {
+      const folder = map.folderName.toLowerCase();
+      return folder === wanted || folder.startsWith(`${wanted}.`);
+    });
+  }, [installedMaps, name]);
 
   const isGenerating =
     mapGenStatus.type === "generating" ||

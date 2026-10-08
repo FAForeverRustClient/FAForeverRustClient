@@ -1,7 +1,36 @@
-import type { ChatChannel, ChatEvent, ChatState, ChatUser, Reaction } from "../../ipc/bindings";
+import type { ChatChannel, ChatEvent, ChatMessage, ChatState, ChatUser, Reaction } from "../../ipc/bindings";
 
 const DEFAULT_CHANNEL = "#aeolus";
 const MAX_MESSAGES = 500;
+/** Joins, parts and the like, counted apart from the conversation (#441). */
+const MAX_INFO_MESSAGES = 500;
+
+/**
+ * Keeps a channel's history inside both bounds, dropping the oldest line of
+ * whichever kind is over. Twin of `cap_messages` in faf-domain's chat slice:
+ * joins and quits used to share the conversation's bound and, in a channel as
+ * busy as #aeolus, pushed what people said out of it within the hour.
+ */
+function capMessages(messages: ChatMessage[]): ChatMessage[] {
+  const info = messages.filter((message) => message.kind === "info").length;
+  let excessInfo = Math.max(0, info - MAX_INFO_MESSAGES);
+  let excessOther = Math.max(0, messages.length - info - MAX_MESSAGES);
+  if (excessInfo === 0 && excessOther === 0) return messages;
+  return messages.filter((message) => {
+    if (message.kind === "info") {
+      if (excessInfo > 0) {
+        excessInfo -= 1;
+        return false;
+      }
+      return true;
+    }
+    if (excessOther > 0) {
+      excessOther -= 1;
+      return false;
+    }
+    return true;
+  });
+}
 const MAX_RETAINED_HISTORIES = 20;
 const MAX_AUTO_JOIN_CHANNELS = 20;
 const MODERATOR_PREFIXES = ["~", "&", "@", "%"];
@@ -26,6 +55,22 @@ export function mentions(content: string, username: string): boolean {
     if (!isWord(haystack[start - 1]) && !isWord(haystack[end])) return true;
     from = end;
   }
+}
+
+/**
+ * Does a reply to `replyTo` answer something `username` wrote? Rust:
+ * `answers`. A reply carries only the id, not the original author, so this
+ * is what makes an answer that does not type the name count as one (#429).
+ */
+function answers(messages: readonly ChatMessage[], replyTo: string, username: string): boolean {
+  return (
+    replyTo !== "" &&
+    username !== "" &&
+    messages.some(
+      (candidate) =>
+        candidate.msgid === replyTo && asciiLower(candidate.sender) === asciiLower(username),
+    )
+  );
 }
 
 /**
@@ -203,14 +248,16 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
     case "channelLeft": {
       const left = state.channels.find((channel) => channel.name === event.payload.channel);
       const channels = state.channels.filter((channel) => channel.name !== event.payload.channel);
-      const withoutPrevious = state.retainedHistories.filter(
-        (history) => history.channel !== event.payload.channel,
-      );
+      // Only a leave with something to keep replaces the channel's retained
+      // history. A second `channelLeft` for a channel already gone (or one
+      // left before anything was said) must not throw away what the first
+      // one kept.
       const retainedHistories = left && left.messages.length > 0
-        ? [...withoutPrevious, { channel: left.name, messages: left.messages }].slice(
-            -MAX_RETAINED_HISTORIES,
-          )
-        : withoutPrevious;
+        ? [
+            ...state.retainedHistories.filter((history) => history.channel !== left.name),
+            { channel: left.name, messages: left.messages },
+          ].slice(-MAX_RETAINED_HISTORIES)
+        : state.retainedHistories;
       const activeChannel =
         state.activeChannel === event.payload.channel
           ? (channels[0]?.name ?? "")
@@ -242,7 +289,7 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
     case "messageReceived": {
       const { channel, message } = event.payload;
       return mapChannel(state, channel, (current) => {
-        const messages = [...current.messages, message].slice(-MAX_MESSAGES);
+        const messages = capMessages([...current.messages, message]);
         // Sending is the loudest possible "done typing". Waiting for the
         // sender's own `done` would leave the indicator up for every client
         // that never sends one, which is most of them.
@@ -255,7 +302,10 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
           message.kind !== "info" &&
           message.kind !== "error";
         if (!counts) return { ...current, messages, typing };
-        const loud = isPrivateChannel(current.name) || mentions(message.content, state.username);
+        const loud =
+          isPrivateChannel(current.name) ||
+          mentions(message.content, state.username) ||
+          answers(messages, message.replyTo ?? "", state.username);
         return {
           ...current,
           messages,
@@ -269,7 +319,7 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
       const { channel, message } = event.payload;
       return mapChannel(state, channel, (current) => ({
         ...current,
-        messages: [...current.messages, message].slice(-MAX_MESSAGES),
+        messages: capMessages([...current.messages, message]),
       }));
     }
     case "usersUpdated":

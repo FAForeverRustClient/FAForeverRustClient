@@ -10,6 +10,8 @@ import { formatDate } from "../../shared/format/dates";
 import { LeaderboardTable } from "./LeaderboardTable";
 import { PlayerDetailsPanel } from "./PlayerDetailsPanel";
 import { useTranslation } from "../../i18n/useTranslation";
+import { leaderboardLabel } from "../../shared/playerRatings";
+import { divisionLabel, isGrandmaster, seasonLabel, tierLabel } from "../../shared/leagueNames";
 
 /**
  * Rows the season table draws at a time. The whole season is loaded, so the
@@ -151,7 +153,7 @@ function SeasonPicker({
         onClick={() => (open ? setOpen(false) : openPicker())}
         onKeyDown={handleKeyDown}
       >
-        <span>{selectedSeason?.name || (selectedSeason ? `Season ${selectedSeason.seasonNumber}` : "")}</span>
+        <span>{selectedSeason ? seasonLabel(selectedSeason.seasonNumber) : ""}</span>
         <Icon name="chevronDown" size={14} />
       </button>
       {open && createPortal(
@@ -174,7 +176,7 @@ function SeasonPicker({
               onMouseEnter={() => setActiveIndex(index)}
               onClick={() => choose(season.id)}
             >
-              {season.name || `Season ${season.seasonNumber}`}
+              {seasonLabel(season.seasonNumber)}
             </button>
           ))}
         </div>,
@@ -218,16 +220,20 @@ export function LeagueSeasonToolbar({
   );
 }
 
-function DivisionDistribution({ tiers, entries, ownDivision }: {
+function DivisionDistribution({ tiers, entries, ownTier }: {
   tiers: LeaderboardTier[];
   entries: LeaderboardEntry[];
-  ownDivision: string | null;
+  ownTier: number | null;
 }) {
   const { t } = useTranslation();
+  // Counted by division order, which is a tier's identity within a season:
+  // its name is the catalogue's to write, and differs by language.
   const counts = useMemo(() => {
-    const result = new Map<string, number>();
+    const result = new Map<number, number>();
     for (const entry of entries) {
-      if (entry.division) result.set(entry.division, (result.get(entry.division) ?? 0) + 1);
+      if (entry.divisionOrder !== null) {
+        result.set(entry.divisionOrder, (result.get(entry.divisionOrder) ?? 0) + 1);
+      }
     }
     return result;
   }, [entries]);
@@ -245,7 +251,7 @@ function DivisionDistribution({ tiers, entries, ownDivision }: {
       }))
       .sort((left, right) => (left.tiers[0]?.divisionOrder ?? 0) - (right.tiers[0]?.divisionOrder ?? 0));
   }, [tiers]);
-  const max = Math.max(1, ...tiers.map((tier) => counts.get(tier.name) ?? 0));
+  const max = Math.max(1, ...tiers.map((tier) => counts.get(tier.divisionOrder) ?? 0));
   const divisionClass = (division: string) => {
     switch (division.toLocaleLowerCase()) {
       case "bronze": return "is-bronze";
@@ -264,7 +270,7 @@ function DivisionDistribution({ tiers, entries, ownDivision }: {
       <div className="leaderboard-distribution-heading">
         <div className="leaderboard-section-title">
           <h3>{t("leaderboard.leagues.population")}</h3>
-          <span className="muted">{entries.length} placed</span>
+          <span className="muted">{t("leaderboard.leagues.placedCount", { count: entries.length })}</span>
         </div>
       </div>
       <div className="leaderboard-distribution-chart" role="img" aria-label={t("leaderboard.leagues.population")}>
@@ -274,13 +280,14 @@ function DivisionDistribution({ tiers, entries, ownDivision }: {
               <div key={group.division} className={`leaderboard-distribution-group ${divisionClass(group.division)}`}>
                 <div className="leaderboard-distribution-bars">
                   {group.tiers.map((tier) => {
-                    const count = counts.get(tier.name) ?? 0;
+                    const count = counts.get(tier.divisionOrder) ?? 0;
                     const height = count === 0 ? "0%" : `${Math.max(4, (count / max) * 86)}%`;
+                    const name = tierLabel(tier.division, tier.subdivision);
                     return (
                       <div
-                        key={tier.name}
-                        className={`leaderboard-distribution-bar-wrap ${divisionClass(group.division)}${tier.name === ownDivision ? " is-current" : ""}`}
-                        title={`${tier.name}: ${count}`}
+                        key={tier.divisionOrder}
+                        className={`leaderboard-distribution-bar-wrap ${divisionClass(group.division)}${tier.divisionOrder === ownTier ? " is-current" : ""}`}
+                        title={`${name}: ${count}`}
                       >
                         <div className="leaderboard-distribution-bar-area">
                           <div className="leaderboard-distribution-bar-stack">
@@ -289,13 +296,13 @@ function DivisionDistribution({ tiers, entries, ownDivision }: {
                           </div>
                         </div>
                         <span className="leaderboard-distribution-subdivision">
-                          {group.division === "Grandmaster" ? "GM" : tier.subdivision || tier.name}
+                          {isGrandmaster(group.division) ? t("leagues.division.grandmasterShort") : tier.subdivision || name}
                         </span>
                       </div>
                     );
                   })}
                 </div>
-                <span className="leaderboard-distribution-label">{group.division}</span>
+                <span className="leaderboard-distribution-label">{divisionLabel(group.division)}</span>
               </div>
             ))}
           </div>
@@ -327,17 +334,18 @@ function MyLeagueCard({ entry, placementGames }: { entry: LeaderboardEntry | nul
   }
   const score = entry.score ?? 0;
   const divisionImageUrl = entry.divisionImageUrl || entry.divisionMediumImageUrl;
+  const tier = entry.division === null ? null : tierLabel(entry.division, entry.subdivision);
   return (
     <section className="leaderboard-own-card leaderboard-own-card-ranked surface-panel">
       <div className="leaderboard-own-card-main">
         <div className="leaderboard-own-badge" aria-hidden={divisionImageUrl ? undefined : true}>
           {divisionImageUrl
-            ? <img className="leaderboard-own-division-icon" src={divisionImageUrl} alt={entry.division ?? ""} width={80} height={52} decoding="async" onError={(event) => { event.currentTarget.hidden = true; }} />
+            ? <img className="leaderboard-own-division-icon" src={divisionImageUrl} alt={tier ?? ""} width={80} height={52} decoding="async" onError={(event) => { event.currentTarget.hidden = true; }} />
             : <div className="leaderboard-own-placeholder"><Icon name="leaderboard" size={24} /></div>}
         </div>
         <div className="leaderboard-own-body">
           <span className="leaderboard-eyebrow">{t("leaderboard.leagues.yourPosition")}</span>
-          <h3><span className="leaderboard-own-rank">#{entry.rank}</span><span className="leaderboard-own-divider" aria-hidden="true">·</span><span>{entry.division ?? t("leaderboard.leagues.placed")}</span></h3>
+          <h3><span className="leaderboard-own-rank">#{entry.rank}</span><span className="leaderboard-own-divider" aria-hidden="true">·</span><span>{tier ?? t("leaderboard.leagues.placed")}</span></h3>
           <div className="leaderboard-own-stats" aria-label={`${score} ${t("leaderboard.column.score")}, ${entry.gamesPlayed} ${t("leaderboard.column.games")}`}>
             <div>
               <span>{t("leaderboard.column.score")}</span>
@@ -385,11 +393,11 @@ export function LeagueLeaderboardPanel() {
   const filtered = useMemo(() => {
     const acceptedTiers = division === "all"
       ? null
-      : new Set(state.tiers.filter((tier) => tier.division === division).map((tier) => tier.name));
+      : new Set(state.tiers.filter((tier) => tier.division === division).map((tier) => tier.divisionOrder));
     const needle = search.trim().toLocaleLowerCase();
     return state.seasonEntries.filter((entry) => (
-      (acceptedTiers === null || (entry.division !== null && acceptedTiers.has(entry.division)))
-      && (subdivision === "all" || entry.division === subdivision)
+      (acceptedTiers === null || (entry.divisionOrder !== null && acceptedTiers.has(entry.divisionOrder)))
+      && (subdivision === "all" || String(entry.divisionOrder) === subdivision)
       && (!needle || entry.playerName.toLocaleLowerCase().includes(needle))
     ));
   }, [division, search, state.seasonEntries, state.tiers, subdivision]);
@@ -423,7 +431,7 @@ export function LeagueLeaderboardPanel() {
           active={state.selectedLeagueId}
           ariaLabel={t("leaderboard.leagues.leagueQueues")}
           className="leaderboard-tabs"
-          items={state.leagues.map((league) => ({ id: league.id, label: league.name }))}
+          items={state.leagues.map((league) => ({ id: league.id, label: leaderboardLabel(league.technicalName) }))}
           onChange={(leagueId) => void selectLeague(leagueId)}
           idPrefix="leaderboard-league"
         />
@@ -453,7 +461,7 @@ export function LeagueLeaderboardPanel() {
               <DivisionDistribution
                 tiers={state.tiers}
                 entries={state.seasonEntries}
-                ownDivision={ownEntry?.division ?? null}
+                ownTier={ownEntry?.divisionOrder ?? null}
               />
             </div>
 
@@ -466,7 +474,7 @@ export function LeagueLeaderboardPanel() {
                 <span>{t("leaderboard.leagues.division")}</span>
                 <select value={division} onChange={(event) => { setDivision(event.target.value); setSubdivision("all"); }}>
                   <option value="all">{t("leaderboard.leagues.allDivisions")}</option>
-                  {divisions.map((name) => <option key={name} value={name}>{name}</option>)}
+                  {divisions.map((key) => <option key={key} value={key}>{divisionLabel(key)}</option>)}
                 </select>
               </label>
               <label className="leaderboard-field">
@@ -478,7 +486,7 @@ export function LeagueLeaderboardPanel() {
                 >
                   <option value="all">{t("leaderboard.leagues.all")}</option>
                   {subdivisions.map((tier) => (
-                    <option key={tier.name} value={tier.name}>{tier.subdivision || tier.name}</option>
+                    <option key={tier.divisionOrder} value={String(tier.divisionOrder)}>{tier.subdivision || divisionLabel(tier.division)}</option>
                   ))}
                 </select>
               </label>

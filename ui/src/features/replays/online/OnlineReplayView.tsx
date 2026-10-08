@@ -4,7 +4,7 @@ import { StatusNotice } from "../../../design-system/StatusNotice";
 import type { ReplayQuery } from "../../../ipc/bindings";
 import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
-import { isUnknownVaultMap } from "../../../shared/mapPresentation";
+import { isSeedlessGeneratedMap, isUnknownVaultMap } from "../../../shared/mapPresentation";
 import { isoDaysAgo, personalReplayQuery } from "../../../shared/replayQuery";
 import { loadStoredSet, saveStoredSet } from "../../../shared/storage";
 import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
@@ -14,6 +14,9 @@ import { ReplayDetailPanel } from "../ReplayDetailPanel";
 import { ReplayViewSwitch, type ReplayViewMode } from "../ReplayViewSwitch";
 import { subscribeReplaySearch, takeReplaySearch } from "../../../shared/replaySearchIntent";
 import { VaultSearch } from "./VaultSearch";
+import { ReplayPageSize } from "./AdvancedReplayFilters";
+import { Button } from "../../../design-system/Button";
+import { Icon } from "../../../design-system/Icon";
 import "../online-replays.css";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { plainError } from "../../../shared/plainError";
@@ -63,12 +66,15 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     void ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
-        payload: { preferences: { ...browsing, replaysView: mode } },
+        type: "patchBrowsing",
+        payload: { patch: { replaysView: mode } },
       },
     });
   };
   const [openUid, setOpenUid] = useState<number | null>(null);
+  // The detail panel's "Game result" switch, for the whole page at once
+  // (#454). Off by default, as there: a result is a spoiler until asked for.
+  const [showResults, setShowResults] = useState(false);
   const [selectedUid, setSelectedUid] = useState<number | null>(null);
   const [watchedUids, setWatchedUids] = useState<Set<number>>(() =>
     loadStoredSet(WATCHED_STORAGE_KEY, (value): value is number => typeof value === "number"),
@@ -142,10 +148,14 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   // instead: the first 64 KiB of each, which is the envelope and enough of the
   // stream to read the scenario the engine loaded. Once per game, because an
   // answer is remembered whether or not it found anything, and only for the
-  // rows this page actually turned up.
+  // rows this page actually turned up. A generated map the listing names
+  // without its seed is asked about too: the card cannot generate it without
+  // the seed, which is why most of them showed no generate button.
   useEffect(() => {
     const unread = vault
-      .filter((replay) => isUnknownVaultMap(replay.map) && !(replay.uid in resolvedMaps))
+      .filter((replay) =>
+        (isUnknownVaultMap(replay.map) || (isSeedlessGeneratedMap(replay.map) && replay.replayAvailable))
+        && !(replay.uid in resolvedMaps))
       .map((replay) => replay.uid);
     if (unread.length === 0) return;
     ipc.send({ kind: "Replays", command: { type: "resolveMaps", payload: { uids: unread } } });
@@ -156,12 +166,15 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
       void ipc.send({
         kind: "Settings",
         command: {
-          type: "setBrowsing",
-          payload: { preferences: { ...browsing, replayVaultPlayer: newQuery.player } },
+          type: "patchBrowsing",
+          payload: { patch: { replayVaultPlayer: newQuery.player } },
         },
       });
     }
-    searchVault(newQuery);
+    // The page size is set on the results line, not in the form, so a search
+    // from the form keeps the one in effect: clearing the filters is not a
+    // request for a different page length.
+    searchVault({ ...newQuery, pageSize: query.pageSize });
   };
 
   const openReplay = vault.find((r) => r.uid === openUid) ?? null;
@@ -242,7 +255,22 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
                 })}
           </span>
         </div>
-        <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
+        <div className="online-replay-view-bar-right">
+          <Button
+            className="replay-detail-reveal-btn"
+            aria-pressed={showResults}
+            onClick={() => setShowResults((visible) => !visible)}
+          >
+            <Icon name="eye" size={13} />
+            <span>{t(showResults ? "replays.detail.hideResults" : "replays.detail.gameResult")}</span>
+          </Button>
+          {/* Applies at once, to the search on screen, from its first page. */}
+          <ReplayPageSize
+            value={query.pageSize}
+            onChange={(pageSize) => searchVault({ ...query, pageSize, page: 1 })}
+          />
+          <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
+        </div>
       </div>
       {/* A failed search as a line of its own with the way to run it again.
           It was a muted fragment after "0 shown · 1 pages", which read as an
@@ -272,6 +300,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
               replay={r}
               watched={watchedUids.has(r.uid)}
               busy={busy}
+              showResults={showResults}
               onOpen={() => setOpenUid(r.uid)}
               onDoubleClick={() => r.replayAvailable && !busy && markWatchedAndPlay(r.uid)}
               onWatch={() => {
@@ -289,6 +318,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
           groupByDate={query.sortBy === "startTime" || query.sortBy === "endTime"}
           selectedUid={selectedUid}
           watchedUids={watchedUids}
+          showResults={showResults}
           onOpen={(uid) => {
             setSelectedUid(uid);
             setOpenUid(uid);

@@ -6,7 +6,7 @@
 // something come first, newest round on top, and the settled ones follow, so
 // the tab opens on what is waiting rather than on history.
 
-import { useContext, useState } from "react";
+import { memo, useContext, useState } from "react";
 import { Icon } from "../../../design-system/Icon";
 import type { PlayerSummary, Tourney, TourneyMatch, VaultMap } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -33,7 +33,8 @@ export function vetoMatches(event: Tourney): TourneyMatch[] {
   );
 }
 
-export function VetoesPanel(props: VetoesPanelProps) {
+/** Memoised for the same reason as `BracketView`, and with the same props. */
+export const VetoesPanel = memo(function VetoesPanel(props: VetoesPanelProps) {
   const { event } = props;
   const { t } = useTranslation();
   const [scope, setScope] = useState<"mine" | "all">("mine");
@@ -146,7 +147,7 @@ export function VetoesPanel(props: VetoesPanelProps) {
       )}
     </div>
   );
-}
+});
 
 /**
  * Which maps were banned most, and which were played most, once the event is

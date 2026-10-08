@@ -10,6 +10,7 @@ use futures_util::StreamExt as _;
 use serde::Deserialize;
 use serde_json::Value;
 
+use crate::infra::http::{describe_transport_error, REQUEST_DEADLINE};
 use crate::ports::RequestError;
 
 /// API documents should be measured in kilobytes or a few megabytes. A hard
@@ -176,10 +177,22 @@ pub(crate) async fn fetch_document_typed(
     url: url::Url,
     token: &str,
 ) -> Result<JsonApiDoc, RequestError> {
+    fetch_document_within(http, url, token, REQUEST_DEADLINE).await
+}
+
+/// [`fetch_document_typed`] with the deadline as a parameter, so a test can
+/// exercise the real path without waiting out the production one.
+async fn fetch_document_within(
+    http: &reqwest::Client,
+    url: url::Url,
+    token: &str,
+    deadline: std::time::Duration,
+) -> Result<JsonApiDoc, RequestError> {
     let response = http
         .get(url.clone())
         .bearer_auth(token)
         .header(reqwest::header::ACCEPT, "application/vnd.api+json")
+        .timeout(deadline)
         .send()
         .await
         .map_err(request_error)?;
@@ -193,11 +206,23 @@ pub(crate) async fn fetch_document_typed(
 }
 
 pub(crate) fn request_error(error: reqwest::Error) -> RequestError {
-    if error.is_connect() || error.is_timeout() || error.is_body() {
+    // Checked first: a timeout is often also a connect or body error, and
+    // "could not reach" is the wrong thing to say about a server that was
+    // reached and then went quiet.
+    if error.is_timeout() {
+        RequestError::offline(
+            "The request to FAF services timed out. Check your connection and try again.",
+        )
+    } else if error.is_connect() || error.is_body() {
         RequestError::offline("Could not reach FAF services. Check your connection and try again.")
     } else {
         RequestError::unexpected(format!("request could not be completed: {error}"))
     }
+}
+
+/// A request that never got an answer, for the writes that report text.
+fn failed_request(error: reqwest::Error) -> String {
+    format!("request failed: {}", describe_transport_error(&error))
 }
 
 /// A failed write, as the category the caller can act on.
@@ -256,9 +281,10 @@ pub(crate) async fn post_resource(
         .header(reqwest::header::CONTENT_TYPE, MEDIA_TYPE)
         .header(reqwest::header::ACCEPT, MEDIA_TYPE)
         .json(&body)
+        .timeout(REQUEST_DEADLINE)
         .send()
         .await
-        .map_err(|error| format!("request failed: {error}"))?;
+        .map_err(failed_request)?;
     write_response(url.path(), response).await
 }
 
@@ -281,9 +307,10 @@ pub(crate) async fn patch_resource(
         .header(reqwest::header::CONTENT_TYPE, MEDIA_TYPE)
         .header(reqwest::header::ACCEPT, MEDIA_TYPE)
         .json(&body)
+        .timeout(REQUEST_DEADLINE)
         .send()
         .await
-        .map_err(|error| format!("request failed: {error}"))?;
+        .map_err(failed_request)?;
     write_response(url.path(), response).await.map(|_| ())
 }
 
@@ -308,6 +335,7 @@ pub(crate) async fn patch_document(
         .header(reqwest::header::CONTENT_TYPE, MEDIA_TYPE)
         .header(reqwest::header::ACCEPT, MEDIA_TYPE)
         .json(&serde_json::json!({ "data": data }))
+        .timeout(REQUEST_DEADLINE)
         .send()
         .await
         .map_err(request_error)?;
@@ -324,6 +352,7 @@ pub(crate) async fn delete_resource_typed(
         .delete(url.clone())
         .bearer_auth(token)
         .header(reqwest::header::ACCEPT, MEDIA_TYPE)
+        .timeout(REQUEST_DEADLINE)
         .send()
         .await
         .map_err(request_error)?;
@@ -349,9 +378,10 @@ pub(crate) async fn delete_resource(
         .delete(url.clone())
         .bearer_auth(token)
         .header(reqwest::header::ACCEPT, MEDIA_TYPE)
+        .timeout(REQUEST_DEADLINE)
         .send()
         .await
-        .map_err(|error| format!("request failed: {error}"))?;
+        .map_err(failed_request)?;
     write_response(url.path(), response).await.map(|_| ())
 }
 
@@ -886,6 +916,59 @@ mod tests {
             "proxy dump containing internal details",
         );
         assert!(!error.message().contains("internal details"));
+    }
+
+    /// A server that accepts the connection, optionally sends `prefix`, and
+    /// then goes quiet with the socket held open until the test ends.
+    async fn silent_server(prefix: &'static [u8]) -> std::net::SocketAddr {
+        use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind test server");
+        let address = listener.local_addr().expect("test server address");
+        tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.expect("accept request");
+            let mut request = [0_u8; 2048];
+            let _ = socket.read(&mut request).await;
+            let _ = socket.write_all(prefix).await;
+            std::future::pending::<()>().await;
+        });
+        address
+    }
+
+    async fn fetch_from_silent_server(prefix: &'static [u8]) -> RequestError {
+        let address = silent_server(prefix).await;
+        tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            fetch_document_within(
+                &reqwest::Client::new(),
+                url::Url::parse(&format!("http://{address}/data/test")).expect("test URL"),
+                "token",
+                std::time::Duration::from_millis(200),
+            ),
+        )
+        .await
+        .expect("the request deadline fires well before the test's own")
+        .expect_err("a silent server must fail")
+    }
+
+    /// The case that held a request, and its caller's lock, until restart: a
+    /// connected server that stops answering. The deadline covers both the
+    /// wait for an answer and the document body, and its expiry reads as a
+    /// timeout rather than as "could not reach".
+    #[tokio::test]
+    async fn a_server_that_stops_answering_hits_the_deadline_as_a_timeout() {
+        use faf_domain::state::RequestFailureKind;
+
+        for prefix in [
+            b"".as_slice(),
+            b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n{\"data\":".as_slice(),
+        ] {
+            let error = fetch_from_silent_server(prefix).await;
+            assert_eq!(error.kind(), RequestFailureKind::Offline);
+            assert!(error.message().contains("timed out"), "{}", error.message());
+        }
     }
 
     #[tokio::test]

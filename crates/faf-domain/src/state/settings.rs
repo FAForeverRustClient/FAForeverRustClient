@@ -2,8 +2,10 @@
 //!
 //! Preferences live in the backend-owned [`crate::state::AppState`] and are
 //! projected by the UI. Grouping them by feature keeps the IPC contract stable
-//! as the settings page grows and lets each UI section replace one coherent
-//! value rather than dispatching a stringly-typed key/value pair.
+//! as the settings page grows. A UI section changes a group by sending a typed
+//! patch of the fields it touched (see `preference_patch!`), never a whole
+//! group copied out of its last snapshot, and never a stringly-typed key/value
+//! pair.
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -474,6 +476,13 @@ pub struct AppearancePreferences {
     /// replay from players who are online right now, which is all the API
     /// offers: it has no country for an account.
     pub replay_flags: bool,
+    /// The picture behind the interface, as the name it was stored under in
+    /// the client's `backgrounds` folder (#439). Empty is the theme's own
+    /// background.
+    pub background_image: String,
+    /// How far the picture is darkened under the interface, in percent, so
+    /// text stays readable over a bright one. Clamped to `0..=90`.
+    pub background_dim: u8,
 }
 
 // A field-level `#[serde(default)]` would have been shorter, but specta turns
@@ -497,6 +506,8 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             hover_open_delay_ms: u16,
             hover_close_delay_ms: u16,
             replay_flags: bool,
+            background_image: String,
+            background_dim: u8,
         }
 
         impl Default for Wire {
@@ -512,6 +523,8 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
                     hover_open_delay_ms: defaults.hover_open_delay_ms,
                     hover_close_delay_ms: defaults.hover_close_delay_ms,
                     replay_flags: defaults.replay_flags,
+                    background_image: defaults.background_image,
+                    background_dim: defaults.background_dim,
                 }
             }
         }
@@ -529,6 +542,8 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             hover_open_delay_ms: wire.hover_open_delay_ms.min(MAX_HOVER_DELAY_MS),
             hover_close_delay_ms: wire.hover_close_delay_ms.min(MAX_HOVER_DELAY_MS),
             replay_flags: wire.replay_flags,
+            background_image: wire.background_image,
+            background_dim: wire.background_dim.min(MAX_BACKGROUND_DIM),
         })
     }
 }
@@ -584,9 +599,16 @@ impl Default for AppearancePreferences {
             // that without the panel trailing the pointer down the list.
             hover_close_delay_ms: 160,
             replay_flags: false,
+            background_image: String::new(),
+            // Enough that the interface's own surfaces read as surfaces over a
+            // busy picture; the slider goes either way.
+            background_dim: 60,
         }
     }
 }
+
+/// The most a background may be darkened. Past this it is a black screen.
+pub const MAX_BACKGROUND_DIM: u8 = 90;
 
 impl AppearancePreferences {
     pub fn normalized(mut self) -> Self {
@@ -597,6 +619,7 @@ impl AppearancePreferences {
             .clamp(MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH);
         self.hover_open_delay_ms = self.hover_open_delay_ms.min(MAX_HOVER_DELAY_MS);
         self.hover_close_delay_ms = self.hover_close_delay_ms.min(MAX_HOVER_DELAY_MS);
+        self.background_dim = self.background_dim.min(MAX_BACKGROUND_DIM);
         self
     }
 }
@@ -1665,6 +1688,12 @@ pub struct GamePreferences {
     /// library; without any of those it does nothing. Windows and Linux.
     #[serde(default)]
     pub steam_presence: bool,
+    /// Take the frame off Forged Alliance's window and stretch it over its
+    /// monitor, for as long as the game runs (#445): the "borderless
+    /// windowed" mode players used to get from a third-party script. Needs the
+    /// game itself set to windowed. Off by default. Windows only.
+    #[serde(default)]
+    pub borderless_window: bool,
 }
 
 /// The most generated maps a keep list may hold. Far past what anybody sets,
@@ -1698,6 +1727,7 @@ impl Default for GamePreferences {
             keep_generated_maps: false,
             keep_generated_maps_limit: 0,
             steam_presence: false,
+            borderless_window: false,
         }
     }
 }
@@ -1799,6 +1829,10 @@ pub struct UpdatePreferences {
     pub automatic: bool,
     /// Also offer prereleases. Java's `preReleaseCheckEnabled`, where it picks
     /// between two entirely separate check tasks.
+    ///
+    /// On by default: every release of this client so far has been published
+    /// as a prerelease, so a client on the stable channel was never offered
+    /// one. A settings file that already stores the choice keeps it.
     pub pre_release: bool,
 }
 
@@ -1806,7 +1840,7 @@ impl Default for UpdatePreferences {
     fn default() -> Self {
         Self {
             automatic: true,
-            pre_release: false,
+            pre_release: true,
         }
     }
 }
@@ -2077,10 +2111,10 @@ pub struct LiveReplayFilters {
     pub max_players: String,
     pub hide_modded: bool,
     pub hide_single_player: bool,
-    /// Hides the games the client can tell will rate nobody: an unranked map,
-    /// a sim mod that is not on the ranked list, or a free-for-all. Lobby
-    /// settings are not visible to any client, so this is the same question
-    /// the game browser's own "Hide unranked" asks, and the same answer.
+    /// Hides the games the client can tell will rate nobody: an unranked map
+    /// or a sim mod that is not on the ranked list. Lobby settings are not
+    /// visible to any client, so this is the same question the game browser's
+    /// own "Hide unranked" asks, and the same answer.
     ///
     /// `default` on this field alone rather than on the struct: a settings
     /// file written before this filter existed has every other key and not
@@ -2090,6 +2124,12 @@ pub struct LiveReplayFilters {
     #[serde(default)]
     pub hide_unranked: bool,
     pub friends_only: bool,
+    /// Keep these filters when the client restarts (#447). Off unless asked
+    /// for: a search typed yesterday that still hid games after a restart
+    /// read as a bug, so by default the filters last one session. `default`
+    /// for the same reason as `hide_unranked`.
+    #[serde(default)]
+    pub remember: bool,
 }
 
 /// Last successfully submitted custom-game form. Both reference clients retain
@@ -2294,6 +2334,10 @@ pub struct BrowsingPreferences {
     pub matchmaker_recent_columns: Vec<u32>,
     /// The recent games' columns in the order they are drawn, the same way.
     pub matchmaker_recent_order: Vec<u32>,
+    /// And for the party invite dialog's player list.
+    pub matchmaker_invite_columns: Vec<u32>,
+    /// The invite list's columns in the order they are drawn, the same way.
+    pub matchmaker_invite_order: Vec<u32>,
     /// Named mod sets the host dialog can re-apply in one click.
     ///
     /// Only the word is shared with `mod_vault_preset` above, which is a vault
@@ -2301,6 +2345,14 @@ pub struct BrowsingPreferences {
     pub mod_presets: Vec<ModPreset>,
     /// Visible column keys in the rating leaderboard table.
     pub leaderboard_rating_columns: Vec<String>,
+    /// Whether the rating leaderboard's player search also matches names a
+    /// player used to go by (#424).
+    ///
+    /// Off for a fresh install, because it turns a lookup into a list of
+    /// candidates, but a way of searching rather than a fact about one search:
+    /// somebody who ticks it ticks it every time, and the box reset itself
+    /// whenever the tab was opened again.
+    pub leaderboard_include_former_names: bool,
     /// Last searched player username in the replay vault. When empty, defaults
     /// to the currently authenticated player name.
     pub replay_vault_player: String,
@@ -2367,11 +2419,14 @@ impl Default for BrowsingPreferences {
             coop_board_columns: Vec::new(),
             matchmaker_recent_columns: Vec::new(),
             matchmaker_recent_order: Vec::new(),
+            matchmaker_invite_columns: Vec::new(),
+            matchmaker_invite_order: Vec::new(),
             mod_presets: Vec::new(),
             leaderboard_rating_columns: DEFAULT_LEADERBOARD_RATING_COLUMNS
                 .iter()
                 .map(|col| (*col).to_owned())
                 .collect(),
+            leaderboard_include_former_names: false,
             replay_vault_player: String::new(),
             replay_chat_channel: String::new(),
             replay_chat_transfers: ReplayChatTransfers::Show,
@@ -2420,8 +2475,13 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             matchmaker_recent_columns: Vec<u32>,
             #[serde(default)]
             matchmaker_recent_order: Vec<u32>,
+            matchmaker_invite_columns: Vec<u32>,
+            #[serde(default)]
+            matchmaker_invite_order: Vec<u32>,
             mod_presets: Vec<ModPreset>,
             leaderboard_rating_columns: Vec<String>,
+            #[serde(default)]
+            leaderboard_include_former_names: bool,
             replay_vault_player: String,
             #[serde(default)]
             replay_chat_channel: String,
@@ -2458,8 +2518,11 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     coop_board_columns: defaults.coop_board_columns,
                     matchmaker_recent_columns: defaults.matchmaker_recent_columns,
                     matchmaker_recent_order: defaults.matchmaker_recent_order,
+                    matchmaker_invite_columns: defaults.matchmaker_invite_columns,
+                    matchmaker_invite_order: defaults.matchmaker_invite_order,
                     mod_presets: defaults.mod_presets,
                     leaderboard_rating_columns: defaults.leaderboard_rating_columns,
+                    leaderboard_include_former_names: defaults.leaderboard_include_former_names,
                     replay_vault_player: defaults.replay_vault_player,
                     replay_chat_channel: defaults.replay_chat_channel,
                     replay_chat_transfers: defaults.replay_chat_transfers,
@@ -2494,8 +2557,11 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             coop_board_columns: wire.coop_board_columns,
             matchmaker_recent_columns: wire.matchmaker_recent_columns,
             matchmaker_recent_order: wire.matchmaker_recent_order,
+            matchmaker_invite_columns: wire.matchmaker_invite_columns,
+            matchmaker_invite_order: wire.matchmaker_invite_order,
             mod_presets: wire.mod_presets,
             leaderboard_rating_columns: wire.leaderboard_rating_columns,
+            leaderboard_include_former_names: wire.leaderboard_include_former_names,
             replay_vault_player: wire.replay_vault_player,
             replay_chat_channel: wire.replay_chat_channel,
             replay_chat_transfers: wire.replay_chat_transfers,
@@ -2627,6 +2693,8 @@ impl BrowsingPreferences {
         self.coop_board_columns = normalize_column_widths(self.coop_board_columns);
         self.matchmaker_recent_columns = normalize_column_widths(self.matchmaker_recent_columns);
         self.matchmaker_recent_order = normalize_column_order(self.matchmaker_recent_order);
+        self.matchmaker_invite_columns = normalize_column_widths(self.matchmaker_invite_columns);
+        self.matchmaker_invite_order = normalize_column_order(self.matchmaker_invite_order);
         self
     }
 }
@@ -2862,6 +2930,644 @@ impl SettingsState {
     }
 }
 
+/// Serde glue for one field of a preference patch.
+///
+/// A patch has to tell "leave this alone" from "set this to nothing", because
+/// some preferences are themselves optional: clearing the cache lifetime is
+/// `cacheLifetimeDays: null`, and that must not read as "unchanged". Plain
+/// `Option<Option<T>>` cannot say it, since serde reads `null` as the outer
+/// `None`. So a field that is present at all, `null` included, is `Some`, and
+/// only a missing one falls back to the `#[serde(default)]` of `None`.
+///
+/// Writing a patch back out is the mirror image, and is done by hand in
+/// `preference_patch!` rather than derived: an untouched field has to be left
+/// out, not written as `null`, or the patch would read back as one that
+/// clears it. `skip_serializing_if` would say that, but the bindings exporter
+/// cannot represent a field that is only sometimes written, so the derive is
+/// not available here.
+fn patch_field<'de, T: Deserialize<'de>, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<T>, D::Error> {
+    T::deserialize(deserializer).map(Some)
+}
+
+/// serde's `rename_all = "camelCase"` for one field name, for the hand-written
+/// `Serialize` of a patch. `use_24_hour_time` is `use24HourTime` either way.
+fn camel_case(snake: &str) -> String {
+    let mut out = String::with_capacity(snake.len());
+    let mut upper = false;
+    for character in snake.chars() {
+        if character == '_' {
+            upper = true;
+        } else if upper {
+            out.extend(character.to_uppercase());
+            upper = false;
+        } else {
+            out.push(character);
+        }
+    }
+    out
+}
+
+/// Declare the patch type for one preference group.
+///
+/// Every control used to send its whole group, assembled from the snapshot the
+/// webview last saw, and the service replaced the group with it. Two changes
+/// inside one round trip therefore each carried the *old* value of the other
+/// field, and the second reverted the first. A patch names only what changed
+/// and is merged into the authoritative group in the backend, so it cannot
+/// carry a stale copy of anything it did not mean to touch.
+///
+/// Plain fields are replaced when present. `nested` fields are groups of their
+/// own and take a patch of their own, so changing one column width does not
+/// rewrite the filter rules beside it. Lists and maps are replaced whole: they
+/// are one value each, and the controls that edit them own all of it.
+///
+/// [`apply_to`] destructures the group without `..` on purpose. A field added
+/// to the group and forgotten here is a compile error rather than a preference
+/// no patch can reach.
+///
+/// [`apply_to`]: GeneralPreferencesPatch::apply_to
+macro_rules! preference_patch {
+    (
+        $(#[$meta:meta])*
+        $patch:ident for $base:ident {
+            $($field:ident: $ty:ty),* $(,)?
+        }
+        $(nested { $($nested:ident: $nested_patch:ident),* $(,)? })?
+    ) => {
+        $(#[$meta])*
+        #[derive(Debug, Clone, PartialEq, Default, Deserialize, Type)]
+        #[serde(rename_all = "camelCase")]
+        pub struct $patch {
+            $(
+                #[serde(default, deserialize_with = "patch_field")]
+                #[specta(type = $ty)]
+                pub $field: Option<$ty>,
+            )*
+            $($(
+                #[serde(default)]
+                #[specta(type = $nested_patch)]
+                pub $nested: Option<$nested_patch>,
+            )*)?
+        }
+
+        impl Serialize for $patch {
+            fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                use serde::ser::SerializeMap;
+                let mut map = serializer.serialize_map(None)?;
+                $(if let Some(value) = &self.$field {
+                    map.serialize_entry(&camel_case(stringify!($field)), value)?;
+                })*
+                $($(if let Some(value) = &self.$nested {
+                    map.serialize_entry(&camel_case(stringify!($nested)), value)?;
+                })*)?
+                map.end()
+            }
+        }
+
+        impl $patch {
+            /// `base` with every field this patch names replaced, and every
+            /// other one exactly as it was. Not normalised: the caller does
+            /// that once the whole group is merged, because several bounds
+            /// depend on more than one field.
+            pub fn apply_to(self, base: $base) -> $base {
+                let $base { $($field,)* $($($nested,)*)? } = base;
+                $base {
+                    $($field: self.$field.unwrap_or($field),)*
+                    $($($nested: match self.$nested {
+                        Some(patch) => patch.apply_to($nested),
+                        None => $nested,
+                    },)*)?
+                }
+            }
+        }
+
+        /// A patch naming every field: the whole group, for the rare caller
+        /// that really does mean to replace all of it.
+        impl From<$base> for $patch {
+            fn from(base: $base) -> Self {
+                let $base { $($field,)* $($($nested,)*)? } = base;
+                Self {
+                    $($field: Some($field),)*
+                    $($($nested: Some($nested.into()),)*)?
+                }
+            }
+        }
+    };
+}
+
+preference_patch! {
+    /// A change to [`GeneralPreferences`]; see `preference_patch!`.
+    GeneralPreferencesPatch for GeneralPreferences {
+        start_page: Tab,
+        auto_login: bool,
+        remember_typed_entries: bool,
+    }
+}
+
+preference_patch! {
+    /// A change to [`EventsPreferences`]. The settings tab only ever names the
+    /// week start; the reminder list belongs to the Events tab's own commands.
+    EventsPreferencesPatch for EventsPreferences {
+        week_start: WeekStart,
+        reminders: Vec<EventReminder>,
+    }
+}
+
+preference_patch! {
+    /// A change to [`AppearancePreferences`].
+    AppearancePreferencesPatch for AppearancePreferences {
+        density: UiDensity,
+        reduce_motion: bool,
+        ui_scale: u16,
+        game_tile_columns: u8,
+        sidebar_width: u16,
+        hover_panels: bool,
+        hover_open_delay_ms: u16,
+        hover_close_delay_ms: u16,
+        replay_flags: bool,
+        background_image: String,
+        background_dim: u8,
+    }
+}
+
+preference_patch! {
+    /// A change to some of the per-kind tones in [`NotificationSoundChoices`].
+    NotificationSoundChoicesPatch for NotificationSoundChoices {
+        match_found: NotificationSound,
+        private_message: NotificationSound,
+        mention: NotificationSound,
+        friend_online: NotificationSound,
+        friend_offline: NotificationSound,
+        friend_playing: NotificationSound,
+        new_custom_game: NotificationSound,
+        game_full: NotificationSound,
+        game_launched: NotificationSound,
+        review_reminder: NotificationSound,
+        party_invite: NotificationSound,
+        other: NotificationSound,
+    }
+}
+
+preference_patch! {
+    /// A change to [`NotificationPreferences`].
+    NotificationPreferencesPatch for NotificationPreferences {
+        enabled: bool,
+        desktop: bool,
+        desktop_all_kinds: bool,
+        sound: bool,
+        sound_choice_version: u8,
+        notify_when_focused: bool,
+        toast_position: ToastPosition,
+        match_found: bool,
+        private_messages: bool,
+        mentions: bool,
+        friend_online: bool,
+        friend_offline: bool,
+        friend_playing: bool,
+        new_custom_games: bool,
+        new_custom_games_friends_only: bool,
+        game_full: bool,
+        game_launched: bool,
+        review_reminder: bool,
+        party_invites: bool,
+        stream_live: bool,
+        map_generated: bool,
+        queue_opponent_queues: Vec<String>,
+        volume: u8,
+        repeat_cooldown_seconds: u16,
+        map_pool_muted_queues: Vec<String>,
+    }
+    nested {
+        sounds: NotificationSoundChoicesPatch,
+    }
+}
+
+preference_patch! {
+    /// A change to some of the colours in [`ChatNameColors`].
+    ChatNameColorsPatch for ChatNameColors {
+        self_color: String,
+        friends: String,
+        foes: String,
+        moderators: String,
+        admins: String,
+        pings: String,
+        players: BTreeMap<String, String>,
+    }
+}
+
+preference_patch! {
+    /// A change to [`ChatPreferences`].
+    ChatPreferencesPatch for ChatPreferences {
+        show_joins_parts: bool,
+        show_timestamps: bool,
+        use_24_hour_time: bool,
+        colored_names: bool,
+        roster_width: u16,
+        font_size: u16,
+        sender_width: u16,
+        hide_foe_messages: bool,
+        visible_message_limit: u16,
+        auto_join_channels: Vec<String>,
+        auto_join_language_channel: bool,
+        auto_join_newbie_channel: bool,
+        newbie_channel_game_threshold: u32,
+        muted_players: Vec<String>,
+        read_markers: BTreeMap<String, String>,
+        hidden_roster_categories: Vec<String>,
+    }
+    nested {
+        name_colors: ChatNameColorsPatch,
+    }
+}
+
+preference_patch! {
+    /// A change to [`ConnectivityPreferences`].
+    ConnectivityPreferencesPatch for ConnectivityPreferences {
+        adapter: IceAdapter,
+        host_adapter: IceAdapter,
+        selection_version: u8,
+    }
+}
+
+preference_patch! {
+    /// A change to [`DebugPreferences`].
+    DebugPreferencesPatch for DebugPreferences {
+        ice_adapter_debug_window: bool,
+        ice_adapter_info_window: bool,
+        ice_adapter_console_window: bool,
+        map_generator_window: bool,
+    }
+}
+
+preference_patch! {
+    /// A change to [`PathPreferences`].
+    PathPreferencesPatch for PathPreferences {
+        vault_dir: String,
+        maps_dir: String,
+        mods_dir: String,
+        replays_dir: String,
+        game_prefs_path: String,
+        map_generator_dir: String,
+        java_path: String,
+        wine_prefix: String,
+    }
+}
+
+preference_patch! {
+    /// A change to [`GamePreferences`]. The two cache limits are optional
+    /// preferences, so `null` for either is "no limit", not "unchanged".
+    GamePreferencesPatch for GamePreferences {
+        additional_arguments: Vec<String>,
+        launch_wrapper: String,
+        auto_generate_maps: bool,
+        confirm_downloads_before_joining: bool,
+        cache_lifetime_days: Option<u32>,
+        cache_size_alert_gb: Option<u32>,
+        cache_rolling_branches: bool,
+        pipe_live_replay: bool,
+        keep_generated_maps: bool,
+        keep_generated_maps_limit: u32,
+        steam_presence: bool,
+        borderless_window: bool,
+    }
+}
+
+preference_patch! {
+    /// A change to [`DiscordPreferences`].
+    DiscordPreferencesPatch for DiscordPreferences {
+        enabled: bool,
+        disallow_joins: bool,
+    }
+}
+
+preference_patch! {
+    /// A change to [`UpdatePreferences`].
+    UpdatePreferencesPatch for UpdatePreferences {
+        automatic: bool,
+        pre_release: bool,
+    }
+}
+
+preference_patch! {
+    /// A change to [`CustomGameBrowserPreferences`].
+    CustomGameBrowserPreferencesPatch for CustomGameBrowserPreferences {
+        sort: CustomGameSort,
+        sort_reversed: bool,
+        hide_private: bool,
+        hide_modded: bool,
+        hide_unranked: bool,
+        hide_foes: bool,
+        apply_filters: bool,
+        rules: Vec<CustomGameFilterRule>,
+        column_widths: Vec<u32>,
+        column_order: Vec<u32>,
+        detail_width: u32,
+        detail_hidden: bool,
+    }
+}
+
+preference_patch! {
+    /// A change to [`LiveReplayFilters`].
+    LiveReplayFiltersPatch for LiveReplayFilters {
+        search: String,
+        game_type: String,
+        featured_mod: String,
+        active_players: String,
+        max_players: String,
+        hide_modded: bool,
+        hide_single_player: bool,
+        hide_unranked: bool,
+        friends_only: bool,
+        remember: bool,
+    }
+}
+
+preference_patch! {
+    /// A change to [`HostGamePreferences`]. Either rating bound may be `null`,
+    /// which is an open end rather than "unchanged".
+    HostGamePreferencesPatch for HostGamePreferences {
+        title: String,
+        featured_mod: String,
+        visibility: String,
+        map: String,
+        password_enabled: bool,
+        password: String,
+        enforce_rating_range: bool,
+        rating_min: Option<i32>,
+        rating_max: Option<i32>,
+    }
+}
+
+preference_patch! {
+    /// A change to [`BrowsingPreferences`], the group with the most writers:
+    /// nearly every list, vault and lobby view remembers something here.
+    BrowsingPreferencesPatch for BrowsingPreferences {
+        custom_games_view: CustomGameView,
+        replays_view: CustomGameView,
+        live_replay_view: CustomGameView,
+        matchmaker_unselected_queues: Vec<String>,
+        matchmaker_factions: Vec<String>,
+        matchmaker_chat_width: u32,
+        favorite_maps: Vec<String>,
+        favorite_mods: Vec<String>,
+        map_vault_preset: String,
+        mod_vault_preset: String,
+        map_vault_sort: String,
+        mod_vault_sort: String,
+        vault_page_size: u32,
+        replay_list_columns: Vec<u32>,
+        replay_list_order: Vec<u32>,
+        live_replay_columns: Vec<u32>,
+        live_replay_order: Vec<u32>,
+        coop_board_columns: Vec<u32>,
+        matchmaker_recent_columns: Vec<u32>,
+        matchmaker_recent_order: Vec<u32>,
+        matchmaker_invite_columns: Vec<u32>,
+        matchmaker_invite_order: Vec<u32>,
+        mod_presets: Vec<ModPreset>,
+        leaderboard_rating_columns: Vec<String>,
+        leaderboard_include_former_names: bool,
+        replay_vault_player: String,
+        replay_chat_channel: String,
+        replay_chat_transfers: ReplayChatTransfers,
+        legacy_storage_migrated: bool,
+    }
+    nested {
+        custom_games_browser: CustomGameBrowserPreferencesPatch,
+        live_replay_filters: LiveReplayFiltersPatch,
+        host_game: HostGamePreferencesPatch,
+        host_coop: HostGamePreferencesPatch,
+    }
+}
+
+/// Point every notification tone that plays a removed sound back at a shipped
+/// one. `None` when nothing named it, so a removal that touches no setting
+/// does not write the settings file for nothing.
+///
+/// The shipped default rather than silence: a row that was set to play
+/// something keeps playing something.
+pub fn without_custom_sound(
+    sounds: &NotificationSoundChoices,
+    name: &str,
+) -> Option<NotificationSoundChoices> {
+    let mut next = sounds.clone();
+    let mut changed = false;
+    for sound in [
+        &mut next.match_found,
+        &mut next.private_message,
+        &mut next.mention,
+        &mut next.friend_online,
+        &mut next.friend_offline,
+        &mut next.friend_playing,
+        &mut next.new_custom_game,
+        &mut next.game_full,
+        &mut next.game_launched,
+        &mut next.review_reminder,
+        &mut next.party_invite,
+        &mut next.other,
+    ] {
+        if matches!(sound, NotificationSound::Custom(stored) if stored == name) {
+            *sound = NotificationSound::Chime;
+            changed = true;
+        }
+    }
+    changed.then_some(next)
+}
+
+/// Put back every slot that `next` newly points at a refused added sound.
+///
+/// "Newly" is the point: a slot that already named the sound before this
+/// change is left as it was, so changing one row never rewrites another that
+/// happens to name a file that has since gone. Returns whether anything was
+/// put back. The settings service refuses a sound that is being removed or
+/// whose file no longer exists, so a dropdown that still listed it cannot
+/// leave a saved setting naming a deleted file.
+pub fn refuse_new_custom_sounds(
+    previous: &NotificationSoundChoices,
+    next: &mut NotificationSoundChoices,
+    refused: impl Fn(&str) -> bool,
+) -> bool {
+    let mut put_back = false;
+    for (before, after) in [
+        (&previous.match_found, &mut next.match_found),
+        (&previous.private_message, &mut next.private_message),
+        (&previous.mention, &mut next.mention),
+        (&previous.friend_online, &mut next.friend_online),
+        (&previous.friend_offline, &mut next.friend_offline),
+        (&previous.friend_playing, &mut next.friend_playing),
+        (&previous.new_custom_game, &mut next.new_custom_game),
+        (&previous.game_full, &mut next.game_full),
+        (&previous.game_launched, &mut next.game_launched),
+        (&previous.review_reminder, &mut next.review_reminder),
+        (&previous.party_invite, &mut next.party_invite),
+        (&previous.other, &mut next.other),
+    ] {
+        if after != before {
+            if let NotificationSound::Custom(name) = &*after {
+                if refused(name) {
+                    *after = before.clone();
+                    put_back = true;
+                }
+            }
+        }
+    }
+    put_back
+}
+
+/// The string lists the webview changes one entry at a time: a star, a mute,
+/// a collapsed roster category, a chip.
+///
+/// They get their own command, [`SettingsCommand::SetListMember`], rather than
+/// a `Patch*` field, because a patch replaces the whole list and the webview
+/// can only build that list from its last snapshot. Two stars inside one round
+/// trip sent `[A]` and then `[B]`, and only B survived. Naming the one entry
+/// and whether it belongs lets the service apply it to the list as the backend
+/// holds it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum PreferenceList {
+    /// `browsing.favorite_maps`, by map folder name.
+    FavoriteMaps,
+    /// `browsing.favorite_mods`, by mod uid.
+    FavoriteMods,
+    /// `browsing.leaderboard_rating_columns`.
+    LeaderboardRatingColumns,
+    /// `chat.muted_players`, by login.
+    MutedPlayers,
+    /// `chat.hidden_roster_categories`.
+    HiddenRosterCategories,
+    /// `chat.auto_join_channels`.
+    AutoJoinChannels,
+}
+
+/// The same entry, whatever case or padding an older client stored it in. Every
+/// list behind [`PreferenceList`] already treats entries this way when it is
+/// normalised, so matching any looser or stricter would leave a duplicate the
+/// normalisation then silently resolves the other way.
+fn same_entry(left: &str, right: &str) -> bool {
+    left.trim().to_lowercase() == right.trim().to_lowercase()
+}
+
+/// `value` added to (`member`) or removed from `list`, normalised as a whole.
+///
+/// An entry already present is left where it is rather than moved to the end,
+/// so starring something twice does not reorder anybody's favourites.
+fn with_member(mut list: Vec<String>, value: &str, member: bool) -> Vec<String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return list;
+    }
+    let present = list.iter().any(|entry| same_entry(entry, value));
+    if member && !present {
+        list.push(value.to_owned());
+    } else if !member {
+        list.retain(|entry| !same_entry(entry, value));
+    }
+    list
+}
+
+/// The event that adds `value` to or removes it from one list, worked out
+/// against `settings` as they are now and normalised like any other write to
+/// the group.
+pub fn list_member_changed(
+    settings: &SettingsState,
+    list: PreferenceList,
+    value: &str,
+    member: bool,
+) -> SettingsEvent {
+    let mut next = settings.clone();
+    match list {
+        PreferenceList::FavoriteMaps => {
+            next.browsing.favorite_maps = with_member(next.browsing.favorite_maps, value, member)
+        }
+        PreferenceList::FavoriteMods => {
+            next.browsing.favorite_mods = with_member(next.browsing.favorite_mods, value, member)
+        }
+        PreferenceList::LeaderboardRatingColumns => {
+            next.browsing.leaderboard_rating_columns =
+                with_member(next.browsing.leaderboard_rating_columns, value, member)
+        }
+        PreferenceList::MutedPlayers => {
+            next.chat.muted_players = with_member(next.chat.muted_players, value, member)
+        }
+        PreferenceList::HiddenRosterCategories => {
+            next.chat.hidden_roster_categories =
+                with_member(next.chat.hidden_roster_categories, value, member)
+        }
+        PreferenceList::AutoJoinChannels => {
+            next.chat.auto_join_channels = with_member(next.chat.auto_join_channels, value, member)
+        }
+    }
+    let next = next.normalized();
+    match list {
+        PreferenceList::FavoriteMaps
+        | PreferenceList::FavoriteMods
+        | PreferenceList::LeaderboardRatingColumns => SettingsEvent::BrowsingChanged {
+            preferences: Box::new(next.browsing),
+        },
+        PreferenceList::MutedPlayers
+        | PreferenceList::HiddenRosterCategories
+        | PreferenceList::AutoJoinChannels => SettingsEvent::ChatChanged {
+            preferences: Box::new(next.chat),
+        },
+    }
+}
+
+/// The event that gives one player's name a colour, or (`None`) takes it away.
+///
+/// Any entry for the same login in another case goes first: the map is keyed
+/// by the spelling it was assigned under, and two spellings of one player would
+/// leave which colour wins to the map's ordering.
+pub fn player_name_color_changed(
+    settings: &SettingsState,
+    player: &str,
+    color: Option<&str>,
+) -> SettingsEvent {
+    let mut next = settings.clone();
+    let player = player.trim();
+    if !player.is_empty() {
+        let players = &mut next.chat.name_colors.players;
+        players.retain(|existing, _| !same_entry(existing, player));
+        if let Some(color) = color {
+            players.insert(player.to_owned(), color.to_owned());
+        }
+    }
+    SettingsEvent::ChatChanged {
+        preferences: Box::new(next.normalized().chat),
+    }
+}
+
+/// The event that saves one mod preset, replacing the one of the same name in
+/// place (so a row of preset buttons does not reorder on every save) or adding
+/// it at the end.
+pub fn mod_preset_saved(settings: &SettingsState, preset: ModPreset) -> SettingsEvent {
+    let mut next = settings.clone();
+    let presets = &mut next.browsing.mod_presets;
+    match presets
+        .iter_mut()
+        .find(|existing| same_entry(&existing.name, &preset.name))
+    {
+        Some(existing) => *existing = preset,
+        None => presets.push(preset),
+    }
+    SettingsEvent::BrowsingChanged {
+        preferences: Box::new(next.normalized().browsing),
+    }
+}
+
+/// The event that deletes the mod preset called `name`.
+pub fn mod_preset_deleted(settings: &SettingsState, name: &str) -> SettingsEvent {
+    let mut next = settings.clone();
+    next.browsing
+        .mod_presets
+        .retain(|preset| !same_entry(&preset.name, name));
+    SettingsEvent::BrowsingChanged {
+        preferences: Box::new(next.normalized().browsing),
+    }
+}
+
 // No `Eq`: the map generator's density preferences are `f32`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 // `rename_all_fields` matters from `KeptGeneratedMaps` onwards: every earlier
@@ -2971,14 +3677,17 @@ pub enum SettingsCommand {
     SetReplayGamePath {
         path: String,
     },
-    SetPaths {
-        preferences: PathPreferences,
+    // The `Patch*` commands carry only the fields that changed, merged into
+    // the authoritative group by the service; see `preference_patch!` for why
+    // a whole group is never sent any more.
+    PatchPaths {
+        patch: PathPreferencesPatch,
     },
-    SetGeneral {
-        preferences: GeneralPreferences,
+    PatchGeneral {
+        patch: GeneralPreferencesPatch,
     },
-    SetAppearance {
-        preferences: AppearancePreferences,
+    PatchAppearance {
+        patch: AppearancePreferencesPatch,
     },
     SetPlayerNote {
         player_id: i32,
@@ -2997,36 +3706,73 @@ pub enum SettingsCommand {
         from: String,
         to: String,
     },
-    SetNotifications {
-        preferences: NotificationPreferences,
+    PatchNotifications {
+        patch: Box<NotificationPreferencesPatch>,
+    },
+    /// Delete one sound the player added, after pointing every notification
+    /// that plays it back at a shipped tone.
+    ///
+    /// One command rather than a settings write followed by a file delete in
+    /// the webview, because the order is the whole point: the file may only go
+    /// once no saved setting names it, and a webview firing both cannot know
+    /// when, or whether, the first one landed. Failure is reported as a
+    /// notification; the file is kept whenever the settings could not be
+    /// written first.
+    RemoveNotificationSound {
+        name: String,
     },
     /// Boxed, like the event it produces.
-    SetChat {
-        preferences: Box<ChatPreferences>,
+    PatchChat {
+        patch: Box<ChatPreferencesPatch>,
     },
-    SetGame {
-        preferences: GamePreferences,
+    PatchGame {
+        patch: Box<GamePreferencesPatch>,
     },
-    SetDiscord {
-        preferences: DiscordPreferences,
+    PatchDiscord {
+        patch: DiscordPreferencesPatch,
     },
-    SetConnectivity {
-        preferences: ConnectivityPreferences,
+    PatchConnectivity {
+        patch: ConnectivityPreferencesPatch,
     },
-    SetDebug {
-        preferences: DebugPreferences,
+    PatchDebug {
+        patch: DebugPreferencesPatch,
     },
-    SetUpdates {
-        preferences: UpdatePreferences,
+    PatchUpdates {
+        patch: UpdatePreferencesPatch,
     },
+    /// Whole, unlike the groups above: the generator options are one recipe
+    /// the dialog edits as a unit and saves as a unit.
     SetMapGenerator {
         preferences: Box<GeneratorOptions>,
     },
-    SetBrowsing {
-        preferences: Box<BrowsingPreferences>,
+    PatchBrowsing {
+        patch: Box<BrowsingPreferencesPatch>,
     },
-    SetEvents {
-        preferences: Box<EventsPreferences>,
+    PatchEvents {
+        patch: Box<EventsPreferencesPatch>,
+    },
+    // The commands below change one entry of a list or map. A `Patch*` field
+    // would carry the whole collection as the webview last saw it, so two
+    // quick toggles of the same list would still lose the first; these are
+    // applied to the backend's copy instead. See `PreferenceList`.
+    /// Add `value` to one string list (`member`), or remove it.
+    SetListMember {
+        list: PreferenceList,
+        value: String,
+        member: bool,
+    },
+    /// Give one player's name a chat colour, or clear the one it has.
+    SetPlayerNameColor {
+        player: String,
+        color: Option<String>,
+    },
+    /// Save a named mod set, replacing one of the same name in place.
+    SaveModPreset {
+        preset: ModPreset,
+    },
+    /// Delete the named mod set.
+    DeleteModPreset {
+        name: String,
     },
     CheckInstalls,
     RefreshGameCache,
@@ -3574,10 +4320,12 @@ mod tests {
         // has ever saved a setting, and nothing would ever say so.
         let settings: SettingsState = serde_json::from_str(r#"{"theme":"forgeDark"}"#).unwrap();
         assert!(settings.updates.automatic);
-        assert!(!settings.updates.pre_release);
+        // Prereleases are offered by default, so a file without the group
+        // gains that too.
+        assert!(settings.updates.pre_release);
         assert_eq!(
             settings.updates.channel(),
-            super::super::ReleaseChannel::Stable
+            super::super::ReleaseChannel::PreRelease
         );
     }
 
@@ -3703,6 +4451,7 @@ mod tests {
                     hide_single_player: false,
                     hide_unranked: true,
                     friends_only: true,
+                    remember: false,
                 },
                 host_game: HostGamePreferences {
                     title: "  Friday night  ".into(),
@@ -3745,6 +4494,8 @@ mod tests {
                 coop_board_columns: Vec::new(),
                 matchmaker_recent_columns: Vec::new(),
                 matchmaker_recent_order: Vec::new(),
+                matchmaker_invite_columns: Vec::new(),
+                matchmaker_invite_order: Vec::new(),
                 mod_vault_preset: "  UI  ".into(),
                 mod_presets: Vec::new(),
                 leaderboard_rating_columns: vec![
@@ -3752,6 +4503,7 @@ mod tests {
                     "MEAN".into(),
                     "invalid_col".into(),
                 ],
+                leaderboard_include_former_names: true,
                 replay_vault_player: "  VindexNoob  ".into(),
                 replay_chat_channel: "  ALLIES  ".into(),
                 replay_chat_transfers: ReplayChatTransfers::Hide,
@@ -3863,6 +4615,31 @@ mod tests {
         let browsing: BrowsingPreferences = serde_json::from_str("{}").unwrap();
         assert!(browsing.replay_chat_channel.is_empty());
         assert_eq!(browsing.replay_chat_transfers, ReplayChatTransfers::Show);
+    }
+
+    #[test]
+    fn the_former_names_search_is_off_until_ticked_and_then_remembered() {
+        // A settings file from before #424 searches current names only.
+        let browsing: BrowsingPreferences = serde_json::from_str("{}").unwrap();
+        assert!(!browsing.leaderboard_include_former_names);
+
+        // The leaderboard sends the box alone; nothing else in the group moves.
+        let patch: BrowsingPreferencesPatch =
+            serde_json::from_str(r#"{"leaderboardIncludeFormerNames":true}"#).unwrap();
+        let ticked = patch.apply_to(BrowsingPreferences::default());
+        assert!(ticked.leaderboard_include_former_names);
+        assert_eq!(
+            BrowsingPreferences {
+                leaderboard_include_former_names: false,
+                ..ticked.clone()
+            },
+            BrowsingPreferences::default()
+        );
+
+        // And it survives the round trip through the settings file.
+        let stored = serde_json::to_string(&ticked).unwrap();
+        let reloaded: BrowsingPreferences = serde_json::from_str(&stored).unwrap();
+        assert!(reloaded.leaderboard_include_former_names);
     }
 
     #[test]
@@ -4160,5 +4937,279 @@ mod tests {
             vec!["ladder1v1".to_string()]
         );
         assert!(changed_map_pools(&[], &now).is_empty());
+    }
+
+    #[test]
+    fn settings_patches_merged_one_after_another_keep_each_others_fields() {
+        // The race in miniature: two patches built from the same snapshot,
+        // applied in turn. Whole groups would have the second undo the first.
+        let first: BrowsingPreferencesPatch =
+            serde_json::from_str(r#"{"favoriteMaps":["gap"]}"#).unwrap();
+        let second: BrowsingPreferencesPatch =
+            serde_json::from_str(r#"{"vaultPageSize":48,"hostGame":{"title":"4v4"}}"#).unwrap();
+
+        let merged = second.apply_to(first.apply_to(BrowsingPreferences::default()));
+        assert_eq!(merged.favorite_maps, ["gap"]);
+        assert_eq!(merged.vault_page_size, 48);
+        assert_eq!(merged.host_game.title, "4v4");
+        // A nested patch leaves the rest of its own group alone.
+        assert_eq!(
+            merged.host_game.featured_mod,
+            HostGamePreferences::default().featured_mod
+        );
+        assert_eq!(
+            merged.custom_games_browser,
+            CustomGameBrowserPreferences::default()
+        );
+    }
+
+    #[test]
+    fn a_patch_tells_an_absent_field_from_a_null_one() {
+        let base = GamePreferences {
+            cache_lifetime_days: Some(30),
+            cache_size_alert_gb: Some(40),
+            ..GamePreferences::default()
+        };
+        // Absent: unchanged. `null`: the optional preference cleared.
+        let patch: GamePreferencesPatch =
+            serde_json::from_str(r#"{"cacheSizeAlertGb":null}"#).unwrap();
+        let merged = patch.apply_to(base);
+        assert_eq!(merged.cache_lifetime_days, Some(30));
+        assert_eq!(merged.cache_size_alert_gb, None);
+
+        // A `null` for a preference that cannot be empty is a broken command,
+        // not a silent no-op.
+        assert!(serde_json::from_str::<GamePreferencesPatch>(r#"{"steamPresence":null}"#).is_err());
+    }
+
+    #[test]
+    fn a_patch_round_trips_with_untouched_fields_left_out() {
+        let patch = ChatPreferencesPatch {
+            use_24_hour_time: Some(true),
+            name_colors: Some(ChatNameColorsPatch {
+                self_color: Some("#112233".into()),
+                ..ChatNameColorsPatch::default()
+            }),
+            ..ChatPreferencesPatch::default()
+        };
+        let json = serde_json::to_value(&patch).unwrap();
+        // The same spelling serde gives the group itself.
+        assert_eq!(
+            json,
+            serde_json::json!({"use24HourTime": true, "nameColors": {"selfColor": "#112233"}})
+        );
+        assert_eq!(
+            serde_json::from_value::<ChatPreferencesPatch>(json).unwrap(),
+            patch
+        );
+
+        let game = GamePreferencesPatch {
+            cache_lifetime_days: Some(None),
+            ..GamePreferencesPatch::default()
+        };
+        let json = serde_json::to_value(&game).unwrap();
+        assert_eq!(json, serde_json::json!({"cacheLifetimeDays": null}));
+        assert_eq!(
+            serde_json::from_value::<GamePreferencesPatch>(json).unwrap(),
+            game
+        );
+    }
+
+    #[test]
+    fn a_whole_group_converts_to_a_patch_that_reproduces_it() {
+        let chat = ChatPreferences {
+            font_size: 15,
+            muted_players: vec!["Foe".into()],
+            ..ChatPreferences::default()
+        };
+        let patch: ChatPreferencesPatch = chat.clone().into();
+        let mut other = ChatPreferences::default();
+        other.show_timestamps = !other.show_timestamps;
+        assert_eq!(patch.apply_to(other), chat);
+    }
+
+    #[test]
+    fn removing_a_custom_sound_repoints_only_the_rows_that_played_it() {
+        let sounds = NotificationSoundChoices {
+            mention: NotificationSound::Custom("horn.wav".into()),
+            other: NotificationSound::Custom("horn.wav".into()),
+            game_full: NotificationSound::Custom("bell.wav".into()),
+            ..NotificationSoundChoices::default()
+        };
+        let next = without_custom_sound(&sounds, "horn.wav").expect("two rows named it");
+        assert_eq!(next.mention, NotificationSound::Chime);
+        assert_eq!(next.other, NotificationSound::Chime);
+        assert_eq!(next.game_full, NotificationSound::Custom("bell.wav".into()));
+        assert_eq!(next.match_found, sounds.match_found);
+
+        // Nothing named it: nothing to write.
+        assert_eq!(without_custom_sound(&sounds, "absent.wav"), None);
+    }
+
+    #[test]
+    fn a_refused_sound_is_put_back_only_where_this_change_chose_it() {
+        let previous = NotificationSoundChoices {
+            // Already named before the change: left alone even though refused.
+            other: NotificationSound::Custom("gone.wav".into()),
+            ..NotificationSoundChoices::default()
+        };
+        let mut next = NotificationSoundChoices {
+            mention: NotificationSound::Custom("gone.wav".into()),
+            game_full: NotificationSound::Custom("bell.wav".into()),
+            ..previous.clone()
+        };
+        let refused = |name: &str| name == "gone.wav";
+
+        assert!(refuse_new_custom_sounds(&previous, &mut next, refused));
+        assert_eq!(
+            next.mention, previous.mention,
+            "the new choice was put back"
+        );
+        assert_eq!(next.game_full, NotificationSound::Custom("bell.wav".into()));
+        assert_eq!(next.other, NotificationSound::Custom("gone.wav".into()));
+
+        let mut unchanged = previous.clone();
+        assert!(!refuse_new_custom_sounds(
+            &previous,
+            &mut unchanged,
+            refused
+        ));
+    }
+
+    /// Apply one element change the way the reducer would, so each assertion
+    /// reads the state a second change would be applied to.
+    fn applied(mut settings: SettingsState, event: SettingsEvent) -> SettingsState {
+        reduce(&mut settings, &event);
+        settings
+    }
+
+    #[test]
+    fn list_members_are_added_and_removed_one_at_a_time() {
+        let settings = SettingsState::default();
+        let settings = applied(
+            settings.clone(),
+            list_member_changed(&settings, PreferenceList::FavoriteMaps, "Gap.v0001", true),
+        );
+        let settings = applied(
+            settings.clone(),
+            list_member_changed(&settings, PreferenceList::FavoriteMaps, "dawn.v0003", true),
+        );
+        // The second star kept the first: this is the whole point.
+        assert_eq!(settings.browsing.favorite_maps, ["gap.v0001", "dawn.v0003"]);
+
+        // A star in another case is the same map, so nothing moves.
+        let again = applied(
+            settings.clone(),
+            list_member_changed(&settings, PreferenceList::FavoriteMaps, "GAP.v0001", true),
+        );
+        assert_eq!(
+            again.browsing.favorite_maps,
+            settings.browsing.favorite_maps
+        );
+
+        // Removal matches any spelling an older client stored.
+        let removed = applied(
+            settings.clone(),
+            list_member_changed(
+                &settings,
+                PreferenceList::FavoriteMaps,
+                " GAP.V0001 ",
+                false,
+            ),
+        );
+        assert_eq!(removed.browsing.favorite_maps, ["dawn.v0003"]);
+    }
+
+    #[test]
+    fn chat_lists_take_members_and_stay_normalised() {
+        let mut settings = SettingsState::default();
+        settings.chat.muted_players = vec!["Zed".into()];
+        let settings = applied(
+            settings.clone(),
+            list_member_changed(&settings, PreferenceList::MutedPlayers, "aurora", true),
+        );
+        // Muted players are kept sorted by the group's own normalisation.
+        assert_eq!(settings.chat.muted_players, ["aurora", "Zed"]);
+        let settings = applied(
+            settings.clone(),
+            list_member_changed(&settings, PreferenceList::MutedPlayers, "zed", false),
+        );
+        assert_eq!(settings.chat.muted_players, ["aurora"]);
+
+        let settings = applied(
+            settings.clone(),
+            list_member_changed(
+                &settings,
+                PreferenceList::HiddenRosterCategories,
+                "ircOnly",
+                true,
+            ),
+        );
+        assert_eq!(settings.chat.hidden_roster_categories, ["ircOnly"]);
+        // A blank value is not an entry.
+        let unchanged = applied(
+            settings.clone(),
+            list_member_changed(&settings, PreferenceList::AutoJoinChannels, "  ", true),
+        );
+        assert_eq!(unchanged.chat, settings.chat);
+    }
+
+    #[test]
+    fn a_player_colour_replaces_every_spelling_of_that_login() {
+        let mut settings = SettingsState::default();
+        settings.chat.name_colors.players = BTreeMap::from([
+            ("Aurora".into(), "#112233".into()),
+            ("Bo".into(), "#445566".into()),
+        ]);
+        let next = applied(
+            settings.clone(),
+            player_name_color_changed(&settings, "aurora", Some("#ABCDEF")),
+        );
+        assert_eq!(
+            next.chat.name_colors.players,
+            BTreeMap::from([
+                ("Bo".into(), "#445566".into()),
+                ("aurora".into(), "#abcdef".into())
+            ])
+        );
+        let cleared = applied(
+            next.clone(),
+            player_name_color_changed(&next, "AURORA", None),
+        );
+        assert_eq!(
+            cleared.chat.name_colors.players,
+            BTreeMap::from([("Bo".into(), "#445566".into())])
+        );
+    }
+
+    #[test]
+    fn a_saved_mod_preset_replaces_its_namesake_in_place() {
+        let mut settings = SettingsState::default();
+        settings.browsing.mod_presets = vec![
+            ModPreset {
+                name: "Replay".into(),
+                uids: vec!["a".into()],
+            },
+            ModPreset {
+                name: "Team".into(),
+                uids: vec!["b".into()],
+            },
+        ];
+        let next = applied(
+            settings.clone(),
+            mod_preset_saved(
+                &settings,
+                ModPreset {
+                    name: "replay".into(),
+                    uids: vec!["c".into()],
+                },
+            ),
+        );
+        let names: Vec<_> = next.browsing.mod_presets.iter().map(|p| &p.name).collect();
+        assert_eq!(names, ["replay", "Team"], "same slot, not moved to the end");
+        assert_eq!(next.browsing.mod_presets[0].uids, ["c"]);
+
+        let next = applied(next.clone(), mod_preset_deleted(&next, "TEAM"));
+        assert_eq!(next.browsing.mod_presets.len(), 1);
     }
 }

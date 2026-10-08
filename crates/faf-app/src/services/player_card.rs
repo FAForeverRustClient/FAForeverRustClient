@@ -7,7 +7,29 @@ use faf_domain::state::{AccountLookup, PlayerCardCommand, PlayerCardEvent};
 /// eleventh. The list scrolls, so fifty costs nothing on screen.
 const ACCOUNT_LOOKUP_LIMIT: usize = 50;
 
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+
+/// The player card's request generations. Owned by this service.
+///
+/// Generations cancel stale player-card requests when users rapidly switch
+/// players/queues: only the newest answer for each part of the card may land.
+#[derive(Default)]
+pub struct PlayerCardContext {
+    /// The profile itself. Opening another player supersedes it, and closing
+    /// the card invalidates it.
+    profile_generation: LatestRequest,
+    /// The matchmaker profile for the queue on screen.
+    matchmaker_generation: LatestRequest,
+    /// The per-map statistics.
+    map_stats_generation: LatestRequest,
+    /// The rating history, which loads page after page. Opening or closing a
+    /// profile invalidates it, so pages for the previous player stop landing.
+    history_generation: LatestRequest,
+}
+
+/// How many of a player's games a profile scans until asked for all of them
+/// (#440): ten pages of the API, three round trips at four in flight.
+const RECENT_HISTORY_GAMES: usize = 1_000;
 
 pub async fn handle(command: PlayerCardCommand, ctx: &ServiceCtx, out: &EventSink) {
     match command {
@@ -31,13 +53,13 @@ pub async fn handle(command: PlayerCardCommand, ctx: &ServiceCtx, out: &EventSin
             });
         }
         PlayerCardCommand::Open { player_id, login } => {
-            let generation = ctx.player_card_profile_generation.begin();
-            ctx.player_card_history_generation.invalidate();
+            let generation = ctx.player_card.profile_generation.begin();
+            ctx.player_card.history_generation.invalidate();
             out.emit(PlayerCardEvent::Loading {
                 login: login.clone(),
             });
             let result = ctx.ports.player_card.load_profile(player_id, &login).await;
-            if !ctx.player_card_profile_generation.is_current(generation) {
+            if !ctx.player_card.profile_generation.is_current(generation) {
                 return;
             }
             match result {
@@ -48,19 +70,19 @@ pub async fn handle(command: PlayerCardCommand, ctx: &ServiceCtx, out: &EventSin
             }
         }
         PlayerCardCommand::Close => {
-            ctx.player_card_profile_generation.invalidate();
-            ctx.player_card_history_generation.invalidate();
+            ctx.player_card.profile_generation.invalidate();
+            ctx.player_card.history_generation.invalidate();
             out.emit(PlayerCardEvent::Closed);
         }
         PlayerCardCommand::LoadHistory { mut query } => {
-            let generation = ctx.player_card_history_generation.begin();
+            let generation = ctx.player_card.history_generation.begin();
             query.page = query.page.max(1);
             query.page_size = query.page_size.clamp(100, 10_000);
             // Every page of the period, in order. `append` is the page number
             // rather than a flag from the caller: the first page replaces
             // whatever the last period left behind, and the rest add to it.
             loop {
-                if !ctx.player_card_history_generation.is_current(generation) {
+                if !ctx.player_card.history_generation.is_current(generation) {
                     return;
                 }
                 let append = query.page > 1;
@@ -69,7 +91,7 @@ pub async fn handle(command: PlayerCardCommand, ctx: &ServiceCtx, out: &EventSin
                     append,
                 });
                 let result = ctx.ports.player_card.load_rating_history(&query).await;
-                if !ctx.player_card_history_generation.is_current(generation) {
+                if !ctx.player_card.history_generation.is_current(generation) {
                     return;
                 }
                 match result {
@@ -93,14 +115,14 @@ pub async fn handle(command: PlayerCardCommand, ctx: &ServiceCtx, out: &EventSin
             }
         }
         PlayerCardCommand::LoadMatchmakerProfile { player_id, login } => {
-            let generation = ctx.player_card_matchmaker_generation.begin();
+            let generation = ctx.player_card.matchmaker_generation.begin();
             out.emit(PlayerCardEvent::MatchmakerProfileLoading { player_id });
             let result = ctx
                 .ports
                 .player_card
                 .load_matchmaker_profile(player_id, &login)
                 .await;
-            if !ctx.player_card_matchmaker_generation.is_current(generation) {
+            if !ctx.player_card.matchmaker_generation.is_current(generation) {
                 return;
             }
             match result {
@@ -112,13 +134,20 @@ pub async fn handle(command: PlayerCardCommand, ctx: &ServiceCtx, out: &EventSin
                 }
             }
         }
-        PlayerCardCommand::LoadMapStats { player_id } => {
+        PlayerCardCommand::LoadMapStats { player_id, full } => {
             // Guarded by its own generation: opening one profile after another
             // must not let the slower first scan land under the second name.
-            let generation = ctx.player_card_map_stats_generation.begin();
+            let generation = ctx.player_card.map_stats_generation.begin();
             out.emit(PlayerCardEvent::MapStatsLoading { player_id });
-            let result = ctx.ports.player_card.load_map_stats(player_id).await;
-            if !ctx.player_card_map_stats_generation.is_current(generation) {
+            let result = if full {
+                ctx.ports.player_card.load_map_stats(player_id).await
+            } else {
+                ctx.ports
+                    .player_card
+                    .load_recent_map_stats(player_id, RECENT_HISTORY_GAMES)
+                    .await
+            };
+            if !ctx.player_card.map_stats_generation.is_current(generation) {
                 return;
             }
             match result {
@@ -129,10 +158,11 @@ pub async fn handle(command: PlayerCardCommand, ctx: &ServiceCtx, out: &EventSin
             }
         }
         PlayerCardCommand::LoadPartyPlacements { player_ids } => {
-            // Held across the read of what is known and the fetch, so a second
-            // party change arriving mid-lookup waits and then finds the ids it
-            // shares already recorded.
-            let _serial = ctx.party_placements_mutation.acquire().await;
+            crate::runtime::expect_admitted(crate::runtime::Key::PartyPlacements);
+            // Serial in the command policy (`Key::PartyPlacements`), across the
+            // read of what is known and the fetch, so a second party change
+            // arriving mid-lookup waits and then finds the ids it shares
+            // already recorded.
             let mut wanted: Vec<i32> = out.with_state(|state| {
                 player_ids
                     .iter()

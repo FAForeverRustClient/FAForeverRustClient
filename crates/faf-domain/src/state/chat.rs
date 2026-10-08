@@ -33,6 +33,41 @@ pub fn read_marker_key(username: &str, channel: &str) -> String {
 /// server will hand us on join.
 const MAX_MESSAGES: usize = 500;
 
+/// Bound on the client's own commentary (joins, parts, quits, topic changes)
+/// per channel, counted apart from [`MAX_MESSAGES`] (#441). In #aeolus the
+/// joins and quits alone came to 500 lines in well under an hour, and sharing
+/// one bound with the conversation meant they pushed what people had said out
+/// of the history, even with joins and parts hidden.
+const MAX_INFO_MESSAGES: usize = 500;
+
+/// Keeps a channel's history inside both bounds, evicting the oldest line of
+/// whichever kind is over. The TypeScript twin is `capMessages` in
+/// `ui/src/store/reducers/chat.ts`.
+fn cap_messages(messages: &mut Vec<ChatMessage>) {
+    let info = messages
+        .iter()
+        .filter(|message| message.kind == ChatMessageKind::Info)
+        .count();
+    let mut excess_info = info.saturating_sub(MAX_INFO_MESSAGES);
+    let mut excess_other = (messages.len() - info).saturating_sub(MAX_MESSAGES);
+    if excess_info == 0 && excess_other == 0 {
+        return;
+    }
+    messages.retain(|message| {
+        let budget = if message.kind == ChatMessageKind::Info {
+            &mut excess_info
+        } else {
+            &mut excess_other
+        };
+        if *budget > 0 {
+            *budget -= 1;
+            false
+        } else {
+            true
+        }
+    });
+}
+
 /// Histories retained after explicitly leaving a channel. Keeping this bound
 /// prevents cycling through arbitrary private conversations from growing the
 /// application snapshot forever. The Python client's `ChatLineRestorer`
@@ -369,6 +404,22 @@ impl ChatState {
         }
         self.channel_mut(name).expect("just inserted")
     }
+}
+
+/// Does a reply to `reply_to` answer something `username` wrote?
+///
+/// A reply carries only the id it answers, not the name of whoever wrote the
+/// original, so a reply that does not also type the name would otherwise go
+/// unnoticed. That is the third thing, after a private message and a mention,
+/// that is addressed to the player rather than said near them (#429). Only
+/// the scrollback can answer it: a reply to a line already trimmed from it
+/// counts as an ordinary message.
+fn answers(messages: &[ChatMessage], reply_to: &str, username: &str) -> bool {
+    !reply_to.is_empty()
+        && !username.is_empty()
+        && messages
+            .iter()
+            .any(|m| m.msgid == reply_to && m.sender.eq_ignore_ascii_case(username))
 }
 
 /// Does `content` name `username`? Case-insensitive, and bounded by non-word
@@ -876,10 +927,7 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
             let is_private = c.is_private();
 
             c.messages.push(message.clone());
-            if c.messages.len() > MAX_MESSAGES {
-                let excess = c.messages.len() - MAX_MESSAGES;
-                c.messages.drain(0..excess);
-            }
+            cap_messages(&mut c.messages);
 
             // Sending is the loudest possible "done typing". Relying on the
             // sender's own `done` would leave the indicator up for anyone
@@ -902,7 +950,10 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
                 && !matches!(message.kind, ChatMessageKind::Info | ChatMessageKind::Error);
             if counts {
                 c.unread = c.unread.saturating_add(1);
-                if is_private || mentions(&message.content, &username) {
+                if is_private
+                    || mentions(&message.content, &username)
+                    || answers(&c.messages, &message.reply_to, &username)
+                {
                     c.unread_mentions = c.unread_mentions.saturating_add(1);
                 }
             }
@@ -1196,6 +1247,35 @@ mod tests {
     }
 
     #[test]
+    fn joins_and_parts_do_not_push_the_conversation_out() {
+        // #441: a busy channel's joins and quits filled the shared bound and
+        // the conversation went with them.
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::MessageReceived {
+                channel: DEFAULT_CHANNEL.into(),
+                message: message("said"),
+            },
+        );
+        for i in 0..(MAX_INFO_MESSAGES + 10) {
+            reduce(
+                &mut s,
+                &ChatEvent::MessageReceived {
+                    channel: DEFAULT_CHANNEL.into(),
+                    message: ChatMessage {
+                        kind: ChatMessageKind::Info,
+                        ..message(&format!("join-{i}"))
+                    },
+                },
+            );
+        }
+        let c = s.channel(DEFAULT_CHANNEL).unwrap();
+        assert!(c.messages.iter().any(|kept| kept.id == "said"));
+        assert_eq!(c.messages.len(), MAX_INFO_MESSAGES + 1);
+    }
+
+    #[test]
     fn a_message_for_an_unknown_channel_opens_it() {
         // How an unsolicited private message starts a conversation.
         let mut s = connected("Aurora");
@@ -1235,6 +1315,31 @@ mod tests {
         let c = s.channel("#newbie").unwrap();
         assert_eq!(c.unread, 2);
         assert_eq!(c.unread_mentions, 1);
+    }
+
+    #[test]
+    fn a_reply_to_our_own_line_counts_as_a_mention() {
+        let mut s = connected("Aurora");
+        let mut ours = message("1");
+        ours.sender = "Aurora".into();
+        let mut answer = message("2");
+        answer.reply_to = "srv-1".into();
+        answer.content = "agreed".into();
+        let mut elsewhere = message("3");
+        elsewhere.reply_to = "srv-2".into();
+        for m in [ours, answer, elsewhere] {
+            reduce(
+                &mut s,
+                &ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: m,
+                },
+            );
+        }
+        let c = s.channel("#newbie").unwrap();
+        // Our own line is not unread; the answer to it is a mention, the
+        // answer to somebody else's line is not.
+        assert_eq!((c.unread, c.unread_mentions), (2, 1));
     }
 
     #[test]

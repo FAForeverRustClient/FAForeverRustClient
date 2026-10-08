@@ -1,7 +1,7 @@
 import type {
-  NotificationPreferences,
+  NotificationPreferencesPatch,
   NotificationSound,
-  NotificationSoundChoices,
+  NotificationSoundChoicesPatch,
   ToastPosition,
 } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
@@ -33,10 +33,10 @@ const TOAST_POSITIONS: Record<ToastPosition, MessageKey> = {
   topRight: "settings.notifications.toastPosition.topRight",
 };
 
-const save = (preferences: NotificationPreferences) =>
+const save = (patch: NotificationPreferencesPatch) =>
   ipc.send({
     kind: "Settings",
-    command: { type: "setNotifications", payload: { preferences } },
+    command: { type: "patchNotifications", payload: { patch } },
   });
 
 /* Quietest first, so the list itself says what the choice is about. */
@@ -144,10 +144,10 @@ export function NotificationsSettingsSection() {
       .filter((name) => !queues.some((queue) => queue.queueName === name))
       .map((name) => ({ value: name, label: name })),
   ];
-  const update = (patch: Partial<NotificationPreferences>) =>
-    void save({ ...preferences, ...patch });
-  const setSound = (patch: Partial<NotificationSoundChoices>) =>
-    update({ sounds: { ...preferences.sounds, ...patch } });
+  const update = (patch: NotificationPreferencesPatch) => void save(patch);
+  // One row's tone, nested: the other eleven are not sent at all, so a quick
+  // change to two rows cannot have the second put the first one back.
+  const setSound = (sounds: NotificationSoundChoicesPatch) => update({ sounds });
   // A tone is only reachable when notifications and sound are both on.
   const mute = !preferences.enabled || !preferences.sound;
 
@@ -193,21 +193,30 @@ export function NotificationsSettingsSection() {
   /**
    * Delete one added sound, and put every row that used it back on a tone.
    *
-   * The settings are rewritten before the file goes, so a row can never be
-   * left naming a file that is not there: that state is silence with a
-   * "(missing)" label and no way back to it from the dropdown.
+   * One backend command does both, in that order, and keeps the file unless
+   * the settings were written first: a row left naming a file that is not
+   * there is silence with a "(missing)" label and no way back to it from the
+   * dropdown. Firing the settings write and the delete from here could not
+   * promise that, because nothing here knows when, or whether, the write
+   * landed. A failure arrives as a notification saying which half failed; the
+   * list is read again either way, so it shows what is really on disk.
    */
+  const [removing, setRemoving] = useState<string | null>(null);
+  // Not offered while it is being removed: the backend refuses it then anyway,
+  // and a choice that snaps back is worse than one that is not there.
+  const choosableSounds = removing === null ? customSounds : customSounds.filter((name) => name !== removing);
   const removeSound = useCallback((name: string) => {
-    const sounds = { ...preferences.sounds };
-    for (const [kind, sound] of recordEntries(sounds)) {
-      if (customSoundName(sound) === name) sounds[kind] = "chime";
-    }
-    void save({ ...preferences, sounds });
-    ipc.run(native.removeNotificationSound(name).then(() => {
-      forgetCustomSounds();
-      reloadSounds();
-    }));
-  }, [preferences, reloadSounds]);
+    setRemoving(name);
+    ipc.run(
+      ipc
+        .settle({ kind: "Settings", command: { type: "removeNotificationSound", payload: { name } } })
+        .finally(() => {
+          setRemoving(null);
+          forgetCustomSounds();
+          reloadSounds();
+        }),
+    );
+  }, [reloadSounds]);
 
   return (
     <>
@@ -311,6 +320,7 @@ export function NotificationsSettingsSection() {
                 <button
                   type="button"
                   className="btn-ghost settings-sound-remove"
+                  disabled={removing !== null}
                   onClick={() => removeSound(name)}
                   title={t("settings.notifications.sound.remove", { name })}
                   aria-label={t("settings.notifications.sound.remove", { name })}
@@ -346,38 +356,38 @@ export function NotificationsSettingsSection() {
         />
       </SettingRow>
       <SettingRow label={t("settings.notifications.matchFound")} hint={t("settings.notifications.matchFoundHint")}>
-        <SoundChoice value={preferences.sounds.matchFound} disabled={mute || !preferences.matchFound} what={t("settings.notifications.matchFound")} onChange={(matchFound) => setSound({ matchFound })} custom={customSounds} onAdd={addSound} />
+        <SoundChoice value={preferences.sounds.matchFound} disabled={mute || !preferences.matchFound} what={t("settings.notifications.matchFound")} onChange={(matchFound) => setSound({ matchFound })} custom={choosableSounds} onAdd={addSound} />
         <SettingsSwitch checked={preferences.matchFound} disabled={!preferences.enabled} onChange={(matchFound) => update({ matchFound })} label={t("settings.notifications.matchFound")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.privateMessages")} hint={t("settings.notifications.privateMessagesHint")}>
-        <SoundChoice value={preferences.sounds.privateMessage} disabled={mute || !preferences.privateMessages} what={t("settings.notifications.privateMessages")} onChange={(privateMessage) => setSound({ privateMessage })} custom={customSounds} onAdd={addSound} />
+        <SoundChoice value={preferences.sounds.privateMessage} disabled={mute || !preferences.privateMessages} what={t("settings.notifications.privateMessages")} onChange={(privateMessage) => setSound({ privateMessage })} custom={choosableSounds} onAdd={addSound} />
         <SettingsSwitch checked={preferences.privateMessages} disabled={!preferences.enabled} onChange={(privateMessages) => update({ privateMessages })} label={t("settings.notifications.privateMessages")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.mentions")} hint={t("settings.notifications.mentionsHint")}>
-        <SoundChoice value={preferences.sounds.mention} disabled={mute || !preferences.mentions} what={t("settings.notifications.mentions")} onChange={(mention) => setSound({ mention })} custom={customSounds} onAdd={addSound} />
+        <SoundChoice value={preferences.sounds.mention} disabled={mute || !preferences.mentions} what={t("settings.notifications.mentions")} onChange={(mention) => setSound({ mention })} custom={choosableSounds} onAdd={addSound} />
         <SettingsSwitch checked={preferences.mentions} disabled={!preferences.enabled} onChange={(mentions) => update({ mentions })} label={t("settings.notifications.mentions")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.friendOnline")} hint={t("settings.notifications.friendOnlineHint")}>
-        <SoundChoice value={preferences.sounds.friendOnline} disabled={mute || !preferences.friendOnline} what={t("settings.notifications.friendOnline")} onChange={(friendOnline) => setSound({ friendOnline })} custom={customSounds} onAdd={addSound} />
+        <SoundChoice value={preferences.sounds.friendOnline} disabled={mute || !preferences.friendOnline} what={t("settings.notifications.friendOnline")} onChange={(friendOnline) => setSound({ friendOnline })} custom={choosableSounds} onAdd={addSound} />
         <SettingsSwitch checked={preferences.friendOnline} disabled={!preferences.enabled} onChange={(friendOnline) => update({ friendOnline })} label={t("settings.notifications.friendOnline")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.friendOffline")} hint={t("settings.notifications.friendOfflineHint")}>
-        <SoundChoice value={preferences.sounds.friendOffline} disabled={mute || !preferences.friendOffline} what={t("settings.notifications.friendOffline")} onChange={(friendOffline) => setSound({ friendOffline })} custom={customSounds} onAdd={addSound} />
+        <SoundChoice value={preferences.sounds.friendOffline} disabled={mute || !preferences.friendOffline} what={t("settings.notifications.friendOffline")} onChange={(friendOffline) => setSound({ friendOffline })} custom={choosableSounds} onAdd={addSound} />
         <SettingsSwitch checked={preferences.friendOffline} disabled={!preferences.enabled} onChange={(friendOffline) => update({ friendOffline })} label={t("settings.notifications.friendOffline")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.friendPlaying")} hint={t("settings.notifications.friendPlayingHint")}>
-        <SoundChoice value={preferences.sounds.friendPlaying} disabled={mute || !preferences.friendPlaying} what={t("settings.notifications.friendPlaying")} onChange={(friendPlaying) => setSound({ friendPlaying })} custom={customSounds} onAdd={addSound} />
+        <SoundChoice value={preferences.sounds.friendPlaying} disabled={mute || !preferences.friendPlaying} what={t("settings.notifications.friendPlaying")} onChange={(friendPlaying) => setSound({ friendPlaying })} custom={choosableSounds} onAdd={addSound} />
         <SettingsSwitch checked={preferences.friendPlaying} disabled={!preferences.enabled} onChange={(friendPlaying) => update({ friendPlaying })} label={t("settings.notifications.friendPlaying")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.newGames")} hint={t("settings.notifications.newGamesHint")}>
-        <SoundChoice value={preferences.sounds.newCustomGame} disabled={mute || !preferences.newCustomGames} what={t("settings.notifications.newGames")} onChange={(newCustomGame) => setSound({ newCustomGame })} custom={customSounds} onAdd={addSound} />
+        <SoundChoice value={preferences.sounds.newCustomGame} disabled={mute || !preferences.newCustomGames} what={t("settings.notifications.newGames")} onChange={(newCustomGame) => setSound({ newCustomGame })} custom={choosableSounds} onAdd={addSound} />
         <SettingsSwitch checked={preferences.newCustomGames} disabled={!preferences.enabled} onChange={(newCustomGames) => update({ newCustomGames })} label={t("settings.notifications.newGames")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.friendsGamesOnly")} hint={t("settings.notifications.friendsGamesOnlyHint")}>
         <SettingsSwitch checked={preferences.newCustomGamesFriendsOnly} disabled={!preferences.enabled || !preferences.newCustomGames} onChange={(newCustomGamesFriendsOnly) => update({ newCustomGamesFriendsOnly })} label={t("settings.notifications.friendsGamesOnly")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.gameFull")} hint={t("settings.notifications.gameFullHint")}>
-        <SoundChoice value={preferences.sounds.gameFull} disabled={mute || !preferences.gameFull} what={t("settings.notifications.gameFull")} onChange={(gameFull) => setSound({ gameFull })} custom={customSounds} onAdd={addSound} />
+        <SoundChoice value={preferences.sounds.gameFull} disabled={mute || !preferences.gameFull} what={t("settings.notifications.gameFull")} onChange={(gameFull) => setSound({ gameFull })} custom={choosableSounds} onAdd={addSound} />
         <SettingsSwitch checked={preferences.gameFull} disabled={!preferences.enabled} onChange={(gameFull) => update({ gameFull })} label={t("settings.notifications.gameFull")} />
       </SettingRow>
       {/* A list of queues rather than a switch (#340): "for all queues, or one
@@ -416,15 +426,15 @@ export function NotificationsSettingsSection() {
         </div>
       </SettingRow>
       <SettingRow label={t("settings.notifications.gameLaunched")} hint={t("settings.notifications.gameLaunchedHint")}>
-        <SoundChoice value={preferences.sounds.gameLaunched} disabled={mute || !preferences.gameLaunched} what={t("settings.notifications.gameLaunched")} onChange={(gameLaunched) => setSound({ gameLaunched })} custom={customSounds} onAdd={addSound} />
+        <SoundChoice value={preferences.sounds.gameLaunched} disabled={mute || !preferences.gameLaunched} what={t("settings.notifications.gameLaunched")} onChange={(gameLaunched) => setSound({ gameLaunched })} custom={choosableSounds} onAdd={addSound} />
         <SettingsSwitch checked={preferences.gameLaunched} disabled={!preferences.enabled} onChange={(gameLaunched) => update({ gameLaunched })} label={t("settings.notifications.gameLaunched")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.reviewReminder")} hint={t("settings.notifications.reviewReminderHint")}>
-        <SoundChoice value={preferences.sounds.reviewReminder} disabled={mute || !preferences.reviewReminder} what={t("settings.notifications.reviewReminder")} onChange={(reviewReminder) => setSound({ reviewReminder })} custom={customSounds} onAdd={addSound} />
+        <SoundChoice value={preferences.sounds.reviewReminder} disabled={mute || !preferences.reviewReminder} what={t("settings.notifications.reviewReminder")} onChange={(reviewReminder) => setSound({ reviewReminder })} custom={choosableSounds} onAdd={addSound} />
         <SettingsSwitch checked={preferences.reviewReminder} disabled={!preferences.enabled} onChange={(reviewReminder) => update({ reviewReminder })} label={t("settings.notifications.reviewReminder")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.partyInvites")} hint={t("settings.notifications.partyInvitesHint")}>
-        <SoundChoice value={preferences.sounds.partyInvite} disabled={mute || !preferences.partyInvites} what={t("settings.notifications.partyInvites")} onChange={(partyInvite) => setSound({ partyInvite })} custom={customSounds} onAdd={addSound} />
+        <SoundChoice value={preferences.sounds.partyInvite} disabled={mute || !preferences.partyInvites} what={t("settings.notifications.partyInvites")} onChange={(partyInvite) => setSound({ partyInvite })} custom={choosableSounds} onAdd={addSound} />
         <SettingsSwitch checked={preferences.partyInvites} disabled={!preferences.enabled} onChange={(partyInvites) => update({ partyInvites })} label={t("settings.notifications.partyInvites")} />
       </SettingRow>
       {/* No sound picker, deliberately: a stream is the one kind here that is
@@ -444,7 +454,7 @@ export function NotificationsSettingsSection() {
           want a different tone for each of them. A finished map has a switch
           above but still plays this tone. */}
       <SettingRow label={t("settings.notifications.otherSounds")} hint={t("settings.notifications.otherSoundsHint")}>
-        <SoundChoice value={preferences.sounds.other} disabled={mute} what={t("settings.notifications.otherSounds")} onChange={(other) => setSound({ other })} custom={customSounds} onAdd={addSound} />
+        <SoundChoice value={preferences.sounds.other} disabled={mute} what={t("settings.notifications.otherSounds")} onChange={(other) => setSound({ other })} custom={choosableSounds} onAdd={addSound} />
       </SettingRow>
     </>
   );

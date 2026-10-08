@@ -17,9 +17,21 @@
 //! service does the same: the response says nothing about what else changed,
 //! and a list that disagrees with the server is worse than a slow one.
 
-use faf_domain::state::{GuidesCommand, GuidesEvent};
+use faf_domain::state::{
+    contribution_problem, read_draft_images, ContributionProblem, GuidesCommand, GuidesEvent,
+};
 
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::ports::guides::LOGIN_CANCELLED;
+use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+
+/// The catalogue maintenance service's request generation. Owned by this
+/// service.
+#[derive(Default)]
+pub struct GuidesContext {
+    /// Only the newest queue answer may land: every verdict reloads the queue,
+    /// so an older response arriving late would restore rows already decided.
+    queue_generation: LatestRequest,
+}
 
 pub async fn handle(cmd: GuidesCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
@@ -40,7 +52,28 @@ pub async fn handle(cmd: GuidesCommand, ctx: &ServiceCtx, out: &EventSink) {
             reason,
             note,
         } => reject(number, reason, note, ctx, out).await,
-        GuidesCommand::Submit { draft } => {
+        GuidesCommand::Submit { draft, images } => {
+            // Checked here as well as by the form, because the form is not the
+            // only thing that can send this command, and a draft with no title
+            // opened an issue called "Training submission: " with nothing
+            // after it.
+            if let Some(problem) = contribution_problem(&draft) {
+                out.emit(GuidesEvent::SubmitFailed {
+                    reason: problem_reason(problem).into(),
+                });
+                return;
+            }
+            // The pictures are checked here, before anything is sent, and the
+            // ones the text no longer shows are dropped. The form checks the
+            // same limits as a file is picked; this is the answer for a
+            // caller that skipped it, and the one that decides.
+            let images = match read_draft_images(&draft.body, &images) {
+                Ok(images) => images,
+                Err(reason) => {
+                    out.emit(GuidesEvent::SubmitFailed { reason });
+                    return;
+                }
+            };
             out.emit(GuidesEvent::Submitting);
             // The author is this client's FAF account, which is what a reader
             // of the catalogue will see credited. GitHub knows who opened the
@@ -54,7 +87,13 @@ pub async fn handle(cmd: GuidesCommand, ctx: &ServiceCtx, out: &EventSink) {
                     .unwrap_or_default()
             });
             let entry = faf_domain::state::entry_from_draft(&draft, &author);
-            match ctx.ports.guides.submit(entry, draft.body.clone()).await {
+            let answer = ctx
+                .ports
+                .guides
+                .submit(entry, draft.body.clone(), images)
+                .await;
+            report_lost_session(ctx, out);
+            match answer {
                 Ok(url) => {
                     out.emit(GuidesEvent::Submitted { url });
                     // The queue the author is about to look at should already
@@ -64,6 +103,29 @@ pub async fn handle(cmd: GuidesCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(GuidesEvent::SubmitFailed { reason }),
             }
         }
+    }
+}
+
+/// Why a draft cannot be submitted, in the backend's words. The form shows its
+/// own translated sentence before it ever sends one of these, so this is the
+/// answer to a caller that skipped the form.
+pub fn problem_reason(problem: ContributionProblem) -> &'static str {
+    match problem {
+        ContributionProblem::NoTitle => "a submission needs a title",
+        ContributionProblem::NoContent => "a submission needs a link or a written guide",
+        ContributionProblem::BadUrl => "the link must be an ordinary https:// address",
+    }
+}
+
+/// Tell the tab when the port dropped a token GitHub no longer accepts.
+///
+/// Any request can be the one that finds out, a queue read included, and that
+/// read then succeeds anonymously, so without this the tab would keep showing
+/// a session that ended and the next accept would fail for a reason nobody
+/// was told.
+fn report_lost_session(ctx: &ServiceCtx, out: &EventSink) {
+    if let Some(reason) = ctx.ports.guides.take_lost_session() {
+        out.emit(GuidesEvent::SignInFailed { reason });
     }
 }
 
@@ -83,21 +145,42 @@ async fn restore(ctx: &ServiceCtx, out: &EventSink) {
         }),
         // Nobody has ever signed in here. Not a failure and not worth a word.
         Ok(None) => {}
-        // There was a session and it no longer works. Said out loud, because
-        // otherwise an expired token looks exactly like never having signed in.
-        Err(reason) => out.emit(GuidesEvent::SignInFailed { reason }),
+        Err(reason) => {
+            // GitHub said the token is dead, and the port dropped it. Said out
+            // loud, because otherwise an expired token looks exactly like never
+            // having signed in.
+            if let Some(lost) = ctx.ports.guides.take_lost_session() {
+                out.emit(GuidesEvent::SignInFailed { reason: lost });
+                return;
+            }
+            // Anything else (GitHub unreachable, a server error) says nothing
+            // about the token, which the port kept. A session already on
+            // screen stays there; the tab re-checks every time it opens, and
+            // one failed check is no reason to take the controls away.
+            let signed_in = out.with_state(|state| state.guides.may_moderate());
+            if signed_in {
+                tracing::info!(%reason, "could not re-check the GitHub session; keeping it");
+            } else {
+                out.emit(GuidesEvent::SignInFailed {
+                    reason: format!(
+                        "{reason}. The saved sign-in was kept and is tried again when the tab next opens"
+                    ),
+                });
+            }
+        }
     }
 }
 
 async fn sign_in(ctx: &ServiceCtx, out: &EventSink) {
-    let Some(_guard) = ctx.guides_login_active.try_acquire() else {
-        // Already waiting on a code. Starting a second one would issue a
-        // second code and leave the one on screen dead.
-        return;
-    };
-
+    crate::runtime::expect_admitted(crate::runtime::Key::GuidesSignIn);
+    // Single-flight in the command policy (`Key::GuidesSignIn`): a second
+    // sign-in while one waits on a code would issue a second code and leave
+    // the one on screen dead.
     let code = match ctx.ports.guides.begin_login().await {
         Ok(code) => code,
+        // Cancelled while the code was being issued: the cancel already said
+        // so, and showing the code now would put a dead one on screen.
+        Err(reason) if reason == LOGIN_CANCELLED => return,
         Err(reason) => {
             out.emit(GuidesEvent::SignInFailed { reason });
             return;
@@ -121,18 +204,22 @@ async fn sign_in(ctx: &ServiceCtx, out: &EventSink) {
             // rate limit, and the maintainer is about to act on it.
             load_queue(ctx, out).await;
         }
-        // A cancellation already emitted its own event; anything else is worth
-        // reporting where the sign-in button is.
-        Err(reason) if reason.contains("cancelled") => {}
+        // A cancellation already emitted its own event, but it is said again:
+        // a cancel that landed between the code being issued and announced is
+        // otherwise overtaken by that announcement, leaving the tab waiting on
+        // a code nothing polls for. Anything else is worth reporting where the
+        // sign-in button is.
+        Err(reason) if reason == LOGIN_CANCELLED => out.emit(GuidesEvent::SignInCancelled),
         Err(reason) => out.emit(GuidesEvent::SignInFailed { reason }),
     }
 }
 
 async fn load_queue(ctx: &ServiceCtx, out: &EventSink) {
-    let generation = ctx.guides_queue_generation.begin();
+    let generation = ctx.guides.queue_generation.begin();
     out.emit(GuidesEvent::QueueLoading);
     let answer = ctx.ports.guides.list_submissions().await;
-    if !ctx.guides_queue_generation.is_current(generation) {
+    report_lost_session(ctx, out);
+    if !ctx.guides.queue_generation.is_current(generation) {
         return; // A newer load has already been asked for.
     }
     match answer {
@@ -141,9 +228,12 @@ async fn load_queue(ctx: &ServiceCtx, out: &EventSink) {
     }
 }
 
+/// Accepting and rejecting are serial in the command policy
+/// (`Key::GuidesVerdict`): two accepts would each read the catalogue, patch
+/// their own copy, and one would be refused by the content hash. Only the
+/// write is serial: each verdict ends its turn before the reloads that follow.
 async fn accept(number: i32, ctx: &ServiceCtx, out: &EventSink) {
-    let _order = ctx.guides_verdict.acquire().await;
-
+    crate::runtime::expect_admitted(crate::runtime::Key::GuidesVerdict);
     // Read back rather than carried on the command: the queue may have been
     // reloaded since the button was drawn, and publishing an entry that is no
     // longer what the issue says would be worse than refusing.
@@ -155,22 +245,36 @@ async fn accept(number: i32, ctx: &ServiceCtx, out: &EventSink) {
         return;
     };
     if !submission.is_acceptable() {
-        out.emit(GuidesEvent::WriteFailed {
-            number,
-            reason: "this submission carries no catalogue entry to publish".into(),
-        });
+        let reason = match &submission.pull {
+            Some(pull) if !pull.foreign.is_empty() => format!(
+                "this pull request changes more than its guide and pictures ({}), so it has to be reviewed on GitHub",
+                pull.foreign.join(", ")
+            ),
+            Some(_) if submission.guide.is_none() => {
+                "this pull request's guide could not be read; refresh the queue and try again".into()
+            }
+            _ => "this submission carries no catalogue entry to publish".into(),
+        };
+        out.emit(GuidesEvent::WriteFailed { number, reason });
         return;
     }
 
     out.emit(GuidesEvent::Accepting { number });
-    match ctx.ports.guides.accept(submission).await {
+    let answer = ctx.ports.guides.accept(submission).await;
+    // The write is what must not overtake another; the reloads after it are
+    // reads. Holding the verdict order across them made the next verdict wait
+    // for a whole catalogue reload it has nothing to do with.
+    crate::runtime::end_turn();
+    report_lost_session(ctx, out);
+    match answer {
         Ok(()) => {
             out.emit(GuidesEvent::Accepted { number });
             load_queue(ctx, out).await;
             // And the library, because the maintainer's next question is
             // whether it worked. Leaving them to press refresh on another tab
             // to find out is how a working write looks broken.
-            super::training::handle(faf_domain::state::TrainingCommand::Load, ctx, out).await;
+            crate::runtime::run_command(faf_domain::state::TrainingCommand::Load.into(), ctx, out)
+                .await;
         }
         Err(reason) => out.emit(GuidesEvent::WriteFailed { number, reason }),
     }
@@ -183,10 +287,13 @@ async fn reject(
     ctx: &ServiceCtx,
     out: &EventSink,
 ) {
-    let _order = ctx.guides_verdict.acquire().await;
-
+    crate::runtime::expect_admitted(crate::runtime::Key::GuidesVerdict);
     out.emit(GuidesEvent::Rejecting { number });
-    match ctx.ports.guides.reject(number, reason, note).await {
+    let answer = ctx.ports.guides.reject(number, reason, note).await;
+    // As for an accept: the queue reload after the write is not part of it.
+    crate::runtime::end_turn();
+    report_lost_session(ctx, out);
+    match answer {
         Ok(()) => {
             out.emit(GuidesEvent::Rejected { number });
             load_queue(ctx, out).await;

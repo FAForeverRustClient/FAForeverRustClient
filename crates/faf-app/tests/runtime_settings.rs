@@ -9,13 +9,11 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use faf_app::infra::fake_ports;
 use faf_app::ports::{
-    DiscoveredInstallPaths, GameLaunchParams, InstallPresence, ProcessPort, ReplayPort,
-    SettingsPort, VaultSearchResult,
+    DiscoveredInstallPaths, GameLaunchParams, InstallPresence, ProcessPort, ReplayPlaybackPort,
+    SettingsPort,
 };
 use faf_app::{App, Ports};
-use faf_domain::state::{
-    LiveReplayTarget, LocalReplay, ReplayQuery, SettingsCommand, SettingsState,
-};
+use faf_domain::state::{LiveReplayTarget, SettingsCommand, SettingsState};
 
 /// Records only what this file asserts on: which install the replay preparation
 /// steps were pointed at. Everything else is unreachable here.
@@ -24,7 +22,7 @@ struct RecordingReplay {
 }
 
 #[async_trait]
-impl ReplayPort for RecordingReplay {
+impl ReplayPlaybackPort for RecordingReplay {
     async fn watch_live(
         &self,
         _target: LiveReplayTarget,
@@ -35,36 +33,7 @@ impl ReplayPort for RecordingReplay {
     async fn play_file(&self, _path: PathBuf) -> Result<Option<String>, String> {
         unreachable!()
     }
-    async fn search_vault(&self, _query: ReplayQuery) -> Result<VaultSearchResult, String> {
-        unreachable!()
-    }
-    async fn list_featured_mods(&self) -> Result<Vec<String>, String> {
-        unreachable!()
-    }
     async fn watch_vault(&self, _uid: i32) -> Result<Option<String>, String> {
-        unreachable!()
-    }
-    async fn download_vault(&self, _uid: i32) -> Result<LocalReplay, String> {
-        unreachable!()
-    }
-    async fn load_details(
-        &self,
-        _uid: i32,
-        _local_path: Option<PathBuf>,
-    ) -> Result<faf_domain::state::ReplayDetails, String> {
-        unreachable!()
-    }
-    async fn load_analysis(
-        &self,
-        _uid: i32,
-        _local_path: Option<PathBuf>,
-    ) -> Result<faf_domain::state::ReplayAnalysis, String> {
-        unreachable!()
-    }
-    async fn list_local(&self, _limit: usize) -> Result<Vec<LocalReplay>, String> {
-        Ok(Vec::new())
-    }
-    async fn delete_local(&self, _path: PathBuf) -> Result<(), String> {
         unreachable!()
     }
 
@@ -72,7 +41,6 @@ impl ReplayPort for RecordingReplay {
         self.install_dirs.lock().unwrap().push(dir);
     }
 }
-
 struct StoredSettings(SettingsState);
 
 #[async_trait]
@@ -81,7 +49,9 @@ impl SettingsPort for StoredSettings {
         self.0.clone()
     }
 
-    async fn save(&self, _settings: &SettingsState) {}
+    async fn save(&self, _settings: &SettingsState) -> Result<(), String> {
+        Ok(())
+    }
 }
 
 struct RecordingSettings {
@@ -95,8 +65,9 @@ impl SettingsPort for RecordingSettings {
         self.loaded.clone()
     }
 
-    async fn save(&self, settings: &SettingsState) {
+    async fn save(&self, settings: &SettingsState) -> Result<(), String> {
         self.saved.lock().unwrap().push(settings.clone());
+        Ok(())
     }
 }
 
@@ -229,7 +200,7 @@ async fn loading_settings_points_replay_preparation_at_the_configured_install() 
             paths: Arc::new(Mutex::new(Vec::new())),
             discovered: DiscoveredInstallPaths::default(),
         }),
-        replay: Arc::new(RecordingReplay {
+        replay_playback: Arc::new(RecordingReplay {
             install_dirs: install_dirs.clone(),
         }),
         ..fake_ports()

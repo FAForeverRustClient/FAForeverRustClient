@@ -29,7 +29,12 @@ import { coopFailureAction } from "./coopFailure";
 import { coopEmptyReason, isOpenCoopGame, joinableCoopGame } from "./coopGames";
 import "../browser/custom-games.css";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { scenarioBadge, sortCoopScenarios } from "./coopScenarios";
+import { translateCoopMissionDescription, translateCoopMissionName } from "../../../i18n";
+import {
+  displayScenarioOptionLabel,
+  sortCoopMissions,
+  sortCoopScenarios,
+} from "./coopScenarios";
 import "./coop.css";
 
 /** `0` means "any team size": matches `ANY_PLAYER_COUNT` in the domain. */
@@ -80,16 +85,13 @@ interface Props {
  * co-op toolbar does not have.
  */
 function clearSavedFilters() {
-  const current = useAppStore.getState().state.settings.browsing;
   ipc.send({
     kind: "Settings",
     command: {
-      type: "setBrowsing",
+      type: "patchBrowsing",
       payload: {
-        preferences: {
-          ...current,
+        patch: {
           customGamesBrowser: {
-            ...current.customGamesBrowser,
             hidePrivate: false,
             hideModded: false,
             hideFoes: false,
@@ -149,16 +151,13 @@ export function CoopPanel({
   const activeScenarioId = selectedScenarioId ?? scenarios[0]?.id ?? null;
 
   const missionsInActiveScenario = useMemo(() => {
-    return coop.missions
-      .filter((mission) =>
+    return sortCoopMissions(
+      coop.missions.filter((mission) =>
         activeScenarioId === NO_CAMPAIGN
           ? mission.scenarioId === null
           : mission.scenarioId === activeScenarioId,
-      )
-      // Campaign order, as the Java client lists them: the API's `order` is the
-      // mission's place in its campaign, and the alphabet is not ("... 10"
-      // sorts before "... 2"). The name only breaks ties.
-      .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+      ),
+    );
   }, [coop.missions, activeScenarioId]);
 
   // Selected mission
@@ -368,7 +367,7 @@ export function CoopPanel({
               >
                 {scenarios.map((scenario) => (
                   <option key={scenario.id} value={scenario.id}>
-                    {scenario.name} ({t(`lobby.coop.badge.${scenarioBadge(scenario)}`)})
+                    {displayScenarioOptionLabel(scenario, t)}
                   </option>
                 ))}
                 {orphanCount > 0 && (
@@ -390,7 +389,7 @@ export function CoopPanel({
               >
                 {missionsInActiveScenario.map((mission) => (
                   <option key={mission.id} value={mission.id}>
-                    {mission.name}
+                    {translateCoopMissionName(mission.mapFolderName, mission.name)}
                   </option>
                 ))}
               </select>
@@ -434,6 +433,10 @@ const BOARD_COLUMN_SHARES = [5, 11, 10, 34, 12, 16, 12];
 
 function MissionDetail({ mission }: { mission: CoopMission }) {
   const { t } = useTranslation();
+  const description = translateCoopMissionDescription(
+    mission.mapFolderName,
+    mission.description,
+  );
   const boardLabels = [
     "#",
     t("lobby.coop.column.time"),
@@ -452,7 +455,7 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
 
   return (
     <>
-      {mission.description && <p className="coop-detail-brief">{mission.description}</p>}
+      {description && <p className="coop-detail-brief">{description}</p>}
 
       <div className="coop-board-head">
         <h4>{t("lobby.coop.fastest")}</h4>

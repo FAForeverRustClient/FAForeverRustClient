@@ -2,7 +2,8 @@ import type { ReplayQuery } from "../../../ipc/bindings";
 import { MultiSelect, type MultiSelectOption } from "../../../design-system/MultiSelect";
 import { ReplayTagFilter } from "../ReplayTagsDialog";
 import { RangeSlider } from "../../../design-system/RangeSlider";
-import { FACTION_OPTIONS } from "../../../shared/factions";
+import { factionOptions } from "../../../shared/factions";
+import { kilometres } from "../../../shared/mapPresentation";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 
@@ -85,7 +86,7 @@ export function ReplaySearchSliders({ form, setRange }: Pick<Props, "form" | "se
         step={1}
         low={form.mapMinSizeKm}
         high={form.mapMaxSizeKm}
-        format={(v) => `${v} km`}
+        format={kilometres}
         onChange={(lo, hi) => setRange("mapMinSizeKm", "mapMaxSizeKm", lo, hi)}
       />
       <RangeSlider
@@ -103,11 +104,10 @@ export function ReplaySearchSliders({ form, setRange }: Pick<Props, "form" | "se
 }
 
 /**
- * Game type and results per page, for the search panel's first row: both are
- * asked often enough that hiding them behind "More filters" cost a click
- * every time.
+ * Game type, for the search panel's first row: asked often enough that hiding
+ * it behind "More filters" cost a click every time.
  */
-export function ReplayTypeAndPageSize({ form, featuredMods, set }: Pick<Props, "form" | "featuredMods" | "set">) {
+export function ReplayGameTypeField({ form, featuredMods, set }: Pick<Props, "form" | "featuredMods" | "set">) {
   const { t } = useTranslation();
   // The host dialog's four, in its order, less any the vault does not list:
   // a type the vault has no games of is a filter that can only come back
@@ -139,27 +139,39 @@ export function ReplayTypeAndPageSize({ form, featuredMods, set }: Pick<Props, "
           onChange={pickFeatured}
         />
       </div>
-
-      <label className="vault-field vault-search-page-size search-panel-field">
-        <span className="vault-field-label search-panel-label">{t("replays.filters.resultsPerPage")}</span>
-        <select
-          className="vault-input search-panel-control"
-          value={form.pageSize}
-          onChange={(e) => set("pageSize", Number(e.target.value))}
-        >
-          {/* 100 is the ceiling because it is the API's: a larger
-              `page[size]` is rewritten server side without a word about it,
-              so "200 per page" returned 100 rows and made the second half of
-              every result set unreachable, the pager still counting in
-              200s. */}
-          {[25, 50, 100].map((size) => (
-            <option key={size} value={size}>
-              {size}
-            </option>
-          ))}
-        </select>
-      </label>
     </>
+  );
+}
+
+/**
+ * How many replays a page holds, on the results line beside the view switch.
+ *
+ * It was a field of the search form, where it wrapped onto a row of its own on
+ * most windows, and it is not a filter: it changes how the same results are
+ * cut into pages. So it applies at once, to the search already on screen.
+ */
+export function ReplayPageSize({ value, onChange }: { value: number; onChange: (size: number) => void }) {
+  const { t } = useTranslation();
+  return (
+    <label className="online-replay-page-size">
+      <span className="muted">{t("replays.filters.resultsPerPage")}</span>
+      <select
+        className="vault-input"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+      >
+        {/* 100 is the ceiling because it is the API's: a larger
+            `page[size]` is rewritten server side without a word about it,
+            so "200 per page" returned 100 rows and made the second half of
+            every result set unreachable, the pager still counting in
+            200s. */}
+        {[25, 50, 100].map((size) => (
+          <option key={size} value={size}>
+            {size}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -207,16 +219,6 @@ export function AdvancedReplayFilters({ form, set, setRange, tagOptions, selecte
           />
         </label>
 
-        <label className="vault-field">
-          <span className="vault-field-label">{t("replays.filters.gameTitle")}</span>
-          <input
-            className="vault-input"
-            type="search"
-            value={form.title}
-            onChange={(e) => set("title", e.target.value)}
-          />
-        </label>
-
         {/* The reader's own tags (#324). The vault has never heard of them,
             so the picked tags become the ids of the games carrying them, and
             the search asks for exactly those. */}
@@ -227,7 +229,7 @@ export function AdvancedReplayFilters({ form, set, setRange, tagOptions, selecte
         <div className="vault-field">
           <MultiSelect
             label={t("replays.filters.faction")}
-            options={FACTION_OPTIONS}
+            options={factionOptions()}
             selected={form.factions.map(String)}
             onChange={(v) => set("factions", v.map(Number))}
           />

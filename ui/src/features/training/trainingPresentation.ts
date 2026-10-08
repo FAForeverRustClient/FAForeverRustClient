@@ -53,14 +53,15 @@ export const TOPICS: TrainingTopic[] = [
 export const BASIC_TOPICS: TrainingTopic[] = ["economy", "buildOrder", "micro", "mapControl"];
 
 /**
- * The modes the mode filter offers.
+ * The modes the mode filter offers before the catalogue has said anything.
  *
- * The catalogue's modes are free text (a manifest can say `coop` or `nomads`),
- * so this is a convenience list rather than the set of legal values. The filter
- * also accepts whatever the catalogue itself carries, which is where anything
- * not listed here comes from.
+ * A mode is a matchmaker queue: "4v4" means the 4v4 queue, not any game with
+ * eight players in it. A community format such as Seton's Clutch is a tag of
+ * its own beside them rather than a kind of 4v4, and it comes from the
+ * catalogue, which is where its name is written: the filter and the
+ * contribution form both offer every mode the catalogue carries after these.
  */
-export const COMMON_MODES = ["1v1", "2v2", "3v3", "4v4", "custom", "coop"];
+export const COMMON_MODES = ["1v1", "2v2", "3v3", "4v4"];
 
 /**
  * The embedded player for a video, when the address is one that can be.
@@ -169,6 +170,68 @@ export function mapPreviewUrl(vault: VaultMap[], maps: string[]): string {
   return isGeneratedMapPlaceholderUrl(thumbnailUrl) ? "" : thumbnailUrl;
 }
 
+/**
+ * The map art an entry is about, at the size a tile or a run map wants.
+ *
+ * The catalogue's own picture first, when the entry is about one piece of
+ * ground: a build order names its map the way a player reads it ("Setons
+ * Clutch"), and that name can resolve to the wrong vault folder entirely. More
+ * than one vault map is called Seton's, and the one the name finds is a yellow
+ * remake rather than the map the build was played on. An `imageUrl` in the
+ * catalogue is the exact preview of the folder the author's replays were
+ * recorded on, so nothing has to guess.
+ */
+export function mapArtUrl(vault: VaultMap[], resource: TrainingResource): string {
+  // The backend fills an empty `imageUrl` with the video's still, so a build
+  // order on video carries one it never stated. That is a face cam, not ground.
+  const stated = resource.imageUrl && !isVideoStill(resource.imageUrl) ? resource.imageUrl : "";
+  if (stated && resource.maps.length > 0) return stated;
+  return mapPreviewUrl(vault, resource.maps);
+}
+
+/** Whether an address is a still YouTube publishes for a video. */
+function isVideoStill(url: string): boolean {
+  return /^https:\/\/(?:img\.youtube\.com|i\.ytimg\.com)\/vi\//.test(url);
+}
+
+/**
+ * Every picture a card could lead with, best first.
+ *
+ * A list rather than one address, because most of the library is a link to
+ * somebody else's video or page and any one of these can be gone: the card
+ * steps down the list as each fails, and lands on its drawn cover rather than
+ * on the browser's broken-picture glyph.
+ *
+ * A build order shows its map and never a video frame, even when its address
+ * is a video, which seven of them are: a still of somebody's face cam
+ * identifies the author, which the caption already says, while the map is
+ * what a reader recognises the entry by. Everything else leads with its own
+ * picture, then the frame YouTube publishes for it. A map is not guessed for
+ * those from the names they list: a channel that mostly plays Seton's is not a
+ * picture of Seton's, and a guide that should carry its map says so with an
+ * `imageUrl`.
+ */
+export function artCandidates(vault: VaultMap[], resource: TrainingResource): string[] {
+  const ordered =
+    resource.kind === "buildOrder"
+      ? [mapArtUrl(vault, resource)]
+      : [resource.imageUrl, videoThumbnailUrl(resource.url)];
+  return [...new Set(ordered.filter((url) => url !== ""))];
+}
+
+/**
+ * The hue a drawn cover is tinted with, the same for everything one author
+ * or source wrote.
+ *
+ * A series then reads as a series on the shelf (five parts of arma473's
+ * ladder guide in one colour, the wiki's three in another) without anybody
+ * maintaining a palette. Hashed rather than looked up, so a new author gets a
+ * colour of their own on the day they are catalogued.
+ */
+export function coverColor(kind: TrainingKind): string {
+  return `var(--color-training-${kind})`;
+}
+
 export function kindLabel(kind: TrainingKind): MessageKey {
   return `training.kind.${kind}`;
 }
@@ -197,6 +260,19 @@ export function topicHint(topic: TrainingTopic): MessageKey {
   return `training.topicHint.${topic}`;
 }
 
+/**
+ * The picture a basic's tile leads with, shipped with the client.
+ *
+ * Bundled rather than read from the catalogue: the four basics are the client's
+ * own front page, not something a trainer submits, and a tile that waited on
+ * the network for its picture would be the only thing on the hub that did.
+ * Each picture is 16:9, carries the topic's name as its heading, and keeps its
+ * bottom third clear for the description and count the tile lays over it.
+ */
+export function basicArtUrl(topic: TrainingTopic): string {
+  return `/images/training/basics/${topic}.webp`;
+}
+
 /** The glyph a card leads with, so a kind is recognisable before it is read. */
 export function kindIcon(kind: TrainingKind): IconName {
   switch (kind) {
@@ -215,9 +291,14 @@ export function kindIcon(kind: TrainingKind): IconName {
   }
 }
 
-/** What a card's action does, which differs by kind rather than by url. */
+/**
+ * What a card's action does, which differs by kind rather than by url.
+ *
+ * A lesson's button opens its page. The client has no way to start one, so a
+ * label saying "start" promised something the button never did.
+ */
 export function actionLabel(resource: TrainingResource): MessageKey {
-  if (resource.kind === "lesson" && resource.tutorialId !== null) return "training.action.start";
+  if (resource.kind === "lesson" && resource.tutorialId !== null) return "training.action.openLesson";
   if (resource.kind === "video") return "training.action.watch";
   if (resource.kind === "community") return "training.action.visit";
   return "training.action.read";

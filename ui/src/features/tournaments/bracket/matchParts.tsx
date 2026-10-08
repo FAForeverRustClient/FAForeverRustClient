@@ -16,6 +16,7 @@ import { mayReport, maySubmit } from "../../../shared/rules/tourneyRules";
 import { PlayerChip } from "../PlayerChip";
 import { isMyMatch, myTeamId } from "../tourneyPresentation";
 import { hasVeto, myVetoSteps } from "./vetoPresentation";
+import { isBye } from "./swissRecords";
 import { MatchChatContext, mayOpenMatchChat } from "./matchChat";
 import { playersLabel } from "../display";
 
@@ -171,10 +172,12 @@ export function MatchActions({
   const { t } = useTranslation();
   const mine = myTeamId(event);
   const pending = entry.pendingReport;
+  // A bye has two slots filled, one of them by nobody: there is no game to host.
   const playable =
     (entry.status === "ready" || entry.status === "live") &&
     entry.team1 !== null &&
-    entry.team2 !== null;
+    entry.team2 !== null &&
+    !isBye(entry);
   // Hosting belongs to the two sides and to whoever runs the event, which is
   // what `viewer.organiser` already means (organisers, a director on an
   // official event, a site admin). It used to be offered to everyone watching,
@@ -195,9 +198,12 @@ export function MatchActions({
       type="button"
       className="tournament-round-pool-toggle"
       title={t("tournaments.chat.matchChatHint")}
+      aria-label={t("tournaments.chat.matchChat")}
       onClick={() => chat.open(entry)}
     >
-      <Icon name="chat" size={12} /> {t("tournaments.chat.matchChat")}
+      {/* The label is its own element so the bracket card, which has room for
+          the icon only, can hide it; the list views keep it. */}
+      <Icon name="chat" size={12} /> <span className="tournament-action-label">{t("tournaments.chat.matchChat")}</span>
       {chatUnread > 0 && <span className="tournament-badge">{chatUnread > 9 ? "9+" : chatUnread}</span>}
     </button>
   );
@@ -239,8 +245,9 @@ export function MatchActions({
           aria-expanded={vetoOpen}
           onClick={onToggleVeto}
           title={t(owed > 0 ? "tournaments.veto.dueHint" : "tournaments.veto.openHint")}
+          aria-label={t("tournaments.veto.open")}
         >
-          <Icon name="maps" size={12} /> {t("tournaments.veto.open")}
+          <Icon name="maps" size={12} /> <span className="tournament-action-label">{t("tournaments.veto.open")}</span>
           {owed > 0 && <span className="tournament-badge">{owed}</span>}
         </button>
       )}

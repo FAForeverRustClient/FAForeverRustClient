@@ -23,7 +23,7 @@
 //   node scripts/i18n-scan.mjs ui/src/features/maps --list    with the strings
 //   node scripts/i18n-scan.mjs --max 0         exit non-zero above a budget
 
-import { readdir, readFile } from "node:fs/promises";
+import { access, readdir, readFile } from "node:fs/promises";
 import { extname, relative, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
@@ -41,14 +41,18 @@ const IGNORED_FILES = new Map([
   ["ui/src/shared/mapPresentation.ts", "official map names: proper nouns, never translated"],
   ["ui/src/design-system/Icon.tsx", "inline SVG path data"],
   ["ui/src/shared/externalLinks.ts", "developer-facing throw messages, never rendered"],
-  ["ui/src/shared/factions.ts", "faction data keyed by wire id; the shown label is factions.random"],
+  ["ui/src/shared/factions.ts", "faction wire words keyed by game id; the shown labels are the factions.* keys"],
   ["ui/src/features/links/LinksView.tsx", "the names in the thanks list; what each is thanked for is a key"],
   ["ui/src/features/player-card/PlayerOverview.tsx", "the three clients' product names, matched against the user agent"],
   ["ui/src/features/training/RunMap.tsx", "marker type ids read out of the game's own map files"],
   ["ui/src/features/training/recording.ts", "the same marker type ids, on the analyser side"],
   ["ui/src/features/events/eventSubmission.ts", "the body of a GitHub issue, which is English wherever it is written from"],
-  ["ui/src/features/maps/MapPreviewZoom.tsx", "throw messages for a copy that falls back on its own; never rendered"],
-  ["ui/src/features/replays/replayAnalysis.ts", "the engine's own command names, indexed by the number a replay carries"],
+  ["ui/src/shared/components/MapPreviewZoom.tsx", "throw messages for a copy that falls back on its own; never rendered"],
+  // Not a decision that they stay English: some 250 names in six languages
+  // is translation work of its own, and the search vocabulary has to stay
+  // English beside it. Until that is done, this list would hide everything
+  // else behind its own length.
+  ["ui/src/features/chat/messages/emoji.ts", "the picker's English emoji names and search keywords; translating them is open work"],
 ]);
 
 // Attribute names whose values are machine tokens, never prose.
@@ -58,6 +62,34 @@ const TECHNICAL_ATTRS =
 // Object keys carrying machine tokens in this codebase's command shapes.
 const COMMAND_KEYS =
   /\b(?:kind|type|command|payload|leaderboard|sortBy|field|constraint|faction|outcome|status|mode|tab|channel|queueName|folderName|technicalName)\s*:\s*"[^"]*"/g;
+
+// The first argument of a console call: a log line for a developer reading
+// the devtools, never shown in the client. Removed before scanning, so the
+// rest of the call (a translated message passed on, say) is still read.
+const DEVELOPER_ONLY =
+  /(\bconsole\.(?:log|info|warn|error|debug)\(\s*)(?:"[^"\n]*"|'[^'\n]*'|`[^`\n]*`)/g;
+
+// A CSS selector handed to the DOM (`closest("button, a")`), which reads like
+// a short list of words but is matched against markup, never displayed.
+const SELECTOR_CALLS =
+  /(\.(?:closest|matches|querySelector(?:All)?)(?:<[\w\s|]+>)?\(\s*)(?:"[^"\n]*"|'[^'\n]*'|`[^`\n]*`)/g;
+
+// A string compared against is a value read off the wire or the DOM
+// (`kind.toLowerCase() === "game patch"`), never one that is shown. So is a
+// switch's case label; what the case returns is still read.
+const COMPARED_AFTER = /([!=]==\s*)"[^"\n]*"/g;
+const COMPARED_BEFORE = /"[^"\n]*"(\s*[!=]==)/g;
+const CASE_LABELS = /\bcase\s+"[^"\n]*"\s*:/g;
+
+// A class name chosen by an expression, `className={on ? "is-on" : "muted mono"}`.
+// Its strings are class lists whether or not one of them has a hyphen in it.
+// Only an expression without nested braces, so a template's `${...}` is left
+// for the template pass rather than cut in half.
+const CLASS_EXPRESSIONS = /className=\{([^{}]*)\}/g;
+
+// The second word begins with the first (`mod`, `mods`), which is what tells a
+// plural from any other pair chosen by a count (`"end" : "middle"`).
+const HAND_MADE_PLURAL = /[!=]==\s*1\s*\?\s*"([a-z]+)[a-z ]*"\s*:\s*"\1[a-z ]*"/g;
 
 // KeyboardEvent.key values: compared against, never displayed, and sentence
 // cased, so without this list they dominate the report.
@@ -88,17 +120,47 @@ const NOT_PROSE = [
   /^[^a-zA-Z]*$/,                                 // no letters at all
   // Proper nouns: a generator, a league division and a release kind, all of
   // them matched against or printed verbatim rather than translated.
-  /^(?:faf|coop|nomads|fafbeta|fafdevelop|ladder1v1|global|en|de|UEF|Aeon|Cybran|Seraphim|Neroxis|Grandmaster|Hotfix)$/,
-  /^[a-z][\w-]*(?:\s+[a-z][\w-]*)+$/,             // a CSS class list
+  // Twitch is the streaming service's name on the badge of a stream link.
+  /^(?:faf|coop|nomads|fafbeta|fafdevelop|ladder1v1|global|en|de|UEF|Aeon|Cybran|Seraphim|Neroxis|Grandmaster|Hotfix|Twitch)$/,
+  // A CSS class list. At least one class has a hyphen or an underscore in it,
+  // which is what tells `is-active muted` from `your rating`: without that,
+  // every lower-case phrase in a ternary passed for a class list.
+  /^(?=.*[a-z0-9][-_][a-z0-9])[a-z][\w-]*(?:\s+[a-z][\w-]*)+$/,
   /(?:\|\||&&|===|!==|=>|\)\.)/,                  // half of a split expression
   /^[A-Z][a-z]+(?:[A-Z][a-z]+)+$/,                // PascalCase type or slice name
   /^[,;:.]/,                                      // half of a concatenation
   /^\)/,                                          // starts mid-expression
   /[<>{}]/,                                       // contains markup or a brace
+  // TypeScript read between two braces by the JSX passes: the text after one
+  // declaration's closing brace up to the next generic's `<`.
+  /^export\s/,                                    // export function Select<
+  /^(?:class|function|interface|enum)\s+[A-Z]/,   // a declaration's head
+  /^(?:function|const|let|type)\s+\w+$/,          // function uniqueBy<T>(
+  /\bas const\b|\bsatisfies\s+[A-Z]/,             // as const satisfies Record<
+  // A CSS value in an ordinary string, e.g. a grid template or a colour.
+  /\b(?:minmax|repeat|calc|var|color-mix|translate[XY]?|rotate|scale|url|(?:linear|radial)-gradient|rgba?|hsla?)\(/,
 ];
+
+// Abbreviations shown as they are. Each is copy all the same: "N/A" is "k. A."
+// in German and "н/д" in Russian, and the rule below, which wants a lower-case
+// letter, let every one of them through. A list rather than a pattern, because
+// most upper-case literals here are wire values ("VICTORY", "DEFEAT") that are
+// matched against and never shown.
+const UI_ABBREVIATIONS = new Set(["N/A", "FFA", "VS", "SE", "DE", "FF", "GM", "IP", "UI", "SIM", "TBD"]);
+
+// A word printed beside a count, `{count} placed`: a single lower-case word,
+// and so not prose by the rule below. Only looked for in JSX text, where a
+// word is always rendered; in a string literal it is as likely a token.
+const LOWER_CASE_WORDS = /^[a-z][a-z'’]{2,}(?:\s+[a-z][a-z'’]*)*$/;
+
+// The keywords that sit between a closing brace and the next `<` in ordinary
+// TypeScript (`} as Array<`, `} extends Base<`), which the JSX pass would
+// otherwise read as a word printed beside an expression.
+const TS_KEYWORDS = /^(?:as|extends|satisfies|implements|keyof|typeof|in|of|is|new|return|else)\b/;
 
 function isProse(value) {
   const text = value.trim();
+  if (UI_ABBREVIATIONS.has(text)) return true;
   if (text.length < 3) return false;
   if (KEYBOARD_KEYS.has(text)) return false;
   if (TYPE_NAMES.has(text)) return false;
@@ -108,10 +170,39 @@ function isProse(value) {
   return /^[A-Z][a-z]/.test(text) || /\s[a-z]/.test(text);
 }
 
+/**
+ * Every string and template literal, in source order.
+ *
+ * One pass over all three quote kinds, rather than one per kind, is what
+ * keeps the pairing right. Separate passes paired the closing quote of one
+ * literal with the opening quote of the next whenever an empty string or the
+ * other quote kind sat in between: `stored === "" ? [] : stored.split(",")`
+ * reported ` ? [] : stored.split(` as copy, and `after: "\`"` turned the
+ * code up to the next backtick into a "template".
+ *
+ * A template's `${...}` slots are searched for literals of their own, so
+ * `${n === 1 ? "player" : "players"}` is still read.
+ */
+function* stringLiterals(source) {
+  const pattern = /"((?:[^"\\\n]|\\.)*)"|'((?:[^'\\\n]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g;
+  for (const match of source.matchAll(pattern)) {
+    if (match[3] === undefined) {
+      yield { kind: "string", value: match[1] ?? match[2] };
+      continue;
+    }
+    yield { kind: "template", value: match[3] };
+    for (const [, slot] of match[3].matchAll(/\$\{([^}]*)\}/g)) yield* stringLiterals(slot);
+  }
+}
+
 async function sourceFiles(directory) {
   const found = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (["node_modules", "dist", "i18n"].includes(entry.name)) continue;
+    // `testing` and `__mocks__` hold the harness for mounted tests: helpers and
+    // a stand-in IPC client that only test files import. Their messages are
+    // read in a failing test's output, never in the client, the same reason
+    // `*.test.*` files are passed over below.
+    if (["node_modules", "dist", "i18n", "testing", "__mocks__"].includes(entry.name)) continue;
     const path = resolve(directory, entry.name);
     if (entry.isDirectory()) found.push(...(await sourceFiles(path)));
     else if ([".ts", ".tsx"].includes(extname(entry.name)) && !entry.name.includes(".test."))
@@ -134,14 +225,32 @@ for (const path of (await sourceFiles(resolve(root, target))).sort()) {
     .replace(/\bt\(\s*"[^"]*"/g, "t(")
     .replace(/\bMessageKey\b[^;]*;/g, "")
     .replace(TECHNICAL_ATTRS, "")
-    .replace(COMMAND_KEYS, "");
+    .replace(COMMAND_KEYS, "")
+    .replace(DEVELOPER_ONLY, "$1")
+    .replace(SELECTOR_CALLS, "$1")
+    .replace(COMPARED_AFTER, "$1")
+    .replace(COMPARED_BEFORE, "$1")
+    .replace(CASE_LABELS, "case:")
+    .replace(CLASS_EXPRESSIONS, (_, inner) => `className={${inner.replace(/"[^"\n]*"/g, '""')}}`);
 
   const hits = new Set();
-  for (const [, value] of source.matchAll(/"([^"\\\n]{3,})"/g)) if (isProse(value)) hits.add(value);
-  for (const [, value] of source.matchAll(/'([^'\\\n]{3,})'/g)) if (isProse(value)) hits.add(value);
-  // JSX text nodes are not string literals, so they need their own pass.
-  for (const [, value] of source.matchAll(/>\s*([A-Z][A-Za-z0-9 ,.'\u2019!?()/&%:-]{2,})\s*</g)) {
-    if (isProse(value)) hits.add(value);
+  // A plural made by hand: `count === 1 ? "mod" : "mods"`. Two lower-case
+  // words, each too short to read as prose on its own, and a sentence that
+  // cannot be translated, because most languages do not pluralise by adding
+  // an s and some need more than two forms.
+  for (const [match] of source.matchAll(HAND_MADE_PLURAL)) hits.add(match);
+  const templates = [];
+  for (const literal of stringLiterals(source)) {
+    if (literal.kind === "template") templates.push(literal.value);
+    else if (isProse(literal.value)) hits.add(literal.value);
+  }
+  // JSX text nodes are not string literals, so they need their own pass. The
+  // `>` must close a tag: after `=` it is an arrow, and the "text" up to the
+  // next `<` is a function body with a comparison in it.
+  // Two characters are enough for an abbreviation (`VS`), which `isProse`
+  // only accepts from its list.
+  for (const [, value] of source.matchAll(/(?<![=-])>\s*([A-Z][A-Za-z0-9 ,.'\u2019!?()/&%:-]{1,})\s*</g)) {
+    if (isProse(value)) hits.add(value.trim());
   }
   // JSX text that touches an expression container on either side. Without
   // this, `Filters{count > 0 ? ... : ""}` and `{count} slots` both read as
@@ -152,19 +261,44 @@ for (const path of (await sourceFiles(resolve(root, target))).sort()) {
   // braces from being read as a sentence.
   const JSX_WORDS = "[A-Za-z0-9 ,.'’!?/&%-]";
   const JSX_BESIDE_EXPRESSION = [
-    new RegExp(`>\\s*([A-Z]${JSX_WORDS}{2,}?)\\s*\\{`, "g"),
+    new RegExp(`(?<![=-])>\\s*([A-Z]${JSX_WORDS}{2,}?)\\s*\\{`, "g"),
     new RegExp(`\\}\\s*([A-Za-z]${JSX_WORDS}{2,}?)\\s*<`, "g"),
   ];
   for (const pattern of JSX_BESIDE_EXPRESSION) {
     for (const [, value] of source.matchAll(pattern)) if (isProse(value)) hits.add(value.trim());
   }
+  // The same, for lower-case words: `{count} placed`, `{n} games played`.
+  // Between a brace and a tag nothing but rendered text can sit, apart from
+  // the TypeScript keywords that a generic's `<` makes look like markup.
+  for (const [, value] of source.matchAll(/\}[ \t]*([a-z][a-z'’ \t]{2,}?)[ \t]*<\/?[a-zA-Z]/g)) {
+    const text = value.trim();
+    if (LOWER_CASE_WORDS.test(text) && !TS_KEYWORDS.test(text)) hits.add(text);
+  }
   // Template literals whose fixed halves are prose. A class name is the
   // common false positive and is excluded by `isProse`, which refuses a
   // lower-case identifier list; what is left is copy with a number in it.
-  for (const [, value] of source.matchAll(/`([^`\\\n]{3,})`/g)) {
+  for (const value of templates) {
+    // Multi-line templates are markdown or CSS blocks, and escapes mean a
+    // regex source or a path; neither is copy this pass can judge.
+    if (value.length < 3 || /[\\\n]/.test(value)) continue;
     const fixed = value.replace(/\$\{[^}]*\}/g, " ").trim();
     if (CSS_VALUE.test(fixed)) continue;
-    if (fixed.split(/\s+/).filter(Boolean).length >= 2 && isProse(fixed)) hits.add(`\`${value}\``);
+    const words = fixed.split(/\s+/).filter(Boolean);
+    if (words.length >= 2 && isProse(fixed)) {
+      hits.add(`\`${value}\``);
+    } else if (
+      // A lower-case sentence with a value in it, `${n} players online`.
+      // `isProse` takes lower-case words for a class list, which in a
+      // template they usually are; but a class name is hyphenated or
+      // prefixed (`is-active`, `leaderboard-row`), and a sentence's words
+      // are not.
+      value.includes("${")
+      && words.length >= 2
+      && words.every((word) => /^[a-z]+[.,!?:]?$/.test(word))
+      && !TS_KEYWORDS.test(fixed)
+    ) {
+      hits.add(`\`${value}\``);
+    }
   }
 
   if (hits.size === 0) continue;
@@ -180,7 +314,21 @@ for (const [file, hits] of perFile) {
 
 console.log(`\nUntranslated strings: ${total}`);
 
+// An ignore entry whose file has moved silently stops ignoring anything, and
+// the file's new path is then scanned under a reason nobody re-read. Two
+// entries had gone stale that way, so a dangling one now fails the gate.
+const staleIgnores = [];
+for (const file of IGNORED_FILES.keys()) {
+  try {
+    await access(resolve(root, file));
+  } catch {
+    staleIgnores.push(file);
+  }
+}
+for (const file of staleIgnores) console.error(`Ignored file does not exist: ${file}`);
+
 if (budget !== null && total > budget) {
   console.error(`\nBudget exceeded: ${total} > ${budget}`);
   process.exit(1);
 }
+if (budget !== null && staleIgnores.length > 0) process.exit(1);

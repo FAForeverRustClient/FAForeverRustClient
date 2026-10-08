@@ -7,7 +7,17 @@
 
 use faf_domain::state::{ModListStatus, ModsCommand, ModsEvent};
 
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+
+/// The mod vault's request generation. Owned by this service.
+#[derive(Default)]
+pub struct ModsContext {
+    /// Only the newest vault search may land, for the same reason as the map
+    /// vault's: a slow earlier query answering after a fast later one would
+    /// otherwise replace its page with results for filters no longer on
+    /// screen.
+    search_generation: LatestRequest,
+}
 
 pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
@@ -32,13 +42,14 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
             crawl_vault(ctx, out).await;
         }
         ModsCommand::SearchVault { query } => {
-            // Claimed in arrival order: see `runtime::claim_generation`.
-            let generation = crate::runtime::claimed_generation()
-                .unwrap_or_else(|| ctx.mods_search_generation.begin());
+            // Same newest-wins rule as `services::maps`: an older query that
+            // answers late must not replace the newer one's page, totals or
+            // error. Separate from the catalogue crawl, which is single-flight
+            // and has no newer request to lose to.
+            let generation = ctx.mods.search_generation.begin();
             out.emit(ModsEvent::VaultSearching);
             let result = ctx.ports.mods.search_vault(query.clone()).await;
-            // Only the newest search may answer: see `mods_search_generation`.
-            if !ctx.mods_search_generation.is_current(generation) {
+            if !ctx.mods.search_generation.is_current(generation) {
                 return;
             }
             match result {
@@ -73,7 +84,7 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
         ModsCommand::InstallMod { uid, download_url } => {
-            let _guard = ctx.mods_mutation.acquire().await;
+            crate::runtime::expect_admitted(crate::runtime::Key::ModFiles);
             out.emit(ModsEvent::Installing { uid: uid.clone() });
             match ctx.ports.mods.install_mod(uid, download_url).await {
                 Ok(installed) => out.emit(ModsEvent::Installed { installed }),
@@ -85,7 +96,7 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
             folder_name,
             download_url,
         } => {
-            let _guard = ctx.mods_mutation.acquire().await;
+            crate::runtime::expect_admitted(crate::runtime::Key::ModFiles);
             // The same status an install shows: from the user's side this *is*
             // an install, and the row it belongs to is named by the new uid.
             out.emit(ModsEvent::Installing { uid: uid.clone() });
@@ -100,7 +111,7 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
         ModsCommand::UninstallMod { folder_name, uid } => {
-            let _guard = ctx.mods_mutation.acquire().await;
+            crate::runtime::expect_admitted(crate::runtime::Key::ModFiles);
             out.emit(ModsEvent::Installing { uid });
             match ctx.ports.mods.uninstall_mod(folder_name).await {
                 Ok(installed) => out.emit(ModsEvent::Uninstalled { installed }),
@@ -108,7 +119,7 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
         ModsCommand::ToggleMod { uid, enabled } => {
-            let _guard = ctx.mods_mutation.acquire().await;
+            crate::runtime::expect_admitted(crate::runtime::Key::ModFiles);
             out.emit(ModsEvent::Toggling { uid: uid.clone() });
             match ctx.ports.mods.toggle_mod(uid, enabled).await {
                 Ok(installed) => out.emit(ModsEvent::Toggled { installed }),
@@ -116,7 +127,7 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
         ModsCommand::SetActiveMods { uids } => {
-            let _guard = ctx.mods_mutation.acquire().await;
+            crate::runtime::expect_admitted(crate::runtime::Key::ModFiles);
             // No `Toggling` first: that status names a single uid, and this is
             // one short write rather than something worth showing progress for.
             match ctx.ports.mods.set_active_mods(uids).await {
@@ -130,9 +141,28 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
 /// Read the whole catalogue and report it. The caller decides whether a crawl
 /// is wanted; the data already loaded stays on screen until this replaces it.
 async fn crawl_vault(ctx: &ServiceCtx, out: &EventSink) {
+    crate::runtime::expect_admitted(crate::runtime::Key::ModVault);
     out.emit(ModsEvent::VaultLoading);
+    // Logged both ways with its duration, as the map vault's is: the crawl is
+    // many pages, and the Live and Play tabs start it as they open.
+    let started = std::time::Instant::now();
+    tracing::info!("mod vault: loading the catalogue");
     match ctx.ports.mods.list_vault().await {
-        Ok(mods) => out.emit(ModsEvent::VaultLoaded { mods }),
-        Err(reason) => out.emit(ModsEvent::VaultLoadFailed { reason }),
+        Ok(mods) => {
+            tracing::info!(
+                mods = mods.len(),
+                seconds = started.elapsed().as_secs_f32(),
+                "mod vault: loaded"
+            );
+            out.emit(ModsEvent::VaultLoaded { mods })
+        }
+        Err(reason) => {
+            tracing::warn!(
+                %reason,
+                seconds = started.elapsed().as_secs_f32(),
+                "mod vault: loading failed"
+            );
+            out.emit(ModsEvent::VaultLoadFailed { reason })
+        }
     }
 }

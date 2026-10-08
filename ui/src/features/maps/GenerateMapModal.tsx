@@ -52,6 +52,7 @@ import {
   summariseDecodedName,
 } from "../../shared/generatorPresentation";
 import { ZoomableImage } from "../../shared/components/MapPreviewZoom";
+import { MAX_PRESET_NAME, isUsablePresetName } from "../../shared/generatorPresets";
 import "./generate-map.css";
 import { NumberInput } from "../../design-system/NumberInput";
 import { GENERATION_TYPES, cancel, decodeNames, deletePreset, generate, generateNamed, loadHelp, loadOptions, loadPresets, preflight, savePreset, setOptions } from "./generatorCommands";
@@ -141,19 +142,19 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   // been pressed, which made it indistinguishable from a button that did
   // nothing. Remembering is now what the dialog always does.
   //
-  // The first run is skipped because the form starts *as* the remembered
-  // options: opening the dialog should not rewrite the settings file.
-  const lastRemembered = useRef(JSON.stringify(state.options));
+  // What counts as remembered is what the backend holds, read back out of
+  // state, and never what this dialog last sent: a send that was refused or
+  // lost would otherwise be taken for saved, and the same options would never
+  // be offered again. The backend echoes accepted options as
+  // `OptionsChanged`, so a form that matches state needs no write, which also
+  // keeps opening the dialog from rewriting the settings file.
+  const remembered = JSON.stringify(state.options);
   useEffect(() => {
     if (reproducing) return;
-    const serialised = JSON.stringify(form);
-    if (serialised === lastRemembered.current) return;
-    const timer = setTimeout(() => {
-      lastRemembered.current = serialised;
-      void setOptions(form);
-    }, 250);
+    if (JSON.stringify(form) === remembered) return;
+    const timer = setTimeout(() => void setOptions(form), 250);
     return () => clearTimeout(timer);
-  }, [form, reproducing]);
+  }, [form, remembered, reproducing]);
 
   const issues = reproducing ? [] : (state.validation ?? []);
   const blocking = issues.filter(isFatal);
@@ -192,14 +193,30 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   const existing = presets.find(
     (preset) => preset.name.toLowerCase() === trimmedPreset.toLowerCase(),
   );
-  const presetNameUsable = trimmedPreset !== "" && /^[\w\- ]+$/.test(trimmedPreset);
+  const presetNameUsable = isUsablePresetName(trimmedPreset);
 
+  // "Saved" is an outcome, not a click, and it is this save's outcome: the
+  // backend answers every save with `presetSaveFinished` naming the request.
+  // It used to be read off a new list that held the name, which an unrelated
+  // refresh after a failed overwrite satisfied with the old preset.
+  const [pendingSave, setPendingSave] = useState<number | null>(null);
   const save = () => {
     if (!presetNameUsable) return;
-    void savePreset(trimmedPreset, form);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaved(false);
+    setPendingSave(savePreset(trimmedPreset, form));
   };
+  const presetSave = state.presetSave;
+  useEffect(() => {
+    if (pendingSave === null || presetSave?.requestId !== pendingSave) return;
+    setPendingSave(null);
+    setSaved(presetSave.saved);
+  }, [pendingSave, presetSave]);
+  // Its own effect, so clearing the pending request above cannot cancel it.
+  useEffect(() => {
+    if (!saved) return;
+    const timer = setTimeout(() => setSaved(false), 2000);
+    return () => clearTimeout(timer);
+  }, [saved]);
 
   const applyPreset = (name: string) => {
     const preset = presets.find((entry) => entry.name === name);
@@ -387,7 +404,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 </span>
                 {decoded && (
                   <ul className="generate-map-facts">
-                    {summariseDecodedName(decoded).map((fact) => (
+                    {summariseDecodedName(decoded, t).map((fact) => (
                       <li key={fact} className="generate-map-fact">
                         {fact}
                       </li>
@@ -585,6 +602,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                         low={form.reclaimDensityMin ?? null}
                         high={form.reclaimDensityMax ?? null}
                         format={(v) => `${densityPercent(v)}%`}
+                        closedScale
                         onChange={(low, high) => {
                           set("reclaimDensityMin", low);
                           set("reclaimDensityMax", high);
@@ -600,6 +618,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                         low={form.resourceDensityMin ?? null}
                         high={form.resourceDensityMax ?? null}
                         format={(v) => `${densityPercent(v)}%`}
+                        closedScale
                         onChange={(low, high) => {
                           set("resourceDensityMin", low);
                           set("resourceDensityMax", high);
@@ -681,7 +700,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                         <input
                           className="generate-map-control"
                           value={presetName}
-                          maxLength={80}
+                          maxLength={MAX_PRESET_NAME}
                           aria-label={t("maps.generate.presetName")}
                           placeholder={t("maps.generate.presetName")}
                           onChange={(e) => setPresetName(e.target.value)}
@@ -857,14 +876,14 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
               <dl className="generate-map-specs-grid">
                 <div>
                   <dt>{t("maps.generate.mapSize")}</dt>
-                  <dd>{currentFacts ? formatMapSize(currentFacts.mapSize) : "N/A"}</dd>
+                  <dd>{currentFacts ? formatMapSize(currentFacts.mapSize) : t("common.notAvailable")}</dd>
                 </div>
                 <div>
                   <dt>{t("maps.generate.spawns")}</dt>
                   <dd>
                     {currentFacts
                       ? t("maps.generate.spawnCount", { count: currentFacts.spawnCount })
-                      : "N/A"}
+                      : t("common.notAvailable")}
                   </dd>
                 </div>
                 <div>
@@ -874,7 +893,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                       ? currentFacts.numTeams === 0
                         ? t("maps.generate.asymmetric")
                         : t("maps.generate.teamCount", { count: currentFacts.numTeams })
-                      : "N/A"}
+                      : t("common.notAvailable")}
                   </dd>
                 </div>
                 <div>
@@ -883,19 +902,19 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 </div>
                 <div>
                   <dt>{t("maps.generate.generatorVersion")}</dt>
-                  <dd>{currentFacts ? `v${currentFacts.version}` : "N/A"}</dd>
+                  <dd>{currentFacts ? t("common.version", { version: currentFacts.version }) : t("common.notAvailable")}</dd>
                 </div>
                 <div>
                   <dt>{t("maps.generate.seed")}</dt>
                   <dd className="generate-map-spec-seed" title={currentFacts?.seed}>
-                    {currentFacts?.seed || "N/A"}
+                    {currentFacts?.seed || t("common.notAvailable")}
                   </dd>
                 </div>
               </dl>
 
               {currentFacts && (
                 <div className="generate-map-tags">
-                  {summariseDecodedName(currentFacts).map((fact) => (
+                  {summariseDecodedName(currentFacts, t).map((fact) => (
                     <span key={fact} className="generate-map-tag">
                       {fact}
                     </span>

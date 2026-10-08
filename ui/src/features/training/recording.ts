@@ -314,11 +314,14 @@ export function markerPaths(env: Envelope): MarkerPath[] {
  */
 export function stallSpans(env: Envelope, field: string): { from: number; to: number }[] {
   const index = env.eco?.fields?.indexOf(field) ?? -1;
+  // The envelope check does not cover `eco`, so a document with the field
+  // named and no rows is possible and must not throw.
+  const rows = Array.isArray(env.eco?.rows) ? env.eco.rows : [];
   if (index < 0) return [];
 
   const spans: { from: number; to: number }[] = [];
   let start: number | null = null;
-  for (const row of env.eco.rows) {
+  for (const row of rows) {
     const [t, ...values] = row;
     if (values[index] <= 1) {
       if (start === null) start = t;
@@ -329,4 +332,29 @@ export function stallSpans(env: Envelope, field: string): { from: number; to: nu
   }
   if (start !== null) spans.push({ from: start, to: env.meta.durationMs });
   return spans;
+}
+
+/** The two stored resources the flow marks stalls for. */
+export type Stalls = {
+  mass: { from: number; to: number }[];
+  energy: { from: number; to: number }[];
+};
+
+/** Mass and energy stalls of a run, under the recorder's field names. */
+export function runStalls(env: Envelope): Stalls {
+  return { mass: stallSpans(env, "massStored"), energy: stallSpans(env, "engStored") };
+}
+
+/**
+ * Shorten `text` to at most `max` characters, ending in an ellipsis when cut.
+ *
+ * The flow's lane labels sit in a fixed gutter to the left of the chart, and a
+ * long unit name used to run straight off its left edge. Counting characters
+ * rather than measuring pixels is approximate, which is fine: the full name is
+ * always in the label's tooltip.
+ */
+export function ellipsize(text: string, max: number): string {
+  if (text.length <= max) return text;
+  if (max < 2) return text.slice(0, Math.max(0, max));
+  return `${text.slice(0, max - 1).trimEnd()}…`;
 }

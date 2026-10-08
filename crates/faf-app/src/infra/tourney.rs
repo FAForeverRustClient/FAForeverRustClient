@@ -34,11 +34,17 @@ use serde_json::{json, Value};
 use crate::infra::env_or;
 use crate::infra::jsonapi::{bounded_document_body, request_error};
 use crate::infra::session::TokenStore;
-use crate::ports::{RequestError, TourneyPort};
+use crate::ports::{
+    RequestError, TourneyChatPort, TourneyEntryPort, TourneyMapsPort, TourneyMatchPort,
+    TourneyOrganiserPort, TourneyReadPort, TourneySitePort,
+};
 
-/// The tournament team's deployment. Overridable so a developer can point at a
-/// local `node server.js` without rebuilding.
-const DEFAULT_API_BASE: &str = "https://tournaments.doodlepros.com";
+/// The tournament site as FAF hosts it (FAForever/gitops-stack,
+/// `apps/faf-tournaments`); it ran on `tournaments.doodlepros.com` until
+/// October 2026. Overridable so a developer can point at a local
+/// `node server.js`, or at the test cluster's `tournaments.faforever.xyz`,
+/// without rebuilding.
+const DEFAULT_API_BASE: &str = "https://tournaments.faforever.com";
 
 #[derive(Debug, Clone)]
 pub struct TourneyConfig {
@@ -280,82 +286,9 @@ fn error_detail(body: &str) -> Option<String> {
 }
 
 #[async_trait]
-impl TourneyPort for TourneyClient {
+impl TourneyReadPort for TourneyClient {
     fn asset_base(&self) -> String {
         self.config.api_base.trim_end_matches('/').to_string()
-    }
-
-    async fn hosting(&self) -> Result<HostingStatus, RequestError> {
-        let document = self.get("host_status", &[]).await?;
-        Ok(tourney::parse_hosting(&document))
-    }
-
-    async fn profile(&self) -> Result<String, RequestError> {
-        let document = self.get("/auth/faf/me", &[]).await?;
-        Ok(tourney::parse_profile(&document))
-    }
-
-    async fn set_discord(&self, handle: &str) -> Result<String, RequestError> {
-        // The service answers with what it stored, which is not what was sent:
-        // it strips the characters it will not keep and cuts the rest at forty.
-        // Reading the answer back is how the field ends up showing the handle
-        // that other players will actually see.
-        let document = self
-            .post("my/profile", json!({ "discord": handle.trim() }))
-            .await?;
-        Ok(tourney::parse_discord(&document))
-    }
-
-    async fn create(&self, draft: &TourneyDraft) -> Result<String, RequestError> {
-        // The one write that is not addressed to a tournament, and the only one
-        // whose answer the client needs: the new id, so the organiser lands in
-        // the event they just made.
-        let document = self
-            .send(
-                reqwest::Method::POST,
-                "tournaments",
-                &[],
-                Some(tourney::create_body(draft)),
-            )
-            .await?;
-        document
-            .get("id")
-            .and_then(Value::as_str)
-            .map(str::to_string)
-            .ok_or_else(|| {
-                RequestError::unexpected("The tournament service did not return the new event.")
-            })
-    }
-
-    async fn edit_info(
-        &self,
-        tournament_id: &str,
-        draft: &TourneyDraft,
-    ) -> Result<(), RequestError> {
-        self.act(tournament_id, "edit_info", tourney::edit_info_body(draft))
-            .await
-    }
-
-    async fn publish(&self, tournament_id: &str) -> Result<(), RequestError> {
-        // No `publishAt`: an absent schedule means publish now, which is the
-        // only thing this client offers.
-        self.act(tournament_id, "publish", json!({})).await
-    }
-
-    async fn advance(
-        &self,
-        tournament_id: &str,
-        phase: TourneyPhase,
-        config: Option<&BracketConfig>,
-    ) -> Result<(), RequestError> {
-        self.act(tournament_id, "phase", tourney::phase_body(phase, config))
-            .await
-    }
-
-    async fn archive(&self, tournament_id: &str) -> Result<(), RequestError> {
-        // `delete` archives for anyone who is not a site admin, and the client
-        // never holds that role, so this is reversible in practice.
-        self.act(tournament_id, "delete", json!({})).await
     }
 
     async fn list(&self) -> Result<Vec<Tourney>, RequestError> {
@@ -369,15 +302,6 @@ impl TourneyPort for TourneyClient {
             .await?;
         tourney::parse_tourney(&document)
             .ok_or_else(|| RequestError::not_found("That tournament no longer exists."))
-    }
-
-    async fn sign_up(&self, tournament_id: &str, rating: Option<i32>) -> Result<(), RequestError> {
-        self.act(tournament_id, "signup", tourney::signup_body(rating))
-            .await
-    }
-
-    async fn decline_invite(&self, tournament_id: &str) -> Result<(), RequestError> {
-        self.act(tournament_id, "decline_invite", json!({})).await
     }
 
     async fn check_rating(&self, tournament_id: &str) -> Result<RatingCheck, RequestError> {
@@ -397,39 +321,6 @@ impl TourneyPort for TourneyClient {
     async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
         let document = self.get("my_tournaments", &[]).await?;
         Ok(tourney::parse_copy_sources(&document))
-    }
-
-    async fn site_read(&self, read: SiteRead) -> Result<SiteDocument, RequestError> {
-        let (path, post) = tourney::site_read_path(read);
-        let document = if post {
-            self.post(path, json!({})).await?
-        } else {
-            self.get(path, &[]).await?
-        };
-        Ok(tourney::parse_site_document(read, &document))
-    }
-
-    async fn site_write(
-        &self,
-        write: &SiteWrite,
-    ) -> Result<(Option<String>, Option<String>), RequestError> {
-        let (path, body) = tourney::site_request(write);
-        let document = self.post(&path, body).await?;
-        Ok(tourney::parse_site_answer(write, &document))
-    }
-
-    async fn upload_desc_image(
-        &self,
-        tournament_id: &str,
-        data_url: &str,
-    ) -> Result<String, RequestError> {
-        let document = self
-            .post(
-                &format!("t/{}/add_desc_image", encode(tournament_id)),
-                json!({ "image": data_url }),
-            )
-            .await?;
-        Ok(tourney::parse_uploaded_image(&document))
     }
 
     async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
@@ -454,6 +345,51 @@ impl TourneyPort for TourneyClient {
             )
             .await?;
         Ok(tourney::parse_player_ratings(&document))
+    }
+
+    async fn check_renames(&self, tournament_id: &str) -> Result<RenameCheck, RequestError> {
+        // A `POST` that writes nothing: the service reads FAF on the
+        // organiser's token, and keeps it off `GET` for that reason.
+        let document = self
+            .send(
+                reqwest::Method::POST,
+                &format!("t/{}/check_renames", encode(tournament_id)),
+                &[],
+                Some(json!({})),
+            )
+            .await?;
+        Ok(tourney::parse_rename_check(&document))
+    }
+
+    async fn series(&self) -> Result<Vec<TourneySeries>, RequestError> {
+        let document = self.get("series", &[]).await?;
+        Ok(tourney::parse_series_list(&document))
+    }
+
+    async fn series_detail(&self, series_id: &str) -> Result<SeriesDetail, RequestError> {
+        let document = self
+            .get(&format!("series/{}", encode(series_id)), &[])
+            .await?;
+        tourney::parse_series_detail(&document)
+            .ok_or_else(|| RequestError::not_found("That series no longer exists."))
+    }
+
+    async fn mark_news_read(&self, tournament_id: &str) -> Result<(), RequestError> {
+        // No body: the service reads the account off the session and marks
+        // every announcement up to the newest one.
+        self.act(tournament_id, "news_read", json!({})).await
+    }
+}
+
+#[async_trait]
+impl TourneyEntryPort for TourneyClient {
+    async fn sign_up(&self, tournament_id: &str, rating: Option<i32>) -> Result<(), RequestError> {
+        self.act(tournament_id, "signup", tourney::signup_body(rating))
+            .await
+    }
+
+    async fn decline_invite(&self, tournament_id: &str) -> Result<(), RequestError> {
+        self.act(tournament_id, "decline_invite", json!({})).await
     }
 
     async fn withdraw(&self, tournament_id: &str, player_id: &str) -> Result<(), RequestError> {
@@ -636,61 +572,6 @@ impl TourneyPort for TourneyClient {
         .await
     }
 
-    async fn reseed(&self, tournament_id: &str, order: &SeedOrder) -> Result<(), RequestError> {
-        let body = match order {
-            SeedOrder::Randomise => json!({ "randomize": true }),
-            SeedOrder::InviteOrder => json!({ "inviteOrder": 1 }),
-            SeedOrder::Explicit { team_ids } => json!({ "order": team_ids }),
-        };
-        self.act(tournament_id, "reseed", body).await
-    }
-
-    async fn split_divisions(
-        &self,
-        tournament_id: &str,
-        divisions: i32,
-    ) -> Result<(), RequestError> {
-        self.act(
-            tournament_id,
-            "split_divisions",
-            json!({ "divisions": divisions }),
-        )
-        .await
-    }
-
-    async fn set_division(
-        &self,
-        tournament_id: &str,
-        team_id: &str,
-        division: i32,
-    ) -> Result<(), RequestError> {
-        self.act(
-            tournament_id,
-            "set_division",
-            json!({ "teamId": team_id, "division": division }),
-        )
-        .await
-    }
-
-    async fn post_news(
-        &self,
-        tournament_id: &str,
-        body: &str,
-        important: bool,
-    ) -> Result<(), RequestError> {
-        self.act(
-            tournament_id,
-            "news_post",
-            json!({ "body": body, "important": important }),
-        )
-        .await
-    }
-
-    async fn delete_news(&self, tournament_id: &str, news_id: &str) -> Result<(), RequestError> {
-        self.act(tournament_id, "news_delete", json!({ "id": news_id }))
-            .await
-    }
-
     async fn check_in(&self, tournament_id: &str, checked_in: bool) -> Result<(), RequestError> {
         // The team is resolved from the session server-side; any member may
         // check the team in, which is the point of not naming one here.
@@ -700,6 +581,43 @@ impl TourneyPort for TourneyClient {
             json!({ "value": checked_in }),
         )
         .await
+    }
+
+    async fn draft_pick(&self, tournament_id: &str, player_id: &str) -> Result<(), RequestError> {
+        self.act(tournament_id, "pick", json!({ "playerId": player_id }))
+            .await
+    }
+
+    async fn draft_undo(&self, tournament_id: &str) -> Result<(), RequestError> {
+        self.act(tournament_id, "undo_pick", json!({})).await
+    }
+
+    async fn set_captains(
+        &self,
+        tournament_id: &str,
+        player_ids: &[String],
+    ) -> Result<(), RequestError> {
+        // `phase` again, like every other lifecycle step: the action name is in
+        // the body, not the path.
+        self.act(
+            tournament_id,
+            "phase",
+            json!({ "action": "set_captains", "captainIds": player_ids }),
+        )
+        .await
+    }
+}
+
+#[async_trait]
+impl TourneyMatchPort for TourneyClient {
+    async fn advance(
+        &self,
+        tournament_id: &str,
+        phase: TourneyPhase,
+        config: Option<&BracketConfig>,
+    ) -> Result<(), RequestError> {
+        self.act(tournament_id, "phase", tourney::phase_body(phase, config))
+            .await
     }
 
     async fn confirm_report(
@@ -761,91 +679,6 @@ impl TourneyPort for TourneyClient {
         .await
     }
 
-    async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError> {
-        let document = self
-            .get(&format!("t/{}/chat_rooms", encode(tournament_id)), &[])
-            .await?;
-        Ok(tourney::parse_chat_rooms(&document))
-    }
-
-    async fn chat_read(
-        &self,
-        tournament_id: &str,
-        room_id: &str,
-    ) -> Result<Vec<ChatPost>, RequestError> {
-        // Without `since` the server sends the last 200 posts, which is the
-        // whole room as far as a tournament is concerned. Reading also clears
-        // this account's unread marker, which is why the client never has to
-        // acknowledge one separately.
-        let document = self
-            .get(
-                &format!("t/{}/chat_read", encode(tournament_id)),
-                &[("room", room_id)],
-            )
-            .await?;
-        Ok(tourney::parse_chat_posts(&document))
-    }
-
-    async fn chat_post(
-        &self,
-        tournament_id: &str,
-        room_id: &str,
-        body: &str,
-        reply_to: Option<&str>,
-    ) -> Result<(), RequestError> {
-        self.act(
-            tournament_id,
-            "chat_post",
-            tourney::chat_post_body(room_id, body, reply_to),
-        )
-        .await
-    }
-
-    async fn articles(&self) -> Result<Vec<Article>, RequestError> {
-        let document = self.get("articles", &[]).await?;
-        Ok(tourney::parse_articles(&document))
-    }
-
-    async fn assign_pool(
-        &self,
-        tournament_id: &str,
-        round_key: &str,
-        pool_id: &str,
-    ) -> Result<(), RequestError> {
-        // An absent `poolId` clears the assignment rather than failing, which is
-        // how the round tile's "no pool" option is expressed.
-        self.act(
-            tournament_id,
-            "pool_assign",
-            json!({ "key": round_key, "poolId": pool_id }),
-        )
-        .await
-    }
-
-    async fn draft_pick(&self, tournament_id: &str, player_id: &str) -> Result<(), RequestError> {
-        self.act(tournament_id, "pick", json!({ "playerId": player_id }))
-            .await
-    }
-
-    async fn draft_undo(&self, tournament_id: &str) -> Result<(), RequestError> {
-        self.act(tournament_id, "undo_pick", json!({})).await
-    }
-
-    async fn set_captains(
-        &self,
-        tournament_id: &str,
-        player_ids: &[String],
-    ) -> Result<(), RequestError> {
-        // `phase` again, like every other lifecycle step: the action name is in
-        // the body, not the path.
-        self.act(
-            tournament_id,
-            "phase",
-            json!({ "action": "set_captains", "captainIds": player_ids }),
-        )
-        .await
-    }
-
     async fn report_ffa(
         &self,
         tournament_id: &str,
@@ -865,6 +698,25 @@ impl TourneyPort for TourneyClient {
             );
         }
         self.act(tournament_id, "report", body).await
+    }
+}
+
+#[async_trait]
+impl TourneyMapsPort for TourneyClient {
+    async fn assign_pool(
+        &self,
+        tournament_id: &str,
+        round_key: &str,
+        pool_id: &str,
+    ) -> Result<(), RequestError> {
+        // An absent `poolId` clears the assignment rather than failing, which is
+        // how the round tile's "no pool" option is expressed.
+        self.act(
+            tournament_id,
+            "pool_assign",
+            json!({ "key": round_key, "poolId": pool_id }),
+        )
+        .await
     }
 
     async fn veto_act(
@@ -928,29 +780,6 @@ impl TourneyPort for TourneyClient {
             tourney::faction_veto_config_body(config),
         )
         .await
-    }
-
-    async fn check_renames(&self, tournament_id: &str) -> Result<RenameCheck, RequestError> {
-        // A `POST` that writes nothing: the service reads FAF on the
-        // organiser's token, and keeps it off `GET` for that reason.
-        let document = self
-            .send(
-                reqwest::Method::POST,
-                &format!("t/{}/check_renames", encode(tournament_id)),
-                &[],
-                Some(json!({})),
-            )
-            .await?;
-        Ok(tourney::parse_rename_check(&document))
-    }
-
-    async fn administer(
-        &self,
-        tournament_id: &str,
-        change: &TourneyAdmin,
-    ) -> Result<(), RequestError> {
-        let (action, body) = tourney::admin_request(change);
-        self.act(tournament_id, action, body).await
     }
 
     async fn save_map(&self, tournament_id: &str, map: &MapDraft) -> Result<(), RequestError> {
@@ -1051,18 +880,200 @@ impl TourneyPort for TourneyClient {
         }
         self.act(tournament_id, "pool_save", body).await
     }
+}
 
-    async fn series(&self) -> Result<Vec<TourneySeries>, RequestError> {
-        let document = self.get("series", &[]).await?;
-        Ok(tourney::parse_series_list(&document))
+#[async_trait]
+impl TourneyChatPort for TourneyClient {
+    async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError> {
+        let document = self
+            .get(&format!("t/{}/chat_rooms", encode(tournament_id)), &[])
+            .await?;
+        Ok(tourney::parse_chat_rooms(&document))
     }
 
-    async fn series_detail(&self, series_id: &str) -> Result<SeriesDetail, RequestError> {
+    async fn chat_read(
+        &self,
+        tournament_id: &str,
+        room_id: &str,
+    ) -> Result<Vec<ChatPost>, RequestError> {
+        // Without `since` the server sends the last 200 posts, which is the
+        // whole room as far as a tournament is concerned. Reading also clears
+        // this account's unread marker, which is why the client never has to
+        // acknowledge one separately.
         let document = self
-            .get(&format!("series/{}", encode(series_id)), &[])
+            .get(
+                &format!("t/{}/chat_read", encode(tournament_id)),
+                &[("room", room_id)],
+            )
             .await?;
-        tourney::parse_series_detail(&document)
-            .ok_or_else(|| RequestError::not_found("That series no longer exists."))
+        Ok(tourney::parse_chat_posts(&document))
+    }
+
+    async fn chat_post(
+        &self,
+        tournament_id: &str,
+        room_id: &str,
+        body: &str,
+        reply_to: Option<&str>,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "chat_post",
+            tourney::chat_post_body(room_id, body, reply_to),
+        )
+        .await
+    }
+
+    async fn mute_chat(
+        &self,
+        tournament_id: &str,
+        faf_id: i32,
+        name: &str,
+        muted: bool,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "chat_mute",
+            tourney::chat_mute_body(faf_id, name, muted),
+        )
+        .await
+    }
+
+    async fn delete_chat_post(
+        &self,
+        tournament_id: &str,
+        room_id: &str,
+        post_id: &str,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "chat_delete",
+            tourney::chat_delete_body(room_id, post_id),
+        )
+        .await
+    }
+}
+
+#[async_trait]
+impl TourneyOrganiserPort for TourneyClient {
+    async fn create(&self, draft: &TourneyDraft) -> Result<String, RequestError> {
+        // The one write that is not addressed to a tournament, and the only one
+        // whose answer the client needs: the new id, so the organiser lands in
+        // the event they just made.
+        let document = self
+            .send(
+                reqwest::Method::POST,
+                "tournaments",
+                &[],
+                Some(tourney::create_body(draft)),
+            )
+            .await?;
+        document
+            .get("id")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .ok_or_else(|| {
+                RequestError::unexpected("The tournament service did not return the new event.")
+            })
+    }
+
+    async fn edit_info(
+        &self,
+        tournament_id: &str,
+        draft: &TourneyDraft,
+    ) -> Result<(), RequestError> {
+        self.act(tournament_id, "edit_info", tourney::edit_info_body(draft))
+            .await
+    }
+
+    async fn publish(&self, tournament_id: &str) -> Result<(), RequestError> {
+        // No `publishAt`: an absent schedule means publish now, which is the
+        // only thing this client offers.
+        self.act(tournament_id, "publish", json!({})).await
+    }
+
+    async fn archive(&self, tournament_id: &str) -> Result<(), RequestError> {
+        // `delete` archives for anyone who is not a site admin, and the client
+        // never holds that role, so this is reversible in practice.
+        self.act(tournament_id, "delete", json!({})).await
+    }
+
+    async fn upload_desc_image(
+        &self,
+        tournament_id: &str,
+        data_url: &str,
+    ) -> Result<String, RequestError> {
+        let document = self
+            .post(
+                &format!("t/{}/add_desc_image", encode(tournament_id)),
+                json!({ "image": data_url }),
+            )
+            .await?;
+        Ok(tourney::parse_uploaded_image(&document))
+    }
+
+    async fn reseed(&self, tournament_id: &str, order: &SeedOrder) -> Result<(), RequestError> {
+        let body = match order {
+            SeedOrder::Randomise => json!({ "randomize": true }),
+            SeedOrder::InviteOrder => json!({ "inviteOrder": 1 }),
+            SeedOrder::Explicit { team_ids } => json!({ "order": team_ids }),
+        };
+        self.act(tournament_id, "reseed", body).await
+    }
+
+    async fn split_divisions(
+        &self,
+        tournament_id: &str,
+        divisions: i32,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "split_divisions",
+            json!({ "divisions": divisions }),
+        )
+        .await
+    }
+
+    async fn set_division(
+        &self,
+        tournament_id: &str,
+        team_id: &str,
+        division: i32,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "set_division",
+            json!({ "teamId": team_id, "division": division }),
+        )
+        .await
+    }
+
+    async fn post_news(
+        &self,
+        tournament_id: &str,
+        body: &str,
+        important: bool,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "news_post",
+            json!({ "body": body, "important": important }),
+        )
+        .await
+    }
+
+    async fn delete_news(&self, tournament_id: &str, news_id: &str) -> Result<(), RequestError> {
+        self.act(tournament_id, "news_delete", json!({ "id": news_id }))
+            .await
+    }
+
+    async fn administer(
+        &self,
+        tournament_id: &str,
+        change: &TourneyAdmin,
+    ) -> Result<(), RequestError> {
+        let (action, body) = tourney::admin_request(change);
+        self.act(tournament_id, action, body).await
     }
 
     async fn save_series(&self, draft: &SeriesDraft) -> Result<(), RequestError> {
@@ -1143,35 +1154,6 @@ impl TourneyPort for TourneyClient {
         .await
     }
 
-    async fn mute_chat(
-        &self,
-        tournament_id: &str,
-        faf_id: i32,
-        name: &str,
-        muted: bool,
-    ) -> Result<(), RequestError> {
-        self.act(
-            tournament_id,
-            "chat_mute",
-            tourney::chat_mute_body(faf_id, name, muted),
-        )
-        .await
-    }
-
-    async fn delete_chat_post(
-        &self,
-        tournament_id: &str,
-        room_id: &str,
-        post_id: &str,
-    ) -> Result<(), RequestError> {
-        self.act(
-            tournament_id,
-            "chat_delete",
-            tourney::chat_delete_body(room_id, post_id),
-        )
-        .await
-    }
-
     async fn add_organiser(
         &self,
         tournament_id: &str,
@@ -1220,12 +1202,6 @@ impl TourneyPort for TourneyClient {
         .await
     }
 
-    async fn mark_news_read(&self, tournament_id: &str) -> Result<(), RequestError> {
-        // No body: the service reads the account off the session and marks
-        // every announcement up to the newest one.
-        self.act(tournament_id, "news_read", json!({})).await
-    }
-
     async fn set_caster(
         &self,
         tournament_id: &str,
@@ -1253,6 +1229,54 @@ impl TourneyPort for TourneyClient {
     }
 }
 
+#[async_trait]
+impl TourneySitePort for TourneyClient {
+    async fn hosting(&self) -> Result<HostingStatus, RequestError> {
+        let document = self.get("host_status", &[]).await?;
+        Ok(tourney::parse_hosting(&document))
+    }
+
+    async fn profile(&self) -> Result<String, RequestError> {
+        let document = self.get("/auth/faf/me", &[]).await?;
+        Ok(tourney::parse_profile(&document))
+    }
+
+    async fn set_discord(&self, handle: &str) -> Result<String, RequestError> {
+        // The service answers with what it stored, which is not what was sent:
+        // it strips the characters it will not keep and cuts the rest at forty.
+        // Reading the answer back is how the field ends up showing the handle
+        // that other players will actually see.
+        let document = self
+            .post("my/profile", json!({ "discord": handle.trim() }))
+            .await?;
+        Ok(tourney::parse_discord(&document))
+    }
+
+    async fn site_read(&self, read: SiteRead) -> Result<SiteDocument, RequestError> {
+        let (path, post) = tourney::site_read_path(read);
+        let document = if post {
+            self.post(path, json!({})).await?
+        } else {
+            self.get(path, &[]).await?
+        };
+        Ok(tourney::parse_site_document(read, &document))
+    }
+
+    async fn site_write(
+        &self,
+        write: &SiteWrite,
+    ) -> Result<(Option<String>, Option<String>), RequestError> {
+        let (path, body) = tourney::site_request(write);
+        let document = self.post(&path, body).await?;
+        Ok(tourney::parse_site_answer(write, &document))
+    }
+
+    async fn articles(&self) -> Result<Vec<Article>, RequestError> {
+        let document = self.get("articles", &[]).await?;
+        Ok(tourney::parse_articles(&document))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1270,10 +1294,10 @@ mod tests {
 
     #[test]
     fn paths_hang_off_the_configured_base() {
-        let deployed = client("https://tournaments.doodlepros.com");
+        let deployed = client("https://tournaments.faforever.com");
         assert_eq!(
             deployed.url("t/e1a2b/signup").unwrap().as_str(),
-            "https://tournaments.doodlepros.com/api/t/e1a2b/signup"
+            "https://tournaments.faforever.com/api/t/e1a2b/signup"
         );
         // A base with a trailing slash is the same base.
         assert_eq!(
@@ -1309,7 +1333,7 @@ mod tests {
     #[test]
     fn an_id_cannot_escape_its_path_segment() {
         // Ids reach this layer from state that has been through TypeScript.
-        let url = client("https://tournaments.doodlepros.com")
+        let url = client("https://tournaments.faforever.com")
             .url(&format!("t/{}/signup", encode("../../admin")))
             .unwrap();
         assert_eq!(url.path(), "/api/t/..%2F..%2Fadmin/signup");
@@ -1319,7 +1343,7 @@ mod tests {
     async fn every_route_needs_a_session() {
         // The service shows an anonymous caller nothing, so failing here is
         // better than a request that can only come back empty.
-        let error = client("https://tournaments.doodlepros.com")
+        let error = client("https://tournaments.faforever.com")
             .list()
             .await
             .expect_err("no token");

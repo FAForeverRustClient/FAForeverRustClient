@@ -9,7 +9,7 @@
 // drift on the one thing that would break silently: which spelling of a uid
 // counts as the same mod.
 
-import type { BrowsingPreferences } from "../../ipc/bindings";
+import type { BrowsingPreferences, SettingsCommand } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 
 /** The stored favourites as a set that can be asked about a uid. */
@@ -23,32 +23,29 @@ export function isFavoriteMod(favorites: ReadonlySet<string>, uid: string): bool
 }
 
 /**
- * The list after starring or unstarring one mod.
+ * The command that stars or unstars one mod.
  *
- * Pure, so the reasoning about it is testable: the stored form is always the
- * folded one, and un-starring has to match a stored entry that may have been
- * written in any case by an older client.
+ * Names the one uid and the direction, never the resulting list: the backend
+ * applies it to the list it holds. Sending the toggled list instead lost a
+ * star, because two clicks inside one round trip each started from the same
+ * snapshot, so the second list did not hold the first star. The backend folds
+ * the uid and matches an entry an older client stored in any case.
  */
-export function withFavoriteToggled(
+export function favoriteModToggle(
   favorites: readonly string[] | null | undefined,
   uid: string,
-): string[] {
-  const key = uid.trim().toLocaleLowerCase();
-  const current = favorites ?? [];
-  return current.some((favorite) => favorite.trim().toLocaleLowerCase() === key)
-    ? current.filter((favorite) => favorite.trim().toLocaleLowerCase() !== key)
-    : [...current, key];
+): SettingsCommand {
+  return {
+    type: "setListMember",
+    payload: {
+      list: "favoriteMods",
+      value: uid,
+      member: !isFavoriteMod(favoriteModKeys(favorites), uid),
+    },
+  };
 }
 
 /** Star or unstar a mod, and persist it. */
 export function toggleFavoriteMod(browsing: BrowsingPreferences, uid: string): void {
-  ipc.send({
-    kind: "Settings",
-    command: {
-      type: "setBrowsing",
-      payload: {
-        preferences: { ...browsing, favoriteMods: withFavoriteToggled(browsing.favoriteMods, uid) },
-      },
-    },
-  });
+  ipc.send({ kind: "Settings", command: favoriteModToggle(browsing.favoriteMods, uid) });
 }

@@ -70,9 +70,10 @@ pub use galactic_war::{
 pub use guides::{
     accept_commit_message, catalogue_with, compose_submission, entry_from_body, entry_from_draft,
     guide_file_path, guide_from_body, guide_raw_url, new_issue_url, prose_from_body,
-    rejection_comment, slug, submission_body, submission_title, DeviceLogin, GuideSubmission,
-    GuidesAuthStatus, GuidesCommand, GuidesEvent, GuidesIdentity, GuidesState, GuidesStatus,
-    GuidesWrite, RejectReason, SubmitStatus, CATALOGUE_PATH, GUIDES_REPO, SUBMISSION_LABEL,
+    read_draft_images, rejection_comment, slug, submission_body, submission_title, DeviceLogin,
+    DraftImage, GuideImage, GuideSubmission, GuidesAuthStatus, GuidesCommand, GuidesEvent,
+    GuidesIdentity, GuidesState, GuidesStatus, GuidesWrite, RejectReason, SubmissionPull,
+    SubmitStatus, CATALOGUE_PATH, GUIDES_REPO, SUBMISSION_LABEL,
 };
 pub use install::{InstallEvent, InstallState, ResolvedPaths};
 pub use leaderboard::{
@@ -106,23 +107,23 @@ pub use nav::{
 };
 pub use notifications::{
     ClientNotification, NotificationAction, NotificationCommand, NotificationEvent,
-    NotificationKind, NotificationState,
+    NotificationKind, NotificationState, NotificationText,
 };
 pub use player_card::{
-    aggregate_map_stats, is_retired_leaderboard, leaderboard_display_name,
-    leaderboard_display_rank, sort_league_placements, sort_rating_summaries, AccountLookup,
-    AccountLookupMatch, ClanMember, MatchmakerPlayerProfile, PlayedGame, PlayerAchievement,
-    PlayerAchievementState, PlayerAvatar, PlayerCardCommand, PlayerCardEvent, PlayerCardProfile,
-    PlayerCardState, PlayerCardStatus, PlayerClan, PlayerEventCount, PlayerGameResult,
-    PlayerLeaguePlacement, PlayerMapStat, PlayerMapStats, PlayerNameRecord, PlayerRatingSummary,
-    PlayerSummary, RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
+    aggregate_map_stats, is_retired_leaderboard, leaderboard_display_rank, sort_league_placements,
+    sort_rating_summaries, AccountLookup, AccountLookupMatch, ClanMember, MatchmakerPlayerProfile,
+    PlayedGame, PlayerAchievement, PlayerAchievementState, PlayerAvatar, PlayerCardCommand,
+    PlayerCardEvent, PlayerCardProfile, PlayerCardState, PlayerCardStatus, PlayerClan,
+    PlayerEventCount, PlayerGameResult, PlayerLeaguePlacement, PlayerMapStat, PlayerMapStats,
+    PlayerNameRecord, PlayerRatingSummary, PlayerSummary, RatingHistoryPage, RatingHistoryPeriod,
+    RatingHistoryPoint, RatingHistoryQuery,
 };
 pub use replays::{
     live_replay_delay_remaining, sort_vault_replays, LiveReplayTarget, LiveReplayTracking,
     LiveReplayTrackingAction, LocalReplay, LocalReplayPlayer, LocalReplayStatus, LocalReplayTeam,
     ReplayActivity, ReplayAnalysis, ReplayArmy, ReplayChatMessage, ReplayCommand,
     ReplayCommandStats, ReplayDetails, ReplayEvent, ReplayGameOption, ReplayNotice, ReplayOrder,
-    ReplayPlayer, ReplayPlayerStats, ReplayPoint, ReplayPreparation, ReplayQuery,
+    ReplayPlayer, ReplayPlayerStats, ReplayPoint, ReplayPreparation, ReplayQuery, ReplayReadError,
     ReplayResourceStat, ReplayScenario, ReplaySortField, ReplayState, ReplayStatus, ReplayTeam,
     ReplayTotals, ReplayUnitStat, ResolvedReplayMap, VaultReplay, VaultStatus,
     LIVE_REPLAY_DELAY_SECONDS,
@@ -148,7 +149,8 @@ pub use settings::{
     MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_RAIL_BELOW,
 };
 pub use social::{
-    PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent, SocialState,
+    LoginLookup, PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent,
+    SocialState, MAX_LOGIN_LOOKUPS,
 };
 pub use streams::{
     LiveStream, StreamPlatform, StreamsCommand, StreamsEvent, StreamsState, StreamsStatus,
@@ -161,7 +163,8 @@ pub use tourney::{
     SeedOrder, Seeding, SignupMode, Standing, StandingOutcome, StandingsKind, TeamExit,
     TeamRequest, Tourney, TourneyAction, TourneyActionFailure, TourneyCategory, TourneyCommand,
     TourneyDraft, TourneyEvent, TourneyInvite, TourneyLoadStatus, TourneyMap, TourneyMatch,
-    TourneyPhase, TourneyPlayer, TourneyState, TourneyStatus, TourneyTeam, TourneyViewer,
+    TourneyPhase, TourneyPlayer, TourneyRead, TourneyState, TourneyStatus, TourneyTeam,
+    TourneyViewer, TourneyWrite,
 };
 pub use tourney::{
     AccessKind, AccessRequest, AccessStatus, AdminArticle, ArchivedTourney, ConsoleRole,
@@ -189,16 +192,15 @@ pub use tourney::{ImportedGroup, ImportedPlacing, ImportedRow};
 pub use tourney::{PendingImage, PickSettings, PlanLists, SwissExtras, TourneyPreset};
 pub use tourney::{PickLogEntry, PickMade, PickPhase, Playoffs, StageTwoPlan, TeamRecord};
 pub use training::{
-    compose_contribution, compose_review_request, compose_url, contribution_problem, derive_level,
-    derive_topics, filter_resources, game_mode_of, hosted_guide, hosted_recording, kind_label,
-    leaderboard_word, lesson_resources, level_label, merge_catalogue, normalise_map,
-    percent_encode, profile_from_state, recommend, related_resources, review_problem, score,
-    topic_counts, topic_label, video_still, within_band, ContributionDraft, ContributionProblem,
-    ForumPost, HostedGuide, ReviewProblem, ReviewRequestDraft, Trainer, TrainingCatalogue,
-    TrainingCommand, TrainingDocument, TrainingEvent, TrainingKind, TrainingLevel, TrainingLinks,
-    TrainingProfile, TrainingQuery, TrainingResource, TrainingSource, TrainingState,
-    TrainingStatus, TrainingTopic, FORUM_BASE, LESSON_ID_PREFIX, PROFILE_REPLAY_WINDOW,
-    RECOMMENDED_LIMIT,
+    compose_contribution, compose_review_request, compose_url, contribution_problem,
+    filter_resources, game_mode_of, hosted_guide, hosted_recording, kind_label, leaderboard_word,
+    level_label, normalise_map, official_map_name, own_row, percent_encode, profile_from,
+    profile_from_state, recommend, related_resources, review_problem, score, topic_counts,
+    topic_label, video_still, within_band, ContributionDraft, ContributionProblem, ForumPost,
+    HostedGuide, ReviewProblem, ReviewRequestDraft, Trainer, TrainingCatalogue, TrainingCommand,
+    TrainingDocument, TrainingEvent, TrainingKind, TrainingLevel, TrainingLinks, TrainingProfile,
+    TrainingQuery, TrainingResource, TrainingSource, TrainingState, TrainingStatus, TrainingTopic,
+    FORUM_BASE, OFFICIAL_MAPS, PROFILE_REPLAY_WINDOW, RECOMMENDED_LIMIT,
 };
 pub use tutorials::{
     tutorials_of, Tutorial, TutorialCategory, TutorialLaunchStatus, TutorialsCommand,

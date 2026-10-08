@@ -46,16 +46,16 @@ const clampSidebarWidth = (width: number) =>
 /**
  * Write the width back, once a drag has stopped rather than on every frame.
  *
- * Reads the newest copy of the block because `setAppearance` replaces the whole
- * thing, and a drag that started before some other setting changed would
- * otherwise write that other setting back to its old value.
+ * Sends the width alone, as a patch, so a drag that started before some other
+ * appearance setting changed cannot write that setting back to its old value.
+ * The newest copy is read only to skip a write that would change nothing.
  */
 function persistSidebarWidth(width: number) {
   const current = useAppStore.getState().state.settings.appearance;
   if (current.sidebarWidth === width) return;
   ipc.send({
     kind: "Settings",
-    command: { type: "setAppearance", payload: { preferences: { ...current, sidebarWidth: width } } },
+    command: { type: "patchAppearance", payload: { patch: { sidebarWidth: width } } },
   });
 }
 

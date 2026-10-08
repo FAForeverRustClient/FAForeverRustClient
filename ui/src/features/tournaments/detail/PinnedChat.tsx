@@ -9,6 +9,7 @@
 import type { ChatPost, ChatRoom, Tourney } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { ChatRoomView } from "./ChatRoomView";
+import type { ChatActions } from "../tourneyActions";
 
 /** Whether a room can be pinned: not a finished match's. */
 export function pinnable(room: ChatRoom | undefined): boolean {
@@ -21,10 +22,8 @@ interface PinnedChatProps {
   room: ChatRoom | undefined;
   posts: ChatPost[];
   busy: boolean;
-  onPost: (body: string, replyTo: string | null) => void;
-  onDeletePost: (roomId: string, postId: string) => void;
-  onMute: (fafId: number, name: string, muted: boolean) => void;
-  onRefresh: (roomId: string) => void;
+  /** Posting goes to this room by name: it is not always the open one. */
+  chat: Pick<ChatActions, "postTo" | "deletePost" | "mute" | "refresh">;
   onOpenInTab: () => void;
   onUnpin: () => void;
 }
@@ -61,10 +60,8 @@ export function PinnedChat(props: PinnedChatProps) {
         posts={props.posts}
         status={{ type: "ready" }}
         busy={props.busy}
-        onPost={props.onPost}
-        onDeletePost={props.onDeletePost}
-        onMute={props.onMute}
-        onRefresh={props.onRefresh}
+        onPost={(body, replyTo) => props.chat.postTo(props.roomId, body, replyTo)}
+        chat={props.chat}
         compact
       />
     </aside>

@@ -83,25 +83,74 @@
   text-align: right;
 }
 
-/* The one control a task offers in the bar, e.g. Stop on a matchmaker search:
-   small enough for the 24 px bar, still a real button with a focus ring. */
+/* The one control a task offers in the bar, e.g. stopping a matchmaker
+   search: a quiet icon that shows itself as a button on hover, rather than a
+   bordered box that outweighed the line it belongs to. Still a real button,
+   with its name in the tooltip and a focus ring. */
 .client-status-task-action {
+  display: inline-flex;
   flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
   height: 18px;
-  padding: 0 8px;
-  color: var(--color-text);
-  font: inherit;
-  font-size: 11px;
-  line-height: 1;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-strong);
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background-color var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .client-status-task-action:hover {
+  color: var(--color-text);
   background: var(--color-surface-hover);
+}
+
+/* The matchmaker tab's search dot, at the head of the search's line: grey
+   while the search is being prepared, green once it runs, pulsing while it
+   searches. Same colours and the same pulse as `matchmaker-dot-pulse`. */
+.client-status-search-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  background: var(--color-subtle);
+  border-radius: 50%;
+}
+
+.client-status-search-dot[data-state="searching"],
+.client-status-search-dot[data-state="launching"] {
+  background: var(--color-ok);
+}
+
+.client-status-search-dot[data-state="searching"] {
+  animation: client-status-search-pulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes client-status-search-pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-ok) 65%, transparent);
+  }
+  60% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-ok) 0%, transparent);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-ok) 0%, transparent);
+  }
+}
+
+html[data-reduced-motion="true"] .client-status-search-dot[data-state="searching"] {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-status-search-dot[data-state="searching"] {
+    animation: none;
+  }
 }
 
 .client-status-task-action:focus-visible {

@@ -1,0 +1,41 @@
+/* Naming a map generator preset outside the Generate map dialog. The input
+   matches the dialog's own controls so the two read as the same action. */
+.save-generator-preset-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.save-generator-preset-input {
+  flex: 1 1 180px;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  color: var(--color-text);
+  font-size: 13px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.save-generator-preset-input:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+
+.save-generator-preset-input:focus-visible {
+  border-color: var(--color-accent);
+  outline: 2px solid var(--color-accent-glow);
+  outline-offset: 0;
+}
+
+.save-generator-preset-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--color-error);
+  font-size: 12px;
+}

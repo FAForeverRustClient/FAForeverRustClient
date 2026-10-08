@@ -26,6 +26,7 @@ import { ReplayCardRoster } from "../ReplayRoster";
 import type { PlayerMenuOpener } from "../../../shared/hooks/usePlayerMenu";
 import { LiveReplayAge, LiveWatchButton } from "./LiveReplayRow";
 import { prettyGameType, replayDelayRemaining } from "../../../shared/liveReplayModel";
+import { isCoopGame } from "../../../shared/gameRules";
 import "../online-replays.css";
 import { useTranslation } from "../../../i18n/useTranslation";
 
@@ -134,7 +135,12 @@ export function LiveReplayCards(props: Props) {
   );
 }
 
-const LiveReplayCard = memo(function LiveReplayCard({
+/**
+ * One running game as the Live tab draws it. Exported for the side panel of a
+ * private conversation (#448), which shows the game the other person is
+ * playing and should say exactly what this tab says about it.
+ */
+export const LiveReplayCard = memo(function LiveReplayCard({
   busy,
   game,
   ageNow,
@@ -151,7 +157,8 @@ const LiveReplayCard = memo(function LiveReplayCard({
   ageNow: number;
   waitSeconds: number;
   tracking: LiveReplayTracking | null;
-  onOpen: (id: number) => void;
+  /** Opens the game's detail panel; a card with nowhere to open one leaves it out. */
+  onOpen?: (id: number) => void;
   onPlayerMenu: PlayerMenuOpener;
 }) {
   const { t } = useTranslation();
@@ -165,7 +172,12 @@ const LiveReplayCard = memo(function LiveReplayCard({
   const presentation = mapPresentation(vault, game.map, missions);
   const title = replayCardTitle(game.title, presentation.displayName || game.map);
   const vaultTeams = lookup?.type === "found" ? lookup.payload.teams : [];
-  const teams = vaultTeams.length > 0 ? vaultTeams : liveReplayTeams(game);
+  const lineup = vaultTeams.length > 0 ? vaultTeams : liveReplayTeams(game);
+  // A co-op mission rates nobody, and the vault's row says 0 for every
+  // player in it: a column of zeros down every co-op card (#434).
+  const teams = isCoopGame(game)
+    ? lineup.map((team) => ({ ...team, players: team.players.map((player) => ({ ...player, rating: null })) }))
+    : lineup;
   const simMods = Object.values(game.simMods);
 
   // A click that did not land on a control opens the game, which is what the
@@ -178,7 +190,7 @@ const LiveReplayCard = memo(function LiveReplayCard({
     <article
       className="replay-card live-replay-card surface-panel"
       onClick={(event) => {
-        if (opensDetail(event)) onOpen(game.id);
+        if (opensDetail(event)) onOpen?.(game.id);
       }}
       // Double click watches, as it does on a table row.
       onDoubleClick={(event) => {
@@ -215,11 +227,16 @@ const LiveReplayCard = memo(function LiveReplayCard({
             label={t("replays.card.players")}
             value={`${game.players} / ${game.maxPlayers}`}
           />
-          <ReplayMetaFact
-            icon="activity"
-            label={t("replays.card.averageRating")}
-            value={game.averageRating > 0 ? `~${game.averageRating}` : ""}
-          />
+          {/* Only what is known (#434): an unrated lobby's "N/A" and a vanilla
+              game's "0 sim mods" were a third of the grid on most cards and
+              said nothing. */}
+          {game.averageRating > 0 && (
+            <ReplayMetaFact
+              icon="activity"
+              label={t("replays.card.averageRating")}
+              value={`~${game.averageRating}`}
+            />
+          )}
           <ReplayMetaFact
             icon="mods"
             label={t("replays.card.featuredMod")}
@@ -233,15 +250,20 @@ const LiveReplayCard = memo(function LiveReplayCard({
           {/* The id and what the game is running, in the grid rather than in
               the footer: both are facts about the game, like the four above
               them, and the footer is a line of text. */}
+          {simMods.length > 0 && (
+            <ReplayMetaFact
+              icon="mods"
+              label={t("replays.detail.simMods")}
+              value={t("replays.live.simModCount", { count: simMods.length })}
+              detail={simMods.join(", ")}
+            />
+          )}
+          {/* Last, so it can take the grid's whole width: an eight-digit id
+              did not fit the narrow column and was cut to "#27904..." (#434). */}
           <ReplayMetaFact
             icon="replays"
             label={t("replays.detail.replayIdLabel")}
             value={`#${game.id}`}
-          />
-          <ReplayMetaFact
-            icon="mods"
-            label={t("replays.detail.simMods")}
-            value={t("replays.live.simModCount", { count: simMods.length })}
           />
         </div>
       </div>

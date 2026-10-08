@@ -241,8 +241,8 @@ function InstalledModDetail({
             <div className="vault-prop-row">
               <span className="vault-prop-label">{t("mods.vault.version")}</span>
               <span className="vault-prop-value">
-                {mod.version ? `v${mod.version}` : "N/A"}
-                {updateAvailable && metadata ? ` → v${metadata.version}` : ""}
+                {mod.version ? t("common.version", { version: mod.version }) : t("common.notAvailable")}
+                {updateAvailable && metadata ? ` → ${t("common.version", { version: metadata.version })}` : ""}
               </span>
             </div>
             <div className="vault-prop-row">
@@ -736,8 +736,8 @@ export function InstalledModsView({
       ) : filtered.length > 0 ? (
         <section className="installed-mod-library">
           <div className="vault-results-head">
-            <span>{filtered.length} installed {filtered.length === 1 ? "mod" : "mods"}</span>
-            <span>{installed.filter((mod) => mod.enabled).length} active</span>
+            <span>{t("mods.installed.installedCount", { count: filtered.length })}</span>
+            <span>{t("mods.installed.activeCount", { count: installed.filter((mod) => mod.enabled).length })}</span>
           </div>
           <div className="installed-mod-grid" ref={installedGrid}>
             {pageMods.map((mod) => (

@@ -11,7 +11,7 @@
 // first is required: a request that does not say what help is wanted is the
 // single most common reason a review sits unanswered.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
@@ -20,6 +20,15 @@ import { useTranslation } from "../../i18n/useTranslation";
 import { PostPreview } from "./PostPreview";
 import { reviewProblem } from "../../shared/rules/trainingRules";
 import { reviewProblemLabel } from "./trainingPresentation";
+import {
+  forgetReview,
+  keepReview,
+  keptReview,
+  replayReference,
+  reviewKey,
+  sameReview,
+  withReplay,
+} from "./reviewDraft";
 
 interface Props {
   /** The prefilled draft the service opened the form with. */
@@ -35,17 +44,36 @@ export function ReplayReviewDialog({ prefilled, post, onCompose, onClose }: Prop
   // through the backend would put an IPC round trip between a key and the
   // character appearing, which for a controlled field is how typed characters
   // get dropped.
-  const [draft, setDraft] = useState(prefilled);
-  // A newly opened request replaces what is in the fields: the previous one
-  // was about a different game.
-  useEffect(() => setDraft(prefilled), [prefilled]);
+  //
+  // It starts from what was kept for this game, if the dialog was closed on
+  // it before (Escape, a click beside it), and from the service's prefill
+  // otherwise.
+  const [draftKey, setDraftKey] = useState(() => reviewKey(prefilled));
+  const [draft, setDraft] = useState(() => keptReview(reviewKey(prefilled)) ?? prefilled);
+  // The prefill is taken once per opened request, never again while the
+  // player types. The state answers every Compose with the composed draft as
+  // a new object, and adopting that echo replaced whatever was typed while it
+  // travelled. Only a draft that is neither the prefill already taken nor
+  // what this form sent is a different request, and replaces the fields.
   // A composed post describes the draft as it was. Editing after composing
   // makes it stale, and showing it would let the player post the version they
   // just changed away from.
   const [stale, setStale] = useState(false);
+  const adopted = useRef<ReviewRequestDraft>(prefilled);
+  const sent = useRef<ReviewRequestDraft | null>(null);
+  useEffect(() => {
+    if (sameReview(prefilled, adopted.current) || sameReview(prefilled, sent.current)) return;
+    adopted.current = prefilled;
+    sent.current = null;
+    const next = reviewKey(prefilled);
+    setDraftKey(next);
+    setDraft(keptReview(next) ?? prefilled);
+    setStale(false);
+  }, [prefilled]);
   const onChange = (next: ReviewRequestDraft) => {
     setDraft(next);
     setStale(true);
+    keepReview(draftKey, next);
   };
   const problem = reviewProblem(draft);
 
@@ -72,6 +100,8 @@ export function ReplayReviewDialog({ prefilled, post, onCompose, onClose }: Prop
         onSubmit={(event) => {
           event.preventDefault();
           if (problem) return;
+          sent.current = draft;
+          keepReview(draftKey, draft);
           onCompose(draft);
           setStale(false);
         }}
@@ -83,8 +113,8 @@ export function ReplayReviewDialog({ prefilled, post, onCompose, onClose }: Prop
           <label className="training-field is-wide">
             <span>{t("training.review.replay")}</span>
             <input
-              value={draft.replayLink || draft.replayFile}
-              onChange={(event) => onChange({ ...draft, replayLink: event.target.value })}
+              value={replayReference(draft)}
+              onChange={(event) => onChange(withReplay(draft, event.target.value))}
               placeholder={t("training.review.replayPlaceholder")}
             />
           </label>
@@ -130,10 +160,28 @@ export function ReplayReviewDialog({ prefilled, post, onCompose, onClose }: Prop
           <Button type="submit" variant="primary" disabled={problem !== null}>
             <Icon name="edit" size={15} /> {t("training.review.compose")}
           </Button>
-          <Button onClick={onClose}>{t("common.cancel")}</Button>
+          {/* Cancel is the one deliberate way to throw the draft away.
+              Escape and a click beside the dialog keep it for next time. */}
+          <Button
+            onClick={() => {
+              forgetReview(draftKey);
+              onClose();
+            }}
+          >
+            {t("common.cancel")}
+          </Button>
         </div>
 
-        {post && !stale && <PostPreview post={post} destination="discord" />}
+        {post && !stale && (
+          <PostPreview
+            post={post}
+            destination="discord"
+            // Copied out to be posted is as finished as this request gets
+            // inside the client, so the kept draft goes. Typing again keeps
+            // it again.
+            onDelivered={() => forgetReview(draftKey)}
+          />
+        )}
       </form>
     </Modal>
   );

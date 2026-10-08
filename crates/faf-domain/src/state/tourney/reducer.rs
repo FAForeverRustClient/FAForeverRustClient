@@ -182,34 +182,66 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
         }
         TourneyEvent::AccountSearchCleared => state.account_search = AccountSearch::default(),
 
-        TourneyEvent::RatingChecking => {
-            state.rating_check = None;
-            state.rating_check_status = TourneyLoadStatus::Loading;
+        // The eligibility notice belongs to the open event. Selecting another
+        // one clears it, so anything about an event that is no longer open,
+        // started or answered, is dropped rather than drawn under the wrong
+        // heading.
+        TourneyEvent::RatingChecking { tournament_id } => {
+            if state.selected_id.as_deref() == Some(tournament_id.as_str()) {
+                state.rating_check = None;
+                state.rating_check_status = TourneyLoadStatus::Loading;
+            }
         }
-        TourneyEvent::RatingChecked { check } => {
-            state.rating_check = Some(check.clone());
-            state.rating_check_status = TourneyLoadStatus::Ready;
+        TourneyEvent::RatingChecked {
+            tournament_id,
+            check,
+        } => {
+            if state.selected_id.as_deref() == Some(tournament_id.as_str()) {
+                state.rating_check = Some(check.clone());
+                state.rating_check_status = TourneyLoadStatus::Ready;
+            }
         }
-        TourneyEvent::RatingCheckFailed { reason, kind } => {
-            state.rating_check_status = TourneyLoadStatus::Failed {
-                reason: reason.clone(),
-                kind: *kind,
+        TourneyEvent::RatingCheckFailed {
+            tournament_id,
+            reason,
+            kind,
+        } => {
+            if state.selected_id.as_deref() == Some(tournament_id.as_str()) {
+                state.rating_check_status = TourneyLoadStatus::Failed {
+                    reason: reason.clone(),
+                    kind: *kind,
+                }
             }
         }
         // A new request drops the previous player's table at once, so one
-        // entrant's ratings never show under another's name.
-        TourneyEvent::PlayerRatingsLoading => {
-            state.player_ratings = None;
-            state.player_ratings_status = TourneyLoadStatus::Loading;
+        // entrant's ratings never show under another's name. The table is the
+        // open event's, as the eligibility notice is: selecting another event
+        // clears it, and anything about the event left behind is dropped.
+        TourneyEvent::PlayerRatingsLoading { tournament_id } => {
+            if state.selected_id.as_deref() == Some(tournament_id.as_str()) {
+                state.player_ratings = None;
+                state.player_ratings_status = TourneyLoadStatus::Loading;
+            }
         }
-        TourneyEvent::PlayerRatingsLoaded { ratings } => {
-            state.player_ratings = Some(ratings.clone());
-            state.player_ratings_status = TourneyLoadStatus::Ready;
+        TourneyEvent::PlayerRatingsLoaded {
+            tournament_id,
+            ratings,
+        } => {
+            if state.selected_id.as_deref() == Some(tournament_id.as_str()) {
+                state.player_ratings = Some(ratings.clone());
+                state.player_ratings_status = TourneyLoadStatus::Ready;
+            }
         }
-        TourneyEvent::PlayerRatingsFailed { reason, kind } => {
-            state.player_ratings_status = TourneyLoadStatus::Failed {
-                reason: reason.clone(),
-                kind: *kind,
+        TourneyEvent::PlayerRatingsFailed {
+            tournament_id,
+            reason,
+            kind,
+        } => {
+            if state.selected_id.as_deref() == Some(tournament_id.as_str()) {
+                state.player_ratings_status = TourneyLoadStatus::Failed {
+                    reason: reason.clone(),
+                    kind: *kind,
+                }
             }
         }
         TourneyEvent::CopySourcesLoading => {
@@ -270,7 +302,18 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
             }
         }
         TourneyEvent::ArticleImageUploaded { url } => state.site.article_image = Some(url.clone()),
-        TourneyEvent::DescImageUploaded { url } => state.desc_image = Some(url.clone()),
+        TourneyEvent::DescImageUploaded { request_id, url } => {
+            state.desc_image = Some(DescImageAnswer {
+                request_id: *request_id,
+                url: Some(url.clone()),
+            });
+        }
+        TourneyEvent::DescImageUploadFailed { request_id } => {
+            state.desc_image = Some(DescImageAnswer {
+                request_id: *request_id,
+                url: None,
+            });
+        }
         TourneyEvent::TemplateLoading => {
             state.template = None;
             state.template_status = TourneyLoadStatus::Loading;

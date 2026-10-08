@@ -162,6 +162,7 @@ const INITIAL: AppState = {
     decoded: {},
     helpText: "",
     presets: [],
+    presetSave: null,
   },
   mods: {
     vault: [],
@@ -263,7 +264,7 @@ const INITIAL: AppState = {
       winePrefix: "",
     },
   },
-  social: { friends: [], foes: [], players: [] },
+  social: { friends: [], foes: [], players: [], loginLookups: [] },
   streams: { live: [], status: { type: "idle" }, announced: [] },
   events: {
     catalogue: [],
@@ -487,6 +488,8 @@ const INITIAL: AppState = {
       hoverOpenDelayMs: 500,
       hoverCloseDelayMs: 160,
       replayFlags: false,
+      backgroundImage: "",
+      backgroundDim: 60,
     },
     social: { playerNotes: [], replayNotes: [] },
     notifications: {
@@ -580,6 +583,7 @@ const INITIAL: AppState = {
       keepGeneratedMaps: false,
       keepGeneratedMapsLimit: 0,
       steamPresence: false,
+      borderlessWindow: false,
     },
     discord: { enabled: true, disallowJoins: false },
     connectivity: { adapter: "dynamic", hostAdapter: "java", selectionVersion: 2 },
@@ -589,7 +593,7 @@ const INITIAL: AppState = {
       iceAdapterConsoleWindow: false,
       mapGeneratorWindow: false,
     },
-    updates: { automatic: true, preRelease: false },
+    updates: { automatic: true, preRelease: true },
     browsing: {
       customGamesView: "tiles",
       replaysView: "tiles",
@@ -621,6 +625,7 @@ const INITIAL: AppState = {
         hideSinglePlayer: false,
         hideUnranked: false,
         friendsOnly: false,
+        remember: false,
       },
       hostGame: {
         title: "",
@@ -658,8 +663,11 @@ const INITIAL: AppState = {
       coopBoardColumns: [],
       matchmakerRecentColumns: [],
       matchmakerRecentOrder: [],
+      matchmakerInviteColumns: [],
+      matchmakerInviteOrder: [],
       modPresets: [],
       leaderboardRatingColumns: ["games", "updated"],
+      leaderboardIncludeFormerNames: false,
       replayVaultPlayer: "",
       replayChatChannel: "",
       replayChatTransfers: "show",

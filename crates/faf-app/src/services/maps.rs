@@ -6,11 +6,21 @@
 
 use faf_domain::state::{MapListStatus, MapsCommand, MapsEvent};
 
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+
+/// The map vault's request generation. Owned by this service.
+#[derive(Default)]
+pub struct MapsContext {
+    /// Only the newest vault search may land. A slow earlier query answering
+    /// after a fast later one would otherwise replace its page, its totals or
+    /// its error with results for filters no longer on screen.
+    search_generation: LatestRequest,
+}
 
 pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         MapsCommand::LoadVault => {
+            crate::runtime::expect_admitted(crate::runtime::Key::MapVault);
             // Crawling the whole catalogue is the most expensive thing this
             // client does, so it happens once. Seven of the nine callers
             // checked `vaultStatus` themselves before sending this; the two on
@@ -19,33 +29,50 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
             // check belongs here, where a new caller cannot forget it.
             //
             // A previous failure is still retried: only "already loaded" and
-            // "already in flight" are reasons to do nothing.
-            if out.with_state(|state| {
-                matches!(
-                    state.maps.vault_status,
-                    MapListStatus::Loading | MapListStatus::Ready
-                )
-            }) {
+            // "already in flight" are reasons to do nothing. "In flight" is the
+            // command policy's single flight (`Key::MapVault`), taken before
+            // this runs, so two callers mounting together cannot both start a
+            // crawl.
+            if out.with_state(|state| matches!(state.maps.vault_status, MapListStatus::Ready)) {
                 return;
             }
             out.emit(MapsEvent::VaultLoading);
+            // Logged both ways, with how long it took: the crawl is many pages,
+            // one failed page fails it, and every view that mounts afterwards
+            // starts it again. Without a line here a "Loading map vault" that
+            // keeps coming back left nothing to read afterwards.
+            let started = std::time::Instant::now();
+            tracing::info!("map vault: loading the catalogue");
             match ctx.ports.maps.list_vault().await {
-                Ok(maps) => out.emit(MapsEvent::VaultLoaded { maps }),
-                Err(reason) => out.emit(MapsEvent::VaultLoadFailed { reason }),
+                Ok(maps) => {
+                    tracing::info!(
+                        maps = maps.len(),
+                        seconds = started.elapsed().as_secs_f32(),
+                        "map vault: loaded"
+                    );
+                    out.emit(MapsEvent::VaultLoaded { maps })
+                }
+                Err(reason) => {
+                    tracing::warn!(
+                        %reason,
+                        seconds = started.elapsed().as_secs_f32(),
+                        "map vault: loading failed; the next view that needs it tries again"
+                    );
+                    out.emit(MapsEvent::VaultLoadFailed { reason })
+                }
             }
         }
         MapsCommand::SearchVault { query } => {
             // No guard and no dedupe beyond the generation check: this is a
             // user-driven search, and asking again is exactly what the search
-            // button means.
-            // Claimed in arrival order by the command loop; see
-            // `runtime::claim_generation`.
-            let generation = crate::runtime::claimed_generation()
-                .unwrap_or_else(|| ctx.maps_search_generation.begin());
+            // button means. Commands run concurrently, so a slow earlier query
+            // can answer after a fast later one; whichever started last owns
+            // the results, the totals and the error line, and anything older
+            // is dropped whether it succeeded or failed.
+            let generation = ctx.maps.search_generation.begin();
             out.emit(MapsEvent::VaultSearching);
             let result = ctx.ports.maps.search_vault(query.clone()).await;
-            // Only the newest search may answer: see `maps_search_generation`.
-            if !ctx.maps_search_generation.is_current(generation) {
+            if !ctx.maps.search_generation.is_current(generation) {
                 return;
             }
             match result {
@@ -84,9 +111,9 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 folder_names
                     .iter()
                     .filter(|name| {
-                        let base = crate::infra::maps::base_folder_name(name);
+                        let base = faf_domain::state::maps::base_folder_name(name);
                         !state.maps.vault.iter().any(|map| {
-                            crate::infra::maps::base_folder_name(&map.folder_name) == base
+                            faf_domain::state::maps::base_folder_name(&map.folder_name) == base
                         })
                     })
                     .cloned()
@@ -119,7 +146,7 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
                         !state
                             .maps
                             .local_previews
-                            .contains_key(&crate::infra::maps::base_folder_name(name))
+                            .contains_key(&faf_domain::state::maps::base_folder_name(name))
                     })
                     .cloned()
                     .collect()
@@ -148,7 +175,7 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
             folder_name,
             download_url,
         } => {
-            let _guard = ctx.maps_mutation.acquire().await;
+            crate::runtime::expect_admitted(crate::runtime::Key::MapFiles);
             out.emit(MapsEvent::Installing {
                 folder_name: folder_name.clone(),
             });
@@ -158,7 +185,7 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
         MapsCommand::UninstallMap { folder_name } => {
-            let _guard = ctx.maps_mutation.acquire().await;
+            crate::runtime::expect_admitted(crate::runtime::Key::MapFiles);
             out.emit(MapsEvent::Installing {
                 folder_name: folder_name.clone(),
             });

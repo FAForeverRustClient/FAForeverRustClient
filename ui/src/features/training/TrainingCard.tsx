@@ -16,111 +16,294 @@
 // player who learns to read it once has learned the whole tab. What changes
 // between the two places is the surrounding grid, not the card.
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { Icon } from "../../design-system/Icon";
-import type { TrainingKind, TrainingResource } from "../../ipc/bindings";
+import type { TrainingResource } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { useAppStore } from "../../store/store";
-import { kindIcon, kindLabel, mapPreviewUrl, videoThumbnailUrl } from "./trainingPresentation";
-
-/**
- * The kinds whose picture is a video frame, and whose tile is therefore wide.
- *
- * The tile's shape follows what goes in it rather than one shape for the whole
- * grid, because the two pictures this library has are different shapes and
- * neither survives the other's box: a square map preview letterboxed into 16:9
- * carries a bar down each side, and a 16:9 still cropped to a square loses a
- * fifth off each end. A shelf of one kind is uniform, which is every shelf
- * under a kind tab; only "everything" mixes the two.
- */
-const WIDE_KINDS = new Set<TrainingKind>(["video", "replayAnalysis"]);
+import { artCandidates, coverColor, kindIcon, kindLabel } from "./trainingPresentation";
+import type { Series } from "./trainingSeries";
 
 interface Props {
   resource: TrainingResource;
   /** Why this card is being shown, when the rail can say. */
   reason?: string | null;
+  /**
+   * The series this card stands for, when the shelf folds one into a single
+   * card. The card then names the series and how many parts it has, and
+   * opens on its first part.
+   */
+  series?: Series;
   onOpen: (resource: TrainingResource) => void;
   onSelect: (resource: TrainingResource) => void;
 }
 
-export function TrainingCard({ resource, reason, onSelect }: Props) {
+export function TrainingCard({ resource, reason, series, onSelect }: Props) {
   const { t } = useTranslation();
+  const shown = series ? series.head : resource;
+  const count = series
+    ? t(series.unit === "episodes" ? "training.series.episodes" : "training.series.parts", {
+        count: series.parts.length,
+      })
+    : null;
   // Whichever line adds something. A guide with no summary is usually one
   // somebody published under their own name, and that name is the caption.
-  const caption = reason || resource.summary || resource.author;
-  const art = useCardArt(resource);
-  const wide = WIDE_KINDS.has(resource.kind);
-  // Which address failed, rather than a flag saying one did. Most of this
-  // library is a link to somebody else's video, and a video that has been
-  // taken down answers its still with a 404: without this the tile is the
-  // browser's broken-picture glyph, which is the worst thing on the shelf.
-  // Remembering the address rather than the fact means a card whose art
-  // changes underneath it tries the new one.
-  const [broken, setBroken] = useState("");
-  const picture = art && art !== broken ? art : "";
+  const caption = reason || shown.summary || shown.author;
 
   return (
     // The whole card opens the detail pane rather than the destination: the
     // detail pane is where the related entries are, which is the whole reason
     // the library is a graph and not a list. Opening the video or the page is
     // the primary action *there*, where the reader has decided.
-    <button type="button" className="training-card" onClick={() => onSelect(resource)}>
-      <span className={wide ? "training-card-art is-wide" : "training-card-art"}>
-        {picture ? (
-          <img
-            className="training-card-image"
-            src={picture}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            onError={() => setBroken(picture)}
-          />
-        ) : (
-          <span className="training-card-empty" aria-hidden>
-            {/* Large and quiet rather than small on a slab: at this tile size
-                the glyph is the tile, and half the catalogue is a link with no
-                picture behind it. */}
-            <Icon name={kindIcon(resource.kind)} size={40} />
-          </span>
-        )}
-        {/* Only over a picture. On an empty tile the glyph underneath is
-            already the same answer, twice the size. */}
-        {picture && (
-          <span className="training-card-kind" title={t(kindLabel(resource.kind))}>
-            <Icon name={kindIcon(resource.kind)} size={12} />
-          </span>
-        )}
-      </span>
+    <button type="button" className="training-card" onClick={() => onSelect(shown)}>
+      <TrainingArt resource={shown} kindMark badge={count} />
       <span className="training-card-copy">
-        <strong>{resource.title}</strong>
+        <strong>{series ? series.title : resource.title}</strong>
         {caption && <small className={reason ? "training-card-reason" : undefined}>{caption}</small>}
+        {/* Who vouched for it, when anyone has. The one fact beyond the
+            caption a card carries, because it is the one a reader weighs
+            before opening anything. */}
+        {resource.approvedBy && (
+          <small className="training-card-reviewed">
+            <Icon name="check" size={11} />
+            <span>{t("training.reviewedBy", { login: resource.approvedBy })}</span>
+          </small>
+        )}
       </span>
     </button>
   );
 }
 
 /**
- * The picture a card leads with, or the empty string when there is none.
+ * The picture an entry is recognised by: one frame, one shape, every time.
  *
- * A hook rather than a helper because the map vault it resolves against is
- * store state, and the card is the only thing that wants it.
+ * Every tile is 16:9, because the two pictures this library has are different
+ * shapes and a grid of two tile shapes is ragged however it is aligned. A
+ * video still fills the frame. A map preview is square and is shown whole,
+ * never cropped, with a blurred and dimmed copy of itself filling the sides:
+ * the frame is the picture's own colours rather than a grey border.
  *
- * A build order shows its map, always, and in preference to anything the entry
- * carries: it is about one piece of ground, and the reader recognises that
- * ground long before they read the title. That is also why it never falls back
- * to a video frame even when its address is one, which seven of them are: a
- * still of somebody's face cam identifies the author, which is the one thing
- * the caption already says, and it would put a wide tile on a shelf of square
- * ones for nothing.
+ * Whatever has no picture, or whose picture has gone (most of the library is
+ * a link to somebody else's video, and a removed video answers its still with
+ * a 404), gets a drawn cover: its title on its kind's colour, so a guide and a
+ * video tell themselves apart before either title is read.
  *
- * Otherwise the catalogue's own picture, and failing that the frame YouTube
- * publishes for the video. Not one of the ninety entries carries an `imageUrl`
- * today, so without that last step two thirds of the library is empty tiles.
+ * Exported for the detail page's header, which shows the same picture larger.
  */
-function useCardArt(resource: TrainingResource): string {
+export function TrainingArt({
+  resource,
+  kindMark = false,
+  badge = null,
+  className,
+}: {
+  resource: TrainingResource;
+  /** The small kind glyph in the corner, for a tile scanned among others. */
+  kindMark?: boolean;
+  /** How many parts a series card stands for, over the picture's corner. */
+  badge?: string | null;
+  className?: string;
+}) {
+  const { t } = useTranslation();
   const vault = useAppStore((store) => store.state.maps.vault);
-  if (resource.kind === "buildOrder") {
-    return mapPreviewUrl(vault, resource.maps) || resource.imageUrl;
+  const candidates = artCandidates(vault, resource);
+  const key = candidates.join("\n");
+  // How many candidates have failed, keyed by the list they failed from: an
+  // entry whose art changes underneath it starts again from the top.
+  const [failed, setFailed] = useState({ key, count: 0 });
+  const index = failed.key === key ? failed.count : 0;
+  const picture = candidates[index] ?? "";
+  const frameClass = ["training-art", className].filter(Boolean).join(" ");
+
+  // A stack of parts, said on the picture the way a streaming shelf marks a
+  // series: the count is what tells it apart from a single episode.
+  const stack = badge && (
+    <span className="training-art-badge">
+      <Icon name="list" size={12} />
+      {badge}
+    </span>
+  );
+
+  if (!picture) {
+    const style = { "--cover-color": coverColor(resource.kind) } as CSSProperties;
+    return (
+      <span className={`${frameClass} is-cover`} style={style}>
+        <span className="training-art-cover-kind" aria-hidden>
+          <Icon name={kindIcon(resource.kind)} size={13} />
+          {t(kindLabel(resource.kind))}
+        </span>
+        <span className="training-art-cover-title" aria-hidden>
+          {resource.title}
+        </span>
+        {resource.author && (
+          <span className="training-art-cover-author" aria-hidden>
+            {resource.author}
+          </span>
+        )}
+        {stack}
+      </span>
+    );
   }
-  return resource.imageUrl || videoThumbnailUrl(resource.url);
+
+  const onError = () => setFailed({ key, count: index + 1 });
+  return (
+    <span className={frameClass}>
+      {/* The same picture, blurred, behind it: what fills the sides of a
+          square preview in a wide frame. Decoration, so it never reports a
+          failure of its own. */}
+      <img
+        className="training-art-backdrop"
+        src={picture}
+        alt=""
+        aria-hidden
+        loading="lazy"
+        decoding="async"
+      />
+      <img
+        className="training-art-image"
+        src={picture}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onError={onError}
+      />
+      {stack}
+      {/* What a click costs, before the click. */}
+      {kindMark && (
+        <span className="training-card-kind" title={t(kindLabel(resource.kind))}>
+          <Icon name={kindIcon(resource.kind)} size={12} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * A creator, the way YouTube shows one: their channel picture in a circle and
+ * their name under it.
+ *
+ * Channels and community pages are where material comes from rather than
+ * material, and drawn as one more 16:9 tile among the build orders they read
+ * as one more video. A round face is how every platform marks a person, so
+ * the row says "who to follow" before anything in it is read.
+ */
+export function CreatorTile({
+  resource,
+  onSelect,
+}: {
+  resource: TrainingResource;
+  onSelect: (resource: TrainingResource) => void;
+}) {
+  const [broken, setBroken] = useState("");
+  const picture = resource.imageUrl && resource.imageUrl !== broken ? resource.imageUrl : "";
+  // "Seraphim-Com on YouTube" is a catalogue title; the tile names the
+  // channel and says where it is on the line under it.
+  const name = resource.title.replace(/\s+on\s+(YouTube|Twitch)$/i, "");
+  const platform = platformOf(resource.url);
+  const style = { "--cover-color": coverColor(resource.kind) } as CSSProperties;
+  return (
+    <button
+      type="button"
+      className="training-creator"
+      title={resource.title}
+      onClick={() => onSelect(resource)}
+    >
+      <span className="training-creator-avatar" style={style}>
+        {picture ? (
+          <img
+            src={picture}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            onError={() => setBroken(picture)}
+          />
+        ) : (
+          <span aria-hidden>{name.trim().charAt(0).toUpperCase()}</span>
+        )}
+      </span>
+      <strong>{name}</strong>
+      {platform && <small>{platform}</small>}
+    </button>
+  );
+}
+
+/**
+ * The last card of a chapter: the channels that hold more of it.
+ *
+ * The library carries the videos somebody picked out of a channel, not the
+ * whole channel, so a chapter ends by pointing at where the rest lives. Drawn
+ * as one more card on the shelf rather than a line under it, so it is read
+ * where the reader is already looking: the frame shows the channels' own
+ * faces, overlapping, the way a platform shows who is in a group. A press
+ * opens them as a grid.
+ */
+export function ChannelsCard({
+  mode,
+  channels,
+  onOpen,
+}: {
+  mode: string;
+  channels: TrainingResource[];
+  onOpen: () => void;
+}) {
+  const { t } = useTranslation();
+  // Four faces say "several" as well as twelve do, and stay legible on the
+  // narrowest tile.
+  const faces = channels.slice(0, 4);
+  return (
+    <button type="button" className="training-card training-channels-card" onClick={onOpen}>
+      <span className="training-art training-channels-art">
+        <span className="training-channels-eyebrow" aria-hidden>
+          {t("training.library.channels.eyebrow")}
+        </span>
+        <span className="training-channels-faces" aria-hidden>
+          {faces.map((channel) => (
+            <ChannelFace key={channel.id} channel={channel} />
+          ))}
+          {channels.length > faces.length && (
+            <span className="training-channels-face is-more">+{channels.length - faces.length}</span>
+          )}
+        </span>
+      </span>
+      <span className="training-card-copy">
+        <strong>{t("training.library.channels.title", { mode })}</strong>
+        <small>{t("training.library.channels.count", { count: channels.length })}</small>
+      </span>
+    </button>
+  );
+}
+
+/** One channel's picture in a circle, or its initial when it has none. */
+function ChannelFace({ channel }: { channel: TrainingResource }) {
+  const [broken, setBroken] = useState("");
+  const picture = channel.imageUrl && channel.imageUrl !== broken ? channel.imageUrl : "";
+  const name = channel.title.replace(/\s+on\s+(YouTube|Twitch)$/i, "");
+  return (
+    <span className="training-channels-face">
+      {picture ? (
+        <img
+          src={picture}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onError={() => setBroken(picture)}
+        />
+      ) : (
+        name.trim().charAt(0).toUpperCase()
+      )}
+    </span>
+  );
+}
+
+/** Where a creator's link goes, named as its owner names it. */
+function platformOf(url: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    if (host.endsWith("youtube.com") || host === "youtu.be") return "YouTube";
+    if (host.endsWith("twitch.tv")) return "Twitch";
+    return host;
+  } catch {
+    return "";
+  }
 }

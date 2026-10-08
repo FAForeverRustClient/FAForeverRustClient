@@ -73,6 +73,7 @@ describe("game team summaries", () => {
     const social: SocialState = {
       friends: [],
       foes: [],
+      loginLookups: [],
       players: [profile("Alpha", 1_200, "us"), profile("Bravo", 1_400, "de")],
     };
     const teams = gameTeamSummaries(
@@ -95,7 +96,7 @@ describe("game team summaries", () => {
         { leaderboard: "ladder_1v1", rating: 466, mean: 662, deviation: 65, gamesPlayed: 416 },
       ],
     };
-    const social: SocialState = { friends: [], foes: [], players: [laddered] };
+    const social: SocialState = { friends: [], foes: [], loginLookups: [], players: [laddered] };
     const ladder = {
       ...game(1, "Valkyra", { "2": ["Valkyra"] }),
       ratingType: "ladder_1v1",

@@ -151,12 +151,15 @@ pub fn run() {
             commands::import_notification_sound,
             commands::list_notification_sounds,
             commands::read_notification_sound,
-            commands::remove_notification_sound,
+            commands::import_background_image,
+            commands::read_background_image,
             commands::open_version_folder,
             commands::reveal_replay,
             commands::read_latest_log,
             commands::webview_engine,
             commands::system_date_pattern,
+            commands::report_webview_stall,
+            commands::report_event_cost,
             commands::exit_app
         ])
         .run(tauri::generate_context!())

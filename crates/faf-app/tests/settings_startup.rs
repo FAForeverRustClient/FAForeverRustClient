@@ -38,8 +38,9 @@ impl SettingsPort for SlowSettings {
         self.stored.clone()
     }
 
-    async fn save(&self, settings: &SettingsState) {
+    async fn save(&self, settings: &SettingsState) -> Result<(), String> {
         self.saved.lock().unwrap().push(settings.clone());
+        Ok(())
     }
 }
 

@@ -7,7 +7,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { resetLocaleForTests, setLocale } from "../../i18n/store";
-import { TabBar } from "./TabBar";
+import { translateIn } from "../../i18n";
+import { TabBar, tabBadge } from "./TabBar";
 
 afterEach(() => {
   resetLocaleForTests();
@@ -47,5 +48,27 @@ describe("TabBar localisation", () => {
       setLocale(locale);
       expect(renderToStaticMarkup(<TabBar />)).not.toContain("nav.tab.");
     }
+  });
+});
+
+describe("tab badges", () => {
+  const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
+    translateIn("en", key, values);
+
+  it("leaves the chat tab bare when nothing is addressed to the player", () => {
+    // `unreadMentions` is zero however busy the channels are: an ordinary line
+    // in #aeolus no longer lights the rail (#429).
+    expect(tabBadge("chat", 0, "idle", t)).toBeNull();
+  });
+
+  it("draws a dot, never a number, for mentions, answers and private messages", () => {
+    const badge = tabBadge("chat", 12, "idle", t);
+    expect(badge).toMatchObject({ text: "", loud: false });
+    expect(badge?.label).toContain("12");
+  });
+
+  it("keeps the Play tab's match signals", () => {
+    expect(tabBadge("play", 0, "matchFound", t)).toMatchObject({ text: "!", loud: true });
+    expect(tabBadge("play", 0, "searching", t)).toMatchObject({ text: "", loud: false });
   });
 });

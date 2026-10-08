@@ -3,32 +3,25 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use faf_app::infra::fake_ports;
-use faf_app::ports::ReplayPort;
+use faf_app::ports::{ReplayPlaybackPort, ReplayVaultPort};
 use faf_app::{App, Ports};
 use faf_domain::state::{
     LiveReplayTarget, LocalReplay, LocalReplayStatus, ReplayCommand, ReplayEvent, ReplayQuery,
 };
 use faf_domain::AppEvent;
 
+/// One double for both halves of a vault replay, so a test that installs it in
+/// both slots sees a download and a launch in the same place.
 struct DownloadReplay {
     requested: Arc<Mutex<Vec<i32>>>,
+    /// Every launch of any kind: a vault watch by uid, a file or live watch as
+    /// `-1`. Recorded rather than `unreachable!`, because a panic in the
+    /// command's task does not fail the test that sent it.
     watched: Arc<Mutex<Vec<i32>>>,
 }
 
 #[async_trait]
-impl ReplayPort for DownloadReplay {
-    async fn watch_live(
-        &self,
-        _target: LiveReplayTarget,
-        _player: String,
-    ) -> Result<Option<String>, String> {
-        unreachable!()
-    }
-
-    async fn play_file(&self, _path: PathBuf) -> Result<Option<String>, String> {
-        unreachable!()
-    }
-
+impl ReplayVaultPort for DownloadReplay {
     async fn search_vault(
         &self,
         _query: ReplayQuery,
@@ -38,11 +31,6 @@ impl ReplayPort for DownloadReplay {
 
     async fn list_featured_mods(&self) -> Result<Vec<String>, String> {
         unreachable!()
-    }
-
-    async fn watch_vault(&self, uid: i32) -> Result<Option<String>, String> {
-        self.watched.lock().unwrap().push(uid);
-        Ok(None)
     }
 
     async fn download_vault(&self, uid: i32) -> Result<LocalReplay, String> {
@@ -68,48 +56,54 @@ impl ReplayPort for DownloadReplay {
             game_version: None,
         })
     }
+}
 
-    async fn load_details(
+/// The other half of the same double: watching a vault replay is a launch.
+#[async_trait]
+impl ReplayPlaybackPort for DownloadReplay {
+    async fn watch_live(
         &self,
-        _uid: i32,
-        _local_path: Option<PathBuf>,
-    ) -> Result<faf_domain::state::ReplayDetails, String> {
-        Ok(faf_domain::state::ReplayDetails::default())
-    }
-    async fn load_analysis(
-        &self,
-        _uid: i32,
-        _local_path: Option<PathBuf>,
-    ) -> Result<faf_domain::state::ReplayAnalysis, String> {
-        unreachable!()
+        _target: LiveReplayTarget,
+        _player: String,
+    ) -> Result<Option<String>, String> {
+        self.watched.lock().unwrap().push(-1);
+        Ok(None)
     }
 
-    async fn list_local(&self, _limit: usize) -> Result<Vec<LocalReplay>, String> {
-        unreachable!()
+    async fn play_file(&self, _path: PathBuf) -> Result<Option<String>, String> {
+        self.watched.lock().unwrap().push(-1);
+        Ok(None)
     }
 
-    async fn delete_local(&self, _path: PathBuf) -> Result<(), String> {
-        unreachable!()
+    async fn watch_vault(&self, uid: i32) -> Result<Option<String>, String> {
+        self.watched.lock().unwrap().push(uid);
+        Ok(None)
     }
 
     fn set_install_dir(&self, _dir: Option<PathBuf>) {}
 }
-
 #[tokio::test]
 async fn downloading_a_vault_replay_does_not_launch_it_and_updates_the_library() {
     let requested = Arc::new(Mutex::new(Vec::new()));
+    let watched = Arc::new(Mutex::new(Vec::new()));
+    // In both slots: a download that also launched would reach the playback
+    // port, and the default fake there would have hidden it.
+    let replay = Arc::new(DownloadReplay {
+        requested: requested.clone(),
+        watched: watched.clone(),
+    });
     let ports = Ports {
-        replay: Arc::new(DownloadReplay {
-            requested: requested.clone(),
-            watched: Arc::new(Mutex::new(Vec::new())),
-        }),
+        replay_vault: replay.clone(),
+        replay_playback: replay,
         ..fake_ports()
     };
     let (app, app_loop) = App::new("test", ports);
     tokio::spawn(app_loop.run());
     let mut events = app.subscribe();
 
-    app.dispatch(ReplayCommand::DownloadVault { uid: 42 }.into())
+    // Waited for, so the "no launch" check below runs after the whole command,
+    // not just after its last event.
+    app.dispatch_and_wait(ReplayCommand::DownloadVault { uid: 42 }.into())
         .await
         .unwrap();
 
@@ -123,13 +117,18 @@ async fn downloading_a_vault_replay_does_not_launch_it_and_updates_the_library()
     ));
     assert_eq!(*requested.lock().unwrap(), vec![42]);
     assert_eq!(app.snapshot().replays.local[0].uid, Some(42));
+    assert!(
+        watched.lock().unwrap().is_empty(),
+        "downloading launched the replay: {:?}",
+        watched.lock().unwrap()
+    );
 }
 
 #[tokio::test]
 async fn watching_a_vault_replay_reports_its_download_in_the_replay_lifecycle() {
     let watched = Arc::new(Mutex::new(Vec::new()));
     let ports = Ports {
-        replay: Arc::new(DownloadReplay {
+        replay_playback: Arc::new(DownloadReplay {
             requested: Arc::new(Mutex::new(Vec::new())),
             watched: watched.clone(),
         }),

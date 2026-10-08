@@ -6,13 +6,14 @@ import { PlayerName } from "../../../shared/components/nameColors";
 import type { PlayerMenuOpener } from "../../../shared/hooks/usePlayerMenu";
 import type { Game, LiveReplayTracking } from "../../../ipc/bindings";
 import { ipc } from "../../../ipc/client";
-import { formatClockDuration, formatRelativeDuration } from "../../../shared/format/durations";
+import { formatClockDuration, formatRelativeDuration, zeroMinutes } from "../../../shared/format/durations";
 import type { MapPresentation } from "../../../shared/mapPresentation";
 import { gameStartedAt, prettyGameType } from "../../../shared/liveReplayModel";
 import { useAppStore } from "../../../store/store";
 import { MapThumbnail } from "../../../shared/components/MapThumbnail";
 import { useNamedMapGeneration } from "../../../shared/hooks/useNamedMapGeneration";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { hourCycleOptions } from "../../../shared/format/clock";
 import { clientIntlTag } from "../../../shared/format/dates";
 
 /**
@@ -109,7 +110,7 @@ export function LiveReplayAge({ game, now }: { game: Game; now: number }) {
   const elapsed = Math.max(0, (now - started.getTime()) / 1000);
   // A live game is always "some time ago", so the zero case reads as `0m` in
   // the same phrase rather than as its own wording.
-  const zero = t("replays.card.ago", { duration: "0m" });
+  const zero = t("replays.card.ago", { duration: zeroMinutes() });
   const relative = formatRelativeDuration(elapsed, { nowLabel: zero });
   return <small>{relative === zero ? relative : t("replays.card.ago", { duration: relative })}</small>;
 }
@@ -335,7 +336,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   const cells = [
     <td key={0}><LiveMapThumbnail mapName={game.map} presentation={presentation} /></td>,
     <td key={1} className="live-start-cell">
-      <strong>{started ? started.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit" }) : "N/A"}</strong>
+      <strong>{started ? started.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit", ...hourCycleOptions() }) : t("common.notAvailable")}</strong>
       <LiveReplayAge game={game} now={ageNow} />
     </td>,
     <td key={2}>
@@ -348,7 +349,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
       </button>
     </td>,
     <td key={3} className="live-number-cell"><strong>{game.players}</strong><small>/ {game.maxPlayers}</small></td>,
-    <td key={4} className="live-rating-cell">{game.averageRating > 0 ? game.averageRating : "N/A"}</td>,
+    <td key={4} className="live-rating-cell">{game.averageRating > 0 ? game.averageRating : t("common.notAvailable")}</td>,
     <td key={5} className="live-host-cell"><LivePlayerName name={game.host} onMenu={onPlayerMenu} /></td>,
     <td key={6} className="live-mods-cell">
       <span>{game.modName || "faf"}</span>

@@ -1,7 +1,17 @@
 import type { PlayerProfile, SocialEvent, SocialState } from "../../ipc/bindings";
 
-const EMPTY_SOCIAL: SocialState = { friends: [], foes: [], players: [] };
+const EMPTY_SOCIAL: SocialState = { friends: [], foes: [], players: [], loginLookups: [] };
+
+/** Twin of `MAX_LOGIN_LOOKUPS`. */
+const MAX_LOGIN_LOOKUPS = 200;
 const sortedUnique = (values: string[]): string[] => [...new Set(values)].sort();
+
+/**
+ * Lower-cases ASCII letters only, the fold Rust's `eq_ignore_ascii_case`
+ * applies. `toLowerCase` also folds letters outside ASCII, which would match
+ * two logins the Rust reducer keeps apart.
+ */
+const asciiLower = (value: string): string => value.replace(/[A-Z]/g, (letter) => letter.toLowerCase());
 
 // Indexes of the player directory, cached against the identity of the array
 // they were built from. `playersSeen` only replaces that array when a profile
@@ -57,8 +67,8 @@ export function reduceSocial(state: SocialState, event: SocialEvent): SocialStat
       };
     case "relationSet": {
       const { login, relation, member } = event.payload;
-      const lower = login.toLowerCase();
-      const drop = (list: string[]) => list.filter((entry) => entry.toLowerCase() !== lower);
+      const lower = asciiLower(login);
+      const drop = (list: string[]) => list.filter((entry) => asciiLower(entry) !== lower);
       const add = (list: string[]) => sortedUnique([...drop(list), login]);
       if (relation === "friend") {
         return member
@@ -99,10 +109,42 @@ export function reduceSocial(state: SocialState, event: SocialEvent): SocialStat
       return changed ? { ...state, players } : state;
     }
     case "playersRemoved": {
-      const removed = new Set(event.payload.logins);
-      return { ...state, players: state.players.filter((player) => !removed.has(player.login)) };
+      // Matched without regard to case, as in the Rust twin: an offline notice
+      // spelled differently from the login used to leave the profile listed
+      // as online here while the backend had dropped it.
+      const removed = new Set(event.payload.logins.map(asciiLower));
+      return { ...state, players: state.players.filter((player) => !removed.has(asciiLower(player.login))) };
     }
     case "cleared":
       return EMPTY_SOCIAL;
+    case "loginLookedUp": {
+      // The newest answer for a login replaces an older one and goes last,
+      // so the cap drops the answers asked for longest ago.
+      const { login, id } = event.payload;
+      const lower = asciiLower(login);
+      const kept = state.loginLookups.filter((lookup) => asciiLower(lookup.login) !== lower);
+      const loginLookups = [...kept, { login, id }].slice(-MAX_LOGIN_LOOKUPS);
+      return { ...state, loginLookups };
+    }
   }
+}
+
+/** A FAF account, as the user menu's account actions address it. */
+export interface AccountRef {
+  id: number;
+  login: string;
+}
+
+/**
+ * The account behind a login: the online profile's, or a lookup's answer.
+ * `undefined` while nothing is known yet, `null` when the API knows no such
+ * account.
+ */
+export function accountFor(social: SocialState, login: string): AccountRef | null | undefined {
+  const online = findPlayer(social, login);
+  if (online) return { id: online.id, login: online.login };
+  const lower = asciiLower(login);
+  const lookup = social.loginLookups.find((entry) => asciiLower(entry.login) === lower);
+  if (!lookup) return undefined;
+  return lookup.id === null ? null : { id: lookup.id, login: lookup.login };
 }

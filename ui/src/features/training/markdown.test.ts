@@ -3,8 +3,54 @@
 // prefix applied to the wrong line still renders as a working button.
 
 import { describe, expect, it } from "vitest";
-import { parseBlocks, parseSpans } from "./markdown";
-import { applyAction } from "./MarkdownField";
+import { parseBlocks, parseSpans, resolveAddress, resolveImage, tableCells } from "./markdown";
+import { applyAction, paragraphBreak } from "./MarkdownField";
+
+describe("a guide's own pictures", () => {
+  const document = "https://raw.githubusercontent.com/o/guides/main/guides/setons-air.md";
+  const page = "https://wiki.faforever.com/Play/Learning/Unit-Micro";
+
+  it("resolve beside the guide when the path is relative to it", () => {
+    expect(resolveImage("images/setons-air/opening.png", { document })).toBe(
+      "https://raw.githubusercontent.com/o/guides/main/guides/images/setons-air/opening.png",
+    );
+    expect(parseSpans("![The opening](images/setons-air/opening.png)", { document, page })).toEqual([
+      {
+        kind: "image",
+        text: "The opening",
+        src: "https://raw.githubusercontent.com/o/guides/main/guides/images/setons-air/opening.png",
+      },
+    ]);
+  });
+
+  it("still mean the copied page's site when rooted, like a link", () => {
+    expect(resolveImage("/images/learning/hold_fire.png", { document, page })).toBe(
+      "https://wiki.faforever.com/images/learning/hold_fire.png",
+    );
+    // A link is never resolved against the guide's file.
+    expect(resolveAddress("other.md", { document })).toBeNull();
+  });
+
+  it("show an attached picture from the client's own copy until it is sent", () => {
+    const local = new Map([["images/opening.png", "blob:http://localhost/1234"]]);
+    expect(resolveImage("images/opening.png", { local })).toBe("blob:http://localhost/1234");
+    // Anything not attached is not fetched from a guessed address.
+    expect(resolveImage("images/other.png", { local })).toBeNull();
+    expect(resolveImage("javascript:alert(1)", { local, document })).toBeNull();
+  });
+});
+
+describe("inserting a picture", () => {
+  it("puts it in a paragraph of its own", () => {
+    expect(paragraphBreak("", "end")).toBe("");
+    expect(paragraphBreak("A sentence.", "end")).toBe("\n\n");
+    expect(paragraphBreak("A sentence.\n", "end")).toBe("\n");
+    expect(paragraphBreak("A sentence.\n\n", "end")).toBe("");
+    expect(paragraphBreak("Next.", "start")).toBe("\n\n");
+    expect(paragraphBreak("\nNext.", "start")).toBe("\n");
+    expect(paragraphBreak("\n\nNext.", "start")).toBe("");
+  });
+});
 
 describe("markdown blocks", () => {
   it("reads the shapes a guide is actually written in", () => {
@@ -31,8 +77,22 @@ describe("markdown blocks", () => {
       { kind: "heading", level: 2, text: "Opening" },
       // Consecutive lines are one paragraph, the way Markdown reads them.
       { kind: "paragraph", text: "Build four mexes, then a land factory. Keep the queue full." },
-      { kind: "list", ordered: false, items: ["scout early", "expand second"] },
-      { kind: "list", ordered: true, items: ["first", "second"] },
+      {
+        kind: "list",
+        ordered: false,
+        items: [
+          { text: "scout early", children: [] },
+          { text: "expand second", children: [] },
+        ],
+      },
+      {
+        kind: "list",
+        ordered: true,
+        items: [
+          { text: "first", children: [] },
+          { text: "second", children: [] },
+        ],
+      },
       { kind: "quote", text: "A note from a trainer" },
       // Fenced code keeps its own whitespace: a build order pasted into a
       // guide is the main thing anyone puts in a fence, and reflowing it
@@ -51,10 +111,14 @@ describe("markdown blocks", () => {
     expect(parseBlocks("### Deeper")).toEqual([{ kind: "heading", level: 3, text: "Deeper" }]);
   });
 
-  it("flattens anything deeper than three, because a preview is not an outline", () => {
-    for (const source of ["#### Four", "##### Five", "###### Six"]) {
+  it("keeps a fourth level, which the wiki's guides use under their third", () => {
+    expect(parseBlocks("#### Mass")).toEqual([{ kind: "heading", level: 4, text: "Mass" }]);
+  });
+
+  it("flattens anything deeper than four", () => {
+    for (const source of ["##### Five", "###### Six"]) {
       expect(parseBlocks(source)).toEqual([
-        { kind: "heading", level: 3, text: source.replace(/^#+ /, "") },
+        { kind: "heading", level: 4, text: source.replace(/^#+ /, "") },
       ]);
     }
   });
@@ -97,7 +161,7 @@ describe("markdown spans", () => {
     for (const bad of ["javascript:alert(1)", "http://example.invalid", "file:///etc/passwd"]) {
       const spans = parseSpans(`[click](${bad})`);
       expect(spans.every((span) => span.kind !== "link")).toBe(true);
-      expect(spans.map((span) => span.text).join("")).toBe(`[click](${bad})`);
+      expect(spans.map((span) => ("text" in span ? span.text : "")).join("")).toBe(`[click](${bad})`);
     }
   });
 
@@ -136,5 +200,235 @@ describe("the toolbar's selection arithmetic", () => {
   it("prefixes the first line when the caret is at the very start", () => {
     const result = applyAction("only", 0, 0, { kind: "prefix", prefix: "## " });
     expect(result.value).toBe("## only");
+  });
+});
+
+describe("nested lists", () => {
+  it("puts an indented item under the item above it", () => {
+    const source = ["- opening", "  - four mexes", "  - land factory", "- mid game"].join("\n");
+    expect(parseBlocks(source)).toEqual([
+      {
+        kind: "list",
+        ordered: false,
+        items: [
+          {
+            text: "opening",
+            children: [
+              {
+                kind: "list",
+                ordered: false,
+                items: [
+                  { text: "four mexes", children: [] },
+                  { text: "land factory", children: [] },
+                ],
+              },
+            ],
+          },
+          { text: "mid game", children: [] },
+        ],
+      },
+    ]);
+  });
+
+  it("nests a bullet list under a numbered item, and three levels deep", () => {
+    const source = ["1. eco", "   - mex", "     - storage", "2. army"].join("\n");
+    const [list] = parseBlocks(source);
+    expect(list).toMatchObject({ kind: "list", ordered: true });
+    if (list.kind !== "list") throw new Error("expected a list");
+    expect(list.items.map((item) => item.text)).toEqual(["eco", "army"]);
+    const inner = list.items[0].children[0];
+    expect(inner).toMatchObject({ ordered: false, items: [{ text: "mex" }] });
+    expect(inner.items[0].children[0].items[0].text).toBe("storage");
+  });
+
+  it("reads a tab as indentation", () => {
+    const [list] = parseBlocks("- a\n\t- b");
+    if (list.kind !== "list") throw new Error("expected a list");
+    expect(list.items).toHaveLength(1);
+    expect(list.items[0].children[0].items[0].text).toBe("b");
+  });
+
+  it("starts a new list when bullets turn into numbers at the same depth", () => {
+    expect(parseBlocks("- a\n1. b").map((block) => block.kind)).toEqual(["list", "list"]);
+  });
+});
+
+describe("tables", () => {
+  it("reads a GFM table with alignment, padding short rows and cutting long ones", () => {
+    const source = [
+      "| Unit | Mass | Time |",
+      "| :--- | ---: | :--: |",
+      "| Engineer | 52 | 0:20 |",
+      "| Mex | 36 |",
+      "| Pgen | 75 | 0:15 | extra |",
+    ].join("\n");
+    expect(parseBlocks(source)).toEqual([
+      {
+        kind: "table",
+        align: ["left", "right", "center"],
+        header: ["Unit", "Mass", "Time"],
+        rows: [
+          ["Engineer", "52", "0:20"],
+          ["Mex", "36", ""],
+          ["Pgen", "75", "0:15"],
+        ],
+      },
+    ]);
+  });
+
+  it("accepts a table without the outer pipes, and ends it at a blank line", () => {
+    const blocks = parseBlocks("a | b\n--- | ---\n1 | 2\n\nafter");
+    expect(blocks[0]).toEqual({
+      kind: "table",
+      align: [null, null],
+      header: ["a", "b"],
+      rows: [["1", "2"]],
+    });
+    expect(blocks[1]).toEqual({ kind: "paragraph", text: "after" });
+  });
+
+  it("does not mistake a line with a pipe for a table without a delimiter row", () => {
+    expect(parseBlocks("left | right\nmore text")).toEqual([
+      { kind: "paragraph", text: "left | right more text" },
+    ]);
+  });
+
+  it("keeps an escaped pipe inside a cell", () => {
+    expect(tableCells("| a \\| b | c |")).toEqual(["a | b", "c"]);
+  });
+});
+
+describe("images", () => {
+  it("keeps an image whose address is ordinary HTTPS, with its alt text", () => {
+    expect(parseSpans("![The opening](https://example.com/bo.png)")).toEqual([
+      { kind: "image", text: "The opening", src: "https://example.com/bo.png" },
+    ]);
+  });
+
+  it("shows an image it will not fetch as the text that was typed", () => {
+    for (const bad of ["http://example.com/a.png", "javascript:alert(1)", "data:image/png;base64,AAAA"]) {
+      const spans = parseSpans(`![x](${bad})`);
+      expect(spans.every((span) => span.kind !== "image")).toBe(true);
+      expect(spans.map((span) => ("text" in span ? span.text : "")).join("")).toBe(`![x](${bad})`);
+    }
+  });
+});
+
+describe("underscores inside words", () => {
+  it("does not italicise snake_case", () => {
+    expect(parseSpans("set unit_cap_max now")).toEqual([
+      { kind: "text", text: "set unit_cap_max now" },
+    ]);
+  });
+
+  it("does not embolden double underscores inside a word", () => {
+    expect(parseSpans("foo__bar__baz")).toEqual([{ kind: "text", text: "foo__bar__baz" }]);
+  });
+
+  it("still reads underscore emphasis that stands on its own", () => {
+    expect(parseSpans("an _italic_ word, a __bold__ one, (_paren_)")).toEqual([
+      { kind: "text", text: "an " },
+      { kind: "em", text: "italic" },
+      { kind: "text", text: " word, a " },
+      { kind: "strong", text: "bold" },
+      { kind: "text", text: " one, (" },
+      { kind: "em", text: "paren" },
+      { kind: "text", text: ")" },
+    ]);
+  });
+
+  it("keeps asterisk emphasis working inside a word", () => {
+    expect(parseSpans("un*frigging*believable")).toEqual([
+      { kind: "text", text: "un" },
+      { kind: "em", text: "frigging" },
+      { kind: "text", text: "believable" },
+    ]);
+  });
+});
+
+describe("what the wiki's guides write in HTML", () => {
+  it("breaks a line on <br>, however it is spelled", () => {
+    for (const tag of ["<br>", "<br/>", "<br />", "</br>"]) {
+      expect(parseSpans(`one${tag}two`)).toEqual([
+        { kind: "text", text: "one" },
+        { kind: "break" },
+        { kind: "text", text: "two" },
+      ]);
+    }
+  });
+
+  it("reads an <img> tag as a picture, and a glyph-sized one as an icon", () => {
+    expect(parseSpans('<img src="https://example.com/mass.png" width="20"/> Mass')).toEqual([
+      { kind: "image", text: "", src: "https://example.com/mass.png", icon: true },
+      { kind: "text", text: " Mass" },
+    ]);
+    expect(parseSpans('<img src="https://example.com/big.jpg" width="1000"/>')).toEqual([
+      { kind: "image", text: "", src: "https://example.com/big.jpg", icon: false },
+    ]);
+  });
+
+  it("leaves an <img> it will not fetch as the text that was typed", () => {
+    const tag = '<img src="javascript:alert(1)">';
+    expect(parseSpans(tag)).toEqual([{ kind: "text", text: tag }]);
+  });
+});
+
+describe("relative addresses", () => {
+  const base = "https://wiki.faforever.com/Play/Learning-SupCom/Beginners-Guide";
+
+  it("resolve against the page the guide came from", () => {
+    expect(resolveAddress("/Play/Windows-Install", base)).toBe(
+      "https://wiki.faforever.com/Play/Windows-Install",
+    );
+    expect(parseSpans("[Windows](/Play/Windows-Install)", base)).toEqual([
+      { kind: "link", text: "Windows", href: "https://wiki.faforever.com/Play/Windows-Install" },
+    ]);
+  });
+
+  it("stay as typed without a base, as in the editor's preview", () => {
+    expect(resolveAddress("/Play/Windows-Install")).toBeNull();
+    expect(parseSpans("[Windows](/Play/Windows-Install)")).toEqual([
+      { kind: "text", text: "[Windows](/Play/Windows-Install)" },
+    ]);
+  });
+
+  it("never resolve to anything but HTTPS", () => {
+    expect(resolveAddress("javascript:alert(1)", base)).toBeNull();
+    expect(resolveAddress("http://example.com/x", base)).toBeNull();
+  });
+});
+
+describe("what the copied guides carry from their old homes", () => {
+  it("reads a line of dashes, stars or underscores as a rule", () => {
+    for (const rule of ["---", "***", "___", "- - -"]) {
+      expect(parseBlocks(`above\n\n${rule}\n\nbelow`)).toEqual([
+        { kind: "paragraph", text: "above" },
+        { kind: "rule" },
+        { kind: "paragraph", text: "below" },
+      ]);
+    }
+  });
+
+  it("drops the wiki's attribute block from a heading", () => {
+    expect(parseBlocks("## Early Game {#early}")).toEqual([
+      { kind: "heading", level: 2, text: "Early Game" },
+    ]);
+  });
+
+  it("reads a tabset heading as where tabs start, not as a title", () => {
+    expect(
+      parseBlocks("## Spending Resources\n## Spending Resources{.tabset}\n### Mass\n\ntext"),
+    ).toEqual([
+      { kind: "heading", level: 2, text: "Spending Resources" },
+      { kind: "tabset", level: 2 },
+      { kind: "heading", level: 3, text: "Mass" },
+      { kind: "paragraph", text: "text" },
+    ]);
+  });
+
+  it("reads three stars as bold and italic at once", () => {
+    expect(parseSpans("***Therefore, fundamentals.***")).toEqual([
+      { kind: "strong", text: "Therefore, fundamentals.", em: true },
+    ]);
   });
 });

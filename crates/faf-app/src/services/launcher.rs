@@ -75,7 +75,7 @@ pub async fn start(
     // A launch order is new work: whatever an earlier join did, this one has
     // not been cancelled. Without this a cancelled custom join would silence
     // the progress of the next matchmaker or hosted game as well.
-    ctx.lobby_join_cancelled.clear();
+    ctx.lobby.clear_launch_cancellation();
 
     // 0. Reproduce a generated map before anything else.
     //
@@ -109,7 +109,7 @@ pub async fn start(
         // asked it not to. No `fail`: the join state was already cleared by
         // the cancel, and a launch failure on top of it would be a second,
         // wrong explanation for something the user did on purpose.
-        if ctx.lobby_join_cancelled.is_cancelled() {
+        if ctx.lobby.launch_cancelled() {
             tracing::info!("launcher: the join was cancelled during preparation; not starting");
             return abandon(ctx, out);
         }
@@ -120,10 +120,8 @@ pub async fn start(
     // is what its title's mark announced. Taken either way: the next launch
     // is somebody else's game unless a new host request says otherwise.
     let hosted = ctx
-        .hosted_title
-        .lock()
-        .unwrap()
-        .take()
+        .lobby
+        .take_hosted_title()
         .is_some_and(|title| title == launch.name);
     let session = match ctx
         .ports
@@ -144,7 +142,7 @@ pub async fn start(
     // The adapter takes seconds to come up, and a matchmaker launch can be
     // called off by the server in that time (`match_cancelled`). Starting the
     // game after that would seat the player in a match nobody else is in.
-    if ctx.lobby_join_cancelled.is_cancelled() {
+    if ctx.lobby.launch_cancelled() {
         tracing::info!(
             "launcher: the launch was cancelled while the adapter started; not starting"
         );
@@ -195,7 +193,7 @@ pub async fn start(
     // is in the game, which is its own reason a rejoin can be refused.
     let exit_ports = ctx.ports.clone();
     let exit_sink = out.clone();
-    let exit_running_game = ctx.running_game.clone();
+    let exit_running_game = ctx.lobby.running_game_handle();
     tokio::spawn(async move {
         tracing::debug!("launcher: game exit watcher started");
         exit_ports.process.wait_for_exit().await;
@@ -214,7 +212,7 @@ pub async fn start(
         // the user knowing to press refresh: the scan is a directory read, and
         // it only happens once per game.
         match exit_ports
-            .replay
+            .replay_library
             .list_local(DEFAULT_LOCAL_REPLAY_LIMIT)
             .await
         {
@@ -230,7 +228,7 @@ pub async fn start(
     // service when the socket comes back: the server drops a player's game
     // connection with the socket it was made on, and without being told to
     // restore it the running game is relayed for nobody.
-    ctx.running_game.set(launch.uid);
+    ctx.lobby.set_running_game(launch.uid);
 
     out.emit(LobbyEvent::InGame);
     Some(LaunchSession {
@@ -435,19 +433,44 @@ async fn prepare_install(
 /// files matching by MD5 are skipped.
 static PREPARATION: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
+/// How often a preparation that holds [`PREPARATION`] looks whether it was
+/// called off while its updater is quiet.
+const CANCEL_POLL: std::time::Duration = std::time::Duration::from_millis(100);
+
 async fn prepare_request(
     request: GamePreparation,
     ctx: &ServiceCtx,
     out: &EventSink,
 ) -> Result<(), String> {
-    let _one_at_a_time = PREPARATION.lock().await;
+    // Held while this preparation is wanted, and let go the moment it is
+    // called off: a cancelled join drains its updater below, which can take as
+    // long as the file it is on, and the join that replaced it must not wait
+    // behind that. The cancelled run no longer narrates anything, so the two
+    // never compete for the screen; that they may briefly share the disk is
+    // what the client did before preparations were serialized at all.
+    let mut one_at_a_time = Some(PREPARATION.lock().await);
     let mut updates = ctx.ports.updater.prepare(request).await;
 
     // The port always ends with `Finished`; treating a stream that closes
     // without one as a failure keeps a panicked adapter task from looking like
     // a successful update.
     let mut outcome = Err("the game updater stopped without finishing".to_string());
-    while let Some(update) = updates.recv().await {
+    loop {
+        let update = tokio::select! {
+            update = updates.recv() => update,
+            // A cancellation is a flag rather than an event, so while the lock
+            // is still held it is looked at between updates as well: an
+            // updater stuck on a slow download sends nothing for a while.
+            () = tokio::time::sleep(CANCEL_POLL), if one_at_a_time.is_some() => {
+                if ctx.lobby.launch_cancelled() {
+                    one_at_a_time = None;
+                }
+                continue;
+            }
+        };
+        let Some(update) = update else {
+            break;
+        };
         // The step boundary where a cancelled join stops being narrated.
         //
         // This is the check, and it has to be here rather than after the loop:
@@ -460,7 +483,8 @@ async fn prepare_request(
         // The stream is drained rather than dropped, so the updater finishes
         // the file it is on and nothing is left half-written in the content
         // store. It is just no longer anybody's business on screen.
-        if ctx.lobby_join_cancelled.is_cancelled() {
+        if ctx.lobby.launch_cancelled() {
+            one_at_a_time = None;
             continue;
         }
         match update {
@@ -475,7 +499,7 @@ async fn prepare_request(
     // A cancelled preparation has no outcome worth reporting: the caller checks
     // the same flag and returns without touching the join state, and an error
     // here would be shown to somebody who asked for this.
-    if ctx.lobby_join_cancelled.is_cancelled() {
+    if ctx.lobby.launch_cancelled() {
         return Ok(());
     }
     outcome
@@ -547,9 +571,12 @@ pub(crate) async fn prepare_search(
     };
     for (folder, reason) in failures {
         tracing::warn!(%folder, %reason, "a pool map could not be downloaded before the search");
-        notifications::add(
+        notifications::add_text(
             out,
             NotificationKind::Error,
+            notifications::Text::new("notifications.msg.mapDownloadFailed")
+                .with("folder", &folder)
+                .with("reason", &reason),
             "Map download failed",
             format!("{folder} could not be downloaded: {reason}"),
             None,
@@ -615,9 +642,10 @@ pub(crate) fn report_failure(ctx: &ServiceCtx, out: &EventSink, reason: String) 
     // nothing private.
     tracing::warn!(%reason, "game launch failed");
     ctx.ports.ice.stop();
-    notifications::add_required(
+    notifications::add_required_text(
         out,
         NotificationKind::Error,
+        notifications::Text::new("notifications.msg.gameLaunchFailed"),
         "Game launch failed",
         reason.clone(),
         None,
@@ -692,39 +720,20 @@ fn replay_metadata(
             .find(|game| game.id == launch.uid)
             .cloned()
     });
-    let build_info: Option<serde_json::Value> = ctx
-        .ports
-        .process
-        .game_install_dir()
-        .and_then(|p| {
-            let path = p.join(".faf_build.json");
-            std::fs::read_to_string(path).ok()
-        })
-        .and_then(|c| serde_json::from_str(&c).ok());
-    let (git_sha, git_short_sha, signature, version_name) = if let Some(info) = build_info {
-        let sha = info
-            .get("gitSha")
-            .and_then(|s| s.as_str())
-            .map(String::from);
-        let short = info
-            .get("gitShortSha")
-            .and_then(|s| s.as_str())
-            .map(String::from);
-        let sig = info
-            .get("signature")
-            .and_then(|s| s.as_str())
-            .map(String::from);
-        let name = if launch.mod_name == "fafdevelop" {
-            short.as_ref().map(|s| format!("FAF Develop ({s})"))
-        } else if launch.mod_name == "fafbeta" {
-            short.as_ref().map(|s| format!("FAF Beta ({s})"))
+    let (git_sha, git_short_sha, signature, version_name) =
+        if let Some(build) = ctx.ports.updater.installed_build() {
+            let short = build.git_short_sha;
+            let name = if launch.mod_name == "fafdevelop" {
+                short.as_ref().map(|s| format!("FAF Develop ({s})"))
+            } else if launch.mod_name == "fafbeta" {
+                short.as_ref().map(|s| format!("FAF Beta ({s})"))
+            } else {
+                None
+            };
+            (build.git_sha, short, build.signature, name)
         } else {
-            None
+            (None, None, None, None)
         };
-        (sha, short, sig, name)
-    } else {
-        (None, None, None, None)
-    };
     ReplayMetadata {
         uid: launch.uid,
         recorder: player.to_string(),

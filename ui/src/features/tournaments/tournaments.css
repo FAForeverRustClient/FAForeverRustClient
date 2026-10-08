@@ -727,25 +727,31 @@
   background: var(--color-surface-raised);
 }
 
+/* Grows into the height its column has, so the log fills the pane and the
+   composer sits at the bottom, as in the Chat tab. */
 .tournament-chat-room-body {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  flex: 1 1 0;
   min-width: 0;
   min-height: 0;
 }
 
+/* The Chat tab's scrollback (`.chat-messages`): a panel, lines one pixel
+   apart, the same padding. */
 .tournament-chat-posts {
   margin: 0;
-  padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   flex: 1 1 0;
   min-height: 0;
-  padding-right: var(--space-2);
+  padding: 14px 12px;
+  scrollbar-gutter: stable;
 }
 
 .tournament-chat-composer {
@@ -753,9 +759,25 @@
   gap: var(--space-2);
 }
 
+/* The Chat tab's composer field (`.chat-input`). */
 .tournament-chat-composer input {
   flex: 1;
   min-width: 0;
+  font: inherit;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
+}
+
+.tournament-chat-composer input::placeholder {
+  color: var(--color-subtle);
+}
+
+.tournament-chat-composer input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
 }
 
 /* -- Map pools ------------------------------------------------------------
@@ -1209,19 +1231,62 @@
   font-size: 13px;
 }
 
-/* Moderation lives on the post rather than in a panel, so it has to be quiet
-   until it is wanted: an organiser reading a room is reading, not moderating. */
-/* Always there, as on the website, but quiet until the post is hovered. */
-.tournament-chat-moderate {
-  display: inline-flex;
-  gap: var(--space-2);
-  opacity: 0.6;
-  transition: opacity 120ms ease;
+/* A line's actions (reply, and the organiser's delete and silence): the Chat
+   tab's floating toolbar (`.chat-message-actions`). Hidden by opacity, not
+   `display`, so its buttons stay in the tab order, and shown while the line is
+   hovered or focus is inside it. Moderation lives on the post rather than in a
+   panel, and this keeps it quiet until it is wanted. */
+.tournament-chat-tools {
+  position: absolute;
+  right: 6px;
+  top: -8px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  opacity: 0;
+  pointer-events: none;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 
-.tournament-chat-post:hover .tournament-chat-moderate,
-.tournament-chat-moderate:focus-within {
+.tournament-chat-post:hover .tournament-chat-tools,
+.tournament-chat-post:focus-within .tournament-chat-tools {
   opacity: 1;
+  pointer-events: auto;
+}
+
+.tournament-chat-tool {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.tournament-chat-tool:hover,
+.tournament-chat-tool:focus-visible {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  outline: none;
+}
+
+.tournament-chat-tool.is-danger:hover,
+.tournament-chat-tool.is-danger:focus-visible {
+  color: var(--color-error);
+}
+
+.tournament-chat-tool:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 .tournament-chat-action {
@@ -2613,6 +2678,82 @@
   padding: 0 var(--space-2) 2px;
 }
 
+/* -- The bracket card's two columns, with an organiser's controls in them ----
+   A card is one slot high (`--slot`), because the connectors are computed from
+   it, so whatever a viewer may do on a match has to fit in 74 px. A player has
+   a button or two; an organiser has match chat, vetoes, host and correct, and
+   those, stacked at full size with the replay ids under them, ran over the
+   cards above and below and into the names beside them. */
+
+/* Left: the pair, then what is said about it. Clipped, so a card carrying a
+   pending score and replays at once loses the last line rather than spilling. */
+.tournament-match-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tournament-match-main .tournament-match-replays {
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+  padding: 1px var(--space-2) 0;
+  overflow: hidden;
+}
+
+/* Right: a grid of two. Chat and vetoes are icons, side by side in the first
+   row; anything with a word on it (host, report, correct, confirm) takes a
+   whole row. `dense` lets the vetoes icon fill the gap beside chat even when
+   Host comes between them in the markup. */
+.tournament-round-matches .tournament-match .tournament-match-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: row dense;
+  align-content: center;
+  gap: 2px;
+  width: 112px;
+}
+
+.tournament-round-matches .tournament-match .tournament-match-actions:empty {
+  width: auto;
+}
+
+.tournament-round-matches .tournament-match .tournament-match-actions > * {
+  grid-column: 1 / -1;
+}
+
+.tournament-round-matches .tournament-match .tournament-match-actions > .tournament-round-pool-toggle {
+  grid-column: auto;
+  justify-content: center;
+  min-height: 22px;
+  padding: 0 4px;
+}
+
+/* The words stay in the markup for the list views and for a screen reader
+   (`aria-label`); the card has room for the icon. */
+.tournament-round-matches .tournament-match .tournament-action-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The design system's 32 px button is two of these rows. */
+.tournament-round-matches .tournament-match .tournament-match-actions > .btn-primary,
+.tournament-round-matches .tournament-match .tournament-match-actions > .btn-ghost {
+  min-height: 22px;
+  padding: 0 var(--space-2);
+  font-size: 11px;
+  justify-content: center;
+}
+
+.tournament-round-matches .tournament-match .tournament-not-played {
+  align-self: center;
+  text-align: center;
+}
+
 /* The round's map pool, as an overlay. It answers one question and is then
    done with, which is what an overlay is for: it keeps the reader's place in a
    bracket they have scrolled into, and Escape gives it back. */
@@ -2799,10 +2940,12 @@
   font-size: 12px;
 }
 
+/* Rows close together, as a list and not a stack of cards: a round of eight
+   matches should read at a glance (issue 367). */
 .tournament-swiss-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -2814,8 +2957,9 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  gap: var(--space-2) var(--space-3);
+  min-height: 36px;
+  padding: var(--space-1) var(--space-3);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-left: 3px solid var(--color-accent);
@@ -2876,8 +3020,12 @@
   display: none;
 }
 
+/* One fixed width rather than stretched across the row, so the score sits
+   just after the names instead of at the far edge, a pane's width away from
+   them, and the scores of a round still line up in a column (issue 367). The
+   controls trail at the right. */
 .tournament-swiss-teams {
-  flex: 1 1 240px;
+  flex: 0 1 420px;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -2907,6 +3055,7 @@
 }
 
 .tournament-swiss-score {
+  min-width: 56px;
   font-size: 15px;
   font-weight: 600;
   white-space: nowrap;
@@ -3896,28 +4045,56 @@
   font-size: 13px;
 }
 
-/* One message: the quote it answers, then who and when, then what. */
+/* One message, on the Chat tab's grid (`.chat-message`): avatar, name, text,
+   time. The quote it answers, when there is one, sits above the text column. */
 .tournament-chat-post {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--space-1) var(--space-2);
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px minmax(64px, var(--chat-sender-width, 116px)) minmax(0, 1fr) 44px;
+  column-gap: 6px;
+  row-gap: 0;
+  align-items: start;
+  min-height: 24px;
+  padding: 2px 7px;
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: var(--chat-font-size, 13px);
+  line-height: 1.45;
+  flex-shrink: 0;
   transition: background-color 1s ease;
 }
 
-.tournament-chat-post:hover {
+.tournament-chat-post:hover,
+.tournament-chat-post:has(:focus-visible) {
   background: var(--color-surface-hover);
 }
 
-.tournament-chat-post.is-system {
-  flex-direction: row;
-  align-items: baseline;
-  gap: var(--space-2);
+/* A line continuing the one above sits tight against it, so a run from one
+   person reads as one block. */
+.tournament-chat-post.is-continued {
+  padding-top: 0;
+  min-height: 0;
+}
+
+/* The server's own lines (dice rolls, organiser pings), drawn as the Chat tab
+   draws its info lines. */
+.tournament-chat-post.is-system .tournament-chat-text {
   color: var(--color-warn);
   font-style: italic;
-  font-size: 12px;
+}
+
+.tournament-chat-avatar {
+  display: grid;
+  width: 32px;
+  height: 18px;
+  place-items: center;
+  overflow: hidden;
+}
+
+.tournament-chat-avatar img {
+  display: block;
+  width: 32px;
+  height: 18px;
+  object-fit: contain;
 }
 
 /* An organiser's @everyone: every entrant who can read the room was pinged. */
@@ -3932,27 +4109,45 @@
   outline: 1px solid var(--color-accent);
 }
 
-.tournament-chat-line {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  flex-wrap: wrap;
+/* The name column, right-aligned against the text with a colon, as in the Chat
+   tab. Its colour is the reader's name colour for that player. */
+.tournament-chat-author {
+  font: inherit;
+  font-weight: 600;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
 }
 
-.tournament-chat-author {
-  font-weight: 700;
-  color: var(--color-friend);
+button.tournament-chat-author::after {
+  content: ":";
+}
+
+button.tournament-chat-author:hover {
+  text-decoration: underline;
 }
 
 .tournament-chat-time {
+  font-variant-numeric: tabular-nums;
   font-size: 11px;
+  color: var(--color-subtle);
+  text-align: right;
+}
+
+.tournament-chat-time time {
   cursor: help;
 }
 
 .tournament-chat-text {
+  min-width: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  max-width: 110ch;
 }
 
 .tournament-chat-ping {
@@ -3963,10 +4158,14 @@
   font-weight: 600;
 }
 
+/* Above the text column and attached to its own answer, as the Chat tab's
+   `.chat-quote`: a gap above, nothing below. */
 .tournament-chat-quote {
   display: flex;
   gap: var(--space-2);
-  max-width: 110ch;
+  grid-column: 3 / -1;
+  min-width: 0;
+  margin: 5px 0 0;
   padding: 0 0 0 var(--space-2);
   border: 0;
   border-left: 2px solid var(--color-border-strong);
@@ -4103,6 +4302,15 @@
 .tournament-match-chat h3,
 .tournament-match-chat > p {
   margin: 0;
+}
+
+/* The compact room (the match-chat dialog, the pinned panel) sizes itself:
+   its log has a height of its own, below. The full room's `flex: 1 1 0` fills
+   a column of definite height, the Chat tab's; in a dialog, which is only as
+   tall as what is in it, a zero basis collapsed the room to nothing and left
+   the dialog a sliver scrolled down to the composer. */
+.tournament-chat-room-body.is-compact {
+  flex: none;
 }
 
 .tournament-chat-room-body.is-compact .tournament-chat-posts {
@@ -5016,6 +5224,14 @@
   min-width: 0;
 }
 
+/* The chat's row: as tall as the pane leaves it, its section stretched to that
+   height so the log inside can fill it. */
+.tournament-body-row.is-fill {
+  flex: 1 1 0;
+  align-items: stretch;
+  min-height: 420px;
+}
+
 .tournament-pinned-chat {
   position: sticky;
   top: 0;
@@ -5027,6 +5243,25 @@
   gap: var(--space-2);
   padding: var(--space-2);
   overflow: hidden;
+}
+
+/* A 300-pixel column has no room for the avatar column and a full name
+   column: the text is what is read there. The Matchmaker's party chat makes
+   the same trade. */
+.tournament-pinned-chat .tournament-chat-post {
+  grid-template-columns: minmax(48px, 88px) minmax(0, 1fr) 40px;
+}
+
+.tournament-pinned-chat .tournament-chat-avatar {
+  display: none;
+}
+
+.tournament-pinned-chat .tournament-chat-quote {
+  grid-column: 2 / -1;
+}
+
+.tournament-pinned-chat .tournament-chat-posts {
+  padding: var(--space-2) var(--space-1);
 }
 
 .tournament-pinned-head {

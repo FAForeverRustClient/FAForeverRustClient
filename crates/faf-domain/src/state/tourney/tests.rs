@@ -1074,3 +1074,552 @@ fn a_map_saved_without_a_picture_borrows_the_vault_preview() {
     };
     assert_eq!(pick(&unknown, &[]), None);
 }
+
+/// Selecting another event while its eligibility check is in flight: the
+/// answer for the event just left must not become the notice of the one now
+/// open, whether it is a verdict or a refusal.
+#[test]
+fn an_eligibility_answer_for_an_event_no_longer_open_is_dropped() {
+    let mut state = TourneyState::default();
+    let select = |id: &str| TourneyEvent::Selected {
+        tournament_id: id.into(),
+    };
+    reduce(&mut state, &select("a"));
+    reduce(
+        &mut state,
+        &TourneyEvent::RatingChecking {
+            tournament_id: "a".into(),
+        },
+    );
+    assert_eq!(state.rating_check_status, TourneyLoadStatus::Loading);
+
+    reduce(&mut state, &select("b"));
+    reduce(
+        &mut state,
+        &TourneyEvent::RatingChecked {
+            tournament_id: "a".into(),
+            check: RatingCheck {
+                eligible: Some(true),
+                ..RatingCheck::default()
+            },
+        },
+    );
+    reduce(
+        &mut state,
+        &TourneyEvent::RatingCheckFailed {
+            tournament_id: "a".into(),
+            reason: "late".into(),
+            kind: RequestFailureKind::Rejected,
+        },
+    );
+    assert_eq!(state.rating_check, None);
+    assert_eq!(state.rating_check_status, TourneyLoadStatus::Idle);
+
+    reduce(
+        &mut state,
+        &TourneyEvent::RatingChecked {
+            tournament_id: "b".into(),
+            check: RatingCheck {
+                eligible: Some(false),
+                ..RatingCheck::default()
+            },
+        },
+    );
+    assert_eq!(
+        state.rating_check.as_ref().and_then(|check| check.eligible),
+        Some(false)
+    );
+    assert_eq!(state.rating_check_status, TourneyLoadStatus::Ready);
+}
+
+/// The two halves of [`TourneyCommand`] on the wire.
+///
+/// The webview builds `{ kind: "Tourney", command: { type, payload } }` with
+/// no idea which half a command is in, so splitting the enum must not add a
+/// layer, and every `type` must land in the half that declares it.
+mod command_wire {
+    use std::collections::BTreeSet;
+
+    use super::*;
+    use crate::AppCommand;
+
+    fn t() -> String {
+        "t1".into()
+    }
+
+    /// One of every read, so the test below fails when a read is added
+    /// without one.
+    fn every_read() -> Vec<TourneyRead> {
+        vec![
+            TourneyRead::Load,
+            TourneyRead::Select { tournament_id: t() },
+            TourneyRead::RefreshDetail { tournament_id: t() },
+            TourneyRead::CheckRating { tournament_id: t() },
+            TourneyRead::LoadPlayerRatings {
+                tournament_id: t(),
+                player_id: "p1".into(),
+                refresh: true,
+            },
+            TourneyRead::LoadCopySources,
+            TourneyRead::LoadPresets,
+            TourneyRead::LoadSite {
+                read: SiteRead::Access {
+                    kind: AccessKind::Host,
+                },
+            },
+            TourneyRead::LoadTemplate { tournament_id: t() },
+            TourneyRead::LoadCopySource { tournament_id: t() },
+            TourneyRead::LoadChat { tournament_id: t() },
+            TourneyRead::OpenRoom {
+                tournament_id: t(),
+                room_id: "r1".into(),
+            },
+            TourneyRead::RefreshChat {
+                tournament_id: t(),
+                room_id: "r1".into(),
+            },
+            TourneyRead::PinRoom {
+                tournament_id: t(),
+                room_id: Some("r1".into()),
+            },
+            TourneyRead::LoadArticles,
+            TourneyRead::LoadHosting,
+            TourneyRead::LoadProfile,
+            TourneyRead::SetDiscord {
+                handle: "me#1".into(),
+            },
+            TourneyRead::SearchAccounts {
+                query: "Zep".into(),
+            },
+            TourneyRead::ClearAccountSearch,
+            TourneyRead::CheckRenames { tournament_id: t() },
+            TourneyRead::LoadSeries,
+            TourneyRead::OpenSeries {
+                series_id: "s1".into(),
+            },
+            TourneyRead::CloseSeries,
+            TourneyRead::MarkNewsRead { tournament_id: t() },
+            TourneyRead::DismissActionError,
+        ]
+    }
+
+    /// One of every write, for the same reason.
+    fn every_write() -> Vec<TourneyWrite> {
+        let report = MatchReport {
+            match_id: "m1".into(),
+            score1: 2,
+            score2: 1,
+            replay_ids: vec!["1".into(), "2".into(), "3".into()],
+            ..MatchReport::default()
+        };
+        vec![
+            TourneyWrite::SignUp {
+                tournament_id: t(),
+                rating: Some(1500),
+            },
+            TourneyWrite::DeclineInvite { tournament_id: t() },
+            TourneyWrite::UploadDescImage {
+                tournament_id: t(),
+                data_url: "data:image/png;base64,AA==".into(),
+                request_id: 7,
+            },
+            TourneyWrite::SiteWrite {
+                write: SiteWrite::RequestAccess {
+                    kind: AccessKind::Editor,
+                    message: "please".into(),
+                },
+            },
+            TourneyWrite::BanPlayer {
+                tournament_id: t(),
+                player_id: "p1".into(),
+                faf_id: 42,
+                name: "Zep".into(),
+                reason: "no show".into(),
+                expires: Some(1_700_000_000),
+                remove: true,
+            },
+            TourneyWrite::Withdraw { tournament_id: t() },
+            TourneyWrite::CheckIn {
+                tournament_id: t(),
+                checked_in: true,
+            },
+            TourneyWrite::AnswerReport {
+                tournament_id: t(),
+                match_id: "m1".into(),
+                accept: false,
+            },
+            TourneyWrite::DecideReport {
+                tournament_id: t(),
+                report: report.clone(),
+            },
+            TourneyWrite::SubmitReport {
+                tournament_id: t(),
+                report,
+            },
+            TourneyWrite::PostChat {
+                tournament_id: t(),
+                room_id: "r1".into(),
+                body: "gl hf".into(),
+                reply_to: Some("c1".into()),
+            },
+            TourneyWrite::CreateTeam {
+                tournament_id: t(),
+                name: "Team".into(),
+            },
+            TourneyWrite::RequestJoin {
+                tournament_id: t(),
+                team_id: "tm1".into(),
+            },
+            TourneyWrite::CancelJoin {
+                tournament_id: t(),
+                team_id: "tm1".into(),
+            },
+            TourneyWrite::RespondJoin {
+                tournament_id: t(),
+                team_id: "tm1".into(),
+                player_id: "p1".into(),
+                accept: true,
+            },
+            TourneyWrite::InviteToTeam {
+                tournament_id: t(),
+                team_id: "tm1".into(),
+                player_id: "p1".into(),
+            },
+            TourneyWrite::RespondInvite {
+                tournament_id: t(),
+                team_id: "tm1".into(),
+                accept: true,
+            },
+            TourneyWrite::LeaveTeam { tournament_id: t() },
+            TourneyWrite::DisbandTeam {
+                tournament_id: t(),
+                team_id: "tm1".into(),
+            },
+            TourneyWrite::RenameTeam {
+                tournament_id: t(),
+                team_id: "tm1".into(),
+                name: "New".into(),
+            },
+            TourneyWrite::AddPlayer {
+                tournament_id: t(),
+                name: "Zep".into(),
+                rating: None,
+            },
+            TourneyWrite::RespondSignup {
+                tournament_id: t(),
+                player_id: "p1".into(),
+                accept: false,
+            },
+            TourneyWrite::RemovePlayer {
+                tournament_id: t(),
+                player_id: "p1".into(),
+            },
+            TourneyWrite::SetCaptain {
+                tournament_id: t(),
+                team_id: "tm1".into(),
+                player_id: "p1".into(),
+            },
+            TourneyWrite::MovePlayer {
+                tournament_id: t(),
+                player_id: "p1".into(),
+                team_id: None,
+            },
+            TourneyWrite::EditPlayer {
+                tournament_id: t(),
+                player_id: "p1".into(),
+                note: "sub".into(),
+                rating: Some(1200),
+            },
+            TourneyWrite::InvitePlayer {
+                tournament_id: t(),
+                name: "Zep".into(),
+            },
+            TourneyWrite::Uninvite {
+                tournament_id: t(),
+                faf_id: 42,
+            },
+            TourneyWrite::Reseed {
+                tournament_id: t(),
+                order: SeedOrder::Explicit {
+                    team_ids: vec!["tm2".into(), "tm1".into()],
+                },
+            },
+            TourneyWrite::SplitDivisions {
+                tournament_id: t(),
+                divisions: 2,
+            },
+            TourneyWrite::SetDivision {
+                tournament_id: t(),
+                team_id: "tm1".into(),
+                division: 1,
+            },
+            TourneyWrite::PostNews {
+                tournament_id: t(),
+                body: "Round 2".into(),
+                important: true,
+            },
+            TourneyWrite::DeleteNews {
+                tournament_id: t(),
+                news_id: "n1".into(),
+            },
+            TourneyWrite::Create {
+                draft: TourneyDraft::new(),
+            },
+            TourneyWrite::EditInfo {
+                tournament_id: t(),
+                draft: TourneyDraft::new(),
+            },
+            TourneyWrite::Publish { tournament_id: t() },
+            TourneyWrite::Advance {
+                tournament_id: t(),
+                phase: TourneyPhase::FormTeams,
+                config: None,
+            },
+            TourneyWrite::Archive { tournament_id: t() },
+            TourneyWrite::AssignPool {
+                tournament_id: t(),
+                round_key: "wb:1".into(),
+                pool_id: "pl1".into(),
+            },
+            TourneyWrite::DraftPickPlayer {
+                tournament_id: t(),
+                player_id: "p1".into(),
+            },
+            TourneyWrite::DraftUndo { tournament_id: t() },
+            TourneyWrite::SetCaptains {
+                tournament_id: t(),
+                player_ids: vec!["p1".into(), "p2".into()],
+            },
+            TourneyWrite::ReportFfa {
+                tournament_id: t(),
+                report: FfaReport::default(),
+            },
+            TourneyWrite::VetoAct {
+                tournament_id: t(),
+                match_id: "m1".into(),
+                map_id: "map1".into(),
+            },
+            TourneyWrite::VetoSetSides {
+                tournament_id: t(),
+                match_id: "m1".into(),
+                team_a: "tm1".into(),
+            },
+            TourneyWrite::VetoUndo {
+                tournament_id: t(),
+                match_id: "m1".into(),
+            },
+            TourneyWrite::FactionVeto {
+                tournament_id: t(),
+                match_id: "m1".into(),
+                game: 1,
+                faction: TourneyFaction::Seraphim,
+            },
+            TourneyWrite::SetFactionVeto {
+                tournament_id: t(),
+                config: FactionVetoConfig::default(),
+            },
+            TourneyWrite::Administer {
+                tournament_id: t(),
+                change: TourneyAdmin::StopAt { alive: 4 },
+            },
+            TourneyWrite::SaveMap {
+                tournament_id: t(),
+                map: MapDraft::default(),
+            },
+            TourneyWrite::PublishMap {
+                tournament_id: t(),
+                map_id: "map1".into(),
+                published: true,
+            },
+            TourneyWrite::DeleteMap {
+                tournament_id: t(),
+                map_id: "map1".into(),
+            },
+            TourneyWrite::PublishPool {
+                tournament_id: t(),
+                pool_id: "pl1".into(),
+                published: false,
+            },
+            TourneyWrite::DeletePool {
+                tournament_id: t(),
+                pool_id: "pl1".into(),
+            },
+            TourneyWrite::SavePool {
+                tournament_id: t(),
+                pool: PoolDraft::default(),
+            },
+            TourneyWrite::SaveSeries {
+                draft: SeriesDraft::default(),
+            },
+            TourneyWrite::DeleteSeries {
+                series_id: "s1".into(),
+            },
+            TourneyWrite::SetSeries {
+                tournament_id: t(),
+                series_id: Some("s1".into()),
+            },
+            TourneyWrite::AddQualifier {
+                tournament_id: t(),
+                qualifier_id: "t2".into(),
+                rule: QualifierRule::default(),
+            },
+            TourneyWrite::RemoveQualifier {
+                tournament_id: t(),
+                link_id: "q1".into(),
+            },
+            TourneyWrite::EditFormat {
+                tournament_id: t(),
+                format: FormatDraft::default(),
+            },
+            TourneyWrite::MuteChat {
+                tournament_id: t(),
+                faf_id: 42,
+                name: "Zep".into(),
+                muted: true,
+            },
+            TourneyWrite::DeleteChatPost {
+                tournament_id: t(),
+                room_id: "r1".into(),
+                post_id: "c1".into(),
+            },
+            TourneyWrite::AddOrganiser {
+                tournament_id: t(),
+                faf_id: 42,
+                name: "Zep".into(),
+            },
+            TourneyWrite::SetCaster {
+                tournament_id: t(),
+                faf_id: 42,
+                name: "Zep".into(),
+                casting: true,
+            },
+            TourneyWrite::SetOrganiserVisibility {
+                tournament_id: t(),
+                faf_id: 42,
+                hidden: true,
+            },
+            TourneyWrite::Abandon {
+                tournament_id: t(),
+                abandoned: true,
+            },
+            TourneyWrite::EditNews {
+                tournament_id: t(),
+                news_id: "n1".into(),
+                body: "Round 3".into(),
+                important: false,
+            },
+        ]
+    }
+
+    /// Every `type` one half accepts, as serde lists them when refusing one
+    /// it does not know.
+    fn declared<T: serde::de::DeserializeOwned + std::fmt::Debug>() -> BTreeSet<String> {
+        let refusal = serde_json::from_str::<T>(r#"{"type":"__none__"}"#)
+            .expect_err("no half has this type")
+            .to_string();
+        let listed = refusal
+            .split("expected one of ")
+            .nth(1)
+            .unwrap_or_else(|| panic!("serde named no variants: {refusal}"));
+        listed
+            .split(',')
+            .filter_map(|name| name.split('`').nth(1))
+            .map(str::to_owned)
+            .collect()
+    }
+
+    fn tag(json: &serde_json::Value) -> String {
+        json["type"].as_str().expect("tagged").to_owned()
+    }
+
+    #[test]
+    fn every_command_keeps_its_wire_shape_and_lands_in_its_own_half() {
+        let reads = every_read();
+        let writes = every_write();
+
+        let read_types = declared::<TourneyRead>();
+        let write_types = declared::<TourneyWrite>();
+        assert!(
+            read_types.is_disjoint(&write_types),
+            "a type in both halves would always deserialize as a read: {:?}",
+            read_types.intersection(&write_types).collect::<Vec<_>>()
+        );
+        let sampled = |values: Vec<serde_json::Value>| -> BTreeSet<String> {
+            values.iter().map(tag).collect()
+        };
+        assert_eq!(
+            sampled(
+                reads
+                    .iter()
+                    .map(|c| serde_json::to_value(c).unwrap())
+                    .collect()
+            ),
+            read_types,
+            "every read has a sample above"
+        );
+        assert_eq!(
+            sampled(
+                writes
+                    .iter()
+                    .map(|c| serde_json::to_value(c).unwrap())
+                    .collect()
+            ),
+            write_types,
+            "every write has a sample above"
+        );
+
+        let round_trip = |command: TourneyCommand, inner: serde_json::Value| {
+            let wire = serde_json::to_value(AppCommand::from(command.clone())).unwrap();
+            assert_eq!(wire["kind"], "Tourney");
+            // No layer naming the half: the command is the inner enum's own
+            // `{ type, payload }`, exactly what the webview sends.
+            assert_eq!(wire["command"], inner);
+            let back: AppCommand = serde_json::from_value(wire).unwrap();
+            assert_eq!(back, AppCommand::Tourney(command));
+        };
+        for read in reads {
+            let inner = serde_json::to_value(&read).unwrap();
+            round_trip(TourneyCommand::Read(read), inner);
+        }
+        for write in writes {
+            let inner = serde_json::to_value(&write).unwrap();
+            round_trip(TourneyCommand::Write(write), inner);
+        }
+    }
+
+    #[test]
+    fn the_webviews_own_json_lands_in_the_right_half() {
+        let parse = |json: &str| serde_json::from_str::<AppCommand>(json).unwrap();
+        assert_eq!(
+            parse(r#"{"kind":"Tourney","command":{"type":"load"}}"#),
+            TourneyRead::Load.into()
+        );
+        assert_eq!(
+            parse(
+                r#"{"kind":"Tourney","command":{"type":"signUp","payload":{"tournamentId":"t1","rating":null}}}"#
+            ),
+            TourneyWrite::SignUp {
+                tournament_id: "t1".into(),
+                rating: None,
+            }
+            .into()
+        );
+        // `replyTo` may be left out, as it could before the split.
+        assert_eq!(
+            parse(
+                r#"{"kind":"Tourney","command":{"type":"postChat","payload":{"tournamentId":"t1","roomId":"r1","body":"hi"}}}"#
+            ),
+            TourneyWrite::PostChat {
+                tournament_id: "t1".into(),
+                room_id: "r1".into(),
+                body: "hi".into(),
+                reply_to: None,
+            }
+            .into()
+        );
+        assert!(serde_json::from_str::<AppCommand>(
+            r#"{"kind":"Tourney","command":{"type":"noSuchCommand"}}"#
+        )
+        .is_err());
+    }
+}

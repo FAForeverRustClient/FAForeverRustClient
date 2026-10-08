@@ -77,13 +77,12 @@ fn rescan_mods(ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn start(ctx: &ServiceCtx, out: &EventSink) {
-    let Some(_guard) = ctx.uploads_active.try_acquire() else {
-        return;
-    };
+    crate::runtime::expect_admitted(crate::runtime::Key::Upload);
     let state = out.with_state(|state| state.uploads.clone());
 
     // Both reference clients hold a global upload lock. A second publish would
-    // fight the first for the same temporary archive path.
+    // fight the first for the same temporary archive path, which is why
+    // `Start` is single-flight in the command policy (`Key::Upload`).
     if state.status.is_busy() {
         return;
     }
@@ -151,21 +150,26 @@ fn announce_if_hidden(out: &EventSink, kind: UploadKind, name: &str, outcome: &U
     if out.with_state(|state| state.uploads.request.is_some()) {
         return; // The dialog is open and shows the outcome itself.
     }
-    let what = match kind {
-        UploadKind::Map => "Map",
-        UploadKind::Mod => "Mod",
+    let (what, which) = match kind {
+        UploadKind::Map => ("Map", "map"),
+        UploadKind::Mod => ("Mod", "mod"),
     };
     match outcome {
-        UploadStatus::Succeeded => notifications::add(
+        UploadStatus::Succeeded => notifications::add_text(
             out,
             NotificationKind::UploadFinished,
+            notifications::Text::new(format!("notifications.msg.{which}Published"))
+                .with("name", name),
             format!("{what} published"),
             format!("{name} is in the vault."),
             None,
         ),
-        UploadStatus::Failed { reason } => notifications::add(
+        UploadStatus::Failed { reason } => notifications::add_text(
             out,
             NotificationKind::Error,
+            notifications::Text::new(format!("notifications.msg.{which}NotPublished"))
+                .with("name", name)
+                .with("reason", reason),
             format!("{what} not published"),
             format!("{name} could not be published: {reason}. Open the upload again to retry."),
             None,

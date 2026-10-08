@@ -4,7 +4,19 @@
 // showed the same list in the same wrong order, each with its own copy of the
 // sort, so this is one module they share.
 
-import type { CoopScenario } from "../../../ipc/bindings";
+import type { CoopMission, CoopScenario } from "../../../ipc/bindings";
+import type { MessageKey } from "../../../i18n";
+import type { Translation } from "../../../i18n/useTranslation";
+
+const CAMPAIGN_NAME_KEYS: Record<string, MessageKey> = {
+  "vanilla uef campaign": "lobby.coop.vanillaUefCampaignName",
+  "vanilla cybran campaign": "lobby.coop.vanillaCybranCampaignName",
+  "vanilla aeon campaign": "lobby.coop.vanillaAeonCampaignName",
+  "forged alliance campaign": "lobby.coop.scfaCampaignName",
+  "coalition campaign": "lobby.coop.coalitionCampaignName",
+  "seraphim campaign": "lobby.coop.seraphimCampaignName",
+  "standalone missions": "lobby.coop.standaloneMissionsName",
+};
 
 /**
  * Which game a campaign came from, and the primary sort key.
@@ -56,6 +68,16 @@ export function sortCoopScenarios<T extends CoopScenario>(scenarios: readonly T[
 }
 
 /**
+ * A campaign's missions in campaign order, as the Java client lists them: the
+ * API's `order` is the mission's place in its campaign, and the alphabet is
+ * not ("... 10" sorts before "... 2"). The name only breaks ties. The records
+ * view and the host dialog both list missions, and both must agree (#457).
+ */
+export function sortCoopMissions<T extends Pick<CoopMission, "order" | "name">>(missions: readonly T[]): T[] {
+  return [...missions].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+}
+
+/**
  * What the badge next to a campaign's name says.
  *
  * Normally the faction, which is what the badge is for. A campaign the player
@@ -66,4 +88,28 @@ export function sortCoopScenarios<T extends CoopScenario>(scenarios: readonly T[
 export function scenarioBadge(scenario: CoopScenario): "uef" | "cybran" | "aeon" | "seraphim" | "official" | "custom" {
   if (scenario.faction !== "custom") return scenario.faction;
   return scenario.category === "custom" ? "custom" : "official";
+}
+
+export function displayScenarioName(
+  scenario: CoopScenario,
+  t: Translation["t"],
+): string {
+  const key = CAMPAIGN_NAME_KEYS[scenario.name.trim().toLowerCase()];
+  return key ? t(key) : scenario.name;
+}
+
+/**
+ * A campaign as the dropdown lists it: its name and its badge, for every
+ * campaign alike. One template rather than one per kind of campaign, so a
+ * language that wants another format changes it in one place, and the badge
+ * always reads as `lobby.coop.badge.*` says it.
+ */
+export function displayScenarioOptionLabel(
+  scenario: CoopScenario,
+  t: Translation["t"],
+): string {
+  return t("lobby.coop.campaignOption", {
+    name: displayScenarioName(scenario, t),
+    badge: t(`lobby.coop.badge.${scenarioBadge(scenario)}`),
+  });
 }

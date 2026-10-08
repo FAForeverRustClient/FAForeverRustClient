@@ -8,7 +8,7 @@
 // on this game its numbers win, and they are remembered for the rest of the
 // session, so closing the panel does not put the stale ones back.
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { useAppStore } from "../../store/store";
 
@@ -39,5 +39,10 @@ export function useGameRating(uid: number, average: number | null, count: number
     }
   }, [uid, liveAverage, liveCount]);
 
-  return live ?? known.get(uid) ?? { average, count: count ?? 0 };
+  // One object per score rather than per render: the facts row is memoised
+  // on it.
+  const resolved = live ?? known.get(uid) ?? { average, count: count ?? 0 };
+  const resolvedAverage = resolved.average;
+  const resolvedCount = resolved.count;
+  return useMemo(() => ({ average: resolvedAverage, count: resolvedCount }), [resolvedAverage, resolvedCount]);
 }

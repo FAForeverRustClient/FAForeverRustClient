@@ -130,7 +130,7 @@ function Distribution({ summary }: { summary: ReviewSummary }) {
   return (
     <section className="reviews-summary">
       <div className="reviews-average">
-        <strong>{summary.total === 0 ? "N/A" : (summary.averageTenths / 10).toFixed(1)}</strong>
+        <strong>{summary.total === 0 ? t("common.notAvailable") : (summary.averageTenths / 10).toFixed(1)}</strong>
         <Stars score={summary.averageTenths / 10} />
         <small className="muted">{t("reviews.count", { count: summary.total })}</small>
       </div>

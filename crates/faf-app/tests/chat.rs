@@ -29,8 +29,9 @@ impl SettingsPort for RecordingSettings {
         SettingsState::default()
     }
 
-    async fn save(&self, settings: &SettingsState) {
+    async fn save(&self, settings: &SettingsState) -> Result<(), String> {
         self.saved.lock().unwrap().push(settings.clone());
+        Ok(())
     }
 }
 
@@ -482,8 +483,8 @@ async fn the_language_channel_is_not_joined_when_the_preference_is_off() {
     let mut preferences = app.snapshot().settings.chat;
     preferences.auto_join_language_channel = false;
     app.dispatch(
-        SettingsCommand::SetChat {
-            preferences: Box::new(preferences),
+        SettingsCommand::PatchChat {
+            patch: Box::new(preferences.into()),
         }
         .into(),
     )
@@ -516,8 +517,8 @@ async fn muted_players_are_filtered_before_messages_enter_state() {
     let mut preferences = app.snapshot().settings.chat;
     preferences.muted_players.push("stormlord".into());
     app.dispatch(
-        SettingsCommand::SetChat {
-            preferences: Box::new(preferences),
+        SettingsCommand::PatchChat {
+            patch: Box::new(preferences.into()),
         }
         .into(),
     )

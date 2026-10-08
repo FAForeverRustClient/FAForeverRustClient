@@ -117,7 +117,7 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | `src/services/session.rs` | Service **session**: handshake → reports backend version. |
 | `src/services/auth.rs` | Service **auth**: command → `AuthPort` → events. |
 | `src/services/nav.rs` | Service **nav**: pure UI state transition (command → event). |
-| `src/services/lobby.rs` | Service **lobby**: subscribes to the stream, forwards each snapshot as an event. |
+| `src/services/lobby/` | Service **lobby**: subscribes to the stream, forwards each snapshot as an event. |
 | `src/services/settings.rs` | Service **settings**: `Load` → emit `Loaded`; `SetTheme` → emit + persist post-reduce slice. |
 | `tests/` | 26 integration tests, each driving the real runtime with fake ports: `loop.rs` (the loop end to end), `auth.rs` (a swapped port, success + failure), `lobby.rs` (streaming, plus connect/disconnect teardown), and one per feature area since. `ls crates/faf-app/tests` is the current list. |
 
@@ -220,7 +220,7 @@ frontend half is where new contributors most often stop early.
 | **Add a desktop capability that is not a domain command** | A `#[tauri::command]` in `src-tauri/src/commands.rs`, registered in `run()`; the typed call in `ui/src/ipc/native.ts` with the mirrored types. Before doing this, ask whether it is really not state: most things are, and belong in the loop. |
 | **Add or change a theme** | A `[data-theme="…"]` block in `tokens.css` + a `Theme` variant in `faf-domain/state/settings.rs`. No component changes; never hardcode a color in a component (CI rejects hex outside `tokens.css`). |
 | **Changed a cross-boundary type** | `pnpm run bindings`, and `cargo test -p faf-domain --test conformance_fixtures` if it is a state type or a default. Both are separate CI jobs and both drift silently until they run. |
-| **Added user-facing text** | A key in `ui/src/i18n/catalog/en.ts` (the source; a missing key is a compile error) and `de.ts`; `pnpm run i18n:check` lists literals that slipped through. |
+| **Added user-facing text** | A key in `ui/src/i18n/catalog/en.ts` (the source; a missing key is a compile error) and `de.ts`; `pnpm run i18n:check --list` lists literals that slipped through, and CI fails on any (`--max 0`). |
 
 **Never:** mutate state outside a reducer · do IO outside `infra/` · put logic in a component · write a cross-boundary type by hand (`ipc/native.ts` is the one deliberate exception) · import one feature from another.
 

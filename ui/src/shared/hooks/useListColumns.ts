@@ -33,11 +33,11 @@ export interface ListColumns {
   reset: () => void;
 }
 
+/** Only the fields that changed: a patch, so nothing else is written back. */
 function saveBrowsing(patch: Partial<BrowsingPreferences>): void {
-  const browsing = useAppStore.getState().state.settings.browsing;
   ipc.send({
     kind: "Settings",
-    command: { type: "setBrowsing", payload: { preferences: { ...browsing, ...patch } } },
+    command: { type: "patchBrowsing", payload: { patch } },
   });
 }
 

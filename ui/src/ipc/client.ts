@@ -68,6 +68,32 @@ export const ipc = {
     };
   },
 
+  /**
+   * Write a line to the client log saying the page was too busy to answer
+   * clicks for a while, and where. Diagnostics only: a failure is ignored.
+   */
+  reportStall(busyMilliseconds: number, longestMilliseconds: number, place: string): void {
+    void invoke("report_webview_stall", {
+      busyMilliseconds: Math.round(busyMilliseconds),
+      longestMilliseconds: Math.round(longestMilliseconds),
+      place,
+    }).catch(() => {});
+  },
+
+  /**
+   * Write a line to the client log saying what applying backend events cost
+   * the page over the last window, and which event was slowest. Diagnostics
+   * only: a failure is ignored.
+   */
+  reportEventCost(events: number, totalMilliseconds: number, slowestEvent: string, slowestMilliseconds: number): void {
+    void invoke("report_event_cost", {
+      events,
+      totalMilliseconds: Math.round(totalMilliseconds),
+      slowestEvent,
+      slowestMilliseconds: Math.round(slowestMilliseconds),
+    }).catch(() => {});
+  },
+
   /** Backend → UI: consistent snapshot for initial hydration. */
   snapshot(): Promise<VersionedSnapshot> {
     return invoke<VersionedSnapshot>("snapshot");

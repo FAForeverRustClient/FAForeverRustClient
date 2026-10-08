@@ -17,7 +17,7 @@ import { partyChatWidth, withPartyChatResized } from "./matchmakerLayout";
 import { placementForQueue, ratingForQueue } from "./matchmakerRatings";
 import { playersInRatingRange } from "./queueRatingRange";
 import { secondsUntil } from "./queuePopClock";
-import { allGamePlayers } from "../../../shared/liveReplayModel";
+import { playersInGames } from "./partyReadiness";
 import "./matchmaker.css";
 import { t } from "../../../i18n";
 import { useLocale } from "../../../i18n/useTranslation";
@@ -95,7 +95,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
   // lobby included, when the search starts. The server refuses it anyway, with
   // a notice the search bar never hears about.
   const membersInGame = useMemo(() => {
-    const busy = new Set([...openGames, ...liveGames].flatMap((game) => allGamePlayers(game)));
+    const busy = playersInGames(openGames, liveGames);
     const ids = party.members.length > 0 ? party.members.map((member) => member.playerId) : playerId === null ? [] : [playerId];
     const names = ids
       .filter((id) => id !== playerId)
@@ -105,6 +105,12 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
       || (player !== null && busy.has(player.name));
     return selfBusy ? [playerName, ...names] : names;
   }, [join.type, liveGames, openGames, party.members, player, playerId, playerName, social.players]);
+  // The lobby's own copy of our ratings, which the server refreshes after
+  // every rated game (#449). See `ratingForQueue`.
+  const ownLobbyRatings = useMemo(
+    () => social.players.find((entry) => entry.id === playerId)?.ratings ?? [],
+    [playerId, social.players],
+  );
   const compatibleQueues = selectedQueues.filter((queue) => party.members.length <= queue.teamSize);
   const mapPoolQueue = sortedQueues.find((queue) => queue.queueName === mapPoolQueueName) ?? null;
   const matchmakerProfile = playerCard.matchmakerProfile?.playerId === playerId
@@ -115,10 +121,9 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
+        type: "patchBrowsing",
         payload: {
-          preferences: {
-            ...useAppStore.getState().state.settings.browsing,
+          patch: {
             matchmakerChatWidth,
           },
         },
@@ -164,6 +169,27 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
     });
   }, [playerCard.matchmakerProfile, playerCard.matchmakerProfileStatus, playerId, playerName]);
 
+  // A rated game moves the lobby's copy of our ratings first. The profile
+  // behind the player card (games, wins, league placement) is read from the
+  // API, so it is asked for again then rather than staying on the numbers the
+  // session started with (#449). Not on the first table: that is the one the
+  // load above already answers.
+  const lobbyRatingsKey = ownLobbyRatings.map((rating) => `${rating.leaderboard}:${rating.mean}:${rating.deviation}`).join("|");
+  const seenLobbyRatings = useRef<string | null>(null);
+  useEffect(() => {
+    if (playerId === null || lobbyRatingsKey === "") return;
+    const previous = seenLobbyRatings.current;
+    seenLobbyRatings.current = lobbyRatingsKey;
+    if (previous === null || previous === lobbyRatingsKey) return;
+    ipc.send({
+      kind: "PlayerCard",
+      command: {
+        type: "loadMatchmakerProfile",
+        payload: { playerId, login: playerName },
+      },
+    });
+  }, [lobbyRatingsKey, playerId, playerName]);
+
   // Sorted and joined so the effect keys on who is in the party, not on the
   // party message arriving again with the same people in it. The backend
   // skips ids it already knows, so sending the whole party every time is
@@ -202,12 +228,12 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
-        payload: { preferences: { ...browsing, matchmakerFactions: factions } },
+        type: "patchBrowsing",
+        payload: { patch: { matchmakerFactions: factions } },
       },
     });
     ipc.send({ kind: "Lobby", command: { type: "setPartyFactions", payload: { factions } } });
-  }, [browsing]);
+  }, []);
 
   const toggleQueue = (queue: MatchmakerQueue) => {
     const selected = !unselectedQueues.includes(queue.queueName);
@@ -218,8 +244,8 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
-        payload: { preferences: { ...browsing, matchmakerUnselectedQueues: next } },
+        type: "patchBrowsing",
+        payload: { patch: { matchmakerUnselectedQueues: next } },
       },
     });
 
@@ -312,7 +338,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
             {sortedQueues.map((queue) => {
               const remaining = secondsUntil(queue, clock);
               const activeGames = activeMatchmakerGames.filter((game) => game.maxPlayers === queue.teamSize * 2).length;
-              const queueRating = ratingForQueue(matchmakerProfile?.ratings ?? [], queue.queueName);
+              const queueRating = ratingForQueue(matchmakerProfile?.ratings ?? [], queue.queueName, ownLobbyRatings);
               const queuePlacement = placementForQueue(matchmakerProfile?.leaguePlacements ?? [], queue.queueName);
               const searchingThisQueue =
                 matchmaking.type === "searching" &&

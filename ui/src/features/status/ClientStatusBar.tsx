@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import type {
@@ -203,6 +204,32 @@ function useBackgroundActivities(): string[] {
     s.state.mods.toggleStatus.type === "toggling"
       ? modName(s.state.mods, s.state.mods.toggleStatus.payload.uid)
       : null);
+  // A map being generated, from wherever it was asked for: a replay card's
+  // "+", the replay or game details, the Maps tab. Only the Maps tab showed
+  // its progress, so generating from anywhere else ran for a minute with
+  // nothing on screen saying so. A string, so the selector stays stable while
+  // the download's byte count does not change the percentage.
+  const mapGeneration = useAppStore((s) => {
+    const status = s.state.mapGenerator.status;
+    switch (status.type) {
+      case "preparing":
+      case "resolvingVersion":
+        return t("replays.detail.preparingGenerator");
+      case "downloading": {
+        const { version, downloadedBytes, totalBytes } = status.payload;
+        return totalBytes
+          ? t("maps.generate.downloadingPercent", {
+            version,
+            percent: Math.min(100, Math.round((downloadedBytes / totalBytes) * 100)),
+          })
+          : t("maps.generate.downloading", { version });
+      }
+      case "generating":
+        return t("lobby.details.generatingMap");
+      default:
+        return null;
+    }
+  });
   const mapSearch = useAppStore((s) => s.state.maps.browseStatus.type === "loading");
   const modSearch = useAppStore((s) => s.state.mods.browseStatus.type === "loading");
   const replaySearch = useAppStore((s) => s.state.replays.vaultStatus.type === "loading");
@@ -222,6 +249,7 @@ function useBackgroundActivities(): string[] {
     mapInstall !== null && t("status.activity.installingMap", { name: mapInstall }),
     modInstall !== null && t("status.activity.installingMod", { name: modInstall }),
     modToggle !== null && t("status.activity.togglingMod", { name: modToggle }),
+    mapGeneration,
     mapSearch && t("maps.view.searching"),
     modSearch && t("mods.view.searching"),
     replaySearch && t("replays.vault.searching"),
@@ -308,23 +336,23 @@ export function MatchmakingTask({
       ipc.send({ kind: "Lobby", command: { type: "matchmake", payload: { queueName, start: false } } }),
     );
   };
+  // No progress bar: a search has no progress to measure, and an endless
+  // sweep in the corner where downloads report theirs read as one that never
+  // finished. The Play tab's dot says it instead, and the same dot leads the
+  // line here, coloured by the same states.
   return (
     <div className="client-status-task" aria-live="polite">
+      <i className="client-status-search-dot" data-state={state.type} aria-hidden="true" />
       <span className="client-status-task-label" title={label}>{label}</span>
-      <span
-        className="client-status-progress"
-        data-indeterminate="true"
-        role="progressbar"
-        aria-label={label}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuetext={t("status.active")}
-      >
-        <span />
-      </span>
       {searching && (
-        <button type="button" className="client-status-task-action" onClick={stop}>
-          {t("status.matchmaking.stop")}
+        <button
+          type="button"
+          className="client-status-task-action"
+          onClick={stop}
+          aria-label={t("lobby.matchmaker.stopSearching")}
+          title={t("lobby.matchmaker.stopSearching")}
+        >
+          <Icon name="close" size={12} />
         </button>
       )}
     </div>
