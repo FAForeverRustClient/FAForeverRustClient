@@ -2626,6 +2626,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "playerCard.maps.leaderboardGapNote": { one: "Falta {count} partida puntuada en el historial de FAF y cuenta como empate, igual que en faftracker.", other: "Faltan {count} partidas puntuadas en el historial de FAF y cuentan como empates, igual que en faftracker." },
   "playerCard.maps.unrankedNote": { one: "{count} partida sin puntuar no está en el registro.", other: "{count} partidas sin puntuar no están en el registro." },
   "playerCard.maps.truncated": "Este jugador tiene más partidas de las que abarca un solo barrido. Las cifras de abajo son sus partidas más recientes, de la más nueva a la más antigua.",
+  "playerCard.history.loadAll": "Cargar todo el historial",
+  "playerCard.history.recentOnly": "Solo se analizan las 1000 partidas más recientes, para que el perfil cargue rápido.",
   "replays.search.playerTooltip": "Busca uno o varios jugadores (separa los nombres con comas). Varios nombres encuentran solo las partidas que jugaron todos juntos.",
   "replays.search.preset.lastYear": "El último año",
   "replays.search.recentOnly": "Solo recientes",

@@ -1655,6 +1655,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "playerCard.maps.searchAria": "Karte in der Historie dieses Spielers suchen",
   "playerCard.maps.noMatch": "Keine Karte passt dazu.",
   "playerCard.maps.truncated": "Dieser Spieler hat mehr Spiele, als ein Durchlauf erfasst. Die Zahlen unten zeigen die neuesten Spiele.",
+  "playerCard.history.loadAll": "Ganze Historie laden",
+  "playerCard.history.recentOnly": "Nur die 1.000 neuesten Spiele werden ausgewertet, damit das Profil schnell lädt.",
   "playerCard.tab.statistics": "Statistiken",
   "playerCard.tab.achievements": "Erfolge",
   "playerCard.tab.names": "Frühere Namen",

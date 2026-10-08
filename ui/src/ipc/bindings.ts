@@ -6229,6 +6229,12 @@ export type PlayerCardCommand = { type: "open"; payload: {
 /**  Scan this player's games and fold them into per-map records. */
 { type: "loadMapStats"; payload: {
 	playerId: number,
+	/**
+	 *  Scan the whole history instead of the most recent games (#440).
+	 *  A long history is dozens of requests, so the profile opens on the
+	 *  recent ones and the reader asks for the rest.
+	 */
+	full?: boolean,
 } } |
 /**
  *  Look up the active league placements of these party members.

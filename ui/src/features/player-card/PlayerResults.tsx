@@ -16,6 +16,7 @@ import { leaderboardLabel } from "../../shared/playerRatings";
 import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
 import { requestReplaySearch } from "../../shared/replaySearchIntent";
 import { usePlayerHistory } from "./usePlayerHistory";
+import { HistoryScopeNote } from "./HistoryScopeNote";
 
 /** Rows added per press of "Show more". A long history is thousands. */
 const PAGE = 50;
@@ -62,7 +63,7 @@ function winRate(wins: number, losses: number): number | null {
 
 export function PlayerResults({ playerId }: { playerId: number }) {
   const { t } = useTranslation();
-  const { stats, status, error } = usePlayerHistory(playerId);
+  const { stats, status, error, full, loadFull } = usePlayerHistory(playerId);
   const [shown, setShown] = useState(PAGE);
 
   if (status === "loading") {
@@ -90,6 +91,7 @@ export function PlayerResults({ playerId }: { playerId: number }) {
         <p className="player-maps-note muted">
           {t("playerCard.results.note", { hidden: formatNumber(Math.max(0, hidden)) })}
         </p>
+        <HistoryScopeNote stats={stats} full={full} onLoadFull={loadFull} />
         {/* The rows on screen, not the whole history: the Maps tab already
             gives the record over everything, and this follows "Show more". */}
         <p className="player-results-summary" aria-live="polite">

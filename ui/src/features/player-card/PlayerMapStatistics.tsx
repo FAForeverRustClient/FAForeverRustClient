@@ -8,6 +8,7 @@
 import { useMemo, useState } from "react";
 import { Icon } from "../../design-system/Icon";
 import { usePlayerHistory } from "./usePlayerHistory";
+import { HistoryScopeNote } from "./HistoryScopeNote";
 import { useAppStore } from "../../store/store";
 import { leaderboardTotalGames, rankedRecord } from "./rankedRecord";
 import { formatDecimal, formatNumber } from "../../i18n";
@@ -60,7 +61,7 @@ const FIRST_DIRECTION: Record<SortColumn, "asc" | "desc"> = {
 
 export function PlayerMapStatistics({ playerId }: Props) {
   const { t } = useTranslation();
-  const { stats, status, error } = usePlayerHistory(playerId);
+  const { stats, status, error, full, loadFull } = usePlayerHistory(playerId);
   // The leaderboards' own games-played totals, which is what faftracker prints
   // as "ranked games" rather than what its scan read. See `rankedRecord`.
   const ratings = useAppStore((state) => state.state.playerCard.profile?.ratings);
@@ -215,9 +216,7 @@ export function PlayerMapStatistics({ playerId }: Props) {
 
       {/* Said plainly rather than hidden: the numbers cover a prefix of the
           history, and a reader comparing them to the profile deserves to know. */}
-      {stats.truncated && (
-        <p className="player-maps-note muted">{t("playerCard.maps.truncated")}</p>
-      )}
+      <HistoryScopeNote stats={stats} full={full} onLoadFull={loadFull} />
 
       {/* Same reason, as one note. The record covers only the games FAF
           scored, so a player whose history is mostly unranked lobbies sees a

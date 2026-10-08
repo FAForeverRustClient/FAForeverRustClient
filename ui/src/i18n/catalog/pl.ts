@@ -2658,6 +2658,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "playerCard.maps.leaderboardGapNote": { one: "{count} gry rankingowej brakuje w historii FAF, więc liczy się jako remis, jak w faftracker.", other: "{count} gier rankingowych brakuje w historii FAF, więc liczą się jako remisy, jak w faftracker." },
   "playerCard.maps.unrankedNote": { one: "{count} gra nierankingowa nie jest wliczona do bilansu.", other: "{count} gier nierankingowych nie jest wliczonych do bilansu." },
   "playerCard.maps.truncated": "Ten gracz ma więcej gier, niż obejmuje jedno przeszukanie. Liczby poniżej dotyczą jego najnowszych gier, od najświeższej.",
+  "playerCard.history.loadAll": "Wczytaj całą historię",
+  "playerCard.history.recentOnly": "Przeszukiwanych jest tylko 1000 najnowszych gier, aby profil ładował się szybko.",
   "replays.search.playerTooltip": "Szukaj jednego lub kilku graczy (oddziel nazwy przecinkami). Kilka nazw znajduje tylko gry, w których grali razem.",
   "replays.search.preset.lastYear": "Ostatni rok",
   "replays.search.recentOnly": "Tylko niedawne",

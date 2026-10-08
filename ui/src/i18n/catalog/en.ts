@@ -1992,6 +1992,8 @@ export const en = {
     other: "{count} unranked games are not in the record.",
   },
   "playerCard.maps.truncated": "This player has more games than one scan covers. The numbers below are their most recent games, newest first.",
+  "playerCard.history.loadAll": "Load full history",
+  "playerCard.history.recentOnly": "Only the 1,000 most recent games are scanned, to keep the profile quick.",
   "playerCard.tab.statistics": "Statistics",
   "playerCard.tab.achievements": "Achievements",
   "playerCard.tab.names": "Previous names",

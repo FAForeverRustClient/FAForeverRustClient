@@ -3063,6 +3063,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "playerCard.maps.leaderboardGapNote": { one: "{count} рейтинговой игры нет в истории FAF, поэтому она считается ничьей, как на faftracker.", other: "{count} рейтинговых игр нет в истории FAF, поэтому они считаются ничьими, как на faftracker." },
   "playerCard.maps.unrankedNote": { one: "{count} нерейтинговая игра не входит в статистику.", other: "{count} нерейтинговых игр не входят в статистику." },
   "playerCard.maps.truncated": "У этого игрока больше игр, чем охватывает одно сканирование. Цифры ниже - по его последним играм, начиная с самых свежих.",
+  "playerCard.history.loadAll": "Загрузить всю историю",
+  "playerCard.history.recentOnly": "Учитываются только 1000 последних игр, чтобы профиль загружался быстро.",
   "replays.search.playerTooltip": "Поиск одного или нескольких игроков (имена через запятую). Несколько имён найдут только те игры, где все они играли вместе.",
   "replays.search.preset.lastYear": "За последний год",
   "replays.search.recentOnly": "Только недавние",

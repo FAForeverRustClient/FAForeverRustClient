@@ -2628,6 +2628,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "playerCard.maps.leaderboardGapNote": { one: "{count} partie classée manque dans l'historique de FAF et compte comme un nul, comme sur faftracker.", other: "{count} parties classées manquent dans l'historique de FAF et comptent comme des nuls, comme sur faftracker." },
   "playerCard.maps.unrankedNote": { one: "{count} partie non classée n'est pas dans le bilan.", other: "{count} parties non classées ne sont pas dans le bilan." },
   "playerCard.maps.truncated": "Ce joueur a plus de parties qu'un seul balayage n'en couvre. Les chiffres ci-dessous portent sur ses parties les plus récentes, des plus récentes aux plus anciennes.",
+  "playerCard.history.loadAll": "Charger tout l'historique",
+  "playerCard.history.recentOnly": "Seules les 1 000 parties les plus récentes sont analysées, pour que le profil reste rapide.",
   "replays.search.playerTooltip": "Rechercher un ou plusieurs joueurs (séparez les noms par des virgules). Plusieurs noms ne trouvent que les parties auxquelles ils ont tous participé ensemble.",
   "replays.search.preset.lastYear": "L'année écoulée",
   "replays.search.recentOnly": "Récentes seulement",
