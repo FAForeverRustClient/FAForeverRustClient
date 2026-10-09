@@ -22,6 +22,7 @@ import type { SettingsSection } from "../../ipc/bindings";
 import { AccountSupportSettingsSection } from "./AccountSupportSettingsSection";
 import { AppearanceSettingsSection } from "./AppearanceSettingsSection";
 import { ChatSettingsSection } from "./ChatSettingsSection";
+import { ConnectivityDiagnosticsSection } from "./ConnectivityDiagnosticsSection";
 import { ConnectivitySettingsSection } from "./ConnectivitySettingsSection";
 import { DiagnosticsSettingsSection } from "./DiagnosticsSettingsSection";
 import { IceDebugWindowsSection, MapGeneratorWindowSection } from "./DebugWindowsSettingsSection";
@@ -120,7 +121,9 @@ export const SECTIONS: Record<SectionKey, SectionDef> = {
     description: "settings.page.connectivity.description",
     keywords: "settings.section.connectivity.keywords",
     icon: "globe",
-    panels: [ConnectivitySettingsSection, IceDebugWindowsSection],
+    // The check last: it diagnoses the choices above it, and is reached for
+    // after them.
+    panels: [ConnectivitySettingsSection, IceDebugWindowsSection, ConnectivityDiagnosticsSection],
   },
   diagnostics: {
     title: "settings.page.diagnostics.title",

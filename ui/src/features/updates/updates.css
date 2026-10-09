@@ -147,9 +147,9 @@
   text-transform: uppercase;
 }
 
-.update-settings-headline.is-ok { color: var(--color-ok); }
-.update-settings-headline.is-warn { color: var(--color-warn); }
-.update-settings-headline.is-error { color: var(--color-error); }
+.update-settings-headline.is-ok { color: var(--color-ok-text); }
+.update-settings-headline.is-warn { color: var(--color-warn-text); }
+.update-settings-headline.is-error { color: var(--color-error-text); }
 
 .update-settings-meta {
   color: var(--color-muted);
@@ -197,7 +197,7 @@
 /* A failure is not a status line like the others: it is the reason the
    button beside it now says "try again". */
 .update-gate-status-failed {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 /* The banner's bar, unpinned: nothing here is positioned over anything. */

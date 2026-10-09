@@ -39,10 +39,13 @@ pub struct CacheManifestEntry {
     #[serde(default)]
     pub updated_at: u64,
     /// For an overlay (`nomads`, `coop`, ...): the `faf` build installed
-    /// under it when it was cached. Staging puts exactly that base back; it
-    /// used to take the newest cached `faf`, which for an older overlay is a
-    /// base it was never released against. `None` for a base build, and for
-    /// entries cached before this was recorded.
+    /// under it when it was cached. A replay prefers the entry cached over its
+    /// own engine build, but what staging puts under an overlay is always the
+    /// replay's engine build, never a guess: it used to take the newest cached
+    /// `faf`, which for an older overlay is a base it was never played on.
+    /// `None` for a base build, and for entries cached before this was
+    /// recorded; how those are matched is `replay_version`'s
+    /// `established_revision`.
     #[serde(default)]
     pub base_version: Option<i32>,
 }

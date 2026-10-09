@@ -291,11 +291,11 @@
 
 /* Status colours, reserved for status. */
 .tutorial-progress.is-ok {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .tutorial-progress.is-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 @media (max-width: 900px) {

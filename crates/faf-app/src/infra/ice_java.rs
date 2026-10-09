@@ -19,6 +19,9 @@ use serde_json::Value;
 use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
 
+use faf_domain::state::{RelayPeer, RelaySnapshot, RelayStatus};
+
+use crate::infra::connectivity::IceSessionMemory;
 use crate::infra::jsonrpc::{JsonRpcClient, RpcNotification};
 use crate::infra::session::TokenStore;
 use crate::infra::{console_window, free_ports};
@@ -50,12 +53,20 @@ impl JavaConfig {
             java_path: super::java_runtime::preferred_java_path(),
             jar_path: default_jar_path(),
             api_base: env_or("FAF_API_BASE", "https://api.faforever.com"),
-            log_dir: env_or("FAF_ICE_LOG_DIR", default_log_dir()),
+            log_dir: log_directory().to_string_lossy().into_owned(),
         }
     }
 }
 
-fn default_jar_path() -> String {
+/// Where the adapters write their logs: `FAF_ICE_LOG_DIR`, or the default
+/// below. One answer for the Java adapter, Pioneer, the connectivity check
+/// and the shell's "open log folder", so they cannot point at different
+/// folders.
+pub fn log_directory() -> PathBuf {
+    PathBuf::from(env_or("FAF_ICE_LOG_DIR", default_log_dir()))
+}
+
+pub(crate) fn default_jar_path() -> String {
     if let Ok(path) = std::env::var("FAF_ICE_ADAPTER_JAR") {
         if !path.trim().is_empty() {
             return path;
@@ -133,6 +144,8 @@ pub struct JavaAdapter {
     /// Pushed by the settings service. Read at launch rather than at
     /// construction so a switch flipped mid-session applies to the next game.
     debug_windows: Arc<Mutex<IceDebugWindows>>,
+    /// Where the relay URLs of each session go, for the connectivity check.
+    memory: IceSessionMemory,
 }
 
 impl JavaAdapter {
@@ -144,13 +157,24 @@ impl JavaAdapter {
             child: Arc::new(Mutex::new(None)),
             rpc: Arc::new(Mutex::new(None)),
             debug_windows: Arc::new(Mutex::new(IceDebugWindows::default())),
+            memory: IceSessionMemory::default(),
         }
     }
 
     pub fn faf(tokens: TokenStore) -> Self {
         Self::new(JavaConfig::faf(), tokens)
     }
+
+    /// Share the session memory the connectivity check reads.
+    pub fn remembering(mut self, memory: IceSessionMemory) -> Self {
+        self.memory = memory;
+        self
+    }
 }
+
+/// How long the live relay view waits for the adapter's `status` answer. It
+/// asks every couple of seconds, so a slower answer is as good as none.
+const STATUS_TIMEOUT: Duration = Duration::from_secs(3);
 
 impl JavaAdapter {
     /// One attempt at starting the adapter on a given pair of ports.
@@ -259,6 +283,7 @@ impl IcePort for JavaAdapter {
         let ice =
             fetch_ice_servers_retrying(&self.http, &self.config.api_base, &token, params.game_id)
                 .await?;
+        self.memory.remember_servers(params.game_id, &ice.servers);
 
         // Reserving a port means binding it and letting it go, so the numbers
         // are free when they are chosen and not necessarily when the adapter
@@ -341,10 +366,88 @@ impl IcePort for JavaAdapter {
     fn set_debug_windows(&self, windows: IceDebugWindows) {
         *self.debug_windows.lock().unwrap() = windows;
     }
+
+    /// The adapter's `status` call, read into the live relay view. The Python
+    /// client's connectivity dialog polls the same call for the same table.
+    async fn relay_status(&self) -> RelayStatus {
+        let Some(rpc) = self.rpc.lock().unwrap().clone() else {
+            return RelayStatus::Idle;
+        };
+        match rpc.request("status", vec![], STATUS_TIMEOUT).await {
+            Ok(answer) => match parse_status(&answer) {
+                Some(snapshot) => RelayStatus::Live { snapshot },
+                None => RelayStatus::Unavailable {
+                    reason: "the adapter's status answer could not be read".into(),
+                },
+            },
+            Err(reason) => RelayStatus::Unavailable { reason },
+        }
+    }
 }
 
-struct IceServers {
-    servers: Vec<Value>,
+/// Read the adapter's `status` answer.
+///
+/// `RPCHandler.status` returns its JSON as a *string*, so the result is parsed
+/// a second time; an object is accepted too, in case a later build returns one
+/// directly. The adapter spells its GPGNet block `gpgpnet` (a typo the Python
+/// client works around in the same way), so both spellings are read.
+pub(crate) fn parse_status(answer: &Value) -> Option<RelaySnapshot> {
+    let parsed;
+    let status = match answer {
+        Value::String(text) => {
+            parsed = serde_json::from_str::<Value>(text).ok()?;
+            &parsed
+        }
+        Value::Object(_) => answer,
+        _ => return None,
+    };
+    let text = |value: Option<&Value>| match value {
+        Some(Value::String(text)) => text.clone(),
+        Some(Value::Number(number)) => number.to_string(),
+        _ => String::new(),
+    };
+    let gpgnet = status.get("gpgnet").or_else(|| status.get("gpgpnet"));
+    let peers = status
+        .get("relays")
+        .and_then(Value::as_array)
+        .map(|relays| {
+            relays
+                .iter()
+                .map(|relay| {
+                    let ice = relay.get("ice");
+                    let field = |name: &str| text(ice.and_then(|ice| ice.get(name)));
+                    RelayPeer {
+                        player_id: relay
+                            .get("remote_player_id")
+                            .and_then(Value::as_i64)
+                            .and_then(|id| i32::try_from(id).ok())
+                            .unwrap_or(0),
+                        login: text(relay.get("remote_player_login")),
+                        state: field("state"),
+                        connected: ice
+                            .and_then(|ice| ice.get("connected"))
+                            .and_then(Value::as_bool)
+                            .unwrap_or(false),
+                        local_candidate: field("loc_cand_type"),
+                        remote_candidate: field("rem_cand_type"),
+                    }
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    Some(RelaySnapshot {
+        adapter_version: text(status.get("version")),
+        game_state: text(gpgnet.and_then(|gpgnet| gpgnet.get("game_state"))),
+        game_connected: gpgnet
+            .and_then(|gpgnet| gpgnet.get("connected"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        peers,
+    })
+}
+
+pub(crate) struct IceServers {
+    pub(crate) servers: Vec<Value>,
     force_relay: bool,
 }
 
@@ -398,7 +501,7 @@ async fn fetch_ice_servers_retrying(
 
 /// Why the ICE session could not be had: worth another try, or not.
 #[derive(Debug, PartialEq, Eq)]
-enum IceSessionError {
+pub(crate) enum IceSessionError {
     /// 503 or 429: the API's own "not now". The two statuses Java retries.
     Busy(String),
     Failed(String),
@@ -417,7 +520,7 @@ impl IceSessionError {
 }
 
 /// `GET {api}/ice/session/game/{id}` → `{ servers: [...], forceRelay: bool }`.
-async fn fetch_ice_servers(
+pub(crate) async fn fetch_ice_servers(
     http: &reqwest::Client,
     api_base: &str,
     token: &str,
@@ -713,6 +816,85 @@ mod tests {
     fn init_mode_names() {
         assert_eq!(lobby_init_mode_name(0), "normal");
         assert_eq!(lobby_init_mode_name(1), "auto");
+    }
+
+    /// The shape `RPCHandler.status` returns: a JSON *string*, with the
+    /// adapter's own `gpgpnet` spelling. Field names checked against the
+    /// `IceStatus` classes in the bundled jar.
+    #[test]
+    fn reads_the_adapters_status_answer() {
+        let answer = json!(json!({
+            "version": "3.3.9",
+            "ice_servers_size": 3,
+            "lobby_port": 6112,
+            "init_mode": "normal",
+            "options": { "player_id": 7, "player_login": "Ada", "rpc_port": 7236, "gpgnet_port": 7237 },
+            "gpgpnet": { "local_port": 7237, "connected": true, "game_state": "Lobby", "task_string": "-" },
+            "relays": [
+                {
+                    "remote_player_id": 436001,
+                    "remote_player_login": "Critren",
+                    "local_game_udp_port": 52000,
+                    "ice": {
+                        "offerer": true,
+                        "state": "connected",
+                        "gathering_state": "complete",
+                        "datachannel_state": "open",
+                        "connected": true,
+                        "loc_cand_addr": "203.0.113.7:6112",
+                        "rem_cand_addr": "198.51.100.4:6112",
+                        "loc_cand_type": "srflx",
+                        "rem_cand_type": "relay",
+                        "time_to_connected": 1.2
+                    }
+                },
+                { "remote_player_id": 9, "remote_player_login": "Bert", "ice": { "state": "checking", "connected": false } }
+            ]
+        })
+        .to_string());
+
+        let snapshot = parse_status(&answer).expect("a status answer");
+        assert_eq!(snapshot.adapter_version, "3.3.9");
+        assert_eq!(snapshot.game_state, "Lobby");
+        assert!(snapshot.game_connected);
+        assert_eq!(
+            snapshot.peers,
+            vec![
+                RelayPeer {
+                    player_id: 436001,
+                    login: "Critren".into(),
+                    state: "connected".into(),
+                    connected: true,
+                    local_candidate: "srflx".into(),
+                    remote_candidate: "relay".into(),
+                },
+                RelayPeer {
+                    player_id: 9,
+                    login: "Bert".into(),
+                    state: "checking".into(),
+                    connected: false,
+                    local_candidate: String::new(),
+                    remote_candidate: String::new(),
+                },
+            ]
+        );
+        // The candidate addresses are private network information and are not
+        // carried into the state.
+        assert!(!format!("{snapshot:?}").contains("203.0.113.7"));
+    }
+
+    #[test]
+    fn a_status_answer_that_is_not_one_is_refused() {
+        assert_eq!(parse_status(&json!("not json")), None);
+        assert_eq!(parse_status(&json!(42)), None);
+        // An object without the expected blocks still reads, as an empty view.
+        assert_eq!(
+            parse_status(&json!({ "version": 3 })),
+            Some(RelaySnapshot {
+                adapter_version: "3".into(),
+                ..RelaySnapshot::default()
+            })
+        );
     }
 
     #[test]

@@ -7,6 +7,7 @@ import { reduceChangelog } from "./reducers/changelog";
 import { reduceChat } from "./reducers/chat";
 import { reduceClan } from "./reducers/clan";
 import { reduceClientUpdate } from "./reducers/clientUpdate";
+import { reduceConnectivity } from "./reducers/connectivity";
 import { reduceCoop } from "./reducers/coop";
 import { reduceAuth, reduceInstall, reduceNav, reduceSession, reduceSettings } from "./reducers/core";
 import { reduceEvents } from "./reducers/events";
@@ -92,5 +93,7 @@ export function applyEvent(state: AppState, event: AppEvent): AppState {
       return { ...state, clientUpdate: reduceClientUpdate(state.clientUpdate, event.event) };
     case "Settings":
       return { ...state, settings: reduceSettings(state.settings, event.event) };
+    case "Connectivity":
+      return { ...state, connectivity: reduceConnectivity(state.connectivity, event.event) };
   }
 }

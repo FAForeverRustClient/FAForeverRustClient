@@ -29,7 +29,8 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type { Tutorial } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
-import { loadStatusNote } from "../../shared/loadStatusNote";
+import { LoadStatusNotice } from "../../shared/components/LoadNotices";
+import { plainError } from "../../shared/plainError";
 import { useAppStore } from "../../store/store";
 import "./tutorials.css";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -53,7 +54,6 @@ export function TutorialsView() {
   // what the tab contains.
   const playable = useMemo(() => state.tutorials.filter(isPlayable), [state.tutorials]);
   const selected = playable.find((t) => t.id === state.selectedId) ?? null;
-  const note = loadStatusNote(state.status, t("tutorials.loading"), t("tutorials.loadFailed"));
 
   // Group by category, keeping each author's teaching order (`ordinal`).
   const groups = useMemo(() => {
@@ -94,19 +94,15 @@ export function TutorialsView() {
         )}
       </header>
 
-      {note && (
-        // Retry lives here rather than as a permanent toolbar button: the list
-        // is a near-static catalogue loaded once, so a refresh control only has
-        // a job when the load actually failed.
+      {state.status.type === "loading" && (
         <p className="surface tutorials-state muted">
-          <span>{note}</span>
-          {state.status.type === "failed" && (
-            <Button onClick={() => void load()}>
-              <Icon name="refresh" size={15} /> {t("tutorials.tryAgain")}
-            </Button>
-          )}
+          <span>{t("tutorials.loading")}</span>
         </p>
       )}
+      {/* Retry lives here rather than as a permanent toolbar button: the list
+          is a near-static catalogue loaded once, so a refresh control only has
+          a job when the load actually failed. */}
+      <LoadStatusNotice status={state.status} failed={t("tutorials.loadFailed")} onRetry={() => void load()} />
 
       {state.status.type === "ready" && total === 0 && (
         <p className="surface tutorials-state muted">
@@ -220,7 +216,11 @@ function TutorialDetail({ tutorial, categoryName }: { tutorial: Tutorial; catego
               time; a silent client looks broken. */}
           {preparing !== null && <p className="muted tutorial-progress">{preparing}</p>}
           {launched && <p className="tutorial-progress is-ok">{t("tutorials.launched")}</p>}
-          {failure !== null && <p className="tutorial-progress is-error">{failure}</p>}
+          {failure !== null && (
+            // Plainly, with the system's own wording kept on hover for a bug
+            // report. Start is the way to try again, right under it.
+            <p className="tutorial-progress is-error" title={failure}>{plainError(failure)}</p>
+          )}
 
           <div className="tutorial-actions">
             <Button

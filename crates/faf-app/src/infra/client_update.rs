@@ -38,6 +38,7 @@ use serde_json::Value;
 use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 use crate::infra::{cache_dir, env_or};
 use crate::ports::{ClientUpdatePort, DownloadProgress};
@@ -73,6 +74,10 @@ const USER_AGENT: &str = concat!("faforever-rust-client/", env!("CARGO_PKG_VERSI
 /// bundles are far smaller; a response beyond this is never a legitimate
 /// installer for this client.
 const MAX_INSTALLER_BYTES: u64 = 1024 * 1024 * 1024;
+
+/// Why a download stopped when the service called it off. Nobody reads it:
+/// the receiver it would go to is the one that was closed.
+const DOWNLOAD_CALLED_OFF: &str = "the download was called off";
 
 #[derive(Debug, Clone)]
 pub struct ClientUpdateConfig {
@@ -205,6 +210,7 @@ impl GitHubUpdates {
         &self,
         release: &ClientRelease,
         progress: &mpsc::Sender<DownloadProgress>,
+        called_off: &CancellationToken,
     ) -> Result<String, String> {
         if !self.is_trusted(&release.download_url) {
             // Not a "download failed": this is the check refusing to run
@@ -231,18 +237,28 @@ impl GitHubUpdates {
                 .map_err(|e| format!("could not clear the partial installer: {e}"))?;
         }
 
-        let response = self
+        // The service waits for this worker to end before the next download
+        // may start, so every wait on the network also listens for the
+        // call-off (or for nobody listening any more), rather than only
+        // noticing at the next chunk: a stalled connection would hold the
+        // cancel, and with it the next attempt, for as long as it stalls.
+        let sending = self
             .http
             .get(&release.download_url)
             .header(reqwest::header::USER_AGENT, USER_AGENT)
-            .send()
-            .await
-            .map_err(|e| {
-                format!(
-                    "could not reach the installer: {}",
-                    crate::infra::http::describe_transport_error(&e)
-                )
-            })?;
+            .send();
+        let response = tokio::select! {
+            biased;
+            () = called_off.cancelled() => return Err(DOWNLOAD_CALLED_OFF.into()),
+            () = progress.closed() => return Err(DOWNLOAD_CALLED_OFF.into()),
+            response = sending => response,
+        }
+        .map_err(|e| {
+            format!(
+                "could not reach the installer: {}",
+                crate::infra::http::describe_transport_error(&e)
+            )
+        })?;
         if !response.status().is_success() {
             return Err(format!(
                 "the installer download returned {}",
@@ -268,11 +284,27 @@ impl GitHubUpdates {
             .map_err(|e| format!("could not write the installer: {e}"))?;
 
         let mut received: u64 = 0;
+        // What the last report said: a whole percent while the size is known,
+        // a 512 KiB step while it is not. Every chunk used to be a report, and
+        // every report is an event the whole state is reduced by.
+        let mut reported: Option<u64> = None;
         let mut stream = response.bytes_stream();
         use futures_util::StreamExt as _;
         use tokio::io::AsyncWriteExt as _;
         let write_result: Result<(), String> = async {
-            while let Some(chunk) = stream.next().await {
+            loop {
+                // Stopping here goes through the error path below, which
+                // removes the partial file, so the next attempt starts from
+                // nothing rather than from half an installer.
+                let chunk = tokio::select! {
+                    biased;
+                    () = called_off.cancelled() => return Err(DOWNLOAD_CALLED_OFF.into()),
+                    () = progress.closed() => return Err(DOWNLOAD_CALLED_OFF.into()),
+                    chunk = stream.next() => chunk,
+                };
+                let Some(chunk) = chunk else {
+                    break;
+                };
                 let chunk = chunk.map_err(|e| {
                     format!(
                         "the installer download failed: {}",
@@ -288,12 +320,21 @@ impl GitHubUpdates {
                 file.write_all(&chunk)
                     .await
                     .map_err(|e| format!("could not write the installer: {e}"))?;
-                let _ = progress
-                    .send(DownloadProgress::Received {
-                        received_bytes: u32::try_from(received).unwrap_or(u32::MAX),
-                        total_bytes,
-                    })
-                    .await;
+                let step = if total_bytes > 0 {
+                    received.min(u64::from(total_bytes)) * 100 / u64::from(total_bytes)
+                } else {
+                    received / (512 * 1024)
+                };
+                if reported != Some(step) {
+                    reported = Some(step);
+                    progress
+                        .send(DownloadProgress::Received {
+                            received_bytes: u32::try_from(received).unwrap_or(u32::MAX),
+                            total_bytes,
+                        })
+                        .await
+                        .map_err(|_| DOWNLOAD_CALLED_OFF.to_string())?;
+                }
             }
             file.flush()
                 .await
@@ -321,13 +362,18 @@ impl ClientUpdatePort for GitHubUpdates {
         Ok(pick_release(&releases, channel))
     }
 
-    async fn download(&self, release: ClientRelease) -> mpsc::Receiver<DownloadProgress> {
+    async fn download(
+        &self,
+        release: ClientRelease,
+        called_off: CancellationToken,
+    ) -> mpsc::Receiver<DownloadProgress> {
         let (tx, rx) = mpsc::channel(32);
         let config = self.config.clone();
         let http = self.http.clone();
         tokio::spawn(async move {
             let client = GitHubUpdates { config, http };
-            let outcome = client.run_download(&release, &tx).await;
+            let outcome = client.run_download(&release, &tx, &called_off).await;
+            // The sender goes only after the partial file did: see the port.
             let _ = tx.send(DownloadProgress::Finished(outcome)).await;
         });
         rx
@@ -495,7 +541,11 @@ impl ClientUpdatePort for FakeClientUpdates {
         Ok(None)
     }
 
-    async fn download(&self, _release: ClientRelease) -> mpsc::Receiver<DownloadProgress> {
+    async fn download(
+        &self,
+        _release: ClientRelease,
+        _called_off: CancellationToken,
+    ) -> mpsc::Receiver<DownloadProgress> {
         let (tx, rx) = mpsc::channel(1);
         let _ = tx
             .send(DownloadProgress::Finished(Err(
@@ -657,7 +707,7 @@ mod tests {
             ..ClientRelease::default()
         };
         let error = client
-            .run_download(&release, &tx)
+            .run_download(&release, &tx, &CancellationToken::new())
             .await
             .expect_err("must refuse");
         assert!(error.contains("refusing"), "got: {error}");

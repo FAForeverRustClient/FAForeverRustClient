@@ -57,6 +57,7 @@ import "./generate-map.css";
 import { NumberInput } from "../../design-system/NumberInput";
 import { GENERATION_TYPES, cancel, decodeNames, deletePreset, generate, generateNamed, loadHelp, loadOptions, loadPresets, preflight, savePreset, setOptions } from "./generatorCommands";
 import { GeneratePreviewImg, Row } from "./GenerateMapControls";
+import { GeneratorFailure } from "../../shared/components/GeneratorFailure";
 import { GeneratorProgress, stillRunning } from "./GeneratorProgress";
 
 interface Props {
@@ -87,11 +88,22 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   // for is what separates the two; see `outcomeOfRun`.
   const awaitingSince = useRef<GeneratorStatus | null>(null);
   const [results, setResults] = useState<string[] | null>(null);
+  // Our own run's failure, on the same terms as its result. A failed run used
+  // to leave nothing here at all: the progress line is only drawn while a run
+  // is busy, so the dialog went quietly back to its empty preview and the
+  // reason was in a notification the player had not opened.
+  const [failure, setFailure] = useState<string | null>(null);
+  // The run that was asked for last, so Retry sends the same command again
+  // rather than whatever the form holds by the time it is pressed.
+  const lastRun = useRef<(() => void) | null>(null);
   useEffect(() => {
     const outcome = outcomeOfRun(state.status, awaitingSince.current);
     if (outcome.kind === "waiting") return;
     awaitingSince.current = null;
-    if (outcome.kind !== "generated") return;
+    if (outcome.kind === "stopped") {
+      if (state.status.type === "failed") setFailure(state.status.payload.reason);
+      return;
+    }
     setResults(outcome.maps);
     // Each name carries its own parameters, so the overview can describe every
     // map it lists without another generator run.
@@ -100,8 +112,14 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
   const beginRun = (start: () => void) => {
     awaitingSince.current = state.status;
+    lastRun.current = start;
     setResults(null);
+    setFailure(null);
     start();
+  };
+  const retry = () => {
+    const run = lastRun.current;
+    if (run) beginRun(run);
   };
 
   /** Hand one map back to whoever opened the dialog, e.g. to host it. */
@@ -354,7 +372,13 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
     // While the preview is zoomed, Escape and a backdrop click belong to the
     // zoom. The dialog owns the only close handler the modal has, so it hands
     // that handler over rather than racing a second Escape listener with it.
-    <Modal onClose={zoomed ? () => setZoomed(false) : onClose} className="generate-map-modal">
+    // Named, as it opens over the host dialog and a screen reader announced
+    // both as "Dialog".
+    <Modal
+      onClose={zoomed ? () => setZoomed(false) : onClose}
+      className="generate-map-modal"
+      ariaLabel={t("maps.generate.title")}
+    >
       <div className="generate-map-head">
         <h2 className="generate-map-title">{t("maps.generate.title")}</h2>
         <p className="generate-map-subtitle">{t("maps.generate.subtitle")}</p>
@@ -416,8 +440,12 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
             <fieldset className="generate-map-fieldset" disabled={reproducing}>
               <div className="generate-map-grid-2col">
+                {/* Each dropdown names itself with its row's label: the row's
+                    label is a plain span, so without it a screen reader heard
+                    "combobox, 10 km" and not which field it was. */}
                 <Row label={t("maps.generate.generatorVersion")}>
                   <Select
+                    label={t("maps.generate.generatorVersion")}
                     value={form.version ?? ""}
                     options={versionOptions}
                     onChange={(value) => {
@@ -430,6 +458,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
                 <Row label={t("maps.generate.mapSize")}>
                   <Select
+                    label={t("maps.generate.mapSize")}
                     value={form.mapSize ?? 512}
                     options={mapSizeOptions}
                     onChange={(v) => set("mapSize", Number(v))}
@@ -438,6 +467,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
                 <Row label={t("maps.generate.teams")}>
                   <Select
+                    label={t("maps.generate.teams")}
                     value={teams}
                     options={teamOptions}
                     onChange={(v) => changeTeams(Number(v))}
@@ -449,6 +479,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   hint={teams > 0 ? t("maps.generate.spawnsMultipleHint", { teams }) : undefined}
                 >
                   <Select
+                    label={t("maps.generate.spawns")}
                     value={form.spawnCount ?? 6}
                     options={spawnSelectOptions}
                     onChange={(v) => set("spawnCount", Number(v))}
@@ -474,6 +505,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   hint={t(GENERATION_TYPES[form.generationType].hint)}
                 >
                   <Select
+                    label={t("maps.generate.styleOfGame")}
                     value={form.generationType}
                     options={generationTypeOptions}
                     onChange={(v) => set("generationType", v)}
@@ -684,6 +716,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   <div className="generate-map-grid-2col generate-map-grid-top">
                     <Row label={t("maps.generate.presets")}>
                       <Select
+                        label={t("maps.generate.presets")}
                         value=""
                         placeholder={
                           presets.length === 0
@@ -806,6 +839,9 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
         {/* Right Column: Live Map Preview & Generation Output */}
         <div className="generate-map-preview-pane">
+          {failure !== null && !busy && (
+            <GeneratorFailure reason={failure} onRetry={retry} className="generate-map-failure" />
+          )}
 
           {busy ? (
             <div className="generate-map-preview-loading">

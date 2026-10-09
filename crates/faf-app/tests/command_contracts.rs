@@ -28,18 +28,22 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use faf_app::infra::{
-    fake_ports, FakeChat, FakeClan, FakeClientUpdates, FakeGalacticWar, FakeGuides, FakeLobby,
-    FakeMapGenerator, FakeMaps, FakeMods, FakePlayerCard, FakeTourney, FakeUploads,
+    fake_ports, FakeChat, FakeClan, FakeClientUpdates, FakeConnectivity, FakeGalacticWar,
+    FakeGuides, FakeIce, FakeLobby, FakeMapGenerator, FakeMaps, FakeMods, FakePlayerCard,
+    FakeTourney, FakeUploads,
 };
 use faf_app::ports::{
-    AuthPort, AuthResult, ChangelogPort, ChatPort, ChatUpdate, ClanPort, ClientUpdatePort,
-    DeviceCode, DownloadProgress, GalacticWarPort, GamePreparation, GameUpdaterPort,
-    GeneratorUpdate, GuidesPort, InstallProgress, LobbyPort, LobbyUpdate, MapGeneratorPort,
-    MapSearchPage, MapsPort, ModPrepFailure, ModSearchPage, ModsPort, PlayerCardPort, RequestError,
-    SettingsPort, TourneyMatchPort, UpdateProgress, UploadsPort,
+    AdapterInventory, AdapterLogTail, AuthPort, AuthResult, ChangelogPort, ChatPort, ChatUpdate,
+    ClanPort, ClientUpdatePort, ConnectivityPort, ConnectivitySession, DeviceCode,
+    DownloadProgress, GalacticWarPort, GamePreparation, GameUpdaterPort, GeneratorUpdate,
+    GuidesPort, IceParams, IcePort, InstallProgress, KnownRelayAddresses, LobbyPort, LobbyUpdate,
+    MapGeneratorPort, MapSearchPage, MapsPort, ModPrepFailure, ModSearchPage, ModsPort,
+    PlayerCardPort, ProbeAnswer, RelayListError, RelayServer, RequestError, SettingsPort,
+    TourneyMatchPort, UpdateProgress, UploadsPort,
 };
 use faf_app::{App, Ports};
 use faf_domain::protocol::changelog::{ChangelogEntry, ChangelogRelease};
+use faf_domain::protocol::stun::IceUrl;
 use faf_domain::protocol::vault_query::{MapVaultQuery, ModVaultQuery};
 use faf_domain::state::settings::{BrowsingPreferencesPatch, GamePreferencesPatch};
 use faf_domain::state::{
@@ -56,6 +60,7 @@ use faf_domain::state::{
     TrainingResource, TutorialsCommand, UploadKind, UploadRequest, UploadStatus, UploadsCommand,
     VaultMap, VaultMod,
 };
+use faf_domain::state::{ConnectivityCommand, ProbeFailure, RelayStatus};
 use faf_domain::{AppCommand, AppEvent, AppState};
 use tokio::sync::{broadcast, mpsc, Semaphore};
 use tokio::task::JoinHandle;
@@ -269,6 +274,48 @@ impl ChangelogPort for GatedChangelog {
     }
 }
 
+/// Holds the connectivity check at its first question; the rest is the
+/// offline fake's.
+struct GatedConnectivity(Gates);
+
+#[async_trait]
+impl ConnectivityPort for GatedConnectivity {
+    async fn adapter_inventory(&self) -> AdapterInventory {
+        self.0.pass("connectivity-check").await;
+        FakeConnectivity.adapter_inventory().await
+    }
+    async fn relay_list(&self) -> Result<Vec<RelayServer>, RelayListError> {
+        FakeConnectivity.relay_list().await
+    }
+    async fn relay_addresses(&self) -> KnownRelayAddresses {
+        FakeConnectivity.relay_addresses().await
+    }
+    async fn probe(&self, url: &IceUrl) -> Result<ProbeAnswer, ProbeFailure> {
+        FakeConnectivity.probe(url).await
+    }
+    async fn adapter_log(&self) -> Option<AdapterLogTail> {
+        FakeConnectivity.adapter_log().await
+    }
+}
+
+/// Holds the live relay view's status call; starting and stopping are the
+/// offline fake's.
+struct GatedIce(Gates);
+
+#[async_trait]
+impl IcePort for GatedIce {
+    async fn start(&self, params: IceParams) -> Result<ConnectivitySession, String> {
+        FakeIce.start(params).await
+    }
+    fn stop(&self) {
+        FakeIce.stop();
+    }
+    async fn relay_status(&self) -> RelayStatus {
+        self.0.pass("relay-status").await;
+        RelayStatus::Idle
+    }
+}
+
 /// A run that is held until the gate opens and then reports itself stopped,
 /// which is the one ending that raises no notification and records no map.
 fn generator_stopped() -> mpsc::Receiver<GeneratorUpdate> {
@@ -360,8 +407,12 @@ impl ClientUpdatePort for GatedClientUpdates {
         self.0.pass("client-update-check").await;
         Ok(None)
     }
-    async fn download(&self, release: ClientRelease) -> mpsc::Receiver<DownloadProgress> {
-        FakeClientUpdates.download(release).await
+    async fn download(
+        &self,
+        release: ClientRelease,
+        called_off: tokio_util::sync::CancellationToken,
+    ) -> mpsc::Receiver<DownloadProgress> {
+        FakeClientUpdates.download(release, called_off).await
     }
     async fn install(&self, path: String) -> Result<(), String> {
         FakeClientUpdates.install(path).await
@@ -609,6 +660,8 @@ fn gated_ports(gates: &Gates) -> Ports {
         maps: Arc::new(GatedMaps(gates.clone())),
         mods: Arc::new(GatedMods(gates.clone())),
         changelog: Arc::new(GatedChangelog(gates.clone())),
+        connectivity: Arc::new(GatedConnectivity(gates.clone())),
+        ice: Arc::new(GatedIce(gates.clone())),
         map_generator: Arc::new(GatedGenerator(gates.clone())),
         uploads: Arc::new(GatedUploads(gates.clone())),
         client_update: Arc::new(GatedClientUpdates(gates.clone())),
@@ -763,6 +816,24 @@ fn single_flight_cases() -> Vec<SingleFlightCase> {
             // Another lesson: one launch at a time, whichever it is.
             again: TutorialsCommand::Launch { tutorial_id: 2 }.into(),
             again_gate: "prepare:scmp_tut_2".into(),
+            probe: client_update_probe(),
+        },
+        SingleFlightCase {
+            key: "ConnectivityCheck",
+            setup: vec![],
+            first: ConnectivityCommand::RunCheck.into(),
+            first_gate: "connectivity-check".into(),
+            again: ConnectivityCommand::RunCheck.into(),
+            again_gate: "connectivity-check".into(),
+            probe: client_update_probe(),
+        },
+        SingleFlightCase {
+            key: "RelayStatus",
+            setup: vec![],
+            first: ConnectivityCommand::RefreshRelayStatus.into(),
+            first_gate: "relay-status".into(),
+            again: ConnectivityCommand::RefreshRelayStatus.into(),
+            again_gate: "relay-status".into(),
             probe: client_update_probe(),
         },
     ]

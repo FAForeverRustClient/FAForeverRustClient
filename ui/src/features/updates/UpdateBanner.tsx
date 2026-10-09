@@ -17,6 +17,7 @@ import { ipc } from "../../ipc/client";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { openHttpsUrl, optionalHttpsUrl } from "../../shared/externalLinks";
+import { plainError } from "../../shared/plainError";
 import { useAppStore } from "../../store/store";
 import {
   updateBannerRelease,
@@ -27,7 +28,7 @@ import "./updates.css";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 
-const send = (type: "check" | "download" | "install" | "dismiss") =>
+const send = (type: "check" | "download" | "cancelDownload" | "install" | "dismiss") =>
   ipc.send({ kind: "ClientUpdate", command: { type } });
 
 /** Bytes as something a person can read, matching the vault's sizing style. */
@@ -69,7 +70,11 @@ export function UpdateBanner() {
             ? t("updates.available.prerelease", { version: release.version })
             : t("updates.available.stable", { version: release.version })}
         </strong>
-        <span className="muted">{describe(status, release, update.currentVersion, size, percent)}</span>
+        {/* A failure is said plainly, with the updater's own words on hover
+            for a bug report; Download beside it is the way to try again. */}
+        <span className="muted" title={status.type === "failed" ? status.payload.reason : undefined}>
+          {describe(status, release, update.currentVersion, size, percent)}
+        </span>
       </div>
       <div className="update-banner-actions">
         {status.type === "ready" ? (
@@ -89,6 +94,11 @@ export function UpdateBanner() {
           >
             {status.type === "downloading" ? t("updates.downloading") : t("updates.download")}
           </Button>
+        )}
+        {/* Beside the bar it stops: the partial installer is deleted and the
+            offer comes back, so Download starts over cleanly. */}
+        {status.type === "downloading" && (
+          <Button onClick={() => void send("cancelDownload")}>{t("updates.cancelDownload")}</Button>
         )}
         {/* A release can be published without notes; an empty href would just
             open a blank tab. */}
@@ -136,7 +146,7 @@ function describe(
     case "installing":
       return t("updates.started");
     case "failed":
-      return status.payload.reason;
+      return plainError(status.payload.reason);
     default:
       return release.downloadUrl
         ? `${running} ${size

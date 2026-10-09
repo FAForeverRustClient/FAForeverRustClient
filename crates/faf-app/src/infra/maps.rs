@@ -22,8 +22,10 @@
 //! Installing downloads the version's zip (unauthenticated: the vault CDN,
 //! like the replay download host) and extracts it directly into the maps
 //! folder, mirroring `fa.maps._doDownloadMap` -> `ZipDownloadExtract` (the
-//! zip's own top-level entry is the map's folder name). Uninstalling just
-//! removes that directory, mirroring `MapsManagerDialog::delete_map`.
+//! zip's own top-level entry is the map's folder name). It holds the map's
+//! folder the way a replay or a live game staging the same map does (see
+//! [`install_vault_map`]), so the two take turns. Uninstalling just removes
+//! that directory, mirroring `MapsManagerDialog::delete_map`.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -43,10 +45,10 @@ use crate::infra::jsonapi::{
 };
 use crate::infra::review_totals::{self, Subject};
 use crate::infra::vault_install::{
-    bounded_body_to_file, install_archive_from_file, validate_url, MAX_DOWNLOAD_BYTES,
+    bounded_body_to_file, install_archive_from_file, validate_url, CallOff, MAX_DOWNLOAD_BYTES,
 };
 use crate::infra::{env_or, GENERATED_MAP_PLACEHOLDER_URL};
-use crate::ports::{MapSearchPage, MapsPort};
+use crate::ports::{MapSearchPage, MapsPort, VaultInstallProgress, VaultInstallStep};
 
 /// Maps per vault page fetched in [`MapsClient::list_vault`].
 const VAULT_PAGE_SIZE: usize = 100;
@@ -278,59 +280,37 @@ impl MapsPort for MapsClient {
         folder_name: String,
         download_url: String,
     ) -> Result<Vec<InstalledMap>, String> {
-        safe_map_target(&maps_dir(), &folder_name)?;
-        validate_url(&download_url, &self.config.content_base, "maps")?;
-        let resp = self
-            .http
-            .get(&download_url)
-            .send()
-            .await
-            .map_err(|e| format!("could not download map {folder_name}: {e}"))?;
-        validate_url(resp.url().as_str(), &self.config.content_base, "maps")?;
-        let status = resp.status();
-        if !status.is_success() {
-            return Err(format!("could not download map {folder_name}: {status}"));
-        }
-        // To a file, not to a `Vec`: a map is allowed to be half a gigabyte,
-        // and the zip reader only ever seeks around the archive. The handle
-        // deletes the file when it drops, including on the error paths below.
-        let archive = bounded_body_to_file(
-            resp,
-            &format!("map {folder_name}"),
-            MAX_DOWNLOAD_BYTES,
-            &|_, _| {},
+        self.install_map_reporting(
+            folder_name,
+            download_url,
+            std::sync::Arc::new(|_| {}),
+            tokio_util::sync::CancellationToken::new(),
         )
-        .await?;
+        .await?
+        .ok_or_else(|| "the install was called off".to_string())
+    }
 
-        let dest = maps_dir();
-        tokio::fs::create_dir_all(&dest)
-            .await
-            .map_err(|e| format!("could not create maps folder: {e}"))?;
-
-        let dest_clone = dest.clone();
-        let expected_folder = folder_name.clone();
-        let archive_path = archive.path().to_path_buf();
-        tokio::task::spawn_blocking(move || {
-            install_archive_from_file(&archive_path, &dest_clone, Some(&expected_folder), |_| {
-                Ok(())
-            })
-        })
+    async fn install_map_reporting(
+        &self,
+        folder_name: String,
+        download_url: String,
+        progress: VaultInstallProgress,
+        called_off: tokio_util::sync::CancellationToken,
+    ) -> Result<Option<Vec<InstalledMap>>, String> {
+        install_vault_map(
+            &self.http,
+            &self.config.content_base,
+            &maps_dir(),
+            &folder_name,
+            &download_url,
+            &*progress,
+            &called_off,
+        )
         .await
-        .map_err(|e| format!("extraction task panicked: {e}"))??;
-        drop(archive);
-
-        list_installed_dir(&dest).await
     }
 
     async fn uninstall_map(&self, folder_name: String) -> Result<Vec<InstalledMap>, String> {
-        let dir = maps_dir();
-        let target = safe_map_target(&dir, &folder_name)?;
-        if target.exists() {
-            tokio::fs::remove_dir_all(&target)
-                .await
-                .map_err(|e| format!("could not remove {}: {e}", target.display()))?;
-        }
-        list_installed_dir(&dir).await
+        uninstall_vault_map(&maps_dir(), &folder_name).await
     }
 
     async fn set_map_version_hidden(&self, version_id: i32, hidden: bool) -> Result<(), String> {
@@ -379,6 +359,160 @@ fn explain_visibility_refusal(error: &str, hidden: bool) -> String {
     error.to_string()
 }
 
+/// Install `folder_name` from the vault into `dest`, and list `dest` after.
+///
+/// The map's folder is leased the way a replay or a live game staging it
+/// leases it (`game_updater::lease_map_folder`), from before the folder is
+/// looked for until the extraction has returned. The two used to race: each
+/// found the map missing, both downloaded it, and whichever extracted second
+/// failed with "already installed" on the folder the other had just put in
+/// place. Now the second waits for the first, finds the map there, and takes
+/// it as installed, so the vault's Install answers with the map rather than a
+/// failure, and nothing is downloaded twice.
+///
+/// `called_off` stops it while it still can. While the folder is waited for
+/// and the archive downloads, that work is dropped, and the download's file
+/// is deleted with its handle. While the archive unpacks on the blocking
+/// pool, the worker is asked not to rename it into place ([`CallOff`]) and
+/// its answer is waited for. `Ok(None)` is an install called off in time,
+/// with `dest` as it was. Past the rename the call-off is too late, and the
+/// answer is the installed list as for any install: the listing after it is
+/// not raced against the call-off, which used to report a map already in
+/// place as called off and leave it out of the installed list.
+///
+/// Dropping the future still calls the install off and leaves `dest` as it
+/// was, for a caller that stops waiting altogether. The leases go with the
+/// worker either way, so the next writer of the map waits for its staging to
+/// be cleared away.
+pub(in crate::infra) async fn install_vault_map(
+    http: &reqwest::Client,
+    content_base: &str,
+    dest: &std::path::Path,
+    folder_name: &str,
+    download_url: &str,
+    progress: &(dyn Fn(VaultInstallStep) + Sync),
+    called_off: &tokio_util::sync::CancellationToken,
+) -> Result<Option<Vec<InstalledMap>>, String> {
+    safe_map_target(dest, folder_name)?;
+    validate_url(download_url, content_base, "maps")?;
+    let dirs = vec![dest.to_path_buf()];
+
+    // Nothing is written into `dest` before the archive is whole, so this
+    // half stops wherever the call-off finds it. `None` is a map already in
+    // place, put there by a replay or a live game staging it.
+    let fetching = async {
+        let leases = crate::infra::game_updater::lease_map_folder(&dirs, folder_name).await;
+        if crate::infra::game_updater::map_folder_in_any(&dirs, folder_name).await {
+            return Ok(None);
+        }
+        let resp = http
+            .get(download_url)
+            .send()
+            .await
+            .map_err(|e| format!("could not download map {folder_name}: {e}"))?;
+        validate_url(resp.url().as_str(), content_base, "maps")?;
+        let status = resp.status();
+        if !status.is_success() {
+            return Err(format!("could not download map {folder_name}: {status}"));
+        }
+        // To a file, not to a `Vec`: a map is allowed to be half a gigabyte,
+        // and the zip reader only ever seeks around the archive. The handle
+        // deletes the file when it drops, including on the error paths below.
+        let archive = bounded_body_to_file(
+            resp,
+            &format!("map {folder_name}"),
+            MAX_DOWNLOAD_BYTES,
+            &|received_bytes, total_bytes| {
+                progress(VaultInstallStep::Downloading {
+                    received_bytes,
+                    total_bytes,
+                })
+            },
+        )
+        .await?;
+        Ok(Some((leases, archive)))
+    };
+    let fetched = tokio::select! {
+        fetched = fetching => fetched?,
+        () = called_off.cancelled() => return Ok(None),
+    };
+    let Some((leases, archive)) = fetched else {
+        return list_installed_dir(dest).await.map(Some);
+    };
+    progress(VaultInstallStep::Unpacking);
+
+    tokio::fs::create_dir_all(dest)
+        .await
+        .map_err(|e| format!("could not create maps folder: {e}"))?;
+
+    // The archive goes to the worker with the leases: an install called off
+    // part-way would otherwise delete the file the extraction is still
+    // reading from. So does the call-off, which the worker asks before its
+    // rename: see `CallOff`.
+    let expected_folder = folder_name.to_string();
+    let call_off = CallOff::default();
+    let armed = call_off.arm();
+    let asked = call_off.clone();
+    let unpacking = crate::infra::game_updater::unpack_map_leased(
+        leases,
+        dirs,
+        folder_name.to_string(),
+        move |dir| {
+            install_archive_from_file(archive.path(), dir, Some(&expected_folder), |_| {
+                asked.refuse_if_called_off()
+            })
+            .map(drop)
+        },
+    );
+    tokio::pin!(unpacking);
+    let unpacked = tokio::select! {
+        unpacked = &mut unpacking => unpacked,
+        () = called_off.cancelled() => {
+            call_off.call_off();
+            unpacking.await
+        }
+    };
+    armed.disarm();
+    match unpacked {
+        Ok(()) => {}
+        // Refused before the rename: the staging is cleared away.
+        Err(_) if call_off.is_called_off() => return Ok(None),
+        Err(error) => return Err(error),
+    }
+
+    list_installed_dir(dest).await.map(Some)
+}
+
+/// Remove `folder_name` from `dest`, and list `dest` after.
+///
+/// Under the map's folder lease (see [`install_vault_map`]), so a replay or a
+/// live game staging the same map does not find it present, start using it,
+/// and have it deleted underneath; nor does it find it half-deleted and decide
+/// it is installed. The deletion runs on the blocking pool with the lease, so
+/// a caller that stops waiting leaves the folder either gone or whole, never
+/// with the next writer already inside it.
+pub(in crate::infra) async fn uninstall_vault_map(
+    dest: &std::path::Path,
+    folder_name: &str,
+) -> Result<Vec<InstalledMap>, String> {
+    let target = safe_map_target(dest, folder_name)?;
+    let dirs = vec![dest.to_path_buf()];
+    let leases = crate::infra::game_updater::lease_map_folder(&dirs, folder_name).await;
+    tokio::task::spawn_blocking(move || {
+        let _leases = leases;
+        #[cfg(test)]
+        crate::infra::game_updater::probe_writing(&target);
+        if target.exists() {
+            std::fs::remove_dir_all(&target)
+                .map_err(|e| format!("could not remove {}: {e}", target.display()))?;
+        }
+        Ok::<(), String>(())
+    })
+    .await
+    .map_err(|e| format!("map removal task failed: {e}"))??;
+    list_installed_dir(dest).await
+}
+
 /// Resolve a user-controlled vault folder without allowing it to escape the
 /// maps directory. IPC is a trust boundary even when the normal caller is our
 /// own webview.
@@ -410,6 +544,13 @@ async fn list_installed_dir(dir: &std::path::Path) -> Result<Vec<InstalledMap>, 
         }
         let folder_path = entry.path();
         let folder_name = entry.file_name().to_string_lossy().to_lowercase();
+        // An install's private staging folder (`.faf-install-…`), seen while
+        // it unpacks or left behind by a client that was killed during one.
+        // It is not a map, and listed as one it was a map nobody installed.
+        // No vault folder name starts with a dot (`is_safe_folder_name`).
+        if folder_name.starts_with('.') {
+            continue;
+        }
 
         let scenario_info = find_and_parse_scenario_lua(&folder_path).await;
         let display_name = scenario_info
@@ -1264,6 +1405,24 @@ mod tests {
         assert!(folders.contains(&"adaptive_map.v0002".to_string()));
 
         let _ = tokio::fs::remove_dir_all(&dir).await;
+    }
+
+    /// An install's private staging folder, mid-unpack or left by a client
+    /// that was killed during one, is not an installed map.
+    #[tokio::test]
+    async fn an_install_staging_folder_is_not_listed_as_a_map() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("adaptive_map.v0002")).unwrap();
+        std::fs::create_dir_all(
+            dir.path()
+                .join(".faf-install-0123456789abcdef")
+                .join("adaptive_map.v0003"),
+        )
+        .unwrap();
+
+        let installed = list_installed_dir(dir.path()).await.expect("should list");
+        let folders: Vec<_> = installed.iter().map(|m| m.folder_name.clone()).collect();
+        assert_eq!(folders, ["adaptive_map.v0002"]);
     }
 
     #[tokio::test]

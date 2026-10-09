@@ -20,6 +20,7 @@ import type { AppCommand, LocalReplay, ReplayEvent, VaultReplay } from "../../ip
 import { failOnConsoleError } from "../../testing/consoleGuard";
 import { applyEvent, clearSentCommands, seedStore, sentCommands } from "../../testing/mounted";
 import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
+import { replayReadKey } from "../../shared/rules/replayReadKey";
 import { ReplaysView } from "./ReplaysView";
 
 vi.mock("../../ipc/client");
@@ -214,9 +215,16 @@ describe("Replay detail flows, mounted from the Replays workspace", () => {
     replayEvent({ type: "vaultDownloadStarted", payload: { uid: 4242 } });
     replayEvent({ type: "vaultDownloadFailed", payload: { uid: 4242, reason: "disk full" } });
 
-    expect(within(dialog).getByText("Could not download replay: disk full")).toBeTruthy();
+    // Said as a sentence, with the reason as it was sent on hover.
+    const reason = within(dialog).getByText("Could not download replay: Disk full.");
+    expect(reason.getAttribute("title")).toBe("disk full");
     clearSentCommands();
     await user.click(within(dialog).getByRole("button", { name: "Download" }));
+    expect(sent("downloadVault")).toEqual([downloadVault(4242)]);
+
+    // The notice's own Retry sends the same download.
+    clearSentCommands();
+    await user.click(within(within(dialog).getByRole("alert")).getByRole("button", { name: "Retry" }));
     expect(sent("downloadVault")).toEqual([downloadVault(4242)]);
   });
 
@@ -245,16 +253,52 @@ describe("Replay detail flows, mounted from the Replays workspace", () => {
 
     await user.click(within(dialog).getByRole("button", { name: "More info" }));
     expect(sent("loadDetails").length + sent("loadAnalysis").length).toBe(2);
-    replayEvent({ type: "detailsLoading", payload: { uid: 4242 } });
-    replayEvent({ type: "analysisLoading", payload: { uid: 4242 } });
+    replayEvent({ type: "detailsLoading", payload: { key: replayReadKey(4242, null) } });
+    replayEvent({ type: "analysisLoading", payload: { key: replayReadKey(4242, null) } });
 
     await user.keyboard("{Escape}");
     await user.keyboard("{Escape}");
     expect(queryPanel("Ladder night")).toBeNull();
 
-    replayEvent({ type: "detailsFailed", payload: { uid: 4242, reason: "file gone" } });
-    replayEvent({ type: "analysisFailed", payload: { uid: 4242, reason: "file gone" } });
+    replayEvent({ type: "detailsFailed", payload: { key: replayReadKey(4242, null), reason: "file gone" } });
+    replayEvent({ type: "analysisFailed", payload: { key: replayReadKey(4242, null), reason: "file gone" } });
     expect(screen.queryAllByRole("dialog")).toEqual([]);
+  });
+
+  it("calls its running reads off when it closes, and nothing when none is running", async () => {
+    const user = userEvent.setup();
+    mountVault();
+    const dialog = await openCard(user, "Ladder night");
+    await user.click(within(dialog).getByRole("button", { name: "More info" }));
+    replayEvent({ type: "detailsLoading", payload: { key: replayReadKey(4242, null) } });
+    replayEvent({ type: "analysisLoading", payload: { key: replayReadKey(4242, null) } });
+    clearSentCommands();
+
+    await user.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
+    expect(queryPanel("Ladder night")).toBeNull();
+    expect(sent("cancelReads")).toEqual([
+      { kind: "Replays", command: { type: "cancelReads", payload: { uid: 4242, localPath: undefined } } },
+    ]);
+
+    // The backend's answer: nothing is loading, so the next panel asks again.
+    replayEvent({ type: "readsCancelled", payload: { key: replayReadKey(4242, null) } });
+    const reopened = await openCard(user, "Ladder night");
+    clearSentCommands();
+    await user.click(within(reopened).getByRole("button", { name: "More info" }));
+    expect(sent("loadDetails").length + sent("loadAnalysis").length).toBe(2);
+
+    // Nothing running when it closes, nothing to call off.
+    replayEvent({
+      type: "detailsLoaded",
+      payload: { key: replayReadKey(4242, null), details: { gameOptions: [], chatMessages: [], gameVersion: null } },
+    });
+    replayEvent({ type: "analysisFailed", payload: { key: replayReadKey(4242, null), reason: "file gone" } });
+    clearSentCommands();
+    await user.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
+    expect(queryPanel("Ladder night")).toBeNull();
+    expect(sent("cancelReads")).toEqual([]);
   });
 
   it("keeps the second replay's insights when the first replay's reads finish after them", async () => {
@@ -262,8 +306,8 @@ describe("Replay detail flows, mounted from the Replays workspace", () => {
     mountVault();
     const first = await openCard(user, "Ladder night");
     await user.click(within(first).getByRole("button", { name: "More info" }));
-    replayEvent({ type: "detailsLoading", payload: { uid: 4242 } });
-    replayEvent({ type: "analysisLoading", payload: { uid: 4242 } });
+    replayEvent({ type: "detailsLoading", payload: { key: replayReadKey(4242, null) } });
+    replayEvent({ type: "analysisLoading", payload: { key: replayReadKey(4242, null) } });
     await user.keyboard("{Escape}");
     await user.keyboard("{Escape}");
 
@@ -271,17 +315,18 @@ describe("Replay detail flows, mounted from the Replays workspace", () => {
     clearSentCommands();
     await user.click(within(second).getByRole("button", { name: "More info" }));
     expect(sent("loadDetails").length + sent("loadAnalysis").length).toBe(2);
-    replayEvent({ type: "detailsLoading", payload: { uid: 5151 } });
-    replayEvent({ type: "analysisLoading", payload: { uid: 5151 } });
+    replayEvent({ type: "detailsLoading", payload: { key: replayReadKey(5151, null) } });
+    replayEvent({ type: "analysisLoading", payload: { key: replayReadKey(5151, null) } });
     replayEvent({
       type: "detailsLoaded",
-      payload: { uid: 5151, details: { gameOptions: [], chatMessages: [], gameVersion: null } },
+      payload: { key: replayReadKey(5151, null), details: { gameOptions: [], chatMessages: [], gameVersion: null } },
     });
     replayEvent({
       type: "analysisLoaded",
       payload: {
         analysis: {
           uid: 5151,
+          key: replayReadKey(5151, null),
           ticks: 3_000,
           gameVersion: "",
           armies: [],
@@ -306,6 +351,7 @@ describe("Replay detail flows, mounted from the Replays workspace", () => {
       payload: {
         analysis: {
           uid: 4242,
+          key: replayReadKey(4242, null),
           ticks: 1_000,
           gameVersion: "",
           armies: [],
@@ -319,11 +365,11 @@ describe("Replay detail flows, mounted from the Replays workspace", () => {
         },
       },
     });
-    replayEvent({ type: "analysisFailed", payload: { uid: 4242, reason: "file gone" } });
-    replayEvent({ type: "detailsFailed", payload: { uid: 4242, reason: "file gone" } });
+    replayEvent({ type: "analysisFailed", payload: { key: replayReadKey(4242, null), reason: "file gone" } });
+    replayEvent({ type: "detailsFailed", payload: { key: replayReadKey(4242, null), reason: "file gone" } });
 
     expect(within(insights).queryByText(/^Reading the/)).toBeNull();
-    expect(screen.queryByText("file gone")).toBeNull();
+    expect(screen.queryByText("File gone.")).toBeNull();
   });
 
   it("does not show the last replay's failed read in the next replay's panel", async () => {
@@ -331,14 +377,14 @@ describe("Replay detail flows, mounted from the Replays workspace", () => {
     mountVault();
     const first = await openCard(user, "Ladder night");
     await user.click(within(first).getByRole("button", { name: "More info" }));
-    replayEvent({ type: "detailsLoading", payload: { uid: 4242 } });
-    replayEvent({ type: "detailsFailed", payload: { uid: 4242, reason: "file gone" } });
-    expect(within(first).getAllByText("file gone").length).toBeGreaterThan(0);
+    replayEvent({ type: "detailsLoading", payload: { key: replayReadKey(4242, null) } });
+    replayEvent({ type: "detailsFailed", payload: { key: replayReadKey(4242, null), reason: "file gone" } });
+    expect(within(first).getAllByText("File gone.").length).toBeGreaterThan(0);
     await user.keyboard("{Escape}");
     await user.keyboard("{Escape}");
 
     await openCard(user, "Team game");
-    expect(screen.queryByText("file gone")).toBeNull();
+    expect(screen.queryByText("File gone.")).toBeNull();
   });
 
   it("offers Retry on a failed vault search and sends the same search again", async () => {

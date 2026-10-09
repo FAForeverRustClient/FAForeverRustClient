@@ -20,7 +20,7 @@
 
 .vault-featured-badge svg {
   flex: none;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .vault-subnav,
@@ -170,12 +170,6 @@
 .vault-note {
   margin: 8px 0 12px;
   font-size: 12px;
-}
-
-/* A note the user has to actually read, not a status line: the vault refusing a
-   change says something they cannot work out from the screen. */
-.vault-note.is-warn {
-  color: var(--color-warn);
 }
 
 /* The detail column is wider than it was. The report was about a mod's
@@ -366,13 +360,13 @@
 }
 
 .vault-badge.is-ok {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   background: color-mix(in srgb, var(--color-ok) 12%, transparent);
   border-color: color-mix(in srgb, var(--color-ok) 25%, transparent);
 }
 
 .vault-badge.is-warn {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   background: color-mix(in srgb, var(--color-warn) 12%, transparent);
   border-color: color-mix(in srgb, var(--color-warn) 25%, transparent);
 }
@@ -504,7 +498,7 @@
 }
 
 .vault-action-favorite.is-active {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 /* Reporting a map or mod as offensive: last in the action row and icon-only.
@@ -515,11 +509,11 @@
 .vault-action-report {
   min-width: 34px;
   padding-inline: 9px;
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .vault-action-report:hover:not(:disabled) {
-  color: var(--color-error);
+  color: var(--color-error-text);
   border-color: color-mix(in srgb, var(--color-error) 45%, transparent);
   background: color-mix(in srgb, var(--color-error) 10%, transparent);
 }

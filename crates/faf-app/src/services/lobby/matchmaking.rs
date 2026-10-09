@@ -47,6 +47,11 @@ pub(super) fn matchmake(queue_name: String, start: bool, ctx: &ServiceCtx, out: 
         out.emit(LobbyEvent::MatchmakingUpdated {
             state: MatchmakingState::Idle,
         });
+        // And the updater behind it stops at its next safe point, which lets
+        // the launcher's preparation lock go: a join or a search started
+        // straight after used to wait for the whole update, unnarrated. After
+        // the state, so the preparation finds its search no longer wanted.
+        ctx.lobby.search_preparation.cancel(|_| true);
     }
     ctx.ports.lobby.matchmake(queue_name, start)
 }
@@ -107,8 +112,12 @@ pub(super) async fn set_player_vetoes(vetoes: Vec<PlayerVeto>, ctx: &ServiceCtx,
     // Remembered as well as sent. The server holds vetoes on the
     // player's session and nowhere else, so this is the only copy that
     // survives a logout; see `SettingsState::matchmaker_vetoes`.
-    out.emit(SettingsEvent::MatchmakerVetoesChanged {
-        vetoes: vetoes.clone(),
+    let remembered = vetoes.clone();
+    ctx.settings.merge_and_emit(out, |_| {
+        (
+            SettingsEvent::MatchmakerVetoesChanged { vetoes: remembered },
+            (),
+        )
     });
     ctx.ports.lobby.set_player_vetoes(vetoes);
     crate::services::settings::persist(ctx, out).await;
@@ -208,25 +217,32 @@ pub(super) async fn start_search(mut queue_names: Vec<String>, ctx: &ServiceCtx,
         None => {}
     }
 
+    // Registered before the state says `Preparing`, so a Stop that sees the
+    // state also reaches this preparation's updater.
+    let preparation = ctx.lobby.search_preparation.begin(());
     out.emit(LobbyEvent::MatchmakingUpdated {
         state: MatchmakingState::Preparing {
             queue_names: queue_names.clone(),
         },
     });
     let prepared = if ctx.ports.process.supports_live_launch() {
-        launcher::prepare_search(&queue_names, ctx, out).await
+        launcher::prepare_search(&queue_names, ctx, out, &preparation.called_off).await
     } else {
         Ok(())
     };
+    ctx.lobby.search_preparation.end(&preparation);
 
     // Stopped, disconnected or replaced while the files came down. Nothing is
-    // sent for a search nobody is waiting for any more.
-    let still_wanted = out.with_state(|state| {
-        matches!(
-            &state.lobby.matchmaking,
-            MatchmakingState::Preparing { queue_names: wanted } if *wanted == queue_names
-        )
-    });
+    // sent for a search nobody is waiting for any more. The token as well as
+    // the state: a stopped search followed at once by a new one for the same
+    // queues reads `Preparing` again, and that state is the new search's.
+    let still_wanted = !preparation.called_off.is_cancelled()
+        && out.with_state(|state| {
+            matches!(
+                &state.lobby.matchmaking,
+                MatchmakingState::Preparing { queue_names: wanted } if *wanted == queue_names
+            )
+        });
     if !still_wanted {
         tracing::info!("matchmaker: the search was stopped while it was being prepared");
         return;
@@ -235,9 +251,11 @@ pub(super) async fn start_search(mut queue_names: Vec<String>, ctx: &ServiceCtx,
         out.emit(LobbyEvent::MatchmakingUpdated {
             state: MatchmakingState::Idle,
         });
-        notifications::add_required_text(
+        // The updater's own reason (the API, the CDN, the disk), marked so
+        // the UI words it plainly. The refusals above are not marked: they
+        // are sentences written for the screen already.
+        notifications::add_required_failure(
             out,
-            NotificationKind::Error,
             notifications::Text::new("notifications.msg.searchFailed"),
             "Could not start the search",
             reason,
@@ -500,13 +518,29 @@ pub(super) fn on_matchmaking<'a>(
         && launch_enabled
         && background.warm_up.is_none()
     {
+        let called_off = tokio_util::sync::CancellationToken::new();
+        background.warm_up_called_off = Some(called_off.clone().drop_guard());
         background.warm_up = Some(Box::pin(async move {
-            if let Err(reason) =
-                launcher::prepare_featured_mod(launcher::MATCHMAKER_FEATURED_MOD, ctx, out).await
-            {
-                tracing::warn!(%reason, "could not update the game while the party searched");
+            let warmed = launcher::prepare_featured_mod(
+                launcher::MATCHMAKER_FEATURED_MOD,
+                ctx,
+                out,
+                &called_off,
+            )
+            .await;
+            if let Err(reason) = warmed {
+                if !called_off.is_cancelled() {
+                    tracing::warn!(%reason, "could not update the game while the party searched");
+                }
             }
         }));
+    }
+    // The leader stopped the search: the member's update was for that search,
+    // and it stops at its next safe point rather than holding the launcher's
+    // preparation lock to the end. A match found keeps it going, since the
+    // launch needs the same files.
+    if matches!(state, MatchmakingState::Idle) {
+        background.warm_up_called_off = None;
     }
     let (already_found, notify_match_found) = out.with_state(|current| {
         (
@@ -589,7 +623,9 @@ pub(super) async fn on_vetoes(
     out.emit(LobbyEvent::VetoesUpdated {
         vetoes: vetoes.clone(),
     });
-    out.emit(SettingsEvent::MatchmakerVetoesChanged { vetoes });
+    ctx.settings.merge_and_emit(out, |_| {
+        (SettingsEvent::MatchmakerVetoesChanged { vetoes }, ())
+    });
     crate::services::settings::persist(ctx, out).await;
     // Java's two strings, `teammatchmaking.vetoes.forced.*`.
     if forced {
@@ -615,6 +651,7 @@ fn announce_new_map_pools(ctx: &ServiceCtx, out: &EventSink, queue_names: Vec<St
     let maps = ctx.ports.maps.clone();
     let settings = ctx.ports.settings.clone();
     let serial = ctx.settings.write_order();
+    let merger = ctx.settings.merger();
     let loaded = ctx.settings.has_loaded();
     let out = out.clone();
     tokio::spawn(async move {
@@ -662,12 +699,17 @@ fn announce_new_map_pools(ctx: &ServiceCtx, out: &EventSink, queue_names: Vec<St
                 Some(NotificationAction::OpenMatchmaking),
             );
         }
-        let mut remembered = seen;
-        for entry in current {
-            remembered.retain(|old| old.queue_name != entry.queue_name);
-            remembered.push(entry);
-        }
-        out.emit(SettingsEvent::MapPoolsSeen { seen: remembered });
+        // Merged into what is remembered at the moment of writing, under the
+        // settings lock, rather than into the copy read for the announcement:
+        // the requests above can take seconds.
+        merger.merge_and_emit(&out, |settings| {
+            let mut remembered = settings.map_pools_seen.clone();
+            for entry in current {
+                remembered.retain(|old| old.queue_name != entry.queue_name);
+                remembered.push(entry);
+            }
+            (SettingsEvent::MapPoolsSeen { seen: remembered }, ())
+        });
         if loaded {
             let _guard = serial.acquire().await;
             let snapshot = out.with_state(|state| state.settings.clone());

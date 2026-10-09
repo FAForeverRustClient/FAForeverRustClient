@@ -36,6 +36,7 @@ import {
   sortCoopScenarios,
 } from "./coopScenarios";
 import "./coop.css";
+import type { PlayModePanelProps } from "../PlayModeTabs";
 
 /** `0` means "any team size": matches `ANY_PLAYER_COUNT` in the domain. */
 const PLAYER_COUNTS = [0, 1, 2, 3, 4];
@@ -77,6 +78,8 @@ interface Props {
    * toolbar's owner.
    */
   onClearFilters?: () => void;
+  /** Makes this the panel of the Play tab's Co-op mode tab. */
+  panelProps?: PlayModePanelProps;
 }
 
 /**
@@ -110,6 +113,7 @@ export function CoopPanel({
   onJoin,
   onHost,
   onClearFilters = clearSavedFilters,
+  panelProps,
 }: Props) {
   const { t } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
@@ -260,7 +264,7 @@ export function CoopPanel({
   );
 
   return (
-    <div className="coop-panel">
+    <div {...panelProps} className="coop-panel">
       {coop.catalogStatus.type === "failed" ? (
         <CoopLoadFailure
           status={coop.catalogStatus}

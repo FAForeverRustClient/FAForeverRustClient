@@ -17,6 +17,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
 import { FOLDER_GROUPS, openFolderEntry, type FolderEntry } from "../../shared/gameFolders";
+import { plainError } from "../../shared/plainError";
 import "./game-folders.css";
 
 export function GameFoldersMenu() {
@@ -25,9 +26,10 @@ export function GameFoldersMenu() {
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  // The shell's own message, shown under the list rather than swallowed: a
-  // folder that is not there yet (no replays played, no vault) is the common
-  // case and the reason has to be readable.
+  // The shell's own message, kept as it came and shown under the list through
+  // `plainError` rather than swallowed: a folder that is not there yet (no
+  // replays played, no vault) is the common case and the reason has to be
+  // readable.
   const [error, setError] = useState("");
 
   const place = useCallback(() => {
@@ -149,9 +151,12 @@ export function GameFoldersMenu() {
                 ))}
               </div>
             ))}
+            {/* Plainly, with the shell's own words ("could not open
+                C:\...\maps: ...") on hover. No Retry of its own: the entry
+                that failed is one click away in this same menu. */}
             {error && (
-              <p className="game-folders-error" role="alert">
-                {error}
+              <p className="game-folders-error" role="alert" title={error}>
+                {plainError(error)}
               </p>
             )}
           </div>,

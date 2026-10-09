@@ -9,6 +9,7 @@ pub mod changelog;
 pub mod chat;
 pub mod clan;
 pub mod client_update;
+pub mod connectivity;
 pub mod coop;
 pub mod events;
 pub mod failure;
@@ -52,6 +53,10 @@ pub use clan::{
 pub use client_update::{
     compare_versions, is_release_version, should_update, strip_version_prefix, ClientRelease,
     ClientUpdateCommand, ClientUpdateEvent, ClientUpdateState, ClientUpdateStatus, ReleaseChannel,
+};
+pub use connectivity::{
+    CheckFinding, CheckOutcome, CheckStatus, CheckStep, ConnectivityCheck, ConnectivityCommand,
+    ConnectivityEvent, ConnectivityState, ProbeFailure, RelayPeer, RelaySnapshot, RelayStatus,
 };
 pub use coop::{
     missions_of, rank_results, CoopCategory, CoopCommand, CoopEvent, CoopFaction, CoopMission,
@@ -119,18 +124,19 @@ pub use player_card::{
     RatingHistoryPoint, RatingHistoryQuery,
 };
 pub use replays::{
-    live_replay_delay_remaining, sort_vault_replays, LiveReplayTarget, LiveReplayTracking,
-    LiveReplayTrackingAction, LocalReplay, LocalReplayPlayer, LocalReplayStatus, LocalReplayTeam,
-    ReplayActivity, ReplayAnalysis, ReplayArmy, ReplayChatMessage, ReplayCommand,
-    ReplayCommandStats, ReplayDetails, ReplayEvent, ReplayGameOption, ReplayNotice, ReplayOrder,
-    ReplayPlayer, ReplayPlayerStats, ReplayPoint, ReplayPreparation, ReplayQuery, ReplayReadError,
-    ReplayResourceStat, ReplayScenario, ReplaySortField, ReplayState, ReplayStatus, ReplayTeam,
-    ReplayTotals, ReplayUnitStat, ResolvedReplayMap, VaultReplay, VaultStatus,
-    LIVE_REPLAY_DELAY_SECONDS,
+    live_replay_delay_remaining, normalize_replay_path, replay_read_key, sort_vault_replays,
+    LiveReplayTarget, LiveReplayTracking, LiveReplayTrackingAction, LocalReplay, LocalReplayPlayer,
+    LocalReplayStatus, LocalReplayTeam, ReplayActivity, ReplayAnalysis, ReplayArmy,
+    ReplayChatMessage, ReplayCommand, ReplayCommandStats, ReplayDetails, ReplayEvent,
+    ReplayGameOption, ReplayNotice, ReplayOrder, ReplayPlayer, ReplayPlayerStats, ReplayPoint,
+    ReplayPreparation, ReplayQuery, ReplayReadError, ReplayResourceStat, ReplayScenario,
+    ReplaySortField, ReplayState, ReplayStatus, ReplayTeam, ReplayTotals, ReplayUnitStat,
+    ResolvedReplayMap, VaultReplay, VaultStatus, LIVE_REPLAY_DELAY_SECONDS, ONLINE_LOOKUPS_KEPT,
+    REPLAY_DETAILS_KEPT, RESOLVED_MAPS_KEPT,
 };
 pub use reporting::{
-    ModerationReportSummary, ReportHistoryStatus, ReportStatus, ReportingCommand, ReportingEvent,
-    ReportingState,
+    ModerationReportSummary, ReportHistoryStatus, ReportLogAttachment, ReportLogExcerpt,
+    ReportStatus, ReportingCommand, ReportingEvent, ReportingState,
 };
 pub use reviews::{
     clamp_score, own_review, summarize, Review, ReviewKind, ReviewSubmitStatus, ReviewSummary,
@@ -248,4 +254,5 @@ pub struct AppState {
     pub client_update: ClientUpdateState,
     pub settings: SettingsState,
     pub changelog: ChangelogState,
+    pub connectivity: ConnectivityState,
 }

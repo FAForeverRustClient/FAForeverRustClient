@@ -529,11 +529,11 @@ html.is-resizing-chat-roster * {
 }
 
 .chat-message.is-notice {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .chat-message.is-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .chat-message-actor {
@@ -617,7 +617,7 @@ html.is-resizing-chat-roster * {
    was never defined, which left this declaration invalid and the size inherited.) */
 .chat-link-notice {
   flex: none;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   font-size: 12px;
 }
 
@@ -1424,18 +1424,18 @@ img.chat-game-map {
 }
 
 .chat-game-status.is-playing {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   background: color-mix(in srgb, var(--color-ok) 12%, transparent);
 }
 
 .chat-game-status.is-playingDelayed,
 .chat-game-status.is-playing-delayed {
-  color: var(--color-error);
+  color: var(--color-error-text);
   background: color-mix(in srgb, var(--color-error) 12%, transparent);
 }
 
 .chat-game-status.is-hosting {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   background: color-mix(in srgb, var(--color-warn) 12%, transparent);
 }
 
@@ -1715,7 +1715,7 @@ img.chat-game-map {
 }
 
 .chat-user-menu-item.is-danger {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 

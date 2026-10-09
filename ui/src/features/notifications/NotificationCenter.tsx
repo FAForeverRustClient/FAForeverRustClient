@@ -12,7 +12,7 @@ import { renderFormattedText, stripHtmlTags } from "../chat/messages/chatFormat"
 import { playNotificationSound, soundForKind } from "./notificationSound";
 import { raisesOsNotification } from "./osNotifications";
 import { RepeatCooldown, happensInView } from "./notificationGate";
-import { notificationBody, notificationTitle } from "./notificationText";
+import { notificationBody, notificationBodyDetail, notificationTitle } from "./notificationText";
 import "./notifications.css";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
@@ -321,7 +321,7 @@ export function NotificationCenter() {
               <article className={`notification-item${item.read ? " is-read" : ""}${notificationTone(item)}`} key={item.id}>
                 <button className="notification-content" type="button" onClick={() => handleAction(item)}>
                   <span className="notification-item-head"><strong>{notificationTitle(item)}</strong><time dateTime={item.createdAt}>{formatTime(item.createdAt, "", use24HourTime)}</time></span>
-                  <span className="notification-body">{renderFormattedText(notificationBody(item))}</span>
+                  <span className="notification-body" title={notificationBodyDetail(item) ?? undefined}>{renderFormattedText(notificationBody(item))}</span>
                   {actionContent(item.action)}
                 </button>
                 <button className="notification-dismiss" type="button" onClick={() => { hideToast(item.id); dismiss(item.id); }} aria-label={t("notifications.dismiss", { title: notificationTitle(item) })}>
@@ -346,7 +346,9 @@ export function NotificationCenter() {
           <article className={`notification-toast${notificationTone(item)}`} key={item.id}>
             <button type="button" onClick={() => handleAction(item)}>
               <strong>{notificationTitle(item)}</strong>
-              <span className="notification-body">{renderFormattedText(notificationBody(item))}</span>
+              {/* A failure reason is worded plainly; the original is on hover,
+                  here and in the centre (see `notificationText`). */}
+              <span className="notification-body" title={notificationBodyDetail(item) ?? undefined}>{renderFormattedText(notificationBody(item))}</span>
               {actionContent(item.action)}
             </button>
             <button

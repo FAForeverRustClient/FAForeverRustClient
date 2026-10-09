@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { GamePreparationStatus, ReplayDownloadTask } from "./ClientStatusBar";
+import { BackgroundActivityTask, GamePreparationStatus } from "./ClientStatusBar";
 
 describe("GamePreparationStatus", () => {
   it("shows measured launch preparation in the compact status-bar task", () => {
@@ -22,6 +22,8 @@ describe("GamePreparationStatus", () => {
     expect(markup).toContain('aria-valuenow="47"');
     expect(markup).toContain('style="width:47%"');
     expect(markup).toContain("47%");
+    // The dialog can be hidden for a long patch, so the line carries its Cancel.
+    expect(markup).toContain('aria-label="Cancel joining"');
   });
 
   it("keeps phases without a percentage explicitly indeterminate", () => {
@@ -40,16 +42,18 @@ describe("GamePreparationStatus", () => {
   });
 });
 
-describe("ReplayDownloadTask", () => {
-  it("uses the shared bottom task slot while a replay is downloading", () => {
+describe("BackgroundActivityTask", () => {
+  it("names the replay it downloads and sweeps while the size is unknown", () => {
     const markup = renderToStaticMarkup(
-      <ReplayDownloadTask status={{ type: "downloading", payload: { uid: 27456965 } }} />,
+      <BackgroundActivityTask
+        activities={[{ id: "replay-download", label: "Downloading replay 27456965", progress: null }]}
+      />,
     );
 
     // The id never stands alone: the line names what it is, not just a number.
-    expect(markup).toContain("Downloading:");
-    expect(markup).toContain("Replay 27456965");
+    expect(markup).toContain("Downloading replay 27456965");
     expect(markup).toContain('data-indeterminate="true"');
     expect(markup).toContain("Active");
+    expect(markup).not.toContain("<button");
   });
 });

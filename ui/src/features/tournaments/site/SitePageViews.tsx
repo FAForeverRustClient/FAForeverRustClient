@@ -4,9 +4,11 @@
 
 import { useState } from "react";
 import { Button } from "../../../design-system/Button";
+import { StatusNotice } from "../../../design-system/StatusNotice";
 import type { AccessStatus, Article, HallOfFame, SiteWrite, TourneyLoadStatus } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { useRememberedFilter } from "../../../shared/filterMemory";
+import { plainError } from "../../../shared/plainError";
 import { RichText } from "../detail/RichText";
 
 /**
@@ -16,11 +18,30 @@ import { RichText } from "../detail/RichText";
  * only listed every winner once. The rank stays the player's place on the
  * whole board when the search narrows it.
  */
-export function HallOfFamePage({ hall, status }: { hall: HallOfFame | null; status: TourneyLoadStatus }) {
+export function HallOfFamePage({
+  hall,
+  status,
+  onRetry,
+}: {
+  hall: HallOfFame | null;
+  status: TourneyLoadStatus;
+  /** Read the board again, after a read that failed. */
+  onRetry: () => void;
+}) {
   const { t } = useTranslation();
   // Remembered as the filter setting says (#447).
   const [query, setQuery] = useRememberedFilter("tournaments.hall", "", (value) => typeof value === "string");
-  if (status.type === "failed") return <p className="surface-error">{status.payload.reason}</p>;
+  if (status.type === "failed") {
+    return (
+      <StatusNotice
+        tone="error"
+        action={{ label: t("common.retry"), onClick: onRetry }}
+        detail={status.payload.reason}
+      >
+        {plainError(status.payload.reason)}
+      </StatusNotice>
+    );
+  }
   if (hall === null) return <p className="muted">{t("tournaments.loading")}</p>;
   const needle = query.trim().toLocaleLowerCase();
   const ranked = hall.players.map((player, index) => ({ player, rank: index + 1 }));

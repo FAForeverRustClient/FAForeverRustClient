@@ -172,6 +172,11 @@ pub enum MapInstallStatus {
     #[serde(rename_all = "camelCase")]
     Installing {
         folder_name: String,
+        /// How much of the archive has arrived, in percent, while the server
+        /// said how big it is. `None` before the first byte, for a server that
+        /// sent no length, while the archive is unpacked, and for an
+        /// uninstall: a bar that sweeps rather than one that claims a number.
+        progress: Option<u8>,
     },
     Failed {
         reason: String,
@@ -306,6 +311,13 @@ pub enum MapsEvent {
     Installing {
         folder_name: String,
     },
+    /// How far the install of `folder_name` has got; see
+    /// [`MapInstallStatus::Installing`]. Lands only on the install it names.
+    #[serde(rename_all = "camelCase")]
+    InstallProgressed {
+        folder_name: String,
+        progress: Option<u8>,
+    },
     /// Install succeeded: carries the freshly-scanned installed list so the
     /// UI doesn't need a separate `LoadInstalled` round-trip (mirrors the
     /// Python client's `MapsManagerDialog` re-scanning after every change).
@@ -314,6 +326,13 @@ pub enum MapsEvent {
     },
     InstallFailed {
         reason: String,
+    },
+    /// The install of `folder_name` was called off: back to idle, and not a
+    /// failure, because nothing went wrong. Nothing of the map is left on
+    /// disk, so the installed list does not change.
+    #[serde(rename_all = "camelCase")]
+    InstallCancelled {
+        folder_name: String,
     },
     Uninstalled {
         installed: Vec<InstalledMap>,
@@ -378,6 +397,17 @@ pub enum MapsCommand {
         folder_name: String,
         download_url: String,
     },
+    /// Call off the install of `folder_name` while it is still running.
+    ///
+    /// A map can be half a gigabyte, and until this the only way to stop one
+    /// was to close the client. The download stops where it is and its file
+    /// is deleted; an archive already being unpacked is unpacked into a
+    /// private folder that is removed instead of renamed into place, so the
+    /// maps folder is left as it was either way. Does nothing once the
+    /// install has finished, or for an uninstall, which is not stopped
+    /// half-way on purpose: a half-deleted map is worse than either.
+    #[serde(rename_all = "camelCase")]
+    CancelInstall { folder_name: String },
     /// Delete a map folder (mirrors `MapsManagerDialog::delete_map`).
     #[serde(rename_all = "camelCase")]
     UninstallMap { folder_name: String },
@@ -503,6 +533,32 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
         MapsEvent::Installing { folder_name } => {
             state.install_status = MapInstallStatus::Installing {
                 folder_name: folder_name.clone(),
+                progress: None,
+            }
+        }
+        MapsEvent::InstallProgressed {
+            folder_name,
+            progress,
+        } => {
+            // Only onto the install it measures: a step that arrives after
+            // that install ended, or was called off, describes nothing.
+            if let MapInstallStatus::Installing {
+                folder_name: installing,
+                progress: shown,
+            } = &mut state.install_status
+            {
+                if installing == folder_name {
+                    *shown = *progress;
+                }
+            }
+        }
+        MapsEvent::InstallCancelled { folder_name } => {
+            if matches!(
+                &state.install_status,
+                MapInstallStatus::Installing { folder_name: installing, .. }
+                    if installing == folder_name
+            ) {
+                state.install_status = MapInstallStatus::Idle;
             }
         }
         MapsEvent::Installed { installed } => {
@@ -776,7 +832,8 @@ mod tests {
         assert_eq!(
             s.install_status,
             MapInstallStatus::Installing {
-                folder_name: "scmp_009.v0001".into()
+                folder_name: "scmp_009.v0001".into(),
+                progress: None,
             }
         );
         reduce(
@@ -788,6 +845,99 @@ mod tests {
         assert_eq!(s.install_status, MapInstallStatus::Idle);
         assert_eq!(s.installed.len(), 1);
         assert_eq!(s.installed_status, MapListStatus::Ready);
+    }
+
+    /// The bar follows the download of the map it names, and nothing else: a
+    /// step for another folder, or one that arrives after the install ended,
+    /// is dropped.
+    #[test]
+    fn install_progress_lands_only_on_the_install_it_measures() {
+        let mut s = MapsState::default();
+        reduce(
+            &mut s,
+            &MapsEvent::InstallProgressed {
+                folder_name: "scmp_009.v0001".into(),
+                progress: Some(10),
+            },
+        );
+        assert_eq!(s.install_status, MapInstallStatus::Idle, "nothing running");
+
+        reduce(
+            &mut s,
+            &MapsEvent::Installing {
+                folder_name: "scmp_009.v0001".into(),
+            },
+        );
+        reduce(
+            &mut s,
+            &MapsEvent::InstallProgressed {
+                folder_name: "scmp_009.v0001".into(),
+                progress: Some(40),
+            },
+        );
+        reduce(
+            &mut s,
+            &MapsEvent::InstallProgressed {
+                folder_name: "another.v0001".into(),
+                progress: Some(90),
+            },
+        );
+        assert_eq!(
+            s.install_status,
+            MapInstallStatus::Installing {
+                folder_name: "scmp_009.v0001".into(),
+                progress: Some(40),
+            }
+        );
+        // Unpacking has nothing to measure.
+        reduce(
+            &mut s,
+            &MapsEvent::InstallProgressed {
+                folder_name: "scmp_009.v0001".into(),
+                progress: None,
+            },
+        );
+        assert_eq!(
+            s.install_status,
+            MapInstallStatus::Installing {
+                folder_name: "scmp_009.v0001".into(),
+                progress: None,
+            }
+        );
+    }
+
+    /// Calling an install off is not a failure, and it ends only the install
+    /// it names: a late cancel for another folder leaves the running one.
+    #[test]
+    fn a_cancelled_install_goes_back_to_idle_without_a_failure() {
+        let mut s = MapsState {
+            installed: vec![installed_map("other.v0001")],
+            ..MapsState::default()
+        };
+        reduce(
+            &mut s,
+            &MapsEvent::Installing {
+                folder_name: "scmp_009.v0001".into(),
+            },
+        );
+        reduce(
+            &mut s,
+            &MapsEvent::InstallCancelled {
+                folder_name: "another.v0001".into(),
+            },
+        );
+        assert!(matches!(
+            s.install_status,
+            MapInstallStatus::Installing { .. }
+        ));
+        reduce(
+            &mut s,
+            &MapsEvent::InstallCancelled {
+                folder_name: "scmp_009.v0001".into(),
+            },
+        );
+        assert_eq!(s.install_status, MapInstallStatus::Idle);
+        assert_eq!(s.installed.len(), 1, "the installed list is untouched");
     }
 
     #[test]

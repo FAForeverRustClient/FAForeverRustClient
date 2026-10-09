@@ -78,18 +78,12 @@
   accent-color: var(--color-accent);
 }
 
-.login-error {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* The shared failure notice, spaced like the rows around it and read left to
+   right in a card that otherwise centres its text. */
+.status-notice.login-error {
   margin: 18px 0 0;
-  padding: 10px 12px;
   font-size: 12px;
   text-align: left;
-}
-
-.login-error svg {
-  flex: 0 0 auto;
 }
 
 .login-account-links {
@@ -131,7 +125,7 @@
 .login-dev-tag {
   display: inline-block;
   margin-bottom: 10px;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   font-size: 12px;
   font-weight: 650;
   letter-spacing: 0.08em;

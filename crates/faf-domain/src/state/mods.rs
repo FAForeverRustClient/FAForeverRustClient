@@ -158,6 +158,10 @@ pub enum ModInstallStatus {
     #[serde(rename_all = "camelCase")]
     Installing {
         uid: String,
+        /// The download's share in percent, while the server says how big
+        /// the archive is; `None` otherwise, while it is unpacked, and for an
+        /// uninstall. See [`crate::state::MapInstallStatus::Installing`].
+        progress: Option<u8>,
     },
     Failed {
         reason: String,
@@ -272,6 +276,13 @@ pub enum ModsEvent {
     Installing {
         uid: String,
     },
+    /// How far the install or update of `uid` has got. Lands only on the
+    /// install it names (mirrors `MapsEvent::InstallProgressed`).
+    #[serde(rename_all = "camelCase")]
+    InstallProgressed {
+        uid: String,
+        progress: Option<u8>,
+    },
     /// Install succeeded: carries the freshly-scanned installed list so
     /// the UI doesn't need a separate `LoadInstalled` round-trip (mirrors
     /// `MapsEvent::Installed`).
@@ -280,6 +291,11 @@ pub enum ModsEvent {
     },
     InstallFailed {
         reason: String,
+    },
+    /// The install of `uid` was called off: back to idle, not a failure.
+    #[serde(rename_all = "camelCase")]
+    InstallCancelled {
+        uid: String,
     },
     Uninstalled {
         installed: Vec<InstalledMod>,
@@ -353,6 +369,17 @@ pub enum ModsCommand {
         folder_name: String,
         download_url: String,
     },
+    /// Call off the install or update of `uid` while it is still running.
+    ///
+    /// The same promise as `MapsCommand::CancelInstall`: the download stops
+    /// and its bytes are dropped, and an install already unpacking is unpacked
+    /// into a private folder that is removed instead of renamed into place.
+    /// An update is the exception once its download is whole: from there it
+    /// removes the old version and puts the new one in, and stopping between
+    /// the two would leave neither, so a call-off that late is ignored and
+    /// the update ends as it would have.
+    #[serde(rename_all = "camelCase")]
+    CancelInstall { uid: String },
     /// Delete a mod folder (mirrors `MapsCommand::UninstallMap`).
     #[serde(rename_all = "camelCase")]
     UninstallMod { folder_name: String, uid: String },
@@ -410,7 +437,29 @@ pub fn reduce(state: &mut ModsState, event: &ModsEvent) {
             }
         }
         ModsEvent::Installing { uid } => {
-            state.install_status = ModInstallStatus::Installing { uid: uid.clone() }
+            state.install_status = ModInstallStatus::Installing {
+                uid: uid.clone(),
+                progress: None,
+            }
+        }
+        ModsEvent::InstallProgressed { uid, progress } => {
+            if let ModInstallStatus::Installing {
+                uid: installing,
+                progress: shown,
+            } = &mut state.install_status
+            {
+                if installing == uid {
+                    *shown = *progress;
+                }
+            }
+        }
+        ModsEvent::InstallCancelled { uid } => {
+            if matches!(
+                &state.install_status,
+                ModInstallStatus::Installing { uid: installing, .. } if installing == uid
+            ) {
+                state.install_status = ModInstallStatus::Idle;
+            }
         }
         ModsEvent::Installed { installed } => {
             state.install_status = ModInstallStatus::Idle;
@@ -556,7 +605,8 @@ mod tests {
         assert_eq!(
             s.install_status,
             ModInstallStatus::Installing {
-                uid: "abc-123".into()
+                uid: "abc-123".into(),
+                progress: None,
             }
         );
         reduce(
@@ -568,6 +618,52 @@ mod tests {
         assert_eq!(s.install_status, ModInstallStatus::Idle);
         assert_eq!(s.installed.len(), 1);
         assert_eq!(s.installed_status, ModListStatus::Ready);
+    }
+
+    /// Progress and a cancel land only on the install they name, and a
+    /// cancel is not a failure.
+    #[test]
+    fn install_progress_and_cancel_follow_the_install_they_name() {
+        let mut s = ModsState::default();
+        reduce(
+            &mut s,
+            &ModsEvent::Installing {
+                uid: "abc-123".into(),
+            },
+        );
+        for (uid, progress) in [("abc-123", Some(30)), ("other", Some(80))] {
+            reduce(
+                &mut s,
+                &ModsEvent::InstallProgressed {
+                    uid: uid.into(),
+                    progress,
+                },
+            );
+        }
+        assert_eq!(
+            s.install_status,
+            ModInstallStatus::Installing {
+                uid: "abc-123".into(),
+                progress: Some(30),
+            }
+        );
+        reduce(
+            &mut s,
+            &ModsEvent::InstallCancelled {
+                uid: "other".into(),
+            },
+        );
+        assert!(matches!(
+            s.install_status,
+            ModInstallStatus::Installing { .. }
+        ));
+        reduce(
+            &mut s,
+            &ModsEvent::InstallCancelled {
+                uid: "abc-123".into(),
+            },
+        );
+        assert_eq!(s.install_status, ModInstallStatus::Idle);
     }
 
     #[test]

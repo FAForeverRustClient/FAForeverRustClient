@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
+import { StatusNotice } from "../../design-system/StatusNotice";
+import type { ReportLogAttachment, ReportLogExcerpt } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { LoadStatusNotice } from "../../shared/components/LoadNotices";
@@ -12,8 +14,35 @@ import { useTranslation } from "../../i18n/useTranslation";
 
 const close = () => ipc.send({ kind: "Reporting", command: { type: "close" } });
 
-/** The moderation API's own limit on a report's description. */
+const attachLog = (gameId: number | null) =>
+  ipc.send({ kind: "Reporting", command: { type: "attachLog", payload: { gameId } } });
+
+const detachLog = () => ipc.send({ kind: "Reporting", command: { type: "detachLog" } });
+
+/**
+ * The reporter's own words, as the client has always capped them
+ * (`MAX_REPORT_TEXT_CHARS` in `faf-domain`'s `report_log.rs`). The API's
+ * column holds far more; that room is what an attached game log goes in.
+ */
 const MAX_DESCRIPTION = 4_000;
+
+/**
+ * How long the game ID has to rest before a ticked log is read again for it.
+ * Reading on every keystroke would read the file once per digit typed.
+ */
+const LOG_REREAD_DELAY_MS = 400;
+
+/** The game ID an attachment was prepared or asked for; undefined when off. */
+function attachmentGameId(attachment: ReportLogAttachment): number | null | undefined {
+  switch (attachment.type) {
+    case "off":
+      return undefined;
+    case "ready":
+      return attachment.payload.excerpt.requestedGameId;
+    default:
+      return attachment.payload.gameId;
+  }
+}
 
 export function ReportPlayerModal() {
   const { t } = useTranslation();
@@ -22,6 +51,8 @@ export function ReportPlayerModal() {
   const [gameId, setGameId] = useState("");
   const [incidentTime, setIncidentTime] = useState("");
   const [view, setView] = useState<"new" | "history">("new");
+  const [excerptShown, setExcerptShown] = useState(false);
+  const attachId = useId();
 
   useEffect(() => {
     if (!report.open) return;
@@ -29,9 +60,31 @@ export function ReportPlayerModal() {
     setGameId("");
     setIncidentTime("");
     setView("new");
+    setExcerptShown(false);
   }, [report.login, report.open, report.playerId]);
 
   const parsedGameId = gameId.trim() ? Number(gameId) : null;
+  // The game ID a log would be read for: null for none, undefined while what
+  // is typed is not an ID at all (the form says so below).
+  const logGameId =
+    parsedGameId === null
+      ? null
+      : Number.isInteger(parsedGameId) && parsedGameId > 0
+        ? parsedGameId
+        : undefined;
+  const attachment = report.logAttachment;
+  const attached = attachment.type !== "off";
+  const preparedFor = attachmentGameId(attachment);
+  const excerpt = attachment.type === "ready" ? attachment.payload.excerpt : null;
+
+  // A ticked log follows the game ID: the report should carry the log of the
+  // game it names, and the preview has to show the one that would be sent.
+  useEffect(() => {
+    if (!attached || logGameId === undefined || preparedFor === logGameId) return;
+    const timer = window.setTimeout(() => attachLog(logGameId), LOG_REREAD_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [attached, logGameId, preparedFor]);
+
   const validation = useMemo(() => {
     const length = description.trim().length;
     if (length > 0 && length < 10) return t("reporting.error.tooShort");
@@ -49,7 +102,11 @@ export function ReportPlayerModal() {
   const submitting = report.status.type === "submitting";
   const submitted = report.status.type === "submitted";
   const failure = report.status.type === "failed" ? report.status.payload.reason : "";
-  const canSubmit = description.trim().length >= 10 && !validation && !submitting && !submitted;
+  // A ticked log goes only once the user has the excerpt for this very game
+  // in front of them; the backend refuses anything else as well.
+  const logReady = !attached || (excerpt !== null && excerpt.requestedGameId === logGameId);
+  const canSubmit =
+    description.trim().length >= 10 && !validation && !submitting && !submitted && logReady;
 
   const submit = () => {
     if (!canSubmit || report.playerId === null) return;
@@ -63,6 +120,7 @@ export function ReportPlayerModal() {
           description: description.trim(),
           gameId: parsedGameId,
           incidentTime: incidentTime.trim(),
+          attachLog: attached,
         },
       },
     });
@@ -111,6 +169,7 @@ export function ReportPlayerModal() {
                   <div><dt>{t("reporting.moderator")}</dt><dd>{item.moderator || t("reporting.unassigned")}</dd></div>
                 </dl>
                 <p>{item.description}</p>
+                {item.attachedLog && <AttachedLog log={item.attachedLog} />}
                 {item.moderatorNotice && <aside><strong>{t("reporting.moderatorNotice")}</strong><span>{item.moderatorNotice}</span></aside>}
               </article>
             ))}
@@ -158,6 +217,49 @@ export function ReportPlayerModal() {
                 />
               </label>
             </div>
+            {/* Opt-in, and shown before it is sent: FAF reports take no
+                files, so the log goes in as text, and the user reads the
+                exact text first. */}
+            <section className="report-attach" aria-labelledby={`${attachId}-label`}>
+              <label className="report-attach-toggle">
+                <input
+                  type="checkbox"
+                  checked={attached}
+                  disabled={submitting}
+                  aria-describedby={`${attachId}-hint`}
+                  onChange={(event) => {
+                    setExcerptShown(false);
+                    if (event.target.checked) attachLog(logGameId ?? null);
+                    else detachLog();
+                  }}
+                />
+                <span id={`${attachId}-label`}>{t("reporting.attachLog")}</span>
+              </label>
+              <p className="report-attach-hint" id={`${attachId}-hint`}>{t("reporting.attachLogHint")}</p>
+              {attachment.type === "preparing" && (
+                <StatusNotice tone="busy">{t("reporting.attachLogPreparing")}</StatusNotice>
+              )}
+              {attachment.type === "unavailable" && (
+                <StatusNotice tone="info">{t("reporting.attachLogNone")}</StatusNotice>
+              )}
+              {attachment.type === "failed" && (
+                <StatusNotice
+                  tone="error"
+                  action={{ label: t("common.retry"), onClick: () => attachLog(logGameId ?? null) }}
+                  detail={attachment.payload.reason}
+                >
+                  {t("reporting.attachLogFailed")}: {plainError(attachment.payload.reason)}
+                </StatusNotice>
+              )}
+              {excerpt && (
+                <ExcerptPreview
+                  excerpt={excerpt}
+                  shown={excerptShown}
+                  onToggle={() => setExcerptShown((shown) => !shown)}
+                  previewId={`${attachId}-excerpt`}
+                />
+              )}
+            </section>
             {/* The server's refusal plainly, its own wording on hover; the
                 form's own checks are already sentences. */}
             {(validation || failure) && (
@@ -178,5 +280,92 @@ export function ReportPlayerModal() {
         </footer>
       </form>
     </Modal>
+  );
+}
+
+/**
+ * Which log the excerpt is from, what it holds, and the excerpt itself on
+ * request: the exact text the report will carry, not a summary of it.
+ */
+function ExcerptPreview({
+  excerpt,
+  shown,
+  onToggle,
+  previewId,
+}: {
+  excerpt: ReportLogExcerpt;
+  shown: boolean;
+  onToggle: () => void;
+  previewId: string;
+}) {
+  const { t } = useTranslation();
+  const ofReportedGame =
+    excerpt.logGameId !== null && excerpt.logGameId === excerpt.requestedGameId;
+  const source = ofReportedGame
+    ? t("reporting.attachLogSource.game", { id: excerpt.logGameId ?? "" })
+    : excerpt.logGameId !== null
+      ? t("reporting.attachLogSource.latest", { id: excerpt.logGameId })
+      : t("reporting.attachLogSource.latestUnknown");
+  // Said in words when the log is not of the game the report names: the
+  // most recent game is a guess the user should be able to refuse.
+  const otherGame = excerpt.requestedGameId !== null && !ofReportedGame;
+  return (
+    <div className="report-attach-preview">
+      <div className="report-attach-summary">
+        <div>
+          <strong>{source}</strong>
+          <span>
+            {t("reporting.attachLogStats", {
+              // Characters as the backend counts them, so the number matches
+              // the limit it keeps to.
+              chars: formatNumber(Array.from(excerpt.block).length),
+              kept: formatNumber(excerpt.keptLines),
+              total: formatNumber(excerpt.totalLines),
+              redacted: formatNumber(excerpt.redactions),
+            })}
+          </span>
+        </div>
+        <Button aria-expanded={shown} aria-controls={previewId} onClick={onToggle}>
+          {t(shown ? "reporting.attachLogHide" : "reporting.attachLogShow")}
+        </Button>
+      </div>
+      {otherGame && (
+        <p className="report-attach-warning">
+          {t("reporting.attachLogOtherGame", { id: excerpt.requestedGameId ?? "" })}
+        </p>
+      )}
+      {shown && (
+        <pre
+          id={previewId}
+          className="report-attach-excerpt"
+          tabIndex={0}
+          aria-label={t("reporting.attachLogPreview")}
+        >
+          {excerpt.block}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A game log excerpt this client attached to an earlier report, folded away
+ * so a card in the history stays a card.
+ */
+function AttachedLog({ log }: { log: string }) {
+  const { t } = useTranslation();
+  const [shown, setShown] = useState(false);
+  const id = useId();
+  return (
+    <div className="report-history-log">
+      <Button aria-expanded={shown} aria-controls={id} onClick={() => setShown(!shown)}>
+        {t(shown ? "reporting.historyLogHide" : "reporting.historyLogShow")}
+      </Button>
+      {shown && (
+        <pre id={id} className="report-attach-excerpt" tabIndex={0}>
+          {log}
+        </pre>
+      )}
+    </div>
   );
 }

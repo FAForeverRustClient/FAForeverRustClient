@@ -132,19 +132,19 @@
 }
 
 .mod-vault-type.sim {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   background: color-mix(in srgb, var(--color-warn) 12%, transparent);
   border-color: color-mix(in srgb, var(--color-warn) 25%, transparent);
 }
 
 .mod-vault-type.ranked {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   background: color-mix(in srgb, var(--color-ok) 12%, transparent);
   border-color: color-mix(in srgb, var(--color-ok) 25%, transparent);
 }
 
 .mod-vault-type.unranked {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   background: color-mix(in srgb, var(--color-warn) 12%, transparent);
   border-color: color-mix(in srgb, var(--color-warn) 25%, transparent);
 }
@@ -223,7 +223,7 @@
 
 .mod-vault-fact.is-rating svg {
   flex: 0 0 auto;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .mod-vault-fact.is-date {
@@ -265,12 +265,12 @@
 }
 
 .mod-vault-state.is-ok {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   background: color-mix(in srgb, var(--color-ok) 12%, transparent);
 }
 
 .mod-vault-state.is-warn {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   background: color-mix(in srgb, var(--color-warn) 12%, transparent);
 }
 
@@ -321,7 +321,7 @@
 
 .mod-vault-uninstall,
 .mod-vault-uninstall-confirm {
-  color: var(--color-error);
+  color: var(--color-error-text);
   border-color: color-mix(in srgb, var(--color-error) 45%, var(--color-border));
   background: color-mix(in srgb, var(--color-error) 6%, transparent);
 }
@@ -453,7 +453,7 @@
    filter: an active chip is the accent on its own solid fill, and green text
    on that fill would be the one unreadable combination on the row. */
 .installed-mod-search-panel .installed-mod-preset-enabled:not(.active) {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .installed-mod-card .mod-vault-thumb {
@@ -653,7 +653,7 @@
    the mod. */
 .mod-vault-type.in-use {
   background: color-mix(in srgb, var(--color-ok) 16%, transparent);
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .vault-badge.mod-badge-in-use {

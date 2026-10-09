@@ -268,6 +268,17 @@ const DEFAULT_COLUMN_PX = [48, 260, 110, 90, 70, 82, 126, 190];
  */
 const FLEXIBLE_COLUMN = 1;
 
+/**
+ * The narrowest each column is drawn, in the same order. Without them every
+ * column but the game's could be dragged down to a pixel, and the last one,
+ * Watch with its Download and Mark watched beside it, then clipped all three
+ * with no way to scroll to them. That column keeps room for a Watch in its
+ * longest translation (about 66 pixels at 11 px type) and two 28 pixel icon
+ * buttons with their gaps. The picture keeps its 38 pixel thumbnail, the
+ * figures a few characters, the game a word or two.
+ */
+const COLUMN_FLOOR_PX = [44, 120, 56, 64, 40, 48, 56, 140];
+
 export function ReplayList({
   groups,
   footer,
@@ -283,12 +294,28 @@ export function ReplayList({
     orderField: "replayListOrder",
     defaults: DEFAULT_COLUMN_PX,
     flexible: FLEXIBLE_COLUMN,
+    floors: COLUMN_FLOOR_PX,
     headerRef,
     layout: "grid",
   });
   const { order, moving, widths: columns } = list;
-  const template = columnTemplate(order.map((column) => columns.drawn[column]), order.indexOf(FLEXIBLE_COLUMN));
+  // The game column keeps its own floor too: `minmax(0, 1fr)` let it fall to
+  // nothing once the other floors had taken the row, at 560 pixels.
+  const template = columnTemplate(
+    order.map((column) => columns.drawn[column]),
+    order.indexOf(FLEXIBLE_COLUMN),
+    COLUMN_FLOOR_PX[FLEXIBLE_COLUMN],
+  );
   const style: CSSProperties & Record<string, string | number> = { "--replay-list-columns": template };
+  // Every column at its floor and the row still too narrow: the rows are as
+  // wide as the floors, gaps and padding need, and the list scrolls sideways
+  // to them, as the tables do. Clipped instead, Watch, Download and Mark
+  // watched fell outside the list with no way to reach them. The gaps and
+  // padding are the row's own (`replays.css`).
+  if (columns.overflow) {
+    style["--replay-list-min-width"] =
+      `calc(${columns.total}px + ${COLUMNS.length - 1} * var(--space-4) + 2 * var(--space-3))`;
+  }
   order.forEach((column, position) => {
     style[`--replay-list-order-${column}`] = position;
   });
@@ -302,7 +329,7 @@ export function ReplayList({
 
   return (
     <section
-      className="replay-list-wrap surface-panel"
+      className={`replay-list-wrap surface-panel${columns.overflow ? " has-column-overflow" : ""}`}
       role="table"
       aria-label={t("replays.list.aria")}
       style={style}

@@ -1,12 +1,31 @@
 //! Tournament chat: the rooms of the open event, reading, pinning and polling
 //! them, and posting. Moderation (muting, deleting a post) is a write and runs
 //! in `writes`.
+//!
+//! Every read of a room, and of the room list, takes a ticket from
+//! `chat_answers` immediately before it asks, and its answer lands only if no
+//! answer from a later ticket about the same room has landed first. A poll is
+//! the same read as any other, so a poll sent before a post and answered after
+//! the post's own re-read is dropped instead of hiding the post until the next
+//! poll. Not a generation: polls overlap by design, and under one a room whose
+//! server answers slower than the poll interval would never update at all.
 
 use faf_domain::state::{TourneyAction, TourneyEvent};
 
 use crate::runtime::{EventSink, ServiceCtx};
 
 use super::writes::failed;
+
+/// What one chat answer is about, for ordering them.
+///
+/// Keyed by the room alone, because that is all a [`TourneyEvent::ChatLoaded`]
+/// names and so all the reducer files it under. The room list is one more
+/// thing to order, apart from every room.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(super) enum ChatAnswer {
+    Room(String),
+    RoomList,
+}
 
 /// Open a room and read it: `TourneyRead::OpenRoom`.
 pub(super) async fn open_room(
@@ -34,17 +53,7 @@ pub(super) async fn pin_room(
     // Read straight away and silently: the open room's loading state
     // is not this room's to change.
     if let Some(room_id) = room_id {
-        match ctx
-            .ports
-            .tourney_chat
-            .chat_read(&tournament_id, &room_id)
-            .await
-        {
-            Ok(posts) => out.emit(TourneyEvent::ChatLoaded { room_id, posts }),
-            Err(error) => {
-                tracing::debug!(%error, "a pinned tournament chat could not be read");
-            }
-        }
+        poll_room(&tournament_id, room_id, ctx, out).await;
     }
 }
 
@@ -63,20 +72,40 @@ pub(super) async fn refresh_chat(
     // than shown: the room on screen is still the last good one, and a
     // banner every few seconds on a flaky connection would be worse
     // than the gap it reports.
+    if poll_room(&tournament_id, room_id, ctx, out).await {
+        load_rooms(&tournament_id, ctx, out).await;
+    }
+}
+
+/// Read a room without touching the open room's loading state, for a poll or
+/// the pinned room. False when the read failed, which is logged and nothing
+/// else.
+async fn poll_room(
+    tournament_id: &str,
+    room_id: String,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+) -> bool {
+    let ticket = ctx.tourney.chat_answers.ticket();
     match ctx
         .ports
         .tourney_chat
-        .chat_read(&tournament_id, &room_id)
+        .chat_read(tournament_id, &room_id)
         .await
     {
-        Ok(posts) => out.emit(TourneyEvent::ChatLoaded { room_id, posts }),
-        Err(error) => {
-            tracing::debug!(%error, "a tournament chat poll came back empty-handed");
-            return;
+        Ok(posts) => {
+            ctx.tourney
+                .chat_answers
+                .land(ChatAnswer::Room(room_id.clone()), ticket, || {
+                    out.emit(TourneyEvent::ChatLoaded { room_id, posts });
+                    true
+                });
+            true
         }
-    }
-    if let Ok(rooms) = ctx.ports.tourney_chat.chat_rooms(&tournament_id).await {
-        out.emit(TourneyEvent::ChatRoomsLoaded { rooms });
+        Err(error) => {
+            tracing::debug!(%error, room = %room_id, "a quiet tournament chat read came back empty-handed");
+            false
+        }
     }
 }
 
@@ -113,6 +142,9 @@ pub(super) async fn post_chat(
                 action,
                 select: None,
             });
+            // Both re-reads take their tickets now, after the post was
+            // accepted, so they outrank every read sent before it: a poll
+            // still out from before the post cannot land over them.
             read_room(&tournament_id, &room_id, ctx, out).await;
             load_rooms(&tournament_id, ctx, out).await;
         }
@@ -125,37 +157,62 @@ pub(super) async fn post_chat(
 /// Silent on failure for the same reason as the profiles: chat is beside the
 /// bracket, not the point of it.
 pub(super) async fn load_rooms(tournament_id: &str, ctx: &ServiceCtx, out: &EventSink) {
+    let ticket = ctx.tourney.chat_answers.ticket();
     match ctx.ports.tourney_chat.chat_rooms(tournament_id).await {
-        Ok(rooms) => out.emit(TourneyEvent::ChatRoomsLoaded { rooms }),
+        Ok(rooms) => {
+            ctx.tourney
+                .chat_answers
+                .land(ChatAnswer::RoomList, ticket, || {
+                    out.emit(TourneyEvent::ChatRoomsLoaded { rooms });
+                    true
+                });
+        }
         Err(error) => tracing::warn!(%error, "could not load the tournament chat rooms"),
     }
 }
 
+/// Read a room and say so: the open room's own read, and the re-read after a
+/// write in a room.
 pub(super) async fn read_room(
     tournament_id: &str,
     room_id: &str,
     ctx: &ServiceCtx,
     out: &EventSink,
 ) {
-    let generation = ctx.tourney.chat_generation.begin();
+    // Loading first, then the generation and the ticket. An answer from a
+    // read that asks after this one lands after this `ChatLoading` and
+    // settles the pane; taken the other way round, a newer poll could land
+    // in between, and this read's answer, dropped as the older one, would
+    // leave the pane loading until the next poll.
     out.emit(TourneyEvent::ChatLoading);
+    let generation = ctx.tourney.chat_generation.begin();
+    let ticket = ctx.tourney.chat_answers.ticket();
 
     let read = ctx
         .ports
         .tourney_chat
         .chat_read(tournament_id, room_id)
         .await;
-    if !ctx.tourney.chat_generation.is_current(generation) {
-        return;
-    }
-    match read {
-        Ok(posts) => out.emit(TourneyEvent::ChatLoaded {
-            room_id: room_id.to_string(),
-            posts,
-        }),
-        Err(error) => out.emit(TourneyEvent::ChatFailed {
-            reason: error.to_string(),
-            kind: error.kind(),
-        }),
-    }
+    // A refusal is an answer too, and it lands under the same two checks: a
+    // newer read of this room that already landed outranks it, and so does
+    // a newer opening of any room, whose pane the refusal would otherwise
+    // fail.
+    ctx.tourney
+        .chat_answers
+        .land(ChatAnswer::Room(room_id.to_string()), ticket, || {
+            if !ctx.tourney.chat_generation.is_current(generation) {
+                return false;
+            }
+            match read {
+                Ok(posts) => out.emit(TourneyEvent::ChatLoaded {
+                    room_id: room_id.to_string(),
+                    posts,
+                }),
+                Err(error) => out.emit(TourneyEvent::ChatFailed {
+                    reason: error.to_string(),
+                    kind: error.kind(),
+                }),
+            }
+            true
+        });
 }

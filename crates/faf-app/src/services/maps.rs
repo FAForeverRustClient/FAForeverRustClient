@@ -6,15 +6,19 @@
 
 use faf_domain::state::{MapListStatus, MapsCommand, MapsEvent};
 
-use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+use crate::runtime::{Cancellable, EventSink, LatestRequest, ServiceCtx};
 
-/// The map vault's request generation. Owned by this service.
+/// The map vault's request generation and the install in flight. Owned by
+/// this service.
 #[derive(Default)]
 pub struct MapsContext {
     /// Only the newest vault search may land. A slow earlier query answering
     /// after a fast later one would otherwise replace its page, its totals or
     /// its error with results for filters no longer on screen.
     search_generation: LatestRequest,
+    /// The install running, by folder, so `CancelInstall` can reach it. One
+    /// at most: installs are serial on `Key::MapFiles`.
+    installs: Cancellable<String>,
 }
 
 pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
@@ -176,13 +180,63 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
             download_url,
         } => {
             crate::runtime::expect_admitted(crate::runtime::Key::MapFiles);
+            // Installs run one at a time, so a second press on Install waits
+            // for the first and arrives once the map is already on disk. It
+            // used to download the whole archive again and then fail with
+            // "already installed", an error straight after a success.
+            let installed = out.with_state(|state| {
+                state
+                    .maps
+                    .installed
+                    .iter()
+                    .any(|map| map.folder_name.eq_ignore_ascii_case(&folder_name))
+            });
+            if installed {
+                return;
+            }
+            // Reachable before it is on screen, so the cancel the status bar
+            // offers for it can never arrive before there is anything to stop.
+            let ticket = ctx.maps.installs.begin(folder_name.clone());
             out.emit(MapsEvent::Installing {
                 folder_name: folder_name.clone(),
             });
-            match ctx.ports.maps.install_map(folder_name, download_url).await {
-                Ok(installed) => out.emit(MapsEvent::Installed { installed }),
+            let progress = {
+                let (sink, folder_name) = (out.clone(), folder_name.clone());
+                crate::services::vault_install_progress(move |progress| {
+                    sink.emit(MapsEvent::InstallProgressed {
+                        folder_name: folder_name.clone(),
+                        progress,
+                    })
+                })
+            };
+            // Not raced against the token: the port takes it, because only
+            // the port knows whether the map is already in place when the
+            // call-off comes (see `MapsPort::install_map_reporting`). Its
+            // answer is the truth either way, a call-off that came too late
+            // included.
+            let result = ctx
+                .ports
+                .maps
+                .install_map_reporting(
+                    folder_name.clone(),
+                    download_url,
+                    progress,
+                    ticket.called_off.clone(),
+                )
+                .await;
+            ctx.maps.installs.end(&ticket);
+            match result {
+                // Not a failure: the user stopped it, and nothing is on disk.
+                Ok(None) => out.emit(MapsEvent::InstallCancelled { folder_name }),
+                Ok(Some(installed)) => out.emit(MapsEvent::Installed { installed }),
                 Err(reason) => out.emit(MapsEvent::InstallFailed { reason }),
             }
+        }
+        MapsCommand::CancelInstall { folder_name } => {
+            // A map folder is the same map in any letter case.
+            ctx.maps
+                .installs
+                .cancel(|running| running.eq_ignore_ascii_case(&folder_name));
         }
         MapsCommand::UninstallMap { folder_name } => {
             crate::runtime::expect_admitted(crate::runtime::Key::MapFiles);

@@ -10,12 +10,16 @@ import { Button } from "../../design-system/Button";
 import { ipc } from "../../ipc/client";
 import { formatDecimal, formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import { MapThumbnail } from "../../shared/components/MapThumbnail";
 import { formatDateTime } from "../../shared/format/dates";
+import { GENERATED_MAP_PLACEHOLDER_URL } from "../../shared/mapPresentation";
+import { useAppStore } from "../../store/store";
 import { closePlayerCard } from "../../shared/playerCardActions";
 import { leaderboardLabel } from "../../shared/playerRatings";
 import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
 import { requestReplaySearch } from "../../shared/replaySearchIntent";
 import { usePlayerHistory } from "./usePlayerHistory";
+import { HistoryFailure } from "./HistoryFailure";
 import { HistoryScopeNote } from "./HistoryScopeNote";
 
 /** Rows added per press of "Show more". A long history is thousands. */
@@ -63,14 +67,17 @@ function winRate(wins: number, losses: number): number | null {
 
 export function PlayerResults({ playerId }: { playerId: number }) {
   const { t } = useTranslation();
-  const { stats, status, error, full, loadFull } = usePlayerHistory(playerId);
+  const { stats, status, error, full, loadFull, retry } = usePlayerHistory(playerId);
+  const vault = useAppStore((state) => state.state.maps.vault);
   const [shown, setShown] = useState(PAGE);
 
   if (status === "loading") {
     return <div className="player-card-empty muted">{t("playerCard.maps.loading")}</div>;
   }
   if (status === "failed") {
-    return <div className="player-card-empty muted">{error || t("playerCard.maps.failed")}</div>;
+    // The way out beside the reason, as the card's own failed profile has it:
+    // that reopening the tab also retries is not something to have to know.
+    return <HistoryFailure error={error} onRetry={retry} />;
   }
   const games = stats?.games ?? [];
   if (!stats || games.length === 0) {
@@ -109,12 +116,16 @@ export function PlayerResults({ playerId }: { playerId: number }) {
         </p>
       </div>
 
+      {/* The map leads, picture first, as on the Maps tab: it is what tells
+          one game from another, and the table gives its first column the
+          room the others leave. With the date first, the date was the column
+          that took it, and stood a long way from the rest of its row. */}
       <table className="surface-panel player-maps-table player-results-table">
         <thead>
           <tr>
+            <th>{t("playerCard.maps.map")}</th>
             <th>{t("playerCard.results.date")}</th>
             <th>{t("playerCard.results.queue")}</th>
-            <th>{t("playerCard.maps.map")}</th>
             <th>{t("playerCard.results.result")}</th>
             <th>{t("playerCard.results.rating")}</th>
             <th>{t("playerCard.results.replay")}</th>
@@ -126,9 +137,35 @@ export function PlayerResults({ playerId }: { playerId: number }) {
             const outcomeKey = OUTCOME_KEYS[game.outcome as keyof typeof OUTCOME_KEYS];
             return (
               <tr key={game.gameId}>
+                <td className="player-results-map" title={map}>
+                  {/* The small map picture chat shows beside a game, from the
+                      map version's folder. A generated map has no folder (the
+                      API names no version for one), so it gets the picture
+                      every generated map shows before it is rendered. */}
+                  <span className="player-results-map-cell">
+                    {game.generated ? (
+                      <img
+                        className="player-results-map-thumb"
+                        src={GENERATED_MAP_PLACEHOLDER_URL}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <MapThumbnail
+                        mapName={game.mapFolder}
+                        vault={vault}
+                        className="player-results-map-thumb"
+                        placeholderClassName="player-results-map-thumb player-results-map-thumb-empty"
+                        iconSize={12}
+                        preferCanonicalPreview
+                      />
+                    )}
+                    <span className="player-results-map-name">{map}</span>
+                  </span>
+                </td>
                 <td>{game.playedAt ? formatDateTime(game.playedAt) : "–"}</td>
                 <td>{leaderboardLabel(game.queue)}</td>
-                <td className="player-results-map" title={map}>{map}</td>
                 <td className={`player-results-outcome is-${game.outcome}`}>
                   {outcomeKey ? t(outcomeKey) : game.outcome}
                 </td>

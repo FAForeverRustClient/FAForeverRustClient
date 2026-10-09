@@ -57,6 +57,22 @@ pub trait ReplayVaultPort: Send + Sync {
     /// launching the game, returning its lightweight library metadata.
     async fn download_vault(&self, uid: i32) -> Result<LocalReplay, String>;
 
+    /// [`Self::download_vault`], reporting the bytes received so far and the
+    /// size the server declared, if it did, once per chunk.
+    ///
+    /// Dropping the returned future calls the download off, and the library
+    /// must not gain a file for it: a replay already being written is written
+    /// to a temporary name that is deleted instead of published. Defaults to
+    /// the plain download, reporting nothing.
+    async fn download_vault_reporting(
+        &self,
+        uid: i32,
+        progress: Arc<dyn Fn(u64, Option<u64>) + Send + Sync>,
+    ) -> Result<LocalReplay, String> {
+        let _ = progress;
+        self.download_vault(uid).await
+    }
+
     /// The map one game was played on, read out of the replay file itself.
     ///
     /// For the games the vault listing has no map for, which is every co-op

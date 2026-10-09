@@ -14,11 +14,14 @@ import { useEffect, useMemo, useState } from "react";
 import type { ClanAction, ClanCommand, ClanDraft, ClanState } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { StatusNotice } from "../../design-system/StatusNotice";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n";
+import { FailureNotice } from "../../shared/components/LoadNotices";
 import { PlayerName } from "../../shared/components/nameColors";
+import { plainError } from "../../shared/plainError";
 
 /** Mirrors `faf_domain::state::clan::MAX_CLAN_TAG`, which is the API's own cap. */
 const MAX_TAG = 3;
@@ -61,17 +64,17 @@ function ActionBanner({ action }: { action: ClanState["action"] }) {
       </p>
     );
   }
-  if (action.type === "failed") {
-    // The server's own sentence. `faf-java-api` answers a refused clan write
-    // with something written for a player ("the clan tag BRO is already
-    // taken"), and any category this client mapped it to would say less.
-    return (
-      <p className="clan-banner is-error" role="alert">
-        {action.payload.reason}
-      </p>
-    );
-  }
-  return null;
+  // The server's own sentence, through `plainError`. `faf-java-api` answers a
+  // refused clan write with something written for a player ("the clan tag BRO
+  // is already taken"), which passes through it as written; what it rewords is
+  // the transport's English ("error sending request for url ..."), which the
+  // banner used to show as it was. The original stays on hover.
+  return (
+    <FailureNotice
+      status={action}
+      message={action.type === "failed" ? plainError(action.payload.reason) : null}
+    />
+  );
 }
 
 function ClanForm({
@@ -299,12 +302,21 @@ export function ClanManagement() {
   // Nothing is drawn until the answer is in. Rendering "found a clan" under
   // the roster of the clan you are already in, for the length of a request,
   // is worse than a line of text.
-  if (clan.status.type !== "ready") {
+  if (clan.status.type === "failed") {
+    // With the way to ask again: the tab only loads as it opens, so without
+    // Retry the way back was closing the card and opening it again.
     return (
-      <p className={clan.status.type === "failed" ? "clan-banner is-error" : "muted clan-banner"}>
-        {clan.status.type === "failed" ? clan.status.payload.reason : t("clan.loading")}
-      </p>
+      <StatusNotice
+        tone="error"
+        action={{ label: t("common.retry"), onClick: load }}
+        detail={clan.status.payload.reason}
+      >
+        {plainError(clan.status.payload.reason)}
+      </StatusNotice>
     );
+  }
+  if (clan.status.type !== "ready") {
+    return <p className="muted clan-banner">{t("clan.loading")}</p>;
   }
 
   return (

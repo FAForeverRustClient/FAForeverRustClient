@@ -30,7 +30,10 @@ use tokio::sync::Mutex;
 use crate::infra::session::TokenStore;
 use crate::infra::vault_install::MAX_DOWNLOAD_BYTES;
 use crate::infra::{cache_dir, game_updater};
-use crate::ports::{MapGeneratorPort, PreparationSink, ProcessPort, ReplayPlaybackPort};
+use crate::ports::{
+    MapGeneratorPort, PreparationPhase, PreparationSink, PreparationStep, ProcessPort,
+    ReplayPlaybackPort,
+};
 
 use super::codec::decode_replay_body_to;
 use super::live::LiveStreamer;
@@ -94,7 +97,38 @@ impl ReplayPlaybackPort for ReplayPlayback {
     }
 
     async fn watch_vault(&self, uid: i32) -> Result<Option<String>, String> {
-        let path = self.vault.download_vault_to(uid, cache_dir()?).await?;
+        // The first step of watching a vault replay, and on a slow line the
+        // longest, so it is narrated like the steps after it, in whole
+        // percents when the server says how big the file is. It used to be
+        // the one step reported as a separate download status, which a watch
+        // could not be told apart from a download into the library by.
+        let detail = format!("Downloading replay {uid}");
+        self.preparation.report(PreparationStep::indeterminate(
+            PreparationPhase::Downloading,
+            detail.clone(),
+        ));
+        let shown = std::sync::Mutex::new(None::<u8>);
+        let on_bytes = |received: u64, total: Option<u64>| {
+            let Some(total) = total.filter(|total| *total > 0) else {
+                return;
+            };
+            let percent = (received.min(total) * 100 / total) as u8;
+            let mut last = shown
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if *last != Some(percent) {
+                *last = Some(percent);
+                self.preparation.report(PreparationStep {
+                    phase: PreparationPhase::Downloading,
+                    detail: detail.clone(),
+                    progress: Some(percent),
+                });
+            }
+        };
+        let path = self
+            .vault
+            .download_vault_to(uid, cache_dir()?, &on_bytes)
+            .await?;
         self.play_file(path).await
     }
 

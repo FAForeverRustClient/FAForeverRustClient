@@ -25,7 +25,7 @@ mod writes;
 
 use faf_domain::state::{TourneyCommand, TourneyEvent, TourneyRead};
 
-use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, NewestAnswer, ServiceCtx};
 
 /// The tournament service's request generations, one per kind of read.
 /// Owned by this service.
@@ -35,8 +35,15 @@ pub struct TourneyContext {
     /// must not leave the first one's bracket on screen because it answered
     /// last.
     detail_generation: LatestRequest,
-    /// The same, for reading a chat room.
+    /// The same, for opening a chat room: its loading state and its refusal
+    /// are the open room's pane, and a refusal names no room the reducer
+    /// could screen it by.
     chat_generation: LatestRequest,
+    /// The order of every chat answer, per room and for the room list: the
+    /// open room's read, its poll, the pinned room's read, and the re-read
+    /// after a post or a deletion. None of them replaces a newer answer about
+    /// the same room. See [`chat::ChatAnswer`].
+    chat_answers: NewestAnswer<chat::ChatAnswer>,
     /// The same, for the organiser's account search: it fires per keystroke, so
     /// answers overtaking each other is the normal case rather than the rare one.
     account_search_generation: LatestRequest,

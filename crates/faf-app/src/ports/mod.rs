@@ -9,12 +9,14 @@ pub mod changelog;
 pub mod chat;
 pub mod clan;
 pub mod client_update;
+pub mod connectivity;
 pub mod coop;
 pub mod discord;
 pub mod error;
 pub mod events;
 pub mod galactic_war;
 pub mod game_cache;
+pub mod game_logs;
 pub mod guides;
 pub mod ice;
 pub mod leaderboard;
@@ -42,18 +44,24 @@ pub use changelog::ChangelogPort;
 pub use chat::{ChatPort, ChatUpdate};
 pub use clan::ClanPort;
 pub use client_update::{ClientUpdatePort, DownloadProgress};
+pub use connectivity::{
+    AdapterInventory, AdapterLogTail, ConnectivityPort, JavaAdapterJar, JavaRuntimeInfo,
+    JavaRuntimeProblem, KnownRelayAddresses, ProbeAnswer, RelayAddresses, RelayListError,
+    RelayServer,
+};
 pub use coop::CoopPort;
 pub use discord::{DiscordPort, DiscordRequest};
 pub use error::RequestError;
 pub use events::EventsPort;
 pub use galactic_war::{GalacticWarPort, InstallProgress};
 pub use game_cache::GameCachePort;
+pub use game_logs::GameLogsPort;
 pub use guides::{DeviceCode, GuidesPort};
 pub use ice::{ConnectivitySession, IceDebugWindows, IceParams, IcePort, RelayMsg};
 pub use leaderboard::LeaderboardPort;
 pub use lobby::{LobbyPort, LobbyUpdate, ServerNoticeStyle};
 pub use map_generator::{GeneratorUpdate, MapGeneratorPort};
-pub use maps::{MapSearchPage, MapsPort};
+pub use maps::{MapSearchPage, MapsPort, VaultInstallProgress, VaultInstallStep};
 pub use mods::{ModPrepFailure, ModSearchPage, ModsPort};
 pub use notification_sounds::NotificationSoundsPort;
 pub use paths::PathsPort;
@@ -99,6 +107,9 @@ pub struct Ports {
     /// relay server is an internal detail of the Go adapter backend, so it is
     /// no longer a top-level port.
     pub ice: Arc<dyn IcePort>,
+    /// What the connectivity check asks of the machine and the network: the
+    /// adapters on disk, the relay list, and whether each relay answers.
+    pub connectivity: Arc<dyn ConnectivityPort>,
     pub process: Arc<dyn ProcessPort>,
     /// Brings the live install up to date before a launch. Paired with
     /// `process`: it patches the very install `process` is about to run.
@@ -171,6 +182,9 @@ pub struct Ports {
     /// The sounds a player added, for removing one. See
     /// [`notification_sounds::NotificationSoundsPort`].
     pub notification_sounds: Arc<dyn NotificationSoundsPort>,
+    /// The game logs the launcher keeps, read for a report's log excerpt. A
+    /// port so a test attaching a log cannot read a real one.
+    pub game_logs: Arc<dyn GameLogsPort>,
     /// True when `auth` is the offline stub rather than real FAF OAuth.
     ///
     /// A property of the bundle rather than of any one port: it is how the

@@ -1080,6 +1080,9 @@ pub struct PlayedGame {
     /// The game's id, which is also its replay's.
     pub game_id: i32,
     pub map: String,
+    /// The map version's folder (`scmp_009.v0003`), empty when the API named
+    /// none. What the results list draws the map's picture from.
+    pub map_folder: String,
     /// What the game was, after
     /// [`crate::protocol::game_outcome::outcome_for`] has applied every rule.
     pub outcome: Outcome,
@@ -1123,6 +1126,10 @@ pub struct PlayerGameResult {
     pub queue: String,
     /// Empty for a generated map, like [`PlayerMapStat::map`].
     pub map: String,
+    /// The map version's folder, for the map's picture: the display name
+    /// above is for reading, and the previews are filed by folder. Empty for
+    /// a generated map and for a game the API named no map version for.
+    pub map_folder: String,
     pub generated: bool,
     /// `win`, `loss` or `draw`. Games with no known outcome are not listed.
     pub outcome: String,
@@ -1336,6 +1343,11 @@ pub fn aggregate_map_stats(games: &[PlayedGame], truncated: bool) -> PlayerMapSt
                 } else {
                     game.map.clone()
                 },
+                map_folder: if generated {
+                    String::new()
+                } else {
+                    game.map_folder.clone()
+                },
                 generated,
                 outcome: outcome.to_string(),
                 rating_change_hundredths: game
@@ -1360,6 +1372,7 @@ mod map_stats_tests {
     fn game(map: &str, outcome: Outcome, played_at: &str) -> PlayedGame {
         PlayedGame {
             map: map.into(),
+            map_folder: String::new(),
             outcome,
             rating_moved: true,
             ladder: false,
@@ -1402,6 +1415,35 @@ mod map_stats_tests {
             "a nameless map is a generated one"
         );
         assert_eq!(stats.games[1].rating_change_hundredths, None);
+    }
+
+    #[test]
+    fn a_result_carries_its_map_folder_for_the_picture_and_a_generated_one_none() {
+        let games = [
+            PlayedGame {
+                game_id: 2,
+                map_folder: "scmp_009.v0003".into(),
+                ..game("Seton's Clutch", Outcome::Win, "2026-09-14")
+            },
+            PlayedGame {
+                game_id: 1,
+                map_folder: "neroxis_map_generator_1.8.0_abc".into(),
+                ..game(
+                    "neroxis_map_generator_1.8.0_abc",
+                    Outcome::Loss,
+                    "2026-09-07",
+                )
+            },
+        ];
+        let stats = aggregate_map_stats(&games, false);
+
+        assert_eq!(stats.games[0].map, "Seton's Clutch");
+        assert_eq!(stats.games[0].map_folder, "scmp_009.v0003");
+        assert!(stats.games[1].generated);
+        assert_eq!(
+            stats.games[1].map_folder, "",
+            "a generated map is drawn as the generated-map row, not by a folder"
+        );
     }
 
     #[test]
@@ -1516,6 +1558,7 @@ mod map_stats_tests {
     fn a_ladder_game_counts_even_when_no_rating_moved() {
         let ladder = PlayedGame {
             map: "Theta Passage".into(),
+            map_folder: String::new(),
             outcome: Outcome::Win,
             rating_moved: false,
             ladder: true,
@@ -1626,6 +1669,7 @@ mod generated_map_tests {
     fn generated(seed: &str) -> PlayedGame {
         PlayedGame {
             map: format!("neroxis_map_generator_1.8.0_{seed}"),
+            map_folder: String::new(),
             outcome: Outcome::Win,
             rating_moved: true,
             ladder: false,
@@ -1648,6 +1692,7 @@ mod generated_map_tests {
                 generated("cccc"),
                 PlayedGame {
                     map: "Setons Clutch".into(),
+                    map_folder: String::new(),
                     outcome: Outcome::Loss,
                     rating_moved: true,
                     ladder: false,

@@ -447,7 +447,7 @@
   transform: translateY(-50%);
   border-top: 1px solid color-mix(in srgb, var(--color-error) 60%, transparent);
   border-bottom: 1px solid color-mix(in srgb, var(--color-error) 60%, transparent);
-  color: var(--color-error);
+  color: var(--color-error-text);
   /* Frosted over the theme's own background rather than tinted red: the word has
      to hold up over a pale desert as well as over dark water, and red on a red
      wash disappears against bright terrain. Same recipe as the vault badges. */
@@ -556,7 +556,7 @@
 .matchmaker-profile-warning {
   max-width: 300px;
   overflow: hidden;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1367,6 +1367,14 @@
     /* One column: there is no boundary left to move, so the width the divider
        wrote does not apply and the handle goes with it. */
     grid-template-columns: minmax(0, 1fr);
+    /* Every row as tall as what is in it, and this box scrolls the rest. The
+       rows used to be `auto`, which sizes a row up from its item's minimum
+       height, and `.matchmaker-main` sets that to zero so the wide layout can
+       scroll it on its own. Stacked, the main column was therefore handed
+       whatever height the chat's 280px left over, and with its overflow
+       released below it drew the queues and the recent results on top of the
+       chat that followed. */
+    grid-auto-rows: max-content;
     overflow: auto;
   }
 
@@ -1643,7 +1651,7 @@
 
 /* Enough players waiting for a game: green, as on the queue cards. */
 .matchmaker-explainer-queues td.is-enough {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   font-weight: 600;
 }
 
@@ -1785,7 +1793,7 @@
 /* Green is the one signal that waiting here can produce a game: a band
    holding somebody who would take this search. The count says how many. */
 .matchmaker-queue-band.is-in-range i {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   font-weight: 600;
 }
 
@@ -1837,11 +1845,37 @@
   flex: none;
 }
 
+/* A failed reload in the full card: the reason, and Retry beside it. The
+   reason may wrap here, as the card has the height for it. */
+.matchmaker-recent-failed {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.matchmaker-recent-failed .matchmaker-recent-state {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.matchmaker-recent-failed .btn-ghost {
+  flex: none;
+}
+
 .matchmaker-recent-table-wrap {
   min-width: 0;
   margin-top: var(--space-3);
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+/* Sideways only once every column is at its floor and the floors are wider
+   than the card (`useColumnWidths` marks the table), so the replay buttons
+   stay reachable instead of being cut off at the card's edge. */
+.matchmaker-recent-table-wrap:has(> [data-columns-overflow]) {
+  overflow-x: auto;
 }
 
 .matchmaker-recent-table {
@@ -1894,8 +1928,25 @@
   overflow: visible;
 }
 
-.matchmaker-recent-row:hover td {
+/* `is-menu-open` holds the hover while a player menu opened from this row is
+   up. The menu opens under the pointer, which has left the row by then, and
+   without this nothing would tie the menu to the game it came from, as with
+   the live-replay rows and the chat roster. */
+.matchmaker-recent-row:hover td,
+.matchmaker-recent-row.is-menu-open td {
   background: var(--color-surface-raised);
+}
+
+/* The opponent that menu is about, marked as a chat name is while its menu is
+   open (`.chat-nick.is-menu-open`): the menu no longer prints the name, and a
+   row of a team game names several. The padding gives the mark room around
+   the letters and the negative margin takes it back, so the names do not
+   shift when it appears. */
+.matchmaker-recent-opponent.is-menu-open {
+  margin: 0 calc(-1 * var(--space-1));
+  padding: 0 var(--space-1);
+  background: var(--color-surface-hover);
+  border-radius: var(--radius-sm);
 }
 
 .matchmaker-recent-thumb {
@@ -1925,12 +1976,12 @@
 
 .matchmaker-recent-outcome.is-victory,
 .matchmaker-recent-change.is-up {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .matchmaker-recent-outcome.is-defeat,
 .matchmaker-recent-change.is-down {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .matchmaker-recent-change {
@@ -1940,4 +1991,31 @@
 .matchmaker-recent-actions {
   display: flex;
   gap: var(--space-1);
+}
+
+/* Narrower than designed: both buttons are 28 pixel squares, as the replay
+   list's icon actions are, so the column can give its room to the names. */
+.matchmaker-recent-actions.is-compact > button {
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  height: 28px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* A window under 700 pixels tall scrolls the Play tab as a page (see the
+   `max-height` rule in `shell.css`), and the tab is then as tall as what is in
+   it. This column and the layout around it still claimed the scrolling for
+   themselves, but with nothing to bound their height they never scrolled, so
+   the search bar stuck to a box that did not move: at 680 pixels Start search
+   sat below the window and scrolled away with the page. Here they hand the
+   scrolling to the page, and the bar sticks to the bottom of the window for
+   as long as the queue card is on screen. After the narrow rule above, which
+   gives the stacked layout the scrolling and has to lose to this. */
+@media (max-height: 700px) {
+  .matchmaking-layout,
+  .matchmaker-main {
+    overflow: visible;
+  }
 }

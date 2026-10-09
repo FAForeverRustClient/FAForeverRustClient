@@ -43,6 +43,14 @@ pub async fn handle(cmd: UploadsCommand, ctx: &ServiceCtx, out: &EventSink) {
         UploadsCommand::Close => out.emit(UploadsEvent::Closed),
         UploadsCommand::SetRanked { ranked } => out.emit(UploadsEvent::RankedChanged { ranked }),
         UploadsCommand::Start => start(ctx, out).await,
+        UploadsCommand::Cancel => {
+            // Only a publish still in reach is asked to stop; the port then
+            // decides at the moment it looks (see `UploadsPort::cancel_publish`)
+            // and its stream says how the publish ended, as it always does.
+            if out.with_state(|state| state.uploads.status.is_cancellable()) {
+                ctx.ports.uploads.cancel_publish();
+            }
+        }
     }
 }
 
@@ -118,14 +126,17 @@ async fn start(ctx: &ServiceCtx, out: &EventSink) {
 
     // The port always ends with a terminal status; treating a stream that
     // closes without one as a failure keeps a panicked task from looking like
-    // a successful publish.
+    // a successful publish. `Idle` is the third ending: called off before
+    // the vault could have it, which is neither.
     let mut last = None;
     while let Some(status) = updates.recv().await {
         last = Some(status.clone());
         out.emit(UploadsEvent::Progressed { status });
     }
     let outcome = match last {
-        Some(status @ (UploadStatus::Succeeded | UploadStatus::Failed { .. })) => status,
+        Some(
+            status @ (UploadStatus::Succeeded | UploadStatus::Failed { .. } | UploadStatus::Idle),
+        ) => status,
         _ => {
             let failed = UploadStatus::Failed {
                 reason: "the upload stopped without finishing".into(),

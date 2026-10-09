@@ -17,6 +17,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { AppCommand, PlayerCardEvent, PlayerCardProfile, PlayerMapStats } from "../../ipc/bindings";
+import { en } from "../../i18n/catalog/en";
 import { failOnConsoleError } from "../../testing/consoleGuard";
 import { applyEvent, clearSentCommands, sentCommands } from "../../testing/mounted";
 import { PlayerCardModal } from "./PlayerCardModal";
@@ -176,16 +177,19 @@ describe("PlayerCardModal request races, mounted", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("offers Retry on a failed profile and asks for the same player again", async () => {
+  it("says a failed profile plainly, keeps the reason on hover, and asks for the same player again", async () => {
     const user = userEvent.setup();
     cardEvent({ type: "loading", payload: { login: "Alice" } });
     render(<PlayerCardModal />);
-    cardEvent({ type: "loadFailed", payload: { reason: "HTTP 502" } });
+    const reason = "GET https://api.faforever.com/data/player returned HTTP 502";
+    cardEvent({ type: "loadFailed", payload: { reason } });
 
     const dialog = card("Alice");
-    expect(within(dialog).getByText("HTTP 502")).toBeTruthy();
+    const alert = within(dialog).getByRole("alert");
+    expect(within(alert).getByText(en["errors.cause.server"]).getAttribute("title")).toBe(reason);
+    expect(alert.textContent).not.toContain("HTTP 502");
     clearSentCommands();
-    await user.click(within(dialog).getByRole("button", { name: "Retry" }));
+    await user.click(within(alert).getByRole("button", { name: en["common.retry"] }));
     expect(sentPlayerCard("open")).toEqual([
       { kind: "PlayerCard", command: { type: "open", payload: { playerId: null, login: "Alice" } } },
     ]);
@@ -194,5 +198,16 @@ describe("PlayerCardModal request races, mounted", () => {
     expect(within(card("Alice")).queryByRole("button", { name: "Retry" })).toBeNull();
     cardEvent({ type: "loaded", payload: { profile: profile(ALICE, "Alice") } });
     expect(within(card("Alice")).getByRole("tablist", { name: "Player profile sections" })).toBeTruthy();
+  });
+
+  it("words a section that could not load plainly, with the backend's text on hover", () => {
+    const raw = "Ratings: HTTP 502 Bad Gateway";
+    cardEvent({ type: "loading", payload: { login: "Alice" } });
+    cardEvent({ type: "loaded", payload: { profile: { ...profile(ALICE, "Alice"), warnings: [raw] } } });
+    render(<PlayerCardModal />);
+
+    const item = within(card("Alice")).getByTitle(raw);
+    expect(item.textContent?.startsWith("Ratings: ")).toBe(true);
+    expect(item.textContent).not.toContain("HTTP 502");
   });
 });

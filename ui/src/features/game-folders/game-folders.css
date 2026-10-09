@@ -84,7 +84,7 @@
 .game-folders-error {
   margin: 0;
   padding: 4px 8px;
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: 11px;
   line-height: 1.4;
 }

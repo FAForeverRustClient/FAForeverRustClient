@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import type { RenameCheck, TourneyAdmin, TourneyLoadStatus } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { plainError } from "../../../shared/plainError";
 
 interface RenamesPanelProps {
   check: RenameCheck | null;
@@ -47,7 +48,13 @@ export function RenamesPanel({ check, status, busy, onCheck, onAdmin }: RenamesP
         </Button>
       </div>
 
-      {status.type === "failed" && <p className="tournament-form-hint">{status.payload.reason}</p>}
+      {/* Plainly, with the service's own words on hover; the check button
+          above is the way to ask again. */}
+      {status.type === "failed" && (
+        <p className="tournament-form-hint" title={status.payload.reason}>
+          {plainError(status.payload.reason)}
+        </p>
+      )}
 
       {check !== null &&
         (check.changed.length === 0 ? (

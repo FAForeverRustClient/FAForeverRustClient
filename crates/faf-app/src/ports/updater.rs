@@ -13,6 +13,7 @@
 
 use async_trait::async_trait;
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 /// What a pending launch needs on disk.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -124,14 +125,41 @@ pub trait GameUpdaterPort: Send + Sync {
     /// is due, exactly as both reference clients do.
     async fn prepare(&self, request: GamePreparation) -> mpsc::Receiver<UpdateProgress>;
 
+    /// [`Self::prepare`], stopping once `called_off` is cancelled.
+    ///
+    /// The run stops where stopping leaves nothing half written: between two
+    /// files, or while a file is still downloading and nothing of it has
+    /// reached the install. A file whose write has begun is finished first,
+    /// so every file in the install is the old one or the new one, whole, and
+    /// the next run's checksum pass carries on from there. What was updated
+    /// stays updated. A run that stopped ends with `Finished(Err(..))`, never
+    /// `Ok`: the install is not ready, whatever the caller does next.
+    ///
+    /// Defaults to [`Self::prepare`], which runs to the end.
+    async fn prepare_cancellable(
+        &self,
+        request: GamePreparation,
+        called_off: CancellationToken,
+    ) -> mpsc::Receiver<UpdateProgress> {
+        let _ = called_off;
+        self.prepare(request).await
+    }
+
     /// Put each of these map folders where a live game looks for them,
     /// downloading the ones that are missing. Answers the folders that could
     /// not be fetched, with why; a failure is not fatal to the others.
     ///
     /// For the maps of a matchmaker pool, fetched before the search starts
-    /// (see `launcher::prepare_search`). Defaulted to "nothing to do" so a test
-    /// double that has no maps folder need not pretend to have one.
-    async fn ensure_maps(&self, _folders: &[String]) -> Vec<(String, String)> {
+    /// (see `launcher::prepare_search`). Stops before the next map once
+    /// `called_off` is cancelled, and a download it stops is no failure to
+    /// answer with: each map is staged whole or not at all. Defaulted to
+    /// "nothing to do" so a test double that has no maps folder need not
+    /// pretend to have one.
+    async fn ensure_maps(
+        &self,
+        _folders: &[String],
+        _called_off: &CancellationToken,
+    ) -> Vec<(String, String)> {
         Vec::new()
     }
 
