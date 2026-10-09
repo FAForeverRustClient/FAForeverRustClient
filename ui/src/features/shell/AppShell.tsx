@@ -214,7 +214,7 @@ export function AppShell() {
           </span>
         </div>
 
-        <TabBar />
+        <TabBar onPointerSelect={() => contentRef.current?.focus({ preventScroll: true })} />
 
         <div className="sidebar-footer">
           <button
@@ -266,10 +266,13 @@ export function AppShell() {
           <InstallBanner />
           <WebviewEngineBanner />
         </div>
+        {/* Focusable from code only, for a click in the sidebar: see
+            `TabBarProps.onPointerSelect`. Never a Tab stop. */}
         <section
           ref={contentRef}
           className={`content content-tab-${openTab}`}
           aria-label={t("nav.content.aria", { tab: t(TABS[openTab].label) })}
+          tabIndex={-1}
         >
           <div className={`content-inner content-${openTab}`}>
             <ViewErrorBoundary resetKey={openTab}>
