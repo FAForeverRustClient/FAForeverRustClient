@@ -2,8 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { EmptyState } from "../../design-system/EmptyState";
-import { Pagination } from "../../design-system/Pagination";
-import { useGridPageSize } from "../../shared/hooks/useGridPageSize";
 import { RangeSlider } from "../../design-system/RangeSlider";
 import {
   SearchField,
@@ -43,13 +41,6 @@ const NO_INSTALLED_MOD_FILTERS = {
   minimumRating: null as number | null,
   maximumRating: null as number | null,
 };
-
-/** `.installed-mod-card`'s designed height, which is what a page is measured in. */
-const INSTALLED_MOD_CARD_PX = 86;
-
-/// Only until the grid has been measured. Nothing is fetched here, so a page
-/// is as much of the list as fits and the fixed count is a starting guess.
-const PAGE_SIZE = 48;
 
 const loadVault = () => ipc.send({ kind: "Mods", command: { type: "loadVault" } });
 const loadInstalled = () => ipc.send({ kind: "Mods", command: { type: "loadInstalled" } });
@@ -330,7 +321,6 @@ export function InstalledModsView({
   const setMaximumRating = (value: number | null) => setFilter("maximumRating", value);
   const [sort, setSort] = useState<InstalledModSort>("state");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [page, setPage] = useState(1);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledMod | null>(null);
   const [openFolder, setOpenFolder] = useState<string | null>(null);
   // The answer to "how do I know if a mod needs updating", which was the part
@@ -340,9 +330,7 @@ export function InstalledModsView({
   /** Whether the reload a check asked for has been seen running yet. */
   const reloadSeen = useRef(false);
   const [checkResult, setCheckResult] = useState("");
-  const installedGrid = useRef<HTMLDivElement>(null);
   const browsing = useAppStore((state) => state.state.settings.browsing);
-  const fittedPageSize = useGridPageSize(installedGrid, INSTALLED_MOD_CARD_PX, PAGE_SIZE);
 
   // An installed copy may be an older version than the one the vault lists,
   // and every version has its own uid: see `modIdentity`.
@@ -452,7 +440,6 @@ export function InstalledModsView({
     setRanked("all");
     setMinimumRating(null);
     setMaximumRating(null);
-    setPage(1);
   };
 
   // One pass for both the count on the filter chip and the per-card question
@@ -558,19 +545,11 @@ export function InstalledModsView({
   // enabled state behind the button that had just changed it.
   const opened = openFolder ? installed.find((mod) => mod.folderName === openFolder) : undefined;
 
-  // A page is as much of the list as fits, unless the reader has picked a
-  // number in Settings. A fixed count left half the panel empty under the
-  // pager on a tall window and scrolled anyway on a short one.
-  const pageSize = browsing.vaultPageSize || fittedPageSize;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const pageMods = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
   return (
     <>
       <SearchPanel
         className="installed-mod-search-panel"
-        onSubmit={(event) => { event.preventDefault(); setPage(1); }}
+        onSubmit={(event) => event.preventDefault()}
         secondary={(
           <>
             {([
@@ -643,10 +622,7 @@ export function InstalledModsView({
           <input
             className="search-panel-control"
             value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
+            onChange={(event) => setSearch(event.target.value)}
             placeholder={t("mods.installed.searchInstalledMods")}
           />
         </SearchField>
@@ -654,10 +630,7 @@ export function InstalledModsView({
           <input
             className="search-panel-control"
             value={creator}
-            onChange={(event) => {
-              setCreator(event.target.value);
-              setPage(1);
-            }}
+            onChange={(event) => setCreator(event.target.value)}
             placeholder={t("mods.view.anyCreatorUploader")}
           />
         </SearchField>
@@ -672,17 +645,13 @@ export function InstalledModsView({
           onChange={(low, high) => {
             setMinimumRating(low);
             setMaximumRating(high);
-            setPage(1);
           }}
         />
         <SearchField label={t("mods.view.type")} className="search-panel-field-compact">
           <select
             className="search-panel-control"
             value={modType}
-            onChange={(event) => {
-              setModType(event.target.value as ModTypeFilter);
-              setPage(1);
-            }}
+            onChange={(event) => setModType(event.target.value as ModTypeFilter)}
           >
             <option value="all">{t("mods.installed.allTypes")}</option>
             <option value="ui">{t("mods.installed.uiMods")}</option>
@@ -693,10 +662,7 @@ export function InstalledModsView({
           <select
             className="search-panel-control"
             value={enabled}
-            onChange={(event) => {
-              setEnabled(event.target.value as EnabledFilter);
-              setPage(1);
-            }}
+            onChange={(event) => setEnabled(event.target.value as EnabledFilter)}
           >
             <option value="all">{t("mods.installed.anyState")}</option>
             <option value="enabled">{t("mods.installed.enabled")}</option>
@@ -707,10 +673,7 @@ export function InstalledModsView({
           <select
             className="search-panel-control"
             value={ranked}
-            onChange={(event) => {
-              setRanked(event.target.value as RankedFilter);
-              setPage(1);
-            }}
+            onChange={(event) => setRanked(event.target.value as RankedFilter)}
           >
             <option value="all">{t("mods.view.any")}</option>
             <option value="ranked">{t("mods.view.rankedSafe")}</option>
@@ -756,8 +719,8 @@ export function InstalledModsView({
             <span>{t("mods.installed.installedCount", { count: filtered.length })}</span>
             <span>{t("mods.installed.activeCount", { count: installed.filter((mod) => mod.enabled).length })}</span>
           </div>
-          <div className="installed-mod-grid" ref={installedGrid}>
-            {pageMods.map((mod) => (
+          <div className="installed-mod-grid">
+            {filtered.map((mod) => (
               <InstalledModCard
                 key={mod.folderName}
                 mod={mod}
@@ -779,15 +742,6 @@ export function InstalledModsView({
               />
             ))}
           </div>
-          {totalPages > 1 && (
-            <div className="vault-pagination">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setPage}
-              />
-            </div>
-          )}
         </section>
       ) : null}
 
