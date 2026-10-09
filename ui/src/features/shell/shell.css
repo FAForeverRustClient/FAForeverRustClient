@@ -303,6 +303,13 @@
   overflow: hidden;
 }
 
+/* Focused from code after a click in the sidebar, so the keys that follow
+   scroll the page that opened (`TabBarProps.onPointerSelect`). It is the page,
+   not a control, and draws no ring of its own. */
+.content:focus {
+  outline: none;
+}
+
 .content-inner {
   min-width: 0;
   min-height: 100%;
@@ -436,6 +443,17 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding-inline: 0;
+}
+
+/* With the name hidden the button holds the avatar alone: one column,
+   centred, and no side padding. The padding left 30 px at the narrowest rail
+   for a 40 px picture, which then ran from the left edge out to the right,
+   off the line the icons above it are centred on. */
+.app-shell.is-sidebar-rail .sidebar-profile-button {
+  grid-template-columns: auto;
+  justify-content: center;
+  padding-inline: 0;
 }
 
 .app-shell.is-sidebar-rail .tab span {
@@ -445,6 +463,13 @@
 .app-shell.is-sidebar-rail .tab {
   justify-content: center;
   padding-inline: 0;
+}
+
+/* Game folders is the one entry with a caret after its label. With the label
+   gone, the caret's auto margin pushed it to the far edge and pulled the
+   folder icon off the column every other entry is centred on. */
+.app-shell.is-sidebar-rail .game-folders-caret {
+  display: none;
 }
 
 @media (max-width: 900px) {
