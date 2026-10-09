@@ -1469,7 +1469,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.status.launchedWarning": "Запущено, но: {warning}. FA может зависнуть на загрузке, если это не разрешится само.",
   "replays.gameType.custom": "Пользовательская",
   "replays.gameType.matchmaker": "Подбор игр",
-  "replays.gameType.coop": "Коорператив",
+  "replays.gameType.coop": "Кооператив",
 
   "replays.live.connecting": "Подключение к идущим играм",
   "replays.live.connectingHint": "Список реплеев появится, когда поток лобби будет готов.",
