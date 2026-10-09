@@ -357,7 +357,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
 
   "leaderboard.view.leaderboardMode": "Режим рейтинга",
   "leaderboard.view.myProfile": "Мой профиль",
-  "leaderboard.view.ratings": "Таблица лидеров",
+  "leaderboard.view.ratings": "Рейтинги",
   "leaderboard.view.leagues": "Лиги",
   "leaderboard.view.retry": "Повторить",
   "leaderboard.column.rank": "Место",
