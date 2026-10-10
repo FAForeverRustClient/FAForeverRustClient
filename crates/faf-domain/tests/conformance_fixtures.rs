@@ -3998,6 +3998,125 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        // #471: a reconnect joins every channel again, every join asks for the
+        // history again, and the scrollback survives the reconnect, so the
+        // replay overlaps what is on screen. Each replayed line carries a new
+        // local id, as the port mints one per receipt.
+        case(
+            "a history replayed after a reconnect does not repeat what the channel shows",
+            vec![
+                ChatEvent::Connected {
+                    username: "Ada".into(),
+                }
+                .into(),
+                ChatEvent::ChannelJoined {
+                    channel: "#newbie".into(),
+                }
+                .into(),
+                ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: chat_message("Bob", "how long until my rating shows?"),
+                }
+                .into(),
+                // Our own line: a local echo, untagged and on our clock.
+                ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: ChatMessage {
+                        timestamp: "2026-01-01T00:01:00.123456789+00:00".into(),
+                        msgid: String::new(),
+                        ..chat_message("Ada", "about ten games")
+                    },
+                }
+                .into(),
+                // A line from a server that did not tag it.
+                ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: ChatMessage {
+                        msgid: String::new(),
+                        ..chat_message("Cid", "same here")
+                    },
+                }
+                .into(),
+                ChatEvent::Disconnected.into(),
+                ChatEvent::Connecting.into(),
+                ChatEvent::Connected {
+                    username: "Ada".into(),
+                }
+                .into(),
+                ChatEvent::ChannelJoined {
+                    channel: "#newbie".into(),
+                }
+                .into(),
+                // The replay: each line again, none of them news.
+                ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: ChatMessage {
+                        id: "replayed-1".into(),
+                        ..chat_message("Bob", "how long until my rating shows?")
+                    },
+                }
+                .into(),
+                ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: ChatMessage {
+                        id: "replayed-2".into(),
+                        timestamp: "2026-01-01T00:01:00.180Z".into(),
+                        ..chat_message("Ada", "about ten games")
+                    },
+                }
+                .into(),
+                ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: ChatMessage {
+                        id: "replayed-3".into(),
+                        msgid: String::new(),
+                        ..chat_message("Cid", "same here")
+                    },
+                }
+                .into(),
+                // The same words said again later are a new line.
+                ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: ChatMessage {
+                        id: "said-again".into(),
+                        timestamp: "2026-01-01T00:05:00Z".into(),
+                        msgid: String::new(),
+                        ..chat_message("Cid", "same here")
+                    },
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "rejoining a left channel does not repeat its restored history",
+            vec![
+                ChatEvent::ChannelJoined {
+                    channel: "#newbie".into(),
+                }
+                .into(),
+                ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: chat_message("Bob", "anyone up for a 2v2?"),
+                }
+                .into(),
+                ChatEvent::ChannelLeft {
+                    channel: "#newbie".into(),
+                }
+                .into(),
+                ChatEvent::ChannelJoined {
+                    channel: "#newbie".into(),
+                }
+                .into(),
+                ChatEvent::MessageReceivedQuietly {
+                    channel: "#newbie".into(),
+                    message: ChatMessage {
+                        id: "replayed".into(),
+                        ..chat_message("Bob", "anyone up for a 2v2?")
+                    },
+                }
+                .into(),
+            ],
+        ),
         case(
             "someone composes, reacts, and their message clears the indicator",
             vec![

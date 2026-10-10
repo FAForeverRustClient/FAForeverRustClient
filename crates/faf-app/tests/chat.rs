@@ -10,13 +10,14 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use faf_app::infra::fake_ports;
-use faf_app::ports::SettingsPort;
+use faf_app::ports::{ChatPort, ChatUpdate, SettingsPort};
 use faf_app::{App, Ports};
 use faf_domain::state::{
-    ChatCommand, ChatMessageKind, ChatStatus, LobbyCommand, SettingsCommand, SettingsState,
-    DEFAULT_CHANNEL,
+    ChatCommand, ChatMessage, ChatMessageKind, ChatStatus, LobbyCommand, NotificationKind,
+    SettingsCommand, SettingsState, DEFAULT_CHANNEL,
 };
 use faf_domain::AppState;
+use tokio::sync::mpsc;
 
 #[derive(Default)]
 struct RecordingSettings {
@@ -547,4 +548,168 @@ async fn muted_players_are_filtered_before_messages_enter_state() {
     assert!(messages
         .iter()
         .all(|message| !message.sender.eq_ignore_ascii_case("Stormlord")));
+}
+
+/// A chat server that hands over the same history on every connection, as
+/// `CHATHISTORY LATEST` does, plus whatever was said in between.
+#[derive(Default)]
+struct ReplayingChat {
+    connects: Mutex<usize>,
+    updates: Mutex<Option<mpsc::Sender<ChatUpdate>>>,
+}
+
+/// One line of that history, as the port builds it on each receipt: a fresh
+/// local `id` every time, and the server's id and time unchanged.
+fn history_line(receipt: usize, msgid: &str, content: &str) -> ChatUpdate {
+    ChatUpdate::Message {
+        channel: DEFAULT_CHANNEL.into(),
+        message: ChatMessage {
+            id: format!("{receipt}-{msgid}"),
+            sender: "Stormlord".into(),
+            content: content.into(),
+            timestamp: "2026-01-01T17:37:00.000Z".into(),
+            kind: ChatMessageKind::Message,
+            msgid: msgid.into(),
+            reply_to: String::new(),
+        },
+    }
+}
+
+#[async_trait]
+impl ChatPort for ReplayingChat {
+    async fn connect(&self, username: String) -> mpsc::Receiver<ChatUpdate> {
+        let receipt = {
+            let mut connects = self.connects.lock().unwrap();
+            *connects += 1;
+            *connects
+        };
+        let (tx, rx) = mpsc::channel(64);
+        let mut lines = vec![
+            ChatUpdate::Status(ChatStatus::Connecting, String::new()),
+            ChatUpdate::Status(ChatStatus::Connected, username),
+            ChatUpdate::ChannelJoined(DEFAULT_CHANNEL.into()),
+            history_line(receipt, "srv-1", "Aurora: rematch?"),
+        ];
+        if receipt > 1 {
+            lines.push(history_line(receipt, "srv-2", "said while you were away"));
+        }
+        for line in lines {
+            tx.try_send(line).unwrap();
+        }
+        *self.updates.lock().unwrap() = Some(tx);
+        rx
+    }
+    fn send_message(&self, _: String, _: String, _: String) {}
+    fn send_action(&self, _: String, _: String) {}
+    fn join_channel(&self, _: String) {}
+    fn leave_channel(&self, _: String, _: String) {}
+    fn set_topic(&self, _: String, _: String) {}
+    fn disconnect(&self) {
+        // Dropping the sender ends the stream, as a closed socket does.
+        *self.updates.lock().unwrap() = None;
+    }
+}
+
+/// #471: reconnecting joined the channel again, the join asked for the
+/// history again, and every line already on screen was appended a second
+/// time. A mention among them raised its notification a second time too.
+#[tokio::test]
+async fn a_reconnect_does_not_repeat_the_history_or_its_notifications() {
+    let (app, app_loop) = App::new(
+        "test",
+        Ports {
+            chat: Arc::new(ReplayingChat::default()),
+            ..fake_ports()
+        },
+    );
+    tokio::spawn(app_loop.run());
+    let connect = || {
+        app.dispatch(
+            ChatCommand::Connect {
+                username: "Aurora".into(),
+            }
+            .into(),
+        )
+    };
+
+    connect().await.unwrap();
+    until(&app, |s| {
+        s.chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|c| !c.messages.is_empty())
+    })
+    .await;
+    app.dispatch(ChatCommand::Disconnect.into()).await.unwrap();
+    until(&app, |s| s.chat.status == ChatStatus::Disconnected).await;
+
+    connect().await.unwrap();
+    let state = until(&app, |s| {
+        s.chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|c| c.messages.iter().any(|m| m.msgid == "srv-2"))
+    })
+    .await;
+
+    let channel = state.chat.channel(DEFAULT_CHANNEL).unwrap();
+    let msgids: Vec<&str> = channel.messages.iter().map(|m| m.msgid.as_str()).collect();
+    assert_eq!(msgids, vec!["srv-1", "srv-2"], "the history was repeated");
+    let mentions = state
+        .notifications
+        .items
+        .iter()
+        .filter(|item| item.kind == NotificationKind::Mention)
+        .count();
+    assert_eq!(mentions, 1, "the replayed mention notified a second time");
+}
+
+/// The offline fake replays its scrollback on every connect, as the server
+/// does, so a reconnect there must not repeat it either.
+#[tokio::test]
+async fn the_offline_scrollback_is_not_repeated_by_a_reconnect() {
+    let app = connected().await;
+    let seeded = until(&app, |s| {
+        s.chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|c| !c.messages.is_empty())
+    })
+    .await
+    .chat
+    .channel(DEFAULT_CHANNEL)
+    .unwrap()
+    .messages
+    .len();
+    app.dispatch(ChatCommand::Disconnect.into()).await.unwrap();
+    until(&app, |s| s.chat.status == ChatStatus::Disconnected).await;
+
+    app.dispatch(
+        ChatCommand::Connect {
+            username: "Aurora".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, |s| s.chat.status == ChatStatus::Connected).await;
+    // The echo lands after the replayed scrollback, so once it is there the
+    // replay has been applied.
+    app.dispatch(
+        ChatCommand::SendMessage {
+            channel: DEFAULT_CHANNEL.into(),
+            content: "back again".into(),
+            reply_to: String::new(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    let state = until(&app, |s| {
+        s.chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|c| c.messages.iter().any(|m| m.content == "back again"))
+    })
+    .await;
+    assert_eq!(
+        state.chat.channel(DEFAULT_CHANNEL).unwrap().messages.len(),
+        seeded + 1
+    );
 }
