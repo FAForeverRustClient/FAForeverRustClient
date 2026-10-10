@@ -2689,6 +2689,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "chat.game.average": "в среднем {rating}",
   "chat.game.boardAverage": "в среднем {rating} ({board})",
   "chat.aside.title": "Чем занят {name}",
+  "chat.aside.online": "{name} в сети.",
+  "chat.aside.offline": "{name} не в сети.",
   "chat.aside.notInGame": "{name} сейчас не в игре.",
   "chat.aside.watch": "Смотреть активную игру",
   "chat.aside.join": "Войти в игру",
