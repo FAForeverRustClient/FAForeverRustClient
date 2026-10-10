@@ -46,6 +46,16 @@ async function openTab(user: ReturnType<typeof userEvent.setup>, kind: RegExp) {
 }
 
 describe("HostModsColumn, mounted", () => {
+  it("says on each tab how many of its mods are on, without opening it", () => {
+    mount();
+
+    const sim = screen.getByRole("tab", { name: "Sim Mods (1/3)" });
+    expect(sim.getAttribute("title")).toBe("1 active · 3 installed");
+    expect(screen.getByRole("tab", { name: "UI Mods (1/2)" }).getAttribute("title")).toBe(
+      "1 active · 2 installed",
+    );
+  });
+
   it("lists the active sim mods first on the Sim tab", async () => {
     const user = userEvent.setup();
     mount();

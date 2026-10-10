@@ -112,6 +112,11 @@ export const HostModsColumn = memo(function HostModsColumn() {
     [installedMods],
   );
   const uiMods = useMemo(() => installedMods.filter((mod) => mod.modType === "ui"), [installedMods]);
+  // Per tab, because the header's one total cannot say which kind is on: 31
+  // UI mods and one sim mod read as "32 active", and the sim mod went
+  // unnoticed behind the UI tab (#466).
+  const activeUiCount = useMemo(() => uiMods.filter((mod) => mod.enabled).length, [uiMods]);
+  const activeSimCount = useMemo(() => simMods.filter((mod) => mod.enabled).length, [simMods]);
 
   const filteredMods = useMemo(
     () => filterAndSortHostMods(installedMods, modTab, modSearch, held),
@@ -204,8 +209,9 @@ export const HostModsColumn = memo(function HostModsColumn() {
             setModTab("ui");
             settle();
           }}
+          title={t("lobby.host.modCount", { active: activeUiCount, installed: uiMods.length })}
         >
-          {t("lobby.host.uiMods")} ({uiMods.length})
+          {t("lobby.host.uiMods")} ({activeUiCount}/{uiMods.length})
         </button>
         <button
           type="button"
@@ -216,8 +222,9 @@ export const HostModsColumn = memo(function HostModsColumn() {
             setModTab("sim");
             settle();
           }}
+          title={t("lobby.host.modCount", { active: activeSimCount, installed: simMods.length })}
         >
-          {t("lobby.host.simMods")} ({simMods.length})
+          {t("lobby.host.simMods")} ({activeSimCount}/{simMods.length})
         </button>
       </div>
       <div className="host-map-search-row">
