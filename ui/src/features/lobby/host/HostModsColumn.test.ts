@@ -16,7 +16,7 @@ function makeMod(fields: Partial<InstalledMod> & { uid: string; displayName: str
 }
 
 describe("filterAndSortHostMods", () => {
-  it("sorts mods alphabetically by display name regardless of enabled status", () => {
+  it("puts the active mods first, each group alphabetically by display name", () => {
     const mods: InstalledMod[] = [
       makeMod({ uid: "mod-z", displayName: "Zeppelin UI", enabled: true }),
       makeMod({ uid: "mod-a", displayName: "Auto Reclaim", enabled: false }),
@@ -26,30 +26,36 @@ describe("filterAndSortHostMods", () => {
 
     const result = filterAndSortHostMods(mods, "ui", "");
     expect(result.map((m) => m.displayName)).toEqual([
-      "Auto Reclaim",
-      "Better Eco",
       "Mini Map Zoom",
       "Zeppelin UI",
+      "Auto Reclaim",
+      "Better Eco",
     ]);
   });
 
-  it("preserves stable item order when a mod is enabled or disabled", () => {
+  it("keeps a held mod in the place it had, whichever way it was switched", () => {
     const initialMods: InstalledMod[] = [
-      makeMod({ uid: "mod-1", displayName: "Alpha Mod", enabled: false }),
+      makeMod({ uid: "mod-1", displayName: "Alpha Mod", enabled: true }),
       makeMod({ uid: "mod-2", displayName: "Beta Mod", enabled: false }),
       makeMod({ uid: "mod-3", displayName: "Gamma Mod", enabled: false }),
     ];
-
     const initialOrder = filterAndSortHostMods(initialMods, "ui", "").map((m) => m.uid);
+    expect(initialOrder).toEqual(["mod-1", "mod-2", "mod-3"]);
 
-    // Toggling the last mod to enabled must not jump it to the top of the list.
-    const updatedMods = initialMods.map((mod) =>
-      mod.uid === "mod-3" ? { ...mod, enabled: true } : mod,
-    );
-    const updatedOrder = filterAndSortHostMods(updatedMods, "ui", "").map((m) => m.uid);
+    // Alpha switched off and Gamma on, each from its own checkbox: each sorts
+    // as it did before the click, so neither moves.
+    const updatedMods = initialMods.map((mod) => ({
+      ...mod,
+      enabled: mod.uid === "mod-3" ? true : mod.uid === "mod-1" ? false : mod.enabled,
+    }));
+    const held = new Map([
+      ["mod-1", true],
+      ["mod-3", false],
+    ]);
+    expect(filterAndSortHostMods(updatedMods, "ui", "", held).map((m) => m.uid)).toEqual(initialOrder);
 
-    expect(updatedOrder).toEqual(initialOrder);
-    expect(updatedOrder).toEqual(["mod-1", "mod-2", "mod-3"]);
+    // Once the list settles (nothing held), the new state decides.
+    expect(filterAndSortHostMods(updatedMods, "ui", "").map((m) => m.uid)).toEqual(["mod-3", "mod-1", "mod-2"]);
   });
 
   it("filters by mod tab (ui vs sim)", () => {
