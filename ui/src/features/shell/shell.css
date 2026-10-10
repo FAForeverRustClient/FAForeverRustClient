@@ -299,7 +299,8 @@
 .content.content-tab-leaderboard,
 .content.content-tab-changelog,
 .content.content-tab-settings,
-.content.content-tab-training {
+.content.content-tab-training,
+.content.content-tab-tournaments {
   overflow: hidden;
 }
 
@@ -315,7 +316,8 @@
 .content-inner.content-leaderboard,
 .content-inner.content-changelog,
 .content-inner.content-settings,
-.content-inner.content-training {
+.content-inner.content-training,
+.content-inner.content-tournaments {
   height: 100%;
   overflow: hidden;
 }
@@ -527,6 +529,19 @@
   }
 
   .content-inner.content-leaderboard {
+    height: auto;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 900px) {
+  /* The same pair for Tournaments, at the width its list and event stack:
+     stacked, the tab is taller than the window and the window scrolls. */
+  .content.content-tab-tournaments {
+    overflow-y: auto;
+  }
+
+  .content-inner.content-tournaments {
     height: auto;
     overflow: visible;
   }

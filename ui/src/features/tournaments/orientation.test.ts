@@ -12,6 +12,7 @@ import {
   eventDaysLabel,
   listCountdowns,
   listKind,
+  signupProgress,
   stages,
   statusPill,
   turnInfo,
@@ -83,6 +84,20 @@ describe("listCountdowns", () => {
   it("counts nothing for an abandoned event", () => {
     const off = tourney({ status: "signup", abandoned: true, eventDate: 900 });
     expect(listCountdowns(off, 100)).toEqual({ signupsOpen: null, eventStarts: null, signupsClose: null });
+  });
+});
+
+describe("signupProgress", () => {
+  it("runs from the opening to the close, and only while signups are open", () => {
+    const open = tourney({ status: "signup", signupOpensAt: 200, signupClosesAt: 600, eventDate: 900 });
+    expect(signupProgress(open, 100)).toBeNull();
+    expect(signupProgress(open, 300)).toBe(0.25);
+    expect(signupProgress(open, 700)).toBeNull();
+  });
+
+  it("starts from the creation where signups never had an opening", () => {
+    const always = tourney({ status: "signup", createdAt: 0, signupOpensAt: null, signupClosesAt: 400 });
+    expect(signupProgress(always, 100)).toBe(0.25);
   });
 });
 

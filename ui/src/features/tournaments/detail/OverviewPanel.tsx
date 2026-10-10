@@ -20,22 +20,16 @@ import type { Article, Tourney, TourneyMatch } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { RichText } from "./RichText";
-import {
-  RATING_KIND_LABELS,
-  formatDay,
-  formatMoment,
-  formatPrize,
-  planSummary,
-  ratingRequirements,
-  typeLine,
-} from "../tourneyPresentation";
+import { formatMoment, formatPrize } from "../tourneyPresentation";
 import { unplacedImages } from "../../../shared/markdown";
 import { eventDayCount, eventDaysLabel } from "../orientation";
 import {
-  RATING_CHECK_ID,
+  formatCells,
   recentResults,
   resultRoundLabel,
+  rewardSplit,
   roundMapNames,
+  settingRows,
   stopAtRemaining,
 } from "../overviewPresentation";
 import { RichLine } from "../RichLine";
@@ -78,24 +72,6 @@ function Panel({
   );
 }
 
-/** A labelled cell inside a panel: the website's `infocell`. */
-function Cell({
-  label,
-  className,
-  children,
-}: {
-  label: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={className === undefined ? "tournament-cell" : `tournament-cell ${className}`}>
-      <div className="tournament-cell-label">{label}</div>
-      <div className="tournament-cell-body">{children}</div>
-    </div>
-  );
-}
-
 export function OverviewPanel({
   event,
   articles,
@@ -107,35 +83,15 @@ export function OverviewPanel({
   const { t } = useTranslation();
   const [showRules, setShowRules] = useState(false);
 
-  const prize = formatPrize(event.prize);
-  const requirements = ratingRequirements(event, t);
   const latest = event.news[0];
-
-  // The one-line headline over the setup: official or community, nothing
-  // else. Which rating counts and as of when used to share this line, where it
-  // read as boilerplate; it is the first line of the Rating requirements cell
-  // now, as on the website, because it is a requirement.
-  const headline =
-    event.category === "official"
-      ? t("tournaments.overview.official")
-      : t("tournaments.overview.community");
-  const kind = t(RATING_KIND_LABELS[event.ratingKind]);
-  const pulled = event.ratingKind !== "none";
-  const ratingSource = !pulled
-    ? ""
-    : event.ratingDate !== null
-      ? t("tournaments.overview.ratingSourceAsOf", { kind, date: formatDay(event.ratingDate, "") })
-      : t("tournaments.overview.ratingSourceAtSignup", { kind });
-  // An organiser's own invites and adds skip the range, which the service
-  // enforces and they would otherwise find out by surprise.
-  const exemptNote =
-    event.viewer.organiser && (event.rating.min !== null || event.rating.max !== null);
+  const rewards = rewardSplit(event.rewards, formatPrize(event.prize));
 
   // The multi-day schedule and the early stop, each its own cell beside the
   // format: both change what the event *is*, a two-weekend event and a
   // qualifier that never plays its final.
   const days = eventDaysLabel(event.eventDays);
   const stopLeft = stopAtRemaining(event);
+  const lobby = settingRows(event.lobbyOptions);
 
   // Anything the organiser uploaded but never placed in a body. Shown rather
   // than orphaned: on the website these are pasted screenshots, and one that
@@ -149,290 +105,308 @@ export function OverviewPanel({
 
   return (
     <div className="tournament-overview">
-      {event.eventDate !== null && (
-        <div className="tournament-datebar">
-          <span className="tournament-cell-label">
-            {t(event.imported ? "tournaments.overview.played" : "tournaments.overview.eventDate")}
-          </span>
-          <span>{formatMoment(event.eventDate, "")}</span>
-          {event.minTeams > 0 && (
-            <span className="muted">
-              {t("tournaments.overview.minTeams", { count: event.minTeams })}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* An archive, not an event anybody can enter: said first, so nobody
-          looks for the signup button of something played years ago. */}
-      {event.imported && (
-        <section className="tournament-panel tournament-imported">
-          <div className="tournament-imported-label">{t("tournaments.overview.importedHeading")}</div>
-          <p className="muted">
-            {t("tournaments.overview.importedBody")}{" "}
-            {event.sourceUrl !== "" && (
-              <button type="button" className="rich-text-link" onClick={() => onOpenUrl(event.sourceUrl)}>
-                {t("tournaments.overview.viewOnChallonge")}
-              </button>
-            )}
-          </p>
-        </section>
-      )}
-
-      {event.streams.length > 0 && (
-        <Panel title={t("tournaments.overview.streams")}>
-          <ul className="tournament-streams">
-            {event.streams.map((stream) => (
-              <li key={stream.url}>
-                <button type="button" className="rich-text-link" onClick={() => onOpenUrl(stream.url)}>
-                  <Icon name="play" size={14} /> {stream.url.replace(/^https?:\/\//, "")}
+      {/* Two columns: how the event is run on the left, read top to bottom,
+          and what is at stake and where to go next in a narrower column on
+          the right. The date and the floor the event runs with are the first
+          facts of the hero's strip, over every section. */}
+      <div className="tournament-overview-main">
+        {/* An archive, not an event anybody can enter: said first, so nobody
+            looks for the signup button of something played years ago. */}
+        {event.imported && (
+          <section className="tournament-panel tournament-imported">
+            <div className="tournament-imported-label">{t("tournaments.overview.importedHeading")}</div>
+            <p className="muted">
+              {t("tournaments.overview.importedBody")}{" "}
+              {event.sourceUrl !== "" && (
+                <button type="button" className="rich-text-link" onClick={() => onOpenUrl(event.sourceUrl)}>
+                  {t("tournaments.overview.viewOnChallonge")}
                 </button>
-                {stream.info !== "" && <span className="muted"> {stream.info}</span>}
-              </li>
+              )}
+            </p>
+          </section>
+        )}
+
+        {/* The most recent announcement, as one strip on the page everyone
+            opens first. The News section still holds all of them; this is the
+            one that would otherwise be missed by a player who came to check
+            the time. */}
+        {latest !== undefined && event.status !== "finished" && (
+          <section className={latest.important ? "tournament-panel tournament-latest is-important" : "tournament-panel tournament-latest"}>
+            <div className="tournament-latest-head">
+              <h4>{t("tournaments.overview.latestNews")}</h4>
+              {latest.at !== null && <span className="tournament-latest-when">{formatMoment(latest.at, "")}</span>}
+            </div>
+            <RichText source={latest.body} assetBase={assetBase} className="tournament-latest-body" />
+            <button type="button" className="tournament-link-button tournament-latest-all" onClick={() => onOpenSection("news")}>
+              {t("tournaments.overview.allNews")} {"→"}
+            </button>
+          </section>
+        )}
+
+        {event.championTeamId !== null && (
+          <Panel className="tournament-champion">
+            <Icon name="trophy" size={26} className="tournament-champion-icon" />
+            <div>
+              <div className="tournament-cell-label">{t("tournaments.overview.champion")}</div>
+              <h3>{championName(event)}</h3>
+            </div>
+          </Panel>
+        )}
+
+        {event.streams.length > 0 && (
+          <Panel title={t("tournaments.overview.streams")}>
+            <ul className="tournament-streams">
+              {event.streams.map((stream) => (
+                <li key={stream.url}>
+                  <button type="button" className="rich-text-link" onClick={() => onOpenUrl(stream.url)}>
+                    <Icon name="play" size={14} /> {stream.url.replace(/^https?:\/\//, "")}
+                  </button>
+                  {stream.info !== "" && <span className="muted"> {stream.info}</span>}
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        )}
+
+        {/* The format as a few large facts, each over its label. The schedule
+            and an early stop sit beside them: both change what the event
+            *is*, a two-weekend event and a qualifier that never plays its
+            final. */}
+        <Panel title={t("tournaments.overview.tournamentFormat")}>
+          <div className="tournament-format-cells">
+            {formatCells(event, t).map((cell) => (
+              <div className="tournament-format-cell" key={cell.label}>
+                <div className="tournament-format-value">{cell.value}</div>
+                <div className="tournament-format-label">{t(cell.label)}</div>
+              </div>
             ))}
-          </ul>
-        </Panel>
-      )}
-
-      {/* The most recent announcement, on the page everyone opens first. The
-          News section still holds all of them; this is the one that would
-          otherwise be missed by a player who came to check the time. */}
-      {latest !== undefined && event.status !== "finished" && (
-        <Panel className={latest.important ? "is-important" : undefined}>
-          <div className="tournament-cell-label">{t("tournaments.overview.latestNews")}</div>
-          <RichText source={latest.body} assetBase={assetBase} />
-          <button type="button" className="rich-text-link" onClick={() => onOpenSection("news")}>
-            {t("tournaments.overview.allNews")}
-          </button>
-        </Panel>
-      )}
-
-      {event.championTeamId !== null && (
-        <Panel className="tournament-champion">
-          <div className="tournament-cell-label">{t("tournaments.overview.champion")}</div>
-          <h3>{championName(event)}</h3>
-        </Panel>
-      )}
-
-      {(prize !== "" || event.rewards.trim() !== "" || event.sponsors.trim() !== "") && (
-        <div className="tournament-panel-row">
-          {(prize !== "" || event.rewards.trim() !== "") && (
-            <Panel title={t("tournaments.overview.rewards")}>
-              {prize !== "" && (
-                <Cell label={t("tournaments.overview.prize")} className="is-prize">
-                  <span className="tournament-prize">{prize}</span>
-                </Cell>
-              )}
-              <RichText source={event.rewards} assetBase={assetBase} />
-            </Panel>
-          )}
-          {event.sponsors.trim() !== "" && (
-            <Panel title={t("tournaments.overview.sponsors")}>
-              <RichText source={event.sponsors} assetBase={assetBase} />
-            </Panel>
-          )}
-        </div>
-      )}
-
-      <Panel title={t("tournaments.overview.gameSetup")}>
-        <p className="tournament-setup-headline">{headline}</p>
-
-        <div className="tournament-cells">
-          <Cell label={t("tournaments.overview.format")}>
-            <p>{typeLine(event, t)}</p>
-            {planSummary(event, t) !== "" && <p className="muted">{planSummary(event, t)}</p>}
-          </Cell>
-          {days !== "" && (
-            <Cell label={t("tournaments.overview.schedule")}>
-              <p>
-                <strong>{days}</strong>
-              </p>
-              <p>{t("tournaments.overview.scheduleDays", { count: eventDayCount(event.eventDays) })}</p>
-              {event.eventDate !== null && (
-                <p>{t("tournaments.overview.scheduleStarts", { when: formatMoment(event.eventDate, "") })}</p>
-              )}
-            </Cell>
-          )}
-          {event.stopAtAlive > 0 && (
-            <Cell label={t("tournaments.overview.endsEarly")}>
-              <p>{t("tournaments.overview.stopAtLine", { count: event.stopAtAlive })}</p>
-              {event.earlyFinish !== null ? (
-                <p className="muted">{t("tournaments.overview.stopAtReached")}</p>
-              ) : (
-                stopLeft !== null && (
-                  <p className="muted">
-                    {stopLeft === 0
-                      ? t("tournaments.overview.stopAtLast")
-                      : t("tournaments.overview.stopAtToGo", { count: stopLeft })}
-                  </p>
-                )
-              )}
-            </Cell>
-          )}
-          {(pulled || requirements.length > 0) && (
-            <Cell label={t("tournaments.overview.ratingRequirements")}>
-              {pulled && (
-                <p className="tournament-rating-source">
-                  <RichLine text={ratingSource} />
-                  <span className="muted">{t("tournaments.overview.ratingSourcePulled")}</span>
+            {days !== "" && (
+              <div className="tournament-format-cell">
+                <div className="tournament-format-value">{days}</div>
+                <div className="tournament-format-label">{t("tournaments.overview.schedule")}</div>
+                <p className="muted">
+                  {t("tournaments.overview.scheduleDays", { count: eventDayCount(event.eventDays) })}
+                  {event.eventDate !== null &&
+                    ` · ${t("tournaments.overview.scheduleStarts", { when: formatMoment(event.eventDate, "") })}`}
                 </p>
-              )}
-              {requirements.length > 0 && (
-                <div className={pulled ? "tournament-cell-gap" : undefined}>
-                  {requirements.map((line) => (
-                    <p key={line}>{line}</p>
-                  ))}
-                  {exemptNote && <p>{t("tournaments.overview.organiserExempt")}</p>}
-                </div>
-              )}
-              {/* The rating is fetched from FAF, so a player reading the range
-                  has no way to know whether they clear it. The check is on the
-                  Players section during signups; later the link still goes
-                  there, as on the website, and lands on the list. */}
-              {pulled && event.viewer.loggedIn && (
-                <p className="muted tournament-cell-gap">
-                  <RichLine
-                    text={t("tournaments.overview.ratingUnknown")}
-                    onLink={() => onOpenSection("players", RATING_CHECK_ID)}
-                  />
-                </p>
-              )}
-            </Cell>
-          )}
-        </div>
-
-        {(event.lobbyOptions.trim() !== "" || event.mods.trim() !== "") && (
-          <div className="tournament-cells">
-            {event.lobbyOptions.trim() !== "" && (
-              <Cell label={t("tournaments.overview.lobbyOptions")}>
-                <RichText source={event.lobbyOptions} assetBase={assetBase} />
-              </Cell>
+              </div>
             )}
-            {event.mods.trim() !== "" && (
-              <Cell label={t("tournaments.overview.mods")}>
-                <RichText source={event.mods} assetBase={assetBase} />
-              </Cell>
+            {event.stopAtAlive > 0 && (
+              <div className="tournament-format-cell">
+                <div className="tournament-format-value">{t("tournaments.overview.stopAtLine", { count: event.stopAtAlive })}</div>
+                <div className="tournament-format-label">{t("tournaments.overview.endsEarly")}</div>
+                {event.earlyFinish !== null ? (
+                  <p className="muted">{t("tournaments.overview.stopAtReached")}</p>
+                ) : (
+                  stopLeft !== null && (
+                    <p className="muted">
+                      {stopLeft === 0
+                        ? t("tournaments.overview.stopAtLast")
+                        : t("tournaments.overview.stopAtToGo", { count: stopLeft })}
+                    </p>
+                  )
+                )}
+              </div>
             )}
           </div>
+        </Panel>
+
+        {/* The rules a game is played under, as a table: the organiser's
+            lobby options and mods, which the service keeps only as text.
+            Options written one setting per line, as organisers do, become a
+            row each; anything else is shown as the prose it is, in one row.
+            The rating limit is not a game setting but a condition of entry:
+            the hero's strip states it over every section, and the Players
+            section carries its details and the check. */}
+        {(event.lobbyOptions.trim() !== "" || event.mods.trim() !== "") && (
+          <Panel title={t("tournaments.overview.gameSetup")}>
+            <dl className="tournament-rule-table">
+              {lobby !== null
+                ? [
+                    ...(lobby.before !== "" ? [{ key: "", value: lobby.before }] : []),
+                    ...lobby.rows,
+                    ...(lobby.after !== "" ? [{ key: "", value: lobby.after }] : []),
+                  ].map((row, index) =>
+                    // The organiser's own words over or under the list, across
+                    // the whole row.
+                    row.key === "" ? (
+                      <div key={`note-${index}`} className="is-note">
+                        <RichText source={row.value} assetBase={assetBase} />
+                      </div>
+                    ) : (
+                      <div key={`${index}-${row.key}`}>
+                        <dt>{row.key}</dt>
+                        <dd>
+                          <RichText source={row.value} assetBase={assetBase} />
+                        </dd>
+                      </div>
+                    ),
+                  )
+                : event.lobbyOptions.trim() !== "" && (
+                    <div>
+                      <dt>{t("tournaments.overview.lobbyOptions")}</dt>
+                      <dd>
+                        <RichText source={event.lobbyOptions} assetBase={assetBase} />
+                      </dd>
+                    </div>
+                  )}
+              {event.mods.trim() !== "" && (
+                <div>
+                  <dt>{t("tournaments.overview.mods")}</dt>
+                  <dd>
+                    <RichText source={event.mods} assetBase={assetBase} />
+                  </dd>
+                </div>
+              )}
+            </dl>
+          </Panel>
         )}
 
         {event.description.trim() !== "" && (
-          <Cell label={t("tournaments.overview.briefing")} className="is-wide">
-            <RichText source={event.description} assetBase={assetBase} />
-          </Cell>
+          <Panel title={t("tournaments.overview.briefing")}>
+            <RichText source={event.description} assetBase={assetBase} className="is-document" />
+            {gallery.length > 0 && assetBase !== "" && (
+              <div className="tournament-gallery">
+                {gallery.map((file) => (
+                  <img key={file} src={`${assetBase}/desc-images/${encodeURIComponent(file)}`} alt="" loading="lazy" />
+                ))}
+              </div>
+            )}
+          </Panel>
         )}
 
-        {gallery.length > 0 && assetBase !== "" && (
-          <div className="tournament-gallery">
-            {gallery.map((file) => (
-              <img key={file} src={`${assetBase}/desc-images/${encodeURIComponent(file)}`} alt="" loading="lazy" />
-            ))}
-          </div>
+        {/* The latest results, once there are matches to have results. Not
+            hidden in streamer mode, as on the website: the Overview is where a
+            caster's audience is not looking. */}
+        {(event.status === "running" || event.status === "finished") && (
+          <RecentResults event={event} onOpenMatches={() => onOpenSection("matches")} />
         )}
-      </Panel>
 
-      {(event.feedsInto !== null || event.qualifiers.length > 0) && (
-        <Panel title={t("tournaments.overview.qualification")}>
-          {event.feedsInto !== null && <p>{feedsIntoLine(event, t)}</p>}
-          {event.qualifiers.length > 0 && (
-            <>
-              <p className="muted">{t("tournaments.overview.drawsFrom")}</p>
-              <ul className="tournament-qualifiers">
-                {event.qualifiers.map((qualifier) => (
-                  <li key={qualifier.id}>
-                    {qualifier.name}
-                    {qualifier.qualified.length > 0 && (
-                      <span className="muted"> {qualifier.qualified.join(", ")}</span>
-                    )}
+        {(event.feedsInto !== null || event.qualifiers.length > 0) && (
+          <Panel title={t("tournaments.overview.qualification")}>
+            {event.feedsInto !== null && <p>{feedsIntoLine(event, t)}</p>}
+            {event.qualifiers.length > 0 && (
+              <>
+                <p className="muted">{t("tournaments.overview.drawsFrom")}</p>
+                <ul className="tournament-qualifiers">
+                  {event.qualifiers.map((qualifier) => (
+                    <li key={qualifier.id}>
+                      {qualifier.name}
+                      {qualifier.qualified.length > 0 && (
+                        <span className="muted"> {qualifier.qualified.join(", ")}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </Panel>
+        )}
+      </div>
+
+      <aside className="tournament-overview-aside">
+        {/* What each placement wins. The hero states the total over every
+            section; this is the split behind it, read out of the organiser's
+            text, with whatever is not a placement left as their words. */}
+        {(rewards.places.length > 0 || rewards.notes !== "") && (
+          <Panel title={t("tournaments.overview.rewards")}>
+            {rewards.places.length > 0 && (
+              <ol className="tournament-reward-places">
+                {rewards.places.map((place, index) => (
+                  <li
+                    key={index}
+                    className={!place.top && place.place <= 3 ? `is-place-${place.place}` : undefined}
+                  >
+                    <span className="tournament-reward-medal">
+                      {place.top ? t("tournaments.overview.rewardTop", { count: place.place }) : place.place}
+                    </span>
+                    <span className="tournament-reward-what">
+                      {place.rest !== "" && <RichLine text={place.rest} />}
+                    </span>
+                    {place.cash !== "" && <span className="tournament-reward-cash">{place.cash}</span>}
                   </li>
                 ))}
-              </ul>
-            </>
-          )}
-        </Panel>
-      )}
-
-      {event.seriesName !== "" && (
-        <Panel title={t("tournaments.overview.series")}>
-          <p>
-            {t("tournaments.overview.partOfSeriesBefore")}{" "}
-            <strong className={`tournament-series-name is-${event.seriesColour}`}>{event.seriesName}</strong>{" "}
-            {t("tournaments.overview.partOfSeriesAfter")}
-          </p>
-          {onOpenPage !== undefined && event.seriesId !== null && (
-            <button
-              type="button"
-              className="tournament-link-button"
-              onClick={() => onOpenPage({ kind: "series", seriesId: event.seriesId })}
-            >
-              {t("tournaments.overview.allEditions")} {"→"}
-            </button>
-          )}
-        </Panel>
-      )}
-
-      {/* The website's Links panel: FAQ / Rules always, and for an official
-          event the three articles every official event is played under. They
-          open as pages of the client. Where the pages cannot be opened (no
-          way back to the list), the articles are shown folded here. */}
-      {onOpenPage !== undefined ? (
-        <Panel title={t("tournaments.links.title")}>
-          <ul className="tournament-links">
-            <li>
-              <button type="button" className="tournament-link-button" onClick={() => onOpenPage({ kind: "faq", articleId: null })}>
-                {t("tournaments.site.faq")}
-              </button>
-            </li>
-            {event.category === "official" &&
-              OFFICIAL_ARTICLES.map((link) => (
-                <li key={link.id}>
-                  <button
-                    type="button"
-                    className="tournament-link-button"
-                    onClick={() => onOpenPage({ kind: "faq", articleId: link.id })}
-                  >
-                    {t(link.label)}
-                  </button>
-                </li>
-              ))}
-          </ul>
-        </Panel>
-      ) : (
-        event.category === "official" &&
-        articles.length > 0 && (
-          <Panel>
-            <button
-              type="button"
-              className="tournament-disclosure"
-              aria-expanded={showRules}
-              onClick={() => setShowRules((open) => !open)}
-            >
-              <Icon name={showRules ? "chevronDown" : "chevronRight"} size={14} />
-              {t("tournaments.overview.rules")}
-            </button>
-            {showRules &&
-              articles.map((article) => (
-                <section key={article.id} className="tournament-article">
-                  <h5>{article.title}</h5>
-                  <RichText source={article.body} assetBase={assetBase} />
-                </section>
-              ))}
+              </ol>
+            )}
+            {rewards.notes !== "" && (
+              <RichText source={rewards.notes} assetBase={assetBase} className="tournament-reward-notes" />
+            )}
           </Panel>
-        )
-      )}
+        )}
 
-      {statusLine(event, t) !== "" && (
-        <Panel title={t("tournaments.overview.statusHeading")}>
-          <p>{statusLine(event, t)}</p>
-        </Panel>
-      )}
+        {event.sponsors.trim() !== "" && (
+          <Panel title={t("tournaments.overview.sponsors")}>
+            <RichText source={event.sponsors} assetBase={assetBase} />
+          </Panel>
+        )}
 
-      {/* The latest results, once there are matches to have results. Not
-          hidden in streamer mode, as on the website: the Overview is where a
-          caster's audience is not looking. */}
-      {(event.status === "running" || event.status === "finished") && (
-        <RecentResults event={event} onOpenMatches={() => onOpenSection("matches")} />
-      )}
+        {event.seriesName !== "" && (
+          <Panel title={t("tournaments.overview.series")}>
+            <p>
+              {t("tournaments.overview.partOfSeriesBefore")}{" "}
+              <strong className={`tournament-series-name is-${event.seriesColour}`}>{event.seriesName}</strong>{" "}
+              {t("tournaments.overview.partOfSeriesAfter")}
+            </p>
+            {onOpenPage !== undefined && event.seriesId !== null && (
+              <button
+                type="button"
+                className="tournament-link-button"
+                onClick={() => onOpenPage({ kind: "series", seriesId: event.seriesId })}
+              >
+                {t("tournaments.overview.allEditions")} {"→"}
+              </button>
+            )}
+          </Panel>
+        )}
+
+        {/* The website's Links panel: FAQ / Rules always, and for an official
+            event the three articles every official event is played under.
+            They open as pages of the client. Where the pages cannot be opened
+            (no way back to the list), the articles are shown folded here. */}
+        {onOpenPage !== undefined ? (
+          <Panel title={t("tournaments.links.title")}>
+            <ul className="tournament-link-rows">
+              <li>
+                <button type="button" onClick={() => onOpenPage({ kind: "faq", articleId: null })}>
+                  <span>{t("tournaments.site.faq")}</span>
+                  <Icon name="chevronRight" size={14} />
+                </button>
+              </li>
+              {event.category === "official" &&
+                OFFICIAL_ARTICLES.map((link) => (
+                  <li key={link.id}>
+                    <button type="button" onClick={() => onOpenPage({ kind: "faq", articleId: link.id })}>
+                      <span>{t(link.label)}</span>
+                      <Icon name="chevronRight" size={14} />
+                    </button>
+                  </li>
+                ))}
+            </ul>
+          </Panel>
+        ) : (
+          event.category === "official" &&
+          articles.length > 0 && (
+            <Panel>
+              <button
+                type="button"
+                className="tournament-disclosure"
+                aria-expanded={showRules}
+                onClick={() => setShowRules((open) => !open)}
+              >
+                <Icon name={showRules ? "chevronDown" : "chevronRight"} size={14} />
+                {t("tournaments.overview.rules")}
+              </button>
+              {showRules &&
+                articles.map((article) => (
+                  <section key={article.id} className="tournament-article">
+                    <h5>{article.title}</h5>
+                    <RichText source={article.body} assetBase={assetBase} />
+                  </section>
+                ))}
+            </Panel>
+          )
+        )}
+      </aside>
     </div>
   );
 }
@@ -537,36 +511,4 @@ function feedsIntoLine(
       : "tournaments.overview.feedsIntoTop",
     { count: feeds.rule.n, name: feeds.parentName },
   );
-}
-
-/**
- * Where the event stands, in a sentence.
- *
- * Only for the phases where the status is not obvious from the rest of the
- * page: during signups, where the useful fact is whether they are actually open
- * yet, and during a draft, where somebody is waiting on somebody.
- */
-function statusLine(
-  event: Tourney,
-  t: (key: MessageKey, values?: Record<string, string | number>) => string,
-): string {
-  const now = Math.floor(Date.now() / 1000);
-  if (event.status === "signup") {
-    if (event.signupOpensAt !== null && now < event.signupOpensAt) {
-      return t("tournaments.overview.statusNotOpen", {
-        when: formatMoment(event.signupOpensAt, ""),
-        count: event.playerCount,
-      });
-    }
-    if (event.signupClosesAt !== null && now > event.signupClosesAt) {
-      return t("tournaments.overview.statusClosed", { count: event.playerCount });
-    }
-    return t("tournaments.overview.statusOpen", { count: event.playerCount });
-  }
-  if (event.status === "draft" && event.draft !== null) {
-    const turn = event.draft.order[event.draft.current];
-    const team = event.teams.find((held) => held.id === turn);
-    return t("tournaments.overview.statusDraft", { name: team?.name ?? "" });
-  }
-  return "";
 }

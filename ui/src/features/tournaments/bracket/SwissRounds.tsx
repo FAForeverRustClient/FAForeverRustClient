@@ -29,7 +29,8 @@ import {
   swissRoundOrder,
 } from "./swissRecords";
 import { hasVeto } from "./vetoPresentation";
-import { VetoPanel, type VetoHandlers } from "./VetoPanel";
+import type { VetoHandlers } from "./VetoPanel";
+import { VetoOverlay } from "./VetoOverlay";
 
 interface SwissRoundsProps {
   event: Tourney;
@@ -52,6 +53,8 @@ export function SwissRounds(props: SwissRoundsProps) {
   const { t } = useTranslation();
   const [openPool, setOpenPool] = useState<string | null>(null);
   const [openVeto, setOpenVeto] = useState<string | null>(null);
+  /** The round on screen, the final, or all of them; unset until chosen. */
+  const [view, setView] = useState<"all" | "final" | number | null>(null);
 
   const swiss = event.matches.filter(isSwissMatch);
   const played = swiss.reduce((most, entry) => Math.max(most, entry.round), 0);
@@ -68,6 +71,15 @@ export function SwissRounds(props: SwissRoundsProps) {
   }
   const rounds: number[] = [];
   for (let round = played; round >= 1; round -= 1) rounds.push(round);
+
+  // One round at a time, the newest first: the rounds are a long list of
+  // results, and the one a reader came for is almost always the latest.
+  const shown: "all" | "final" | number = view ?? (finals.length > 0 ? "final" : (rounds[0] ?? "all"));
+  const tabs: { key: "all" | "final" | number; label: string }[] = [
+    { key: "all", label: t("tournaments.bracket.allRounds") },
+    ...[...rounds].reverse().map((round) => ({ key: round, label: t("tournaments.bracket.round", { round }) })),
+    ...(finals.length > 0 ? [{ key: "final" as const, label: t("tournaments.swiss.final") }] : []),
+  ];
 
   const cutLabel = (): string =>
     cuts.wins > 0 && cuts.losses > 0
@@ -132,14 +144,30 @@ export function SwissRounds(props: SwissRoundsProps) {
 
   return (
     <div className="tournament-swiss">
-      {finals.length > 0 && (
+      {tabs.length > 2 && (
+        <nav className="tournament-round-nav" aria-label={t("tournaments.bracket.roundNav")}>
+          {tabs.map((tab) => (
+            <button
+              type="button"
+              key={tab.key}
+              className={shown === tab.key ? "is-active" : undefined}
+              aria-pressed={shown === tab.key}
+              onClick={() => setView(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      )}
+
+      {finals.length > 0 && (shown === "all" || shown === "final") && (
         <section className="tournament-swiss-round">
           {head(t("tournaments.swiss.final"), roundKeyOf("grandFinal", 1))}
           {list(finals, new Map(), false)}
         </section>
       )}
 
-      {upcoming.map((round) => (
+      {shown === "all" && upcoming.map((round) => (
         <section className="tournament-swiss-round is-upcoming" key={`next-${round}`}>
           {head(
             withCuts
@@ -154,7 +182,7 @@ export function SwissRounds(props: SwissRoundsProps) {
         </section>
       ))}
 
-      {rounds.map((round, index) => {
+      {rounds.filter((round) => shown === "all" || shown === round).map((round) => {
         const records = swissRecordsBefore(swiss, round);
         const inRound = swiss.filter((entry) => entry.round === round);
         const matches = swissRoundOrder(
@@ -172,7 +200,7 @@ export function SwissRounds(props: SwissRoundsProps) {
             )}
             {/* The cut once, on the round being played: it is what the
                 records on its matches are measured against. */}
-            {withCuts && index === 0 && (
+            {withCuts && round === played && (
               <p className="muted tournament-swiss-note">{cutLabel()}</p>
             )}
             {list([...matches, ...byes], records, round > 1)}
@@ -272,20 +300,18 @@ function MatchRow({
           />
         </span>
       </li>
-      {/* The run opens under its own row: a list has the room a bracket
-          column does not. */}
+      {/* The run opens over the rounds, as it does from a bracket card. */}
       {vetoOpen && hasVeto(event, entry) && (
-        <li className="tournament-swiss-veto surface">
-          <VetoPanel
-            event={event}
-            entry={entry}
-            vault={props.vault}
-            assetBase={props.assetBase}
-            profiles={profiles}
-            busy={busy}
-            handlers={props.veto}
-          />
-        </li>
+        <VetoOverlay
+          event={event}
+          entry={entry}
+          vault={props.vault}
+          assetBase={props.assetBase}
+          profiles={profiles}
+          busy={busy}
+          handlers={props.veto}
+          onClose={onToggleVeto}
+        />
       )}
     </>
   );

@@ -208,25 +208,47 @@ export function MatchActions({
     </button>
   );
 
+  // Every control is an icon and its words: the bracket card, which has room
+  // for the icons only, hides the words (`tournament-action-label`), and the
+  // list views keep both. The words are the button's name either way.
   if (mayAnswer) {
     return (
       <>
-        <Button variant="primary" onClick={() => onAnswer(true)} disabled={busy}>
-          {t("tournaments.match.confirm")}
+        <Button
+          variant="primary"
+          onClick={() => onAnswer(true)}
+          disabled={busy}
+          title={t("tournaments.match.confirm")}
+          aria-label={t("tournaments.match.confirm")}
+        >
+          <Icon name="check" size={13} /> <span className="tournament-action-label">{t("tournaments.match.confirm")}</span>
         </Button>
-        <Button onClick={() => onAnswer(false)} disabled={busy}>
-          {t("tournaments.match.reject")}
+        <Button
+          onClick={() => onAnswer(false)}
+          disabled={busy}
+          title={t("tournaments.match.reject")}
+          aria-label={t("tournaments.match.reject")}
+        >
+          <Icon name="close" size={13} /> <span className="tournament-action-label">{t("tournaments.match.reject")}</span>
         </Button>
         {chatButton}
       </>
     );
   }
+  const reportLabel = t(
+    busy
+      ? "tournaments.match.reporting"
+      : entry.status === "done"
+        ? "tournaments.match.correct"
+        : "tournaments.match.report",
+  );
+  const submitLabel = t(busy ? "tournaments.match.reporting" : "tournaments.match.submitScore");
   return (
     <>
       {chatButton}
       {mayHost && (
-        <Button onClick={onHost} title={t("tournaments.match.hostHint")}>
-          <Icon name="play" size={14} /> {t("tournaments.match.host")}
+        <Button onClick={onHost} title={t("tournaments.match.hostHint")} aria-label={t("tournaments.match.host")}>
+          <Icon name="play" size={13} /> <span className="tournament-action-label">{t("tournaments.match.host")}</span>
         </Button>
       )}
       {/* The run itself opens outside the card. A grid of maps does not fit
@@ -251,20 +273,24 @@ export function MatchActions({
           {owed > 0 && <span className="tournament-badge">{owed}</span>}
         </button>
       )}
+      {/* Reporting is the next step and looks it; correcting a finished
+          match is not, and a primary button on every finished match made
+          the bracket a wall of them. */}
       {reportable && (
-        <Button variant="primary" onClick={onReport} disabled={busy}>
-          {t(
-            busy
-              ? "tournaments.match.reporting"
-              : entry.status === "done"
-                ? "tournaments.match.correct"
-                : "tournaments.match.report",
-          )}
+        <Button
+          variant={entry.status === "done" ? "ghost" : "primary"}
+          onClick={onReport}
+          disabled={busy}
+          title={reportLabel}
+          aria-label={reportLabel}
+        >
+          <Icon name={entry.status === "done" ? "edit" : "flag"} size={13} />{" "}
+          <span className="tournament-action-label">{reportLabel}</span>
         </Button>
       )}
       {submittable && (
-        <Button variant="primary" onClick={onReport} disabled={busy}>
-          {t(busy ? "tournaments.match.reporting" : "tournaments.match.submitScore")}
+        <Button variant="primary" onClick={onReport} disabled={busy} title={submitLabel} aria-label={submitLabel}>
+          <Icon name="flag" size={13} /> <span className="tournament-action-label">{submitLabel}</span>
         </Button>
       )}
     </>

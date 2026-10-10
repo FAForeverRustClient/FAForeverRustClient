@@ -7,7 +7,8 @@
 // Entering is the primary action and sits in the header, not in a section. It
 // is the one thing a player opens this tab to do.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
@@ -49,8 +50,11 @@ import {
 import { StatsPanel } from "./StatsPanel";
 import { RichLine } from "../RichLine";
 import type { MapImport } from "../manage/MapImportDialog";
-import { eventDaysLabel, stages, statusPill, turnInfo } from "../orientation";
+import { statusPill, turnInfo } from "../orientation";
 import { EntryNotices } from "./EntryNotices";
+import { TournamentHero } from "./TournamentHero";
+import { EventToolsSlot } from "./eventToolsSlot";
+import "../../../design-system/section-tabs.css";
 import { BracketView } from "../bracket/BracketView";
 import { ChatPanel } from "./ChatPanel";
 import { DraftPanel } from "../bracket/DraftPanel";
@@ -69,7 +73,6 @@ import { ChatRoomView } from "./ChatRoomView";
 import { MatchChatContext, matchRoomId, type MatchChatApi } from "../bracket/matchChat";
 import { matchLabel } from "../bracket/matchLabels";
 import { teamNameOf } from "../bracket/matchParts";
-import { formatMoment, typeLine } from "../tourneyPresentation";
 import {
   mayCheckIn,
   mayPublish,
@@ -194,6 +197,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
   const [revealed, toggleReveal] = useRevealed(props.event.id);
   const [hotkeys, setHotkeys] = useState(loadHotkeys);
   const [displaySettings, setDisplaySettings] = useState(false);
+  const toolsSlot = useContext(EventToolsSlot);
   const rights = props.event.viewer.organiser;
   // View as player: the event as a player sees it, organiser tools and all,
   // on this screen only. The service still sends what it sends, and the
@@ -288,7 +292,6 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
   const unread = props.chatRooms.length > 0 ? unreadTotal(props.chatRooms) : event.myUnreadCount;
   const now = Math.floor(Date.now() / 1000);
   const pill = statusPill(event, now);
-  const days = eventDaysLabel(event.eventDays);
   const turn = turnInfo(event, t);
   const openVetoes = vetoMatches(event).filter((entry) => !vetoSettled(event, entry)).length;
   const owedVetoes = event.matches.reduce((total, entry) => total + myVetoSteps(event, entry), 0);
@@ -389,116 +392,91 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
     <MatchChatContext.Provider value={chatApi}>
     <TourneyDisplayContext.Provider value={display}>
     <div className="surface tournament-detail" ref={root}>
-      <header className="tournament-detail-header">
-        <div>
-          <h3>{event.name || t("tournaments.untitled")}</h3>
-          {/* The website's line under the name: official or community, then
-              what kind of event, then the days a multi-day event runs on. */}
-          <p className="muted tournament-type-line">
-            <span className={`tournament-tag is-${event.category}`}>
-              {t(event.category === "official" ? "tournaments.list.official" : "tournaments.list.community")}
-            </span>{" "}
-            {typeLine(event, t)}
-            {days !== "" && (
-              <>
-                {" · "}
-                <span className="tournament-days" title={t("tournaments.header.daysTitle")}>
-                  {days}
-                </span>
-              </>
-            )}
-          </p>
-        </div>
-        <div className="tournament-detail-actions">
+      {/* The display switches, at the end of the site's tab row. */}
+      {toolsSlot !== null &&
+        createPortal(
           <div className="tournament-display-toggles">
-            {rights && (
+            <span className="tournament-toggle-group" role="group" aria-label={t("tournaments.display.title")}>
+              {rights && (
+                <button
+                  type="button"
+                  className={playerView ? "tournament-toggle is-on" : "tournament-toggle"}
+                  aria-pressed={playerView}
+                  title={toggleTitle("tournaments.display.playerViewHint", hotkeys.playerView, "tournaments.display.playerViewTail")}
+                  onClick={() => setPlayerView(!playerView)}
+                >
+                  <span className="tournament-toggle-dot" aria-hidden /> {t("tournaments.display.playerView")}
+                </button>
+              )}
               <button
                 type="button"
-                className={playerView ? "tournament-toggle is-on" : "tournament-toggle"}
-                aria-pressed={playerView}
-                title={toggleTitle("tournaments.display.playerViewHint", hotkeys.playerView, "tournaments.display.playerViewTail")}
-                onClick={() => setPlayerView(!playerView)}
+                className={showPlayers ? "tournament-toggle is-on" : "tournament-toggle"}
+                aria-pressed={showPlayers}
+                title={toggleTitle("tournaments.display.showPlayersHint", hotkeys.players, "tournaments.display.ownScreen")}
+                onClick={() => setShowPlayers(!showPlayers)}
               >
-                {playerView ? "◉" : "○"} {t("tournaments.display.playerView")}
+                <span className="tournament-toggle-dot" aria-hidden /> {t("tournaments.display.showPlayers")}
               </button>
-            )}
+              <button
+                type="button"
+                className={streamer ? "tournament-toggle is-on" : "tournament-toggle"}
+                aria-pressed={streamer}
+                title={toggleTitle("tournaments.display.streamerHint", hotkeys.streamer, "tournaments.display.ownScreen")}
+                onClick={() => setStreamer(!streamer)}
+              >
+                <span className="tournament-toggle-dot" aria-hidden /> {t("tournaments.display.streamer")}
+              </button>
+            </span>
             <button
               type="button"
-              className={showPlayers ? "tournament-toggle is-on" : "tournament-toggle"}
-              aria-pressed={showPlayers}
-              title={toggleTitle("tournaments.display.showPlayersHint", hotkeys.players, "tournaments.display.ownScreen")}
-              onClick={() => setShowPlayers(!showPlayers)}
-            >
-              {showPlayers ? "◉" : "○"} {t("tournaments.display.showPlayers")}
-            </button>
-            <button
-              type="button"
-              className={streamer ? "tournament-toggle is-on" : "tournament-toggle"}
-              aria-pressed={streamer}
-              title={toggleTitle("tournaments.display.streamerHint", hotkeys.streamer, "tournaments.display.ownScreen")}
-              onClick={() => setStreamer(!streamer)}
-            >
-              {streamer ? "◉" : "○"} {t("tournaments.display.streamer")}
-            </button>
-            <button
-              type="button"
-              className="tournament-toggle"
+              className="tournaments-icon-button"
               title={t("tournaments.display.title")}
               aria-label={t("tournaments.display.title")}
               onClick={() => setDisplaySettings(true)}
             >
-              <Icon name="settings" size={14} />
+              <Icon name="settings" size={15} />
             </button>
-          </div>
-          <span
-            className={`tournament-pill is-${pill.tone}`}
-            title={
-              pill.tone === "presignup"
-                ? t("tournaments.header.opensAt", { when: formatMoment(event.signupOpensAt, "") })
-                : undefined
-            }
-          >
-            {t(pill.label)}
-          </span>
-          {mayEnter && (
-            <Button variant="primary" onClick={actions.entry.signUp} disabled={busy}>
-              <Icon name="plus" size={16} /> {t("tournaments.action.enter")}
-            </Button>
-          )}
-          {offerCheckIn && (
-            <Button variant="primary" onClick={() => actions.entry.checkIn(true)} disabled={busy}>
-              {t("tournaments.action.checkIn")}
-            </Button>
-          )}
-          {offerUndoCheckIn && (
-            <Button onClick={() => actions.entry.checkIn(false)} disabled={busy}>
-              {t("tournaments.teams.undoCheckIn")}
-            </Button>
-          )}
-          {mayWithdraw && (
-            <Button onClick={actions.entry.withdraw} disabled={busy}>
-              {t("tournaments.action.withdraw")}
-            </Button>
-          )}
-          {!event.viewer.loggedIn && (
-            <span className="muted">{t("tournaments.action.signInFirst")}</span>
-          )}
-        </div>
-      </header>
+          </div>,
+          toolsSlot,
+        )}
 
-      <ol className="tournament-stepper" aria-label={t("tournaments.stage.label")}>
-        {stages(event).map((stage) => (
-          <li
-            key={stage.label}
-            className={`is-${stage.state}`}
-            aria-current={stage.state === "now" ? "step" : undefined}
-          >
-            {t(stage.label)}
-          </li>
-        ))}
-      </ol>
+      <TournamentHero
+        event={event}
+        pill={pill}
+        assetBase={props.assetBase}
+        actions={
+          <>
+            {mayEnter && (
+              <Button className="tournament-hero-primary" variant="primary" onClick={actions.entry.signUp} disabled={busy}>
+                <Icon name="plus" size={18} /> {t("tournaments.action.enter")}
+              </Button>
+            )}
+            {offerCheckIn && (
+              <Button className="tournament-hero-primary" variant="primary" onClick={() => actions.entry.checkIn(true)} disabled={busy}>
+                <Icon name="check" size={18} /> {t("tournaments.action.checkIn")}
+              </Button>
+            )}
+            {offerUndoCheckIn && (
+              <Button onClick={() => actions.entry.checkIn(false)} disabled={busy}>
+                {t("tournaments.teams.undoCheckIn")}
+              </Button>
+            )}
+            {mayWithdraw && (
+              <Button onClick={actions.entry.withdraw} disabled={busy}>
+                {t("tournaments.action.withdraw")}
+              </Button>
+            )}
+            {!event.viewer.loggedIn && (
+              <span className="muted tournament-hero-note">{t("tournaments.action.signInFirst")}</span>
+            )}
+          </>
+        }
+      />
 
-      <nav className="tournament-sections" aria-label={t("tournaments.section.label")}>
+      {/* The shared section tabs' look (`section-tabs`), kept as a navigation
+          of buttons: the sections are views of one event, and the tests and
+          the pending bar's jumps address them as such. */}
+      <nav className="section-tabs tournament-sections" aria-label={t("tournaments.section.label")}>
         {(Object.keys(SECTION_LABELS) as Section[])
           // Manage is an organiser's door out to the website; nobody else needs
           // to be told it exists. Teams only exist where there are teams to
@@ -552,18 +530,19 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
             <button
               type="button"
               key={candidate}
-              className={candidate === section ? "tournament-section is-active" : "tournament-section"}
+              className={candidate === section ? "tournament-section is-active active" : "tournament-section"}
               aria-current={candidate === section}
               onClick={() => openSection(candidate)}
             >
-              {t(sectionLabel(candidate, event))}
-              {candidate === "players" && ` (${event.playerCount})`}
-              {candidate === "news" && event.news.length > 0 && ` (${event.news.length})`}
-              {/* Two different counts on purpose: the news tab says how many
-                  announcements there are, and the badge beside it how many are
-                  new to this account. */}
-              {candidate === "news" && unreadNews(event) > 0 && (
-                <span className="tournament-badge">{unreadNews(event)}</span>
+              <span className="section-tab-label">{t(sectionLabel(candidate, event))}</span>
+              {candidate === "players" && <span className="section-tab-count">{event.playerCount}</span>}
+              {/* How many announcements there are, in one chip that lights up
+                  while any of them is new to this account. A second chip with
+                  the unread count beside it read as "1 1". */}
+              {candidate === "news" && event.news.length > 0 && (
+                <span className={unreadNews(event) > 0 ? "section-tab-count is-unread" : "section-tab-count"}>
+                  {event.news.length}
+                </span>
               )}
               {/* Strongest first, as on the website: an organiser being asked
                   for, then a mention of this account, then anything unread. */}
@@ -578,7 +557,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
                 ) : (
                   unread > 0 && <span className="tournament-badge">{unread > 9 ? "9+" : unread}</span>
                 ))}
-              {candidate === "vetoes" && openVetoes > 0 && ` (${openVetoes})`}
+              {candidate === "vetoes" && openVetoes > 0 && <span className="section-tab-count">{openVetoes}</span>}
               {/* The steps this account owes, across every match: the count
                   above is everyone's work, this one is yours. */}
               {candidate === "vetoes" && owedVetoes > 0 && (
@@ -646,6 +625,16 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
         }
       >
 
+      {/* A ban or an invitation to answer, over the section rather than
+          under it: it is what stands between this account and entering. */}
+      {(section === "overview" || section === "players") && (
+        <EntryNotices
+          event={event}
+          busy={busy}
+          entry={actions.entry}
+        />
+      )}
+
       {section === "overview" && (
         <OverviewPanel
           event={event}
@@ -661,22 +650,24 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
         <NewsPanel
           event={event}
           busy={busy}
+          assetBase={props.assetBase}
           news={actions.news}
         />
       )}
 
 
-      {(section === "overview" || section === "players") && (
-        <EntryNotices
+      {section === "players" && (
+        <EntrantsPanel
           event={event}
-          check={props.ratingCheck}
-          checkStatus={props.ratingCheckStatus}
-          busy={busy}
-          entry={actions.entry}
+          profiles={props.profiles}
+          ratingCheck={{
+            check: props.ratingCheck,
+            status: props.ratingCheckStatus,
+            busy,
+            onCheck: actions.entry.checkRating,
+          }}
         />
       )}
-
-      {section === "players" && <EntrantsPanel event={event} profiles={props.profiles} />}
 
       {section === "teams" && (
         <TeamsPanel

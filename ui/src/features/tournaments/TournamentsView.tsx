@@ -39,6 +39,7 @@ import { TournamentEventList } from "./TournamentEventList";
 import { TournamentEventDetail } from "./TournamentEventDetail";
 import { load, send } from "./tourneyCommands";
 import { useTourneySite } from "./useTourneySite";
+import { EventToolsSlot } from "./detail/eventToolsSlot";
 import { useEventListFold } from "./useEventListFold";
 import { mayReport, openEvent, signupNeedsRating } from "../../shared/rules/tourneyRules";
 import "./tournaments.css";
@@ -76,6 +77,8 @@ export function TournamentsView() {
   // detail pane and the series pages read the clock as they draw (check-in
   // windows, "starts in"), so they ride on it too.
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  /** The tab row's slot the open event's display switches are drawn into. */
+  const [eventTools, setEventTools] = useState<HTMLElement | null>(null);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), TICK_MS);
     return () => window.clearInterval(timer);
@@ -96,66 +99,60 @@ export function TournamentsView() {
 
   return (
     <div className="tournaments-view">
-      <header className="tournaments-header">
-        <div>
-          <span className="tournaments-eyebrow">{t("tournaments.eyebrow")}</span>
-          <h2>{t("tournaments.title")}</h2>
-        </div>
-        <div className="tournament-detail-actions">
-          {hosting.allowed && (
-            <Button
-              variant="primary"
-              onClick={() => {
-                act({ type: "loadSeries" });
-                // The form's two starting points: named formats and this
-                // account's earlier events, both read as the form opens.
-                act({ type: "loadPresets" });
-                act({ type: "loadCopySources" });
-                setEditing("create");
-              }}
-              disabled={busy}
-            >
-              <Icon name="plus" size={16} /> {t("tournaments.form.createTitle")}
-            </Button>
-          )}
-          {/* Said out loud rather than left as an absent button: a surface that
-              simply vanishes is indistinguishable from one that is broken. */}
-          {hosting.loggedIn && !hosting.allowed && (
-            <span className="muted">
-              {t(
-                hosting.pending
-                  ? "tournaments.form.hostPending"
-                  : "tournaments.form.hostNotAllowed",
-              )}
-            </span>
-          )}
-          <HostRequest hosting={hosting} busy={busy} onWrite={siteWrite} />
-          {/* The same deployment the tab reads from, opened in the browser.
-              The tournament site is not going away: it works on a phone, which
-              is where a good share of sign-ups happen, and it is where events
-              created outside the client still live. `assetBase` is the service
-              the tab is actually talking to, so this cannot point somewhere
-              else after a deployment move, and it is absent until the first
-              load answers. */}
-          {/* Drawn from the start and disabled until it has somewhere to go,
-              rather than appearing once the first load answers and pushing
-              the buttons beside it along. */}
-          <Button disabled={assetBase === ""} onClick={() => void openHttpsUrl(assetBase)}>
-            <Icon name="external" size={16} /> {t("tournaments.viewOnline")}
+      {/* No page title above the tabs, as on the Training tab: the sidebar
+          already says where the reader is, so the site's pages are the top of
+          the tab, and the tab's own tools sit at the far end of their rule. */}
+      <SiteNav page={page} account={account} busy={busy} onPage={openPage} onWrite={siteWrite}>
+        {/* The open event's display switches, portalled in by the detail
+            pane: the tab row's end is where a page's tools stand. */}
+        {page.kind === "events" && <div ref={setEventTools} className="tournaments-event-tools" />}
+        {/* Said out loud rather than left as an absent button: a surface that
+            simply vanishes is indistinguishable from one that is broken. */}
+        {hosting.loggedIn && !hosting.allowed && (
+          <span className="muted tournaments-tabs-note">
+            {t(
+              hosting.pending
+                ? "tournaments.form.hostPending"
+                : "tournaments.form.hostNotAllowed",
+            )}
+          </span>
+        )}
+        <HostRequest hosting={hosting} busy={busy} onWrite={siteWrite} />
+        {hosting.allowed && (
+          <Button
+            variant="primary"
+            onClick={() => {
+              act({ type: "loadSeries" });
+              // The form's two starting points: named formats and this
+              // account's earlier events, both read as the form opens.
+              act({ type: "loadPresets" });
+              act({ type: "loadCopySources" });
+              setEditing("create");
+            }}
+            disabled={busy}
+          >
+            <Icon name="plus" size={16} /> {t("tournaments.form.createTitle")}
           </Button>
-          <Button onClick={load} disabled={loading}>
-            <Icon name="refresh" size={16} />{" "}
-            {/* Both labels share one cell, so the button is as wide as the
-                longer one in either state and nothing beside it moves. */}
-            <span className="tournaments-refresh-label">
-              <span className={loading ? "is-hidden" : undefined} aria-hidden={loading}>{t("tournaments.refresh")}</span>
-              <span className={loading ? undefined : "is-hidden"} aria-hidden={!loading}>{t("tournaments.refreshing")}</span>
-            </span>
-          </Button>
-        </div>
-      </header>
-
-      <SiteNav page={page} account={account} busy={busy} onPage={openPage} onWrite={siteWrite} />
+        )}
+        {/* The same deployment the tab reads from, opened in the browser.
+            The tournament site is not going away: it works on a phone, which
+            is where a good share of sign-ups happen, and it is where events
+            created outside the client still live. `assetBase` is the service
+            the tab is actually talking to, so this cannot point somewhere
+            else after a deployment move, and it is absent until the first
+            load answers. Drawn from the start and disabled until it has
+            somewhere to go, so nothing beside it moves when it arrives. */}
+        <button
+          type="button"
+          className="tournaments-icon-button"
+          disabled={assetBase === ""}
+          onClick={() => void openHttpsUrl(assetBase)}
+          title={t("tournaments.viewOnline")}
+          aria-label={t("tournaments.viewOnline")}
+        >
+          <Icon name="external" size={15} />
+        </button>
+      </SiteNav>
       <PendingBar
         pending={sitePending}
         openId={page.kind === "events" ? selectedId : null}
@@ -188,14 +185,21 @@ export function TournamentsView() {
         <div className="surface tournaments-state muted">{t("tournaments.none")}</div>
       )}
 
-      <TournamentSitePages
-        page={page}
-        busy={busy}
-        setPage={setPage}
-        openPage={openPage}
-        openEventPage={openEventPage}
-        siteWrite={siteWrite}
-      />
+      {/* The tab does not scroll as a whole, so the list and the event can
+          scroll on their own; the site's other pages get a scroll of their
+          own instead. */}
+      {page.kind !== "events" && (
+        <div className="tournaments-page-scroll">
+          <TournamentSitePages
+            page={page}
+            busy={busy}
+            setPage={setPage}
+            openPage={openPage}
+            openEventPage={openEventPage}
+            siteWrite={siteWrite}
+          />
+        </div>
+      )}
 
       {/* The list and the detail are laid out before the first load answers,
           with the loading line in the list's own column. A loading box in
@@ -205,12 +209,14 @@ export function TournamentsView() {
         <div className="tournaments-body">
           <TournamentEventList now={now} fold={fold} />
 
-          <TournamentEventDetail
-            jump={jump}
-            onOpenPage={openPage}
-            onSignUp={setEntering}
-            onReport={setReporting}
-          />
+          <EventToolsSlot.Provider value={eventTools}>
+            <TournamentEventDetail
+              jump={jump}
+              onOpenPage={openPage}
+              onSignUp={setEntering}
+              onReport={setReporting}
+            />
+          </EventToolsSlot.Provider>
         </div>
       )}
 

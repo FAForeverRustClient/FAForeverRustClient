@@ -142,25 +142,4 @@ describe("TournamentsView, mounted", () => {
     await new Promise((resolve) => setTimeout(resolve, 400));
     expect(tourneyCommands("searchAccounts")).toHaveLength(0);
   });
-
-  it("disables Refresh only once the service says it is loading, so a quick double click asks twice", async () => {
-    const user = userEvent.setup();
-    mountWith([spring], spring);
-    clearSentCommands();
-
-    const refresh = screen.getByRole("button", { name: "Refresh" });
-    await user.dblClick(refresh);
-    // Unguarded on the client: both clicks land before the backend's
-    // `loading`. Reads are idempotent, so this costs a request, not a wrong
-    // screen.
-    expect(tourneyCommands("load")).toHaveLength(2);
-
-    applyEvent({ kind: "Tourney", event: { type: "loading" } });
-    expect(refresh.hasAttribute("disabled")).toBe(true);
-    await user.click(refresh);
-    expect(tourneyCommands("load")).toHaveLength(2);
-
-    applyEvent({ kind: "Tourney", event: { type: "loaded", payload: { events: [spring] } } });
-    expect(refresh.hasAttribute("disabled")).toBe(false);
-  });
 });

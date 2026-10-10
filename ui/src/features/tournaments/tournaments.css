@@ -6,26 +6,78 @@
   height: 100%;
 }
 
-.tournaments-header {
+/* The site's pages as the shared section tabs, with the tab's tools at the
+   far end of their rule: the Training tab's top. One line across the page,
+   so the strip's own border is dropped and the row draws it instead. */
+.tournaments-tabs-row {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: var(--space-4);
+  gap: var(--space-3);
   margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
 }
 
-.tournaments-header h2 {
-  margin: var(--space-1) 0 0;
-  font-size: 20px;
-  letter-spacing: -0.02em;
+.tournaments-site-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-bottom: 0;
 }
 
-.tournaments-eyebrow {
+.tournaments-tabs-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding-bottom: 6px;
+}
+
+.tournaments-tabs-note {
+  max-width: 34ch;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+/* The open event's display switches, portalled in by the detail pane. */
+.tournaments-event-tools:empty {
+  display: none;
+}
+
+/* A square ghost button for one glyph: open online, refresh. */
+.tournaments-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
   color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 100ms ease, color 100ms ease;
+}
+
+.tournaments-icon-button:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
+.tournaments-icon-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.tournaments-icon-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+@media (max-width: 1100px) {
+  .tournaments-tabs-note {
+    display: none;
+  }
 }
 
 /* Surface treatment comes from `.surface` / `.surface-error` in
@@ -47,13 +99,24 @@
    column at narrow widths rather than squeezing both. The list takes a
    quarter of the width, 200 to 300 px: always reaching 300 left the detail
    pane about 470 px at the default window, under the organiser furniture, so
-   the bracket had almost nothing. */
+   the bracket had almost nothing. The cards put the prize beside the facts,
+   which wants 320 px at least. */
 .tournaments-body {
   display: grid;
-  grid-template-columns: clamp(200px, 26%, 300px) minmax(0, 1fr);
+  grid-template-columns: clamp(320px, 30%, 400px) minmax(0, 1fr);
+  /* One row, held to the tab's height: each column scrolls on its own, and
+     the event stays put while the list moves. */
+  grid-template-rows: minmax(0, 1fr);
   gap: var(--space-4);
   min-height: 0;
   flex: 1;
+}
+
+/* The site's other pages, scrolling inside the tab rather than with it. */
+.tournaments-page-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .tournaments-list {
@@ -67,19 +130,6 @@
   scrollbar-gutter: stable;
 }
 
-/* The refresh button's two labels in one cell, sized to the longer. */
-.tournaments-refresh-label {
-  display: inline-grid;
-}
-
-.tournaments-refresh-label > span {
-  grid-area: 1 / 1;
-}
-
-.tournaments-refresh-label > .is-hidden {
-  visibility: hidden;
-}
-
 /* One group of the list: upcoming, ongoing, your own drafts, and the archive.
    An unsplit list of every tournament FAF has ever run buries this weekend's
    under two seasons of finished ones. */
@@ -89,16 +139,40 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 6px;
 }
 
-.tournaments-group h3 {
+/* The groups' headings in the eyebrow's type, with the count in the section
+   tabs' chip rather than in brackets. */
+.tournaments-group h3,
+.tournaments-archive-year h4 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0 0 var(--space-2);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.tournaments-group-count {
+  text-box: trim-both cap alphabetic;
+  display: inline-flex;
+  min-width: 20px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+  border-radius: calc(var(--radius-sm) - 2px);
+  font-size: 11px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
+  line-height: 1;
 }
 
 /* The archive's own heading is a control, so it says so: the finished events
@@ -112,9 +186,9 @@
   border: 0;
   background: none;
   padding: 0;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--color-muted);
   cursor: pointer;
@@ -126,25 +200,220 @@
   color: var(--color-text);
 }
 
-/* `.surface .surface-interactive` supply the fill, border, hover and focus
-   ring; this adds only the row's own layout. */
+/* A series' colour as one variable, for the row's edge and the hero's glow.
+   The same tokens the series name is written in. */
+.is-series-plain {
+  --tourney-series: var(--color-border-strong);
+}
+
+.is-series-amber {
+  --tourney-series: var(--color-warn);
+}
+
+.is-series-blue {
+  --tourney-series: var(--color-faction-uef);
+}
+
+.is-series-green {
+  --tourney-series: var(--color-ok);
+}
+
+.is-series-red {
+  --tourney-series: var(--color-error);
+}
+
+.is-series-purple {
+  --tourney-series: var(--color-league-diamond);
+}
+
+/* One event, as a card: the tags, the name, when and for whom beside the
+   prize, and a footer with where it is up to. The open one carries an edge in
+   its series' colour, amber where it has none. */
 .tournament-row {
+  --tourney-row-edge: var(--tourney-series);
+  position: relative;
   display: grid;
-  gap: var(--space-1);
+  gap: 8px;
   width: 100%;
-  padding: var(--space-3);
+  padding: 14px 16px 12px;
+  overflow: hidden;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: background-color 100ms ease, border-color 100ms ease;
+}
+
+.tournament-row.is-series-plain {
+  --tourney-row-edge: var(--color-warn);
+}
+
+.tournament-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: var(--tourney-row-edge);
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+
+.tournament-row:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.tournament-row:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
 .tournament-row.is-active {
-  border-color: var(--color-border-strong);
   background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+}
+
+.tournament-row.is-active::before {
+  opacity: 1;
+}
+
+.tournament-row-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Outlined pills; the official one in amber. */
+.tournament-row-tag {
+  padding: 2px 9px;
+  color: var(--color-muted);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tournament-row-tag.is-official {
+  color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-warn) 40%, transparent);
 }
 
 .tournament-row-name {
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
 }
 
-.tournament-row-when,
+/* When and for whom on the left, the prize on the right behind a rule. */
+.tournament-row-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.tournament-row-info {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 3px;
+  min-width: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* The dot sits in front of every fact and the line is pulled back by its
+   width, so the one in front of a fact that wraps is clipped at the edge. */
+.tournament-row-facts {
+  --tourney-fact-dot: 14px;
+  overflow: hidden;
+}
+
+.tournament-row-facts.is-quiet {
+  color: var(--color-subtle);
+}
+
+.tournament-row-facts > span {
+  display: flex;
+  flex-wrap: wrap;
+  margin-left: calc(-1 * var(--tourney-fact-dot));
+}
+
+.tournament-row-fact {
+  white-space: nowrap;
+}
+
+.tournament-row-fact::before {
+  content: "\00B7";
+  display: inline-block;
+  width: var(--tourney-fact-dot);
+  color: var(--color-subtle);
+  text-align: center;
+}
+
+.tournament-row-prize {
+  flex: none;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding-left: 12px;
+  color: var(--color-warn);
+  border-left: 1px solid var(--color-border);
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Where it is up to, under a rule: the status on the left, signups closing
+   on the right with how much of the window has gone. */
+.tournament-row-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+.tournament-row-closing {
+  display: inline-grid;
+  gap: 5px;
+  color: var(--color-warn);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tournament-row-progress {
+  display: block;
+  height: 3px;
+  overflow: hidden;
+  background: var(--color-border);
+  border-radius: var(--radius-pill);
+}
+
+.tournament-row-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--color-warn);
+  border-radius: inherit;
+}
+
 .tournament-facts dd {
   font-size: 12px;
 }
@@ -167,6 +436,52 @@
 
 .tournament-badge.is-running {
   color: var(--color-warn);
+}
+
+/* Where an event is up to, as a dot and a word: the list row's and the
+   hero's. Quieter than a box, and the colour is still the status's. */
+.tournament-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.tournament-status::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.tournament-status.is-signup {
+  color: var(--color-ok);
+}
+
+.tournament-status.is-running,
+.tournament-status.is-draft,
+.tournament-status.is-drafted {
+  color: var(--color-warn);
+}
+
+.tournament-status.is-running::before {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-warn) 25%, transparent);
+}
+
+.tournament-status.is-abandoned {
+  color: var(--color-error);
+}
+
+.tournament-status.is-finished,
+.tournament-status.is-presignup {
+  color: var(--color-subtle);
 }
 
 /* Surface treatment comes from `.surface-panel`. */
@@ -234,6 +549,7 @@
 @media (max-width: 900px) {
   .tournaments-body {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
   }
 
   .tournaments-list {
@@ -241,65 +557,757 @@
   }
 }
 
-/* The bracket scrolls horizontally inside its own box: a 64-entrant event is
-   wider than any pane, and letting the page scroll sideways instead would move
-   the whole tab. */
+/* -- The bracket ----------------------------------------------------------
+   Everything an elimination bracket draws, in one place: the halves, the
+   rounds, the cards, the lines between them, byes and the 3rd place match.
+
+   Each half (winners, losers, grand final) is a framed box that scrolls
+   sideways on its own: a 64-entrant event is wider than any pane, and letting
+   the page scroll sideways instead would move the whole tab. Rounds are
+   columns of one width range rather than shares of the box, so a grand final
+   is a card, not a strip across the window.
+
+   The connectors are exact rather than approximate, and that rests on one
+   decision: every card occupies the same slot height (`--slot`), and each round
+   spaces its cards `--pitch` slots apart (1, 2, 4, ... in a winners bracket,
+   read off the match counts in `columnLayouts`). A card in round 2 therefore
+   sits exactly at the midpoint of the pair feeding it, so the elbow joining
+   them is a fixed offset rather than a measured one. No SVG overlay, no resize
+   observer, and it survives scrolling either way. What keeps every card the
+   same height is the strip at its foot, which every card has. */
+
 .tournament-bracket {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
-/* The side is a stack: its own heading, the bracket box, and the map pool of
-   whichever round has been asked about. Only the middle one scrolls. */
 .tournament-bracket-side {
+  /* One card plus the air under it: two rows of 28 and the rule between
+     them, the 26 px strip, and the card's two borders make 85; 86 for the
+     card and 108 for the slot with the gap below it. */
+  --slot: 108px;
+  --card-gap: 22px;
+  --elbow: 20px;
+  --col-pad: 14px;
+  /* How far the previous column's cards are from this one's: that column's
+     right padding plus this one's left, which has the elbow in it. The
+     connector arithmetic needs it by name. */
+  --gap-x: calc(var(--col-pad) * 2 + var(--elbow));
+  --tourney-line: var(--color-border-strong);
+  /* Where a line meets a card, from its top edge: the middle of each row, and
+     the rule between them. A line leaves the winner's row and arrives at the
+     rule, the middle of the pair. */
+  --row-top: 15px;
+  --row-bottom: 43.5px;
+  --row-mid: 29.5px;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  min-width: 0;
 }
 
+/* A half's name and how much of it there is. Over `.tournament-detail
+   header`, which spreads a header's two ends apart. */
+.tournament-bracket .tournament-bracket-side-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: var(--space-3);
+}
+
+.tournament-bracket-side-head h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+
+.tournament-bracket-side-head span {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+/* The box: darker than the cards in it, so the tree reads as cards on a
+   board. It owns the border and the sideways scroll, not the stack around
+   it, or a run of vetoes opened under it would be clipped by the frame. */
 .tournament-bracket-columns {
   display: flex;
-  flex-direction: row;
-  width: 100%;
+  /* As wide as its rounds, up to the pane: a grand final of one round is a
+     box round one card, not a board across the window. */
+  width: fit-content;
+  max-width: 100%;
   overflow-x: auto;
-  padding-bottom: var(--space-2);
+  background: color-mix(in srgb, var(--color-bg) 55%, var(--color-surface));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
 }
 
+/* A round: room for a seed, a name, a score and a viewer's two buttons, and
+   no wider than that however wide the window. */
 .tournament-round {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  min-width: 190px;
+  flex: 1 0 264px;
+  max-width: 340px;
+  min-width: 0;
 }
 
-.tournament-round h5 {
+/* Every second round a shade lighter, so the rounds read as columns before
+   any card in them is read, without a rule for the connectors to cross. */
+.tournament-round:nth-child(even) {
+  background: color-mix(in srgb, var(--color-surface-raised) 40%, transparent);
+}
+
+/* A hairline between rounds in the header strip only: the names are told
+   apart there, and the tree below runs on unbroken. */
+.tournament-round + .tournament-round > .tournament-round-head {
+  border-left: 1px solid var(--color-border);
+}
+
+/* Its name and its length, and its maps at the far end: one line, one
+   height for every round, so the strip of headers reads straight across. */
+.tournament-round-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 var(--col-pad);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tournament-round.is-bracket .tournament-round-head,
+.tournament-round.is-straight .tournament-round-head {
+  padding-left: calc(var(--col-pad) + var(--elbow));
+}
+
+.tournament-round-head > h5 {
+  flex: 0 1 auto;
+  min-width: 0;
   margin: 0;
-  color: var(--color-muted);
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* The length, read as part of the name: "Final  Bo7". */
+.tournament-round-bo-text {
+  flex: none;
+  color: var(--color-subtle);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
-.tournament-match {
-  display: grid;
-  gap: var(--space-1);
-  padding: var(--space-2);
+/* An organiser's length is a select, in the same place. */
+.tournament-round-head .tournament-round-bo {
+  flex: none;
+  height: 20px;
+  padding: 0 4px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
 }
 
-.tournament-match.is-open {
+/* The maps: one button naming the pool or counting the maps, and an
+   organiser's pencil beside it. A real button, the client's own ghost
+   button made compact enough for the header's one line: it opens something,
+   and a muted outline at 11px read as a tag beside the round's length. */
+.tournament-round-maps {
+  display: inline-flex;
+  flex: 0 1 auto;
+  gap: 4px;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.tournament-round-button {
+  gap: 6px;
+  height: 28px;
+  min-height: 28px;
+  min-width: 0;
+  max-width: 190px;
+  padding: 0 10px;
+  background: var(--color-surface);
+  font-size: 12px;
+}
+
+.tournament-round-button > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-round-button > svg {
+  flex: none;
+  color: var(--color-accent);
+}
+
+.tournament-round-button:disabled > svg {
+  color: inherit;
+}
+
+.tournament-round-button:hover:not(:disabled) {
   border-color: var(--color-border-strong);
 }
 
-.tournament-match-side.is-winner {
-  font-weight: 600;
-  color: var(--color-ok);
+/* A Swiss round's pool while its overlay is open. */
+.tournament-round-button.is-open {
+  border-color: var(--color-accent);
+}
+
+.tournament-round-button.is-icon {
+  width: 28px;
+  padding: 0;
+}
+
+.tournament-round-button.is-icon > svg {
+  color: inherit;
+}
+
+/* The per-game list a round's maps open into. */
+.tournament-round-map-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tournament-round-map-list li {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: 9px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.tournament-round-map-list li:first-child {
+  border-top: 0;
+}
+
+/* The cards. Half a slot of lead-in per step of pitch keeps each round's
+   cards centred against the pair that feeds them; the gap between them is
+   the rest of their pitch. */
+.tournament-round-matches {
+  display: flex;
+  flex-direction: column;
+  padding: var(--col-pad);
+  padding-top: calc(var(--col-pad) + (var(--pitch, 1) - 1) * var(--slot) / 2);
+  gap: calc((var(--pitch, 1) - 1) * var(--slot) + var(--card-gap));
+}
+
+.tournament-round.is-bracket .tournament-round-matches,
+.tournament-round.is-straight .tournament-round-matches {
+  padding-left: calc(var(--col-pad) + var(--elbow));
+}
+
+/* One match: the pair over its strip. Not `overflow: hidden`, however
+   tempting: the connectors are pseudo-elements outside this box, to its left,
+   and clipping the card would erase every line in the bracket. The pair and
+   the strip bound their own content instead. */
+.tournament-match {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: calc(var(--slot) - var(--card-gap));
+  box-sizing: border-box;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color 100ms ease;
+}
+
+.tournament-match:hover {
+  border-color: var(--color-border-strong);
+}
+
+.tournament-match-pair {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+/* One side: seed, who, score, so seeds line up down one edge of a round and
+   scores down the other. The score is a cell of its own, filled for the
+   winner, which is how a finished match states its result without a badge. */
+.tournament-match-side {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  min-width: 0;
+  padding-left: 8px;
+  font-size: 12px;
+}
+
+.tournament-match-side + .tournament-match-side {
+  border-top: 1px solid var(--color-border);
+}
+
+.tournament-match-seed {
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+.tournament-match-side .tournament-match-seed {
+  text-align: right;
+}
+
+.tournament-match-who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tournament-match-score {
-  font-size: 11px;
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  color: var(--color-muted);
+  background: color-mix(in srgb, var(--color-bg) 35%, transparent);
+  font-size: 12px;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
+}
+
+/* A slot nobody has reached yet reads as empty rather than as a competitor
+   called "To be decided". */
+.tournament-match-side.is-tbd .tournament-match-who {
+  color: var(--color-subtle);
+  font-style: italic;
+}
+
+.tournament-match.is-done .tournament-match-side:not(.is-winner) .tournament-match-who {
+  color: var(--color-muted);
+}
+
+.tournament-match-side.is-winner .tournament-match-who {
+  color: var(--color-text);
+  font-weight: 650;
+}
+
+.tournament-match-side.is-winner .tournament-match-score {
+  color: var(--color-ok);
+  background: color-mix(in srgb, var(--color-ok) 18%, transparent);
+}
+
+/* Your own side, marked on the edge. */
+.tournament-match-side.is-mine {
+  box-shadow: inset 2px 0 0 var(--color-accent);
+}
+
+.tournament-match-side.is-mine .tournament-match-who {
+  font-weight: 650;
+}
+
+/* The strip: which match and where it is up to on the left, and a row of
+   small icons on the right, the replays and whatever this viewer may do. */
+.tournament-match-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  margin-top: auto;
+  min-width: 0;
+  padding: 0 3px 0 8px;
+  color: var(--color-subtle);
+  background: color-mix(in srgb, var(--color-bg) 30%, transparent);
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  font-size: 11px;
+}
+
+.tournament-match-status {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tournament-match-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-match-state {
+  flex: none;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.tournament-match-state.is-ready {
+  color: var(--color-ok);
+}
+
+.tournament-match-state.is-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-warn);
+}
+
+.tournament-match-state.is-live::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-warn) 25%, transparent);
+}
+
+/* A submitted score, waiting for the other side. Also the Swiss rounds'. */
+.tournament-match-pending {
+  font-size: 11px;
+}
+
+.tournament-match-foot .tournament-match-pending {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-warn);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The icons: one size and one quiet look for all of them, whatever they
+   are built from (a replay button, a design-system button, a toggle). The
+   one that is the next step, reporting, keeps its fill. */
+.tournament-match-tools {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 1px;
+}
+
+.tournament-match-tools > button,
+.tournament-match-tools > .tournament-round-pool-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 22px;
+  height: 20px;
+  min-height: 0;
+  padding: 0 4px;
+  color: var(--color-muted);
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: normal;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.tournament-match-tools > button:hover:not(:disabled),
+.tournament-match-tools > button:focus-visible,
+.tournament-match-tools > button.is-open {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.tournament-match-tools > .btn-primary {
+  color: var(--color-bg);
+  background: var(--color-accent);
+}
+
+.tournament-match-tools > .btn-primary:hover:not(:disabled) {
+  color: var(--color-bg);
+  background: var(--color-accent);
+  opacity: 0.85;
+}
+
+/* Vetoes this account owes. */
+.tournament-match-tools > .tournament-round-pool-toggle.is-due {
+  color: var(--color-warn);
+}
+
+/* A count on an icon (unread chat, vetoes owed) sits on its corner. */
+.tournament-match-tools .tournament-badge {
+  position: absolute;
+  top: -7px;
+  right: -5px;
+  min-width: 15px;
+  padding: 0 3px;
+  font-size: 11px;
+  line-height: 15px;
+}
+
+/* The words stay in the markup for the list views and for a screen reader
+   (`aria-label`); the card has room for the icon. */
+.tournament-match .tournament-action-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The list of games a card's replay button opens, drawn over everything at
+   the button, its right edge on the button's. */
+.tournament-replay-menu {
+  position: fixed;
+  z-index: 120;
+  display: grid;
+  min-width: 200px;
+  padding: 4px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+  transform: translateX(-100%);
+}
+
+.tournament-replay-menu button {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  color: var(--color-text);
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tournament-replay-menu button:hover,
+.tournament-replay-menu button:focus-visible {
+  background: var(--color-surface-hover);
+}
+
+/* A match being played, and one that can be. */
+.tournament-match.is-live {
+  border-color: color-mix(in srgb, var(--color-warn) 70%, var(--color-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-warn) 25%, transparent);
+}
+
+/* -- The lines between rounds.
+   Each line leaves the winner's row of the card before (its middle row while
+   there is no winner) and arrives at the middle of this card's pair. The rows
+   come from `incomingLines` as `--line-in-1` (the upper feeder) and
+   `--line-in-2` (the lower one), and default to the middle. */
+
+/* The stub from the vertical into the middle of this card's pair. */
+.tournament-round.is-bracket .tournament-match::before,
+.tournament-round.is-straight .tournament-match::before {
+  content: "";
+  position: absolute;
+  top: var(--row-mid);
+  right: 100%;
+  width: var(--elbow);
+  border-top: 1px solid var(--tourney-line);
+}
+
+/* The bracket itself, one box with three of its borders and its right-hand
+   corners rounded: the top and bottom are the lines out of the two feeder
+   cards, each at its winner's row, and the right is the vertical joining
+   them. It spans from the feeders' right edge to where the stub begins. The
+   feeders' tops sit a quarter pitch above and below this card's top, which
+   is where their rows are measured from. */
+.tournament-round.is-bracket .tournament-match::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--gap-x) * -1);
+  width: calc(var(--gap-x) - var(--elbow));
+  top: calc(var(--pitch, 1) * var(--slot) / -4 + var(--line-in-1, var(--row-mid)));
+  height: calc(
+    var(--pitch, 1) * var(--slot) / 2 + var(--line-in-2, var(--row-mid)) - var(--line-in-1, var(--row-mid))
+  );
+  border: 1px solid var(--tourney-line);
+  border-left: 0;
+  border-radius: 0 8px 8px 0;
+}
+
+/* A round whose count did not change is joined by a run from one card: the
+   losers bracket's minor rounds take one winner from the round before and
+   one loser from the winners bracket, so there is no pair to join. Level
+   with the middle, the run is one straight line; from a winner's row it
+   bends to the middle. */
+.tournament-round.is-straight .tournament-match::before {
+  width: var(--gap-x);
+}
+
+.tournament-round.is-straight .tournament-match.is-in-top::before,
+.tournament-round.is-straight .tournament-match.is-in-bottom::before {
+  width: var(--elbow);
+}
+
+.tournament-round.is-straight .tournament-match.is-in-top::after,
+.tournament-round.is-straight .tournament-match.is-in-bottom::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--gap-x) * -1);
+  width: calc(var(--gap-x) - var(--elbow));
+  border-right: 1px solid var(--tourney-line);
+}
+
+.tournament-round.is-straight .tournament-match.is-in-top::after {
+  top: var(--row-top);
+  height: calc(var(--row-mid) - var(--row-top));
+  border-top: 1px solid var(--tourney-line);
+  border-radius: 0 8px 0 0;
+}
+
+.tournament-round.is-straight .tournament-match.is-in-bottom::after {
+  top: var(--row-mid);
+  height: calc(var(--row-bottom) - var(--row-mid));
+  border-bottom: 1px solid var(--tourney-line);
+  border-radius: 0 0 8px 0;
+}
+
+/* -- Byes, missing arms, unplayed matches, the preview.
+   A bye is not a game and is not drawn, but it keeps its slot, because the
+   connectors are derived from the card pitch: an empty slot of the same
+   height, with no border and no lines. A card whose feeder is such a slot
+   drops the arm that would lead to it. */
+
+.tournament-match.is-phantom {
+  visibility: hidden;
+}
+
+.tournament-round.is-bracket .tournament-match.is-no-top::after {
+  top: var(--row-mid);
+  height: calc(var(--pitch, 1) * var(--slot) / 4 + var(--line-in-2, var(--row-mid)) - var(--row-mid));
+  border-top: 0;
+  border-radius: 0 0 8px 0;
+}
+
+.tournament-round.is-bracket .tournament-match.is-no-bottom::after {
+  height: calc(var(--pitch, 1) * var(--slot) / 4 + var(--row-mid) - var(--line-in-1, var(--row-mid)));
+  border-bottom: 0;
+  border-radius: 0 8px 0 0;
+}
+
+.tournament-round.is-bracket .tournament-match.is-no-top.is-no-bottom::after {
+  display: none;
+}
+
+.tournament-round.is-straight .tournament-match.is-no-stub::before {
+  border-top: 0;
+}
+
+.tournament-round.is-straight .tournament-match.is-no-stub::after {
+  display: none;
+}
+
+.tournament-match.is-not-played {
+  opacity: 0.45;
+}
+
+/* The bracket before it exists: the shape, dashed. */
+.tournament-match.is-preview {
+  background: transparent;
+  border-style: dashed;
+}
+
+/* -- The 3rd place match.
+   Under the final, in the final's own column, behind a dashed rule across the
+   whole column and under a header of its own, which carries its own length
+   and its own pool. It sits after the column's card stack rather than inside
+   it, so the final keeps its place between the semi-finals and the connector
+   arithmetic never sees it. Joined to nothing: its players are the
+   semi-finals' losers, and a line from there would cross the final's.
+
+   It starts a gap below the lower semi-final's card, a level of its own: the
+   final sits half a pitch above that card's centre (the pitch is handed down
+   to this block), so the line from the lower semi-final into the final ends
+   above the rule rather than running through the block. Its header and its
+   card keep the column's indent, so the card sits under the final's. */
+.tournament-third-place {
+  margin-top: calc(var(--pitch, 1) * var(--slot) / 4 - var(--col-pad) + var(--card-gap));
+  border-top: 1px dashed var(--color-border-strong);
+}
+
+.tournament-round .tournament-third-place .tournament-round-matches {
+  padding-top: var(--col-pad);
+  gap: 0;
+}
+
+.tournament-round .tournament-third-place .tournament-match::before,
+.tournament-round .tournament-third-place .tournament-match::after {
+  content: none;
+}
+
+/* -- Round tabs over a list of rounds.
+   The Swiss rounds under a bracket are every result again, newest first; the
+   tabs show one round of them, or all. A segmented row, not pills. */
+.tournament-round-nav {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-self: flex-start;
+  overflow: hidden;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.tournament-round-nav button {
+  height: 30px;
+  padding: 0 14px;
+  color: var(--color-muted);
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tournament-round-nav button + button {
+  border-left: 1px solid var(--color-border-strong);
+}
+
+.tournament-round-nav button:hover,
+.tournament-round-nav button:focus-visible {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.tournament-round-nav button.is-active {
+  color: var(--color-bg);
+  background: var(--color-accent);
+}
+
+/* A pool map's picture, which opens it large. */
+.tournament-pool-map-zoom {
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: zoom-in;
+}
+
+.tournament-pool-map-zoom img {
+  display: block;
+  transition: transform 150ms ease;
+}
+
+.tournament-pool-map-zoom:hover img,
+.tournament-pool-map-zoom:focus-visible img {
+  transform: scale(1.04);
 }
 
 /* ── Players as people ─────────────────────────────────────────────────────
@@ -346,167 +1354,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* A match card now holds two player chips rather than two strings. */
-.tournament-match-side {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-}
-
-/* -- Bracket layout -------------------------------------------------------
-   Rounds are columns under one header strip, alternating shades so a wide
-   bracket reads across without counting.
-
-   The connectors are exact rather than approximate, and that rests on one
-   decision: every card occupies the same slot height (`--slot`), and each round
-   spaces its cards `--pitch` slots apart, doubling per round (1, 2, 4, ...).
-   A card in round 2 therefore sits exactly at the midpoint of the pair feeding
-   it, so the elbow joining them is a fixed offset rather than a measured one.
-   No SVG overlay, no resize observer, and it survives scrolling either way.
-
-   Cards keep an always-present (sometimes empty) action row so the slot height
-   holds whether or not a match has buttons. Without that the pitch is a lie and
-   the lines drift, which is exactly how the first attempt failed.
-
-   Lines are only drawn where a round actually halves into the next
-   (`.is-linked`, decided in BracketView): a Swiss round keeps the same match
-   count throughout, and lines there would claim a progression that does not
-   exist. */
-
-.tournament-bracket-side {
-  /* One match plus the air under it, and the number is arithmetic rather than
-     taste: two rows of 24 (border-box, so padding is inside), the 1 px rule
-     between them, a 24 px strip for the buttons, and the card's own two
-     borders. 51 + 24 = 75, so 76 for the card and 96 for the slot with the gap
-     below it. Get this wrong downwards and the content spills over the
-     connectors; the old 112 was a card with two names floating in it. */
-  --slot: 96px;
-  --elbow: 20px;
-  /* How far the previous column's right edge is from this one's cards: this
-     column's left padding (with the elbow in it) plus the previous column's
-     right padding. The connector arithmetic needs it by name. */
-  --gap-x: calc(var(--space-3) * 2 + var(--elbow));
-  /* The air between two cards in the same column. It comes *out* of the slot
-     rather than being added to it, so the centre-to-centre distance stays
-     exactly `--pitch * --slot` and the connectors keep landing on the midpoint
-     of the pair that feeds a card. Round one used to have a gap of zero, which
-     is what made eight cards read as one list of sixteen names. */
-  --card-gap: 20px;
-}
-
-/* The box itself: the border and the sideways scroll belong to the columns, not
-   to the stack around them, or the pool panel underneath would be inside the
-   frame and clipped by it. */
-.tournament-bracket-columns {
-  align-items: stretch;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.tournament-round {
-  display: flex;
-  flex-direction: column;
-  /* Flush: the header row is a strip across the whole bracket, so nothing sits
-     between it and the cards under it. */
-  gap: 0;
-  /* Wide enough for a team name beside its seed, its score and the two buttons
-     a live match carries. Names are what people look for here, so the column
-     buys them room rather than spending it on air. */
-  min-width: 260px;
-  flex: 1;
-}
-
-/* Alternate rounds get a wash. It reads better than a rule between the columns,
-   because a rule cuts through the connectors that cross exactly there: the eye
-   follows a line from one round to the next and hits a vertical it has to
-   ignore. A change of ground has no such crossing. */
-.tournament-round:nth-child(even) {
-  background: var(--color-surface-raised);
-}
-
-/* The header strip is a row now, not a bare heading: see
-   `.tournament-round-head` below, which carries the border and the maps
-   button. The columns themselves are told apart by the wash above, not by a
-   rule: see there. */
-
-.tournament-round-matches {
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-3);
-  /* Half a slot of lead-in, doubling with the pitch, keeps each round's cards
-     centred against the pair that feeds them. */
-  padding-top: calc(var(--space-3) + (var(--pitch, 1) - 1) * var(--slot) / 2);
-  gap: calc((var(--pitch, 1) - 1) * var(--slot) + var(--card-gap));
-}
-
-.tournament-match {
-  /* Two columns: the pair, and the controls beside it. The buttons used to be a
-     row underneath, and a card that is one slot high has no room for one: a
-     match that can be hosted and reported ran over the card below it. */
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: stretch;
-  gap: 0;
-  padding: 0;
-  overflow: visible;
-  /* The slot the connector arithmetic assumes, less the gap that separates it
-     from the next card: height + gap is one whole slot either way. */
-  height: calc(var(--slot) - var(--card-gap));
-  box-sizing: border-box;
-  /* Not `overflow: hidden`, however tempting. The connectors are pseudo-elements
-     that sit *outside* this box, to its left, so clipping the card erases every
-     line in the bracket. That is exactly what happened when this was added to
-     stop the veto run spilling out; the run is a drawer now and does not need
-     it. What must not overflow is the content, and that is bounded below. */
-}
-
-.tournament-round.is-bracket .tournament-round-matches,
-.tournament-round.is-straight .tournament-round-matches {
-  padding-left: calc(var(--space-3) + var(--elbow));
-}
-
-.tournament-round.is-bracket .tournament-match,
-.tournament-round.is-straight .tournament-match {
-  position: relative;
-}
-
-/* A round whose count did not change is joined by a straight run rather than by
-   a bracket: the losers bracket's minor rounds take one winner from the round
-   before and one loser from the winners bracket, so there is no pair to join.
-   The stub below is the whole line; the bracket element is not drawn. */
-.tournament-round.is-straight .tournament-match::before {
-  width: calc(var(--gap-x));
-}
-
-/* The stub from the vertical into this card. */
-.tournament-round.is-bracket .tournament-match::before,
-.tournament-round.is-straight .tournament-match::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  right: 100%;
-  width: var(--elbow);
-  border-top: 1px solid var(--color-border-strong);
-}
-
-/* The bracket itself, drawn as one box with three of its four borders: the top
-   and bottom borders are the lines coming out of the two feeder cards, and the
-   right border is the vertical joining them. It spans from the feeders' right
-   edge (`--gap-x` away, which is the two paddings plus the elbow) to where the
-   stub above begins, and vertically half a pitch either side of this card's
-   centre, which is exactly where those two cards sit. */
-.tournament-round.is-bracket .tournament-match::after {
-  content: "";
-  position: absolute;
-  left: calc(var(--gap-x) * -1);
-  width: calc(var(--gap-x) - var(--elbow));
-  top: calc(50% - var(--pitch, 1) * var(--slot) / 4);
-  height: calc(var(--pitch, 1) * var(--slot) / 2);
-  border-right: 1px solid var(--color-border-strong);
-  border-top: 1px solid var(--color-border-strong);
-  border-bottom: 1px solid var(--color-border-strong);
-}
-
 .tournament-match-actions {
   display: flex;
   gap: var(--space-1);
@@ -523,52 +1370,281 @@
   max-width: 70ch;
 }
 
-/* -- Detail header, sections ----------------------------------------------
-   Entering is the primary action and lives in the header, not in a section:
-   it is the one thing a player opens this tab to do. */
+/* -- Detail hero, sections ------------------------------------------------
+   The replay detail's hero: the event's banner behind everything, dimmed from
+   the left, with what the event is in front of it and the way in, large, on
+   the right. Entering is the primary action and lives here, not in a section:
+   it is the one thing a player opens this tab to do. Bleeds to the pane's
+   edges over its padding; `.tournament-detail >` outranks the pane's generic
+   header rule. */
 
-.tournament-detail-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  flex-wrap: wrap;
+.tournament-detail > .tournament-hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-3) 24px;
+  min-height: 132px;
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
+  padding: 28px 24px 20px;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      120% 140% at 100% 0%,
+      color-mix(in srgb, var(--tourney-series, var(--color-accent)) 16%, transparent) 0%,
+      transparent 60%
+    ),
+    var(--color-surface);
 }
 
-.tournament-detail-header p {
-  margin: var(--space-1) 0 0;
-  font-size: 12px;
+/* The series is the colour; with no series, an official event takes the warn
+   tone its tag is written in and a community one the accent. */
+.tournament-hero.is-series-plain.is-official {
+  --tourney-series: var(--color-warn);
 }
 
-.tournament-sections {
+.tournament-hero.is-series-plain.is-community {
+  --tourney-series: var(--color-accent);
+}
+
+/* The banner over the hero's right-hand side, cropped to it and faded into
+   the surface from the left and from below, so the title in front reads
+   whatever the artwork is. */
+.tournament-hero-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+
+.tournament-hero-backdrop img {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 78%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.55;
+}
+
+.tournament-hero-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      var(--color-surface) 22%,
+      color-mix(in srgb, var(--color-surface) 82%, transparent) 45%,
+      color-mix(in srgb, var(--color-surface) 30%, transparent) 100%
+    ),
+    linear-gradient(0deg, color-mix(in srgb, var(--color-surface) 70%, transparent), transparent 60%);
+}
+
+.tournament-hero-headtext {
   display: flex;
-  gap: var(--space-1);
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tournament-hero-eyebrow {
+  display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-height: 20px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.tournament-hero-eyebrow .tournament-series-name {
+  letter-spacing: 0.09em;
+}
+
+.tournament-hero-headtext h2 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+/* The way in on the right, large; whatever else this account can do about
+   its entry beside it, at the ordinary size. */
+.tournament-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.tournament-hero-actions:empty {
+  display: none;
+}
+
+.tournament-hero-primary {
+  min-width: 200px;
+  min-height: 48px;
+  font-size: 15px;
+}
+
+.tournament-hero-note {
+  font-size: 13px;
+}
+
+/* Under the banner, the facts and the stages: the Training hub's basis strip,
+   on the darker band. The stages run the band's whole width under the facts,
+   so neither squeezes the other. */
+.tournament-hero-foot {
+  margin: 0 calc(-1 * var(--space-4));
+  padding: 14px 24px 16px;
+  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
   border-bottom: 1px solid var(--color-border);
 }
 
-.tournament-section {
+/* The facts and the stages as wide as the facts are: the stages end where the
+   last fact does, however wide the pane. */
+.tournament-hero-foot-inner {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
-  color: var(--color-muted);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
+  flex-direction: column;
+  gap: 16px;
+  width: fit-content;
+  max-width: 100%;
 }
 
-.tournament-section:hover {
-  color: var(--color-text);
+/* Label over value, a hairline between each, no padding at the strip's start:
+   the replay detail's facts. Every fact carries its hairline and the strip is
+   pulled left by one hairline and one gutter, with that much of its own left
+   edge clipped away, so whichever fact starts a row, after a wrap too, starts
+   it flush and without a line. */
+.tournament-facts-strip {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: var(--space-3);
+  margin: 0 0 0 calc(-1 * var(--space-4) - 1px);
+  min-width: 0;
+  clip-path: inset(0 0 0 calc(var(--space-4) + 1px));
 }
 
-.tournament-section.is-active {
-  border-bottom-color: var(--color-accent);
-  color: var(--color-text);
+.tournament-facts-strip > div {
+  min-width: 0;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--color-border);
+}
+
+.tournament-facts-strip dt {
+  margin-bottom: 3px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tournament-facts-strip dd {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tournament-facts-strip dd small {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tournament-facts-strip .is-prize dd {
+  color: var(--color-warn);
+}
+
+/* The four stages as a bar: a segment each, filled up to the one the event is
+   in, with its name under it. As wide as the facts above it, by way of the
+   wrapper: stretched over a wide pane, the segments drift too far apart to
+   read as one bar. */
+.tournament-stepper {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  /* Less the last fact's trailing gutter, so it ends with that fact's text. */
+  margin: 0 var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tournament-stepper li {
+  min-width: 0;
+  padding-top: 8px;
+  overflow: hidden;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-top: 3px solid var(--color-border);
+}
+
+.tournament-stepper li.is-done {
+  color: var(--color-muted);
+  border-top-color: color-mix(in srgb, var(--tourney-series, var(--color-accent)) 45%, var(--color-border));
+}
+
+.tournament-stepper li.is-now {
+  color: var(--color-text);
+  border-top-color: var(--color-accent);
+}
+
+/* The sections: the shared section tabs (`section-tabs`), wrapping rather
+   than scrolling, since a tab scrolled out of sight is a section nobody
+   finds. */
+.tournament-sections.section-tabs {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+/* A count with something new behind it: the unread badge's colours. */
+.tournament-sections .section-tab-count.is-unread {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.tournament-sections .tournament-badge {
+  padding: 0 5px;
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: var(--color-accent);
+  color: var(--color-bg);
+  line-height: 18px;
+}
+
+/* A pane narrower than the hero's two columns: the way in takes a row of its
+   own under the title. */
+@media (max-width: 1100px) {
+  .tournament-detail > .tournament-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tournament-hero-actions {
+    justify-content: flex-start;
+  }
+
+  .tournament-hero-headtext h2 {
+    font-size: 24px;
+  }
 }
 
 /* -- Entrants -------------------------------------------------------------
@@ -588,15 +1664,38 @@
 .tournament-entrants th,
 .tournament-entrants td {
   text-align: left;
-  padding: var(--space-1) var(--space-3);
+  padding: 9px var(--space-3);
   border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
 }
 
+.tournament-entrants tr > :first-child {
+  padding-left: var(--space-2);
+}
+
+.tournament-entrants tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* The column names in the panels' label type. */
 .tournament-entrants th {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-muted);
+  padding-top: 0;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.tournament-entrants tbody tr:hover td {
+  background: var(--color-surface-hover);
+}
+
+/* The ranking and the rating are short numbers; the name takes the rest. */
+.tournament-entrants tr > :first-child,
+.tournament-entrants td.mono {
+  width: 1%;
+  white-space: nowrap;
 }
 
 /* Your own row, marked on the edge rather than across the whole width: it has
@@ -670,22 +1769,6 @@
 .tournament-entrant-name {
   flex: 1;
   min-width: 0;
-}
-
-/* -- Match cards ----------------------------------------------------------
-   A submitted score is not a status: the bracket has not moved while it sits
-   there, and both sides need to see the same figure. */
-
-.tournament-match-side.is-mine {
-  font-weight: 600;
-}
-
-.tournament-match-pending {
-  font-size: 11px;
-}
-
-.tournament-match.is-live {
-  border-color: var(--color-warn);
 }
 
 /* -- Chat -----------------------------------------------------------------
@@ -1115,23 +2198,42 @@
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: var(--space-2);
 }
 
+/* A map: its picture, and its name beside it, never under it. */
 .tournament-veto-map {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  font-size: 12px;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
+  font-size: 12px;
 }
 
-.tournament-veto-map img {
-  width: 100%;
-  aspect-ratio: 1;
+.tournament-veto-map > img,
+.tournament-veto-map > .tournament-pool-map-blank,
+.tournament-pool-map-zoom,
+.tournament-veto-pick > img,
+.tournament-veto-pick > .tournament-pool-map-blank {
+  flex: none;
+  width: 64px;
+  height: 64px;
   object-fit: cover;
   border-radius: var(--radius-sm);
+}
+
+.tournament-pool-map-zoom img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tournament-veto-map-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* A banned map stays on screen: the run is watched, and what was taken away is
@@ -1351,17 +2453,6 @@
 
 .tournament-format-fields .tournament-field {
   flex: 1 1 180px;
-}
-
-.tournament-news-edit {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.tournament-news-edit textarea {
-  width: 100%;
-  resize: vertical;
 }
 
 /* The completed-matches group. A bracket makes a room per match and keeps them
@@ -1777,7 +2868,6 @@
 
 /* -- News and entrant administration -------------------------------------- */
 
-.tournament-news,
 .tournament-entrant-admin {
   display: flex;
   flex-direction: column;
@@ -1790,18 +2880,22 @@
   font-size: 13px;
 }
 
-.tournament-news-compose,
-.tournament-news-list {
+/* -- News ---------------------------------------------------------------
+   A timeline, newest first: a rail down the left with a point per post, and
+   each post a card. Held to a reading width: a feed stretched over a wide
+   pane is a line of text nobody's eye can follow back. */
+
+.tournament-news {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  gap: var(--space-4);
+  max-width: 860px;
 }
 
-.tournament-news-compose textarea {
+.tournament-news-compose textarea,
+.tournament-news-edit textarea {
   width: 100%;
+  min-height: 84px;
   resize: vertical;
 }
 
@@ -1812,28 +2906,125 @@
   gap: var(--space-3);
 }
 
-.tournament-news-post {
-  padding: var(--space-3);
+.tournament-news-buttons {
   display: flex;
-  flex-direction: column;
   gap: var(--space-2);
 }
 
-/* An organiser marks a post important; age is not a proxy for urgency. */
-.tournament-news-post.is-important {
+.tournament-news-feed {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0 0 0 28px;
+  list-style: none;
+}
+
+/* The rail, from the first point to the last. */
+.tournament-news-feed::before {
+  content: "";
+  position: absolute;
+  top: 26px;
+  bottom: 26px;
+  left: 7px;
+  width: 2px;
+  background: var(--color-border);
+  border-radius: 1px;
+}
+
+.tournament-news-entry {
+  position: relative;
+}
+
+/* A post's point on the rail, level with its header. */
+.tournament-news-dot {
+  position: absolute;
+  top: 21px;
+  left: -26px;
+  width: 12px;
+  height: 12px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-strong);
+  border-radius: 50%;
+}
+
+.tournament-news-entry.is-latest .tournament-news-dot {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.tournament-news-entry.is-important .tournament-news-dot {
+  background: var(--color-warn);
   border-color: var(--color-warn);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-warn) 22%, transparent);
+}
+
+/* An organiser marks a post important; age is not a proxy for urgency. */
+.tournament-news-entry.is-important .tournament-news-card {
+  border-color: color-mix(in srgb, var(--color-warn) 45%, var(--color-border));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--color-warn) 9%, transparent), transparent 55%),
+    var(--color-surface-raised);
+}
+
+.tournament-panel.tournament-news-card {
+  gap: 10px;
+  padding: 16px 20px 18px;
 }
 
 .tournament-news-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-3);
+  min-height: 30px;
+}
+
+.tournament-news-meta {
+  display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--color-subtle);
   font-size: 12px;
 }
 
 .tournament-news-by {
-  font-weight: 600;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.tournament-news-flag {
+  flex: none;
+  padding: 2px 9px;
+  color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warn) 40%, transparent);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.tournament-news-tools {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  margin-right: -6px;
+}
+
+.tournaments-icon-button.is-danger:hover:not(:disabled) {
+  color: var(--color-error);
+}
+
+.tournament-news-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .tournament-divisions {
@@ -1845,33 +3036,380 @@
    of labelled cells inside it. What differs here is only the paint, so the
    whole thing is drawn from tokens and nothing sets a colour of its own. */
 
-.tournament-overview {
+/* Two columns where the pane is wide enough: how the event is run on the
+   left, what is at stake and where to go next on the right. Measured on the
+   pane rather than the window, since the list beside it takes its share. */
+.tournament-detail {
+  container: tourney-detail / inline-size;
+}
+
+.tournament-overview,
+.tournament-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+}
+
+@container tourney-detail (min-width: 860px) {
+  .tournament-overview,
+  .tournament-columns {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 34%);
+  }
+}
+
+.tournament-overview-main,
+.tournament-overview-aside,
+.tournament-columns-main,
+.tournament-columns-aside {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  min-width: 0;
+}
+
+/* The latest announcement as one strip: what it is and when, the text, and
+   the way to the rest. Stacks where the pane is narrow. */
+.tournament-panel.tournament-latest {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-2) 20px;
+  padding: 14px 20px;
+}
+
+.tournament-latest-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 20px;
+  border-right: 1px solid var(--color-border);
+}
+
+.tournament-latest-when {
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tournament-latest-body {
+  min-width: 0;
+}
+
+.tournament-latest-all {
+  white-space: nowrap;
+}
+
+/* A link under a panel's text sits at its start, not stretched to its width. */
+.tournament-panel > .tournament-link-button {
+  align-self: flex-start;
+}
+
+@container tourney-detail (max-width: 620px) {
+  .tournament-panel.tournament-latest {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tournament-latest-head {
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--space-3);
+    padding-right: 0;
+    border-right: 0;
+  }
+}
+
+/* The format as large facts over their labels, a hairline between each. The
+   strip is pulled left by one gutter and one hairline and clipped there, so
+   whichever fact starts a row, after a wrap too, starts it flush. */
+.tournament-format-cells {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: var(--space-4);
+  margin-left: calc(-1 * 20px - 1px);
+  clip-path: inset(0 0 0 calc(20px + 1px));
+}
+
+.tournament-format-cell {
+  flex: 1 1 160px;
+  min-width: 0;
+  padding: 2px 20px;
+  border-left: 1px solid var(--color-border);
+}
+
+.tournament-format-value {
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+}
+
+.tournament-format-label {
+  margin-top: 4px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.tournament-format-cell p {
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+
+/* The rules a game is played under: a name, then what it is, one row each
+   under a hairline. The names are the organiser's own where they come from
+   the lobby options, so the column is sized to them rather than fixed. */
+.tournament-rule-table {
+  display: grid;
+  grid-template-columns: minmax(110px, max-content) minmax(0, 1fr);
+  margin: 0;
+}
+
+.tournament-rule-table > div {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  column-gap: 24px;
+  padding: 11px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.tournament-rule-table > div:first-child {
+  border-top: 0;
+  padding-top: 2px;
+}
+
+.tournament-rule-table dt {
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.tournament-rule-table dd {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tournament-rule-table dd p {
+  margin: 0;
+}
+
+/* A note the organiser wrote around the list, across both columns. */
+.tournament-rule-table > div.is-note {
+  display: block;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+/* The rating block on its own, in the Players section's side column: the
+   rule table's value cell without the table. */
+.tournament-rule-body {
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tournament-rule-body p {
+  margin: 0;
+}
+
+/* -- The Players section's side column ----------------------------------
+   How full the field is: the count large, against the cap, on a bar with
+   the floor the event runs with marked; green once the floor is met. */
+
+.tournament-field-count {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.tournament-field-number {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.tournament-field-of {
+  color: var(--color-muted);
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tournament-field-unit {
+  margin-left: 4px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.tournament-field-bar {
+  position: relative;
+  height: 6px;
+  background: var(--color-border);
+  border-radius: var(--radius-pill);
+}
+
+.tournament-field-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--color-warn);
+  border-radius: inherit;
+}
+
+.tournament-field-bar.is-enough > span {
+  background: var(--color-ok);
+}
+
+/* The floor, as a tick across the bar. */
+.tournament-field-bar > i {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--color-text);
+  border-radius: 1px;
+  opacity: 0.7;
+}
+
+.tournament-field-count + .tournament-field-bar {
+  margin-top: 4px;
+}
+
+.tournament-panel > p {
+  margin: 0;
+}
+
+/* Highest, average, lowest: three numbers over their labels. */
+.tournament-field-ratings {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.tournament-field-ratings > div {
+  padding: 0 12px;
+  border-left: 1px solid var(--color-border);
+}
+
+.tournament-field-ratings > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.tournament-field-ratings dt {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.tournament-field-ratings dd {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The rating check under the range it checks against. */
+.tournament-rule-check {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.tournament-rule-main {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+@container tourney-detail (max-width: 520px) {
+  .tournament-rule-table > div {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 2px;
+  }
+}
+
+/* Where to go from here: a row each, the whole row the target. */
+.tournament-link-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tournament-link-rows li + li {
+  border-top: 1px solid var(--color-border);
+}
+
+.tournament-link-rows button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 10px 0;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.tournament-link-rows button:hover {
+  color: var(--color-accent);
+}
+
+.tournament-link-rows button > svg {
+  flex: none;
+  color: var(--color-subtle);
+}
+
+.tournament-link-rows button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .tournament-panel {
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   /* The pane behind this is `.surface`. A card in the same colour is a card
-     with nothing but a hairline, so every card on it is one step raised, and
-     the cells inside a card step back down again. */
+     with nothing but a hairline, so every card on it is one step raised. What
+     is inside a card is not boxed again: the replay detail's sections, label
+     over value with hairlines, not cards inside cards. */
   background: var(--color-surface-raised);
-  padding: var(--space-4);
+  padding: 18px 20px 20px;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   min-width: 0;
 }
 
+/* The replay detail's section heading: the eyebrow's capitals, a step
+   quieter than what is under it. */
 .tournament-panel h4 {
   margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--color-muted);
+  color: var(--color-subtle);
 }
 
 /* An announcement the organiser marked important. The same warn colour the
@@ -1893,17 +3431,36 @@
   min-width: 280px;
 }
 
-.tournament-datebar {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
 .tournament-cells {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: var(--space-3);
+}
+
+/* In the overview's cards a cell is a label over its text under a hairline,
+   not a box of its own. Elsewhere (the setup dialog, the pick phase) it keeps
+   its box, since there it stands alone. */
+.tournament-overview .tournament-cells {
+  gap: 16px 28px;
+}
+
+.tournament-overview .tournament-cell {
+  padding: 12px 0 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.tournament-overview .tournament-cell.is-prize {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.tournament-overview .tournament-cell-label {
+  color: var(--color-subtle);
+  font-weight: 650;
+  letter-spacing: 0.07em;
 }
 
 .tournament-cell {
@@ -1936,12 +3493,77 @@
   max-width: 100%;
 }
 
-/* The headline figure. Larger than everything around it on purpose: it is the
-   one fact a player scanning the list came to check. */
-.tournament-prize {
-  font-size: 22px;
+/* The rewards as a placing list: the place as a medal, what it wins, and the
+   cash at the end of the row in the prize colour. Gold, silver and bronze are
+   the leaderboard's own; a fourth place or a "Top 4" stays neutral. */
+.tournament-reward-places {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tournament-reward-places > li {
+  --medal: var(--color-subtle);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 6px 10px 6px 6px;
+  background: color-mix(in srgb, var(--medal) 7%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--medal) 22%, var(--color-border));
+  border-radius: var(--radius-md);
+}
+
+.tournament-reward-places > li.is-place-1 {
+  --medal: var(--color-league-gold);
+}
+
+.tournament-reward-places > li.is-place-2 {
+  --medal: var(--color-league-silver);
+}
+
+.tournament-reward-places > li.is-place-3 {
+  --medal: var(--color-league-bronze);
+}
+
+.tournament-reward-medal {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  color: var(--medal);
+  background: color-mix(in srgb, var(--medal) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--medal) 45%, transparent);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tournament-reward-what {
+  min-width: 0;
+  color: var(--color-text);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.tournament-reward-cash {
   color: var(--color-warn);
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tournament-reward-places + .tournament-reward-notes {
+  margin-top: 10px;
+  color: var(--color-muted);
+  font-size: 12px;
 }
 
 .tournament-setup-headline {
@@ -1975,9 +3597,32 @@
   border: 1px solid var(--color-border);
 }
 
-.tournament-champion h3 {
+/* The winner, as the one card on the page that is allowed to celebrate: the
+   trophy beside the name, on a warm wash. */
+.tournament-panel.tournament-champion {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-4);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--color-warn) 14%, transparent), transparent 70%),
+    var(--color-surface-raised);
+  border-color: color-mix(in srgb, var(--color-warn) 35%, var(--color-border));
+}
+
+.tournament-champion-icon {
+  flex: none;
+  color: var(--color-warn);
+}
+
+.tournament-champion .tournament-cell-label {
+  margin-bottom: 2px;
+}
+
+.tournament-detail .tournament-champion h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .tournament-disclosure {
@@ -2102,6 +3747,90 @@
   border-radius: var(--radius-sm);
 }
 
+/* A blank line the organiser typed. */
+.rich-text-gap {
+  height: 0.6em;
+}
+
+/* -- Rich text as a document ---------------------------------------------
+   The long bodies, the briefing first: a page of sections rather than a list
+   of short lines. Headings stand apart from the text under them, a bullet is
+   a bullet, a blank line is a paragraph break, and the lines keep a reading
+   measure. The same tree as everywhere else; only the spacing differs. */
+
+.rich-text.is-document {
+  gap: 2px;
+  font-size: 14px;
+  color: color-mix(in srgb, var(--color-text) 88%, var(--color-muted));
+}
+
+.rich-text.is-document p {
+  line-height: 1.65;
+  max-width: 76ch;
+}
+
+.rich-text.is-document .rich-text-gap {
+  height: 0.9em;
+}
+
+.rich-text.is-document .rich-text-h1,
+.rich-text.is-document .rich-text-h2,
+.rich-text.is-document .rich-text-h3 {
+  color: var(--color-text);
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+
+.rich-text.is-document .rich-text-h1 {
+  margin-top: 22px !important;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.rich-text.is-document .rich-text-h2 {
+  margin-top: 18px !important;
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.rich-text.is-document .rich-text-h3 {
+  margin-top: 14px !important;
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+/* A heading straight after a gap or at the top needs no margin of its own. */
+.rich-text.is-document > :first-child,
+.rich-text.is-document .rich-text-gap + p[class^="rich-text-h"] {
+  margin-top: 0 !important;
+}
+
+.rich-text.is-document .rich-text-bullet {
+  padding-left: 22px;
+  margin: 1px 0;
+}
+
+.rich-text.is-document .rich-text-bullet::before {
+  content: "";
+  left: 8px;
+  top: 0.72em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-warn);
+}
+
+/* A picture as the organiser sized it, never cropped: a poster's text is
+   part of it. Only the spacing round it is the document's. */
+.rich-text.is-document .rich-text-image {
+  margin: 4px 0 12px;
+  border-radius: var(--radius-md);
+}
+
 /* The signup dialog: one optional question, then in. Narrow, because a wide
    box around a single field reads as a form with something missing. */
 .tournament-signup-dialog {
@@ -2147,8 +3876,9 @@
 
    The pane is as wide as the client window, which on a wide monitor is not a
    layout at all: a label sits on the far left and the control it belongs to a
-   thousand pixels away, with nothing in between. The cap is the same one the
-   website's own page has.
+   thousand pixels away, with nothing in between. The cap is wider than the
+   website's own 1100 px: the overview reads in two columns, and at 1100 both
+   were squeezed while the rest of a wide window stood empty.
 
    The bracket is `is-wide` because it is a diagram rather than a document. It
    needs every pixel it can get and scrolls sideways past them. */
@@ -2158,7 +3888,7 @@
   flex-direction: column;
   gap: var(--space-4);
   width: 100%;
-  max-width: 1100px;
+  max-width: 1400px;
   min-width: 0;
 }
 
@@ -2285,55 +4015,6 @@
   border-color: var(--color-warn);
 }
 
-/* The two opponents, boxed together. Everything else on a match card is about
-   the match; these two are the match, and in a dense first round the pairing is
-   the one thing that has to survive being read quickly. */
-.tournament-match-pair {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 2px var(--space-1);
-  border-left: 2px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  min-width: 0;
-}
-
-/* The pairs worth finding in a wide bracket are the ones that can be played
-   now. A `waiting` card is two TBDs and must not shout; a `done` one is
-   history and already reads as settled from its scores. */
-.tournament-match.is-ready .tournament-match-pair,
-.tournament-match.is-live .tournament-match-pair {
-  border-left-color: var(--color-warn);
-}
-
-/* The round's header row: its name, and the button for the maps it is played
-   on. One line, so the header strip across the bracket stays one line high. */
-.tournament-round-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-3);
-  border-bottom: 1px solid var(--color-border);
-  min-height: 34px;
-}
-
-/* The header strip's border now lives on the row, so the heading inside it
-   carries only type. */
-.tournament-round-head > h5 {
-  margin: 0;
-  padding: 0;
-  border-bottom: 0;
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-
-
 .tournament-round-pool-toggle {
   display: inline-flex;
   align-items: center;
@@ -2357,23 +4038,9 @@
   color: var(--color-text);
 }
 
-.tournament-round-pool-toggle.is-open {
-  border-color: var(--color-warn);
-  color: var(--color-warn);
-}
-
 /* The pool is an overlay now (`.tournament-pool-modal`), so there is no panel
    under the bracket to style. The button that opens it stays here. */
 
-/* The ban and pick run of one match, under the bracket box. Same place as the
-   round's pool and for the same reason: it is a grid of maps, and a bracket
-   column is 210 pixels wide and one slot high. */
-.tournament-veto-drawer {
-  margin-top: var(--space-2);
-  padding: var(--space-3);
-  max-width: 720px;
-  background: var(--color-surface-raised);
-}
 
 /* The tile's title bar: the name and its state on one row, the numbers on the
    next. Fixed rows, so the rosters below start at the same height in every card
@@ -2406,32 +4073,25 @@
   min-height: 16px;
 }
 
-/* Official or community, as a tag on the row. Quieter than the status badge
-   beside it: the status is what changes, this is what the event *is*. */
+/* Official or community, as a soft chip. Quieter than the status beside it:
+   the status is what changes, this is what the event *is*. */
 .tournament-tag {
   justify-self: start;
-  padding: 1px var(--space-1);
+  padding: 1px 6px;
   border-radius: var(--radius-sm);
   background: var(--color-surface-raised);
   color: var(--color-muted);
   /* The 11 px floor the architecture check enforces, and it is right: this is
      read at a glance in a narrow column. */
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-weight: 650;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
 .tournament-tag.is-official {
   color: var(--color-warn);
-}
-
-/* The row's two marks, side by side. */
-.tournament-row-marks {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  flex-wrap: wrap;
+  background: color-mix(in srgb, var(--color-warn) 14%, transparent);
 }
 
 /* -- The manage board ----------------------------------------------------
@@ -2572,186 +4232,6 @@
 .tournament-flow-step.is-open::before {
   border-color: var(--color-warn);
   color: var(--color-warn);
-}
-
-/* -- The match, as a bracket draws one ------------------------------------
-   Two rows flush against each other inside one frame: seed on the left, name
-   in the middle, score on the right, so seeds line up down one edge of a round
-   and scores down the other. The frame is the match; the rule between the rows
-   is the "versus". That is the shape in every bracket anyone has read, and the
-   reason to copy it is that it needs no explaining. */
-
-.tournament-match-pair {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.tournament-match-side {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) 24px;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 3px var(--space-2);
-  min-width: 0;
-  min-height: 24px;
-  font-size: 12px;
-}
-
-/* The rule between the two sides. */
-.tournament-match-side + .tournament-match-side {
-  border-top: 1px solid var(--color-border);
-}
-
-.tournament-match-seed {
-  color: var(--color-muted);
-  font-size: 11px;
-  text-align: right;
-}
-
-.tournament-match-who {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-
-.tournament-match-score {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  font-size: 12px;
-}
-
-/* A slot nobody has reached yet reads as empty rather than as a competitor
-   called "To be decided". */
-.tournament-match-side.is-tbd .tournament-match-who {
-  color: var(--color-muted);
-  font-style: italic;
-}
-
-/* The winner keeps its weight; the losing row steps back, which is how a
-   finished match states its result without a badge. */
-.tournament-match.is-done .tournament-match-side:not(.is-winner) {
-  color: var(--color-muted);
-}
-
-/* Your own team, marked on the edge. */
-.tournament-match-side.is-mine {
-  box-shadow: inset 2px 0 0 var(--color-accent);
-}
-
-/* The controls, down the right edge of the card. A column rather than a row, so
-   two of them stack in the height the two rows already take, and empty on most
-   cards without costing anything. */
-.tournament-match .tournament-match-actions {
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
-  flex-wrap: nowrap;
-  gap: 2px;
-  padding: 2px;
-  min-height: 0;
-  border-left: 1px solid var(--color-border);
-}
-
-/* Nothing to press: no divider either, or every finished match grows a stripe. */
-.tournament-match .tournament-match-actions:empty {
-  border-left: 0;
-  padding: 0;
-}
-
-.tournament-match .tournament-match-actions button {
-  padding: 2px var(--space-2);
-  font-size: 11px;
-  white-space: nowrap;
-}
-
-/* A submitted score, under the pair rather than beside it: it is a sentence,
-   not a control, and the pair's own column is where the text of the card is. */
-.tournament-match-pending {
-  grid-column: 1;
-  padding: 0 var(--space-2) 2px;
-}
-
-/* -- The bracket card's two columns, with an organiser's controls in them ----
-   A card is one slot high (`--slot`), because the connectors are computed from
-   it, so whatever a viewer may do on a match has to fit in 74 px. A player has
-   a button or two; an organiser has match chat, vetoes, host and correct, and
-   those, stacked at full size with the replay ids under them, ran over the
-   cards above and below and into the names beside them. */
-
-/* Left: the pair, then what is said about it. Clipped, so a card carrying a
-   pending score and replays at once loses the last line rather than spilling. */
-.tournament-match-main {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.tournament-match-main .tournament-match-replays {
-  flex-wrap: nowrap;
-  gap: var(--space-2);
-  padding: 1px var(--space-2) 0;
-  overflow: hidden;
-}
-
-/* Right: a grid of two. Chat and vetoes are icons, side by side in the first
-   row; anything with a word on it (host, report, correct, confirm) takes a
-   whole row. `dense` lets the vetoes icon fill the gap beside chat even when
-   Host comes between them in the markup. */
-.tournament-round-matches .tournament-match .tournament-match-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-flow: row dense;
-  align-content: center;
-  gap: 2px;
-  width: 112px;
-}
-
-.tournament-round-matches .tournament-match .tournament-match-actions:empty {
-  width: auto;
-}
-
-.tournament-round-matches .tournament-match .tournament-match-actions > * {
-  grid-column: 1 / -1;
-}
-
-.tournament-round-matches .tournament-match .tournament-match-actions > .tournament-round-pool-toggle {
-  grid-column: auto;
-  justify-content: center;
-  min-height: 22px;
-  padding: 0 4px;
-}
-
-/* The words stay in the markup for the list views and for a screen reader
-   (`aria-label`); the card has room for the icon. */
-.tournament-round-matches .tournament-match .tournament-action-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-/* The design system's 32 px button is two of these rows. */
-.tournament-round-matches .tournament-match .tournament-match-actions > .btn-primary,
-.tournament-round-matches .tournament-match .tournament-match-actions > .btn-ghost {
-  min-height: 22px;
-  padding: 0 var(--space-2);
-  font-size: 11px;
-  justify-content: center;
-}
-
-.tournament-round-matches .tournament-match .tournament-not-played {
-  align-self: center;
-  text-align: center;
 }
 
 /* The round's map pool, as an overlay. It answers one question and is then
@@ -2922,9 +4402,14 @@
 
 .tournament-swiss-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-3);
   flex-wrap: wrap;
+}
+
+/* The round's pool at the far end, as in a bracket column's header. */
+.tournament-swiss-head > .tournament-round-button {
+  margin-left: auto;
 }
 
 .tournament-swiss-head h5 {
@@ -2941,8 +4426,11 @@
 }
 
 /* Rows close together, as a list and not a stack of cards: a round of eight
-   matches should read at a glance (issue 367). */
+   matches should read at a glance (issue 367). Held to a width that keeps
+   the controls near the result they belong to, rather than across a wide
+   pane from it. */
 .tournament-swiss-list {
+  max-width: 900px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -3025,7 +4513,7 @@
    them, and the scores of a round still line up in a column (issue 367). The
    controls trail at the right. */
 .tournament-swiss-teams {
-  flex: 0 1 420px;
+  flex: 0 1 360px;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -3072,10 +4560,6 @@
 
 .tournament-swiss-actions:empty {
   display: none;
-}
-
-.tournament-swiss-veto {
-  padding: var(--space-3);
 }
 
 .tournament-swiss-round.is-upcoming .tournament-swiss-head h5 {
@@ -3129,8 +4613,8 @@
 .tournament-veto-pick {
   position: relative;
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  align-items: center;
+  gap: 10px;
   width: 100%;
   padding: var(--space-1);
   border: 1px solid var(--color-border);
@@ -3141,13 +4625,6 @@
   font-size: 12px;
   text-align: left;
   cursor: pointer;
-}
-
-.tournament-veto-pick img {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border-radius: var(--radius-sm);
 }
 
 .tournament-veto-pick.is-ban:hover,
@@ -3176,7 +4653,7 @@
   filter: grayscale(0.6);
 }
 
-.tournament-veto-grid.is-gone .tournament-veto-map > span:first-of-type {
+.tournament-veto-grid.is-gone .tournament-veto-map-text > :first-child {
   text-decoration: line-through;
 }
 
@@ -3267,6 +4744,126 @@
   color: var(--color-warn);
 }
 
+/* The panel's two halves: what is still to be decided, and what has been.
+   One after the other inline; side by side in the overlay. */
+.tournament-veto-body,
+.tournament-veto-main,
+.tournament-veto-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* -- The veto overlay -------------------------------------------------------
+   One match's run over the bracket: who plays whom at the top, then the maps
+   on the left (still in play, then banned) and on the right the games as
+   they are settled and the run in order, each in its own card. */
+
+.modal-panel.tournament-veto-modal {
+  width: min(1080px, 94vw);
+  max-width: none;
+  max-height: 88vh;
+  padding: 22px 24px 24px;
+}
+
+.tournament-veto-modal-head {
+  display: grid;
+  gap: 4px;
+  margin: 0 32px 18px 0;
+}
+
+.tournament-veto-modal-eyebrow {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tournament-veto-modal-head h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.tournament-veto-modal-vs {
+  color: var(--color-subtle);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.tournament-veto.is-overlay {
+  gap: var(--space-3);
+  padding: 0;
+  border-top: 0;
+}
+
+/* Whose turn it is, as a bar across both halves. */
+.tournament-veto.is-overlay .tournament-veto-turn {
+  min-height: 40px;
+  padding: 8px 12px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+}
+
+.tournament-veto.is-overlay .tournament-veto-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+/* Every block a card of its own, headed in the panels' label type. */
+.tournament-veto.is-overlay section {
+  padding: 14px 16px 16px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.tournament-veto.is-overlay h6 {
+  margin: 0 0 12px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tournament-veto.is-overlay .tournament-veto-grid {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+/* In the narrow half the games are one column each: game, then map, then
+   factions under them. */
+.tournament-veto.is-overlay .tournament-veto-side .tournament-veto-game {
+  grid-template-columns: 56px minmax(0, 1fr);
+}
+
+.tournament-veto.is-overlay .tournament-veto-side .tournament-veto-game > :nth-child(n + 3) {
+  grid-column: 1 / -1;
+}
+
+.tournament-veto.is-overlay .tournament-veto-log-row {
+  grid-template-columns: 20px 56px 30px minmax(0, 1fr) minmax(0, 1.2fr);
+}
+
+@media (max-width: 820px) {
+  .tournament-veto.is-overlay .tournament-veto-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* A match whose vetoes wait on this account. */
 .tournament-round-pool-toggle.is-due {
   border-color: var(--color-warn);
@@ -3279,14 +4876,15 @@
 }
 
 /* -- Faction vetoes ----------------------------------------------------------
-   No faction logos: they are game assets this client does not ship, as on the
-   website. A letter in the faction's own colour, and its name. */
+   A faction as its emblem in its own colour, and its name: the glyphs the
+   rest of the client draws factions with (`FactionIcon`). */
 
 .tournament-fchip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 1px var(--space-2) 1px 2px;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px 0 6px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-size: 12px;
@@ -3294,15 +4892,7 @@
 }
 
 .tournament-fchip-glyph {
-  display: inline-grid;
-  place-items: center;
-  width: 17px;
-  height: 17px;
-  border-radius: var(--radius-sm);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--color-bg);
-  background: var(--fchip-colour, var(--color-muted));
+  flex: none;
 }
 
 .tournament-fchip.is-uef {
@@ -3375,6 +4965,52 @@
   align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
+}
+
+/* A settled game: each side's name, flush right, against its faction, the
+   chips one width in one column so the two sides' factions line up, and the
+   games' factions line up down the list. */
+.tournament-fveto.is-done {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 118px;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.tournament-fveto.is-done .tournament-fveto-row {
+  display: contents;
+}
+
+.tournament-fveto.is-done .tournament-fveto-row > :first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-fveto.is-done .tournament-fchip {
+  width: 100%;
+}
+
+.tournament-fveto.is-done .tournament-fveto-reset {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+}
+
+/* In a game's row the factions sit at its right edge. */
+.tournament-veto-game > .tournament-fveto {
+  justify-self: stretch;
+}
+
+.tournament-veto-game > .tournament-fveto:not(.is-done) {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.tournament-veto-game .tournament-fveto-mine,
+.tournament-veto-game .tournament-fveto-chips {
+  justify-content: flex-end;
 }
 
 .tournament-fveto-turn {
@@ -3747,12 +5383,16 @@
   cursor: pointer;
 }
 
-/* -- The Maps tab -------------------------------------------------------------- */
+/* -- The Maps tab --------------------------------------------------------------
+   Two sections, the pools and every map, each a heading over a grid of the
+   same tile: the whole picture, square, with its name and size on a dark foot.
+   A pool is a card of tiles; a map in "All maps" is a tile with what the
+   picture cannot say under it. */
 
 .tournament-maps {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 28px;
   max-width: 1180px;
 }
 
@@ -3766,16 +5406,15 @@
 }
 
 .tournament-maps-admin h5,
-.tournament-maps-section h5 {
+.tournament-maps-section-head h5 {
   margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.tournament-maps-admin p,
-.tournament-maps-section > p {
+.tournament-maps-admin p {
   margin: var(--space-1) 0 0;
   font-size: 12px;
 }
@@ -3783,172 +5422,318 @@
 .tournament-maps-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 12px;
 }
 
-.tournament-pool-cards {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+.tournament-maps-section > p {
+  margin: 0;
+  font-size: 13px;
 }
 
-.tournament-pool-card {
+/* Over `.tournament-detail header`, which spreads a header's children apart. */
+.tournament-maps .tournament-maps-section-head {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
-}
-
-.tournament-pool-card-head {
-  display: flex;
+  justify-content: flex-start;
   align-items: baseline;
-  gap: var(--space-2);
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.tournament-pool-card-head .muted {
-  margin-left: auto;
+.tournament-maps-section-head p {
+  margin: 0;
   font-size: 12px;
 }
 
-.tournament-pool-thumbs {
+/* The event list's group counter (`.tournaments-group-count`), so a count
+   looks the same wherever the tab shows one. */
+.tournament-maps-count {
+  display: inline-flex;
+  align-self: center;
+  min-width: 20px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+  border-radius: calc(var(--radius-sm) - 2px);
+  font-size: 11px;
+  font-weight: 550;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- One map as a tile ----------------------------------------------------- */
+
+/* Square, because map previews are: the whole map shows, nothing cropped. */
+.tournament-map-tile {
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: var(--space-2);
-}
-
-@media (max-width: 720px) {
-  .tournament-pool-thumbs {
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-  }
-}
-
-/* A picture with a caption under it. The name used to lie on the bottom of the
-   picture over a fade to the page colour, which left light text on a light
-   map: unreadable on every snow map. */
-.tournament-pool-thumb {
-  display: flex;
-  flex-direction: column;
+  place-items: center;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 1;
   padding: 0;
   overflow: hidden;
+  color: var(--color-muted);
+  background: var(--color-picture-backdrop);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: inherit;
+  border-radius: var(--radius-md);
   font: inherit;
   text-align: left;
   cursor: zoom-in;
+  transition: border-color 140ms ease;
 }
 
-.tournament-pool-thumb:disabled {
+.tournament-map-tile:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
+}
+
+.tournament-map-tile:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.tournament-map-tile:disabled {
   cursor: default;
 }
 
-.tournament-pool-thumb-image {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr);
-  place-items: center;
-  aspect-ratio: 1;
-  overflow: hidden;
-  background: var(--color-bg);
-}
-
-.tournament-pool-thumb img {
+.tournament-map-tile > img {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 260ms ease;
 }
 
-.tournament-pool-thumb-none {
+.tournament-map-tile:hover:not(:disabled) > img {
+  transform: scale(1.04);
+}
+
+.tournament-map-tile-none {
+  padding-bottom: 30px;
+  font-size: 12px;
+}
+
+/* The foot, on black fading to nothing: fixed colours rather than the
+   theme's, since what is under them is a picture in either theme. */
+.tournament-map-tile-foot {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 34px 10px 8px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.92),
+    rgba(0, 0, 0, 0.75) 40%,
+    rgba(0, 0, 0, 0.35) 72%,
+    rgba(0, 0, 0, 0)
+  );
+  pointer-events: none;
+}
+
+.tournament-map-tile-name {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-on-picture);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* A capsule on the picture's foot: the one place the tab keeps the round
+   shape, since it sits on a picture rather than among the page's badges. */
+.tournament-map-tile-size {
+  flex: none;
+  padding: 1px 6px;
+  color: var(--color-on-picture);
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
   font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.tournament-pool-thumb-caption {
+@media (prefers-reduced-motion: reduce) {
+  .tournament-map-tile,
+  .tournament-map-tile > img {
+    transition: none;
+  }
+
+  .tournament-map-tile:hover:not(:disabled) > img {
+    transform: none;
+  }
+}
+
+/* -- The pools ------------------------------------------------------------- */
+
+.tournament-pool-cards {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 4px 6px 6px;
-  border-top: 1px solid var(--color-border);
-  font-size: 11px;
+  gap: 14px;
 }
 
-.tournament-pool-thumb-name {
+/* The trainer cards' quiet depth: a faint light on the top rim and a deeper
+   face below it. */
+.tournament-pool-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 16px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-surface-raised) 65%, var(--color-surface)),
+    var(--color-surface) 70%
+  );
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-text) 6%, transparent);
+}
+
+.tournament-pool-card > p {
+  margin: 0;
+  font-size: 12px;
+}
+
+/* Over `.tournament-detail header`, which spreads a header's children apart. */
+.tournament-maps .tournament-pool-card-head {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tournament-pool-card-head h6 {
+  margin: 0;
   color: var(--color-text);
-  overflow-wrap: anywhere;
+  font-size: 16px;
+  font-weight: 650;
 }
 
-.tournament-pool-card-warn {
-  margin: 0;
+.tournament-pool-card-meta {
+  color: var(--color-muted);
   font-size: 12px;
-  color: var(--color-warn);
+  font-variant-numeric: tabular-nums;
 }
 
-.tournament-pool-card-assign,
-.tournament-pool-card > p.muted {
-  margin: 0;
-  font-size: 12px;
-}
-
+/* Which rounds the pool is played in, at the far end. */
+/* The `.tournament-badge` shape, filled: the rounds this pool is played in
+   are the card's one piece of news, so they get the accent. */
 .tournament-pool-card-assign {
+  margin-left: auto;
+  padding: 3px 8px;
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.tournament-pool-card-assign.is-none {
+  color: var(--color-muted);
+  background: none;
+  border-color: var(--color-border);
+}
+
+.tournament-pool-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 720px) {
+  .tournament-pool-tiles {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  }
+}
+
+.tournament-pool-card > .tournament-pool-card-warn {
   color: var(--color-warn);
 }
+
+/* -- Every map --------------------------------------------------------------- */
 
 .tournament-mapdb-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 14px;
+  align-items: start;
 }
 
 .tournament-mapdb-card {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  transition: border-color 140ms ease;
 }
 
-/* The picture stays inside its 150 px. A grid row sized to its content let a
-   256 px preview grow past the button and under the card's text, which on a
-   snow map was white on white. */
-.tournament-mapdb-thumb {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr);
-  place-items: center;
-  flex: none;
-  height: 150px;
-  overflow: hidden;
-  padding: 0;
+.tournament-mapdb-card:hover {
+  border-color: var(--color-border-strong);
+}
+
+/* The tile is the card's top, so the card's border is its frame. */
+.tournament-mapdb-card > .tournament-map-tile {
   border: 0;
-  background: var(--color-bg);
-  color: inherit;
-  font: inherit;
-  font-size: 12px;
-  cursor: zoom-in;
-}
-
-.tournament-mapdb-thumb:disabled {
-  cursor: default;
-}
-
-.tournament-mapdb-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  border-radius: 0;
 }
 
 .tournament-mapdb-body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-3);
+  gap: 8px;
+  padding: 10px 12px 12px;
 }
 
-.tournament-mapdb-name {
+.tournament-mapdb-tags {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
   flex-wrap: wrap;
-  font-size: 15px;
+  gap: 4px;
 }
 
+/* The spawns as label and value, one per row. */
+.tournament-mapdb-facts {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.tournament-mapdb-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tournament-mapdb-facts dt {
+  color: var(--color-muted);
+}
+
+.tournament-mapdb-facts dd {
+  margin: 0;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Manage's map list writes the spawns as lines (`MapSpec`). */
 .tournament-mapdb-spec {
   display: flex;
   flex-direction: column;
@@ -3958,15 +5743,16 @@
 
 .tournament-mapdb-desc {
   margin: 0;
-  font-size: 13px;
-  white-space: pre-wrap;
   color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
 }
 
 .tournament-mapdb-used {
   margin: 0;
-  font-size: 11px;
   color: var(--color-warn);
+  font-size: 11px;
 }
 
 .tournament-mapdb-used.muted {
@@ -3977,23 +5763,10 @@
   color: var(--color-ok);
 }
 
-.tournament-map-lightbox {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  width: min(760px, 92vw);
-}
-
-.tournament-map-lightbox h3 {
-  margin: 0;
-}
-
-.tournament-map-lightbox-img {
-  width: 100%;
-  max-height: 60vh;
-  object-fit: contain;
-  background: var(--color-bg);
-  border-radius: var(--radius-sm);
+@media (prefers-reduced-motion: reduce) {
+  .tournament-mapdb-card {
+    transition: none;
+  }
 }
 
 /* -- The chat, laid out as the website lays it out ------------------------- */
@@ -4316,41 +6089,6 @@ button.tournament-chat-author:hover {
 .tournament-chat-room-body.is-compact .tournament-chat-posts {
   flex: none;
   height: clamp(240px, 45vh, 420px);
-}
-
-/* -- The 3rd place match ------------------------------------------------------
-   Hung under the final, in the final's own column. It sits after the column's
-   card stack rather than inside it, so the final keeps its place between the
-   semi-finals and the connector arithmetic above never sees it. Joined to
-   nothing: its players come from the semi-finals' losers, and a line from there
-   would cross the final's. */
-.tournament-third-place {
-  border-top: 1px dashed var(--color-border);
-}
-
-/* Indented to the final's own left edge, which is the elbow's width in from
-   the vertical that joins the semi-finals to the final. Flush with the column,
-   the card sat on the end of the lower semi-final's line and read as fed by it. */
-.tournament-round.is-bracket .tournament-third-place,
-.tournament-round.is-straight .tournament-third-place {
-  margin-left: calc(var(--space-3) + var(--elbow));
-}
-
-.tournament-third-place .tournament-round-head {
-  border-bottom: 0;
-  padding-left: 0;
-}
-
-/* Same specificity as the connector rules above, and later, so these win: a
-   card here has no pitch, no elbow and no feed lines. */
-.tournament-round .tournament-third-place .tournament-round-matches {
-  padding: 0 var(--space-3) var(--space-3) 0;
-  gap: 0;
-}
-
-.tournament-round .tournament-third-place .tournament-match::before,
-.tournament-round .tournament-third-place .tournament-match::after {
-  content: none;
 }
 
 /* The organiser's switch for it, above the bracket. */
@@ -4726,78 +6464,6 @@ button.tournament-chat-author:hover {
   min-width: 0;
 }
 
-.tournament-type-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.tournament-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px var(--space-2);
-  border-radius: 999px;
-  border: 1px solid var(--color-border-strong);
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.tournament-pill.is-signup {
-  color: var(--color-ok);
-  border-color: var(--color-ok);
-}
-
-.tournament-pill.is-running,
-.tournament-pill.is-draft,
-.tournament-pill.is-drafted {
-  color: var(--color-warn);
-  border-color: var(--color-warn);
-}
-
-.tournament-pill.is-abandoned {
-  color: var(--color-error);
-  border-color: var(--color-error);
-}
-
-.tournament-pill.is-finished,
-.tournament-pill.is-presignup {
-  color: var(--color-muted);
-}
-
-.tournament-stepper {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: 12px;
-}
-
-.tournament-stepper li {
-  color: var(--color-subtle);
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-sm, 4px);
-}
-
-.tournament-stepper li + li::before {
-  content: "\25B8";
-  margin-right: var(--space-2);
-  color: var(--color-subtle);
-}
-
-.tournament-stepper li.is-done {
-  color: var(--color-muted);
-}
-
-.tournament-stepper li.is-now {
-  color: var(--color-text);
-  font-weight: 600;
-}
-
 .tournament-turn-banner {
   display: flex;
   align-items: center;
@@ -4838,36 +6504,30 @@ button.tournament-chat-author:hover {
   min-width: 0;
 }
 
-/* The list row's countdowns: a quiet chip, amber when signups are closing. */
+/* The list row's countdowns: a clock and the time, amber when signups are
+   closing. */
 .tournament-countdown {
-  padding: 2px var(--space-2);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-muted);
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
 
-.tournament-countdown.is-close {
-  color: var(--color-warn);
-  border-color: var(--color-warn);
+.tournament-countdown > svg {
+  flex: none;
 }
 
-.tournament-row-prize {
-  color: var(--color-ok);
-  font-weight: 600;
+.tournament-countdown.is-close {
+  color: var(--color-warn);
 }
 
 .tournaments-archive-year {
   display: grid;
   gap: var(--space-2);
   margin-bottom: var(--space-3);
-}
-
-.tournaments-archive-year h4 {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
 }
 
 .tournament-days {
@@ -5157,30 +6817,69 @@ button.tournament-chat-author:hover {
   opacity: 0.6;
 }
 
-/* The display switches in the header, and the shortcut settings. */
+/* The display switches at the end of the tab row: one framed group of three,
+   as tall as the buttons beside it, then the shortcut settings as the row's
+   own ghost icon. A dot in each switch lights when it is on. */
 .tournament-display-toggles {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tournament-toggle-group {
+  display: inline-flex;
+  align-items: stretch;
+  height: 32px;
+  overflow: hidden;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
 }
 
 .tournament-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-strong);
+  gap: 7px;
+  padding: 0 12px;
+  border: 0;
   background: transparent;
   color: var(--color-muted);
-  font-size: 12px;
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
   cursor: pointer;
+  transition: color 100ms ease, background-color 100ms ease;
+}
+
+.tournament-toggle + .tournament-toggle {
+  border-left: 1px solid var(--color-border-strong);
+}
+
+.tournament-toggle:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.tournament-toggle:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.tournament-toggle-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
 }
 
 .tournament-toggle.is-on {
   color: var(--color-warn);
-  border-color: var(--color-warn);
-  background: var(--color-surface-raised);
+  background: color-mix(in srgb, var(--color-warn) 10%, transparent);
+}
+
+.tournament-toggle.is-on .tournament-toggle-dot {
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-warn) 25%, transparent);
 }
 
 .tournament-display-dialog {
@@ -5422,57 +7121,6 @@ button.tournament-chat-author:hover {
   margin: 0;
 }
 
-/* -- Byes, missing arms, unplayed matches --------------------------------
-   A bye is not a game and is not drawn, but it keeps its slot, because the
-   connectors are derived from the card pitch: an empty slot of the same
-   height, with no border and no lines. A card whose feeder is such a slot
-   drops the arm that would lead to it. */
-
-.tournament-match.is-phantom {
-  visibility: hidden;
-}
-
-.tournament-round.is-bracket .tournament-match.is-no-top::after {
-  border-top: 0;
-  top: 50%;
-  height: calc(var(--pitch, 1) * var(--slot) / 4);
-}
-
-.tournament-round.is-bracket .tournament-match.is-no-bottom::after {
-  border-bottom: 0;
-  height: calc(var(--pitch, 1) * var(--slot) / 4);
-}
-
-.tournament-round.is-bracket .tournament-match.is-no-top.is-no-bottom::after {
-  display: none;
-}
-
-.tournament-round.is-straight .tournament-match.is-no-stub::before {
-  border-top: 0;
-}
-
-.tournament-match.is-not-played {
-  opacity: 0.4;
-}
-
-.tournament-not-played {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.tournament-match.is-preview {
-  border-style: dashed;
-  opacity: 0.82;
-}
-
-.tournament-match-replays {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  font-size: 11px;
-}
-
 .tournament-division {
   display: grid;
   gap: var(--space-3);
@@ -5509,20 +7157,6 @@ button.tournament-chat-author:hover {
 .tournament-preview-head h4,
 .tournament-preview-head p {
   margin: 0 0 var(--space-1);
-}
-
-.tournament-mapblock {
-  display: grid;
-  gap: 2px;
-  font-size: 11px;
-  min-width: 0;
-}
-
-.tournament-mapblock-head {
-  display: flex;
-  gap: var(--space-2);
-  align-items: baseline;
-  color: var(--color-muted);
 }
 
 .tournament-pick-rows {
@@ -5575,13 +7209,6 @@ button.tournament-chat-author:hover {
 /* -- The site around the tournaments ------------------------------------
    The website's top bar as a row of buttons, the pending bar under it, and
    the pages beside the list: Hall of Fame, series, FAQ / Rules, the console. */
-
-.tournament-site-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-}
 
 .tournament-standdown.is-off {
   color: var(--color-warn);

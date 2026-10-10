@@ -18,6 +18,7 @@ import type {
 } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { FactionIcon } from "../../../shared/components/FactionIcon";
 import { teamNameOf } from "./matchParts";
 import { FACTIONS } from "./vetoPresentation";
 
@@ -28,7 +29,10 @@ export const FACTION_LABELS: Record<TourneyFaction, MessageKey> = {
   seraphim: "tournaments.faction.seraphim",
 };
 
-/** A faction as a chip in its own colour: a letter and a name. */
+/** The game's own number for each faction, which the glyphs are keyed by. */
+const FACTION_IDS: Record<TourneyFaction, number> = { uef: 1, aeon: 2, cybran: 3, seraphim: 4 };
+
+/** A faction as a chip in its own colour: its emblem and its name. */
 export function FactionChip({
   faction,
   dim = false,
@@ -39,15 +43,12 @@ export function FactionChip({
   on?: boolean;
 }) {
   const { t } = useTranslation();
-  const glyph = FACTIONS.find((held) => held.id === faction)?.glyph ?? "?";
   const classes = ["tournament-fchip", `is-${faction}`];
   if (dim) classes.push("is-dim");
   if (on) classes.push("is-on");
   return (
     <span className={classes.join(" ")}>
-      <span className="tournament-fchip-glyph mono" aria-hidden>
-        {glyph}
-      </span>
+      <FactionIcon faction={FACTION_IDS[faction]} size={14} aria-hidden className="tournament-fchip-glyph" />
       <span>{t(FACTION_LABELS[faction])}</span>
     </span>
   );
