@@ -2187,6 +2187,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "chat.game.average": "{rating} de moyenne",
   "chat.game.boardAverage": "{rating} de moyenne ({board})",
   "chat.aside.title": "Ce que fait {name}",
+  "chat.aside.online": "{name} est en ligne.",
+  "chat.aside.offline": "{name} est hors ligne.",
   "chat.aside.notInGame": "{name} n'est pas en partie pour le moment.",
   "chat.aside.watch": "Regarder en direct",
   "chat.aside.join": "Rejoindre la partie",

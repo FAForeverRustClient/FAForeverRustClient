@@ -283,6 +283,8 @@ export const en = {
   "chat.game.average": "{rating} average",
   "chat.game.boardAverage": "{rating} {board} average",
   "chat.aside.title": "What {name} is doing",
+  "chat.aside.online": "{name} is online.",
+  "chat.aside.offline": "{name} is offline.",
   "chat.aside.notInGame": "{name} is not in a game right now.",
   "chat.aside.watch": "Watch live",
   "chat.aside.join": "Join game",

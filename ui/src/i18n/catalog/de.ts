@@ -230,6 +230,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "chat.game.average": "Ø {rating}",
   "chat.game.boardAverage": "Ø {rating} ({board})",
   "chat.aside.title": "Was {name} gerade macht",
+  "chat.aside.online": "{name} ist online.",
+  "chat.aside.offline": "{name} ist offline.",
   "chat.aside.notInGame": "{name} ist gerade in keiner Partie.",
   "chat.aside.watch": "Live zuschauen",
   "chat.aside.join": "Partie beitreten",

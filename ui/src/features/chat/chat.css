@@ -1794,6 +1794,12 @@ img.chat-game-map {
   font-size: 12px;
 }
 
+/* Green only for online, as on the profile line in the sidebar: green means
+   online and nothing else. Offline keeps the muted icon; the words say which. */
+.chat-conversation-aside-empty[data-presence="online"] svg {
+  color: var(--color-ok);
+}
+
 /* The lineup, at the three widths the panel can be dragged to. See
    `rosterTier`, which decides which of them applies.
 

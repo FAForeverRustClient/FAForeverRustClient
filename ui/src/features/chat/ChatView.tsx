@@ -111,6 +111,7 @@ export function ChatView() {
   const player = useAppStore((s) => s.state.auth.player);
   const games = useAppStore((s) => s.state.lobby.games);
   const liveGames = useAppStore((s) => s.state.lobby.liveGames);
+  const lobbyStatus = useAppStore((s) => s.state.lobby.status);
   const mapVault = useAppStore((s) => s.state.maps.vault);
   const chatPreferences = useAppStore((s) => s.state.settings.chat);
   // The party's room, so the strip can refuse to close it: it belongs to the
@@ -430,7 +431,10 @@ export function ChatView() {
           />
           <ConversationAside
             peer={active.name}
+            self={player?.name ?? ""}
             social={social}
+            lobbyStatus={lobbyStatus}
+            channels={channels}
             openGames={games}
             liveGames={liveGames}
             mapVault={mapVault}
