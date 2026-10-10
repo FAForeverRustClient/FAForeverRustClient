@@ -23,15 +23,31 @@ import { ModPresetModal } from "./ModPresetModal";
 
 export type ModTab = "ui" | "sim";
 
-// Alphabetical order only: sorting by enabled state used to jump newly
-// toggled mods to the top of the list, which made the browser scroll the list
-// up to track the focused checkbox and kicked the user out of position.
+const NOTHING_HELD: ReadonlyMap<string, boolean> = new Map();
+
+/**
+ * The list a tab shows: the mods that are on first, then the rest, each part
+ * by name.
+ *
+ * Active first is how a host sees what the game will load. For sim mods that
+ * is the point: one sim mod switched on among forty, sorted under "T", went
+ * unnoticed while the order was alphabetical only (#466).
+ *
+ * That order had replaced this one because a mod moved the moment its
+ * checkbox was clicked, and the browser scrolled the list to follow the
+ * focused box and threw the user out of position. `held` keeps that fix: it
+ * maps a mod switched from its own checkbox to the state it had before the
+ * click, and the mod sorts by that until the list is shown afresh, so it
+ * stays under the pointer.
+ */
 export function filterAndSortHostMods(
   installedMods: InstalledMod[],
   modTab: ModTab,
   modSearch: string,
+  held: ReadonlyMap<string, boolean> = NOTHING_HELD,
 ): InstalledMod[] {
   const query = modSearch.trim().toLowerCase();
+  const sortsAsActive = (mod: InstalledMod) => held.get(mod.uid) ?? mod.enabled;
   return installedMods
     .filter((mod) => {
       if (mod.modType !== modTab) return false;
@@ -42,7 +58,12 @@ export function filterAndSortHostMods(
         (mod.modType === "sim" && query === "sim")
       );
     })
-    .sort((a, b) => a.displayName.localeCompare(b.displayName) || a.uid.localeCompare(b.uid));
+    .sort(
+      (a, b) =>
+        Number(sortsAsActive(b)) - Number(sortsAsActive(a)) ||
+        a.displayName.localeCompare(b.displayName) ||
+        a.uid.localeCompare(b.uid),
+    );
 }
 
 /**
@@ -60,6 +81,13 @@ export const HostModsColumn = memo(function HostModsColumn() {
   const [presetModalOpen, setPresetModalOpen] = useState(false);
   const [presetsOpen, setPresetsOpen] = useState(false);
   const presetRef = useRef<HTMLDivElement>(null);
+  // The mods switched from their own checkbox since the list was last shown
+  // afresh, each with the state it keeps sorting by: see
+  // `filterAndSortHostMods`. Emptied by anything that redraws the list as a
+  // whole (another tab, a search, a bulk switch, a reload), which is when a
+  // switched mod joins its group. None of those leave the focus on a row.
+  const [held, setHeld] = useState(NOTHING_HELD);
+  const settle = () => setHeld(NOTHING_HELD);
 
   useEffect(() => {
     if (!presetsOpen) return;
@@ -86,8 +114,8 @@ export const HostModsColumn = memo(function HostModsColumn() {
   const uiMods = useMemo(() => installedMods.filter((mod) => mod.modType === "ui"), [installedMods]);
 
   const filteredMods = useMemo(
-    () => filterAndSortHostMods(installedMods, modTab, modSearch),
-    [installedMods, modSearch, modTab],
+    () => filterAndSortHostMods(installedMods, modTab, modSearch, held),
+    [installedMods, modSearch, modTab, held],
   );
 
   // One command rather than one per mod: each `toggleMod` rewrites
@@ -96,6 +124,7 @@ export const HostModsColumn = memo(function HostModsColumn() {
   // intermediate state on screen.
   const setActiveMods = (uids: string[]) => {
     ipc.send({ kind: "Mods", command: { type: "setActiveMods", payload: { uids } } });
+    settle();
   };
 
   const setModsEnabled = (mods: InstalledMod[], enabled: boolean) => {
@@ -152,7 +181,10 @@ export const HostModsColumn = memo(function HostModsColumn() {
             className="host-header-icon-btn"
             title={t("lobby.host.reloadMods")}
             aria-label={t("lobby.host.reloadMods")}
-            onClick={() => ipc.send({ kind: "Mods", command: { type: "loadInstalled" } })}
+            onClick={() => {
+              ipc.send({ kind: "Mods", command: { type: "loadInstalled" } });
+              settle();
+            }}
           >
             <Icon name="refresh" size={12} />
           </button>
@@ -168,7 +200,10 @@ export const HostModsColumn = memo(function HostModsColumn() {
           role="tab"
           aria-selected={modTab === "ui"}
           className={modTab === "ui" ? "active" : ""}
-          onClick={() => setModTab("ui")}
+          onClick={() => {
+            setModTab("ui");
+            settle();
+          }}
         >
           {t("lobby.host.uiMods")} ({uiMods.length})
         </button>
@@ -177,7 +212,10 @@ export const HostModsColumn = memo(function HostModsColumn() {
           role="tab"
           aria-selected={modTab === "sim"}
           className={modTab === "sim" ? "active" : ""}
-          onClick={() => setModTab("sim")}
+          onClick={() => {
+            setModTab("sim");
+            settle();
+          }}
         >
           {t("lobby.host.simMods")} ({simMods.length})
         </button>
@@ -187,7 +225,10 @@ export const HostModsColumn = memo(function HostModsColumn() {
           <Icon name="search" size={13} />
           <input
             value={modSearch}
-            onChange={(event) => setModSearch(event.target.value)}
+            onChange={(event) => {
+              setModSearch(event.target.value);
+              settle();
+            }}
             placeholder={t("lobby.host.searchModsPlaceholder")}
             aria-label={t("lobby.host.searchModsAria")}
           />
@@ -271,15 +312,20 @@ export const HostModsColumn = memo(function HostModsColumn() {
               <input
                 type="checkbox"
                 checked={mod.enabled}
-                onChange={(event) =>
+                onChange={(event) => {
+                  // Held at the state it sorts by now, unless an earlier
+                  // click already holds it.
+                  setHeld((current) =>
+                    current.has(mod.uid) ? current : new Map(current).set(mod.uid, mod.enabled),
+                  );
                   ipc.send({
                     kind: "Mods",
                     command: {
                       type: "toggleMod",
                       payload: { uid: mod.uid, enabled: event.target.checked },
                     },
-                  })
-                }
+                  });
+                }}
               />
               <span className="host-mod-name" title={mod.displayName}>
                 {mod.displayName}
