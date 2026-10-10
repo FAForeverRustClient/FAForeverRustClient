@@ -1795,6 +1795,19 @@
   color: var(--color-text-muted);
 }
 
+/* The ICE adapter, when it is not the usual one. Full text colour rather than
+   muted, since it is the one line here that changes how the game connects; a
+   setting that disagrees with the host does not connect at all, so it warns. */
+.join-preparing-adapter {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.join-preparing-adapter[data-mismatch="true"] {
+  color: var(--color-warn);
+}
+
 .join-preparing-bar {
   height: 6px;
   overflow: hidden;

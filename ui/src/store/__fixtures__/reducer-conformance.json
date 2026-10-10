@@ -79785,6 +79785,83 @@
         "updateAvailable": false
       }
     ],
+    "iceAdapterChoices": [
+      {
+        "adapter": "dynamic",
+        "expected": "java",
+        "title": "Friday 4v4"
+      },
+      {
+        "adapter": "dynamic",
+        "expected": "go",
+        "title": "Friday 4v4 [go-adapter]"
+      },
+      {
+        "adapter": "dynamic",
+        "expected": "go",
+        "title": "Friday [GO-Adapter] 4v4"
+      },
+      {
+        "adapter": "dynamic",
+        "expected": "go",
+        "title": "[go-adapter]"
+      },
+      {
+        "adapter": "dynamic",
+        "expected": "java",
+        "title": "pioneer rush go-adapter"
+      },
+      {
+        "adapter": "java",
+        "expected": "java",
+        "title": "Friday 4v4"
+      },
+      {
+        "adapter": "java",
+        "expected": "java",
+        "title": "Friday 4v4 [go-adapter]"
+      },
+      {
+        "adapter": "java",
+        "expected": "java",
+        "title": "Friday [GO-Adapter] 4v4"
+      },
+      {
+        "adapter": "java",
+        "expected": "java",
+        "title": "[go-adapter]"
+      },
+      {
+        "adapter": "java",
+        "expected": "java",
+        "title": "pioneer rush go-adapter"
+      },
+      {
+        "adapter": "go",
+        "expected": "go",
+        "title": "Friday 4v4"
+      },
+      {
+        "adapter": "go",
+        "expected": "go",
+        "title": "Friday 4v4 [go-adapter]"
+      },
+      {
+        "adapter": "go",
+        "expected": "go",
+        "title": "Friday [GO-Adapter] 4v4"
+      },
+      {
+        "adapter": "go",
+        "expected": "go",
+        "title": "[go-adapter]"
+      },
+      {
+        "adapter": "go",
+        "expected": "go",
+        "title": "pioneer rush go-adapter"
+      }
+    ],
     "playerNoteLookups": [
       {
         "expected": "Map specialist",
