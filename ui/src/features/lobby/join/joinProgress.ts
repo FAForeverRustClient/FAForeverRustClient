@@ -6,7 +6,9 @@
 // store renders from its initial state under `jsdom`, so a test driving it
 // through a join would be asserting against a snapshot that never moves.
 
-import type { JoinState, PreparationPhase } from "../../../ipc/bindings";
+import type { IceAdapter, JoinState, PreparationPhase } from "../../../ipc/bindings";
+import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
+import { adapterForGame } from "../../../shared/rules/iceAdapter";
 
 export type JoinProgress =
   /** Patching, checksumming, downloading, staging a map: the slow part. */
@@ -62,4 +64,37 @@ export function joinProgressOf(join: JoinState): JoinProgress | null {
 export function nextStep(steps: readonly string[], line: string): string | null {
   if (line === "" || steps[steps.length - 1] === line) return null;
   return line;
+}
+
+/**
+ * Why the game is worth a line about its ICE adapter.
+ *
+ * - `hostOnGo`: the game is hosted on Go and this join goes along, whether
+ *   `dynamic` followed the title or the setting already said Go.
+ * - `goAgainstHost`: the setting forces Go on a game whose title does not mark
+ *   it as hosted on Go.
+ * - `javaAgainstHost`: the setting forces Java on a game hosted on Go.
+ */
+export type AdapterNote = "hostOnGo" | "goAgainstHost" | "javaAgainstHost";
+
+/**
+ * The adapter line for a game with this title, or `null` for the usual case.
+ *
+ * The usual case is Java on a game that is not marked as hosted on Go, which is
+ * nearly every game. It gets no line: one on every join is a line people stop
+ * reading, and then the join where it says Go goes unread too. What is left is
+ * the case the issue asked about, a game that runs on the other adapter, and
+ * the two where the setting and the host disagree, which do not connect at all.
+ *
+ * Reads the host from the title mark, as the backend does. A game this client
+ * hosts reads the same way, because hosting on Go marks the title. What this
+ * cannot see is that a game is hosted here: the backend remembers that outside
+ * the state (`hosted_title`) and starts such a game on the hosting setting. So
+ * with the joining setting forced to one adapter and the hosting setting on
+ * the other, the line for a game you host describes the joining setting.
+ */
+export function adapterNoteOf(adapter: IceAdapter, title: string): AdapterNote | null {
+  const hostOnGo = splitGoAdapterTitle(title).goAdapter;
+  if (adapterForGame(adapter, title) === "go") return hostOnGo ? "hostOnGo" : "goAgainstHost";
+  return hostOnGo ? "javaAgainstHost" : null;
 }

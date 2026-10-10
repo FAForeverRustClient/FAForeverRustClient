@@ -64,6 +64,7 @@ struct HelperFixture {
     upload_busy: Vec<UploadBusyCase>,
     player_note_lookups: Vec<PlayerNoteLookupCase>,
     galactic_war_actions: Vec<GalacticWarActionCase>,
+    ice_adapter_choices: Vec<IceAdapterChoiceCase>,
     tourney_rules: Vec<TourneyRuleCase>,
     tourney_open_events: Vec<TourneyOpenEventCase>,
     tourney_phase_legality: Vec<TourneyPhaseLegalityCase>,
@@ -180,6 +181,19 @@ struct GalacticWarActionCase {
     install_target: String,
     update_available: bool,
     can_launch: bool,
+}
+
+/// The adapter a game starts on, from the joining setting and the game's title.
+///
+/// The join dialog names the adapter before it is up, from the same setting and
+/// the same launch-order title the backend reads, so its twin has to resolve
+/// `Dynamic` exactly as `IceAdapter::for_game` does or the line names the wrong
+/// one.
+#[derive(Serialize)]
+struct IceAdapterChoiceCase {
+    adapter: IceAdapter,
+    title: String,
+    expected: IceAdapter,
 }
 
 /// What the tournament panes gate their controls on.
@@ -3273,6 +3287,26 @@ fn helper_fixture() -> HelperFixture {
                 update_available: state.update_available(),
                 can_launch: state.can_launch(),
                 state,
+            })
+            .collect(),
+        // Every setting against a plain title, the mark in another case and
+        // position, a mark on its own, and a title that only resembles one.
+        ice_adapter_choices: [IceAdapter::Dynamic, IceAdapter::Java, IceAdapter::Go]
+            .into_iter()
+            .flat_map(|adapter| {
+                [
+                    "Friday 4v4",
+                    "Friday 4v4 [go-adapter]",
+                    "Friday [GO-Adapter] 4v4",
+                    "[go-adapter]",
+                    "pioneer rush go-adapter",
+                ]
+                .into_iter()
+                .map(move |title| IceAdapterChoiceCase {
+                    adapter,
+                    title: title.into(),
+                    expected: adapter.for_game(title),
+                })
             })
             .collect(),
         tourney_rules: tourney_rule_cases(),

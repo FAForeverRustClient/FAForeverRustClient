@@ -10,11 +10,15 @@
 // One test records a limit of the protocol rather than of the dialog: a
 // `preparing` frame carries no join id, so a stale one arriving after the
 // cancel is indistinguishable from a new join and brings the dialog back.
+//
+// Once the launch order is in, the dialog names the ICE adapter the game
+// starts on when that is not the usual Java one, or when the player's setting
+// and the host's title disagree (issue #467).
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { GameLaunch, LobbyEvent } from "../../../ipc/bindings";
+import type { GameLaunch, IceAdapter, LobbyEvent } from "../../../ipc/bindings";
 import { failOnConsoleError } from "../../../testing/consoleGuard";
 import { applyEvent, seedStore, sentCommands } from "../../../testing/mounted";
 import { JoinPreparationDialog } from "./JoinPreparationDialog";
@@ -48,10 +52,17 @@ function progress(detail: string, value: number | null) {
   lobby({ type: "preparing", payload: { phase: "downloading", detail, progress: value } });
 }
 
-/** Mount with a join already downloading, as the backend reports it. */
-function mountPreparing() {
+/**
+ * Mount with a join already downloading, as the backend reports it, and the
+ * joining adapter set to `adapter` in Settings.
+ */
+function mountPreparing(adapter: IceAdapter = "dynamic") {
   seedStore((state) => ({
     ...state,
+    settings: {
+      ...state.settings,
+      connectivity: { ...state.settings.connectivity, adapter },
+    },
     lobby: {
       ...state.lobby,
       status: "connected",
@@ -170,5 +181,63 @@ describe("JoinPreparationDialog, mounted", () => {
     // The backend's word that the game was stopped removes the dialog.
     lobby({ type: "gameTerminated" });
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+// Issue #467: Dynamic already follows the host onto Go, but nothing said so.
+// The line comes with the launch order, because its title is what the backend
+// reads to pick the adapter (`IceParams::game_title`); before that the dialog
+// has no title to read. Java is what nearly every game runs on, so it gets no
+// line: one on every join would be skipped by the time it said something else.
+describe("JoinPreparationDialog, the adapter line", () => {
+  const GO_TITLE = "Friday Setons [go-adapter]";
+
+  it.each<IceAdapter>(["dynamic", "go"])(
+    "names the Go adapter for a game whose host is on Go, on %s",
+    (adapter) => {
+      mountPreparing(adapter);
+      expect(screen.queryByText(/adapter/i)).toBeNull();
+
+      lobby({ type: "launching", payload: { launch: { ...LAUNCH, name: GO_TITLE } } });
+      expect(
+        screen.getByText("This game runs on the Go adapter (faf-pioneer), so you join on it too."),
+      ).toBeDefined();
+      // The line says it in words, so the name loses the raw mark, as it does
+      // in the game browser.
+      expect(screen.getByText("Joining “Friday Setons”. The game window will appear shortly.")).toBeDefined();
+    },
+  );
+
+  it.each<IceAdapter>(["dynamic", "java"])(
+    "says nothing about the adapter for a game on Java, on %s",
+    (adapter) => {
+      mountPreparing(adapter);
+      lobby({ type: "launching", payload: { launch: LAUNCH } });
+
+      expect(screen.getByRole("heading", { name: "Starting the game" })).toBeDefined();
+      expect(screen.queryByText(/adapter/i)).toBeNull();
+    },
+  );
+
+  it("warns when the setting forces Java on a game whose host is on Go", () => {
+    mountPreparing("java");
+    lobby({ type: "launching", payload: { launch: { ...LAUNCH, name: GO_TITLE } } });
+
+    expect(
+      screen.getByText(
+        "You join on the Java adapter (faf-ice-adapter) because of your settings, but this game is hosted on Go. Players on different adapters cannot connect to each other.",
+      ),
+    ).toBeDefined();
+  });
+
+  it("warns when the setting forces Go on a game not marked as hosted on Go", () => {
+    mountPreparing("go");
+    lobby({ type: "launching", payload: { launch: LAUNCH } });
+
+    expect(
+      screen.getByText(
+        "You join on the Go adapter (faf-pioneer) because of your settings, but this game is not marked as hosted on Go. Players on different adapters cannot connect to each other.",
+      ),
+    ).toBeDefined();
   });
 });
