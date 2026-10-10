@@ -49,7 +49,7 @@ pub use cache::{
     clean_expired_cache_files, clear_game_cache, inspect_game_cache, read_installed_build,
     CacheManifestEntry, CachedFileInfo,
 };
-pub use install::read_exe_version;
+pub use install::{read_exe_version, require_game_libraries};
 pub use maps::{ensure_live_map, ensure_map_available};
 pub use replay_version::{
     extract_game_version, extract_map_folder, resolve_and_stage_replay_version, ReplayVersionInfo,

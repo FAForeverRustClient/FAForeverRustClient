@@ -1593,6 +1593,25 @@ pub struct PathPreferences {
     /// Empty falls back to `$WINEPREFIX` and then to `~/.wine`, which is where
     /// a default `winecfg` prefix is.
     pub wine_prefix: String,
+    /// The original Supreme Commander: Forged Alliance install, from Steam or
+    /// a disc: the folder holding `gamedata/lua.scd`. The Java client's
+    /// `forgedAlliance.installationPath`.
+    ///
+    /// Nothing is launched from it and nothing is written into it. It is
+    /// where a FAF install gets what is not FAF's to ship: the engine's
+    /// runtime libraries (`BugSplat.dll` and the rest, copied into FAF's
+    /// `bin`) and the base game's movies, sounds and fonts.
+    ///
+    /// Remembered when the original game's executable is picked as an
+    /// install, which is the only executable a new player has to point at
+    /// (#474). Unlike the fields above it is checked before use, since an
+    /// install can be moved or uninstalled after it was picked: empty, or no
+    /// longer an install, falls back to what the other FAF clients have
+    /// configured and to the usual Steam and retail locations. And unlike
+    /// them it does not outrank its environment variable:
+    /// `FAF_GAME_INSTALL_DIR` is a developer's switch that has always been
+    /// taken as given, ahead of everything else.
+    pub original_game_dir: String,
 }
 
 impl PathPreferences {
@@ -1608,6 +1627,7 @@ impl PathPreferences {
             &mut self.map_generator_dir,
             &mut self.java_path,
             &mut self.wine_prefix,
+            &mut self.original_game_dir,
         ] {
             *field = field.trim().to_owned();
         }
@@ -3297,6 +3317,7 @@ preference_patch! {
         map_generator_dir: String,
         java_path: String,
         wine_prefix: String,
+        original_game_dir: String,
     }
 }
 

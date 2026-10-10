@@ -96,6 +96,16 @@ impl GameUpdaterClient {
         .await
         .map_err(|e| format!("could not update {}: {e}", request.featured_mod))?;
 
+        // Every file FAF ships is in place now, and the one thing that can
+        // still keep the game from starting is the libraries the original
+        // game provides (#474). Said here, before the launch, rather than by
+        // a Windows error box after it. Windows only: under Wine a library
+        // can also come from the prefix, where the client cannot look, and
+        // Linux launches are left as they were.
+        if cfg!(windows) {
+            game_updater::require_game_libraries(&target_dir)?;
+        }
+
         // Unlike the replay path, a failure here is fatal. There the map is a
         // best-effort convenience for a recording that may not even need one;
         // here the server has already seated the player in a game on this map,

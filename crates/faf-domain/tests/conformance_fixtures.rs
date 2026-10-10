@@ -64,6 +64,7 @@ struct HelperFixture {
     upload_busy: Vec<UploadBusyCase>,
     player_note_lookups: Vec<PlayerNoteLookupCase>,
     galactic_war_actions: Vec<GalacticWarActionCase>,
+    ice_adapter_choices: Vec<IceAdapterChoiceCase>,
     tourney_rules: Vec<TourneyRuleCase>,
     tourney_open_events: Vec<TourneyOpenEventCase>,
     tourney_phase_legality: Vec<TourneyPhaseLegalityCase>,
@@ -180,6 +181,19 @@ struct GalacticWarActionCase {
     install_target: String,
     update_available: bool,
     can_launch: bool,
+}
+
+/// The adapter a game starts on, from the joining setting and the game's title.
+///
+/// The join dialog names the adapter before it is up, from the same setting and
+/// the same launch-order title the backend reads, so its twin has to resolve
+/// `Dynamic` exactly as `IceAdapter::for_game` does or the line names the wrong
+/// one.
+#[derive(Serialize)]
+struct IceAdapterChoiceCase {
+    adapter: IceAdapter,
+    title: String,
+    expected: IceAdapter,
 }
 
 /// What the tournament panes gate their controls on.
@@ -3275,6 +3289,26 @@ fn helper_fixture() -> HelperFixture {
                 state,
             })
             .collect(),
+        // Every setting against a plain title, the mark in another case and
+        // position, a mark on its own, and a title that only resembles one.
+        ice_adapter_choices: [IceAdapter::Dynamic, IceAdapter::Java, IceAdapter::Go]
+            .into_iter()
+            .flat_map(|adapter| {
+                [
+                    "Friday 4v4",
+                    "Friday 4v4 [go-adapter]",
+                    "Friday [GO-Adapter] 4v4",
+                    "[go-adapter]",
+                    "pioneer rush go-adapter",
+                ]
+                .into_iter()
+                .map(move |title| IceAdapterChoiceCase {
+                    adapter,
+                    title: title.into(),
+                    expected: adapter.for_game(title),
+                })
+            })
+            .collect(),
         tourney_rules: tourney_rule_cases(),
         tourney_open_events: tourney_open_event_cases(),
         tourney_phase_legality: tourney_phase_legality_cases(),
@@ -3960,6 +3994,125 @@ fn cases() -> Vec<Case> {
                 ChatEvent::MessageReceivedQuietly {
                     channel: "#uef".into(),
                     message: chat_message("Bob", "restored history"),
+                }
+                .into(),
+            ],
+        ),
+        // #471: a reconnect joins every channel again, every join asks for the
+        // history again, and the scrollback survives the reconnect, so the
+        // replay overlaps what is on screen. Each replayed line carries a new
+        // local id, as the port mints one per receipt.
+        case(
+            "a history replayed after a reconnect does not repeat what the channel shows",
+            vec![
+                ChatEvent::Connected {
+                    username: "Ada".into(),
+                }
+                .into(),
+                ChatEvent::ChannelJoined {
+                    channel: "#newbie".into(),
+                }
+                .into(),
+                ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: chat_message("Bob", "how long until my rating shows?"),
+                }
+                .into(),
+                // Our own line: a local echo, untagged and on our clock.
+                ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: ChatMessage {
+                        timestamp: "2026-01-01T00:01:00.123456789+00:00".into(),
+                        msgid: String::new(),
+                        ..chat_message("Ada", "about ten games")
+                    },
+                }
+                .into(),
+                // A line from a server that did not tag it.
+                ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: ChatMessage {
+                        msgid: String::new(),
+                        ..chat_message("Cid", "same here")
+                    },
+                }
+                .into(),
+                ChatEvent::Disconnected.into(),
+                ChatEvent::Connecting.into(),
+                ChatEvent::Connected {
+                    username: "Ada".into(),
+                }
+                .into(),
+                ChatEvent::ChannelJoined {
+                    channel: "#newbie".into(),
+                }
+                .into(),
+                // The replay: each line again, none of them news.
+                ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: ChatMessage {
+                        id: "replayed-1".into(),
+                        ..chat_message("Bob", "how long until my rating shows?")
+                    },
+                }
+                .into(),
+                ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: ChatMessage {
+                        id: "replayed-2".into(),
+                        timestamp: "2026-01-01T00:01:00.180Z".into(),
+                        ..chat_message("Ada", "about ten games")
+                    },
+                }
+                .into(),
+                ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: ChatMessage {
+                        id: "replayed-3".into(),
+                        msgid: String::new(),
+                        ..chat_message("Cid", "same here")
+                    },
+                }
+                .into(),
+                // The same words said again later are a new line.
+                ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: ChatMessage {
+                        id: "said-again".into(),
+                        timestamp: "2026-01-01T00:05:00Z".into(),
+                        msgid: String::new(),
+                        ..chat_message("Cid", "same here")
+                    },
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "rejoining a left channel does not repeat its restored history",
+            vec![
+                ChatEvent::ChannelJoined {
+                    channel: "#newbie".into(),
+                }
+                .into(),
+                ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: chat_message("Bob", "anyone up for a 2v2?"),
+                }
+                .into(),
+                ChatEvent::ChannelLeft {
+                    channel: "#newbie".into(),
+                }
+                .into(),
+                ChatEvent::ChannelJoined {
+                    channel: "#newbie".into(),
+                }
+                .into(),
+                ChatEvent::MessageReceivedQuietly {
+                    channel: "#newbie".into(),
+                    message: ChatMessage {
+                        id: "replayed".into(),
+                        ..chat_message("Bob", "anyone up for a 2v2?")
+                    },
                 }
                 .into(),
             ],
@@ -6518,6 +6671,9 @@ fn cases() -> Vec<Case> {
                         map_generator_dir: String::new(),
                         java_path: String::new(),
                         wine_prefix: " /home/player/.wine ".into(),
+                        original_game_dir:
+                            " D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance "
+                                .into(),
                     },
                 }
                 .into(),

@@ -1378,6 +1378,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -2934,6 +2935,962 @@
             "showJoinsParts": true,
             "status": "connected",
             "username": "Ada"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a history replayed after a reconnect does not repeat what the channel shows",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "username": "Ada"
+              },
+              "type": "connected"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#newbie"
+              },
+              "type": "channelJoined"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#newbie",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#newbie",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#newbie",
+                "message": {
+                  "content": "how long until my rating shows?",
+                  "id": "m-Bob-how long until my rating shows?",
+                  "kind": "message",
+                  "msgid": "srv-Bob-how long until my rating shows?",
+                  "replyTo": "",
+                  "sender": "Bob",
+                  "timestamp": "2026-01-01T00:00:00Z"
+                }
+              },
+              "type": "messageReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#newbie",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "how long until my rating shows?",
+                    "id": "m-Bob-how long until my rating shows?",
+                    "kind": "message",
+                    "msgid": "srv-Bob-how long until my rating shows?",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#newbie",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 1,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#newbie",
+                "message": {
+                  "content": "about ten games",
+                  "id": "m-Ada-about ten games",
+                  "kind": "message",
+                  "msgid": "",
+                  "replyTo": "",
+                  "sender": "Ada",
+                  "timestamp": "2026-01-01T00:01:00.123456789+00:00"
+                }
+              },
+              "type": "messageReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#newbie",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "how long until my rating shows?",
+                    "id": "m-Bob-how long until my rating shows?",
+                    "kind": "message",
+                    "msgid": "srv-Bob-how long until my rating shows?",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "about ten games",
+                    "id": "m-Ada-about ten games",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Ada",
+                    "timestamp": "2026-01-01T00:01:00.123456789+00:00"
+                  }
+                ],
+                "name": "#newbie",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 1,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#newbie",
+                "message": {
+                  "content": "same here",
+                  "id": "m-Cid-same here",
+                  "kind": "message",
+                  "msgid": "",
+                  "replyTo": "",
+                  "sender": "Cid",
+                  "timestamp": "2026-01-01T00:00:00Z"
+                }
+              },
+              "type": "messageReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#newbie",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "how long until my rating shows?",
+                    "id": "m-Bob-how long until my rating shows?",
+                    "kind": "message",
+                    "msgid": "srv-Bob-how long until my rating shows?",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "about ten games",
+                    "id": "m-Ada-about ten games",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Ada",
+                    "timestamp": "2026-01-01T00:01:00.123456789+00:00"
+                  },
+                  {
+                    "content": "same here",
+                    "id": "m-Cid-same here",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Cid",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#newbie",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 2,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "disconnected"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#newbie",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "how long until my rating shows?",
+                    "id": "m-Bob-how long until my rating shows?",
+                    "kind": "message",
+                    "msgid": "srv-Bob-how long until my rating shows?",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "about ten games",
+                    "id": "m-Ada-about ten games",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Ada",
+                    "timestamp": "2026-01-01T00:01:00.123456789+00:00"
+                  },
+                  {
+                    "content": "same here",
+                    "id": "m-Cid-same here",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Cid",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#newbie",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 2,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "connecting"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#newbie",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "how long until my rating shows?",
+                    "id": "m-Bob-how long until my rating shows?",
+                    "kind": "message",
+                    "msgid": "srv-Bob-how long until my rating shows?",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "about ten games",
+                    "id": "m-Ada-about ten games",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Ada",
+                    "timestamp": "2026-01-01T00:01:00.123456789+00:00"
+                  },
+                  {
+                    "content": "same here",
+                    "id": "m-Cid-same here",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Cid",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#newbie",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 2,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connecting",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "username": "Ada"
+              },
+              "type": "connected"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#newbie",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "how long until my rating shows?",
+                    "id": "m-Bob-how long until my rating shows?",
+                    "kind": "message",
+                    "msgid": "srv-Bob-how long until my rating shows?",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "about ten games",
+                    "id": "m-Ada-about ten games",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Ada",
+                    "timestamp": "2026-01-01T00:01:00.123456789+00:00"
+                  },
+                  {
+                    "content": "same here",
+                    "id": "m-Cid-same here",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Cid",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#newbie",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 2,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#newbie"
+              },
+              "type": "channelJoined"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#newbie",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "how long until my rating shows?",
+                    "id": "m-Bob-how long until my rating shows?",
+                    "kind": "message",
+                    "msgid": "srv-Bob-how long until my rating shows?",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "about ten games",
+                    "id": "m-Ada-about ten games",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Ada",
+                    "timestamp": "2026-01-01T00:01:00.123456789+00:00"
+                  },
+                  {
+                    "content": "same here",
+                    "id": "m-Cid-same here",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Cid",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#newbie",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 2,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#newbie",
+                "message": {
+                  "content": "how long until my rating shows?",
+                  "id": "replayed-1",
+                  "kind": "message",
+                  "msgid": "srv-Bob-how long until my rating shows?",
+                  "replyTo": "",
+                  "sender": "Bob",
+                  "timestamp": "2026-01-01T00:00:00Z"
+                }
+              },
+              "type": "messageReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#newbie",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "how long until my rating shows?",
+                    "id": "m-Bob-how long until my rating shows?",
+                    "kind": "message",
+                    "msgid": "srv-Bob-how long until my rating shows?",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "about ten games",
+                    "id": "m-Ada-about ten games",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Ada",
+                    "timestamp": "2026-01-01T00:01:00.123456789+00:00"
+                  },
+                  {
+                    "content": "same here",
+                    "id": "m-Cid-same here",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Cid",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#newbie",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 2,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#newbie",
+                "message": {
+                  "content": "about ten games",
+                  "id": "replayed-2",
+                  "kind": "message",
+                  "msgid": "srv-Ada-about ten games",
+                  "replyTo": "",
+                  "sender": "Ada",
+                  "timestamp": "2026-01-01T00:01:00.180Z"
+                }
+              },
+              "type": "messageReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#newbie",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "how long until my rating shows?",
+                    "id": "m-Bob-how long until my rating shows?",
+                    "kind": "message",
+                    "msgid": "srv-Bob-how long until my rating shows?",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "about ten games",
+                    "id": "m-Ada-about ten games",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Ada",
+                    "timestamp": "2026-01-01T00:01:00.123456789+00:00"
+                  },
+                  {
+                    "content": "same here",
+                    "id": "m-Cid-same here",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Cid",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#newbie",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 2,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#newbie",
+                "message": {
+                  "content": "same here",
+                  "id": "replayed-3",
+                  "kind": "message",
+                  "msgid": "",
+                  "replyTo": "",
+                  "sender": "Cid",
+                  "timestamp": "2026-01-01T00:00:00Z"
+                }
+              },
+              "type": "messageReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#newbie",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "how long until my rating shows?",
+                    "id": "m-Bob-how long until my rating shows?",
+                    "kind": "message",
+                    "msgid": "srv-Bob-how long until my rating shows?",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "about ten games",
+                    "id": "m-Ada-about ten games",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Ada",
+                    "timestamp": "2026-01-01T00:01:00.123456789+00:00"
+                  },
+                  {
+                    "content": "same here",
+                    "id": "m-Cid-same here",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Cid",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#newbie",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 2,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#newbie",
+                "message": {
+                  "content": "same here",
+                  "id": "said-again",
+                  "kind": "message",
+                  "msgid": "",
+                  "replyTo": "",
+                  "sender": "Cid",
+                  "timestamp": "2026-01-01T00:05:00Z"
+                }
+              },
+              "type": "messageReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#newbie",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "how long until my rating shows?",
+                    "id": "m-Bob-how long until my rating shows?",
+                    "kind": "message",
+                    "msgid": "srv-Bob-how long until my rating shows?",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "about ten games",
+                    "id": "m-Ada-about ten games",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Ada",
+                    "timestamp": "2026-01-01T00:01:00.123456789+00:00"
+                  },
+                  {
+                    "content": "same here",
+                    "id": "m-Cid-same here",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Cid",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "same here",
+                    "id": "said-again",
+                    "kind": "message",
+                    "msgid": "",
+                    "replyTo": "",
+                    "sender": "Cid",
+                    "timestamp": "2026-01-01T00:05:00Z"
+                  }
+                ],
+                "name": "#newbie",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 3,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        }
+      ]
+    },
+    {
+      "name": "rejoining a left channel does not repeat its restored history",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#newbie"
+              },
+              "type": "channelJoined"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#newbie",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#newbie",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#newbie",
+                "message": {
+                  "content": "anyone up for a 2v2?",
+                  "id": "m-Bob-anyone up for a 2v2?",
+                  "kind": "message",
+                  "msgid": "srv-Bob-anyone up for a 2v2?",
+                  "replyTo": "",
+                  "sender": "Bob",
+                  "timestamp": "2026-01-01T00:00:00Z"
+                }
+              },
+              "type": "messageReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#newbie",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "anyone up for a 2v2?",
+                    "id": "m-Bob-anyone up for a 2v2?",
+                    "kind": "message",
+                    "msgid": "srv-Bob-anyone up for a 2v2?",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#newbie",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 1,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#newbie"
+              },
+              "type": "channelLeft"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [],
+            "retainedHistories": [
+              {
+                "channel": "#newbie",
+                "messages": [
+                  {
+                    "content": "anyone up for a 2v2?",
+                    "id": "m-Bob-anyone up for a 2v2?",
+                    "kind": "message",
+                    "msgid": "srv-Bob-anyone up for a 2v2?",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ]
+              }
+            ],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#newbie"
+              },
+              "type": "channelJoined"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#newbie",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "anyone up for a 2v2?",
+                    "id": "m-Bob-anyone up for a 2v2?",
+                    "kind": "message",
+                    "msgid": "srv-Bob-anyone up for a 2v2?",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#newbie",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#newbie",
+                "message": {
+                  "content": "anyone up for a 2v2?",
+                  "id": "replayed",
+                  "kind": "message",
+                  "msgid": "srv-Bob-anyone up for a 2v2?",
+                  "replyTo": "",
+                  "sender": "Bob",
+                  "timestamp": "2026-01-01T00:00:00Z"
+                }
+              },
+              "type": "messageReceivedQuietly"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#newbie",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "anyone up for a 2v2?",
+                    "id": "m-Bob-anyone up for a 2v2?",
+                    "kind": "message",
+                    "msgid": "srv-Bob-anyone up for a 2v2?",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#newbie",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
           }
         }
       ]
@@ -51332,6 +52289,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -51614,6 +52572,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -51640,6 +52599,7 @@
                   "mapGeneratorDir": "",
                   "mapsDir": "D:/faf/vault/maps",
                   "modsDir": "",
+                  "originalGameDir": " D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance ",
                   "replaysDir": " D:/faf/replays ",
                   "vaultDir": "  D:/faf/vault  ",
                   "winePrefix": " /home/player/.wine "
@@ -51905,6 +52865,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
+              "originalGameDir": "D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance",
               "replaysDir": "D:/faf/replays",
               "vaultDir": "D:/faf/vault",
               "winePrefix": "/home/player/.wine"
@@ -52193,6 +53154,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
+              "originalGameDir": "D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance",
               "replaysDir": "D:/faf/replays",
               "vaultDir": "D:/faf/vault",
               "winePrefix": "/home/player/.wine"
@@ -52480,6 +53442,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
+              "originalGameDir": "D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance",
               "replaysDir": "D:/faf/replays",
               "vaultDir": "D:/faf/vault",
               "winePrefix": "/home/player/.wine"
@@ -52787,6 +53750,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
+              "originalGameDir": "D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance",
               "replaysDir": "D:/faf/replays",
               "vaultDir": "D:/faf/vault",
               "winePrefix": "/home/player/.wine"
@@ -53084,6 +54048,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
+              "originalGameDir": "D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance",
               "replaysDir": "D:/faf/replays",
               "vaultDir": "D:/faf/vault",
               "winePrefix": "/home/player/.wine"
@@ -53391,6 +54356,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
+              "originalGameDir": "D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance",
               "replaysDir": "D:/faf/replays",
               "vaultDir": "D:/faf/vault",
               "winePrefix": "/home/player/.wine"
@@ -53698,6 +54664,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
+              "originalGameDir": "D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance",
               "replaysDir": "D:/faf/replays",
               "vaultDir": "D:/faf/vault",
               "winePrefix": "/home/player/.wine"
@@ -54052,6 +55019,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
+              "originalGameDir": "D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance",
               "replaysDir": "D:/faf/replays",
               "vaultDir": "D:/faf/vault",
               "winePrefix": "/home/player/.wine"
@@ -54382,6 +55350,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
+              "originalGameDir": "D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance",
               "replaysDir": "D:/faf/replays",
               "vaultDir": "D:/faf/vault",
               "winePrefix": "/home/player/.wine"
@@ -54714,6 +55683,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
+              "originalGameDir": "D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance",
               "replaysDir": "D:/faf/replays",
               "vaultDir": "D:/faf/vault",
               "winePrefix": "/home/player/.wine"
@@ -55182,6 +56152,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
+              "originalGameDir": "D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance",
               "replaysDir": "D:/faf/replays",
               "vaultDir": "D:/faf/vault",
               "winePrefix": "/home/player/.wine"
@@ -67373,6 +68344,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -67665,6 +68637,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -67987,6 +68960,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -68295,6 +69269,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -68590,6 +69565,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -68876,6 +69852,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -69161,6 +70138,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -69474,6 +70452,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -69756,6 +70735,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -70058,6 +71038,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -70352,6 +71333,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -70628,6 +71610,7 @@
                     "mapGeneratorDir": "",
                     "mapsDir": "",
                     "modsDir": "",
+                    "originalGameDir": "",
                     "replaysDir": "",
                     "vaultDir": "",
                     "winePrefix": ""
@@ -70904,6 +71887,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -79783,6 +80767,83 @@
           }
         },
         "updateAvailable": false
+      }
+    ],
+    "iceAdapterChoices": [
+      {
+        "adapter": "dynamic",
+        "expected": "java",
+        "title": "Friday 4v4"
+      },
+      {
+        "adapter": "dynamic",
+        "expected": "go",
+        "title": "Friday 4v4 [go-adapter]"
+      },
+      {
+        "adapter": "dynamic",
+        "expected": "go",
+        "title": "Friday [GO-Adapter] 4v4"
+      },
+      {
+        "adapter": "dynamic",
+        "expected": "go",
+        "title": "[go-adapter]"
+      },
+      {
+        "adapter": "dynamic",
+        "expected": "java",
+        "title": "pioneer rush go-adapter"
+      },
+      {
+        "adapter": "java",
+        "expected": "java",
+        "title": "Friday 4v4"
+      },
+      {
+        "adapter": "java",
+        "expected": "java",
+        "title": "Friday 4v4 [go-adapter]"
+      },
+      {
+        "adapter": "java",
+        "expected": "java",
+        "title": "Friday [GO-Adapter] 4v4"
+      },
+      {
+        "adapter": "java",
+        "expected": "java",
+        "title": "[go-adapter]"
+      },
+      {
+        "adapter": "java",
+        "expected": "java",
+        "title": "pioneer rush go-adapter"
+      },
+      {
+        "adapter": "go",
+        "expected": "go",
+        "title": "Friday 4v4"
+      },
+      {
+        "adapter": "go",
+        "expected": "go",
+        "title": "Friday 4v4 [go-adapter]"
+      },
+      {
+        "adapter": "go",
+        "expected": "go",
+        "title": "Friday [GO-Adapter] 4v4"
+      },
+      {
+        "adapter": "go",
+        "expected": "go",
+        "title": "[go-adapter]"
+      },
+      {
+        "adapter": "go",
+        "expected": "go",
+        "title": "pioneer rush go-adapter"
       }
     ],
     "playerNoteLookups": [
@@ -109694,6 +110755,7 @@
         "mapGeneratorDir": "",
         "mapsDir": "",
         "modsDir": "",
+        "originalGameDir": "",
         "replaysDir": "",
         "vaultDir": "",
         "winePrefix": ""
