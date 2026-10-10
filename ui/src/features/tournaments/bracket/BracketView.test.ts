@@ -3,7 +3,7 @@
 // pure, and both are the part that used to be guessed at from column geometry.
 
 import { describe, expect, it } from "vitest";
-import { columnLayouts, feedsForward, groupIntoSides } from "./BracketView";
+import { columnLayouts, feedsForward, groupIntoSides, withGrandFinalInWinners } from "./BracketView";
 import { match } from "../fixtures";
 
 /** A four-team double-elimination draw, as the server links it. */
@@ -64,6 +64,28 @@ describe("groupIntoSides", () => {
 
   it("has nothing to group when the bracket has not been drawn", () => {
     expect(groupIntoSides([])).toEqual([]);
+  });
+});
+
+describe("withGrandFinalInWinners", () => {
+  it("draws the grand final as the winners bracket's last column", () => {
+    const sides = withGrandFinalInWinners(groupIntoSides(doubleElimination));
+    expect(sides.map((side) => side.bracket)).toEqual(["winners", "losers"]);
+    expect(sides[0].columns.map((column) => [column.bracket ?? "winners", column.round])).toEqual([
+      ["winners", 1],
+      ["winners", 2],
+      ["grandFinal", 3],
+    ]);
+  });
+
+  it("still joins the winners final to the grand final with a line", () => {
+    const [winners] = withGrandFinalInWinners(groupIntoSides(doubleElimination));
+    expect(columnLayouts(winners.columns).map((layout) => layout.link)).toEqual(["none", "bracket", "straight"]);
+  });
+
+  it("leaves a single elimination alone", () => {
+    const single = groupIntoSides([match({ id: "f" })]);
+    expect(withGrandFinalInWinners(single)).toEqual(single);
   });
 });
 

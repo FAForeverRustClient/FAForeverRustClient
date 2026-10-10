@@ -6,6 +6,7 @@
 // how much each map was played.
 
 import type { Tourney } from "../../../ipc/bindings";
+import { Icon } from "../../../design-system/Icon";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { eventStats, usageBuckets } from "../statsPresentation";
 import { teamNameOf } from "../bracket/matchParts";
@@ -34,8 +35,11 @@ export function StatsPanel({ event }: { event: Tourney }) {
     <div className="tournament-stats">
       {champion !== null && (
         <section className="tournament-panel tournament-champion">
-          <div className="tournament-cell-label">{t("tournaments.overview.champion")}</div>
-          <h3>{champion}</h3>
+          <Icon name="trophy" size={26} className="tournament-champion-icon" />
+          <div>
+            <div className="tournament-cell-label">{t("tournaments.overview.champion")}</div>
+            <h3>{champion}</h3>
+          </div>
         </section>
       )}
 

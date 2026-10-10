@@ -1,10 +1,11 @@
 // The site's chrome around the tournament list: the website's top bar
 // (the pages beside the list, the console and the stand-down switch), the
-// pending bar, and the three small dialogs those open.
+// pending bar, and the hosting request's dialog.
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
+import { SectionTabs, type SectionTab } from "../../../design-system/SectionTabs";
 import type { HostingStatus, PendingSummary, SiteWrite, TourneyAccount } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { pendingText, sectionForTab, type SitePage } from "./sitePages";
@@ -15,16 +16,24 @@ interface SiteNavProps {
   busy: boolean;
   onPage: (page: SitePage) => void;
   onWrite: (write: SiteWrite) => void;
+  /** The tab's own tools, at the far end of the tabs' rule. */
+  children?: ReactNode;
 }
 
+type PageTab = SitePage["kind"];
+
 /**
- * The website's top bar, as buttons over the list: Hall of Fame, Series,
- * FAQ / Rules, Import for those who may, the console under the name of the
- * role that opens it, and a site admin's switch to see the site as a player.
+ * The website's top bar as the client's section tabs: the pages beside the
+ * list (Hall of Fame, Series, FAQ / Rules), the console under the name of the
+ * role that opens it, and where an account may ask for more, the access page.
+ *
+ * The Training tab's top: no page title above the tabs, which are the top of
+ * the page, and at the far end of their rule whatever acts on the site rather
+ * than opening a page of it (a site admin's stand-down switch, and the tab's
+ * own tools passed in as children).
  */
-export function SiteNav({ page, account, busy, onPage, onWrite }: SiteNavProps) {
+export function SiteNav({ page, account, busy, onPage, onWrite, children }: SiteNavProps) {
   const { t } = useTranslation();
-  const [importing, setImporting] = useState(false);
   const role = account.siteAdmin
     ? "tournaments.site.siteAdmin"
     : account.director
@@ -32,114 +41,59 @@ export function SiteNav({ page, account, busy, onPage, onWrite }: SiteNavProps) 
       : account.editor
         ? "tournaments.site.editor"
         : null;
-  const button = (target: SitePage, label: Parameters<typeof t>[0]) => (
-    <Button
-      variant={page.kind === target.kind ? "primary" : undefined}
-      aria-current={page.kind === target.kind ? "page" : undefined}
-      onClick={() => onPage(target)}
-    >
-      {t(label)}
-    </Button>
-  );
+  // Editor and importer access are asked for here, as on the website's
+  // `/editor` and `/importer` pages; only for an account lacking one.
+  const mayAsk = account.loggedIn && (!account.editor || !(account.importer || account.siteAdmin));
+  const tabs: SectionTab<PageTab>[] = [
+    { id: "events", label: t("tournaments.site.events") },
+    { id: "hall", label: t("tournaments.site.hall") },
+    { id: "series", label: t("tournaments.site.series") },
+    { id: "faq", label: t("tournaments.site.faq") },
+    ...(role !== null
+      ? [{ id: "console" as const, label: <span title={t("tournaments.site.consoleTitle")}>{t(role)}</span> }]
+      : []),
+    ...(mayAsk
+      ? [{
+          id: "access" as const,
+          label: <span title={t("tournaments.site.accessTitle")}>{t("tournaments.site.access")}</span>,
+        }]
+      : []),
+  ];
+  const target = (kind: PageTab): SitePage => {
+    switch (kind) {
+      case "series":
+        return { kind, seriesId: null };
+      case "faq":
+        return { kind, articleId: null };
+      case "access":
+        return { kind, access: account.editor ? "importer" : "editor" };
+      default:
+        return { kind };
+    }
+  };
   return (
-    <nav className="tournament-site-nav" aria-label={t("tournaments.site.nav")}>
-      {button({ kind: "events" }, "tournaments.site.events")}
-      {button({ kind: "hall" }, "tournaments.site.hall")}
-      {button({ kind: "series", seriesId: null }, "tournaments.site.series")}
-      {button({ kind: "faq", articleId: null }, "tournaments.site.faq")}
-      {(account.siteAdmin || account.importer) && (
-        <Button title={t("tournaments.site.importTitle")} onClick={() => setImporting(true)}>
-          {t("tournaments.site.import")}
-        </Button>
-      )}
-      {role !== null && (
-        <Button
-          variant={page.kind === "console" ? "primary" : undefined}
-          title={t("tournaments.site.consoleTitle")}
-          onClick={() => onPage({ kind: "console" })}
-        >
-          {t(role)}
-        </Button>
-      )}
-      {account.siteAdminAccount && (
-        <Button
-          disabled={busy}
-          className={account.adminStandDown ? "tournament-standdown is-off" : "tournament-standdown"}
-          title={t(account.adminStandDown ? "tournaments.site.powersOffTitle" : "tournaments.site.powersOnTitle")}
-          onClick={() => onWrite({ type: "standDown", payload: { on: !account.adminStandDown } })}
-        >
-          {t(account.adminStandDown ? "tournaments.site.powersOff" : "tournaments.site.powersOn")}
-        </Button>
-      )}
-      {/* Editor and importer access are asked for here, as on the website's
-          `/editor` and `/importer` pages; only for an account lacking one. */}
-      {account.loggedIn && (!account.editor || !(account.importer || account.siteAdmin)) && (
-        <Button
-          variant={page.kind === "access" ? "primary" : undefined}
-          title={t("tournaments.site.accessTitle")}
-          onClick={() => onPage({ kind: "access", access: account.editor ? "importer" : "editor" })}
-        >
-          {t("tournaments.site.access")}
-        </Button>
-      )}
-      {importing && (
-        <ImportDialog
-          busy={busy}
-          onImport={(tournament, apiKey) => {
-            onWrite({ type: "importChallonge", payload: { tournament, apiKey } });
-            setImporting(false);
-          }}
-          onClose={() => setImporting(false)}
-        />
-      )}
-    </nav>
-  );
-}
-
-/** Pulling a finished Challonge tournament in: the website's import window. */
-function ImportDialog({
-  busy,
-  onImport,
-  onClose,
-}: {
-  busy: boolean;
-  onImport: (tournament: string, apiKey: string) => void;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  const [tournament, setTournament] = useState("");
-  // Held only while the dialog is open and sent once; never stored.
-  const [apiKey, setApiKey] = useState("");
-  return (
-    <Modal onClose={onClose} ariaLabel={t("tournaments.import.title")} className="tournament-form">
-      <h3>{t("tournaments.import.title")}</h3>
-      <p className="muted">{t("tournaments.import.hint")}</p>
-      <label className="tournament-field">
-        <span>{t("tournaments.import.link")}</span>
-        <input value={tournament} placeholder="challonge.com/abc123" onChange={(changed) => setTournament(changed.target.value)} />
-      </label>
-      <label className="tournament-field">
-        <span>{t("tournaments.import.key")}</span>
-        <input
-          type="password"
-          autoComplete="off"
-          value={apiKey}
-          placeholder={t("tournaments.import.keyPlaceholder")}
-          onChange={(changed) => setApiKey(changed.target.value)}
-        />
-        <small className="muted">{t("tournaments.import.keyNote")}</small>
-      </label>
-      <div className="tournament-form-actions">
-        <Button onClick={onClose}>{t("common.cancel")}</Button>
-        <Button
-          variant="primary"
-          disabled={busy || tournament.trim() === "" || apiKey.trim() === ""}
-          onClick={() => onImport(tournament, apiKey)}
-        >
-          {t(busy ? "tournaments.import.importing" : "tournaments.import.go")}
-        </Button>
+    <div className="tournaments-tabs-row">
+      <SectionTabs
+        active={page.kind}
+        ariaLabel={t("tournaments.site.nav")}
+        className="tournaments-site-tabs"
+        items={tabs}
+        onChange={(kind) => onPage(target(kind))}
+      />
+      <div className="tournaments-tabs-tools">
+        {account.siteAdminAccount && (
+          <Button
+            disabled={busy}
+            className={account.adminStandDown ? "tournament-standdown is-off" : "tournament-standdown"}
+            title={t(account.adminStandDown ? "tournaments.site.powersOffTitle" : "tournaments.site.powersOnTitle")}
+            onClick={() => onWrite({ type: "standDown", payload: { on: !account.adminStandDown } })}
+          >
+            {t(account.adminStandDown ? "tournaments.site.powersOff" : "tournaments.site.powersOn")}
+          </Button>
+        )}
+        {children}
       </div>
-    </Modal>
+    </div>
   );
 }
 

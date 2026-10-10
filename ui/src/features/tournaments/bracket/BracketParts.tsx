@@ -4,6 +4,7 @@
 
 import { useState, type CSSProperties } from "react";
 import { Button } from "../../../design-system/Button";
+import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
 import type { BracketSide, MapPool, Tourney, TourneyAdmin, VaultMap } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -80,59 +81,57 @@ interface RoundMapBlockProps {
 
 /**
  * The maps a round is played on, in its column header: the website's
- * `mapsLine`. With vetoes on, the pool the round really uses, where it came
- * from, and a way for an organiser to change it; with vetoes off, the maps
- * pinned to each game, and a way to set them.
+ * `mapsLine`. With vetoes on, the pool the round really uses; with vetoes off,
+ * the maps pinned to each game. Either way an organiser can change it.
+ *
+ * One small button rather than the list itself. The list made every header a
+ * different height, two to five lines of map names squeezed beside the round's
+ * name, and the header strip is what a reader's eye runs along to find a
+ * round. The button names the pool, or how many maps there are, and opens
+ * them; the pool's grid of pictures and the per-game list are a click away.
  */
 export function RoundMapBlock(props: RoundMapBlockProps) {
   const { event, bracket, round } = props;
   const { t } = useTranslation();
-  const [open, setOpen] = useState<"pool" | "pick" | "maps" | null>(null);
+  const [open, setOpen] = useState<"pool" | "pick" | "maps" | "list" | null>(null);
   if (event.imported) return null;
   const organiser = event.viewer.organiser;
   const key = roundKeyOf(bracket, round);
+  const title = roundName(bracket, round, t);
+  const heading = t("tournaments.mapblock.mapsTitle", { round: title });
 
   if (event.veto.enabled) {
     const resolved = poolForRoundOf(event, bracket, round);
     if (!organiser && resolved === null) return null;
     const pool = resolved?.pool ?? null;
+    // Where the pool came from, when it was not assigned to this round: the
+    // first pool by default, or the semi-finals' for a 3rd place match.
+    const source =
+      resolved?.source === "semis"
+        ? t("tournaments.mapblock.semisHint")
+        : resolved?.source === "default"
+          ? t("tournaments.mapblock.defaultHint")
+          : "";
     return (
-      <div className="tournament-mapblock">
-        <div className="tournament-mapblock-head">
-          <span className="mono">{t("tournaments.mapblock.pool")}</span>
-          {organiser && props.onAssignPool !== undefined && (
-            <button type="button" className="tournament-link-button" onClick={() => setOpen("pick")}>
-              {t("tournaments.mapblock.change")}
-            </button>
-          )}
-        </div>
-        {pool === null ? (
-          <span className="muted">{t("tournaments.mapblock.noPools")}</span>
-        ) : (
-          <>
-            <span>
-              {pool.name}{" "}
-              {resolved?.source === "semis" && (
-                <span className="muted" title={t("tournaments.mapblock.semisHint")}>
-                  {t("tournaments.mapblock.semis")}
-                </span>
-              )}
-              {resolved?.source === "default" && (
-                <span className="muted" title={t("tournaments.mapblock.defaultHint")}>
-                  {t("tournaments.mapblock.default")}
-                </span>
-              )}
-            </span>
-            {pool.mapIds.length > 3 ? (
-              <button type="button" className="tournament-link-button" onClick={() => setOpen("pool")}>
-                {t("tournaments.mapblock.showPool", { count: pool.mapIds.length })}
-              </button>
-            ) : (
-              <button type="button" className="tournament-link-button muted" onClick={() => setOpen("pool")}>
-                {pool.mapIds.map((id) => event.mapDb.find((held) => held.id === id)?.name ?? id).join(", ")}
-              </button>
-            )}
-          </>
+      <span className="tournament-round-maps">
+        <Button
+          className="tournament-round-button"
+          disabled={pool === null}
+          title={pool === null ? t("tournaments.mapblock.noPools") : [heading, source].filter(Boolean).join("\n")}
+          onClick={() => setOpen("pool")}
+        >
+          <Icon name="maps" size={14} />
+          <span>{pool === null ? t("tournaments.mapblock.noMaps") : pool.name}</span>
+        </Button>
+        {organiser && props.onAssignPool !== undefined && (
+          <Button
+            className="tournament-round-button is-icon"
+            title={t("tournaments.mapblock.change")}
+            aria-label={t("tournaments.mapblock.change")}
+            onClick={() => setOpen("pick")}
+          >
+            <Icon name="edit" size={14} />
+          </Button>
         )}
         {open === "pool" && pool !== null && (
           <PoolPanel
@@ -147,7 +146,7 @@ export function RoundMapBlock(props: RoundMapBlockProps) {
         {open === "pick" && props.onAssignPool !== undefined && (
           <PoolPicker
             event={event}
-            title={roundName(bracket, round, t)}
+            title={title}
             bestOf={props.bestOf}
             current={event.poolAssign.find((held) => held.round === key)?.poolId ?? ""}
             onSave={(poolId) => {
@@ -157,7 +156,7 @@ export function RoundMapBlock(props: RoundMapBlockProps) {
             onClose={() => setOpen(null)}
           />
         )}
-      </div>
+      </span>
     );
   }
 
@@ -167,30 +166,55 @@ export function RoundMapBlock(props: RoundMapBlockProps) {
       ? (event.roundMaps.find((held) => held.round === roundKeyOf("winners", round - 1))?.mapIds ?? [])
       : pinned;
   if (fallback.length === 0 && !organiser) return null;
+  const mapName = (id: string) => event.mapDb.find((held) => held.id === id)?.name ?? id;
   return (
-    <div className="tournament-mapblock">
-      <div className="tournament-mapblock-head">
-        <span className="mono">{t("tournaments.mapblock.pool")}</span>
-        {organiser && (
-          <button type="button" className="tournament-link-button" onClick={() => setOpen("maps")}>
-            {t("tournaments.mapblock.edit")}
-          </button>
-        )}
-      </div>
-      {fallback.length === 0 ? (
-        <span className="muted">{t("tournaments.mapblock.noMaps")}</span>
-      ) : (
-        fallback.map((id, index) => (
-          <span key={`${id}-${index}`}>
-            <span className="muted mono">{t("tournaments.mapblock.game", { number: index + 1 })}</span>{" "}
-            {event.mapDb.find((held) => held.id === id)?.name ?? id}
-          </span>
-        ))
+    <span className="tournament-round-maps">
+      <Button
+        className="tournament-round-button"
+        disabled={fallback.length === 0}
+        title={fallback.length === 0 ? t("tournaments.mapblock.noMaps") : heading}
+        onClick={() => setOpen("list")}
+      >
+        <Icon name="maps" size={14} />
+        <span>
+          {fallback.length === 0
+            ? t("tournaments.mapblock.noMaps")
+            : t("tournaments.mapblock.mapCount", { count: fallback.length })}
+        </span>
+      </Button>
+      {organiser && (
+        <Button
+          className="tournament-round-button is-icon"
+          title={t("tournaments.mapblock.edit")}
+          aria-label={t("tournaments.mapblock.edit")}
+          onClick={() => setOpen("maps")}
+        >
+          <Icon name="edit" size={14} />
+        </Button>
+      )}
+      {open === "list" && (
+        <Modal onClose={() => setOpen(null)} ariaLabel={heading} className="tournament-pool-modal">
+          <h4>{heading}</h4>
+          <ol className="tournament-round-map-list">
+            {fallback.map((id, index) => (
+              <li key={`${id}-${index}`}>
+                <span className="muted">{t("tournaments.mapblock.gameLabel", { number: index + 1 })}</span>
+                <span>{mapName(id)}</span>
+              </li>
+            ))}
+          </ol>
+          <div className="tournament-form-actions">
+            {organiser && <Button onClick={() => setOpen("maps")}>{t("tournaments.mapblock.edit")}</Button>}
+            <Button variant="primary" onClick={() => setOpen(null)}>
+              {t("common.close")}
+            </Button>
+          </div>
+        </Modal>
       )}
       {open === "maps" && (
         <RoundMapsDialog
           event={event}
-          title={roundName(bracket, round, t)}
+          title={title}
           bestOf={props.bestOf}
           current={pinned}
           onSave={(mapIds) => {
@@ -200,7 +224,7 @@ export function RoundMapBlock(props: RoundMapBlockProps) {
           onClose={() => setOpen(null)}
         />
       )}
-    </div>
+    </span>
   );
 }
 
@@ -330,7 +354,6 @@ function RoundMapsDialog({
 
 /** One card of the preview: never clickable, drawn dashed. */
 function PreviewMatch({ card, arms = [] }: { card: PreviewCard | null; arms?: string[] }) {
-  const { t } = useTranslation();
   if (card === null) return <div className="tournament-match is-phantom" aria-hidden />;
   const side = (slot: PreviewCard["one"]) => (
     <span className={slot.real ? "tournament-match-side" : "tournament-match-side is-tbd"}>
@@ -340,13 +363,15 @@ function PreviewMatch({ card, arms = [] }: { card: PreviewCard | null; arms?: st
     </span>
   );
   return (
-    <div className={["surface", "tournament-match", "is-preview", ...arms.map((arm) => `is-${arm}`)].join(" ")} title={`${card.tag} · ${t("tournaments.matches.bestOf", { count: card.bestOf })}`}>
+    <div className={["tournament-match", "is-preview", ...arms.map((arm) => `is-${arm}`)].join(" ")}>
       <div className="tournament-match-pair">
         {side(card.one)}
         {side(card.two)}
       </div>
-      <div className="tournament-match-actions">
-        <span className="muted mono">{`BO${card.bestOf}`}</span>
+      <div className="tournament-match-foot">
+        <span className="tournament-match-status">
+          <span className="tournament-match-label mono">{card.tag}</span>
+        </span>
       </div>
     </div>
   );
@@ -375,8 +400,12 @@ export function PreviewBracket({ event, preview, vault, assetBase, onAdmin, onAs
     if (shown.length === 0) return null;
     const first = shown[0].cards.length;
     return (
-      <div className="tournament-bracket-side">
-        {heading !== null && <h4>{heading}</h4>}
+      <section className="tournament-bracket-side">
+        {heading !== null && (
+          <header className="tournament-bracket-side-head">
+            <h4>{heading}</h4>
+          </header>
+        )}
         <div className="tournament-bracket-columns">
           {shown.map((column, index) => {
             const count = column.cards.length;
@@ -406,7 +435,7 @@ export function PreviewBracket({ event, preview, vault, assetBase, onAdmin, onAs
                       ))}
                     </select>
                   ) : (
-                    <span className="muted mono">{`Bo${column.bestOf}`}</span>
+                    <span className="tournament-round-bo-text">{`Bo${column.bestOf}`}</span>
                   )}
                   <RoundMapBlock
                     event={event}
@@ -433,10 +462,15 @@ export function PreviewBracket({ event, preview, vault, assetBase, onAdmin, onAs
                     return <PreviewMatch key={at} card={card} arms={arms} />;
                   })}
                 </div>
+                {/* The 3rd place match under the final, as on the drawn
+                    bracket. */}
                 {preview.third !== null && column.bracket === "winners" && index === shown.length - 1 && (
-                  <div className="tournament-third-place">
+                  <div className="tournament-third-place" style={{ "--pitch": pitch } as CSSProperties}>
                     <div className="tournament-round-head">
                       <h5>{t("tournaments.bracket.colThirdPlace")}</h5>
+                      <span className="tournament-round-bo-text">
+                        {t("tournaments.matches.bestOf", { count: preview.third.bestOf })}
+                      </span>
                     </div>
                     <div className="tournament-round-matches">
                       <PreviewMatch card={preview.third} />
@@ -447,7 +481,7 @@ export function PreviewBracket({ event, preview, vault, assetBase, onAdmin, onAs
             );
           })}
         </div>
-      </div>
+      </section>
     );
   };
   const capNote =

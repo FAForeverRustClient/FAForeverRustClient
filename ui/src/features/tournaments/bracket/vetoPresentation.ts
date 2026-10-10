@@ -96,10 +96,10 @@ export function vetoSettled(event: Tourney, entry: TourneyMatch): boolean {
   return maps !== false && factions !== false;
 }
 
-/** The four factions in the order the website offers them, with their glyph. */
-export const FACTIONS: ReadonlyArray<{ id: TourneyFaction; glyph: string }> = [
-  { id: "uef", glyph: "U" },
-  { id: "aeon", glyph: "A" },
-  { id: "cybran", glyph: "C" },
-  { id: "seraphim", glyph: "S" },
+/** The four factions in the order the website offers them. */
+export const FACTIONS: ReadonlyArray<{ id: TourneyFaction }> = [
+  { id: "uef" },
+  { id: "aeon" },
+  { id: "cybran" },
+  { id: "seraphim" },
 ];
