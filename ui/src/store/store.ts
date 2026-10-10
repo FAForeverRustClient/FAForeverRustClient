@@ -471,6 +471,7 @@ const INITIAL: AppState = {
       mapGeneratorDir: "",
       javaPath: "",
       winePrefix: "",
+      originalGameDir: "",
     },
     keptGeneratedMaps: [],
     matchmakerVetoes: [],

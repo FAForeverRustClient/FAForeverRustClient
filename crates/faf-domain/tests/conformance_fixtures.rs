@@ -6552,6 +6552,9 @@ fn cases() -> Vec<Case> {
                         map_generator_dir: String::new(),
                         java_path: String::new(),
                         wine_prefix: " /home/player/.wine ".into(),
+                        original_game_dir:
+                            " D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance "
+                                .into(),
                     },
                 }
                 .into(),

@@ -69,6 +69,13 @@ pub(crate) fn java_path() -> Option<PathBuf> {
     configured(|paths| &paths.java_path)
 }
 
+/// The original game the player picked, which the game updater copies the
+/// engine's libraries from. Not validated here: the updater checks it like
+/// every other candidate, since a remembered install can have moved since.
+pub(crate) fn original_game_dir() -> Option<PathBuf> {
+    configured(|paths| &paths.original_game_dir)
+}
+
 /// The adapter behind [`PathsPort`]. Stateless: the state is the global above,
 /// which is what every path helper reads.
 #[derive(Debug, Clone, Copy, Default)]
@@ -164,6 +171,27 @@ mod tests {
             || {
                 assert_eq!(maps_dir(), Some(PathBuf::from("C:/faf/maps")));
                 assert_eq!(mods_dir(), None);
+            },
+        );
+    }
+
+    /// The settings service remembers the original game when it is picked;
+    /// this is how the updater, which has no settings of its own, hears of it.
+    #[test]
+    fn the_picked_original_game_reaches_the_updater() {
+        with_overrides(
+            PathPreferences {
+                original_game_dir:
+                    "D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance".into(),
+                ..PathPreferences::default()
+            },
+            || {
+                assert_eq!(
+                    original_game_dir(),
+                    Some(PathBuf::from(
+                        "D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance"
+                    ))
+                );
             },
         );
     }

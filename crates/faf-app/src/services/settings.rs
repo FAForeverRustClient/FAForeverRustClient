@@ -685,9 +685,10 @@ async fn refresh_content_after_path_change(ctx: &ServiceCtx, out: &EventSink) {
 /// It exists now, or will: the updater creates the managed install on the first
 /// launch. So the pick is answered rather than rejected: say what was picked
 /// and why it cannot be the target, and configure the place FAF's own copy
-/// goes. The retail install is not thrown away, it is found again by the
-/// updater, which reads `gamedata`, `movies`, `sounds` and `fonts` straight out
-/// of it (see `game_updater::retail_install_dir`).
+/// goes. The retail install is not thrown away: it is remembered (see
+/// [`remember_original_game`]), and the updater copies the engine's libraries
+/// out of it and points the game at its `gamedata`, `movies`, `sounds` and
+/// `fonts` (see `game_updater::retail_install_dir`).
 ///
 /// A path that is already a managed install, or empty, is returned untouched:
 /// this only fires on the retail game.
@@ -695,6 +696,7 @@ fn redirect_retail_pick(path: &str, ctx: &ServiceCtx, out: &EventSink, replay: b
     if !ctx.ports.process.is_original_game_install(path) {
         return path.to_string();
     }
+    remember_original_game(path, ctx, out);
     let defaults = ctx.ports.process.default_install_paths();
     let target = if replay {
         defaults.replay
@@ -732,6 +734,41 @@ fn redirect_retail_pick(path: &str, ctx: &ServiceCtx, out: &EventSink, replay: b
         }),
     );
     target
+}
+
+/// Keep the original game the player just picked, for the updater (#474).
+///
+/// The pick used to be dropped once it had been redirected, on the promise
+/// that the updater would find the original again. It only did when the game
+/// sat in one of the places it guesses, and a new player's often does not: a
+/// Steam library on a second drive is invisible to every guess, and no other
+/// FAF client has configured anything on their machine. The updater then had
+/// nothing to copy `BugSplat.dll` from, and the first game stopped there.
+///
+/// The executable is `bin/<exe>` inside the install, which is how
+/// `is_original_game_install` recognised it, so the root is two levels up.
+/// Persisted with the rest of the paths by the caller's `persist`, and handed
+/// to the path resolver straight away, so the very next launch has it.
+fn remember_original_game(executable: &str, ctx: &ServiceCtx, out: &EventSink) {
+    let Some(root) = std::path::Path::new(executable)
+        .parent()
+        .and_then(std::path::Path::parent)
+        .map(|root| root.to_string_lossy().into_owned())
+        .filter(|root| !root.is_empty())
+    else {
+        return;
+    };
+    merge(ctx, out, |settings| {
+        let event =
+            (settings.paths.original_game_dir != root).then(|| SettingsEvent::PathsChanged {
+                preferences: domain::PathPreferences {
+                    original_game_dir: root.clone(),
+                    ..settings.paths.clone()
+                },
+            });
+        (event, ())
+    });
+    sync_paths(ctx, out);
 }
 
 /// Answer a replay pick that is the live install, the way a retail pick is
