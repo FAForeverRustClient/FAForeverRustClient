@@ -116,6 +116,16 @@ export function partTitle(series: Series, part: TrainingResource): string {
 }
 
 /**
+ * A part's name where its number is already on screen: "A strong start"
+ * under a "Part 1" label, rather than "Part 1: a strong start" under it.
+ */
+export function chapterTitle(series: Series, part: TrainingResource): string {
+  const title = partTitle(series, part);
+  const rest = title.replace(/^(?:part|teil|episode)\s*\d+\s*[:.,\-\u2013\u2014]?\s*/i, "");
+  return rest ? rest[0].toUpperCase() + rest.slice(1) : title;
+}
+
+/**
  * The shelf with each series folded into its head.
  *
  * Parts are dropped wherever they stand and the head keeps its place; a

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { TrainingResource } from "../../ipc/bindings";
-import { foldSeries, partTitle, seriesIndex } from "./trainingSeries";
+import { chapterTitle, foldSeries, partTitle, seriesIndex } from "./trainingSeries";
 
 const base: TrainingResource = {
   id: "",
@@ -84,5 +84,18 @@ describe("foldSeries", () => {
     const loose = entry({ id: "loose", title: "Something else" });
     const index = seriesIndex(parts);
     expect(foldSeries([parts[0], loose, parts[1]], index).map((e) => e.id)).toEqual(["a", "loose"]);
+  });
+});
+
+describe("chapterTitle", () => {
+  it("drops the part number a label beside it already shows", () => {
+    const index = entry({ id: "hub", title: "Ladder 1v1: topics", related: ["p1", "p2"] });
+    const parts = [
+      entry({ id: "p1", title: "Ladder 1v1, part 1: a strong start", related: ["hub"] }),
+      entry({ id: "p2", title: "Ladder 1v1, part 2: moving out", related: ["hub"] }),
+    ];
+    const series = seriesIndex([index, ...parts]).get("p1")!;
+    expect(chapterTitle(series, parts[0])).toBe("A strong start");
+    expect(chapterTitle(series, parts[1])).toBe("Moving out");
   });
 });

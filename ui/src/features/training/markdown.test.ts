@@ -3,8 +3,24 @@
 // prefix applied to the wrong line still renders as a working button.
 
 import { describe, expect, it } from "vitest";
-import { parseBlocks, parseSpans, resolveAddress, resolveImage, tableCells } from "./markdown";
-import { applyAction, paragraphBreak } from "./MarkdownField";
+import {
+  clock,
+  parseBlocks,
+  parseSpans,
+  resolveAddress,
+  resolveImage,
+  resolveLink,
+  soleVideo,
+  tableCells,
+  videoStart,
+} from "./markdown";
+import {
+  applyAction,
+  factionTabs,
+  paragraphBreak,
+  pictureAt,
+  withPicture,
+} from "./MarkdownField";
 
 describe("a guide's own pictures", () => {
   const document = "https://raw.githubusercontent.com/o/guides/main/guides/setons-air.md";
@@ -312,6 +328,15 @@ describe("images", () => {
       expect(spans.map((span) => ("text" in span ? span.text : "")).join("")).toBe(`![x](${bad})`);
     }
   });
+
+  it("keeps the alignment of the wiki's attribute block and never shows the block", () => {
+    expect(parseSpans("![Engineers](https://example.com/e.jpg){.align-right}")).toEqual([
+      { kind: "image", text: "Engineers", src: "https://example.com/e.jpg", align: "right" },
+    ]);
+    expect(parseSpans("![](https://example.com/e.jpg){.radius-4 .shadow}")).toEqual([
+      { kind: "image", text: "", src: "https://example.com/e.jpg" },
+    ]);
+  });
 });
 
 describe("underscores inside words", () => {
@@ -430,5 +455,110 @@ describe("what the copied guides carry from their old homes", () => {
     expect(parseSpans("***Therefore, fundamentals.***")).toEqual([
       { kind: "strong", text: "Therefore, fundamentals.", em: true },
     ]);
+  });
+});
+
+describe("a link to another guide", () => {
+  const base = {
+    page: "https://forum.faforever.com/topic/1222/six-laws",
+    document: "https://raw.githubusercontent.com/o/guides/main/guides/forum-six-laws.md",
+  };
+
+  it("resolves a relative .md beside the guide, the way GitHub reads it", () => {
+    expect(resolveLink("forum-ui-mods.md", base)).toBe(
+      "https://raw.githubusercontent.com/o/guides/main/guides/forum-ui-mods.md",
+    );
+  });
+
+  it("still resolves any other relative link against the page the guide came from", () => {
+    expect(resolveLink("/topic/1186", base)).toBe("https://forum.faforever.com/topic/1186");
+  });
+});
+
+describe("keys on the keyboard", () => {
+  it("reads a kbd tag as a key and nothing else as markup", () => {
+    expect(parseSpans("press <kbd>Alt</kbd>+<kbd>Right click</kbd>")).toEqual([
+      { kind: "text", text: "press " },
+      { kind: "key", text: "Alt" },
+      { kind: "text", text: "+" },
+      { kind: "key", text: "Right click" },
+    ]);
+  });
+
+  it("turns a selected combination into one key per part", () => {
+    const result = applyAction("use alt + right click now", 4, 21, { kind: "keys" });
+    expect(result.value).toBe("use <kbd>alt</kbd>+<kbd>right click</kbd> now");
+    expect(result.value.slice(result.start, result.end)).toBe("<kbd>alt</kbd>+<kbd>right click</kbd>");
+  });
+
+  it("puts the caret inside an empty key when nothing is selected", () => {
+    const result = applyAction("ab", 1, 1, { kind: "keys" });
+    expect(result.value).toBe("a<kbd></kbd>b");
+    expect(result.start).toBe(6);
+  });
+});
+
+describe("numbered steps", () => {
+  it("numbers every line a selection touches, in order", () => {
+    const result = applyAction("intro\none\ntwo\nthree", 7, 15, { kind: "numbered" });
+    expect(result.value).toBe("intro\n1. one\n2. two\n3. three");
+    expect(result.end).toBe(15 + 9);
+  });
+});
+
+describe("faction tabs", () => {
+  it("writes a tabset with one tab per faction, in the game's order", () => {
+    const blocks = parseBlocks(factionTabs("Per faction"));
+    expect(blocks[0]).toEqual({ kind: "tabset", level: 2 });
+    expect(blocks.slice(1).map((block) => (block.kind === "heading" ? block.text : block.kind))).toEqual([
+      "UEF",
+      "Aeon",
+      "Cybran",
+      "Seraphim",
+    ]);
+  });
+});
+
+describe("the picture the caret is on", () => {
+  const text = "Before.\n\n![Rally point](images/rally.png){.align-right}\n\nAfter.";
+  const caret = text.indexOf("Rally");
+
+  it("is found with its caption and placement", () => {
+    expect(pictureAt(text, caret)).toMatchObject({
+      alt: "Rally point",
+      src: "images/rally.png",
+      align: "right",
+    });
+    expect(pictureAt(text, 2)).toBeNull();
+  });
+
+  it("takes a new caption and placement without touching the lines around it", () => {
+    const picture = pictureAt(text, caret)!;
+    expect(withPicture(text, picture, { alt: "The [rally] point", align: null })).toBe(
+      "Before.\n\n![The rally point](images/rally.png)\n\nAfter.",
+    );
+    expect(withPicture(text, picture, { align: "center" })).toBe(
+      "Before.\n\n![Rally point](images/rally.png){.align-center}\n\nAfter.",
+    );
+  });
+});
+
+describe("a cited video", () => {
+  it("reads where it starts in every shape the guides use", () => {
+    expect(videoStart("https://www.youtube.com/watch?v=EwwVVS5aGeA&t=917s")).toBe(917);
+    expect(videoStart("https://www.youtube.com/watch?v=EwwVVS5aGeA&t=917")).toBe(917);
+    expect(videoStart("https://youtu.be/EwwVVS5aGeA?t=1h01m7s")).toBe(3667);
+    expect(videoStart("https://youtu.be/EwwVVS5aGeA?t=21m00")).toBe(1260);
+    expect(videoStart("https://youtu.be/EwwVVS5aGeA")).toBe(0);
+    expect(clock(917)).toBe("15:17");
+    expect(clock(3667)).toBe("1:01:07");
+  });
+
+  it("is a paragraph that is nothing but a link to one, or its bare address", () => {
+    const href = "https://www.youtube.com/watch?v=EwwVVS5aGeA&t=917s";
+    expect(soleVideo(`[Zock's lesson at 15:17](${href})`)).toEqual({ href, label: "Zock's lesson at 15:17" });
+    expect(soleVideo(href)).toEqual({ href, label: "" });
+    expect(soleVideo(`See [this](${href}) for more.`)).toBeNull();
+    expect(soleVideo("[a page](https://example.com/page)")).toBeNull();
   });
 });

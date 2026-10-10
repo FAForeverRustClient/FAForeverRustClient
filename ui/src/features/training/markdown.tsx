@@ -19,11 +19,15 @@
 // honest failure: the forum may still render it, and hiding it here would be a
 // preview that lies in the other direction.
 
-import type { ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
+import { Button } from "../../design-system/Button";
+import { Icon } from "../../design-system/Icon";
+import { useTranslation } from "../../i18n/useTranslation";
 import type { AppCommand } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { openHttpsUrl, optionalHttpsUrl } from "../../shared/externalLinks";
 import { replayUidFromLink } from "../../shared/replayLinks";
+import { videoEmbedUrl, videoThumbnailUrl } from "./trainingPresentation";
 
 export type ListBlock = { kind: "list"; ordered: boolean; items: ListItem[] };
 
@@ -256,30 +260,48 @@ export function parseBlocks(source: string): Block[] {
   return blocks;
 }
 
+/**
+ * Where a picture of its own sits: beside the text on one side, or centred.
+ * The wiki writes it as an attribute block after the image,
+ * `![](map.png){.align-right}`, which Wiki.js reads and plain Markdown shows
+ * as text.
+ */
+export type FigureAlign = "left" | "right" | "center";
+
 /** Inline spans: bold, italic, code, images, links and line breaks. */
 type Span =
   | { kind: "text"; text: string }
   | { kind: "strong"; text: string; em?: boolean }
   | { kind: "em"; text: string }
   | { kind: "code"; text: string }
-  | { kind: "image"; text: string; src: string; icon?: boolean }
+  | { kind: "image"; text: string; src: string; icon?: boolean; align?: FigureAlign }
   | { kind: "link"; text: string; href: string }
+  | { kind: "key"; text: string }
   | { kind: "break" };
 
 /**
- * The inline syntax read, in the order it is tried. The last two are the only
- * HTML ever honoured, because they are the two the wiki's own pages use and
- * Markdown has no way to say either: a line break inside a table cell, and an
- * image at a stated size (the resource icons in front of "Mass" and "Energy").
- * Both become React elements; nothing here is ever parsed as markup.
+ * The inline syntax read, in the order it is tried. The last three are the
+ * only HTML ever honoured, because Markdown has no way to say any of them and
+ * GitHub, where the guides live, reads all three: a line break inside a table
+ * cell, an image at a stated size (the resource icons in front of "Mass" and
+ * "Energy"), and a key on the keyboard. All become React elements; nothing
+ * here is ever parsed as markup.
  */
 const INLINE =
-  /(`[^`]+`)|(\*\*\*[^*]+\*\*\*)|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*\n]+\*)|(_[^_\n]+_)|(!\[[^\]]*\]\([^)\s]+\))|(\[[^\]]+\]\([^)\s]+\))|(<\/?br\s*\/?>)|(<img\s[^>]*>)/i;
+  /(`[^`]+`)|(\*\*\*[^*]+\*\*\*)|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*\n]+\*)|(_[^_\n]+_)|(!\[[^\]]*\]\([^)\s]+\)(?:\{[^}\n]*\})?)|(\[[^\]]+\]\([^)\s]+\))|(<\/?br\s*\/?>)|(<img\s[^>]*>)|(<kbd>[^<\n]{1,40}<\/kbd>)/i;
 
 /** An HTML image tag's `src`, its `width` when it states one, and its `alt`. */
 const IMG_SRC = /\ssrc\s*=\s*["']([^"']+)["']/i;
 const IMG_WIDTH = /\swidth\s*=\s*["']?(\d+)/i;
 const IMG_ALT = /\salt\s*=\s*["']([^"']*)["']/i;
+
+/**
+ * Open a link inside the client, when it names something the client can show
+ * itself: another guide of the catalogue, for one. Answers whether it did; a
+ * link it did not take opens in the browser as before. Outside a provider
+ * (the submission preview) nothing is taken.
+ */
+export const GuideLinks = createContext<(href: string) => boolean>(() => false);
 
 /**
  * An address as the guide wrote it, made absolute.
@@ -347,6 +369,25 @@ export function resolveImage(address: string, base?: Addresses): string | null {
   return resolveAddress(address, base);
 }
 
+/**
+ * A link's address made absolute. A relative `.md` is another guide beside
+ * this one, the way GitHub reads it, so it resolves against the guide's own
+ * file; everything else means the page the guide came from, as before.
+ */
+export function resolveLink(address: string, base?: Addresses): string | null {
+  if (typeof base === "object" && base.document && /\.md(?:#.*)?$/i.test(address)) {
+    if (DOCUMENT_RELATIVE.test(address)) {
+      try {
+        const resolved = optionalHttpsUrl(new URL(address, base.document).toString());
+        if (resolved) return resolved;
+      } catch {
+        // Falls through to the page, like any other address that did not resolve.
+      }
+    }
+  }
+  return resolveAddress(address, base);
+}
+
 /** A character that makes an underscore next to it part of a word. */
 const WORD_CHAR = /[\p{L}\p{N}_]/u;
 
@@ -388,6 +429,8 @@ export function parseSpans(text: string, base?: Addresses): Span[] {
     }
     if (/^<\/?br/i.test(token)) {
       spans.push({ kind: "break" });
+    } else if (/^<kbd>/i.test(token)) {
+      spans.push({ kind: "key", text: token.slice(5, -6).trim() });
     } else if (/^<img/i.test(token)) {
       const src = IMG_SRC.exec(token);
       const resolved = src ? resolveImage(src[1], base) : null;
@@ -410,12 +453,20 @@ export function parseSpans(text: string, base?: Addresses): Span[] {
     } else if (token.startsWith("**") || token.startsWith("__")) {
       spans.push({ kind: "strong", text: token.slice(2, -2) });
     } else if (token.startsWith("![")) {
-      const image = /^!\[([^\]]*)\]\(([^)\s]+)\)$/.exec(token);
+      const image = /^!\[([^\]]*)\]\(([^)\s]+)\)(?:\{([^}]*)\})?$/.exec(token);
       // The same rule as a link: only ordinary HTTPS is fetched. Anything
       // else stays as typed, so the author sees it was not taken.
       const src = image ? resolveImage(image[2], base) : null;
       if (image && src) {
-        spans.push({ kind: "image", text: image[1], src });
+        // The attribute block is an instruction to the wiki's renderer: the
+        // alignment it states is kept, anything else in it is dropped rather
+        // than shown as text under the picture.
+        const align = /\.align-(left|right|center)\b/.exec(image[3] ?? "")?.[1] as
+          | FigureAlign
+          | undefined;
+        spans.push(
+          align ? { kind: "image", text: image[1], src, align } : { kind: "image", text: image[1], src },
+        );
       } else {
         pushText(token);
       }
@@ -425,7 +476,7 @@ export function parseSpans(text: string, base?: Addresses): Span[] {
       // loses its href: the same rule the rest of the client applies to a URL
       // it did not write, and the reason this preview never produces an
       // anchor it has not validated.
-      const href = link ? resolveAddress(link[2], base) : null;
+      const href = link ? resolveLink(link[2], base) : null;
       if (link && href) {
         spans.push({ kind: "link", text: link[1], href });
       } else {
@@ -453,6 +504,12 @@ export function renderSpans(text: string, base?: Addresses): ReactNode[] {
         return <em key={index}>{span.text}</em>;
       case "code":
         return <code key={index}>{span.text}</code>;
+      case "key":
+        return (
+          <kbd key={index} className="training-markdown-key">
+            {span.text}
+          </kbd>
+        );
       case "image":
         // An element React builds from a validated address, with the alt text
         // as an attribute, never markup. No referrer, so the hosts of a
@@ -468,37 +525,45 @@ export function renderSpans(text: string, base?: Addresses): ReactNode[] {
             className={span.icon ? "training-markdown-icon" : "training-markdown-image"}
           />
         );
-      case "link": {
-        // A build order cites its replays by their vault address, and this is
-        // a client: it can play one. Sending somebody to a browser to press
-        // download, then back here to open the file, is three steps to do what
-        // the client does in one. Every other link still opens outside.
-        const uid = replayUidFromLink(span.href);
-        return (
-          <a
-            key={index}
-            href={span.href}
-            className={uid === null ? undefined : "training-markdown-replay"}
-            onClick={(event) => {
-              event.preventDefault();
-              if (uid === null) {
-                void openHttpsUrl(span.href);
-                return;
-              }
-              ipc.send({
-                kind: "Replays",
-                command: { type: "watchVault", payload: { uid } },
-              } satisfies AppCommand);
-            }}
-          >
-            {span.text}
-          </a>
-        );
-      }
+      case "link":
+        return <GuideLink key={index} href={span.href} text={span.text} />;
       case "text":
         return <span key={index}>{span.text}</span>;
     }
   });
+}
+
+/**
+ * A link in a guide, opened where it is best read.
+ *
+ * A build order cites its replays by their vault address, and this is a
+ * client: it can play one. Sending somebody to a browser to press download,
+ * then back here to open the file, is three steps to do what the client does
+ * in one. A link to another guide of the catalogue opens that guide here, for
+ * the same reason. Every other link still opens outside.
+ */
+function GuideLink({ href, text }: { href: string; text: string }) {
+  const openInside = useContext(GuideLinks);
+  const uid = replayUidFromLink(href);
+  return (
+    <a
+      href={href}
+      className={uid === null ? undefined : "training-markdown-replay"}
+      onClick={(event) => {
+        event.preventDefault();
+        if (uid !== null) {
+          ipc.send({
+            kind: "Replays",
+            command: { type: "watchVault", payload: { uid } },
+          } satisfies AppCommand);
+          return;
+        }
+        if (!openInside(href)) void openHttpsUrl(href);
+      }}
+    >
+      {text}
+    </a>
+  );
 }
 
 function renderList(block: ListBlock, key: number, base?: Addresses): ReactNode {
@@ -526,6 +591,112 @@ function soleImage(text: string, base?: Addresses) {
 }
 
 /**
+ * Where a video address asks playback to start, in seconds: `t=95`, `t=95s`,
+ * `t=1m35s`, `t=1h01m7s`, and the `21m00` a hand-typed link sometimes has.
+ */
+export function videoStart(href: string): number {
+  const raw = /[?&#](?:t|start)=([0-9hms]+)/i.exec(href)?.[1];
+  if (!raw) return 0;
+  if (/^\d+s?$/i.test(raw)) return Number.parseInt(raw, 10);
+  const part = (unit: string) => Number(new RegExp(`(\\d+)${unit}`, "i").exec(raw)?.[1] ?? 0);
+  const trailing = /m(\d+)$/i.exec(raw)?.[1];
+  return part("h") * 3600 + part("m") * 60 + (trailing ? Number(trailing) : part("s"));
+}
+
+/** Seconds as a clock: `1:05` or `1:01:07`. */
+export function clock(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
+/**
+ * A paragraph that is nothing but a link to a YouTube video, or its bare
+ * address: the way a guide cites a video, one per line. Arma's lessons from
+ * Zock cite a hundred and fifty of them, each above the passage it sums up.
+ */
+export function soleVideo(text: string, base?: Addresses): { href: string; label: string } | null {
+  const trimmed = text.trim();
+  const spans = parseSpans(trimmed, base);
+  const only = spans.length === 1 ? spans[0] : null;
+  if (only?.kind === "link" && videoThumbnailUrl(only.href)) {
+    return { href: only.href, label: only.text === only.href ? "" : only.text };
+  }
+  const bare = optionalHttpsUrl(trimmed);
+  if (only?.kind === "text" && bare && !/\s/.test(trimmed) && videoThumbnailUrl(bare)) {
+    return { href: bare, label: "" };
+  }
+  return null;
+}
+
+/**
+ * A cited video as a row: its still, what the guide calls it, and where it
+ * starts. Pressed, it plays right there from that moment, because the reader
+ * wants the thirty seconds the passage is about and not a browser tab.
+ */
+function VideoLine({ href, label }: { href: string; label: string }) {
+  const { t } = useTranslation();
+  // Which address was pressed, not just that something was: React keeps this
+  // row's state by its place in the guide, and a flag alone carried "playing"
+  // to whatever video stood in that place next (another guide opened, a line
+  // added above it in the editor), which then started on its own.
+  const [pressed, setPressed] = useState<string | null>(null);
+  const playing = pressed === href;
+  const start = videoStart(href);
+  const embed = videoEmbedUrl(href);
+  const name = label || t("training.guide.video");
+  if (playing && embed) {
+    return (
+      <div className="training-markdown-video is-playing">
+        <iframe
+          src={`${embed}&autoplay=1${start > 0 ? `&start=${start}` : ""}`}
+          title={name}
+          allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
+        />
+        <div className="training-markdown-video-bar">
+          <span>{name}</span>
+          <Button onClick={() => void openHttpsUrl(href)}>
+            <Icon name="external" size={14} /> {t("training.guide.videoOnYouTube")}
+          </Button>
+          <Button onClick={() => setPressed(null)}>
+            <Icon name="close" size={14} /> {t("training.guide.videoClose")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className="training-markdown-video"
+      onClick={() => (embed ? setPressed(href) : void openHttpsUrl(href))}
+    >
+      <span className="training-markdown-video-still">
+        <img src={videoThumbnailUrl(href)} alt="" loading="lazy" referrerPolicy="no-referrer" />
+        <span className="training-markdown-video-play" aria-hidden>
+          <Icon name="play" size={14} />
+        </span>
+      </span>
+      <span className="training-markdown-video-text">
+        <strong>{name}</strong>
+        {/* The start once: a label that already says "at 15:17" is not
+            told again under it. */}
+        <span>
+          YouTube
+          {start === 0
+            ? ` · ${t("training.guide.videoWhole")}`
+            : !name.includes(clock(start)) && ` · ${t("training.guide.videoFrom", { time: clock(start) })}`}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/**
  * One block as React nodes. Headings start at h3, because this renders inside
  * a panel that already has a heading of its own and starting at h1 would claim
  * the page's outline; the third and fourth levels share h5, since a preview
@@ -539,10 +710,19 @@ export function renderBlock(block: Block, key: number, base?: Addresses): ReactN
       return <h5 key={key}>{renderSpans(block.text, base)}</h5>;
     }
     case "paragraph": {
+      const video = soleVideo(block.text, base);
+      if (video) return <VideoLine key={key} href={video.href} label={video.label} />;
       const figure = soleImage(block.text, base);
       if (figure) {
         return (
-          <figure key={key} className="training-markdown-figure">
+          <figure
+            key={key}
+            className={
+              figure.align
+                ? `training-markdown-figure is-align-${figure.align}`
+                : "training-markdown-figure"
+            }
+          >
             <img src={figure.src} alt={figure.text} loading="lazy" referrerPolicy="no-referrer" />
             {/* A file name is what an editor fills the alt text with when
                 nobody wrote one, and it is not a caption. */}

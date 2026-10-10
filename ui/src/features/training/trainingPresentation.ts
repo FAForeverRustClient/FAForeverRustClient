@@ -94,6 +94,27 @@ export function renderedPage(url: string): string {
   return `https://github.com/${owner}/${repo}/blob/${reference}/${path}`;
 }
 
+/**
+ * The catalogue entry a link in a guide points at, if any: its own address,
+ * or the page GitHub renders it as, which is what a guide links to so that
+ * it also works on GitHub and in clients that open every link outside.
+ */
+export function entryForLink(
+  resources: readonly TrainingResource[],
+  href: string,
+): TrainingResource | null {
+  const plain = (address: string) => address.trim().replace(/#.*$/, "").replace(/\/$/, "").toLowerCase();
+  const wanted = plain(href);
+  if (!wanted) return null;
+  return (
+    resources.find(
+      (resource) =>
+        resource.url !== "" &&
+        (plain(resource.url) === wanted || plain(renderedPage(resource.url)) === wanted),
+    ) ?? null
+  );
+}
+
 export function videoEmbedUrl(url: string): string {
   const id = youtubeId(url);
   if (!id) return "";
