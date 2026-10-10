@@ -936,85 +936,291 @@ html[data-background="custom"] .training-collection-head {
   font-size: 12px;
 }
 
-/* ── the parts of a written series, above the text ─────────────────── */
+/* ── the way through a written series ──────────────────────────────── */
 
-.training-parts {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.training-parts-title {
+/* The overview: the parts as chapters, each with what it is about. */
+.training-series-parts h4 {
+  margin: 0 0 var(--space-3);
   color: var(--color-muted);
   font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.09em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
-.training-parts ol {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.training-series-parts ol {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-3);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.training-parts button {
+.training-series-parts li {
+  display: flex;
+}
+
+.training-series-parts button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 16px 16px 14px;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-surface-raised) 60%, var(--color-surface)),
+    var(--color-surface) 80%
+  );
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-text) 6%, transparent);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.training-series-parts button:hover {
+  border-color: var(--color-border-strong);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--color-text) 8%, transparent),
+    var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.training-series-parts button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.training-series-parts-number {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--color-accent);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: color-mix(in oklab, var(--color-accent) 12%, var(--color-surface-raised));
+  border: 1px solid color-mix(in oklab, var(--color-accent) 35%, var(--color-border));
+  border-radius: var(--radius-md);
+}
+
+.training-series-parts-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.training-series-parts-eyebrow {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.training-series-parts-text strong {
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.training-series-parts button > svg {
+  color: var(--color-subtle);
+  transition:
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.training-series-parts button:hover > svg {
+  color: var(--color-text);
+  transform: translateX(3px);
+}
+
+/* A part: the series it belongs to, where it stands, and the way either side. */
+.training-series-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: 6px 6px 6px 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.training-series-bar-home {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 32px;
-  max-width: 340px;
-  padding: 0 12px 0 4px;
-  color: var(--color-muted);
+  min-width: 0;
+  padding: 5px 10px;
+  color: var(--color-text);
   font: inherit;
   font-size: 13px;
-  text-align: left;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
+  font-weight: 600;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background-color 100ms ease, border-color 100ms ease, color 100ms ease;
 }
 
-.training-parts button > span:last-child {
+.training-series-bar-home span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.training-parts button:hover {
-  color: var(--color-text);
+.training-series-bar-home:hover {
   background: var(--color-surface-hover);
+}
+
+.training-series-bar-place {
+  flex: none;
+  padding-left: var(--space-3);
+  color: var(--color-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  border-left: 1px solid var(--color-border);
+}
+
+.training-series-bar-track {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  min-width: 40px;
+  max-width: 220px;
+}
+
+.training-series-bar-track span {
+  flex: 1;
+  height: 4px;
+  background: var(--color-border);
+  border-radius: var(--radius-pill);
+}
+
+.training-series-bar-track span.is-done {
+  background: var(--color-accent);
+}
+
+.training-series-bar-step {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.training-series-bar-step button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.training-series-bar-step button:hover:not(:disabled) {
   border-color: var(--color-border-strong);
 }
 
-.training-parts button:focus-visible {
+.training-series-bar-step button:disabled {
+  color: var(--color-subtle);
+  opacity: 0.45;
+  cursor: default;
+}
+
+.training-series-bar button:focus-visible,
+.training-series-steps button:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
-.training-parts button.is-current {
-  color: var(--color-text);
-  font-weight: 600;
-  background: var(--color-surface-raised);
-  border-color: var(--color-text);
+/* At the end of a part: the one before and the one after, as two halves. */
+.training-series-steps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  max-width: var(--guide-wide, 1040px);
 }
 
-.training-parts-number {
-  display: inline-grid;
-  flex: none;
-  place-items: center;
-  min-width: 24px;
-  height: 24px;
+.training-series-steps button {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 18px;
   color: var(--color-text);
-  font-size: 12px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  background: var(--color-surface-raised);
-  border-radius: 999px;
+  font: inherit;
+  text-align: left;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color 160ms ease;
+}
+
+.training-series-steps button.is-next {
+  grid-column: 2;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.training-series-steps button:hover {
+  border-color: var(--color-border-strong);
+}
+
+.training-series-steps-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.training-series-steps strong {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+@media (max-width: 700px) {
+  .training-series-bar-track {
+    display: none;
+  }
+
+  .training-series-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .training-series-steps button.is-next {
+    grid-column: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .training-series-parts button,
+  .training-series-parts button > svg,
+  .training-series-steps button {
+    transition: none;
+  }
+
+  .training-series-parts button:hover {
+    transform: none;
+  }
 }
 
 .training-card-copy {
@@ -2529,11 +2735,253 @@ div.training-detail-guide-problem p {
   border-radius: var(--radius-md);
 }
 
+/* A picture the guide sets to one side: beside the text it belongs to, in
+   the room the column has past the text's measure, and never across into the
+   next section. */
+.training-markdown-figure.is-align-right,
+.training-markdown-figure.is-align-left {
+  width: min(42%, 380px);
+  margin-top: 6px;
+  margin-bottom: 16px;
+}
+
+.training-markdown-figure.is-align-right {
+  float: right;
+  margin-left: 28px;
+}
+
+.training-markdown-figure.is-align-left {
+  float: left;
+  margin-right: 28px;
+}
+
+.training-markdown-figure.is-align-center img {
+  margin-inline: auto;
+}
+
+.training-markdown-figure.is-align-center figcaption {
+  text-align: center;
+}
+
+.training-guide-heading {
+  clear: both;
+}
+
+@media (max-width: 760px) {
+  .training-markdown-figure.is-align-right,
+  .training-markdown-figure.is-align-left {
+    float: none;
+    width: auto;
+    margin-inline: 0;
+  }
+}
+
 .training-markdown-figure figcaption {
   margin-top: 8px;
   color: var(--color-muted);
   font-size: 12px;
   line-height: 1.5;
+}
+
+/* A key on the keyboard: a raised cap, the way it looks under the hand. */
+.training-markdown-key {
+  display: inline-block;
+  min-width: 1.6em;
+  margin: 0 1px;
+  padding: 0 6px;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.82em;
+  font-weight: 600;
+  line-height: 1.6;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: 0.08em;
+  background: linear-gradient(
+    180deg,
+    var(--color-surface-raised),
+    color-mix(in oklab, var(--color-surface-raised) 70%, var(--color-bg))
+  );
+  border: 1px solid var(--color-border-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+}
+
+/* A cited video: its still, its name and where it starts, as one row that
+   plays in place when pressed. */
+.training-markdown-video {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(100%, 460px);
+  margin: 0 0 0.9em;
+  padding: 6px 14px 6px 6px;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  background: color-mix(in oklab, var(--color-surface-raised) 55%, var(--color-surface));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+.training-markdown-video:hover {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+}
+
+.training-markdown-video:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.training-markdown-video-still {
+  position: relative;
+  flex: 0 0 auto;
+  width: 112px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--color-bg);
+  border-radius: calc(var(--radius-md) - 3px);
+}
+
+.training-markdown-video-still img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.training-markdown-video-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--color-text);
+  background: color-mix(in oklab, var(--color-bg) 30%, transparent);
+  transition: background-color 140ms ease;
+}
+
+.training-markdown-video:hover .training-markdown-video-play {
+  background: transparent;
+}
+
+.training-markdown-video-play svg {
+  width: 26px;
+  height: 26px;
+  filter: drop-shadow(0 1px 3px color-mix(in oklab, var(--color-bg) 80%, transparent));
+}
+
+.training-markdown-video-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.training-markdown-video-text strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.training-markdown-video-text span {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.training-markdown-video.is-playing {
+  display: block;
+  width: min(100%, 720px);
+  padding: 0;
+  overflow: hidden;
+  cursor: default;
+}
+
+.training-markdown-video.is-playing iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+}
+
+.training-markdown-video-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px 10px 10px 14px;
+  font-size: 13px;
+}
+
+.training-markdown-video-bar > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A numbered list in a guide is a sequence of steps: each number in a disc,
+   the discs joined by a line, so the order is the first thing seen. */
+.training-guide-copy > ol,
+.training-guide-tabpanel > ol {
+  counter-reset: step;
+  padding-left: 0;
+  list-style: none;
+}
+
+.training-guide-copy > ol > li,
+.training-guide-tabpanel > ol > li {
+  position: relative;
+  min-height: 26px;
+  margin-bottom: 0;
+  padding: 1px 0 0.9em 40px;
+  counter-increment: step;
+}
+
+.training-guide-copy > ol > li::before,
+.training-guide-tabpanel > ol > li::before {
+  content: counter(step);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--color-accent);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: color-mix(in oklab, var(--color-accent) 14%, var(--color-surface));
+  border: 1px solid color-mix(in oklab, var(--color-accent) 40%, var(--color-border));
+  border-radius: 50%;
+}
+
+.training-guide-copy > ol > li:not(:last-child)::after,
+.training-guide-tabpanel > ol > li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 30px;
+  bottom: 4px;
+  left: 12.5px;
+  width: 1px;
+  background: color-mix(in oklab, var(--color-accent) 25%, var(--color-border));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .training-markdown-video,
+  .training-markdown-video-play {
+    transition: none;
+  }
 }
 
 /* A picture sized like a glyph sits in the line, at the line's size. */
@@ -3450,6 +3898,74 @@ div.training-detail-guide-problem p {
 .training-markdown-tools button:not(.btn-ghost):not(.btn-primary):hover {
   color: var(--color-text);
   background: var(--color-surface-hover);
+}
+
+/* The picture the caret is on: its caption and where it sits, as one strip
+   between the toolbar and the text. */
+.training-picture-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 6px 6px 12px;
+  background: color-mix(in oklab, var(--color-accent) 8%, var(--color-surface-raised));
+  border: 1px solid color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
+  border-radius: var(--radius-md);
+}
+
+.training-picture-bar-label {
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.training-picture-bar input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 9px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.training-picture-bar input:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
+}
+
+.training-picture-bar-place {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.training-picture-bar-place button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 24px;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 1px);
+  cursor: pointer;
+}
+
+.training-picture-bar-place button:hover {
+  color: var(--color-text);
+}
+
+.training-picture-bar-place button.is-on {
+  color: var(--color-accent-contrast);
+  background: var(--color-accent);
 }
 
 .training-markdown-field textarea {

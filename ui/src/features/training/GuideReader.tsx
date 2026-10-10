@@ -197,6 +197,7 @@ function plainHeading(text: string): string {
 export function GuideReader({
   outline,
   documentUrl,
+  local,
 }: {
   outline: GuideOutline;
   /**
@@ -205,12 +206,14 @@ export function GuideReader({
    * still mean the page the guide was copied from.
    */
   documentUrl?: string;
+  /** Pictures attached to a guide still being written, by the path it writes. */
+  local?: ReadonlyMap<string, string>;
 }) {
   const { t } = useTranslation();
   const { blocks, source } = outline;
   const base = useMemo<Addresses>(
-    () => ({ page: source ?? undefined, document: documentUrl }),
-    [source, documentUrl],
+    () => ({ page: source ?? undefined, document: documentUrl, local }),
+    [source, documentUrl, local],
   );
 
   // The guide's own top level, whatever it wrote it as: a guide whose
