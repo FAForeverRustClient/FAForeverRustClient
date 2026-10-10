@@ -3155,6 +3155,7 @@ export const en = {
   "duration.minutesSeconds": "{minutes}m {seconds}s",
   "duration.minutes": "{minutes}m",
   "duration.days": "{days}d",
+  "duration.daysHoursMinutes": "{days}d {hours}h {minutes}m",
   "lobby.browser.versus": "VS",
   "lobby.browser.simModBadge": { one: "{count} SIM", other: "{count} SIM" },
   "mods.vault.typeBadge.ui": "UI",

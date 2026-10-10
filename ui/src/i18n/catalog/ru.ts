@@ -316,6 +316,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "duration.minutesSeconds": "{minutes} мин {seconds} с",
   "duration.minutes": "{minutes} мин",
   "duration.days": "{days} д",
+  "duration.daysHoursMinutes": "{days} д {hours} ч {minutes} мин",
   "common.now": "Сейчас",
   "common.any": "Любой",
   "common.pickDate": "Выбрать дату",

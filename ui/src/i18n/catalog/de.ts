@@ -2747,6 +2747,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "duration.minutesSeconds": "{minutes} min {seconds} s",
   "duration.minutes": "{minutes} min",
   "duration.days": "{days} d",
+  "duration.daysHoursMinutes": "{days} d {hours} h {minutes} min",
   "lobby.browser.versus": "VS",
   "lobby.browser.simModBadge": { one: "{count} SIM", other: "{count} SIM" },
   "mods.vault.typeBadge.ui": "UI",
