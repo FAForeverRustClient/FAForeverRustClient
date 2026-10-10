@@ -1552,7 +1552,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
 
   "replays.vault.pagesAria": "Страницы сетевых повторов",
   "replays.search.player": "Игрок",
-  "replays.search.anyPlayer": "Имена игроков через запятую",
+  "replays.search.anyPlayer": "Имя игрока",
   "replays.search.map": "Карта",
   "replays.search.anyMap": "Любая карта",
   "replays.search.anyTitle": "Любое название",
