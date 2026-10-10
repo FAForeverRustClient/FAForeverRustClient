@@ -310,6 +310,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "duration.minutesSeconds": "{minutes} min {seconds} s",
   "duration.minutes": "{minutes} min",
   "duration.days": "{days} d",
+  "duration.daysHoursMinutes": "{days} d {hours} godz. {minutes} min",
   "common.now": "Teraz",
   "common.any": "Dowolne",
   "common.pickDate": "Wybierz datę",
