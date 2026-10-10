@@ -400,6 +400,22 @@
       "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/wiki-beginners-guide.md"
     },
     {
+      "author": "WiseOldDog",
+      "id": "wiki-three-essential-habits",
+      "kind": "guide",
+      "level": "beginner",
+      "related": [
+        "wiki-beginners-guide"
+      ],
+      "summary": "Play, watch your replays, talk to people: the three habits a new player should build before anything else.",
+      "title": "Three essential habits for the new player",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-10-10",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/wiki-three-essential-habits.md"
+    },
+    {
       "id": "faf-guide-in-depth",
       "kind": "guide",
       "related": [
