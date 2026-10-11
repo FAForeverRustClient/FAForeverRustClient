@@ -71,18 +71,8 @@ export function RangeSlider({
   const unbounded = low === null && high === null;
 
   // Elevate active handle's z-index so overlapping handles can always be separated
-  const collapsedAtMin = lowValue === highValue && lowValue === min;
-  const collapsedAtMax = lowValue === highValue && lowValue === max;
-  const lowZIndex = collapsedAtMin
-    ? 1
-    : collapsedAtMax
-      ? 2
-      : activeHandle === "low"
-        ? 3
-        : lowValue >= highValue
-          ? 2
-          : 1;
-  const highZIndex = collapsedAtMin ? 2 : collapsedAtMax ? 1 : activeHandle === "high" ? 3 : 1;
+  const lowZIndex = activeHandle === "low" ? 3 : lowValue >= highValue ? 2 : 1;
+  const highZIndex = activeHandle === "high" ? 3 : 1;
 
   // Handle clicking directly on the track to move the nearest thumb
   const handleTrackPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
