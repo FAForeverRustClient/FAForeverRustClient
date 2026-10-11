@@ -82,7 +82,27 @@ const JSON_STATS_MARKER: &str = "JsonStats";
 /// the walk gave up, which for a truncated file is the header and nothing else.
 /// The panel can say "no orders" on its own; it cannot do anything useful with
 /// an error where a game's options would be.
-pub fn analyse_replay_body(uid: i32, body: &[u8]) -> ReplayAnalysis {
+#[cfg(test)]
+fn analyse_replay_body(uid: i32, body: &[u8]) -> ReplayAnalysis {
+    analyse_replay_body_checked(uid, body, &|| false).expect("uncancelled analysis")
+}
+
+pub(crate) fn analyse_replay_body_cancellable(
+    uid: i32,
+    body: &[u8],
+    cancel: &tokio_util::sync::CancellationToken,
+) -> Option<ReplayAnalysis> {
+    analyse_replay_body_checked(uid, body, &|| cancel.is_cancelled())
+}
+
+fn analyse_replay_body_checked(
+    uid: i32,
+    body: &[u8],
+    cancelled: &impl Fn() -> bool,
+) -> Option<ReplayAnalysis> {
+    if cancelled() {
+        return None;
+    }
     let mut cursor = Cursor::new(body);
     let game_version = replay_string(&mut cursor).unwrap_or_default();
     let mut analysis = ReplayAnalysis {
@@ -92,20 +112,20 @@ pub fn analyse_replay_body(uid: i32, body: &[u8]) -> ReplayAnalysis {
     };
 
     let Some(header) = parse_header(&mut cursor) else {
-        return analysis;
+        return (!cancelled()).then_some(analysis);
     };
     analysis.scenario = header.scenario;
     analysis.armies = header.armies;
     analysis.observers = header.observers;
 
-    let walked = walk(&mut cursor, &analysis.armies);
+    let walked = walk(&mut cursor, &analysis.armies, cancelled)?;
     analysis.ticks = walked.ticks;
     analysis.orders = walked.orders;
     analysis.points = walked.points;
     analysis.notices = walked.notices;
     analysis.stats = walked.stats;
     analysis.activity = walked.activity;
-    analysis
+    (!cancelled()).then_some(analysis)
 }
 
 /// What the header carries, once the scenario and the army tables are read.
@@ -294,7 +314,11 @@ struct Walked {
     activity: Vec<ReplayActivity>,
 }
 
-fn walk(cursor: &mut Cursor<&[u8]>, armies: &[ReplayArmy]) -> Walked {
+fn walk(
+    cursor: &mut Cursor<&[u8]>,
+    armies: &[ReplayArmy],
+    cancelled: &impl Fn() -> bool,
+) -> Option<Walked> {
     let body = *cursor.get_ref();
     let len = body.len();
     let mut ticks: u32 = 0;
@@ -315,6 +339,9 @@ fn walk(cursor: &mut Cursor<&[u8]>, armies: &[ReplayArmy]) -> Walked {
     let mut previous: HashMap<i32, (u32, i32)> = HashMap::new();
 
     while cursor.position() + 3 <= len as u64 {
+        if cancelled() {
+            return None;
+        }
         let Some(op) = replay_u8(cursor) else { break };
         let mut length = [0u8; 2];
         if Read::read_exact(cursor, &mut length).is_err() {
@@ -424,14 +451,17 @@ fn walk(cursor: &mut Cursor<&[u8]>, armies: &[ReplayArmy]) -> Walked {
         .collect();
     activity.sort_by_key(|entry| entry.source);
 
-    Walked {
+    if cancelled() {
+        return None;
+    }
+    Some(Walked {
         ticks,
         orders,
         points,
         notices,
         stats,
         activity,
-    }
+    })
 }
 
 fn push_point(points: &mut Vec<ReplayPoint>, point: ReplayPoint) {
@@ -807,7 +837,21 @@ mod tests {
             })
             .collect();
         let mut cursor = Cursor::new(stream);
-        walk(&mut cursor, &armies)
+        walk(&mut cursor, &armies, &|| false).unwrap()
+    }
+
+    #[test]
+    fn cancellation_stops_an_in_progress_command_walk() {
+        let stream = advance(1).repeat(10_000);
+        let mut cursor = Cursor::new(stream.as_slice());
+        let checkpoints = std::cell::Cell::new(0);
+        let result = walk(&mut cursor, &[], &|| {
+            checkpoints.set(checkpoints.get() + 1);
+            checkpoints.get() >= 32
+        });
+        assert!(result.is_none());
+        assert!(cursor.position() < stream.len() as u64);
+        assert_eq!(checkpoints.get(), 32);
     }
 
     #[test]

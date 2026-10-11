@@ -17,6 +17,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "../../../design-system/Button";
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import type {
   PlayerSummary,
   Tourney,
@@ -75,6 +76,7 @@ export function VetoPanel(props: VetoPanelProps) {
   // A step taken by either side disarms: the armed card belonged to a turn
   // that is over.
   useEffect(() => setArmed(null), [veto?.stepIndex, veto?.done]);
+  useOverlayLayer(armed !== null, () => setArmed(null));
 
   if (veto === null && factions === null) return null;
 
@@ -293,12 +295,7 @@ export function VetoPanel(props: VetoPanelProps) {
   };
 
   return (
-    <div
-      className={rootClass}
-      onKeyDown={(pressed) => {
-        if (pressed.key === "Escape") setArmed(null);
-      }}
-    >
+    <div className={rootClass}>
       {legend}
       <header className={turn !== null ? `tournament-veto-turn is-${turn.action}` : "tournament-veto-turn"}>
         {turn !== null && (

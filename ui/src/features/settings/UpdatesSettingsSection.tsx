@@ -6,6 +6,7 @@ import { isUpdateBusy } from "../../store/reducers/clientUpdate";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 import { hourCycleOptions } from "../../shared/format/clock";
 import { clientIntlTag } from "../../shared/format/dates";
+import { plainError } from "../../shared/plainError";
 import "../updates/updates.css";
 import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -82,7 +83,14 @@ function UpdateStatus({ update }: { update: ClientUpdateState }) {
   const checked = formatChecked(update.lastChecked);
   return (
     <span className="update-settings-text">
-      <span className={`update-settings-headline${tone ? ` is-${tone}` : ""}`}>{headline}</span>
+      <span
+        className={`update-settings-headline${tone ? ` is-${tone}` : ""}`}
+        // A failure's own words on hover, for a bug report; the line says
+        // them plainly.
+        title={update.status.type === "failed" ? update.status.payload.reason : undefined}
+      >
+        {headline}
+      </span>
       <span className="update-settings-meta">
         {checked ? `${running} · ${t("settings.updates.lastChecked", { time: checked })}` : running}
       </span>
@@ -111,7 +119,7 @@ function describeStatus(update: ClientUpdateState): { headline: string; tone: "o
     case "failed":
       // Shown here even when the banner stays hidden: a background check that
       // keeps failing should be discoverable somewhere rather than nowhere.
-      return { headline: update.status.payload.reason, tone: "error" };
+      return { headline: plainError(update.status.payload.reason), tone: "error" };
   }
 }
 

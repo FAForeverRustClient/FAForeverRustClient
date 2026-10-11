@@ -12,6 +12,8 @@
 // to at all, so the control is not rendered for one rather than offered and
 // then failing.
 
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
+import { restoreFocus } from "../../../design-system/overlayStack";
 import { useEffect, useRef, useState } from "react";
 import type { Reaction } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -49,6 +51,12 @@ export function MessageReactions({
   const toggle = onTogglePicker ?? (() => setInternalOpen((o) => !o));
   const close = onClosePicker ?? (() => setInternalOpen(false));
 
+  const previousFocus = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (isOpen) previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }, [isOpen]);
+  useOverlayLayer(isOpen && msgid !== "", () => { close(); restoreFocus(previousFocus.current); });
+
   // Escape and a click anywhere else close it, the way the composer's emoji
   // picker and the player menu already do. This one closed only when a
   // reaction was actually picked or when the `+` it came from was pressed
@@ -56,7 +64,7 @@ export function MessageReactions({
   //
   // `close` is a fresh closure every render, so the effect reads it through a
   // ref rather than depending on it: as a dependency it would tear down and
-  // re-subscribe both listeners on every keystroke in the channel.
+  // re-subscribe the outside-click listener on every keystroke in the channel.
   const closeRef = useRef(close);
   closeRef.current = close;
   useEffect(() => {
@@ -78,16 +86,11 @@ export function MessageReactions({
       }
       closeRef.current();
     };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeRef.current();
-    };
     // Captured, so a click on something that stops propagation still counts as
     // a click outside: the scrollback is full of buttons that do.
     document.addEventListener("pointerdown", onPointerDown, true);
-    document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("pointerdown", onPointerDown, true);
-      document.removeEventListener("keydown", onKeyDown);
     };
   }, [isOpen]);
 

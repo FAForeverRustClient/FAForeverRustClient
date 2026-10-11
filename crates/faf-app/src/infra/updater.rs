@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 use crate::infra::session::TokenStore;
 use crate::infra::{cache_dir, env_or, game_updater, maps};
@@ -68,11 +69,13 @@ impl GameUpdaterClient {
     }
 
     /// The whole run, as one fallible unit. `progress` is called with each
-    /// user-facing step.
+    /// user-facing step, and the run stops once `called_off` is cancelled
+    /// (see `GameUpdaterPort::prepare_cancellable`).
     async fn run(
         &self,
         request: &GamePreparation,
         progress: &(dyn Fn(PreparationStep) + Sync),
+        called_off: &CancellationToken,
     ) -> Result<(), String> {
         let target_dir = self.process.game_install_dir().ok_or_else(|| {
             "no Forged Alliance install is configured: set one in Settings → Paths".to_string()
@@ -92,6 +95,7 @@ impl GameUpdaterClient {
             &self.config.exe_name,
             request.cache_rolling_branches,
             progress,
+            called_off,
         )
         .await
         .map_err(|e| format!("could not update {}: {e}", request.featured_mod))?;
@@ -108,6 +112,7 @@ impl GameUpdaterClient {
                 &maps::maps_dir(),
                 folder,
                 progress,
+                called_off,
             )
             .await?;
         }
@@ -119,6 +124,16 @@ impl GameUpdaterClient {
 #[async_trait]
 impl GameUpdaterPort for GameUpdaterClient {
     async fn prepare(&self, request: GamePreparation) -> mpsc::Receiver<UpdateProgress> {
+        // Nobody holds this token, so the run goes to the end.
+        self.prepare_cancellable(request, CancellationToken::new())
+            .await
+    }
+
+    async fn prepare_cancellable(
+        &self,
+        request: GamePreparation,
+        called_off: CancellationToken,
+    ) -> mpsc::Receiver<UpdateProgress> {
         // Bounded, because progress is a status line: if the consumer falls
         // behind, dropping intermediate steps is correct and losing the
         // terminal `Finished` is not: hence `send().await` below, which
@@ -152,7 +167,10 @@ impl GameUpdaterPort for GameUpdaterClient {
                 }
             });
 
-            let outcome = client.run(&request, &report).await;
+            // The token, not the receiver, is what stops the run: this task
+            // outlives whoever started it, and a run that only noticed its
+            // reader had gone would go on writing with nobody waiting.
+            let outcome = client.run(&request, &report, &called_off).await;
             drop(report); // closes `steps_rx`, ending the pump
             let _ = pump.await;
             let _ = tx.send(UpdateProgress::Finished(outcome)).await;
@@ -161,10 +179,19 @@ impl GameUpdaterPort for GameUpdaterClient {
         rx
     }
 
-    async fn ensure_maps(&self, folders: &[String]) -> Vec<(String, String)> {
+    async fn ensure_maps(
+        &self,
+        folders: &[String],
+        called_off: &CancellationToken,
+    ) -> Vec<(String, String)> {
         let mut failures = Vec::new();
         let maps_dir = maps::maps_dir();
         for folder in folders {
+            // Between two maps: each is staged whole or not at all, so the
+            // ones already in place stay and the rest wait for the next search.
+            if called_off.is_cancelled() {
+                break;
+            }
             // Already on disk is the common case, and costs a directory read.
             if let Err(reason) = game_updater::ensure_live_map(
                 &self.http,
@@ -172,9 +199,15 @@ impl GameUpdaterPort for GameUpdaterClient {
                 &maps_dir,
                 folder,
                 &|_| {},
+                called_off,
             )
             .await
             {
+                // A download stopped because the search was called off is
+                // no failure to report.
+                if called_off.is_cancelled() {
+                    break;
+                }
                 failures.push((folder.clone(), reason));
             }
         }

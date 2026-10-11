@@ -1,6 +1,6 @@
-
-
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
+import { restoreFocus } from "../../../design-system/overlayStack";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { EmptyState } from "../../../design-system/EmptyState";
 import { Modal } from "../../../design-system/Modal";
 import type { Game, VaultMap } from "../../../ipc/bindings";
@@ -54,6 +54,7 @@ export function CustomGamesBrowser({
     ? games.find((game) => game.id === previewSnapshot.id) ?? previewSnapshot
     : null;
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
+  const contextSource = useRef<HTMLElement | null>(null);
 
   // Widths and order, set on the list once and read by every row from there.
   const columns = useGameBrowserColumns(viewMode === "list");
@@ -74,22 +75,24 @@ export function CustomGamesBrowser({
     return () => window.clearInterval(timer);
   }, []);
 
+  useOverlayLayer(contextMenu !== null, () => {
+    setContextMenu(null);
+    restoreFocus(contextSource.current);
+  });
+
   useEffect(() => {
     if (!contextMenu) return;
     const close = () => setContextMenu(null);
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-    };
     window.addEventListener("pointerdown", close);
-    window.addEventListener("keydown", onKeyDown);
+
     return () => {
       window.removeEventListener("pointerdown", close);
-      window.removeEventListener("keydown", onKeyDown);
     };
   }, [contextMenu]);
 
   const openContextMenu = (event: React.MouseEvent, game: Game) => {
     event.preventDefault();
+    contextSource.current = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
     hideGlobalLineup();
     onSelect(game.id);
     setContextMenu({

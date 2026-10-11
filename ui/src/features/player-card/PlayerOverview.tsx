@@ -6,6 +6,7 @@ import { PlayerNoteCard } from "../../shared/components/PlayerNoteEditor";
 import { formatNumber, t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { formatDateTime } from "../../shared/format/dates";
+import { plainError } from "../../shared/plainError";
 import { placementLabel, seasonLabel } from "../../shared/leagueNames";
 import { leaderboardLabel } from "../../shared/playerRatings";
 import { useCountryLabel } from "../../shared/hooks/useCountryLabel";
@@ -92,7 +93,21 @@ export function PlayerOverview({ profile, country, note, onOpenHistory, avatarsS
       {profile.warnings.length > 0 && (
         <details className="player-card-warnings surface">
           <summary>{t("playerCard.overview.warnings")}</summary>
-          <ul>{profile.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
+          {/* Each warning is "section: reason" from the backend. The section
+              stays as sent; the reason is worded plainly, with the original
+              on hover, as every other failure in the client is. */}
+          <ul>
+            {profile.warnings.map((warning) => {
+              const split = warning.indexOf(": ");
+              const section = split > 0 ? warning.slice(0, split) : "";
+              const reason = split > 0 ? warning.slice(split + 2) : warning;
+              return (
+                <li key={warning} title={warning}>
+                  {section ? `${section}: ${plainError(reason)}` : plainError(reason)}
+                </li>
+              );
+            })}
+          </ul>
         </details>
       )}
 

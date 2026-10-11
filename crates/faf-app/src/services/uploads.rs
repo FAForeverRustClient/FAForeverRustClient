@@ -11,6 +11,9 @@ use crate::services::notifications;
 pub async fn handle(cmd: UploadsCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         UploadsCommand::Open { mut request } => {
+            if out.with_state(|state| state.uploads.status.is_busy()) {
+                return;
+            }
             // A folder picked from disk arrives named after the folder, which
             // is not the name the vault will give it: that is the `name` inside
             // `mod_info.lua` or the scenario, read out of the archive. The
@@ -22,12 +25,21 @@ pub async fn handle(cmd: UploadsCommand, ctx: &ServiceCtx, out: &EventSink) {
             if let Some(name) = ctx.ports.uploads.subject_name(request.clone()).await {
                 request.display_name = name;
             }
+            if out.with_state(|state| state.uploads.status.is_busy()) {
+                return;
+            }
             // The dialog opens now and the picture arrives when it arrives:
             // reading a `.scmap` is a file read and a PNG build, and a dialog
             // that waits for its own illustration is a dialog that stutters.
             out.emit(UploadsEvent::Opened {
                 request: request.clone(),
             });
+            // The reducer also guards Open atomically if Start raced the read.
+            if out.with_state(|state| {
+                state.uploads.status.is_busy() || state.uploads.request.as_ref() != Some(&request)
+            }) {
+                return;
+            }
             if request.kind == UploadKind::Mod {
                 rescan_mods(ctx, out);
             }
@@ -43,6 +55,14 @@ pub async fn handle(cmd: UploadsCommand, ctx: &ServiceCtx, out: &EventSink) {
         UploadsCommand::Close => out.emit(UploadsEvent::Closed),
         UploadsCommand::SetRanked { ranked } => out.emit(UploadsEvent::RankedChanged { ranked }),
         UploadsCommand::Start => start(ctx, out).await,
+        UploadsCommand::Cancel => {
+            // Only a publish still in reach is asked to stop; the port then
+            // decides at the moment it looks (see `UploadsPort::cancel_publish`)
+            // and its stream says how the publish ended, as it always does.
+            if out.with_state(|state| state.uploads.status.is_cancellable()) {
+                ctx.ports.uploads.cancel_publish();
+            }
+        }
     }
 }
 
@@ -118,14 +138,17 @@ async fn start(ctx: &ServiceCtx, out: &EventSink) {
 
     // The port always ends with a terminal status; treating a stream that
     // closes without one as a failure keeps a panicked task from looking like
-    // a successful publish.
+    // a successful publish. `Idle` is the third ending: called off before
+    // the vault could have it, which is neither.
     let mut last = None;
     while let Some(status) = updates.recv().await {
         last = Some(status.clone());
         out.emit(UploadsEvent::Progressed { status });
     }
     let outcome = match last {
-        Some(status @ (UploadStatus::Succeeded | UploadStatus::Failed { .. })) => status,
+        Some(
+            status @ (UploadStatus::Succeeded | UploadStatus::Failed { .. } | UploadStatus::Idle),
+        ) => status,
         _ => {
             let failed = UploadStatus::Failed {
                 reason: "the upload stopped without finishing".into(),

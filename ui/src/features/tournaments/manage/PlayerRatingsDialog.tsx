@@ -9,6 +9,7 @@ import { Modal } from "../../../design-system/Modal";
 import type { EntrantRatings, RatingKind, TourneyLoadStatus, TourneyPlayer } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { plainError } from "../../../shared/plainError";
 import { formatDay, RATING_KIND_LABELS } from "../tourneyPresentation";
 
 /** The boards as the website names them in this table. */
@@ -40,7 +41,13 @@ export function PlayerRatingsDialog({ player, ratings, status, onLoad, onClose }
     <Modal onClose={onClose} className="tournament-ratings-dialog" ariaLabel={player.name}>
       <h3>{t("tournaments.ratings.title", { name: player.name })}</h3>
       {loading && <p className="muted">{t("tournaments.ratings.asking")}</p>}
-      {status.type === "failed" && <p className="tournament-form-hint">{status.payload.reason}</p>}
+      {/* Plainly, with the service's own words on hover; Refresh, below, is
+          the way to ask again. */}
+      {status.type === "failed" && (
+        <p className="tournament-form-hint" title={status.payload.reason}>
+          {plainError(status.payload.reason)}
+        </p>
+      )}
       {!loading && mine !== null && mine.boards.length === 0 && (
         <p className="muted">{mine.reason || t("tournaments.ratings.none")}</p>
       )}

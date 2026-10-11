@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
+import { StatusNotice } from "../../../design-system/StatusNotice";
 import type {
   CopySource,
   CopySourceMaps,
@@ -17,6 +18,7 @@ import type {
   TourneyLoadStatus,
 } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { plainError } from "../../../shared/plainError";
 
 /** The import's reads, handed down from the view as one piece. */
 export interface MapImport {
@@ -83,7 +85,13 @@ export function MapImportDialog({ event, imports, busy, onImport, onClose }: Map
 
       {imports.sourcesStatus.type === "loading" && <p className="muted">{t("tournaments.maps.importLoading")}</p>}
       {imports.sourcesStatus.type === "failed" && (
-        <p className="tournament-refusal">{imports.sourcesStatus.payload.reason}</p>
+        <StatusNotice
+          tone="error"
+          action={{ label: t("common.retry"), onClick: imports.onLoadSources }}
+          detail={imports.sourcesStatus.payload.reason}
+        >
+          {plainError(imports.sourcesStatus.payload.reason)}
+        </StatusNotice>
       )}
       {imports.sourcesStatus.type === "ready" && candidates.length === 0 && (
         <p className="muted">{t("tournaments.maps.importNothing")}</p>
@@ -110,7 +118,13 @@ export function MapImportDialog({ event, imports, busy, onImport, onClose }: Map
         <p className="muted">{t("tournaments.maps.importLoading")}</p>
       )}
       {selected !== "" && imports.sourceStatus.type === "failed" && (
-        <p className="tournament-refusal">{imports.sourceStatus.payload.reason}</p>
+        <StatusNotice
+          tone="error"
+          action={{ label: t("common.retry"), onClick: () => imports.onLoadSource(selected) }}
+          detail={imports.sourceStatus.payload.reason}
+        >
+          {plainError(imports.sourceStatus.payload.reason)}
+        </StatusNotice>
       )}
 
       {source !== null && (

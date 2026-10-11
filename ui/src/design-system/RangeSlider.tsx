@@ -125,6 +125,7 @@ export function RangeSlider({
           step={step}
           value={lowValue}
           aria-label={`${label} minimum`}
+          aria-valuetext={low === null && !closedScale ? t("common.any") : format(lowValue)}
           onFocus={() => setActiveHandle("low")}
           onPointerDown={() => setActiveHandle("low")}
           onChange={(e) => {
@@ -141,6 +142,7 @@ export function RangeSlider({
           step={step}
           value={highValue}
           aria-label={`${label} maximum`}
+          aria-valuetext={high === null && !closedScale ? t("common.any") : format(highValue)}
           onFocus={() => setActiveHandle("high")}
           onPointerDown={() => setActiveHandle("high")}
           onChange={(e) => {

@@ -45,6 +45,30 @@ function mousedownListeners(spies: { add: { mock: { calls: unknown[][] } }; remo
 }
 
 describe("HostGameModal map picker, mounted", () => {
+  it("moves between map and mod tabs with the keyboard and labels both lists", async () => {
+    const user = userEvent.setup();
+    mountDialog();
+    const mapTabs = within(screen.getByRole("tablist", { name: "Map" }));
+    const modTabs = within(screen.getByRole("tablist", { name: "Mods" }));
+    await user.click(mapTabs.getAllByRole("tab")[0]);
+    await user.keyboard("{ArrowRight}");
+    expect(mapTabs.getAllByRole("tab")[1].getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tabpanel", { name: /^Favourites/ })).toBeTruthy();
+    await user.click(modTabs.getAllByRole("tab")[0]);
+    await user.keyboard("{End}");
+    expect(modTabs.getAllByRole("tab")[1].getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tabpanel", { name: /^Sim Mods/ })).toBeTruthy();
+    for (const tab of [...mapTabs.getAllByRole("tab"), ...modTabs.getAllByRole("tab")]) {
+      const panel = document.getElementById(tab.getAttribute("aria-controls")!)!;
+      expect(panel.getAttribute("aria-labelledby")).toBe(tab.id);
+    }
+    // The picker deliberately remembers its section between mounts.
+    await user.click(mapTabs.getAllByRole("tab")[1]);
+    await user.keyboard("{Home}");
+    await user.click(modTabs.getAllByRole("tab")[1]);
+    await user.keyboard("{Home}");
+  });
+
   it("asks for the installed maps, the vault and the installed mods when it opens", () => {
     mountDialog();
     expect(sentCommands()).toEqual(

@@ -230,7 +230,7 @@ function InstalledModDetail({
             <span className={`vault-badge mod-badge mod-badge-${mod.modType}`}>
               {t(mod.modType === "ui" ? "mods.vault.uiMod" : "mods.vault.simMod")}
             </span>
-            <span className={`vault-badge is-${mod.enabled ? "ok" : "warn"}`}>
+            <span className={`vault-badge is-${mod.enabled ? "ok" : "neutral"}`}>
               {t(mod.enabled ? "mods.installed.enabled" : "mods.installed.disabled")}
             </span>
             {updateAvailable && (
@@ -329,6 +329,12 @@ export function InstalledModsView({
   const [checking, setChecking] = useState(false);
   /** Whether the reload a check asked for has been seen running yet. */
   const reloadSeen = useRef(false);
+  /**
+   * The catalogue on screen when the check was pressed. A reload that finished
+   * always replaces it; one called off from the status bar leaves it, and has
+   * found nothing to report.
+   */
+  const vaultAtCheck = useRef<VaultMod[] | null>(null);
   const [checkResult, setCheckResult] = useState("");
   const browsing = useAppStore((state) => state.state.settings.browsing);
 
@@ -390,6 +396,9 @@ export function InstalledModsView({
       setCheckResult(t("mods.installed.checkFailed"));
       return;
     }
+    // Called off: there is no new catalogue, and reporting on the old one
+    // would answer a question the reader withdrew.
+    if (vaultStatus.type === "cancelled" || vault === vaultAtCheck.current) return;
     const count = updatableFolders.size;
     setCheckResult(
       count > 0
@@ -602,6 +611,7 @@ export function InstalledModsView({
               onClick={() => {
                 setCheckResult("");
                 setChecking(true);
+                vaultAtCheck.current = vault;
                 // A real fetch: `loadVault` is refused once the catalogue is
                 // loaded, which made this report on a stale one.
                 ipc.send({ kind: "Mods", command: { type: "reloadVault" } });

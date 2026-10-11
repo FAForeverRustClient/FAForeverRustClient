@@ -14,7 +14,8 @@ import {
 } from "@tauri-apps/plugin-notification";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
-export type LogKind = "game" | "client";
+/** Mirrors the arms of `log_directory` in the Tauri shell. `ice` is the adapters' own log folder. */
+export type LogKind = "game" | "client" | "ice";
 
 /** Mirrors the arms of `faf_app::infra::client_folder`. */
 export type ClientFolder = "maps" | "mods" | "replays" | "vault" | "gameCache" | "gamePrefs";

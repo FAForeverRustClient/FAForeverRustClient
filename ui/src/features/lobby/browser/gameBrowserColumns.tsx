@@ -15,13 +15,12 @@ import { useAppStore } from "../../../store/store";
 import { sortsDescending } from "./gameSortOrder";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { useColumnOrder } from "../../../shared/hooks/useColumnOrder";
+import { fitColumns, gridColumnSpace, withBoundaryTraded } from "../../../shared/tableColumns";
 import {
+  COLUMN_FLOORS,
   columnTemplate,
   columnWidths,
   FLEXIBLE_COLUMN,
-  columnScale,
-  scaledColumnWidths,
-  withColumnResized,
 } from "./browserLayout";
 
 /**
@@ -108,29 +107,43 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
   const gamePosition = order.indexOf(FLEXIBLE_COLUMN);
 
   const dragOrigin = useRef<number[] | null>(null);
+  // The newest widths a drag produced, for the commit: a keyboard nudge drags
+  // and commits in one event, before a re-render, so `localWidths` as this
+  // render saw it did not have the nudge in it and it was never saved.
+  const latestWidths = useRef<number[] | null>(null);
   const [resizing, setResizing] = useState(false);
 
-  // The list's width, from its header: the header is as wide as the list.
-  // Watched, because the window, the detail panel and the chat sidebar all
-  // change it. See `columnScale`.
-  const [listWidth, setListWidth] = useState(0);
+  // The room the header has for its columns, the header being as wide as the
+  // list, and what its padding and gaps take besides, for sizing a row that
+  // overflows. Watched, because the window, the detail panel and the chat
+  // sidebar all change it. See `fitColumns` for what is done with it.
+  const [{ space, chrome }, setMeasured] = useState({ space: 0, chrome: 0 });
   useEffect(() => {
     const element = headerRef.current;
     if (!enabled || !element || typeof ResizeObserver === "undefined") return;
-    const measure = () => setListWidth(element.clientWidth);
+    const measure = () => {
+      const columns = gridColumnSpace(element, COLUMN_SORTS.length);
+      setMeasured({ space: columns, chrome: element.clientWidth - columns });
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
   }, [enabled]);
-  const scale = columnScale(listWidth, widths);
-  const shown = scaledColumnWidths(widths, scale);
-  const template = columnTemplate(order.map((column) => shown[column]), gamePosition);
+  const fit = fitColumns(widths, COLUMN_FLOORS, space);
+  const { scale } = fit;
+  const template = columnTemplate(order.map((column) => fit.drawn[column]), gamePosition);
+  // Only when every column is at its floor and the floors are wider than the
+  // list: the header and every row are then as wide as the floors, so the
+  // list scrolls sideways with each row whole, its hover and its border along
+  // the full width of what is drawn.
+  const minRowWidth = fit.overflow ? `${Math.ceil(chrome + fit.total)}px` : undefined;
 
   const style = useMemo(
     () => {
       if (!enabled) return undefined;
       const properties: CSSProperties & Record<string, string | number> = { "--game-browser-columns": template };
+      if (minRowWidth) properties["--game-browser-min-width"] = minRowWidth;
       order.forEach((column, position) => {
         properties[`--game-browser-order-${column}`] = position;
       });
@@ -139,16 +152,20 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
     // Compared by value: the template is a string and the order a short list,
     // and a fresh object here restyles the whole list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [enabled, template, order.join(",")],
+    [enabled, template, minRowWidth, order.join(",")],
   );
 
   // The game column's drawn width when a drag begins. On a list wider than
   // its columns the game column is drawn wider than its stored width, and a
   // drag starts from what is on screen, or the divider would jump.
   const drawnGame = useRef<number | null>(null);
+  // The scale the drag started at. It holds for the whole drag, since a trade
+  // keeps the total, and a re-render part way through must not change it.
+  const dragScale = useRef(1);
   const onStart = () => {
     const cell = headerRef.current?.children[FLEXIBLE_COLUMN];
     drawnGame.current = scale >= 1 && cell ? Math.round(cell.getBoundingClientRect().width) : null;
+    dragScale.current = scale;
     setResizing(true);
   };
   /** The divider in front of the column drawn at `position` moved by `delta`. */
@@ -160,24 +177,34 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
     // at half scale a stored width changes twice as far, which is what keeps
     // the divider under the cursor. A trade keeps the total, so the scale
     // holds still for the whole drag. The trade is between the two columns
-    // either side of the line as drawn, whatever order they are in.
+    // either side of the line as drawn, whatever order they are in, and stops
+    // where the one giving way reaches its floor on screen.
     const origin = dragOrigin.current;
-    const resized = withColumnResized(order.map((column) => origin[column]), position, delta / scale, gamePosition);
+    const resized = withBoundaryTraded(
+      order.map((column) => origin[column]),
+      position,
+      delta / dragScale.current,
+      (at) => COLUMN_FLOORS[order[at]] / dragScale.current,
+    );
     const next = [...origin];
     order.forEach((column, at) => {
       next[column] = resized[at];
     });
+    latestWidths.current = next;
     setLocalWidths(next);
   };
   const onCommit = () => {
+    const committed = latestWidths.current ?? localWidths;
     dragOrigin.current = null;
     drawnGame.current = null;
+    latestWidths.current = null;
     setResizing(false);
-    if (localWidths) saveBrowser({ columnWidths: localWidths });
+    if (committed) saveBrowser({ columnWidths: committed });
   };
   /** A double click on any divider puts the whole header back as designed. */
   const onReset = () => {
     dragOrigin.current = null;
+    latestWidths.current = null;
     setResizing(false);
     setLocalWidths(null);
     columnOrder.clear();
@@ -205,6 +232,18 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
     t("lobby.browser.column.players"),
     t("lobby.browser.column.rating"),
     t("lobby.browser.column.age"),
+  ];
+  // Each column's whole name, for the heading's tooltip, its accessible name
+  // and its divider's. Some languages shorten a heading so that it fits its
+  // column at the default window ("Edad" for "Antigüedad"); the column is
+  // still the longer thing, and the tooltip is where that is said.
+  const names = [
+    labels[0],
+    labels[1],
+    labels[2],
+    t("lobby.browser.columnFull.players"),
+    t("lobby.browser.columnFull.rating"),
+    t("lobby.browser.columnFull.age"),
   ];
   const moveHint = t("lobby.browser.moveColumn");
 
@@ -239,7 +278,7 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
               <ResizeHandle
                 className="game-browser-col-handle"
                 label={t("lobby.browser.resizeColumn", {
-                  column: labels[before === FLEXIBLE_COLUMN ? index : before],
+                  column: names[before === FLEXIBLE_COLUMN ? index : before],
                 })}
                 onStart={onStart}
                 onDrag={(delta) => onDrag(position, delta)}
@@ -265,8 +304,8 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
                 // is a CSS grid of plain elements rather than a table, so the
                 // role would be a claim about a structure that is not there. The
                 // label carries the order instead.
-                title={`${t("lobby.browser.sortByColumn", { column: label })}\n${moveHint}`}
-                aria-label={`${t("lobby.browser.sortByColumn", { column: label })}${
+                title={`${t("lobby.browser.sortByColumn", { column: names[index] })}\n${moveHint}`}
+                aria-label={`${t("lobby.browser.sortByColumn", { column: names[index] })}${
                   active
                     ? ` (${t(descending ? "lobby.browser.sortDescending" : "lobby.browser.sortAscending")})`
                     : ""

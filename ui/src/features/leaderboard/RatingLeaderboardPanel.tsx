@@ -1,3 +1,4 @@
+import { useOverlayLayer } from "../../design-system/useOverlayLayer";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
@@ -204,19 +205,20 @@ export function RatingLeaderboardPanel() {
     setPageSize(state.ratingQuery.pageSize);
   }, [state.ratingQuery]);
 
+  useOverlayLayer(columnsOpen, () => {
+    setColumnsOpen(false);
+    columnsRef.current?.querySelector<HTMLButtonElement>(".leaderboard-columns-trigger")?.focus();
+  });
+
   useEffect(() => {
     if (!columnsOpen) return;
     const closeOnOutsidePointer = (event: PointerEvent) => {
       if (!columnsRef.current?.contains(event.target as Node)) setColumnsOpen(false);
     };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setColumnsOpen(false);
-    };
     document.addEventListener("pointerdown", closeOnOutsidePointer, true);
-    document.addEventListener("keydown", closeOnEscape);
+
     return () => {
       document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
-      document.removeEventListener("keydown", closeOnEscape);
     };
   }, [columnsOpen]);
 

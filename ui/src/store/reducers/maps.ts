@@ -8,8 +8,12 @@ const MAX_LOCAL_PREVIEWS = 128;
 
 export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
   switch (event.type) {
+    case "vaultProgress":
+      return { ...state, vaultProgress: event.payload.progress };
+    case "vaultCancelled":
+      return { ...state, vaultStatus: { type: "cancelled" }, vaultProgress: null };
     case "vaultLoading":
-      return { ...state, vaultStatus: { type: "loading" } };
+      return { ...state, vaultStatus: { type: "loading" }, vaultProgress: null };
     // Merged with what folder lookups already added: see the Rust twin.
     case "vaultLoaded": {
       const loaded = new Set(event.payload.maps.map((map) => map.versionId));
@@ -107,8 +111,32 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
     case "installing":
       return {
         ...state,
-        installStatus: { type: "installing", payload: { folderName: event.payload.folderName } },
+        installStatus: {
+          type: "installing",
+          payload: { folderName: event.payload.folderName, progress: null },
+        },
       };
+    // Only onto the install it measures, as in
+    // `faf_domain::state::maps::reduce`: a step after that install ended, or
+    // for another folder, describes nothing.
+    case "installProgressed":
+      return state.installStatus.type === "installing"
+        && state.installStatus.payload.folderName === event.payload.folderName
+        ? {
+          ...state,
+          installStatus: {
+            type: "installing",
+            payload: { folderName: event.payload.folderName, progress: event.payload.progress },
+          },
+        }
+        : state;
+    // Called off: back to idle without a failure, and only for the install it
+    // names. Nothing reached the disk, so the installed list stays.
+    case "installCancelled":
+      return state.installStatus.type === "installing"
+        && state.installStatus.payload.folderName === event.payload.folderName
+        ? { ...state, installStatus: { type: "idle" } }
+        : state;
     // A map that had no art a moment ago may have some now, and the empty
     // "looked, found nothing" markers would otherwise outlive the folder they
     // describe.

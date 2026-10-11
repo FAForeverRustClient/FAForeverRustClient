@@ -14,6 +14,8 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import type { ChatMessage, ChatPreferences, ChatUser, PlayerProfile, Reaction, SocialState } from "../../../ipc/bindings";
 import { MessageReactions } from "./MessageReactions";
 import { Icon } from "../../../design-system/Icon";
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
+import { overlayStack } from "../../../design-system/overlayStack";
 import { formatTime, renderBody, resolvedNickStyle, showsTime } from "./chatFormat";
 import type { ChatGameLink, PingIndex } from "./chatFormat";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -219,6 +221,8 @@ export const MessageList = memo(function MessageList({
   useEffect(() => {
     const onFind = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey) || event.key.toLocaleLowerCase() !== "f") return;
+      const dialog = overlayStack.topFocusTrap()?.element?.();
+      if (dialog && !dialog.contains(scrollRef.current)) return;
       event.preventDefault();
       setSearchOpen(true);
       requestAnimationFrame(() => searchInputRef.current?.focus());
@@ -271,7 +275,9 @@ export const MessageList = memo(function MessageList({
     setSearchOpen(false);
     setSearch("");
     setActiveMatch(0);
+    scrollRef.current?.focus();
   };
+  useOverlayLayer(searchOpen, closeSearch);
 
   const navigateSearch = (direction: -1 | 1) => {
     if (matchingIds.length === 0) return;
@@ -290,8 +296,8 @@ export const MessageList = memo(function MessageList({
             aria-label={t("chat.search.placeholder")}
             onChange={(event) => { setSearch(event.target.value); setActiveMatch(0); }}
             onKeyDown={(event) => {
+              if (event.nativeEvent.isComposing) return;
               if (event.key === "Enter") { event.preventDefault(); navigateSearch(event.shiftKey ? -1 : 1); }
-              if (event.key === "Escape") closeSearch();
             }}
           />
           <span aria-live="polite">
@@ -316,6 +322,7 @@ export const MessageList = memo(function MessageList({
         ref={scrollRef}
         onScroll={onScroll}
         role="log"
+        tabIndex={-1}
         aria-live={messageLogLiveness(isFiltered, revealingOlder)}
         aria-relevant="additions"
         aria-label={

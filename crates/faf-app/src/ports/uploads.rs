@@ -13,9 +13,21 @@ pub trait UploadsPort: Send + Sync {
     /// Zip the named folder and publish it.
     ///
     /// The receiver closes when the run ends; the final [`UploadStatus`] is
-    /// either `Succeeded` or `Failed`. The temporary archive is always removed,
+    /// `Succeeded`, `Failed`, or `Idle` after cancellation. The temporary archive is removed,
     /// including on failure: both reference clients delete it in a `finally`.
     async fn publish(&self, request: UploadRequest) -> mpsc::Receiver<UploadStatus>;
+
+    /// Call off the publish that is running, if it can still be stopped.
+    ///
+    /// Only raises a flag; the run decides. While the archive is being packed or
+    /// its bytes are still going out, the run stops, drops the request
+    /// mid-transfer, waits for the packing worker's cleanup, and ends its stream with
+    /// [`UploadStatus::Idle`] instead of an outcome. Once the server can have
+    /// the whole archive (every byte of a map sent, or a mod's storage upload
+    /// being confirmed), stopping could no longer keep it out of the vault,
+    /// so the run ignores the flag and ends as it would have. Defaults to
+    /// doing nothing, which a stub that publishes nothing needs.
+    fn cancel_publish(&self) {}
 
     /// The preview image inside the map folder this request names, as a data
     /// URL, or an empty string when there is none to read.

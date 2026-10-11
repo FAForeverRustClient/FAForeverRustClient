@@ -35,6 +35,8 @@
 // deciding whether a foe's messages are shown. Somebody muted before that
 // change can still be unmuted here.
 
+import { OverlayParentContext, useOverlayLayer } from "../../design-system/useOverlayLayer";
+import { restoreFocus } from "../../design-system/overlayStack";
 import { ColorInput } from "../../design-system/ColorInput";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -42,16 +44,15 @@ import type { Game, PlayerProfile } from "../../ipc/bindings";
 import type { AccountRef } from "../../store/reducers/social";
 import { DEFAULT_COLOR_PICKER_VALUE } from "./nameColors";
 import { useTranslation } from "../../i18n/useTranslation";
+import { menuPosition, type MenuAnchor } from "../rules/menuPosition";
 import "./user-menu.css";
-
-/** Gap kept between the menu and the viewport edge when it has to flip. */
-const VIEWPORT_MARGIN = 8;
 
 export interface UserMenuTarget {
   nickname: string;
   profile: PlayerProfile | undefined;
   x: number;
   y: number;
+  anchor?: MenuAnchor;
 }
 
 export interface UserMenuActions {
@@ -117,7 +118,15 @@ export function UserMenu({
 }: Props) {
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ x: target.x, y: target.y });
+  const previousFocus = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }, []);
+  const layer = useOverlayLayer(true, () => {
+    onClose();
+    restoreFocus(previousFocus.current);
+  }, { elementRef: menuRef });
+  const [position, setPosition] = useState<{ x: number; y: number; maxHeight?: number }>({ x: target.x, y: target.y });
 
   const { nickname, profile } = target;
   const isSelf = !!self && nickname.localeCompare(self, undefined, { sensitivity: "accent" }) === 0;
@@ -146,11 +155,8 @@ export function UserMenu({
     }
   };
 
-  // Ordered as agreed on the thread, most used first. "View profile" is top
-  // because the menu opens under the pointer: whatever is first is what the
-  // cursor is already sitting on, and looking somebody up is what a
-  // right-click on a name is usually for. Private message is second, since
-  // the double-click on the name is the shorter way to that one anyway.
+  // The most common actions come first. Double-clicking the source name
+  // already opens a private message, so profile lookup leads the menu.
   item(t("chat.menu.viewProfile"), () => actions.viewProfile(profile?.id ?? null, nickname));
   if (!isSelf) item(t("chat.menu.privateMessage"), () => actions.privateMessage(nickname));
   item(t("chat.menu.copyUsername"), () => actions.copyUsername(nickname));
@@ -193,29 +199,22 @@ export function UserMenu({
   useLayoutEffect(() => {
     const el = menuRef.current;
     if (!el) return;
-    const { width, height } = el.getBoundingClientRect();
+    const { width, height: drawnHeight } = el.getBoundingClientRect();
+    const height = Math.max(drawnHeight, el.scrollHeight + 2);
     const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
     const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
-    const maxX = viewportWidth - width - VIEWPORT_MARGIN;
-    const maxY = viewportHeight - height - VIEWPORT_MARGIN;
-    setPosition({
-      x: Math.max(VIEWPORT_MARGIN, Math.min(target.x, maxX)),
-      y: Math.max(VIEWPORT_MARGIN, Math.min(target.y, maxY)),
-    });
-  }, [target.x, target.y]);
+    setPosition(menuPosition(target, target.anchor, { width, height }, { width: viewportWidth, height: viewportHeight }));
+  }, [target, entries.length]);
 
   // Dismiss on anything that isn't a click inside the menu.
   useEffect(() => {
     const onPointerDown = (e: PointerEvent) => {
       if (!menuRef.current?.contains(e.target as Node)) onClose();
     };
-    const onKeyDown = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("pointerdown", onPointerDown, true);
-    window.addEventListener("keydown", onKeyDown);
     window.addEventListener("resize", onClose);
     return () => {
       window.removeEventListener("pointerdown", onPointerDown, true);
-      window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("resize", onClose);
     };
   }, [onClose]);
@@ -229,62 +228,61 @@ export function UserMenu({
   // clicked. A portal takes every ancestor out of the question: no stacking
   // context between here and the root, and no `overflow` to be clipped by.
   const menu = (
-    <div
-      ref={menuRef}
-      className="chat-user-menu"
-      role="menu"
-      aria-label={t("chat.menu.aria", { nickname })}
-      style={{ left: position.x, top: position.y }}
-      // A right-click inside the menu must not open the webview's own menu.
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      {/* No name across the top. It was the first thing in a menu opened on a
-          name that is still on screen, still under the pointer, and now kept
-          highlighted for exactly this reason: a row of read-only text between
-          the cursor and the first action it could reach. */}
-      {entries.map((entry, i) =>
-        entry.kind === "separator" ? (
-          <hr key={`sep-${i}`} className="chat-user-menu-separator" />
-        ) : (
+    <OverlayParentContext.Provider value={layer}>
+      <div
+        ref={menuRef}
+        className="chat-user-menu"
+        role="menu"
+        aria-label={t("chat.menu.aria", { nickname })}
+        style={{ left: position.x, top: position.y, maxHeight: position.maxHeight }}
+        // A right-click inside the menu must not open the webview's own menu.
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        {/* The source name stays visible and highlighted beside the menu. */}
+        {entries.map((entry, i) =>
+          entry.kind === "separator" ? (
+            <hr key={`sep-${i}`} className="chat-user-menu-separator" />
+          ) : (
+            <button
+              key={entry.label}
+              type="button"
+              role="menuitem"
+              className={`chat-user-menu-item${entry.danger ? " is-danger" : ""}`}
+              disabled={entry.disabled}
+              title={entry.hint}
+              onClick={() => {
+                entry.onSelect();
+                onClose();
+              }}
+            >
+              {entry.label}
+            </button>
+          ),
+        )}
+        {/* Last, because it is a setting rather than an action: it is reached
+            deliberately, once, and never in a hurry. */}
+        <hr className="chat-user-menu-separator" />
+        <div className="chat-user-menu-color" role="group" aria-label={t("chat.menu.nameColorGroup", { nickname })}>
+          <label>
+            <span>{t("chat.menu.customColor")}</span>
+            <ColorInput
+              className="chat-user-menu-color-swatch"
+              showSwatch
+              value={nameColor ?? DEFAULT_COLOR_PICKER_VALUE}
+              aria-label={t("chat.menu.chooseColor", { nickname })}
+              onChange={(next) => actions.setNameColor(nickname, next)}
+            />
+          </label>
           <button
-            key={entry.label}
             type="button"
-            role="menuitem"
-            className={`chat-user-menu-item${entry.danger ? " is-danger" : ""}`}
-            disabled={entry.disabled}
-            title={entry.hint}
-            onClick={() => {
-              entry.onSelect();
-              onClose();
-            }}
+            disabled={!nameColor}
+            onClick={() => actions.setNameColor(nickname, null)}
           >
-            {entry.label}
+            {t("chat.menu.clear")}
           </button>
-        ),
-      )}
-      {/* Last, because it is a setting rather than an action: it is reached
-          deliberately, once, and never in a hurry. */}
-      <hr className="chat-user-menu-separator" />
-      <div className="chat-user-menu-color" role="group" aria-label={t("chat.menu.nameColorGroup", { nickname })}>
-        <label>
-          <span>{t("chat.menu.customColor")}</span>
-          <ColorInput
-            className="chat-user-menu-color-swatch"
-            showSwatch
-            value={nameColor ?? DEFAULT_COLOR_PICKER_VALUE}
-            aria-label={t("chat.menu.chooseColor", { nickname })}
-            onChange={(next) => actions.setNameColor(nickname, next)}
-          />
-        </label>
-        <button
-          type="button"
-          disabled={!nameColor}
-          onClick={() => actions.setNameColor(nickname, null)}
-        >
-          {t("chat.menu.clear")}
-        </button>
+        </div>
       </div>
-    </div>
+    </OverlayParentContext.Provider>
   );
 
   return typeof document === "undefined" ? menu : createPortal(menu, document.body);

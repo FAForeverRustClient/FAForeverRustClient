@@ -11,6 +11,7 @@
 
 import { useEffect } from "react";
 import { Icon } from "../../../design-system/Icon";
+import { StatusNotice } from "../../../design-system/StatusNotice";
 import { ipc } from "../../../ipc/client";
 import { useTranslation } from "../../../i18n/useTranslation";
 import type { MessageKey } from "../../../i18n";
@@ -18,8 +19,10 @@ import { useAppStore } from "../../../store/store";
 import { FactionIcon } from "../../../shared/components/FactionIcon";
 import { galacticWarFactionLabel } from "../../../shared/factions";
 import { openHttpsUrl } from "../../../shared/externalLinks";
+import { plainError } from "../../../shared/plainError";
 import { canLaunch, installTarget, isBusy, updateAvailable } from "../../../shared/rules/galacticWarActions";
 import { ringSegments, type RingSegment } from "./galacticWarRing";
+import type { PlayModePanelProps } from "../PlayModeTabs";
 import "./galactic-war.css";
 
 const refresh = () => ipc.send({ kind: "GalacticWar", command: { type: "refresh" } });
@@ -114,7 +117,12 @@ function TerritoryArc({ segment }: { segment: RingSegment }) {
   return <RingArc color={segment.color} length={segment.share} offset={segment.offset} />;
 }
 
-export function GalacticWarPanel() {
+export function GalacticWarPanel({
+  panelProps,
+}: {
+  /** Makes this the panel of the Play tab's Galactic War mode tab. */
+  panelProps?: PlayModePanelProps;
+} = {}) {
   const { t } = useTranslation();
   const state = useAppStore((store) => store.state.galacticWar);
 
@@ -181,7 +189,7 @@ export function GalacticWarPanel() {
   ];
 
   return (
-    <div className="gw-layout">
+    <div {...panelProps} className="gw-layout">
       <aside className="gw-column gw-column-info">
         <div className="gw-scroll">
           <section className="gw-section">
@@ -197,10 +205,19 @@ export function GalacticWarPanel() {
             {state.belowMinimum ? (
               <p className="gw-notice gw-notice-warn">{t("lobby.galacticWar.belowMinimum")}</p>
             ) : null}
+            {/* Retry asks the gateway again, which is the one step every
+                failure here shares: a failed version check is answered by it,
+                and after a failed install or launch it clears the line and
+                leaves the launch button to say what comes next. */}
             {status.type === "failed" ? (
-              <p className="gw-notice gw-notice-error" role="alert">
-                {status.payload.reason}
-              </p>
+              <StatusNotice
+                tone="error"
+                className="gw-failure"
+                action={{ label: t("common.retry"), onClick: refresh }}
+                detail={status.payload.reason}
+              >
+                {plainError(status.payload.reason)}
+              </StatusNotice>
             ) : null}
           </section>
 

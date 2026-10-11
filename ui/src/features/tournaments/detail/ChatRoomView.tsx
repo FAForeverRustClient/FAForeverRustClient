@@ -22,8 +22,11 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
+import { StatusNotice } from "../../../design-system/StatusNotice";
 import type { ChatPost, Tourney, TourneyLoadStatus } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { plainError } from "../../../shared/plainError";
 import { mayPostChat } from "../../../shared/rules/tourneyRules";
 import { formatDate, formatDateTime } from "../../../shared/format/dates";
 import { usePlayerStyle } from "../../../shared/components/nameColors";
@@ -117,6 +120,11 @@ export function ChatRoomView(props: ChatRoomViewProps) {
   }, [posts, roomId]);
 
   const candidates = mention === null ? [] : mentionCandidates(event, mention.query);
+  const mayWrite = !event.chatLocked && !event.chatMutedMe;
+  useOverlayLayer(mayWrite && (mention !== null || reply !== null), () => {
+    if (mention !== null) setMention(null);
+    else setReply(null);
+  });
 
   const send = (body: string, replyTo: string | null) => {
     const text = body.trim();
@@ -148,6 +156,7 @@ export function ChatRoomView(props: ChatRoomViewProps) {
   };
 
   const onKeyDown = (pressed: KeyboardEvent<HTMLInputElement>) => {
+    if (pressed.nativeEvent.isComposing) return;
     if (mention !== null && candidates.length > 0) {
       if (pressed.key === "ArrowDown" || pressed.key === "ArrowUp") {
         pressed.preventDefault();
@@ -160,10 +169,6 @@ export function ChatRoomView(props: ChatRoomViewProps) {
         complete(candidates[choice] ?? candidates[0]);
         return;
       }
-    }
-    if (pressed.key === "Escape") {
-      if (mention !== null) setMention(null);
-      else if (reply !== null) setReply(null);
     }
   };
 
@@ -180,7 +185,6 @@ export function ChatRoomView(props: ChatRoomViewProps) {
   };
 
   const organiser = event.viewer.organiser;
-  const mayWrite = !event.chatLocked && !event.chatMutedMe;
 
   const profiles = playersByNickname(players);
 
@@ -334,7 +338,18 @@ export function ChatRoomView(props: ChatRoomViewProps) {
 
   return (
     <div className={props.compact ? "tournament-chat-room-body is-compact" : "tournament-chat-room-body"}>
-      {status.type === "failed" && <p className="surface-error">{status.payload.reason}</p>}
+      {/* Plainly, with the service's own words on hover. The room is read
+          again every few seconds anyway; Retry is that read, now, for a
+          reader who does not know it is coming. */}
+      {status.type === "failed" && (
+        <StatusNotice
+          tone="error"
+          action={{ label: t("common.retry"), onClick: () => onRefresh(roomId) }}
+          detail={status.payload.reason}
+        >
+          {plainError(status.payload.reason)}
+        </StatusNotice>
+      )}
       <ol
         className="tournament-chat-posts surface-panel"
         ref={log}

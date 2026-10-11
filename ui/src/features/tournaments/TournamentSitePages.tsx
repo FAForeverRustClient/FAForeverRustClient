@@ -8,6 +8,7 @@ import { AccessPage, FaqPage, HallOfFamePage } from "./site/SitePageViews";
 import { SeriesIndex, SeriesPage } from "./site/SeriesPages";
 import { ConsolePage } from "./site/ConsolePage";
 import type { SitePage } from "./site/sitePages";
+import { sitePageReads } from "./sitePageReads";
 import { send } from "./tourneyCommands";
 
 interface Props {
@@ -27,10 +28,14 @@ export function TournamentSitePages({ page, busy, setPage, openPage, openEventPa
   const accountSearch = useAppStore((store) => store.state.tourney.accountSearch);
   const openSeries = useAppStore((store) => store.state.tourney.openSeries);
   const series = useAppStore((store) => store.state.tourney.series);
+  // A page's Retry is the reads that opening it sent, sent again.
+  const reread = () => {
+    for (const read of sitePageReads(page)) send(read);
+  };
 
   return (
     <>
-      {page.kind === "hall" && <HallOfFamePage hall={site.hall} status={site.hallStatus} />}
+      {page.kind === "hall" && <HallOfFamePage hall={site.hall} status={site.hallStatus} onRetry={reread} />}
       {page.kind === "faq" && (
         <FaqPage
           articles={articles}
@@ -61,6 +66,7 @@ export function TournamentSitePages({ page, busy, setPage, openPage, openEventPa
           busy={busy}
           onSearchAccounts={(query) => send({ type: "searchAccounts", payload: { query } })}
           onWrite={siteWrite}
+          onRetry={reread}
         />
       )}
       {page.kind === "series" &&

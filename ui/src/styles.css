@@ -250,7 +250,7 @@ html[data-reduced-motion="true"] *::after {
 
 .error {
   margin-top: var(--space-3);
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: 13px;
 }
 

@@ -19,7 +19,9 @@ use tokio::sync::Mutex;
 
 use crate::infra::jsonapi::{fetch_document, meta_page_i32, total_pages};
 use crate::infra::session::TokenStore;
-use crate::infra::vault_install::{bounded_body, validate_origin_url, MAX_DOWNLOAD_BYTES};
+use crate::infra::vault_install::{
+    bounded_body_with_progress, validate_origin_url, CallOff, MAX_DOWNLOAD_BYTES,
+};
 use crate::ports::replay::VaultSearchResult;
 use crate::ports::ReplayVaultPort;
 
@@ -122,15 +124,24 @@ impl ReplayVaultPort for ReplayVault {
     }
 
     async fn download_vault(&self, uid: i32) -> Result<LocalReplay, String> {
+        self.download_vault_reporting(uid, std::sync::Arc::new(|_, _| {}))
+            .await
+    }
+
+    async fn download_vault_reporting(
+        &self,
+        uid: i32,
+        progress: std::sync::Arc<dyn Fn(u64, Option<u64>) + Send + Sync>,
+    ) -> Result<LocalReplay, String> {
         let path = self
-            .download_vault_to(uid, self.library.directory())
+            .download_vault_to(uid, self.library.directory(), &*progress)
             .await?;
         local_metadata_for_path(&path).await
     }
 
     async fn replay_map_name(&self, uid: i32) -> Result<Option<String>, String> {
         let head = self
-            .fetch_vault_replay_bytes(uid, Some(REPLAY_HEAD_BYTES))
+            .fetch_vault_replay_bytes(uid, Some(REPLAY_HEAD_BYTES), &|_, _| {})
             .await?;
         Ok(map_name_from_replay_head(&head))
     }
@@ -329,8 +340,12 @@ fn local_filter_key(query: &ReplayQuery) -> ReplayQuery {
 }
 
 impl ReplayVault {
-    async fn fetch_vault_replay(&self, uid: i32) -> Result<Vec<u8>, String> {
-        self.fetch_vault_replay_bytes(uid, None).await
+    async fn fetch_vault_replay(
+        &self,
+        uid: i32,
+        on_bytes: &(dyn Fn(u64, Option<u64>) + Sync),
+    ) -> Result<Vec<u8>, String> {
+        self.fetch_vault_replay_bytes(uid, None, on_bytes).await
     }
 
     /// A vault replay, whole or only its first `head` bytes.
@@ -344,6 +359,7 @@ impl ReplayVault {
         &self,
         uid: i32,
         head: Option<u64>,
+        on_bytes: &(dyn Fn(u64, Option<u64>) + Sync),
     ) -> Result<Vec<u8>, String> {
         let raw = format!(
             "{}/{}",
@@ -389,7 +405,8 @@ impl ReplayVault {
                 return Err(format!("could not download replay {uid}: {status}"));
             }
             let cap = head.unwrap_or(MAX_DOWNLOAD_BYTES);
-            return bounded_body(response, &format!("replay {uid}"), cap).await;
+            return bounded_body_with_progress(response, &format!("replay {uid}"), cap, on_bytes)
+                .await;
         }
         unreachable!("the bounded redirect loop always returns")
     }
@@ -884,24 +901,36 @@ impl ReplayVault {
     /// appears whole (`write_replay_atomically`), so one that exists is the
     /// finished download. Fetching it again would not only waste the
     /// transfer, it would replace a file another command may be reading.
+    ///
+    /// `on_bytes` hears the bytes received so far and the size the server
+    /// declared, once per chunk. Dropping the future calls the download off:
+    /// the transfer stops, and a write already on the blocking pool asks
+    /// [`CallOff`] before it publishes the file, so a called-off download
+    /// leaves no file under the replay's name.
     pub(super) async fn download_vault_to(
         &self,
         uid: i32,
         directory: PathBuf,
+        on_bytes: &(dyn Fn(u64, Option<u64>) + Sync),
     ) -> Result<PathBuf, String> {
         let path = directory.join(format!("{uid}.fafreplay"));
         let _download_guard = self.downloads.lock().await;
         if tokio::fs::try_exists(&path).await.unwrap_or(false) {
             return Ok(path);
         }
-        let bytes = self.fetch_vault_replay(uid).await?;
+        let bytes = self.fetch_vault_replay(uid, on_bytes).await?;
         tokio::fs::create_dir_all(&directory)
             .await
             .map_err(|error| format!("could not create replay directory: {error}"))?;
         let write_path = path.clone();
-        tokio::task::spawn_blocking(move || write_replay_atomically(&write_path, &bytes))
-            .await
-            .map_err(|error| format!("replay write task failed: {error}"))??;
+        let call_off = CallOff::default();
+        let armed = call_off.arm();
+        tokio::task::spawn_blocking(move || {
+            write_replay_atomically(&write_path, &bytes, &call_off)
+        })
+        .await
+        .map_err(|error| format!("replay write task failed: {error}"))??;
+        armed.disarm();
         Ok(path)
     }
 
@@ -982,7 +1011,10 @@ impl ReplayVault {
     }
 }
 
-fn write_replay_atomically(path: &Path, bytes: &[u8]) -> Result<(), String> {
+/// Write `bytes` under a temporary name beside `path`, then publish it as
+/// `path`, unless the download was called off by then: the temporary file is
+/// deleted with its handle instead, so the folder never gains the replay.
+fn write_replay_atomically(path: &Path, bytes: &[u8], call_off: &CallOff) -> Result<(), String> {
     let parent = path
         .parent()
         .ok_or_else(|| "replay path has no parent directory".to_string())?;
@@ -998,6 +1030,7 @@ fn write_replay_atomically(path: &Path, bytes: &[u8]) -> Result<(), String> {
         .as_file()
         .sync_all()
         .map_err(|error| format!("could not sync replay: {error}"))?;
+    call_off.refuse_if_called_off()?;
     temporary
         .persist(path)
         .map(|_| ())
@@ -1150,11 +1183,30 @@ mod tests {
         let directory = tempfile::tempdir().expect("temporary replay directory");
         let path = directory.path().join("42.fafreplay");
 
-        write_replay_atomically(&path, b"first").unwrap();
-        write_replay_atomically(&path, b"second").unwrap();
+        write_replay_atomically(&path, b"first", &CallOff::default()).unwrap();
+        write_replay_atomically(&path, b"second", &CallOff::default()).unwrap();
 
         assert_eq!(std::fs::read(&path).unwrap(), b"second");
         assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
+
+    /// A download called off while its file was being written: the write on
+    /// the blocking pool runs on, and used to publish the replay into the
+    /// library regardless. It stops short of publishing now, and its
+    /// temporary file goes with it.
+    #[test]
+    fn a_called_off_download_publishes_nothing() {
+        let directory = tempfile::tempdir().expect("temporary replay directory");
+        let path = directory.path().join("42.fafreplay");
+        let call_off = CallOff::default();
+        drop(call_off.arm());
+
+        assert!(write_replay_atomically(&path, b"whole replay", &call_off).is_err());
+        assert_eq!(
+            std::fs::read_dir(directory.path()).unwrap().count(),
+            0,
+            "neither the replay nor its temporary file stays"
+        );
     }
 
     /// The reported error: "Load more info" sends the details and the analysis
@@ -1174,8 +1226,8 @@ mod tests {
         );
 
         let (details, analysis) = tokio::join!(
-            client.download_vault_to(42, directory.path().to_path_buf()),
-            client.download_vault_to(42, directory.path().to_path_buf()),
+            client.download_vault_to(42, directory.path().to_path_buf(), &|_, _| {}),
+            client.download_vault_to(42, directory.path().to_path_buf(), &|_, _| {}),
         );
 
         assert_eq!(details.expect("reused"), path);

@@ -1,6 +1,7 @@
 //! FAF Data API moderation-report submission.
 
 use async_trait::async_trait;
+use faf_domain::protocol::report_log::split_description;
 use faf_domain::state::ModerationReportSummary;
 use serde_json::json;
 
@@ -151,12 +152,15 @@ fn parse_history_entry(
         .map(player_name)
         .collect();
     offenders.sort_by_key(|name| name.to_lowercase());
+    let (description, attached_log) =
+        split_description(&value_string(&resource.attributes, "reportDescription"));
     Some(ModerationReportSummary {
         id: resource.id.parse().ok()?,
         create_time: value_string(&resource.attributes, "createTime"),
         offenders,
         game_id: rel_one(resource, "game").and_then(|(_, id)| id.parse().ok()),
-        description: value_string(&resource.attributes, "reportDescription"),
+        description,
+        attached_log,
         moderator: rel_one(resource, "lastModerator")
             .map(|key| player_name(&key))
             .unwrap_or_default(),
@@ -294,6 +298,29 @@ mod tests {
         assert_eq!(reports[0].game_id, Some(99));
         assert_eq!(reports[0].moderator, "Moderator");
         assert_eq!(reports[0].moderator_notice, "Replay requested");
+        assert_eq!(reports[0].attached_log, None);
+    }
+
+    #[test]
+    fn history_folds_an_attached_game_log_away_from_the_reporters_words() {
+        let description = faf_domain::protocol::report_log::compose_description(
+            "Intentional team killing",
+            Some("===== GAME LOG EXCERPT (attached by the reporter's client) =====\nline"),
+        );
+        let document: JsonApiDoc = serde_json::from_value(json!({
+            "data": [{
+                "type": "moderationReport", "id": "43",
+                "attributes": { "reportDescription": description }
+            }]
+        }))
+        .unwrap();
+
+        let reports = parse_history(&document);
+        assert_eq!(reports[0].description, "Intentional team killing");
+        assert!(reports[0]
+            .attached_log
+            .as_deref()
+            .is_some_and(|log| log.ends_with("\nline")));
     }
 
     #[test]

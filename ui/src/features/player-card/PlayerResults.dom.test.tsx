@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 //
-// The results list's record line: wins, losses and draws among the rows on
-// screen, and the win rate by the Maps tab's rule (draws left out), following
-// "Show more" as it adds rows.
+// The results list: its record line (wins, losses and draws among the rows on
+// screen, and the win rate by the Maps tab's rule, draws left out, following
+// "Show more" as it adds rows), and the small map picture on every row.
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -24,6 +24,7 @@ function game(gameId: number, outcome: "win" | "loss" | "draw"): PlayerGameResul
     playedAt: "2026-10-05T22:00:00Z",
     queue: "global",
     map: "Seton's Clutch",
+    mapFolder: "canis_river.v0003",
     generated: false,
     outcome,
     ratingChangeHundredths: null,
@@ -41,8 +42,7 @@ function history(): PlayerGameResult[] {
   return outcomes.map((outcome, index) => game(1000 + index, outcome));
 }
 
-function mount() {
-  const games = history();
+function mount(games: PlayerGameResult[] = history()) {
   const stats: PlayerMapStats = {
     totalGames: games.length + 3,
     rankedGames: games.length,
@@ -75,5 +75,35 @@ describe("PlayerResults record line", () => {
     await user.click(screen.getByRole("button", { name: "Show more (50/60)" }));
 
     expect(summary()).toBe("Of the 60 games shown: Won 40 · Lost 18 · Drawn 2 · Win rate 69.0%");
+  });
+});
+
+describe("PlayerResults map pictures", () => {
+  it("draws each game's map from its folder, and a generated map's picture for a generated one", () => {
+    const generated: PlayerGameResult = { ...game(2, "loss"), map: "", mapFolder: "", generated: true };
+    mount([game(1, "win"), generated]);
+
+    const [played, mapgen] = screen.getAllByRole("row").slice(1);
+    const playedPicture = played.querySelector("img.player-results-map-thumb");
+    expect(playedPicture?.getAttribute("src")).toBe(
+      "https://content.faforever.com/maps/previews/small/canis_river.v0003.png",
+    );
+    expect(played.textContent).toContain("Seton's Clutch");
+
+    const mapgenPicture = mapgen.querySelector("img.player-results-map-thumb");
+    expect(mapgenPicture?.getAttribute("src")).toBe("/assets/mapgen-placeholder.png");
+    expect(mapgen.textContent).toContain("Mapgen / generated map");
+  });
+
+  it("leads each row with the map, picture first, so the map column takes the spare width", () => {
+    mount([game(1, "win")]);
+
+    const [header, row] = screen.getAllByRole("row");
+    expect([...header.querySelectorAll("th")].map((cell) => cell.textContent)).toEqual([
+      "Map", "Date", "Queue", "Result", "Rating", "Replay",
+    ]);
+    const first = row.querySelector("td");
+    expect(first?.classList.contains("player-results-map")).toBe(true);
+    expect(first?.firstElementChild?.firstElementChild?.classList.contains("player-results-map-thumb")).toBe(true);
   });
 });

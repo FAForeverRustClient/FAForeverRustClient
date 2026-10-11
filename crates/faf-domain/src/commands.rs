@@ -8,12 +8,12 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use crate::state::{
-    AuthCommand, ChangelogCommand, ChatCommand, ClanCommand, ClientUpdateCommand, CoopCommand,
-    EventsCommand, GalacticWarCommand, GuidesCommand, LeaderboardCommand, LobbyCommand,
-    MapGeneratorCommand, MapsCommand, ModsCommand, NavCommand, NotificationCommand,
-    PlayerCardCommand, ReplayCommand, ReportingCommand, ReviewsCommand, SessionCommand,
-    SettingsCommand, SocialCommand, StreamsCommand, TourneyCommand, TourneyRead, TourneyWrite,
-    TrainingCommand, TutorialsCommand, UploadsCommand,
+    AuthCommand, ChangelogCommand, ChatCommand, ClanCommand, ClientUpdateCommand,
+    ConnectivityCommand, CoopCommand, EventsCommand, GalacticWarCommand, GuidesCommand,
+    LeaderboardCommand, LobbyCommand, MapGeneratorCommand, MapsCommand, ModsCommand, NavCommand,
+    NotificationCommand, PlayerCardCommand, ReplayCommand, ReportingCommand, ReviewsCommand,
+    SessionCommand, SettingsCommand, SocialCommand, StreamsCommand, TourneyCommand, TourneyRead,
+    TourneyWrite, TrainingCommand, TutorialsCommand, UploadsCommand,
 };
 
 // No `Eq`: `ReplayCommand` carries a `ReplayQuery`, which has an `f32`
@@ -50,6 +50,7 @@ pub enum AppCommand {
     Guides(GuidesCommand),
     ClientUpdate(ClientUpdateCommand),
     Settings(SettingsCommand),
+    Connectivity(ConnectivityCommand),
 }
 
 impl From<SessionCommand> for AppCommand {
@@ -223,6 +224,12 @@ impl From<GalacticWarCommand> for AppCommand {
 impl From<ClientUpdateCommand> for AppCommand {
     fn from(c: ClientUpdateCommand) -> Self {
         AppCommand::ClientUpdate(c)
+    }
+}
+
+impl From<ConnectivityCommand> for AppCommand {
+    fn from(c: ConnectivityCommand) -> Self {
+        AppCommand::Connectivity(c)
     }
 }
 

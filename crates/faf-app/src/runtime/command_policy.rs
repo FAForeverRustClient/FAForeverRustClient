@@ -28,12 +28,12 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use faf_domain::state::{
-    AuthCommand, ChangelogCommand, ChatCommand, ClanCommand, ClientUpdateCommand, CoopCommand,
-    EventsCommand, GalacticWarCommand, GuidesCommand, LeaderboardCommand, LobbyCommand,
-    MapGeneratorCommand, MapsCommand, ModsCommand, NavCommand, NotificationCommand,
-    PlayerCardCommand, ReplayCommand, ReportingCommand, ReviewsCommand, SessionCommand,
-    SettingsCommand, SocialCommand, StreamsCommand, TourneyCommand, TourneyRead, TrainingCommand,
-    TutorialsCommand, UploadsCommand,
+    AuthCommand, ChangelogCommand, ChatCommand, ClanCommand, ClientUpdateCommand,
+    ConnectivityCommand, CoopCommand, EventsCommand, GalacticWarCommand, GuidesCommand,
+    LeaderboardCommand, LobbyCommand, MapGeneratorCommand, MapsCommand, ModsCommand, NavCommand,
+    NotificationCommand, PlayerCardCommand, ReplayCommand, ReportingCommand, ReviewsCommand,
+    SessionCommand, SettingsCommand, SocialCommand, StreamsCommand, TourneyCommand, TourneyRead,
+    TrainingCommand, TutorialsCommand, UploadsCommand,
 };
 use faf_domain::AppCommand;
 use tokio::sync::oneshot;
@@ -89,6 +89,13 @@ pub(crate) enum Key {
     /// Party placement lookups: serialising them turns "already known" into
     /// "asked once".
     PartyPlacements,
+    /// The connectivity check. A second run while one is asking the relays
+    /// would only ask them again, and its lines would interleave with the
+    /// first run's in one list.
+    ConnectivityCheck,
+    /// The live relay view's `status` call. The page asks on a timer; a call
+    /// the adapter is slow to answer must not stack up behind itself.
+    RelayStatus,
 }
 
 /// A guard a service holds itself, over part of a command or over something
@@ -197,6 +204,7 @@ pub(crate) fn policy(command: &AppCommand) -> CommandPolicy {
         AppCommand::Guides(command) => guides(command),
         AppCommand::ClientUpdate(command) => client_update(command),
         AppCommand::Settings(command) => settings(command),
+        AppCommand::Connectivity(command) => connectivity(command),
     }
 }
 
@@ -322,12 +330,16 @@ fn replays(command: &ReplayCommand) -> CommandPolicy {
         | ReplayCommand::ResolveMaps { .. }
         | ReplayCommand::LookUpOnline { .. }
         | ReplayCommand::LookUpOnlineMany { .. } => ORDINARY,
-        ReplayCommand::CancelLiveTracking | ReplayCommand::CancelWatch => PRIORITY,
+        ReplayCommand::CancelLiveTracking
+        | ReplayCommand::CancelWatch
+        | ReplayCommand::CancelDownload { .. }
+        | ReplayCommand::CancelReads { .. } => PRIORITY,
     }
 }
 
 fn maps(command: &MapsCommand) -> CommandPolicy {
     match command {
+        MapsCommand::CancelVaultLoad => PRIORITY,
         MapsCommand::LoadVault => single_flight(Key::MapVault),
         MapsCommand::SearchVault { .. }
         | MapsCommand::LoadInstalled
@@ -337,6 +349,8 @@ fn maps(command: &MapsCommand) -> CommandPolicy {
         | MapsCommand::LoadMatchmakerPools { .. }
         | MapsCommand::SetMapVersionHidden { .. } => ORDINARY,
         MapsCommand::InstallMap { .. } | MapsCommand::UninstallMap { .. } => serial(Key::MapFiles),
+        // Not under `MapFiles`: it has to reach the install holding that key.
+        MapsCommand::CancelInstall { .. } => PRIORITY,
     }
 }
 
@@ -361,6 +375,7 @@ fn map_generator(command: &MapGeneratorCommand) -> CommandPolicy {
 
 fn mods(command: &ModsCommand) -> CommandPolicy {
     match command {
+        ModsCommand::CancelVaultLoad => PRIORITY,
         ModsCommand::LoadVault | ModsCommand::ReloadVault => single_flight(Key::ModVault),
         ModsCommand::SearchVault { .. }
         | ModsCommand::LoadInstalled
@@ -370,6 +385,8 @@ fn mods(command: &ModsCommand) -> CommandPolicy {
         | ModsCommand::UninstallMod { .. }
         | ModsCommand::ToggleMod { .. }
         | ModsCommand::SetActiveMods { .. } => serial(Key::ModFiles),
+        // Not under `ModFiles`, for the same reason as the map vault's.
+        ModsCommand::CancelInstall { .. } => PRIORITY,
     }
 }
 
@@ -402,6 +419,13 @@ fn reporting(command: &ReportingCommand) -> CommandPolicy {
         | ReportingCommand::Close
         | ReportingCommand::LoadHistory
         | ReportingCommand::Submit { .. } => ORDINARY,
+        // Concurrent: a read for an earlier game id is superseded by the
+        // service's `log_generation`, not queued behind, so changing the game
+        // id while a log is read answers for the new one. Unticking stays in
+        // the same lane as ticking on purpose: a priority lane would let an
+        // untick overtake a tick still queued, which would then tick the box
+        // again behind the user's back.
+        ReportingCommand::AttachLog { .. } | ReportingCommand::DetachLog => ORDINARY,
     }
 }
 
@@ -426,6 +450,13 @@ fn social(command: &SocialCommand) -> CommandPolicy {
 fn streams(command: &StreamsCommand) -> CommandPolicy {
     match command {
         StreamsCommand::Check => ORDINARY,
+    }
+}
+
+fn connectivity(command: &ConnectivityCommand) -> CommandPolicy {
+    match command {
+        ConnectivityCommand::RunCheck => single_flight(Key::ConnectivityCheck),
+        ConnectivityCommand::RefreshRelayStatus => single_flight(Key::RelayStatus),
     }
 }
 
@@ -487,6 +518,7 @@ fn training(command: &TrainingCommand) -> CommandPolicy {
 
 fn tutorials(command: &TutorialsCommand) -> CommandPolicy {
     match command {
+        TutorialsCommand::CancelLaunch => PRIORITY,
         TutorialsCommand::Load | TutorialsCommand::Select { .. } => ORDINARY,
         TutorialsCommand::Launch { .. } => single_flight(Key::TutorialLaunch),
     }
@@ -517,11 +549,13 @@ fn uploads(command: &UploadsCommand) -> CommandPolicy {
             ORDINARY
         }
         UploadsCommand::Start => single_flight(Key::Upload),
+        UploadsCommand::Cancel => PRIORITY,
     }
 }
 
 fn galactic_war(command: &GalacticWarCommand) -> CommandPolicy {
     match command {
+        GalacticWarCommand::CancelInstall => PRIORITY,
         GalacticWarCommand::Refresh | GalacticWarCommand::RefreshStatistics => ORDINARY,
         GalacticWarCommand::Install | GalacticWarCommand::Play => single_flight(Key::GalacticWar),
     }
@@ -545,6 +579,8 @@ fn client_update(command: &ClientUpdateCommand) -> CommandPolicy {
         | ClientUpdateCommand::Download
         | ClientUpdateCommand::Install => single_flight(Key::ClientUpdate),
         ClientUpdateCommand::Dismiss => ORDINARY,
+        // Outside `ClientUpdate`, which the download it stops is holding.
+        ClientUpdateCommand::CancelDownload => PRIORITY,
     }
 }
 

@@ -101,10 +101,19 @@ pub async fn handle(cmd: ChatCommand, ctx: &ServiceCtx, out: &EventSink) {
                 channel: channel.clone(),
             });
             if let Some((key, timestamp)) = marker {
-                let mut preferences = out.with_state(|state| state.settings.chat.clone());
-                preferences.read_markers.insert(key, timestamp);
-                out.emit(SettingsEvent::ChatChanged {
-                    preferences: Box::new(preferences),
+                // Under the settings merge lock: chat preferences are one
+                // group, and a settings patch to it (hide foe messages, the
+                // visible history) landing between this read and this emit
+                // used to be put back to its old value by the marker.
+                ctx.settings.merge_and_emit(out, |settings| {
+                    let mut preferences = settings.chat.clone();
+                    preferences.read_markers.insert(key, timestamp);
+                    (
+                        SettingsEvent::ChatChanged {
+                            preferences: Box::new(preferences),
+                        },
+                        (),
+                    )
                 });
                 persist_read_markers_after_quiet_period(ctx, out);
             }

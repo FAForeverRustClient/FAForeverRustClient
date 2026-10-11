@@ -10,6 +10,7 @@
 // against a misclick on something nobody can see or take back.
 
 import { useEffect, useState } from "react";
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import type {
   FactionVetoGame,
   Tourney,
@@ -122,6 +123,8 @@ export function FactionGame({ event, entry, game, busy, onChoose, onReset }: Fac
   // A step taken, or a new one due, disarms: the chip that was armed belongs
   // to a step that is no longer the one on offer.
   useEffect(() => setArmed(null), [step?.action, step?.index, game.mine?.done]);
+  useOverlayLayer(armed !== null && game.result === null && entry.status !== "done"
+    && step !== null && game.mine?.done === false, () => setArmed(null));
 
   const name = (teamId: string | null) => teamNameOf(event, teamId) ?? t("tournaments.bracket.tbd");
 
@@ -207,12 +210,7 @@ export function FactionGame({ event, entry, game, busy, onChoose, onReset }: Fac
   };
 
   return (
-    <div
-      className="tournament-fveto is-active"
-      onKeyDown={(pressed) => {
-        if (pressed.key === "Escape") setArmed(null);
-      }}
-    >
+    <div className="tournament-fveto is-active">
       <span className="tournament-fveto-turn">
         <span className="tournament-turn-dot" aria-hidden />
         {t("tournaments.faction.yourTurn")}

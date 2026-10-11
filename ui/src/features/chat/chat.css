@@ -10,6 +10,7 @@
 }
 
 .chat-main,
+.chat-channel-panel,
 .chat-roster-shell,
 .chat-roster {
   display: flex;
@@ -20,6 +21,10 @@
 
 .chat-roster-shell {
   position: relative;
+}
+
+.chat-channel-panel {
+  flex: 1;
 }
 
 .chat-roster-shell > .chat-roster {
@@ -93,6 +98,9 @@ html.is-resizing-chat-roster * {
 
 .chat-input:disabled {
   color: var(--color-subtle);
+  /* Dimmed as well, as disabled controls are across the design system: in
+     the Java and Python themes the subtle colour is close to body text. */
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -321,6 +329,13 @@ html.is-resizing-chat-roster * {
   scrollbar-gutter: stable;
 }
 
+/* Focused from code when the search bar closes, so the keys that follow
+   scroll the log. It is the log, not a control, and draws no ring of its own,
+   as the page does after a sidebar click (`.content:focus`). */
+.chat-messages:focus {
+  outline: none;
+}
+
 .chat-older-messages {
   display: flex;
   justify-content: center;
@@ -529,11 +544,11 @@ html.is-resizing-chat-roster * {
 }
 
 .chat-message.is-notice {
-  color: var(--color-warn);
+  color: var(--color-text);
 }
 
 .chat-message.is-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .chat-message-actor {
@@ -617,7 +632,7 @@ html.is-resizing-chat-roster * {
    was never defined, which left this declaration invalid and the size inherited.) */
 .chat-link-notice {
   flex: none;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   font-size: 12px;
 }
 
@@ -1431,19 +1446,19 @@ img.chat-game-map {
 }
 
 .chat-game-status.is-playing {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   background: color-mix(in srgb, var(--color-ok) 12%, transparent);
 }
 
 .chat-game-status.is-playingDelayed,
 .chat-game-status.is-playing-delayed {
-  color: var(--color-error);
+  color: var(--color-error-text);
   background: color-mix(in srgb, var(--color-error) 12%, transparent);
 }
 
 .chat-game-status.is-hosting {
-  color: var(--color-warn);
-  background: color-mix(in srgb, var(--color-warn) 12%, transparent);
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
 
 .chat-game-status.is-lobbying {
@@ -1722,7 +1737,7 @@ img.chat-game-map {
 }
 
 .chat-user-menu-item.is-danger {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 

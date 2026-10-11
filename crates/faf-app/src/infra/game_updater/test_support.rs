@@ -44,6 +44,73 @@ pub(super) fn build_entry(version: i32, files: &[(&str, &str, &str)]) -> CacheMa
 /// smaller makes every stamp fail, which hides whether a caller checks it.
 pub(super) const EXE_BYTES: usize = 0x476666 + 4;
 
+/// A loopback HTTP server answering a fixed set of paths, and 404 to anything
+/// else, for the tests whose code under test downloads something. Records the
+/// path of every request, so a test can tell what was fetched and what was
+/// not. One request per connection, answered and closed, the shape of the
+/// fake API in `tests/replay_install.rs`.
+pub(super) struct FakeServer {
+    pub(super) base: String,
+    requests: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
+}
+
+impl FakeServer {
+    pub(super) async fn start(routes: Vec<(String, Vec<u8>)>) -> Self {
+        use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .unwrap();
+        let base = format!("http://127.0.0.1:{}", listener.local_addr().unwrap().port());
+        let routes: std::sync::Arc<std::collections::HashMap<String, Vec<u8>>> =
+            std::sync::Arc::new(routes.into_iter().collect());
+        let requests = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let log = requests.clone();
+        tokio::spawn(async move {
+            while let Ok((mut stream, _)) = listener.accept().await {
+                let (routes, log) = (routes.clone(), log.clone());
+                tokio::spawn(async move {
+                    let mut head = Vec::new();
+                    let mut chunk = [0_u8; 4096];
+                    while !head.windows(4).any(|window| window == b"\r\n\r\n") {
+                        match stream.read(&mut chunk).await {
+                            Ok(0) | Err(_) => return,
+                            Ok(read) => head.extend_from_slice(&chunk[..read]),
+                        }
+                    }
+                    let head = String::from_utf8_lossy(&head);
+                    let target = head.split(' ').nth(1).unwrap_or_default();
+                    let path = target.split('?').next().unwrap_or_default().to_string();
+                    log.lock().unwrap().push(path.clone());
+                    let response = match routes.get(&path) {
+                        Some(body) => {
+                            let mut response = format!(
+                                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                                body.len()
+                            )
+                            .into_bytes();
+                            response.extend_from_slice(body);
+                            response
+                        }
+                        None => {
+                            b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                                .to_vec()
+                        }
+                    };
+                    let _ = stream.write_all(&response).await;
+                    let _ = stream.shutdown().await;
+                });
+            }
+        });
+        Self { base, requests }
+    }
+
+    /// The paths asked for so far, in order.
+    pub(super) fn requests(&self) -> Vec<String> {
+        self.requests.lock().unwrap().clone()
+    }
+}
+
 /// Watching, and holding, the writes into one install directory from inside
 /// the real write path, so a test can catch a blocking worker part-way
 /// through an install pass and see what the next pass does meanwhile.
@@ -122,5 +189,72 @@ pub(super) mod probe {
     /// Called by a pass that has to wait for the install.
     pub(in crate::infra::game_updater) fn waiting_for_install(dir: &Path) {
         report(dir, Event::WaitingForInstall);
+    }
+
+    /// The threads each lease key under a watched directory was worked out on,
+    /// by watched directory.
+    static KEYING: Mutex<Option<HashMap<PathBuf, Vec<std::thread::ThreadId>>>> = Mutex::new(None);
+
+    /// Record which threads work out lease keys for directories in `dir`.
+    pub(in crate::infra::game_updater) fn watch_keying(dir: &Path) {
+        KEYING
+            .lock()
+            .unwrap()
+            .get_or_insert_with(HashMap::new)
+            .insert(dir.to_path_buf(), Vec::new());
+    }
+
+    /// Called by `lease_key` itself, on whichever thread it runs on.
+    pub(in crate::infra::game_updater) fn keyed(dir: &Path) {
+        let mut keying = KEYING.lock().unwrap();
+        for (watched, threads) in keying.iter_mut().flatten() {
+            if dir.starts_with(watched) {
+                threads.push(std::thread::current().id());
+            }
+        }
+    }
+
+    /// The threads lease keys in `dir` were worked out on so far.
+    pub(in crate::infra::game_updater) fn keyed_on(dir: &Path) -> Vec<std::thread::ThreadId> {
+        KEYING
+            .lock()
+            .unwrap()
+            .as_ref()
+            .and_then(|keying| keying.get(dir).cloned())
+            .unwrap_or_default()
+    }
+
+    /// The threads a map folder was looked for in a watched directory on, by
+    /// watched directory. The same bookkeeping as [`KEYING`], for the look
+    /// rather than the key.
+    static LOOKING: Mutex<Option<HashMap<PathBuf, Vec<std::thread::ThreadId>>>> = Mutex::new(None);
+
+    /// Record which threads look for map folders in `dir`.
+    pub(in crate::infra::game_updater) fn watch_looking(dir: &Path) {
+        LOOKING
+            .lock()
+            .unwrap()
+            .get_or_insert_with(HashMap::new)
+            .insert(dir.to_path_buf(), Vec::new());
+    }
+
+    /// Called by `has_map_folder` itself, on whichever thread it runs on.
+    pub(in crate::infra::game_updater) fn looked_in(dir: &Path) {
+        let mut looking = LOOKING.lock().unwrap();
+        for (watched, threads) in looking.iter_mut().flatten() {
+            if dir.starts_with(watched) {
+                threads.push(std::thread::current().id());
+            }
+        }
+    }
+
+    /// The threads map folders in `dir` were looked for on so far.
+    pub(in crate::infra::game_updater) fn looked_on(dir: &Path) -> Vec<std::thread::ThreadId> {
+        LOOKING
+            .lock()
+            .unwrap()
+            .as_ref()
+            .and_then(|looking| looking.get(dir).cloned())
+            .unwrap_or_default()
     }
 }

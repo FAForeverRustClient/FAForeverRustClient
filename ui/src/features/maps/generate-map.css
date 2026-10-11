@@ -77,7 +77,7 @@
 .generate-map-note {
   margin: 0 0 8px;
   font-size: 11px;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   line-height: 1.4;
 }
 
@@ -347,7 +347,7 @@
   gap: 6px;
   font-size: 12px;
   font-weight: 550;
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   padding: 4px 8px;
   background: color-mix(in srgb, var(--color-ok) 10%, transparent);
   border-radius: var(--radius-sm);
@@ -366,7 +366,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  color: var(--color-error);
+  color: var(--color-error-text);
   border-color: color-mix(in srgb, var(--color-error) 45%, var(--color-border));
   background: color-mix(in srgb, var(--color-error) 6%, transparent);
 }
@@ -679,7 +679,7 @@
 }
 
 .generate-map-issue.is-blocking {
-  color: var(--color-error);
+  color: var(--color-error-text);
   background: var(--color-surface);
   border: 1px solid var(--color-error);
 }

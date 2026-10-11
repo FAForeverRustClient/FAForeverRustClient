@@ -97,12 +97,14 @@
   border-radius: var(--radius-sm);
 }
 
-.gw-notice-error {
-  color: var(--color-error);
+/* A failure is the shared notice. The section's gap already spaces it, and
+   the notice's own margin would add to that gap rather than collapse into it. */
+.gw-section > .gw-failure {
+  margin: 0;
 }
 
 .gw-notice-warn {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .gw-links {

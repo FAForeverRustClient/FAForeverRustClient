@@ -257,6 +257,10 @@ pub enum ClientUpdateEvent {
         received_bytes: u32,
         total_bytes: u32,
     },
+    /// The download was called off before the installer was written. The
+    /// release is still on offer, so the status goes back to `Available`
+    /// rather than to a failure: nothing went wrong.
+    DownloadCancelled,
     Downloaded {
         path: String,
     },
@@ -277,6 +281,10 @@ pub enum ClientUpdateCommand {
     Check,
     /// Fetch the installer for the release already in state.
     Download,
+    /// Stop the installer download that is running. The partial file is
+    /// deleted, so the next `Download` starts from nothing rather than from
+    /// half an installer. Does nothing once the installer is whole.
+    CancelDownload,
     /// Start the downloaded installer.
     ///
     /// The client does **not** exit itself. On Windows an installer cannot
@@ -312,6 +320,17 @@ pub fn reduce(state: &mut ClientUpdateState, event: &ClientUpdateEvent) {
             state.status = ClientUpdateStatus::Downloading {
                 received_bytes: *received_bytes,
                 total_bytes: *total_bytes,
+            }
+        }
+        ClientUpdateEvent::DownloadCancelled => {
+            // Only a download in progress is called off; a late cancel must
+            // not take back an installer that is already `Ready`.
+            if matches!(state.status, ClientUpdateStatus::Downloading { .. }) {
+                state.status = if state.release.is_some() {
+                    ClientUpdateStatus::Available
+                } else {
+                    ClientUpdateStatus::Idle
+                };
             }
         }
         ClientUpdateEvent::Downloaded { path } => {
@@ -605,6 +624,43 @@ mod tests {
                 "still showing after {event:?}"
             );
         }
+    }
+
+    /// A called-off download puts the offer back, not a failure, and a late
+    /// cancel cannot take back an installer that is already whole.
+    #[test]
+    fn a_cancelled_download_puts_the_offer_back() {
+        let mut state = ClientUpdateState::default();
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::Available {
+                release: release("0.3.0"),
+            },
+        );
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::DownloadProgressed {
+                received_bytes: 10,
+                total_bytes: 100,
+            },
+        );
+        reduce(&mut state, &ClientUpdateEvent::DownloadCancelled);
+        assert_eq!(state.status, ClientUpdateStatus::Available);
+        assert!(state.banner_release().is_some(), "the offer stays");
+
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::Downloaded {
+                path: "installer.exe".into(),
+            },
+        );
+        reduce(&mut state, &ClientUpdateEvent::DownloadCancelled);
+        assert_eq!(
+            state.status,
+            ClientUpdateStatus::Ready {
+                path: "installer.exe".into()
+            }
+        );
     }
 
     #[test]
