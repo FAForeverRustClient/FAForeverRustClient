@@ -91,12 +91,14 @@ impl IcePort for SelectableIce {
     async fn start(&self, params: IceParams) -> Result<ConnectivitySession, String> {
         let adapter = self.selected(&params);
         tracing::info!(backend = adapter.label(), "starting selected ICE backend");
-        let session = self.backend(adapter).start(params).await.map_err(|error| {
-            format!(
-                "{} could not start: {error}. Pioneer is experimental and is never selected as an automatic fallback",
-                adapter.label()
-            )
-        })?;
+        // No fallback to the other backend, Pioneer is experimental. That is
+        // this code's rule and not the player's concern, so the error leaves
+        // it out and names only what failed.
+        let session = self
+            .backend(adapter)
+            .start(params)
+            .await
+            .map_err(|error| format!("{} could not start: {error}", adapter.label()))?;
         // Only recorded on success: a failed start leaves nothing to stop, and
         // claiming otherwise would send a later `stop` to the wrong backend.
         *self.running.lock().unwrap() = Some(adapter);
@@ -331,7 +333,7 @@ mod tests {
         assert_eq!(go.started.load(Ordering::SeqCst), 0);
         assert_eq!(java.stopped.load(Ordering::SeqCst), 1);
         assert_eq!(go.stopped.load(Ordering::SeqCst), 1);
-        assert!(error.contains("never selected as an automatic fallback"));
+        assert_eq!(error, "Java (faf-ice-adapter) could not start: no adapter");
     }
 
     #[tokio::test]

@@ -279,10 +279,15 @@ impl IcePort for JavaAdapter {
             return Err("the optional Java ICE adapter is not installed".into());
         }
 
-        // ICE servers (the Java adapter doesn't fetch these itself).
+        // ICE servers (the Java adapter doesn't fetch these itself). Said in
+        // so many words when they are missing: the bare status read as if the
+        // adapter on the player's machine had failed, when it was never run.
         let ice =
             fetch_ice_servers_retrying(&self.http, &self.config.api_base, &token, params.game_id)
-                .await?;
+                .await
+                .map_err(|reason| {
+                    format!("the FAF server did not hand out this game's relay servers ({reason})")
+                })?;
         self.memory.remember_servers(params.game_id, &ice.servers);
 
         // Reserving a port means binding it and letting it go, so the numbers
@@ -502,15 +507,25 @@ async fn fetch_ice_servers_retrying(
 /// Why the ICE session could not be had: worth another try, or not.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum IceSessionError {
-    /// 503 or 429: the API's own "not now". The two statuses Java retries.
+    /// 503 or 429, the API's own "not now" and the two statuses Java retries,
+    /// or 502 from the gateway in front of it.
     Busy(String),
     Failed(String),
 }
 
 impl IceSessionError {
+    /// 502 is retried where Java does not retry it. `api.faforever.com` sits
+    /// behind Cloudflare, and `502 Bad Gateway: error code: 502` is
+    /// Cloudflare's own answer when it got nothing usable from FAF's ingress:
+    /// a moment on the server's side, not a fault of the request, and it
+    /// failed launches in clusters in October 2026. Cloudflare usually
+    /// answers it at once, so the waits above still fit the launch. 504 is left out:
+    /// Cloudflare sends it only after its hundred-second origin timeout, when
+    /// the launch is lost already.
     fn for_status(status: reqwest::StatusCode, reason: String) -> Self {
         if status == reqwest::StatusCode::SERVICE_UNAVAILABLE
             || status == reqwest::StatusCode::TOO_MANY_REQUESTS
+            || status == reqwest::StatusCode::BAD_GATEWAY
         {
             Self::Busy(reason)
         } else {
@@ -711,11 +726,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn only_the_apis_not_now_answers_are_tried_again() {
-        // Java's `apiRetrySpec` retries exactly these two.
+    fn only_the_not_now_answers_are_tried_again() {
+        // Java's `apiRetrySpec` retries the first two; the gateway's 502 is
+        // this client's addition.
         for busy in [
             reqwest::StatusCode::SERVICE_UNAVAILABLE,
             reqwest::StatusCode::TOO_MANY_REQUESTS,
+            reqwest::StatusCode::BAD_GATEWAY,
         ] {
             assert_eq!(
                 IceSessionError::for_status(busy, "x".into()),
@@ -726,6 +743,7 @@ mod tests {
             reqwest::StatusCode::UNAUTHORIZED,
             reqwest::StatusCode::NOT_FOUND,
             reqwest::StatusCode::INTERNAL_SERVER_ERROR,
+            reqwest::StatusCode::GATEWAY_TIMEOUT,
         ] {
             assert_eq!(
                 IceSessionError::for_status(failed, "x".into()),
