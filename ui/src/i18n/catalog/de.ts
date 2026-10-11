@@ -4119,6 +4119,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "tournaments.news.important": "Als wichtig markieren",
   "tournaments.news.importantBadge": "Wichtig",
   "tournaments.news.post": "Veröffentlichen",
+  "tournaments.news.preview": "Vorschau",
   "tournaments.manage.entrants": "Spieler",
   "tournaments.admin.pending": "Anmeldungen, die auf dich warten",
   "tournaments.admin.approve": "Freigeben",

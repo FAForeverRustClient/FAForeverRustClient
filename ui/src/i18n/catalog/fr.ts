@@ -3999,6 +3999,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "tournaments.news.important": "Marquer comme important",
   "tournaments.news.importantBadge": "Important",
   "tournaments.news.post": "Publier",
+  "tournaments.news.preview": "Aperçu",
   "tournaments.manage.entrants": "Joueurs",
   "tournaments.admin.pending": "Inscriptions en attente de votre réponse",
   "tournaments.admin.approve": "Valider",

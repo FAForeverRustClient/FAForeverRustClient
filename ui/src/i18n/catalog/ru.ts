@@ -4414,6 +4414,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "tournaments.news.important": "Отметить как важное",
   "tournaments.news.importantBadge": "Важно",
   "tournaments.news.post": "Опубликовать",
+  "tournaments.news.preview": "Предпросмотр",
   "tournaments.manage.entrants": "Игроки",
   "tournaments.admin.pending": "Заявки, ждущие вас",
   "tournaments.admin.approve": "Одобрить",

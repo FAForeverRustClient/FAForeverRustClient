@@ -4542,6 +4542,7 @@ export const en = {
   "tournaments.news.important": "Mark as important",
   "tournaments.news.importantBadge": "Important",
   "tournaments.news.post": "Post",
+  "tournaments.news.preview": "Preview",
   "tournaments.manage.entrants": "Players",
   "tournaments.admin.pending": "Signups waiting for you",
   "tournaments.admin.approve": "Approve",

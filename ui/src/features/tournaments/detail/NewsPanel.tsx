@@ -31,8 +31,8 @@ interface NewsPanelProps {
 
 export function NewsPanel({ event, busy, assetBase, news }: NewsPanelProps) {
   const { t } = useTranslation();
-  const [body, setBody] = useState("");
-  const [important, setImportant] = useState(false);
+  /** Bumped after a post, which hands the composer back empty. */
+  const [composerKey, setComposerKey] = useState(0);
   /** The post being corrected, if any. */
   const [editing, setEditing] = useState<{ id: string; body: string; important: boolean } | null>(
     null,
@@ -42,39 +42,19 @@ export function NewsPanel({ event, busy, assetBase, news }: NewsPanelProps) {
   return (
     <div className="tournament-news">
       {organiser && (
-        <form
-          className="tournament-panel tournament-news-compose"
-          onSubmit={(submitted) => {
-            submitted.preventDefault();
-            if (body.trim() === "") return;
-            news.post(body, important);
-            setBody("");
-            setImportant(false);
+        <NewsComposer
+          key={composerKey}
+          title={t("tournaments.news.compose")}
+          initial={{ body: "", important: false }}
+          busy={busy}
+          assetBase={assetBase}
+          submitLabel={t("tournaments.news.post")}
+          onSubmit={(draft) => {
+            news.post(draft.body, draft.important);
+            // A fresh composer, empty, for the next post.
+            setComposerKey((held) => held + 1);
           }}
-        >
-          <h4>{t("tournaments.news.compose")}</h4>
-          <textarea
-            value={body}
-            onChange={(changed) => setBody(changed.target.value)}
-            rows={3}
-            maxLength={1000}
-            aria-label={t("tournaments.news.compose")}
-            placeholder={t("tournaments.news.placeholder")}
-          />
-          <div className="tournament-news-actions">
-            <label className="tournament-check">
-              <input
-                type="checkbox"
-                checked={important}
-                onChange={(changed) => setImportant(changed.target.checked)}
-              />
-              <span>{t("tournaments.news.important")}</span>
-            </label>
-            <Button type="submit" variant="primary" disabled={busy || body.trim() === ""}>
-              {t("tournaments.news.post")}
-            </Button>
-          </div>
-        </form>
+        />
       )}
 
       {event.news.length === 0 ? (
@@ -137,48 +117,17 @@ export function NewsPanel({ event, busy, assetBase, news }: NewsPanelProps) {
                   )}
                 </header>
                 {editing?.id === post.id ? (
-                  <form
-                    className="tournament-news-edit"
-                    onSubmit={(submitted) => {
-                      submitted.preventDefault();
-                      if (editing.body.trim() === "") return;
-                      news.edit(editing.id, editing.body, editing.important);
+                  <NewsComposer
+                    initial={{ body: editing.body, important: editing.important }}
+                    busy={busy}
+                    assetBase={assetBase}
+                    submitLabel={t("tournaments.news.save")}
+                    onCancel={() => setEditing(null)}
+                    onSubmit={(draft) => {
+                      news.edit(editing.id, draft.body, draft.important);
                       setEditing(null);
                     }}
-                  >
-                    <textarea
-                      value={editing.body}
-                      autoFocus
-                      rows={4}
-                      maxLength={1000}
-                      aria-label={t("tournaments.news.compose")}
-                      onChange={(changed) =>
-                        setEditing((held) => (held === null ? held : { ...held, body: changed.target.value }))
-                      }
-                    />
-                    <div className="tournament-news-actions">
-                      <label className="tournament-check">
-                        <input
-                          type="checkbox"
-                          checked={editing.important}
-                          onChange={(changed) =>
-                            setEditing((held) =>
-                              held === null ? held : { ...held, important: changed.target.checked },
-                            )
-                          }
-                        />
-                        <span>{t("tournaments.news.important")}</span>
-                      </label>
-                      <div className="tournament-news-buttons">
-                        <Button type="button" disabled={busy} onClick={() => setEditing(null)}>
-                          {t("tournaments.news.cancel")}
-                        </Button>
-                        <Button type="submit" variant="primary" disabled={busy || editing.body.trim() === ""}>
-                          {t("tournaments.news.save")}
-                        </Button>
-                      </div>
-                    </div>
-                  </form>
+                  />
                 ) : (
                   <RichText source={post.body} assetBase={assetBase} className="is-document" />
                 )}
@@ -188,5 +137,95 @@ export function NewsPanel({ event, busy, assetBase, news }: NewsPanelProps) {
         </ol>
       )}
     </div>
+  );
+}
+
+/** What a post says and whether it is flagged. */
+interface NewsDraft {
+  body: string;
+  important: boolean;
+}
+
+const NEWS_MAX = 1000;
+
+/**
+ * Writing a post, new or corrected: the text in a framed editor with its
+ * length and the important flag along its foot, and under it the post as it
+ * will read, once there is something to read.
+ */
+function NewsComposer({
+  title,
+  initial,
+  busy,
+  assetBase,
+  submitLabel,
+  onSubmit,
+  onCancel,
+}: {
+  /** A heading, for the new post; a correction sits inside its own card. */
+  title?: string;
+  initial: NewsDraft;
+  busy: boolean;
+  assetBase: string;
+  submitLabel: string;
+  onSubmit: (draft: NewsDraft) => void;
+  onCancel?: () => void;
+}) {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState(initial);
+  const ready = draft.body.trim() !== "";
+  return (
+    <form
+      className={title !== undefined ? "tournament-panel tournament-news-compose" : "tournament-news-compose is-inline"}
+      onSubmit={(submitted) => {
+        submitted.preventDefault();
+        if (!ready) return;
+        onSubmit({ body: draft.body, important: draft.important });
+      }}
+    >
+      {title !== undefined && <h4>{title}</h4>}
+      <div className={draft.important ? "tournament-news-editor is-important" : "tournament-news-editor"}>
+        <textarea
+          value={draft.body}
+          autoFocus={onCancel !== undefined}
+          rows={onCancel !== undefined ? 5 : 4}
+          maxLength={NEWS_MAX}
+          aria-label={title ?? t("tournaments.news.compose")}
+          placeholder={t("tournaments.news.placeholder")}
+          onChange={(changed) => setDraft({ ...draft, body: changed.target.value })}
+        />
+        <div className="tournament-news-editor-foot">
+          <button
+            type="button"
+            className={draft.important ? "tournament-news-flag-toggle is-on" : "tournament-news-flag-toggle"}
+            aria-pressed={draft.important}
+            onClick={() => setDraft({ ...draft, important: !draft.important })}
+          >
+            <Icon name="alert" size={14} /> {t("tournaments.news.important")}
+          </button>
+          <span className="tournament-news-count mono">
+            {draft.body.length} / {NEWS_MAX}
+          </span>
+          <span className="tournament-news-buttons">
+            {onCancel !== undefined && (
+              <Button disabled={busy} onClick={onCancel}>
+                {t("tournaments.news.cancel")}
+              </Button>
+            )}
+            <Button type="submit" variant="primary" disabled={busy || !ready}>
+              <Icon name="check" size={14} /> {submitLabel}
+            </Button>
+          </span>
+        </div>
+      </div>
+      {/* The post as it will read: the text is the website's markdown, and a
+          link or a list is easier to get right while looking at it. */}
+      {ready && (
+        <div className="tournament-news-preview">
+          <span className="tournament-news-preview-label">{t("tournaments.news.preview")}</span>
+          <RichText source={draft.body} assetBase={assetBase} className="is-document" />
+        </div>
+      )}
+    </form>
   );
 }

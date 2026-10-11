@@ -3417,20 +3417,6 @@
   max-width: 860px;
 }
 
-.tournament-news-compose textarea,
-.tournament-news-edit textarea {
-  width: 100%;
-  min-height: 84px;
-  resize: vertical;
-}
-
-.tournament-news-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
 .tournament-news-buttons {
   display: flex;
   gap: var(--space-2);
@@ -3544,12 +3530,6 @@
 
 .tournaments-icon-button.is-danger:hover:not(:disabled) {
   color: var(--color-error);
-}
-
-.tournament-news-edit {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
 }
 
 .tournament-divisions {
@@ -8380,6 +8360,121 @@ button.tournament-chat-author:hover {
   align-items: center;
   gap: 5px;
   color: var(--color-muted);
+}
+
+/* -- Writing a news post --------------------------------------------------
+   The text in a framed editor, its length and the important flag along the
+   foot, and the post as it will read under it. */
+
+.tournament-news-compose {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tournament-news-editor {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.tournament-news-editor:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+.tournament-news-editor.is-important {
+  border-color: color-mix(in srgb, var(--color-warn) 60%, var(--color-border));
+}
+
+.tournament-news-editor textarea,
+.tournament-news-compose .tournament-news-editor textarea {
+  display: block;
+  width: 100%;
+  min-height: 96px;
+  padding: 12px 14px;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.tournament-news-editor textarea:focus {
+  outline: none;
+}
+
+.tournament-news-editor textarea::placeholder {
+  color: var(--color-subtle);
+}
+
+.tournament-news-editor-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  background: var(--color-surface-raised);
+  border-top: 1px solid var(--color-border);
+}
+
+.tournament-news-flag-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  color: var(--color-muted);
+  background: transparent;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tournament-news-flag-toggle:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.tournament-news-flag-toggle.is-on {
+  color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-warn) 45%, transparent);
+}
+
+.tournament-news-count {
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+.tournament-news-editor-foot .tournament-news-buttons {
+  margin-left: auto;
+}
+
+.tournament-news-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.tournament-news-preview-label {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 /* -- The tab's own text question (renaming, a typed rating) -- */
