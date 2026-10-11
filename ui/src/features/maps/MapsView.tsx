@@ -33,7 +33,6 @@ import { useAppStore } from "../../store/store";
 import { MapPreview } from "../../shared/components/MapPreview";
 import {
   findVaultMapByFolder,
-  GENERATED_MAP_PLACEHOLDER_URL,
   isGeneratedMap,
   isOfficialMap,
   mapInstalled,
@@ -1041,8 +1040,8 @@ function InstalledView({ busy }: { busy: boolean }) {
               const isBusy = busy && installStatus.type === "installing" && installStatus.payload.folderName === map.folderName;
               // A Neroxis map has no vault record and no CDN preview: its
               // picture is the one the generator wrote into its folder, read
-              // the way the lobby reads it, with the generator's mark where
-              // there is none yet.
+              // the way the lobby reads it, and the generator's logo as the
+              // picture where there is none yet.
               const generated = isGeneratedMap(map.folderName);
               return (
                 <article className="installed-map-card surface-panel" key={map.folderName}>
@@ -1070,12 +1069,6 @@ function InstalledView({ busy }: { busy: boolean }) {
                   <span>
                     <span className="installed-map-title-row">
                       <strong title={metadata?.displayName || map.displayName}>{metadata?.displayName || map.displayName}</strong>
-                      {generated && (
-                        <span className="installed-map-generated" title={t("maps.view.generatedBadge")}>
-                          <img src={GENERATED_MAP_PLACEHOLDER_URL} alt="" aria-hidden />
-                          Neroxis
-                        </span>
-                      )}
                     </span>
                     <small>{map.folderName}</small>
                     <small>

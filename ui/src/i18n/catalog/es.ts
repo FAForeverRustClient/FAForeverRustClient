@@ -743,7 +743,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "maps.view.noInstalledMatchHint": "Amplía la búsqueda.",
   "maps.view.installedCount": "{count} instalados",
   "maps.view.userMapsFolder": "Carpeta de mapas de usuario",
-  "maps.view.generatedBadge": "Generado con el generador de mapas Neroxis",
   "maps.view.publish": "Publicar",
   "maps.view.removing": "Eliminando…",
   "maps.view.uninstall": "Desinstalar",
