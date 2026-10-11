@@ -1,7 +1,10 @@
 // A round's map pool: the button in the round's header, and the overlay it
 // opens. Shared by the bracket columns and the Swiss round list.
 
+import { useState } from "react";
+import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
+import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
 import { Icon } from "../../../design-system/Icon";
 import type { MapPool, Tourney, VaultMap } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -32,19 +35,17 @@ export function PoolToggle({
   const pool = poolForRound(event, roundKey);
   if (pool === null) return null;
   return (
-    <button
-      type="button"
-      className={
-        open
-          ? "tournament-round-pool-toggle is-open"
-          : "tournament-round-pool-toggle"
-      }
+    // The same button as a bracket column's header (`RoundMapBlock`): the
+    // client's own, naming the pool it opens.
+    <Button
+      className={open ? "tournament-round-button is-open" : "tournament-round-button"}
       aria-expanded={open}
       onClick={() => onToggle(roundKey)}
       title={t("tournaments.bracket.poolHint", { name: pool.name })}
     >
-      <Icon name="maps" size={12} /> {t("tournaments.bracket.pool")}
-    </button>
+      <Icon name="maps" size={14} />
+      <span>{pool.name}</span>
+    </Button>
   );
 }
 
@@ -71,6 +72,8 @@ export function PoolPanel({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  /** The map opened large, by its id in the event's database. */
+  const [zoomed, setZoomed] = useState<string | null>(null);
   const pool = given ?? poolForRound(event, roundKey);
   if (pool === null) return null;
   const bans = pool.sequence.filter((step) => step.action === "ban").length;
@@ -84,13 +87,15 @@ export function PoolPanel({
 
   const named = (mapId: string) => {
     const held = event.mapDb.find((candidate) => candidate.id === mapId);
-    if (held === undefined) return { name: mapId, image: "" };
+    if (held === undefined) return { name: mapId, image: "", folder: "" };
     const vaultMap = matchVaultMap(held, vault);
     return {
       name: vaultMap?.displayName ?? held.name,
       image: tourneyMapImage(held, assetBase, vault),
+      folder: vaultMap?.folderName ?? "",
     };
   };
+  const large = zoomed === null ? null : named(zoomed);
 
   // An overlay rather than a panel under the bracket. It is a grid of pictures
   // that answers one question and is then finished with, which is what an
@@ -112,14 +117,27 @@ export function PoolPanel({
         <ul className="tournament-veto-grid">
           {pool.mapIds.map((mapId) => {
             const map = named(mapId);
+            // A picture opens large, with the zoom and the panning the
+            // client's other map previews have: a spawn layout is not read
+            // off a thumbnail.
             return (
               <li className="tournament-veto-map" key={mapId}>
                 {map.image === "" ? (
                   <span className="tournament-pool-map-blank" aria-hidden />
                 ) : (
-                  <img src={map.image} alt="" loading="lazy" aria-hidden />
+                  <button
+                    type="button"
+                    className="tournament-pool-map-zoom"
+                    title={t("common.mapPreview", { name: map.name })}
+                    aria-label={t("common.mapPreview", { name: map.name })}
+                    onClick={() => setZoomed(mapId)}
+                  >
+                    <img src={map.image} alt="" loading="lazy" aria-hidden />
+                  </button>
                 )}
-                <span>{map.name}</span>
+                <span className="tournament-veto-map-text">
+                  <span>{map.name}</span>
+                </span>
               </li>
             );
           })}
@@ -157,6 +175,13 @@ export function PoolPanel({
             {t(event.veto.mode === "continuous" ? "tournaments.vetoPlan.continuous" : "tournaments.vetoPlan.upfront")}
           </p>
         </div>
+      )}
+      {large !== null && (
+        <MapPreviewDialog
+          map={{ folderName: large.folder, displayName: large.name, thumbnailUrlLarge: large.image }}
+          meta={pool.name}
+          onClose={() => setZoomed(null)}
+        />
       )}
     </Modal>
   );

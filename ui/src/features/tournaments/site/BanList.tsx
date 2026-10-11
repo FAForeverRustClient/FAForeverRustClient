@@ -7,9 +7,11 @@
 
 import { useState } from "react";
 import { Button } from "../../../design-system/Button";
+import { Icon } from "../../../design-system/Icon";
 import type { AccountSearch, PlayerSummary, TourneyBan } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { AccountPicker } from "../manage/AccountPicker";
+import { askConfirm } from "../tourneyDialogs";
 
 /** A `YYYY-MM-DD` as midnight UTC, the way the service reads an expiry. */
 function dayToSeconds(day: string): number | null {
@@ -50,6 +52,8 @@ export function AccountAdder({
 }
 
 interface BanListProps {
+  /** The card around it: the console's panel, or by default the site pages' one. */
+  className?: string;
   title: string;
   hint: string;
   addLabel: string;
@@ -76,18 +80,26 @@ export function BanList(props: BanListProps) {
     setExpires("");
   };
   return (
-    <section className="surface tournament-site-panel">
-      <h3>
-        {props.title}{" "}
-        <span className="muted">
-          {expired > 0 ? t("tournaments.bans.countExpired", { active, expired }) : `(${active})`}
-        </span>
-      </h3>
-      <p className="muted">{props.hint}</p>
+    <section className={props.className ?? "surface tournament-site-panel"}>
+      <div className="tournament-console-section-head">
+        <h3 className="tournament-ban-title">
+          {props.title}
+          <span className="tournaments-group-count" title={t("tournaments.bans.countExpired", { active, expired })}>
+            {active}
+          </span>
+        </h3>
+        {!adding && picked === null && (
+          <Button disabled={props.busy} onClick={() => setAdding(true)}>
+            <Icon name="plus" size={14} /> {props.addLabel}
+          </Button>
+        )}
+      </div>
+      <p className="muted tournament-console-hint">{props.hint}</p>
       {props.bans.length === 0 ? (
         <p className="muted">{t("tournaments.bans.none")}</p>
       ) : (
-        <table className="tournament-standings">
+        <div className="tournament-console-table-wrap">
+        <table className="tournament-console-table">
           <thead>
             <tr>
               <th>{t("tournaments.hall.player")}</th>
@@ -99,9 +111,10 @@ export function BanList(props: BanListProps) {
           </thead>
           <tbody>
             {props.bans.map((ban) => (
-              <tr key={ban.fafId}>
+              <tr key={ban.fafId} className={ban.expired ? "is-expired" : undefined}>
                 <td>
-                  {ban.name} {ban.expired && <span className="tournament-badge">{t("tournaments.bans.expired")}</span>}
+                  <strong>{ban.name}</strong>{" "}
+                  {ban.expired && <span className="tournament-console-tag is-muted">{t("tournaments.bans.expired")}</span>}
                 </td>
                 <td className="muted">{ban.reason}</td>
                 <td className="muted">{ban.by}</td>
@@ -118,11 +131,11 @@ export function BanList(props: BanListProps) {
                   />
                   {ban.expires === null && <span className="muted"> {t("tournaments.bans.noExpiry")}</span>}
                 </td>
-                <td>
+                <td className="tournament-console-cell-actions">
                   <Button
                     disabled={props.busy}
                     onClick={() => {
-                      if (window.confirm(t("tournaments.bans.liftConfirm"))) props.onLift(ban.fafId);
+                      askConfirm(t("tournaments.bans.liftConfirm"), () => props.onLift(ban.fafId), { danger: true });
                     }}
                   >
                     {t("tournaments.bans.lift")}
@@ -132,10 +145,11 @@ export function BanList(props: BanListProps) {
             ))}
           </tbody>
         </table>
+        </div>
       )}
       {picked !== null ? (
         <form
-          className="tournament-ban-form"
+          className="tournament-ban-form tournament-console-adder"
           onSubmit={(submitted) => {
             submitted.preventDefault();
             props.onBan({ fafId: picked.id, name: picked.login }, reason, dayToSeconds(expires));
@@ -158,19 +172,20 @@ export function BanList(props: BanListProps) {
             <Button onClick={reset}>{t("common.cancel")}</Button>
           </div>
         </form>
-      ) : adding ? (
-        <AccountAdder
-          label={t("tournaments.organisers.fafName")}
-          submitLabel={t("tournaments.bans.choose")}
-          search={props.search}
-          busy={props.busy}
-          onSearch={props.onSearch}
-          onAdd={setPicked}
-        />
       ) : (
-        <Button disabled={props.busy} onClick={() => setAdding(true)}>
-          {props.addLabel}
-        </Button>
+        adding && (
+          <div className="tournament-console-adder">
+            <AccountAdder
+              label={t("tournaments.organisers.fafName")}
+              submitLabel={t("tournaments.bans.choose")}
+              search={props.search}
+              busy={props.busy}
+              onSearch={props.onSearch}
+              onAdd={setPicked}
+            />
+            <Button onClick={reset}>{t("common.cancel")}</Button>
+          </div>
+        )
       )}
     </section>
   );

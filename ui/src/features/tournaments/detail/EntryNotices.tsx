@@ -2,9 +2,11 @@
 // anything: a ban, an invitation to answer, and whether its rating would get
 // it in.
 //
-// The website shows these in its signup panel. Here they sit at the top of the
-// Overview and the Players section, the two places somebody deciding whether to
-// enter actually looks. Enter itself stays in the header.
+// The website shows these in its signup panel. Here the ban and the invitation
+// sit at the top of the Overview and the Players section, the two places
+// somebody deciding whether to enter actually looks; the rating check sits
+// under the rating range it checks against (`RatingRequirements`). Enter
+// itself stays in the header.
 
 import { Button } from "../../../design-system/Button";
 import type { RatingCheck, Tourney, TourneyLoadStatus } from "../../../ipc/bindings";
@@ -12,7 +14,6 @@ import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { mayCheckRating, mayDeclineInvite } from "../../../shared/rules/tourneyRules";
 import { formatDay, RATING_KIND_LABELS } from "../tourneyPresentation";
-import { RATING_CHECK_ID } from "../overviewPresentation";
 import type { EntryActions } from "../tourneyActions";
 
 const BAN_SCOPES: Record<NonNullable<Tourney["myBan"]>["scope"], MessageKey> = {
@@ -23,21 +24,20 @@ const BAN_SCOPES: Record<NonNullable<Tourney["myBan"]>["scope"], MessageKey> = {
 
 interface EntryNoticesProps {
   event: Tourney;
-  check: RatingCheck | null;
-  checkStatus: TourneyLoadStatus;
   busy: boolean;
-  entry: Pick<EntryActions, "declineInvite" | "checkRating">;
+  entry: Pick<EntryActions, "declineInvite">;
 }
 
-export function EntryNotices({ event, check, checkStatus, busy, entry }: EntryNoticesProps) {
+/** Whether the rating check is offered: while it can still change anything. */
+export function offersRatingCheck(event: Tourney): boolean {
+  return mayCheckRating(event) && event.status === "signup";
+}
+
+export function EntryNotices({ event, busy, entry }: EntryNoticesProps) {
   const { t } = useTranslation();
   const signedUp = event.viewer.signedUpPlayerId !== null;
   const ban = event.myBan;
-  const checking = checkStatus.type === "loading";
-  // Offered while it can still change anything: before and during signups.
-  const offerCheck = mayCheckRating(event) && event.status === "signup";
-
-  if ((ban === null || signedUp) && !mayDeclineInvite(event) && !offerCheck) return null;
+  if ((ban === null || signedUp) && !mayDeclineInvite(event)) return null;
 
   return (
     <div className="tournament-entry-notices">
@@ -64,22 +64,39 @@ export function EntryNotices({ event, check, checkStatus, busy, entry }: EntryNo
           </Button>
         </section>
       )}
-
-      {offerCheck && (
-        <section className="surface tournament-entry-notice" id={RATING_CHECK_ID}>
-          <div className="tournament-detail-actions">
-            <Button disabled={busy || checking} onClick={entry.checkRating}>
-              {t(checking ? "tournaments.entry.checking" : "tournaments.entry.checkRating")}
-            </Button>
-            <span className="muted">{t("tournaments.entry.checkHint")}</span>
-          </div>
-          {checkStatus.type === "failed" && (
-            <p className="tournament-rating-verdict is-bad">{checkStatus.payload.reason}</p>
-          )}
-          {check !== null && <RatingVerdict check={check} />}
-        </section>
-      )}
     </div>
+  );
+}
+
+/**
+ * Checking this account's rating against the event's limits: the button, and
+ * once asked, the verdict.
+ */
+export function RatingCheckControl({
+  check,
+  checkStatus,
+  busy,
+  onCheck,
+}: {
+  check: RatingCheck | null;
+  checkStatus: TourneyLoadStatus;
+  busy: boolean;
+  onCheck: () => void;
+}) {
+  const { t } = useTranslation();
+  const checking = checkStatus.type === "loading";
+  return (
+    <>
+      <div className="tournament-detail-actions">
+        <Button disabled={busy || checking} onClick={onCheck}>
+          {t(checking ? "tournaments.entry.checking" : "tournaments.entry.checkRating")}
+        </Button>
+      </div>
+      {checkStatus.type === "failed" && (
+        <p className="tournament-rating-verdict is-bad">{checkStatus.payload.reason}</p>
+      )}
+      {check !== null && <RatingVerdict check={check} />}
+    </>
   );
 }
 

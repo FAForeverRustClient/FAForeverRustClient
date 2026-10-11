@@ -332,6 +332,7 @@ fn maps(command: &MapsCommand) -> CommandPolicy {
         MapsCommand::SearchVault { .. }
         | MapsCommand::LoadInstalled
         | MapsCommand::ResolveVaultFolders { .. }
+        | MapsCommand::ResolveVaultNames { .. }
         | MapsCommand::LoadLocalPreviews { .. }
         | MapsCommand::LoadMatchmakerPools { .. }
         | MapsCommand::SetMapVersionHidden { .. } => ORDINARY,

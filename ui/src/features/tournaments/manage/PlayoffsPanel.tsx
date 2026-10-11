@@ -11,6 +11,7 @@ import { Button } from "../../../design-system/Button";
 import type { PickMode, SwissTiebreak, Tourney, TourneyAdmin } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { pickHelpText, pickOptionText, tiebreakText } from "../bracket/swissPresentation";
+import { askConfirm } from "../tourneyDialogs";
 
 interface PlayoffsPanelProps {
   event: Tourney;
@@ -111,9 +112,8 @@ export function PlayoffsPanel({ event, busy, onAdmin }: PlayoffsPanelProps) {
               variant="primary"
               disabled={busy}
               onClick={() => {
-                if (!redo || window.confirm(t("tournaments.playoffs.redoConfirm", { what: redoWhat(mode, t) }))) {
-                  setup(redo);
-                }
+                if (!redo) setup(redo);
+                else askConfirm(t("tournaments.playoffs.redoConfirm", { what: redoWhat(mode, t) }), () => setup(redo));
               }}
             >
               {t(redo ? "tournaments.playoffs.saveRedo" : "tournaments.playoffs.save")}
@@ -128,9 +128,9 @@ export function PlayoffsPanel({ event, busy, onAdmin }: PlayoffsPanelProps) {
             <Button
               disabled={busy}
               onClick={() => {
-                if (window.confirm(t("tournaments.playoffs.undoConfirm", { by: name(lastPick.by), target: name(lastPick.target) }))) {
+                askConfirm(t("tournaments.playoffs.undoConfirm", { by: name(lastPick.by), target: name(lastPick.target) }), () => {
                   onAdmin({ type: "undoPickOpponent" });
-                }
+                }, { danger: true });
               }}
             >
               {t("tournaments.picks.undo")}
@@ -139,12 +139,12 @@ export function PlayoffsPanel({ event, busy, onAdmin }: PlayoffsPanelProps) {
           <Button
             disabled={busy}
             onClick={() => {
-              if (window.confirm(t("tournaments.playoffs.redoConfirm", { what: redoWhat(playoffs.pick, t) }))) {
+              askConfirm(t("tournaments.playoffs.redoConfirm", { what: redoWhat(playoffs.pick, t) }), () => {
                 onAdmin({
                   type: "playoffSetup",
                   payload: { pick: playoffs.pick, minutes: event.pickMinutes, tiebreak: event.swissTiebreak, redo: true },
                 });
-              }
+              });
             }}
           >
             {t("tournaments.playoffs.redo")}

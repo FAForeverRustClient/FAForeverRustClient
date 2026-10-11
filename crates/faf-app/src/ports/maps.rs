@@ -59,6 +59,17 @@ pub trait MapsPort: Send + Sync {
         Ok(Vec::new())
     }
 
+    /// The vault's record for each named map, matched on its display name
+    /// without regard to case, the same shape [`Self::list_vault`] returns.
+    /// Several records may share a name; all of them come back. Defaults to
+    /// finding nothing, which is what a stub needs.
+    async fn find_vault_maps_by_display_name(
+        &self,
+        _display_names: &[String],
+    ) -> Result<Vec<VaultMap>, String> {
+        Ok(Vec::new())
+    }
+
     /// Load the rating-bracket map pools and veto limits for one queue.
     async fn list_matchmaker_pools(
         &self,

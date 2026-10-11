@@ -58,10 +58,16 @@ interface VetoPanelProps {
   profiles: PlayerSummary[];
   busy: boolean;
   handlers: VetoHandlers;
+  /**
+   * Drawn in its own overlay: the maps on the left, the games and the run on
+   * the right. Inline (a list row, a match's details) it is one column.
+   */
+  overlay?: boolean;
 }
 
 export function VetoPanel(props: VetoPanelProps) {
   const { event, entry, busy, handlers } = props;
+  const rootClass = props.overlay === true ? "tournament-veto is-overlay" : "tournament-veto";
   const { t } = useTranslation();
   const veto = entry.veto !== null && event.veto.enabled ? entry.veto : null;
   const factions = entry.factionVeto !== null && factionVetoOn(event) ? entry.factionVeto : null;
@@ -110,7 +116,7 @@ export function VetoPanel(props: VetoPanelProps) {
   // its factions.
   if (veto === null) {
     return (
-      <div className="tournament-veto">
+      <div className={rootClass}>
         <p className="muted">{t("tournaments.faction.onlyTitle")}</p>
         <ol className="tournament-veto-games">
           {(factions?.games ?? []).map((game) => (
@@ -145,7 +151,7 @@ export function VetoPanel(props: VetoPanelProps) {
   // happen until an organiser has said which team is which.
   if (maySetVetoSides(event, entry)) {
     return (
-      <div className="tournament-veto">
+      <div className={rootClass}>
         <p className="muted">{t("tournaments.veto.chooseSides")}</p>
         <div className="tournament-detail-actions">
           {[entry.team1, entry.team2].map(
@@ -162,7 +168,7 @@ export function VetoPanel(props: VetoPanelProps) {
   }
   if (veto.teamA === null || veto.teamB === null) {
     return (
-      <div className="tournament-veto">
+      <div className={rootClass}>
         <p className="muted">{t("tournaments.veto.waitingForSides")}</p>
       </div>
     );
@@ -248,23 +254,29 @@ export function VetoPanel(props: VetoPanelProps) {
 
   if (veto.done || closed) {
     return (
-      <div className="tournament-veto">
+      <div className={rootClass}>
         {legend}
         {closed && <p className="muted">{t("tournaments.veto.closed")}</p>}
-        {veto.done && (
-          <section>
-            <h6>{t("tournaments.veto.maps")}</h6>
-            {games}
-          </section>
-        )}
-        {history}
-        {event.viewer.organiser && veto.done && entry.status !== "done" && (
-          <div className="tournament-detail-actions">
-            <Button disabled={busy} onClick={() => handlers.onUndo(entry.id)}>
-              {t("tournaments.veto.undo")}
-            </Button>
+        <div className="tournament-veto-body">
+          <div className="tournament-veto-main">
+            {veto.done && (
+              <section>
+                <h6>{t("tournaments.veto.maps")}</h6>
+                {games}
+              </section>
+            )}
           </div>
-        )}
+          <div className="tournament-veto-side">
+            {history}
+            {event.viewer.organiser && veto.done && entry.status !== "done" && (
+              <div className="tournament-detail-actions">
+                <Button disabled={busy} onClick={() => handlers.onUndo(entry.id)}>
+                  {t("tournaments.veto.undo")}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
@@ -282,7 +294,7 @@ export function VetoPanel(props: VetoPanelProps) {
 
   return (
     <div
-      className="tournament-veto"
+      className={rootClass}
       onKeyDown={(pressed) => {
         if (pressed.key === "Escape") setArmed(null);
       }}
@@ -316,64 +328,74 @@ export function VetoPanel(props: VetoPanelProps) {
         </p>
       )}
 
-      <section>
-        <h6>{t("tournaments.veto.remaining")}</h6>
-        <ul className="tournament-veto-grid">
-          {veto.remaining.map((mapId) =>
-            acting && turn !== null ? (
-              <li className="tournament-veto-map" key={mapId}>
-                <button
-                  type="button"
-                  className={
-                    armed === mapId
-                      ? `tournament-veto-pick is-${turn.action} is-armed`
-                      : `tournament-veto-pick is-${turn.action}`
-                  }
-                  disabled={busy}
-                  onClick={() => act(mapId)}
-                >
-                  {thumb(mapId)}
-                  <span>{mapName(mapId)}</span>
-                  {armed === mapId && (
-                    <span className="tournament-veto-confirm">
-                      {t(turn.action === "ban" ? "tournaments.veto.confirmBan" : "tournaments.veto.confirmPick")}
+      <div className="tournament-veto-body">
+        <div className="tournament-veto-main">
+          <section>
+            <h6>{t("tournaments.veto.remaining")}</h6>
+            <ul className="tournament-veto-grid">
+              {veto.remaining.map((mapId) =>
+                acting && turn !== null ? (
+                  <li className="tournament-veto-map" key={mapId}>
+                    <button
+                      type="button"
+                      className={
+                        armed === mapId
+                          ? `tournament-veto-pick is-${turn.action} is-armed`
+                          : `tournament-veto-pick is-${turn.action}`
+                      }
+                      disabled={busy}
+                      onClick={() => act(mapId)}
+                    >
+                      {thumb(mapId)}
+                      <span className="tournament-veto-map-text">
+                        <span>{mapName(mapId)}</span>
+                        {armed === mapId && (
+                          <span className="tournament-veto-confirm">
+                            {t(turn.action === "ban" ? "tournaments.veto.confirmBan" : "tournaments.veto.confirmPick")}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  </li>
+                ) : (
+                  <li className="tournament-veto-map" key={mapId}>
+                    {thumb(mapId)}
+                    <span className="tournament-veto-map-text">
+                      <span>{mapName(mapId)}</span>
                     </span>
-                  )}
-                </button>
-              </li>
-            ) : (
-              <li className="tournament-veto-map" key={mapId}>
-                {thumb(mapId)}
-                <span>{mapName(mapId)}</span>
-              </li>
-            ),
+                  </li>
+                ),
+              )}
+            </ul>
+          </section>
+
+          {veto.banned.length > 0 && (
+            <section>
+              <h6>{t("tournaments.veto.banned")}</h6>
+              <ul className="tournament-veto-grid is-gone">
+                {veto.banned.map((choice) => (
+                  <li className="tournament-veto-map" key={choice.map}>
+                    {thumb(choice.map, true)}
+                    <span className="tournament-veto-map-text">
+                      <span>{mapName(choice.map)}</span>
+                      <span className="muted">{teamName(choice.by)}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
-        </ul>
-      </section>
-
-      {veto.banned.length > 0 && (
-        <section>
-          <h6>{t("tournaments.veto.banned")}</h6>
-          <ul className="tournament-veto-grid is-gone">
-            {veto.banned.map((choice) => (
-              <li className="tournament-veto-map" key={choice.map}>
-                {thumb(choice.map, true)}
-                <span>{mapName(choice.map)}</span>
-                <span className="muted">{teamName(choice.by)}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {gameNumbers.length > 0 && (
-        <section>
-          <h6>{t("tournaments.veto.picked")}</h6>
-          {games}
-        </section>
-      )}
-
-      {history}
+        </div>
+        <div className="tournament-veto-side">
+          {gameNumbers.length > 0 && (
+            <section>
+              <h6>{t("tournaments.veto.picked")}</h6>
+              {games}
+            </section>
+          )}
+          {history}
+        </div>
+      </div>
     </div>
   );
 }

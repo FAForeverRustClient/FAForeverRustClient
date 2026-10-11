@@ -346,23 +346,17 @@ export function planSummary(
 }
 
 /**
- * The rating requirements, one line per rule.
+ * The rating clamp spelled out, or empty where there is none.
  *
- * Longer than `ratingGateOf`, which is the same facts squeezed into a row of a
- * fact list. This is the overview's own cell, where the cap is worth spelling
- * out: an entrant refused for being too strong and one silently counted as
- * weaker are very different things to be told about beforehand.
+ * The range and the team cap are the hero's, in one line over every section;
+ * the clamp is the one rule that needs a sentence: an entrant refused for
+ * being too strong and one silently counted as weaker are very different
+ * things to be told about beforehand.
  */
-export function ratingRequirements(
+export function ratingClampLine(
   event: Tourney,
   t: (key: MessageKey, values?: Record<string, string | number>) => string,
-): string[] {
-  const lines: string[] = [];
-  const { min, max, maxTeam, cap } = event.rating;
-  if (min !== null && max !== null) lines.push(t("tournaments.overview.ratingBetween", { min, max }));
-  else if (min !== null) lines.push(t("tournaments.overview.ratingFrom", { min }));
-  else if (max !== null) lines.push(t("tournaments.overview.ratingUpTo", { max }));
-  if (maxTeam !== null) lines.push(t("tournaments.overview.ratingTeamCap", { max: maxTeam }));
-  if (cap !== null) lines.push(t("tournaments.overview.ratingClamp", { cap }));
-  return lines;
+): string {
+  const { cap } = event.rating;
+  return cap === null ? "" : t("tournaments.overview.ratingClamp", { cap });
 }
