@@ -96,8 +96,45 @@ fn resolve_retail_install_dir(
 /// The probe the reference clients use to tell a real FA root from any other
 /// directory: `gamedata/lua.scd` ships only with the base game, never with
 /// FAF's `.nx2` overlay.
+///
+/// The original Supreme Commander passes that probe as well, so it is told
+/// apart by its executable, the way the Java client's
+/// `isGamePathValidWithErrorMessage` does: it is not the game FAF runs on,
+/// and its libraries and `gamedata` are not Forged Alliance's.
 fn is_retail_install(dir: &Path) -> bool {
     dir.join("gamedata").join("lua.scd").is_file()
+        && !is_vanilla_install_with(dir, &VANILLA_GAME_HASHES)
+}
+
+/// SHA-256 of the original Supreme Commander's executable. The Java client's
+/// `faf-client.vanillaGameHashes`, verbatim.
+const VANILLA_GAME_HASHES: [&str; 1] =
+    ["1AFBCD0CA85546470660FA8AC09B230E870EC65C8D1B33FEB6731BB5D4C366C5"];
+
+/// Whether `dir/bin`'s executable is one of `hashes`. Java's choice of file:
+/// `ForgedAlliance.exe` when there is one, `SupremeCommander.exe` otherwise.
+/// An executable that cannot be read is not taken for the original game.
+fn is_vanilla_install_with(dir: &Path, hashes: &[&str]) -> bool {
+    use sha2::{Digest as _, Sha256};
+    let bin = dir.join("bin");
+    let forged_alliance = bin.join("ForgedAlliance.exe");
+    let exe = if forged_alliance.is_file() {
+        forged_alliance
+    } else {
+        bin.join("SupremeCommander.exe")
+    };
+    let Ok(bytes) = std::fs::read(&exe) else {
+        return false;
+    };
+    let hash = format!("{:x}", Sha256::digest(&bytes));
+    let vanilla = hashes.iter().any(|known| known.eq_ignore_ascii_case(&hash));
+    if vanilla {
+        tracing::warn!(
+            path = %dir.display(),
+            "passed over the original Supreme Commander: FAF needs Forged Alliance"
+        );
+    }
+    vanilla
 }
 
 /// Candidate retail install locations, mirroring the Python client's
@@ -140,15 +177,43 @@ fn program_files_dirs() -> Vec<PathBuf> {
 /// read rather than guessed at.
 ///
 /// Steam's own folder is looked for under Program Files, where its installer
-/// puts it. A Steam installed anywhere else is named only in the registry
+/// puts it, and on Linux under the home directory. A Steam installed anywhere
+/// else on Windows is named only in the registry
 /// (`HKCU\Software\Valve\Steam\SteamPath`), which nothing in this crate reads;
 /// that player's way in is picking the game in Settings, which is remembered.
 fn steam_retail_install_paths() -> Vec<PathBuf> {
-    steam_retail_install_paths_in(
-        program_files_dirs()
-            .into_iter()
-            .map(|base| base.join("Steam")),
-    )
+    let roots = steam_roots();
+    // The game in Steam's own folder, also when there is no library list:
+    // the Java client's guess `~/.steam/steam/steamapps/common/...`.
+    let mut out: Vec<PathBuf> = roots
+        .iter()
+        .map(|root| {
+            root.join("steamapps")
+                .join("common")
+                .join("Supreme Commander Forged Alliance")
+        })
+        .collect();
+    out.extend(steam_retail_install_paths_in(roots));
+    out
+}
+
+/// Where Steam itself is installed: under Program Files on Windows; outside
+/// it, `~/.steam/steam` (the Java client's guess), its usual target
+/// `~/.local/share/Steam`, and the Flatpak's.
+fn steam_roots() -> Vec<PathBuf> {
+    let mut roots: Vec<PathBuf> = program_files_dirs()
+        .into_iter()
+        .map(|base| base.join("Steam"))
+        .collect();
+    if !cfg!(windows) {
+        if let Some(dirs) = directories::BaseDirs::new() {
+            let home = dirs.home_dir();
+            roots.push(home.join(".steam").join("steam"));
+            roots.push(home.join(".local").join("share").join("Steam"));
+            roots.push(home.join(".var/app/com.valvesoftware.Steam/.local/share/Steam"));
+        }
+    }
+    roots
 }
 
 fn steam_retail_install_paths_in(steam_roots: impl IntoIterator<Item = PathBuf>) -> Vec<PathBuf> {
@@ -353,16 +418,19 @@ fn copy_retail_binaries(retail_dir: &Path, target_dir: &Path) -> Result<(), Stri
         let wanted = RETAIL_BINARIES
             .iter()
             .any(|binary| binary.eq_ignore_ascii_case(name));
-        if !wanted || present.contains(&name.to_ascii_lowercase()) {
+        if !wanted {
             continue;
         }
         let destination = target_bin.join(name);
-        std::fs::copy(source.path(), &destination)
-            .map_err(|error| format!("could not copy {name} from the game install: {error}"))?;
-        tracing::info!(file = name, "copied a game library into the FAF install");
+        if !present.contains(&name.to_ascii_lowercase()) {
+            std::fs::copy(source.path(), &destination)
+                .map_err(|error| format!("could not copy {name} from the game install: {error}"))?;
+            tracing::info!(file = name, "copied a game library into the FAF install");
+        }
         // A retail install copied off a disc keeps the read-only flag, and a
         // read-only file in the FAF install is one the next update cannot
-        // replace. The Java client clears it for the same reason. Windows
+        // replace. The Java client clears it for the same reason, on a file
+        // copied in an earlier pass as much as on one copied now. Windows
         // only, where read-only is one attribute and not the Unix mode bits
         // the lint below is about: there is nothing to make world-writable.
         #[cfg(windows)]
@@ -752,6 +820,55 @@ mod tests {
         // Whatever its spelling, once it is there the install can start.
         std::fs::write(faf.join("bin").join("bugsplat.dll"), b"copied").unwrap();
         require_game_libraries(&faf).unwrap();
+    }
+
+    /// The original Supreme Commander has a `gamedata/lua.scd` too. The Java
+    /// client tells it apart by its executable's hash, and so does this, so a
+    /// player who owns both and picks the wrong one is not handed its files.
+    #[test]
+    fn the_original_supreme_commander_is_not_taken_for_forged_alliance() {
+        use sha2::{Digest as _, Sha256};
+        let temp = tempfile::tempdir().unwrap();
+        let vanilla = temp.path().join("Supreme Commander");
+        std::fs::create_dir_all(vanilla.join("gamedata")).unwrap();
+        std::fs::create_dir_all(vanilla.join("bin")).unwrap();
+        std::fs::write(vanilla.join("gamedata").join("lua.scd"), b"base game").unwrap();
+        std::fs::write(vanilla.join("bin").join("SupremeCommander.exe"), b"vanilla").unwrap();
+        let hash = format!("{:x}", Sha256::digest(b"vanilla"));
+
+        assert!(is_vanilla_install_with(&vanilla, &[hash.as_str()]));
+        assert!(!is_vanilla_install_with(&vanilla, &VANILLA_GAME_HASHES));
+        // As in Java, a ForgedAlliance.exe beside it is the file looked at.
+        std::fs::write(vanilla.join("bin").join("ForgedAlliance.exe"), b"patched").unwrap();
+        assert!(!is_vanilla_install_with(&vanilla, &[hash.as_str()]));
+    }
+
+    /// The Java client clears the read-only flag on every library it handles,
+    /// not only on the ones it has just copied: a file left read-only by an
+    /// earlier copy would otherwise stay that way for good.
+    #[cfg(windows)]
+    #[test]
+    #[allow(clippy::permissions_set_readonly_false)]
+    fn a_library_copied_earlier_loses_its_read_only_flag_too() {
+        let temp = tempfile::tempdir().unwrap();
+        let retail = temp.path().join("retail");
+        std::fs::create_dir_all(retail.join("bin")).unwrap();
+        std::fs::write(retail.join("bin").join("BugSplat.dll"), b"retail").unwrap();
+        let faf = temp.path().join("faf");
+        std::fs::create_dir_all(faf.join("bin")).unwrap();
+        let earlier = faf.join("bin").join("BugSplat.dll");
+        std::fs::write(&earlier, b"copied before").unwrap();
+        let mut permissions = std::fs::metadata(&earlier).unwrap().permissions();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(&earlier, permissions).unwrap();
+
+        copy_retail_binaries(&retail, &faf).unwrap();
+
+        assert!(!std::fs::metadata(&earlier)
+            .unwrap()
+            .permissions()
+            .readonly());
+        assert_eq!(std::fs::read(&earlier).unwrap(), b"copied before");
     }
 
     #[test]
