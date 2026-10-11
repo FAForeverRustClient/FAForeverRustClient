@@ -400,6 +400,22 @@
       "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/wiki-beginners-guide.md"
     },
     {
+      "author": "WiseOldDog",
+      "id": "wiki-three-essential-habits",
+      "kind": "guide",
+      "level": "beginner",
+      "related": [
+        "wiki-beginners-guide"
+      ],
+      "summary": "Play, watch your replays, talk to people: the three habits a new player should build before anything else.",
+      "title": "Three essential habits for the new player",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-10-10",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/wiki-three-essential-habits.md"
+    },
+    {
       "id": "faf-guide-in-depth",
       "kind": "guide",
       "related": [
@@ -471,7 +487,7 @@
         "arma-1v1-part-5-lessons-from-zock",
         "wiki-beginner-1v1-guide"
       ],
-      "summary": "The introduction to arma473's ladder guide. The five parts are here too.",
+      "summary": "arma473's ladder guide for new and intermediate players, from a strong start to the lessons he took from Zock.",
       "title": "Ladder 1v1: beginner, intermediate and advanced topics",
       "topics": [
         "strategy",
@@ -542,7 +558,7 @@
       "related": [
         "ui-mod-guide"
       ],
-      "summary": "The forum thread the UI mod guide grew out of.",
+      "summary": "Sladow's verdict on two dozen common UI mods, from essential to not worth it, with 1v1 improvement in mind.",
       "title": "UI mods for the improving player",
       "topics": [
         "interface"
@@ -1362,7 +1378,7 @@
       "related": [
         "forum-arma-ladder-1v1"
       ],
-      "summary": "Part 1 of arma473's ladder guide, in the split he wrote it in.",
+      "summary": "The opening mistakes: no build order, no plan, staying home, too few units and factories, idle factories, misplaced point defence and an early T2.",
       "title": "Ladder 1v1, part 1: a strong start",
       "topics": [
         "strategy",
@@ -1382,7 +1398,7 @@
       "related": [
         "forum-arma-ladder-1v1"
       ],
-      "summary": "Part 2 of arma473's ladder guide, in the split he wrote it in.",
+      "summary": "Leaving your base with T1: reclaiming, picking your fights, scouting, radar and keeping your ACU safe.",
       "title": "Ladder 1v1, part 2: moving out",
       "topics": [
         "strategy",
@@ -1403,7 +1419,7 @@
       "related": [
         "forum-arma-ladder-1v1"
       ],
-      "summary": "Part 3 of arma473's ladder guide, in the split he wrote it in.",
+      "summary": "Spending limited attention well, not fearing the 20x20 maps, and how to beat a player who turtles.",
       "title": "Ladder 1v1, part 3: big maps and master turtles",
       "topics": [
         "strategy",
@@ -1424,7 +1440,7 @@
       "related": [
         "forum-arma-ladder-1v1"
       ],
-      "summary": "Part 4 of arma473's ladder guide, in the split he wrote it in.",
+      "summary": "T1 economy on 5x5 and 10x10 maps, the commander, unit mix, the replay vault, reclaim and keeping your head in a game.",
       "title": "Ladder 1v1, part 4: intermediate ladder concepts",
       "topics": [
         "strategy",
@@ -1444,7 +1460,7 @@
       "related": [
         "forum-arma-ladder-1v1"
       ],
-      "summary": "Part 5 of arma473's ladder guide, in the split he wrote it in.",
+      "summary": "Zock's coaching sessions summed up by topic, from openings to map advice, each tied to the moment in the video.",
       "title": "Ladder 1v1, part 5: lessons from Zock",
       "topics": [
         "strategy",
@@ -1494,7 +1510,7 @@
       "related": [
         "setons-ultimate-index"
       ],
-      "summary": "Beginner Guide (<1k), from CheeseBerry's Seton's guide.",
+      "summary": "How a normal Seton’s game runs, ten minutes at a time, and what each position does in it. For players under 1000.",
       "title": "Seton's: the beginner guide",
       "topics": [
         "strategy",
@@ -1519,7 +1535,7 @@
       "related": [
         "setons-ultimate-index"
       ],
-      "summary": "Novice Guide (~1k), from CheeseBerry's Seton's guide.",
+      "summary": "Where the reclaim is, how the navy fights go, and the common traps, T1 submarines above all. For players around 1000.",
       "title": "Seton's: the novice guide",
       "topics": [
         "strategy",
@@ -1544,7 +1560,7 @@
       "related": [
         "setons-ultimate-index"
       ],
-      "summary": "Intermediate Guide (~1k-1.5k), from CheeseBerry's Seton's guide.",
+      "summary": "What each tech of navy can reach, firebase creeps in mid and how to answer them. Partly still being written. For 1000 to 1500.",
       "title": "Seton's: the intermediate guide",
       "topics": [
         "strategy",

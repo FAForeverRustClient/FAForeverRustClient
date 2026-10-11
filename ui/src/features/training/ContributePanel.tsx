@@ -53,7 +53,7 @@ import {
   withoutImage,
   type AttachProblem,
 } from "./contributionImages";
-import { Markdown } from "./markdown";
+import { GuideReader, guideOutline } from "./GuideReader";
 import { MarkdownField } from "./MarkdownField";
 import { PostPreview } from "./PostPreview";
 import { TrainingCard } from "./TrainingCard";
@@ -204,6 +204,7 @@ export function ContributePanel({
   // them from until they are sent.
   const attached = useAttachments();
   const local = useMemo(() => localImages(attached), [attached]);
+  const outline = useMemo(() => guideOutline(draft.body), [draft.body]);
   const [attachProblem, setAttachProblem] = useState<AttachProblem | null>(null);
 
   const [stale, setStale] = useState(false);
@@ -616,7 +617,9 @@ export function ContributePanel({
 
         {draft.body.trim() ? (
           <div className="training-preview-body">
-            <Markdown source={draft.body} base={{ local }} />
+            {/* The reader itself, so steps, tabs, videos and pictures beside
+                the text look here exactly as they will in the library. */}
+            <GuideReader outline={outline} local={local} />
           </div>
         ) : (
           <p className="muted training-preview-empty">{t("training.contribute.previewEmpty")}</p>

@@ -10,11 +10,12 @@
 // because that is the operation people actually reach for: select a phrase,
 // press bold.
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
-import { Markdown } from "./markdown";
+import { Markdown, type FigureAlign } from "./markdown";
 
 interface Props {
   label: string;
@@ -36,7 +37,11 @@ interface Props {
 /** What a toolbar button does to the selected range. */
 type Action =
   | { kind: "wrap"; before: string; after: string }
-  | { kind: "prefix"; prefix: string };
+  | { kind: "prefix"; prefix: string }
+  /** Each line a numbered step: `1. `, `2. `, ... */
+  | { kind: "numbered" }
+  /** The selection as keys: `alt+right click` becomes two caps joined by a plus. */
+  | { kind: "keys" };
 
 // Glyphs rather than icons: the design system has no bold or italic mark, and
 // three identical pencils would say less than the letters do. `as const`
@@ -48,6 +53,8 @@ const ACTIONS = [
   { id: "code", action: { kind: "wrap", before: "`", after: "`" }, glyph: "{ }" },
   { id: "heading", action: { kind: "prefix", prefix: "## " }, glyph: "H" },
   { id: "bullet", action: { kind: "prefix", prefix: "- " }, glyph: "L" },
+  { id: "numbered", action: { kind: "numbered" }, glyph: "1." },
+  { id: "key", action: { kind: "keys" }, glyph: "\u2328" },
 ] as const satisfies readonly { id: string; action: Action; glyph: string }[];
 
 /**
@@ -64,6 +71,22 @@ export function applyAction(
   end: number,
   action: Action,
 ): { value: string; start: number; end: number } {
+  if (action.kind === "keys") {
+    const selected = value.slice(start, end);
+    if (selected.trim() === "") {
+      const next = `${value.slice(0, start)}<kbd></kbd>${value.slice(end)}`;
+      return { value: next, start: start + 5, end: start + 5 };
+    }
+    const keys = selected
+      .split("+")
+      .map((key) => key.trim())
+      .filter(Boolean)
+      .map((key) => `<kbd>${key}</kbd>`)
+      .join("+");
+    const next = `${value.slice(0, start)}${keys}${value.slice(end)}`;
+    return { value: next, start, end: start + keys.length };
+  }
+
   if (action.kind === "wrap") {
     const selected = value.slice(start, end);
     const next = `${value.slice(0, start)}${action.before}${selected}${action.after}${value.slice(end)}`;
@@ -80,14 +103,101 @@ export function applyAction(
   const lineEndIndex = value.indexOf("\n", end);
   const lineEnd = lineEndIndex === -1 ? value.length : lineEndIndex;
   const lines = value.slice(lineStart, lineEnd).split("\n");
-  const prefixed = lines.map((line) => `${action.prefix}${line}`).join("\n");
+  const prefixOf = (index: number) =>
+    action.kind === "numbered" ? `${index + 1}. ` : action.prefix;
+  const prefixed = lines.map((line, index) => `${prefixOf(index)}${line}`).join("\n");
   const next = `${value.slice(0, lineStart)}${prefixed}${value.slice(lineEnd)}`;
+  const added = prefixed.length - (lineEnd - lineStart);
   return {
     value: next,
-    start: start + action.prefix.length,
-    end: end + action.prefix.length * lines.length,
+    start: start + prefixOf(0).length,
+    end: end + added,
   };
 }
+
+/**
+ * The tabs a guide shows one faction at a time: the wiki's tabset, a heading
+ * the reader never draws over one heading per tab. The factions in the
+ * game's own order, with nothing under them yet.
+ */
+export function factionTabs(title: string): string {
+  const tabs = ["UEF", "Aeon", "Cybran", "Seraphim"].map((faction) => `### ${faction}\n\n`);
+  return `## ${title}{.tabset}\n\n${tabs.join("\n")}`;
+}
+
+/** A picture on a line of its own, as the editor can change it. */
+export interface PictureLine {
+  start: number;
+  end: number;
+  alt: string;
+  src: string;
+  align: FigureAlign | null;
+}
+
+const PICTURE_LINE = /^!\[([^\]]*)\]\(([^)\s]+)\)(?:\{([^}]*)\})?\s*$/;
+
+/** The picture on the line `caret` is on, when that line is one. */
+export function pictureAt(value: string, caret: number): PictureLine | null {
+  const start = value.lastIndexOf("\n", Math.max(0, caret - 1)) + 1;
+  const endIndex = value.indexOf("\n", caret);
+  const end = endIndex === -1 ? value.length : endIndex;
+  const match = PICTURE_LINE.exec(value.slice(start, end).trim());
+  if (!match) return null;
+  const align = /\.align-(left|right|center)\b/.exec(match[3] ?? "")?.[1] as FigureAlign | undefined;
+  return { start, end, alt: match[1], src: match[2], align: align ?? null };
+}
+
+/** `value` with that picture's caption and alignment replaced. */
+export function withPicture(
+  value: string,
+  picture: PictureLine,
+  change: { alt?: string; align?: FigureAlign | null },
+): string {
+  // A bracket would end the caption early and turn the rest into text.
+  const alt = (change.alt ?? picture.alt).replace(/[[\]\n]/g, "");
+  const align = change.align === undefined ? picture.align : change.align;
+  const line = `![${alt}](${picture.src})${align ? `{.align-${align}}` : ""}`;
+  return `${value.slice(0, picture.start)}${line}${value.slice(picture.end)}`;
+}
+
+/** The four places a picture can sit, drawn as what they look like. */
+const PLACEMENTS: { align: FigureAlign | null; key: MessageKey; glyph: ReactNode }[] = [
+  {
+    align: null,
+    key: "training.editor.align.full",
+    glyph: <rect x="2" y="3" width="12" height="7" rx="1" />,
+  },
+  {
+    align: "left",
+    key: "training.editor.align.left",
+    glyph: (
+      <>
+        <rect x="2" y="3" width="6" height="5" rx="1" />
+        <path d="M10 4h4M10 7h4M2 11h12" />
+      </>
+    ),
+  },
+  {
+    align: "center",
+    key: "training.editor.align.center",
+    glyph: (
+      <>
+        <rect x="4.5" y="3" width="7" height="5" rx="1" />
+        <path d="M2 11h12" />
+      </>
+    ),
+  },
+  {
+    align: "right",
+    key: "training.editor.align.right",
+    glyph: (
+      <>
+        <rect x="8" y="3" width="6" height="5" rx="1" />
+        <path d="M2 4h4M2 7h4M2 11h12" />
+      </>
+    ),
+  },
+];
 
 /**
  * The line breaks that put something inserted into a paragraph of its own:
@@ -123,7 +233,17 @@ export function MarkdownField({
 }: Props) {
   const { t } = useTranslation();
   const [preview, setPreview] = useState(false);
+  const [caret, setCaret] = useState<number | null>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
+  // The picture the caret is on, which the bar under the toolbar edits.
+  const picture = caret === null ? null : pictureAt(value, caret);
+  const changePicture = (change: { alt?: string; align?: FigureAlign | null }) => {
+    if (!picture) return;
+    onChange(withPicture(value, picture, change));
+    // Held at the line's start, so a caption that grows or shrinks never
+    // carries the caret onto the next line and the bar away with it.
+    setCaret(picture.start);
+  };
   const pickerRef = useRef<HTMLInputElement>(null);
 
   /**
@@ -132,7 +252,11 @@ export function MarkdownField({
    */
   const attachAtCaret = (files: File[]) => {
     if (!onAttach || files.length === 0) return;
-    const snippet = onAttach(files);
+    insertBlock(onAttach(files));
+  };
+
+  /** Put `snippet` at the caret as paragraphs of its own. */
+  const insertBlock = (snippet: string, caretAt?: number) => {
     if (!snippet) return;
     const area = areaRef.current;
     const start = area?.selectionStart ?? value.length;
@@ -143,10 +267,11 @@ export function MarkdownField({
     const trail = paragraphBreak(after, "start");
     const inserted = `${lead}${snippet}${trail}`;
     onChange(`${before}${inserted}${after}`);
-    const caret = start + inserted.length;
+    const next = start + (caretAt === undefined ? inserted.length : lead.length + caretAt);
     requestAnimationFrame(() => {
       area?.focus();
-      area?.setSelectionRange(caret, caret);
+      area?.setSelectionRange(next, next);
+      setCaret(next);
     });
   };
 
@@ -167,6 +292,13 @@ export function MarkdownField({
     });
   };
 
+  const insertTabs = () => {
+    const snippet = factionTabs(t("training.editor.tabsTitle"));
+    // The caret lands under the first tab's heading, where its text goes.
+    const firstTab = snippet.indexOf("### ");
+    insertBlock(snippet, snippet.indexOf("\n\n", firstTab) + 2);
+  };
+
   return (
     <div className="training-markdown-field">
       <div className="training-markdown-head">
@@ -183,6 +315,14 @@ export function MarkdownField({
               <span aria-hidden>{entry.glyph}</span>
             </button>
           ))}
+          <button
+            type="button"
+            title={t("training.editor.tabs")}
+            aria-label={t("training.editor.tabs")}
+            onClick={insertTabs}
+          >
+            <Icon name="grid" size={13} />
+          </button>
           {onAttach && (
             <>
               <button
@@ -226,7 +366,11 @@ export function MarkdownField({
         <textarea
           ref={areaRef}
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => {
+            onChange(event.target.value);
+            setCaret(event.target.selectionStart);
+          }}
+          onSelect={(event) => setCaret(event.currentTarget.selectionStart)}
           placeholder={placeholder}
           rows={rows}
           // A screenshot is usually on the clipboard or in a folder window,
@@ -250,6 +394,49 @@ export function MarkdownField({
           }}
         />
       )}
+      {/* The picture the caret is on: what it says under it, and where it
+          sits. Shown only there, so the toolbar stays the size of the
+          things that apply everywhere, and under the text so the line being
+          edited does not move when it appears. */}
+      {picture && !(ownPreview && preview) && (
+        <div className="training-picture-bar">
+          <span className="training-picture-bar-label">{t("training.editor.picture")}</span>
+          <input
+            type="text"
+            value={picture.alt}
+            aria-label={t("training.editor.caption")}
+            placeholder={t("training.editor.captionPlaceholder")}
+            onChange={(event) => changePicture({ alt: event.target.value })}
+          />
+          <div className="training-picture-bar-place" role="group">
+            {PLACEMENTS.map((place) => (
+              <button
+                key={place.key}
+                type="button"
+                className={place.align === picture.align ? "is-on" : undefined}
+                aria-pressed={place.align === picture.align}
+                title={t(place.key)}
+                aria-label={t(place.key)}
+                onClick={() => changePicture({ align: place.align })}
+              >
+                <svg
+                  viewBox="0 0 16 14"
+                  width="16"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  aria-hidden
+                >
+                  {place.glyph}
+                </svg>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <p className="muted training-markdown-hint">{t("training.editor.hint")}</p>
     </div>
   );
