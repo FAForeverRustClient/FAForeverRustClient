@@ -1,24 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { favoriteModKeys, isFavoriteMod, withFavoriteToggled } from "./favoriteMods";
+import { favoriteModKeys, favoriteModToggle, isFavoriteMod } from "./favoriteMods";
 
 describe("starring a mod", () => {
-  it("stores the uid folded, whatever case it arrives in", () => {
-    expect(withFavoriteToggled([], "26B9F6DA-C6E1-4A0F-9F9B-6C0F0A3C2E71")).toEqual([
-      "26b9f6da-c6e1-4a0f-9f9b-6c0f0a3c2e71",
-    ]);
+  it("names the one uid rather than sending a whole list", () => {
+    expect(favoriteModToggle(["eco-graph"], "ACU-Highlight")).toEqual({
+      type: "setListMember",
+      payload: { list: "favoriteMods", value: "ACU-Highlight", member: true },
+    });
   });
 
   it("un-stars an entry an older client wrote in another case", () => {
-    expect(withFavoriteToggled(["ACU-HIGHLIGHT"], "acu-highlight")).toEqual([]);
-  });
-
-  it("leaves the rest of the list alone", () => {
-    expect(withFavoriteToggled(["a", "b", "c"], "b")).toEqual(["a", "c"]);
+    expect(favoriteModToggle(["ACU-HIGHLIGHT"], "acu-highlight")).toMatchObject({
+      payload: { member: false },
+    });
   });
 
   it("survives a preferences file that has never held one", () => {
-    expect(withFavoriteToggled(undefined, "a")).toEqual(["a"]);
+    expect(favoriteModToggle(undefined, "a")).toMatchObject({ payload: { member: true } });
     expect(favoriteModKeys(null).size).toBe(0);
   });
 });

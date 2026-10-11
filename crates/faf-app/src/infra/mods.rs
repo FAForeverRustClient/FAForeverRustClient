@@ -701,28 +701,77 @@ pub(crate) fn mod_info_name(contents: &str) -> Option<String> {
     parse_mod_info(contents).map(|fields| fields.name)
 }
 
+/// The level of a Lua long-string opener at the start of `value` (`[[` is 0,
+/// `[==[` is 2), and the text after it, or `None` when `value` is not one.
+fn long_string_opener(value: &str) -> Option<(usize, &str)> {
+    let rest = value.strip_prefix('[')?;
+    let level = rest.chars().take_while(|c| *c == '=').count();
+    let rest = rest[level..].strip_prefix('[')?;
+    Some((level, rest))
+}
+
+/// A quoted value's contents, or an unquoted value with its trailing
+/// `-- comment` and `,` removed. Quotes first, so a `--` inside a string
+/// (a URL, "Tech 1 -- Tech 3") is part of the value rather than a comment.
+fn scalar_value(value: &str) -> String {
+    let value = value.trim();
+    if let Some(quote) = value.chars().next().filter(|c| *c == '"' || *c == '\'') {
+        let inner = &value[1..];
+        return match inner.find(quote) {
+            Some(end) => inner[..end].to_string(),
+            None => inner.to_string(),
+        };
+    }
+    let value = match value.find("--") {
+        Some(idx) => &value[..idx],
+        None => value,
+    };
+    let value = value.trim();
+    value.strip_suffix(',').unwrap_or(value).trim().to_string()
+}
+
 fn parse_mod_info(contents: &str) -> Option<ModInfoFields> {
     let mut fields: HashMap<String, String> = HashMap::new();
-    for raw_line in contents.lines() {
-        // Strip a trailing `-- comment`.
-        let line = match raw_line.find("--") {
-            Some(idx) => &raw_line[..idx],
-            None => raw_line,
-        };
-        let line = line.trim();
-        if line.is_empty() {
+    let mut lines = contents.lines();
+    while let Some(raw_line) = lines.next() {
+        let line = raw_line.trim();
+        if line.is_empty() || line.starts_with("--") {
             continue;
         }
         let Some((key, value)) = line.split_once('=') else {
             continue;
         };
         let key = key.trim().to_lowercase();
-        let mut value = value.trim();
-        if let Some(v) = value.strip_suffix(',') {
-            value = v.trim();
+        let value = value.trim();
+
+        // A Lua long string, which is how most mods write a description
+        // longer than a line: `description = [[` and the text on the lines
+        // that follow, up to `]]`. Read line by line, only the `[[` survived,
+        // so the details panel printed "[[" for the description.
+        if let Some((level, rest)) = long_string_opener(value) {
+            let closer = format!("]{}]", "=".repeat(level));
+            let mut text = String::new();
+            let mut remaining = rest.to_string();
+            loop {
+                if let Some(end) = remaining.find(&closer) {
+                    text.push_str(&remaining[..end]);
+                    break;
+                }
+                text.push_str(&remaining);
+                match lines.next() {
+                    Some(next) => {
+                        text.push('\n');
+                        remaining = next.to_string();
+                    }
+                    // Unterminated: keep what there is rather than nothing.
+                    None => break,
+                }
+            }
+            fields.insert(key, text.trim().to_string());
+            continue;
         }
-        let value = value.trim_matches(|c| c == '"' || c == '\'').to_string();
-        fields.insert(key, value);
+
+        fields.insert(key, scalar_value(value));
     }
 
     let uid = fields.get("uid")?.clone();
@@ -1489,6 +1538,42 @@ mod tests {
         assert_eq!(info.author, "Some Author");
         assert_eq!(info.description, "Extended content");
         assert!(!info.ui_only);
+    }
+
+    #[test]
+    fn a_long_string_description_is_read_to_its_end() {
+        // The shape the report showed as "[[": the description opens a Lua
+        // long string and its text is on the lines below.
+        let info = parse_mod_info(
+            "name = \"ACU Enhancements\"\nuid = \"acu-enhancements-v1.0.2\"\ndescription = [[\nBetter ACU upgrades.\nWorks with -- dashes.\n]],\nversion = 4\n",
+        )
+        .expect("should parse");
+        assert_eq!(
+            info.description,
+            "Better ACU upgrades.\nWorks with -- dashes."
+        );
+        // The fields after the long string are still read.
+        assert_eq!(info.version, "4");
+    }
+
+    #[test]
+    fn long_strings_on_one_line_and_with_levels_are_read() {
+        let one_line = parse_mod_info("uid = \"a\"\ndescription = [[Short one.]]").unwrap();
+        assert_eq!(one_line.description, "Short one.");
+        let levelled =
+            parse_mod_info("uid = \"a\"\ndescription = [==[\nHas ]] inside\n]==]").unwrap();
+        assert_eq!(levelled.description, "Has ]] inside");
+    }
+
+    #[test]
+    fn quoted_values_keep_their_dashes_and_lose_trailing_comments() {
+        let info = parse_mod_info(
+            "uid = \"a\" -- the id\nauthor = \"Tech 1 -- Tech 3\",\nversion = 7, -- bumped\n",
+        )
+        .unwrap();
+        assert_eq!(info.uid, "a");
+        assert_eq!(info.author, "Tech 1 -- Tech 3");
+        assert_eq!(info.version, "7");
     }
 
     #[test]

@@ -78,4 +78,18 @@ pub trait PlayerCardPort: Send + Sync {
     /// rather than reading one document, and the profile's identity should not
     /// wait for it.
     async fn load_map_stats(&self, player_id: i32) -> Result<PlayerMapStats, String>;
+
+    /// [`Self::load_map_stats`] over at most the `limit` most recent games,
+    /// reported as truncated when there were more (#440). What a profile
+    /// opens on: the whole history is dozens of requests for a long one.
+    ///
+    /// Defaults to the whole scan, for ports with nothing to page.
+    async fn load_recent_map_stats(
+        &self,
+        player_id: i32,
+        limit: usize,
+    ) -> Result<PlayerMapStats, String> {
+        let _ = limit;
+        self.load_map_stats(player_id).await
+    }
 }

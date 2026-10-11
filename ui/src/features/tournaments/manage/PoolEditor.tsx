@@ -14,15 +14,32 @@
 import { useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
-import type { MapPool, PoolDraft, PoolStep, Tourney } from "../../../ipc/bindings";
+import type { MapPool, PoolDraft, PoolStep, Tourney, TourneyAdmin } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { poolRejection, type PoolRejection } from "../../../shared/rules/tourneyRules";
+import { formatMoment } from "../tourneyPresentation";
+import { CopyOrderDialog } from "./CopyOrderDialog";
+
+/** Unix seconds as a `datetime-local` value, in local time; empty for none. */
+export function localInput(seconds: number | null): string {
+  if (seconds === null) return "";
+  const moment = new Date(seconds * 1000);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${moment.getFullYear()}-${pad(moment.getMonth() + 1)}-${pad(moment.getDate())}T${pad(moment.getHours())}:${pad(moment.getMinutes())}`;
+}
+
+/** A `datetime-local` value as Unix seconds, or null when empty or unreadable. */
+export function fromLocalInput(value: string): number | null {
+  if (value === "") return null;
+  const millis = new Date(value).getTime();
+  return Number.isNaN(millis) ? null : Math.floor(millis / 1000);
+}
 
 /** The series lengths the service accepts. */
 const BEST_OF = [1, 3, 5, 7];
 
-const BLANK: PoolDraft = { id: "", name: "", mapIds: [], bestOf: 3, sequence: [] };
+const BLANK: PoolDraft = { id: "", name: "", mapIds: [], bestOf: 3, sequence: [], publishAt: null };
 
 interface PoolEditorProps {
   event: Tourney;
@@ -30,12 +47,16 @@ interface PoolEditorProps {
   onSave: (pool: PoolDraft) => void;
   onPublish: (poolId: string, published: boolean) => void;
   onDelete: (poolId: string) => void;
+  /** Copying one pool's order onto others. */
+  onAdmin: (change: TourneyAdmin) => void;
 }
 
 export function PoolEditor(props: PoolEditorProps) {
   const { event, busy } = props;
   const { t } = useTranslation();
   const [draft, setDraft] = useState<PoolDraft | null>(null);
+  /** The pool whose order is being copied, if any. */
+  const [copying, setCopying] = useState<MapPool | null>(null);
 
   const nameOf = (mapId: string) =>
     event.mapDb.find((held) => held.id === mapId)?.name ?? mapId;
@@ -183,6 +204,31 @@ export function PoolEditor(props: PoolEditorProps) {
           </Button>
         </fieldset>
 
+        {/* A reveal at a set moment: the service publishes the pool and every
+            map in it on the first read after that time. Pointless once the
+            pool is out, and said so rather than hidden. */}
+        <label className="tournament-field">
+          <span>
+            {t("tournaments.pools.publishAt")} <span className="muted">{t("tournaments.pools.publishAtHint")}</span>
+          </span>
+          <input
+            type="datetime-local"
+            value={localInput(held.publishAt ?? null)}
+            onChange={(changed) =>
+              setDraft((current) =>
+                current === null ? current : { ...current, publishAt: fromLocalInput(changed.target.value) },
+              )
+            }
+          />
+          <small className="muted">
+            {t(
+              event.mapPools.some((pool) => pool.id === held.id && pool.published)
+                ? "tournaments.pools.publishAtPublished"
+                : "tournaments.pools.publishAtExplain",
+            )}
+          </small>
+        </label>
+
         {rejection !== null && <p className="tournament-refusal">{refusalOf(rejection)}</p>}
 
         <div className="tournament-detail-actions">
@@ -203,6 +249,7 @@ export function PoolEditor(props: PoolEditorProps) {
     mapIds: [...pool.mapIds],
     bestOf: pool.bestOf,
     sequence: [...pool.sequence],
+    publishAt: pool.publishAt,
   });
 
   return (
@@ -232,6 +279,11 @@ export function PoolEditor(props: PoolEditorProps) {
                   {t("tournaments.maps.hidden")}
                 </span>
               )}
+              {!pool.published && pool.publishAt !== null && (
+                <span className="tournament-hidden-mark" title={t("tournaments.pools.scheduledHint")}>
+                  {t("tournaments.pools.scheduled", { when: formatMoment(pool.publishAt, "") })}
+                </span>
+              )}
               <div className="tournament-detail-actions">
                 <Button
                   disabled={busy}
@@ -242,6 +294,13 @@ export function PoolEditor(props: PoolEditorProps) {
                 <Button disabled={busy} onClick={() => setDraft(asDraft(pool))}>
                   {t("tournaments.maps.edit")}
                 </Button>
+                {/* Only a complete order can be copied: its length is fixed by
+                    the map count, so it goes to pools of the same size. */}
+                {pool.mapIds.length > 1 && pool.sequence.length === pool.mapIds.length - 1 && (
+                  <Button disabled={busy} onClick={() => setCopying(pool)}>
+                    {t("tournaments.pools.copyOrder")}
+                  </Button>
+                )}
                 <Button disabled={busy} onClick={() => props.onDelete(pool.id)}>
                   {t("tournaments.maps.delete")}
                 </Button>
@@ -250,6 +309,19 @@ export function PoolEditor(props: PoolEditorProps) {
           );
         })}
       </ul>
+
+      {copying !== null && (
+        <CopyOrderDialog
+          source={copying}
+          pools={event.mapPools}
+          busy={busy}
+          onCopy={(targets) => {
+            props.onAdmin({ type: "copyPoolOrder", payload: { sourceId: copying.id, targets } });
+            setCopying(null);
+          }}
+          onCancel={() => setCopying(null)}
+        />
+      )}
 
       {draft === null ? (
         <Button disabled={busy} onClick={() => setDraft(BLANK)}>

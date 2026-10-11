@@ -94,12 +94,12 @@ async fn refresh_statistics(ctx: &ServiceCtx, out: &EventSink) {
 /// Returns whether an installation is now in place, so [`play`] can chain a
 /// launch onto it without re-reading the state and re-deciding.
 async fn install(ctx: &ServiceCtx, out: &EventSink) -> bool {
+    crate::runtime::expect_admitted(crate::runtime::Key::GalacticWar);
     // Downloads are tens of megabytes and the extraction writes into the
     // install directory: two concurrent runs would fight over the same
-    // staging area and the same manifest.
-    let Some(_guard) = ctx.galactic_war_active.try_acquire() else {
-        return false;
-    };
+    // staging area and the same manifest. `Install` and `Play`, the two
+    // commands that reach this, are single-flight together in the command
+    // policy (`Key::GalacticWar`).
     let state = out.with_state(|state| state.galactic_war.clone());
     if state.is_busy() || state.status == GalacticWarStatus::Running {
         return false;

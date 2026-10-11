@@ -8,6 +8,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { ChatPreferences, ChatUser, PlayerProfile, SocialState } from "../../../ipc/bindings";
 import { EMOJI_PATTERN, emojiName } from "./emoji";
 import { openHttpsUrl, optionalHttpsUrl, validateHttpsUrl } from "../../../shared/externalLinks";
+import { hourCycleOptions } from "../../../shared/format/clock";
 import { findPlayer, isModerator, playersByNickname } from "../../../store/reducer";
 import { t, type MessageKey } from "../../../i18n";
 
@@ -420,7 +421,7 @@ export function formatTime(timestamp: string, use24HourTime = true): string {
     : date.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
-        hour12: !use24HourTime,
+        ...hourCycleOptions(use24HourTime),
       });
 }
 

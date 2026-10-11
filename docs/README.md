@@ -12,6 +12,8 @@ document.
 |---|---|
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | The architecture contract: the layering rules, why they exist, and what is not allowed to cross which boundary. The README points every contributor here, and CI enforces parts of it. |
 | [`PROJECT_GUIDE.md`](PROJECT_GUIDE.md) | The map: what each crate and directory is for, where to add a new state slice, command, port or screen, and one click traced end to end. |
+| [`CONCURRENCY.md`](CONCURRENCY.md) | The overlap and cancellation contract per command key: what may run together, what is dropped or queued, what a cancel guarantees, which stale answers are discarded, and the test that pins each row. |
+| [`SMOKE_TEST.md`](SMOKE_TEST.md) | The checklist for a native build: joining, replays, tournaments and matchmaking against the real game and server, plus the log lines that carry the client's performance numbers. |
 | [`design-philosophy.md`](design-philosophy.md) | Why the interface looks and behaves the way it does. |
 | [`training-catalogue.md`](training-catalogue.md) | The contract for the training library's published manifest: repository layout, the manifest format, and why it is a Git document rather than a service. |
 | [`events-catalogue.md`](events-catalogue.md) | The same, for the community calendar the Events tab reads. Says which parts of that calendar the client already knows without being told. |

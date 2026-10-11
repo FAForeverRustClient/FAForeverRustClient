@@ -7,12 +7,19 @@
 //!
 //! Three decisions shape everything here.
 //!
-//! **A submission is a GitHub issue whose body the client wrote.** The prose is
-//! for the human reading it; underneath sits a fenced JSON block holding the
-//! catalogue entry itself. Because the client authored it, accepting is a copy
+//! **A submission is a GitHub issue or pull request whose body the client
+//! wrote.** The body is a filled-in issue form, one `### ` heading per field,
+//! the same shape GitHub writes for the guides repository's own issue form;
+//! there is no JSON in it. Because the client authored it, accepting is a copy
 //! rather than a rewrite, which is the whole reason a trainer can accept in one
-//! step instead of retyping the tags. A human may edit the block by hand and it
-//! still parses.
+//! step instead of retyping the tags. A human may edit the answers by hand and
+//! they still parse.
+//!
+//! A link needs nothing but that body, so it is an issue. A guide written in
+//! the client is a pull request: it is a file, it can carry pictures, and an
+//! issue can carry neither (its body is capped at 65,536 characters, and the
+//! API takes no attachments). Accepting one merges it, so the guide and its
+//! pictures arrive in the repository exactly as the trainer read them.
 //!
 //! **GitHub enforces the permission, not this client.** The queue is public
 //! information (open issues on a public repository), so anybody may read it.
@@ -53,6 +60,42 @@ pub const SUBMISSION_LABEL: &str = "training-submission";
 /// not the only thing distinguishing one from ordinary repository traffic.
 pub const SUBMISSION_PREFIX: &str = "Training submission:";
 
+/// The label an accepted submission's issue gains when it is closed.
+pub const ACCEPTED_LABEL: &str = "accepted";
+
+/// The label a declined submission's issue gains when it is closed.
+pub const DECLINED_LABEL: &str = "declined";
+
+/// The line every acceptance comment ends with.
+///
+/// Doubles as the record that the comment step of an accept already happened:
+/// an accept is several requests, and one that failed halfway is finished by
+/// pressing accept again, which must not post the same comment twice.
+pub const ACCEPT_MARKER: &str = "Accepted from the FAF client's Training tab.";
+
+/// The line every rejection comment ends with, for the same reason as
+/// [`ACCEPT_MARKER`]. It is also what stops a submission that was declined but
+/// never closed from being accepted afterwards.
+pub const DECLINE_MARKER: &str = "Declined from the FAF client's Training tab.";
+
+/// Whether an issue is a submission rather than ordinary repository traffic.
+///
+/// The label alone is not enough. A submission opened in a browser carries the
+/// label only when its author may set labels on the repository: GitHub drops
+/// the `labels=` parameter of a prefilled new-issue link without a word for
+/// anybody who is not a collaborator, which is exactly the player the link
+/// exists for. The title prefix is written by both paths (the client and the
+/// issue template) and survives, so either one is enough.
+pub fn is_submission_issue(title: &str, labels: &[&str]) -> bool {
+    if labels.contains(&SUBMISSION_LABEL) {
+        return true;
+    }
+    let title = title.trim_start();
+    title
+        .get(..SUBMISSION_PREFIX.len())
+        .is_some_and(|head| head.eq_ignore_ascii_case(SUBMISSION_PREFIX))
+}
+
 /// Where a guide written in the client is committed.
 pub fn guide_file_path(id: &str) -> String {
     format!("guides/{id}.md")
@@ -69,6 +112,259 @@ pub fn guide_raw_url(repo: &str, id: &str) -> String {
     format!(
         "https://raw.githubusercontent.com/{repo}/{GUIDES_BRANCH}/{}",
         guide_file_path(id)
+    )
+}
+
+// ---------------------------------------------------------------------------
+// Pictures: what a guide written in the client may carry
+// ---------------------------------------------------------------------------
+
+/// How the editor refers to a picture the author attached: `images/<name>`,
+/// relative to the guide, which is how GitHub and every Markdown viewer read a
+/// relative path too.
+pub const DRAFT_IMAGE_DIR: &str = "images";
+
+/// The largest picture a submission may carry. A full-HD screenshot as a PNG
+/// is two to three megabytes; anything past this is a photo of a monitor or a
+/// mistake, and it goes into a repository every maintainer clones.
+pub const MAX_IMAGE_BYTES: usize = 5 * 1024 * 1024;
+
+/// How many pictures one submission may carry.
+pub const MAX_IMAGES: usize = 20;
+
+/// All of a submission's pictures together.
+pub const MAX_IMAGES_TOTAL_BYTES: usize = 25 * 1024 * 1024;
+
+/// A picture as the form hands it over: its name in the guide, and its bytes
+/// as base64, which is what survives the trip through IPC as JSON.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct DraftImage {
+    pub name: String,
+    pub data: String,
+}
+
+/// A picture that passed [`read_draft_images`], ready to commit.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GuideImage {
+    pub name: String,
+    pub bytes: Vec<u8>,
+}
+
+/// What a picture's bytes say it is, as the extension its name must carry.
+///
+/// Read off the file's own signature rather than its name: the name is
+/// whatever the author's file was called, and a repository that serves these
+/// to every client should hold exactly the four formats a browser draws.
+pub fn image_kind(bytes: &[u8]) -> Option<&'static str> {
+    if bytes.starts_with(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]) {
+        Some("png")
+    } else if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        Some("jpg")
+    } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
+        Some("gif")
+    } else if bytes.len() >= 12 && &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
+        Some("webp")
+    } else {
+        None
+    }
+}
+
+/// Why a picture's name is not one the repository can hold as it stands, if
+/// it is not: lowercase letters, digits and hyphens, then the extension its
+/// bytes call for. The form names files this way; checking rather than
+/// renaming here keeps the name the guide's text refers to and the file's name
+/// one thing.
+fn image_name_problem(name: &str, kind: &str) -> Option<String> {
+    let Some((stem, extension)) = name.rsplit_once('.') else {
+        return Some(format!("the picture \"{name}\" has no file extension"));
+    };
+    let stem_ok = !stem.is_empty()
+        && stem.len() <= 80
+        && stem
+            .chars()
+            .next()
+            .is_some_and(|first| first.is_ascii_lowercase() || first.is_ascii_digit())
+        && stem
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+    if !stem_ok {
+        return Some(format!(
+            "the picture name \"{name}\" should be lowercase letters, digits and hyphens"
+        ));
+    }
+    if extension != kind {
+        return Some(format!(
+            "\"{name}\" is a {} picture, so its name should end in .{kind}",
+            kind.to_uppercase()
+        ));
+    }
+    None
+}
+
+/// Decode and check the pictures a draft carries, keeping only the ones its
+/// text refers to.
+///
+/// A picture the author attached and then deleted from the text is dropped
+/// rather than committed: nothing would ever show it, and the repository is
+/// cloned by every maintainer.
+pub fn read_draft_images(body: &str, images: &[DraftImage]) -> Result<Vec<GuideImage>, String> {
+    use base64::Engine as _;
+
+    if images.len() > MAX_IMAGES {
+        return Err(format!(
+            "a submission can carry at most {MAX_IMAGES} pictures"
+        ));
+    }
+    let mut read: Vec<GuideImage> = Vec::with_capacity(images.len());
+    let mut total = 0;
+    for image in images {
+        if read.iter().any(|held| held.name == image.name) {
+            return Err(format!("two pictures are called \"{}\"", image.name));
+        }
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(image.data.as_bytes())
+            .map_err(|_| format!("the picture \"{}\" could not be read", image.name))?;
+        if bytes.len() > MAX_IMAGE_BYTES {
+            return Err(format!(
+                "the picture \"{}\" is larger than {} MB",
+                image.name,
+                MAX_IMAGE_BYTES / (1024 * 1024)
+            ));
+        }
+        let kind = image_kind(&bytes)
+            .ok_or_else(|| format!("\"{}\" is not a PNG, JPEG, GIF or WebP picture", image.name))?;
+        if let Some(problem) = image_name_problem(&image.name, kind) {
+            return Err(problem);
+        }
+        if !refers_to_image(body, &image.name) {
+            continue;
+        }
+        total += bytes.len();
+        read.push(GuideImage {
+            name: image.name.clone(),
+            bytes,
+        });
+    }
+    if total > MAX_IMAGES_TOTAL_BYTES {
+        return Err(format!(
+            "the pictures add up to more than {} MB",
+            MAX_IMAGES_TOTAL_BYTES / (1024 * 1024)
+        ));
+    }
+    Ok(read)
+}
+
+/// The ways a guide's text points at an attached picture: Markdown's
+/// `](images/<name>)` and the `<img src="images/<name>">` the wiki writes.
+fn image_references(name: &str) -> [String; 3] {
+    [
+        format!("]({DRAFT_IMAGE_DIR}/{name})"),
+        format!("src=\"{DRAFT_IMAGE_DIR}/{name}\""),
+        format!("src='{DRAFT_IMAGE_DIR}/{name}'"),
+    ]
+}
+
+/// Whether `body` shows the attached picture `name` anywhere.
+pub fn refers_to_image(body: &str, name: &str) -> bool {
+    image_references(name)
+        .iter()
+        .any(|reference| body.contains(reference.as_str()))
+}
+
+/// Where a submission's pictures are committed: a folder of their own beside
+/// the guides, named after the guide, so two guides that both call a picture
+/// `map.png` do not overwrite each other.
+pub fn guide_image_path(id: &str, name: &str) -> String {
+    format!("guides/{DRAFT_IMAGE_DIR}/{id}/{name}")
+}
+
+/// The guide's text with every attached picture pointing at the folder it is
+/// committed to.
+///
+/// The editor writes `images/<name>` because the id is not known until the
+/// submission is sent; the committed file sits at `guides/<id>.md`, so the
+/// path relative to it becomes `images/<id>/<name>`. Only the names in
+/// `names` are rewritten: any other relative path is the author's own, and
+/// is left as typed.
+pub fn place_images(body: &str, id: &str, names: &[String]) -> String {
+    let mut placed = body.to_string();
+    for name in names {
+        let from = format!("{DRAFT_IMAGE_DIR}/{name}");
+        let to = format!("{DRAFT_IMAGE_DIR}/{id}/{name}");
+        for reference in image_references(name) {
+            placed = placed.replace(&reference, &reference.replace(&from, &to));
+        }
+    }
+    placed
+}
+
+// ---------------------------------------------------------------------------
+// A submission as a pull request
+// ---------------------------------------------------------------------------
+
+/// The branch a submission is proposed from. The stamp keeps a second attempt
+/// at the same title from colliding with a first one that is still open.
+pub fn submission_branch(id: &str, stamp: u64) -> String {
+    format!("submission/{id}-{stamp}")
+}
+
+/// The id of the one guide a pull request adds, read off its files.
+///
+/// `None` when it adds no guide, or more than one: a submission is one guide,
+/// and a pull request carrying two is somebody editing the repository rather
+/// than submitting through the client.
+pub fn submitted_guide_id(files: &[String]) -> Option<String> {
+    let mut ids = files.iter().filter_map(|path| {
+        let id = path.strip_prefix("guides/")?.strip_suffix(".md")?;
+        (!id.is_empty() && !id.contains('/')).then(|| id.to_string())
+    });
+    let id = ids.next()?;
+    ids.next().is_none().then_some(id)
+}
+
+/// The files of a pull request that are not the guide `id` or its pictures.
+///
+/// Accepting merges the pull request, and a merge takes every file in it. So
+/// anything outside the guide and its picture folder (the catalogue, the
+/// repository's checks, somebody else's guide) turns the one-press accept off:
+/// a trainer reading a guide is not reviewing a change to the workflow that
+/// runs on every push.
+pub fn foreign_files(id: Option<&str>, files: &[String]) -> Vec<String> {
+    files
+        .iter()
+        .filter(|path| {
+            let Some(id) = id else {
+                return true;
+            };
+            if path.as_str() == guide_file_path(id) {
+                return false;
+            }
+            let Some(name) = path.strip_prefix(&format!("guides/{DRAFT_IMAGE_DIR}/{id}/")) else {
+                return true;
+            };
+            let extension = name
+                .rsplit_once('.')
+                .map(|(_, ext)| ext)
+                .unwrap_or_default();
+            !(["png", "jpg", "gif", "webp"].contains(&extension)
+                && image_name_problem(name, extension).is_none())
+        })
+        .cloned()
+        .collect()
+}
+
+/// What stands in the body's guide field of a pull request: the guide is the
+/// file, and the body says where it is rather than repeating it.
+pub fn pull_guide_note(id: &str) -> String {
+    format!("`{}` in this pull request.", guide_file_path(id))
+}
+
+/// The commit message of the squash that accepting a pull request makes.
+pub fn merge_commit_message(entry: &TrainingResource, number: i32) -> String {
+    format!(
+        "Add the guide \"{}\" and its pictures (#{number})",
+        entry.title.trim()
     )
 }
 
@@ -130,7 +426,8 @@ pub enum GuidesAuthStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct GuideSubmission {
-    /// The issue number, which is what accept and reject address.
+    /// The issue or pull request number, which is what accept and reject
+    /// address. GitHub numbers both from one sequence, so it is unambiguous.
     pub number: i32,
     pub title: String,
     /// The prose half, with the JSON block removed: what a reviewer reads.
@@ -151,12 +448,37 @@ pub struct GuideSubmission {
     /// one somewhere else. Accepting commits it as a file and points the
     /// catalogue entry at it.
     pub guide: Option<String>,
+    /// Set when the submission is a pull request rather than an issue: a guide
+    /// written in the client, committed with its pictures. `None` for an
+    /// issue, which carries a link or a guide in its body and no files.
+    pub pull: Option<SubmissionPull>,
+}
+
+/// The files half of a submission that arrived as a pull request.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SubmissionPull {
+    /// The commit the queue read. Accepting merges exactly this one and is
+    /// refused if the pull request has moved on since, so what a trainer read
+    /// is what goes in.
+    pub head_sha: String,
+    /// Where the guide is read at that commit. Its pictures are relative to
+    /// it, so this is also what the queue resolves them against.
+    pub guide_url: String,
+    /// The pictures it adds, as repository paths.
+    pub images: Vec<String>,
+    /// Files that are neither the guide nor its pictures. Any at all and it
+    /// cannot be accepted in one step: see [`foreign_files`].
+    pub foreign: Vec<String>,
 }
 
 impl GuideSubmission {
     /// Whether accepting this can be done in one step.
     pub fn is_acceptable(&self) -> bool {
         self.entry.is_some()
+            && self.pull.as_ref().is_none_or(|pull| {
+                pull.foreign.is_empty() && !pull.head_sha.is_empty() && self.guide.is_some()
+            })
     }
 }
 
@@ -429,14 +751,14 @@ fn checklist(values: impl Iterator<Item = String>) -> String {
         .join("\n")
 }
 
-/// Where `### label` starts, as a heading on a line of its own.
+/// Every place `### label` starts as a heading on a line of its own, in order.
 ///
 /// Line-anchored so a heading quoted inside an answer is not mistaken for a
 /// field, and whole-line so `### Link` does not match `### Linkage`.
-fn heading_offset(text: &str, label: &str) -> Option<usize> {
+fn heading_offsets(text: &str, label: &str) -> Vec<usize> {
     let heading = format!("### {label}");
     text.match_indices(&heading)
-        .find(|(index, _)| {
+        .filter(|(index, _)| {
             let at_line_start = *index == 0 || text[..*index].ends_with('\n');
             let line_ends = text[*index + heading.len()..]
                 .chars()
@@ -445,23 +767,75 @@ fn heading_offset(text: &str, label: &str) -> Option<usize> {
             at_line_start && line_ends
         })
         .map(|(index, _)| index)
+        .collect()
+}
+
+/// Where each field's heading sits in a body, by its position in
+/// [`field::ALL`], or `None` for a field the body does not carry.
+///
+/// Matching a label anywhere is not enough, because the guide is Markdown and
+/// may well contain `### Summary` or `### Type` as headings of its own. Either
+/// one used to end the guide there, and the fake heading then supplied the
+/// answer to the field it named. So the form's own shape decides instead: the
+/// fields always come in the same order, and the guide is the only long free
+/// text among them. Every field up to and including the guide is the *first*
+/// matching heading after the previous field, which a heading inside the guide
+/// cannot precede; every field after it is the *last* matching heading before
+/// the next field, searched from the end, which a heading inside the guide
+/// cannot follow. What the guide says between the two is left alone.
+fn field_positions(body: &str) -> [Option<usize>; field::ALL.len()] {
+    let mut positions = [None; field::ALL.len()];
+    let guide = field::ALL
+        .iter()
+        .position(|label| *label == field::GUIDE)
+        .unwrap_or(field::ALL.len() - 1);
+
+    let mut cursor = 0;
+    for (index, label) in field::ALL.iter().enumerate().take(guide + 1) {
+        if let Some(at) = heading_offsets(body, label)
+            .into_iter()
+            .find(|at| *at >= cursor)
+        {
+            positions[index] = Some(at);
+            cursor = at + label.len() + 4;
+        }
+    }
+
+    let floor = cursor;
+    let mut ceiling = body.len();
+    for index in (guide + 1..field::ALL.len()).rev() {
+        let label = field::ALL[index];
+        if let Some(at) = heading_offsets(body, label)
+            .into_iter()
+            .rev()
+            .find(|at| *at >= floor && *at < ceiling)
+        {
+            positions[index] = Some(at);
+            ceiling = at;
+        }
+    }
+    positions
 }
 
 /// One field's answer, or `None` when the body does not carry that field.
 fn section_of(body: &str, label: &str) -> Option<String> {
-    let start = heading_offset(body, label)? + label.len() + 4;
-    let rest = &body[start..];
+    let index = field::ALL.iter().position(|known| *known == label)?;
+    let positions = field_positions(body);
+    let at = positions[index]?;
+    let start = at + label.len() + 4;
 
-    // The answer runs to the next field, not to the next heading. A guide
-    // written here is Markdown with sections of its own, and ending at the
-    // first `###` truncated it at its first one.
-    let end = field::ALL
+    // The answer runs to the next field the body carries, not to the next
+    // heading: a guide written here is Markdown with sections of its own.
+    // Positions found by `field_positions` only ever increase, so the next one
+    // present is where this answer ends.
+    let end = positions[index + 1..]
         .iter()
-        .filter_map(|other| heading_offset(rest, other))
-        .min()
-        .unwrap_or(rest.len());
+        .flatten()
+        .next()
+        .copied()
+        .unwrap_or(body.len());
 
-    let answer = rest[..end].trim();
+    let answer = body[start..end].trim();
     if answer.is_empty() || answer == NO_RESPONSE {
         return None;
     }
@@ -578,6 +952,18 @@ pub fn entry_from_body(issue_title: &str, body: &str) -> Option<TrainingResource
     })
 }
 
+/// [`entry_from_body`] for an issue whose number is known, which is every
+/// issue the queue lists.
+///
+/// The number is the fallback id for a title with nothing addressable in it.
+/// Without it every such title became the same `untitled-guide`, so the second
+/// one accepted replaced the first one's entry and guide file.
+pub fn entry_from_issue(number: i32, issue_title: &str, body: &str) -> Option<TrainingResource> {
+    let mut entry = entry_from_body(issue_title, body)?;
+    entry.id = slug_or(&entry.title, &format!("guide-{number}"));
+    Some(entry)
+}
+
 /// A dropdown answer, back to the value it names.
 ///
 /// Derived from the same label functions the form is generated from, so a
@@ -631,8 +1017,15 @@ pub fn rejection_comment(reason: RejectReason, note: &str) -> String {
         body.push_str(note.trim());
         body.push('\n');
     }
-    body.push_str("\nDeclined from the FAF client's Training tab.\n");
+    body.push('\n');
+    body.push_str(DECLINE_MARKER);
+    body.push('\n');
     body
+}
+
+/// The comment an accept leaves behind, naming the id it was published as.
+pub fn acceptance_comment(id: &str) -> String {
+    format!("Published to the catalogue as `{id}`. Thanks for the submission.\n\n{ACCEPT_MARKER}\n")
 }
 
 // ---------------------------------------------------------------------------
@@ -648,8 +1041,11 @@ pub fn rejection_comment(reason: RejectReason, note: &str) -> String {
 /// and a round trip through the typed struct would delete them.
 ///
 /// An entry whose id is already present **replaces** it rather than appending
-/// a second one. Two entries with one id would make `related` ambiguous, and
-/// re-accepting a corrected resubmission is the ordinary case.
+/// a second one, because two entries with one id would make `related`
+/// ambiguous. That is not how a new submission gets in, though: accepting
+/// first picks an id nobody holds (see [`catalogue_claim`]), so the only entry
+/// ever replaced is this same submission's own, written by an accept that
+/// failed after its commit and is being finished.
 pub fn catalogue_with(current: &str, entry: &TrainingResource) -> Result<String, String> {
     let mut document: serde_json::Value = serde_json::from_str(current)
         .map_err(|error| format!("the catalogue is not valid JSON: {error}"))?;
@@ -686,6 +1082,131 @@ pub fn catalogue_with(current: &str, entry: &TrainingResource) -> Result<String,
         .map_err(|error| format!("the catalogue cannot be written: {error}"))
 }
 
+/// Who holds an id in the catalogue, from the point of view of an entry that
+/// wants it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CatalogueClaim {
+    /// Nobody: the entry can have it.
+    Free,
+    /// An entry with the same title, summary and link: this submission,
+    /// committed by an earlier accept that failed at a later step. Writing it
+    /// again is a no-op rather than a second entry.
+    Ours,
+    /// Somebody else's entry. Taking the id would replace it.
+    Taken,
+}
+
+/// Whether `entry.id` is free in the catalogue document `current`.
+///
+/// Before this, the id was the title's slug and nothing more, and a second
+/// guide with the same title silently replaced the first one's entry and its
+/// guide file. The comparison is on what a reader sees (title, summary, link)
+/// rather than on every field, so a retry by a different maintainer, whose
+/// `approvedBy` differs, still recognises its own entry.
+pub fn catalogue_claim(current: &str, entry: &TrainingResource) -> Result<CatalogueClaim, String> {
+    let document: serde_json::Value = serde_json::from_str(current)
+        .map_err(|error| format!("the catalogue is not valid JSON: {error}"))?;
+    let held = document
+        .get("resources")
+        .and_then(serde_json::Value::as_array)
+        .and_then(|resources| {
+            resources.iter().find(|held| {
+                held.get("id").and_then(serde_json::Value::as_str) == Some(entry.id.as_str())
+            })
+        });
+    let Some(held) = held else {
+        return Ok(CatalogueClaim::Free);
+    };
+    let text = |key: &str| {
+        held.get(key)
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default()
+    };
+    Ok(
+        if text("title") == entry.title
+            && text("summary") == entry.summary
+            && text("url") == entry.url
+        {
+            CatalogueClaim::Ours
+        } else {
+            CatalogueClaim::Taken
+        },
+    )
+}
+
+/// How many suffixed ids an accept tries before giving up on a title.
+const MAX_ID_SUFFIX: usize = 50;
+
+/// The ids an entry may be published under, in order of preference: the
+/// slug itself, then `slug-2`, `slug-3` and so on.
+pub fn id_candidates(base: &str) -> impl Iterator<Item = String> + '_ {
+    std::iter::once(base.to_string())
+        .chain((2..=MAX_ID_SUFFIX).map(move |suffix| format!("{base}-{suffix}")))
+}
+
+/// Why committing `entry` would break the catalogue repository's own check,
+/// if it would.
+///
+/// A mirror of the per-entry rules in `.github/validate.mjs` in the catalogue
+/// repository. Without it an accepted submission with no link, a plain `http`
+/// link or an inverted rating band went straight in, and the repository's CI
+/// went red for whoever pushed next. Checked before the first commit, so a
+/// refusal changes nothing. The rules the client cannot break by construction
+/// (a kind, level or topic outside the known set, `related` ids) are not
+/// repeated, and keeping the rest in step with that script is part of changing
+/// it.
+pub fn entry_problem(entry: &TrainingResource) -> Option<String> {
+    if entry.id.is_empty() {
+        return Some("the entry has no id".into());
+    }
+    let id_shape = entry
+        .id
+        .chars()
+        .next()
+        .is_some_and(|first| first.is_ascii_lowercase() || first.is_ascii_digit())
+        && entry
+            .id
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+    if !id_shape {
+        return Some(format!(
+            "the id \"{}\" should be lowercase letters, digits and hyphens",
+            entry.id
+        ));
+    }
+    if entry.title.trim().is_empty() {
+        return Some("the entry has no title".into());
+    }
+    if !entry.url.is_empty() && !ordinary_https(&entry.url) {
+        return Some(format!(
+            "the link \"{}\" must be an ordinary https:// address",
+            entry.url
+        ));
+    }
+    if entry.url.is_empty() && entry.kind != TrainingKind::Lesson && entry.tutorial_id.is_none() {
+        return Some(
+            "the entry has neither a link nor a guide, so nothing would happen when a reader opens it"
+                .into(),
+        );
+    }
+    if let (Some(min), Some(max)) = (entry.rating_min, entry.rating_max) {
+        if min > max {
+            return Some(format!("the rating range {min} to {max} is inverted"));
+        }
+    }
+    None
+}
+
+/// `^https://[^\s/][^\s]*$`, the validator's own test for a link.
+fn ordinary_https(url: &str) -> bool {
+    url.strip_prefix("https://").is_some_and(|rest| {
+        rest.chars()
+            .next()
+            .is_some_and(|first| first != '/' && !first.is_whitespace())
+            && !rest.chars().any(char::is_whitespace)
+    })
+}
+
 /// The commit message an accept writes.
 pub fn accept_commit_message(entry: &TrainingResource, number: i32) -> String {
     format!(
@@ -707,6 +1228,55 @@ pub fn new_issue_url(repo: &str, title: &str, body: &str) -> String {
     )
 }
 
+/// The longest new-issue link handed to a browser, in bytes.
+///
+/// GitHub answers a prefilled link much past 8 KB with an error page, and some
+/// browsers and proxies give up sooner. The whole submission travels in the
+/// query string, percent-encoded at up to nine bytes per character of Cyrillic,
+/// so a guide of a few kilobytes was enough to make the link fail.
+pub const MAX_ISSUE_URL: usize = 6000;
+
+/// What stands in for the guide when the whole submission does not fit in a
+/// link. English, like everything else written into the repository.
+pub const GUIDE_TOO_LONG_NOTE: &str = "_The guide was too long to fit in a browser link. Replace this whole text with the post the FAF client copied for you, then submit._";
+
+/// A new-issue link that a browser can actually open.
+///
+/// The full body when it fits. Otherwise the same form with the guide replaced
+/// by [`GUIDE_TOO_LONG_NOTE`], so every other answer still arrives and the
+/// author pastes the post the client lets them copy; and if even that is too
+/// long (a summary with a whole guide pasted into it), the body is cut short
+/// and ends with the same note.
+fn browser_issue_url(repo: &str, title: &str, entry: &TrainingResource, body: &str) -> String {
+    let full = new_issue_url(repo, title, body);
+    if full.len() <= MAX_ISSUE_URL {
+        return full;
+    }
+
+    let short_body = submission_body(entry, GUIDE_TOO_LONG_NOTE);
+    let short = new_issue_url(repo, title, &short_body);
+    if short.len() <= MAX_ISSUE_URL {
+        return short;
+    }
+
+    let tail = format!("\n\n{GUIDE_TOO_LONG_NOTE}\n");
+    let budget = MAX_ISSUE_URL
+        .saturating_sub(new_issue_url(repo, title, "").len())
+        .saturating_sub(crate::state::percent_encode(&tail).len());
+    let mut cut = String::new();
+    let mut used = 0;
+    for character in short_body.chars() {
+        let cost = crate::state::percent_encode(character.encode_utf8(&mut [0; 4])).len();
+        if used + cost > budget {
+            break;
+        }
+        used += cost;
+        cut.push(character);
+    }
+    cut.push_str(&tail);
+    new_issue_url(repo, title, &cut)
+}
+
 /// The title an issue carries, so both submission paths agree on it.
 pub fn submission_title(entry: &TrainingResource) -> String {
     format!("{SUBMISSION_PREFIX} {}", entry.title.trim())
@@ -718,13 +1288,29 @@ pub fn submission_title(entry: &TrainingResource) -> String {
 /// the key `related` points at, so it has to survive both a filesystem and a
 /// URL. A title with nothing usable in it falls back to something addressable
 /// rather than to an empty id, which would be dropped on the way in.
+///
+/// Cyrillic and accented Latin letters are transliterated rather than dropped:
+/// a Russian title used to lose every letter and become `untitled-guide`, the
+/// same id as every other Russian title.
 pub fn slug(title: &str) -> String {
+    slug_or(title, "untitled-guide")
+}
+
+/// [`slug`], with the caller's fallback for a title with nothing usable in it.
+pub fn slug_or(title: &str, fallback: &str) -> String {
     let mut out = String::with_capacity(title.len());
     let mut last_dash = true;
-    for character in title.chars() {
+    for character in title.chars().flat_map(char::to_lowercase) {
         if character.is_ascii_alphanumeric() {
-            out.extend(character.to_lowercase());
+            out.push(character);
             last_dash = false;
+        } else if let Some(latin) = transliterate(character) {
+            // A hard or soft sign has no Latin letter and is simply skipped,
+            // without splitting the word around it.
+            if !latin.is_empty() {
+                out.push_str(latin);
+                last_dash = false;
+            }
         } else if !last_dash {
             out.push('-');
             last_dash = true;
@@ -732,7 +1318,7 @@ pub fn slug(title: &str) -> String {
     }
     let trimmed = out.trim_matches('-').to_string();
     if trimmed.is_empty() {
-        "untitled-guide".to_string()
+        fallback.to_string()
     } else {
         // Long enough for any real title, short enough to stay a sane file name.
         trimmed
@@ -742,6 +1328,64 @@ pub fn slug(title: &str) -> String {
             .trim_matches('-')
             .to_string()
     }
+}
+
+/// A lowercase letter's Latin spelling, for the alphabets the catalogue's
+/// authors actually write in (the client ships Russian, Polish, German, French
+/// and Spanish). Russian follows the common passport-style romanisation.
+/// `None` for anything else, which becomes a word break.
+fn transliterate(character: char) -> Option<&'static str> {
+    Some(match character {
+        'а' => "a",
+        'б' => "b",
+        'в' => "v",
+        'г' | 'ґ' => "g",
+        'д' => "d",
+        'е' | 'ё' | 'э' => "e",
+        'є' => "ye",
+        'ж' => "zh",
+        'з' => "z",
+        'и' | 'і' => "i",
+        'ї' => "yi",
+        'й' | 'ы' => "y",
+        'к' => "k",
+        'л' => "l",
+        'м' => "m",
+        'н' => "n",
+        'о' => "o",
+        'п' => "p",
+        'р' => "r",
+        'с' => "s",
+        'т' => "t",
+        'у' => "u",
+        'ф' => "f",
+        'х' => "kh",
+        'ц' => "ts",
+        'ч' => "ch",
+        'ш' => "sh",
+        'щ' => "shch",
+        'ъ' | 'ь' => "",
+        'ю' => "yu",
+        'я' => "ya",
+        'à' | 'á' | 'â' | 'ã' | 'ä' | 'å' | 'ā' | 'ą' => "a",
+        'æ' => "ae",
+        'ç' | 'ć' | 'č' => "c",
+        'ď' | 'đ' => "d",
+        'è' | 'é' | 'ê' | 'ë' | 'ē' | 'ę' | 'ě' => "e",
+        'ì' | 'í' | 'î' | 'ï' => "i",
+        'ł' => "l",
+        'ñ' | 'ń' | 'ň' => "n",
+        'ò' | 'ó' | 'ô' | 'õ' | 'ö' | 'ø' => "o",
+        'œ' => "oe",
+        'ř' => "r",
+        'ś' | 'š' => "s",
+        'ß' => "ss",
+        'ť' => "t",
+        'ù' | 'ú' | 'û' | 'ü' | 'ů' => "u",
+        'ý' | 'ÿ' => "y",
+        'ź' | 'ż' | 'ž' => "z",
+        _ => return None,
+    })
 }
 
 /// Turn what the submission form collected into a catalogue entry.
@@ -780,7 +1424,10 @@ pub fn entry_from_draft(draft: &ContributionDraft, author: &str) -> TrainingReso
 /// Compose the submission as a GitHub issue, prefilled.
 ///
 /// The same body the API path sends, so a submission opened in a browser is
-/// byte for byte one the queue can accept in a single step.
+/// byte for byte one the queue can accept in a single step. Unless it is too
+/// long for a link, in which case the link carries a shortened body and the
+/// post's own body stays whole, for the author to paste (see
+/// [`browser_issue_url`]).
 pub fn compose_submission(draft: &ContributionDraft, author: &str, repo: &str) -> ForumPost {
     let entry = entry_from_draft(draft, author);
     let title = submission_title(&entry);
@@ -789,7 +1436,7 @@ pub fn compose_submission(draft: &ContributionDraft, author: &str, repo: &str) -
         url: if repo.is_empty() {
             String::new()
         } else {
-            new_issue_url(repo, &title, &body)
+            browser_issue_url(repo, &title, &entry, &body)
         },
         title,
         body,
@@ -827,8 +1474,14 @@ pub enum GuidesCommand {
     /// The draft travels rather than a finished entry: deriving one from the
     /// other (the id from the title, the numbers out of text fields) is a rule,
     /// and a rule the frontend also knew would be a rule written twice.
+    ///
+    /// The pictures travel beside it and only here, once: the draft is handed
+    /// to the state after every pause in typing, and megabytes of base64 on
+    /// each of those would be the whole cost of the form.
     Submit {
         draft: Box<ContributionDraft>,
+        #[serde(default)]
+        images: Vec<DraftImage>,
     },
 }
 
@@ -1169,6 +1822,22 @@ mod tests {
     }
 
     #[test]
+    fn a_guide_heading_that_names_a_field_neither_cuts_the_guide_nor_fills_the_field() {
+        // `### Summary` inside a guide used to end the guide there, and a
+        // `### Type` inside it answered the real Type field.
+        let guide = "Intro.\n\n### Summary\n\nWhat this guide covers.\n\n### Type\n\nVideo\n\n### FAF name\n\nNobody";
+        let body = submission_body(&entry(), guide);
+
+        assert_eq!(guide_from_body(&body).as_deref(), Some(guide));
+        let read = entry_from_body(&submission_title(&entry()), &body).expect("it parses");
+        assert_eq!(read.summary, "Four mexes, then land.");
+        assert_eq!(read.kind, TrainingKind::BuildOrder);
+        assert_eq!(read.author, "Someone");
+        assert_eq!(read.url, "https://example.invalid/guide");
+        assert_eq!(prose_from_body(&body), "Four mexes, then land.");
+    }
+
+    #[test]
     fn the_submission_form_becomes_an_entry_the_queue_can_accept() {
         let draft = ContributionDraft {
             title: "How to defend early T1 aggression".into(),
@@ -1250,9 +1919,11 @@ mod tests {
     }
 
     #[test]
-    fn re_accepting_a_corrected_submission_replaces_rather_than_duplicates() {
-        // Two entries under one id would make `related` ambiguous, and a
-        // corrected resubmission is the ordinary case, not an edge one.
+    fn writing_an_id_that_is_already_present_replaces_rather_than_duplicates() {
+        // Two entries under one id would make `related` ambiguous. Accepting
+        // picks a free id first (see `catalogue_claim`), so the only entry
+        // this ever replaces is the same submission's, written by an accept
+        // that failed after its commit.
         let current = r#"{"resources":[{"id":"setons-t1-build-order","title":"Old"}]}"#;
         let written = catalogue_with(current, &entry()).unwrap();
         let document: serde_json::Value = serde_json::from_str(&written).unwrap();
@@ -1303,6 +1974,193 @@ mod tests {
             accept_commit_message(&entry(), 12),
             "Add \"Seton's Clutch T1 build order\" to the training catalogue (#12)"
         );
+    }
+
+    #[test]
+    fn an_id_held_by_another_entry_is_taken_and_our_own_is_recognised() {
+        // The same title used to replace the first entry and its guide file.
+        let current = r#"{"resources":[
+            {"id":"setons-t1-build-order","title":"Somebody else's","summary":"x","url":"https://a.example/x"}
+        ]}"#;
+        assert_eq!(
+            catalogue_claim(current, &entry()),
+            Ok(CatalogueClaim::Taken)
+        );
+
+        let next = TrainingResource {
+            id: "setons-t1-build-order-2".into(),
+            ..entry()
+        };
+        assert_eq!(catalogue_claim(current, &next), Ok(CatalogueClaim::Free));
+
+        // An accept that committed and then failed at the comment finds its
+        // own entry on the retry and reuses the id instead of adding `-2`.
+        let written = catalogue_with(r#"{"resources":[]}"#, &entry()).unwrap();
+        assert_eq!(
+            catalogue_claim(&written, &entry()),
+            Ok(CatalogueClaim::Ours)
+        );
+        // Including when somebody else is the one finishing it.
+        let other_approver = TrainingResource {
+            approved_by: "someone-else".into(),
+            ..entry()
+        };
+        assert_eq!(
+            catalogue_claim(&written, &other_approver),
+            Ok(CatalogueClaim::Ours)
+        );
+
+        assert!(catalogue_claim("{not json", &entry()).is_err());
+    }
+
+    #[test]
+    fn suffixed_ids_follow_the_slug_in_order() {
+        let ids: Vec<String> = id_candidates("guide").take(3).collect();
+        assert_eq!(ids, vec!["guide", "guide-2", "guide-3"]);
+        assert_eq!(id_candidates("guide").count(), 50, "bounded");
+    }
+
+    #[test]
+    fn a_cyrillic_title_gets_an_id_of_its_own() {
+        // Every Russian title used to collapse to `untitled-guide`.
+        assert_eq!(slug("Гайд по модам"), "gayd-po-modam");
+        assert_eq!(slug("Щит и объём"), "shchit-i-obem");
+        assert_eq!(slug("Łódź für Anfänger"), "lodz-fur-anfanger");
+        assert_eq!(
+            slug("Modern UI Mods Guide 2026 [EN] [RU]"),
+            "modern-ui-mods-guide-2026-en-ru"
+        );
+        // Nothing usable at all still falls back to something addressable,
+        // and with an issue number the fallback is unique to the issue.
+        assert_eq!(slug("!!!"), "untitled-guide");
+        let read = entry_from_issue(42, "Training submission: !!!", "### Summary\n\nx\n")
+            .expect("it parses");
+        assert_eq!(read.id, "guide-42");
+        let named = entry_from_issue(42, "Training submission: Гайд", "### Summary\n\nx\n")
+            .expect("it parses");
+        assert_eq!(named.id, "gayd");
+    }
+
+    #[test]
+    fn an_entry_the_catalogue_check_would_refuse_is_refused_first() {
+        // Mirrors `.github/validate.mjs`: without this the repository's CI
+        // went red after an accept.
+        assert_eq!(entry_problem(&entry()), None);
+
+        let no_link = TrainingResource {
+            url: String::new(),
+            ..entry()
+        };
+        assert!(entry_problem(&no_link).unwrap().contains("neither a link"));
+
+        let plain_http = TrainingResource {
+            url: "http://example.invalid/guide".into(),
+            ..entry()
+        };
+        assert!(entry_problem(&plain_http).unwrap().contains("https://"));
+
+        let spaced = TrainingResource {
+            url: "https://example.invalid/a guide".into(),
+            ..entry()
+        };
+        assert!(entry_problem(&spaced).is_some());
+
+        let inverted = TrainingResource {
+            rating_min: Some(1500),
+            rating_max: Some(800),
+            ..entry()
+        };
+        assert!(entry_problem(&inverted).unwrap().contains("inverted"));
+
+        let bad_id = TrainingResource {
+            id: "-Bad".into(),
+            ..entry()
+        };
+        assert!(entry_problem(&bad_id).is_some());
+
+        let untitled = TrainingResource {
+            title: "  ".into(),
+            ..entry()
+        };
+        assert!(entry_problem(&untitled).is_some());
+
+        // A lesson is launched rather than opened and needs no link.
+        let lesson = TrainingResource {
+            url: String::new(),
+            kind: TrainingKind::Lesson,
+            ..entry()
+        };
+        assert_eq!(entry_problem(&lesson), None);
+    }
+
+    #[test]
+    fn a_submission_is_recognised_without_its_label() {
+        // GitHub drops `labels=` from a prefilled link for anybody who is not
+        // a collaborator, which is every player. Issues #10 and #11 on the
+        // catalogue repository arrived exactly like this and were invisible.
+        assert!(is_submission_issue(
+            "Training submission: Modern UI Mods Guide 2026 [EN] [RU]",
+            &[]
+        ));
+        assert!(is_submission_issue("  training submission: lower", &[]));
+        assert!(is_submission_issue("Something else", &[SUBMISSION_LABEL]));
+        assert!(!is_submission_issue("The catalogue has a typo", &["bug"]));
+        assert!(
+            !is_submission_issue("Тренировка", &[]),
+            "short multibyte title"
+        );
+    }
+
+    #[test]
+    fn the_comments_carry_the_markers_that_make_a_retry_safe() {
+        assert!(acceptance_comment("an-id").contains("`an-id`"));
+        assert!(acceptance_comment("an-id").contains(ACCEPT_MARKER));
+        assert!(rejection_comment(RejectReason::Duplicate, "").contains(DECLINE_MARKER));
+    }
+
+    #[test]
+    fn a_guide_too_long_for_a_link_still_opens_a_working_one() {
+        let draft = ContributionDraft {
+            title: "A long guide".into(),
+            summary: "Short pitch.".into(),
+            url: String::new(),
+            body: "Очень длинный гайд. ".repeat(400),
+            ..ContributionDraft::default()
+        };
+        let post = compose_submission(&draft, "someone", GUIDES_REPO);
+        assert!(post.url.len() <= MAX_ISSUE_URL, "{} bytes", post.url.len());
+        assert!(post
+            .url
+            .contains(&crate::state::percent_encode("Short pitch.")));
+        assert!(post
+            .url
+            .contains(&crate::state::percent_encode(GUIDE_TOO_LONG_NOTE)));
+        // The post the author copies is still the whole thing.
+        assert!(post.body.contains(draft.body.trim()));
+
+        // Even a summary that cannot fit is cut to a link that opens.
+        let huge = ContributionDraft {
+            summary: "Ж".repeat(5000),
+            ..draft.clone()
+        };
+        let post = compose_submission(&huge, "someone", GUIDES_REPO);
+        assert!(post.url.len() <= MAX_ISSUE_URL, "{} bytes", post.url.len());
+        assert!(post
+            .url
+            .contains(&crate::state::percent_encode(GUIDE_TOO_LONG_NOTE)));
+
+        // A short one is untouched.
+        let short = ContributionDraft {
+            body: "Four mexes.".into(),
+            ..draft
+        };
+        let post = compose_submission(&short, "someone", GUIDES_REPO);
+        assert!(post
+            .url
+            .contains(&crate::state::percent_encode("Four mexes.")));
+        assert!(!post
+            .url
+            .contains(&crate::state::percent_encode(GUIDE_TOO_LONG_NOTE)));
     }
 
     // -- rejections --------------------------------------------------------
@@ -1564,5 +2422,169 @@ mod tests {
         );
         reduce(&mut state, &GuidesEvent::SubmitReset);
         assert_eq!(state.submit, SubmitStatus::Idle);
+    }
+
+    // -- pictures and pull requests ----------------------------------------
+
+    const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13];
+
+    fn draft_image(name: &str, bytes: &[u8]) -> DraftImage {
+        use base64::Engine as _;
+        DraftImage {
+            name: name.into(),
+            data: base64::engine::general_purpose::STANDARD.encode(bytes),
+        }
+    }
+
+    #[test]
+    fn a_picture_is_what_its_bytes_say_not_what_its_name_says() {
+        assert_eq!(image_kind(PNG), Some("png"));
+        assert_eq!(image_kind(&[0xFF, 0xD8, 0xFF, 0xE0]), Some("jpg"));
+        assert_eq!(image_kind(b"GIF89a...."), Some("gif"));
+        assert_eq!(image_kind(b"RIFF\0\0\0\0WEBPVP8 "), Some("webp"));
+        assert_eq!(image_kind(b"<svg xmlns="), None, "no SVG: it is a document");
+        assert_eq!(image_kind(b""), None);
+
+        let body = "![a](images/map.jpg)";
+        let refused = read_draft_images(body, &[draft_image("map.jpg", PNG)]).unwrap_err();
+        assert!(refused.contains(".png"), "{refused}");
+    }
+
+    #[test]
+    fn only_the_pictures_the_guide_shows_are_committed() {
+        // Attached, then deleted from the text: nothing would ever show it.
+        let body = "Intro\n\n![The opening](images/opening.png)\n\n<img src=\"images/icon.png\" width=\"20\"/>";
+        let read = read_draft_images(
+            body,
+            &[
+                draft_image("opening.png", PNG),
+                draft_image("icon.png", PNG),
+                draft_image("forgotten.png", PNG),
+            ],
+        )
+        .expect("they read");
+        assert_eq!(
+            read.iter()
+                .map(|image| image.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["opening.png", "icon.png"]
+        );
+    }
+
+    #[test]
+    fn a_picture_name_has_to_be_one_a_repository_and_a_url_survive() {
+        let body = "![x](images/Map Shot.png)";
+        assert!(read_draft_images(body, &[draft_image("Map Shot.png", PNG)]).is_err());
+        assert!(read_draft_images("", &[draft_image("../catalogue.png", PNG)]).is_err());
+        assert!(read_draft_images("", &[draft_image("noextension", PNG)]).is_err());
+        let twice = [draft_image("a.png", PNG), draft_image("a.png", PNG)];
+        assert!(read_draft_images("![](images/a.png)", &twice).is_err());
+    }
+
+    #[test]
+    fn too_many_or_too_large_pictures_are_refused_before_anything_is_sent() {
+        let many: Vec<DraftImage> = (0..=MAX_IMAGES)
+            .map(|index| draft_image(&format!("p{index}.png"), PNG))
+            .collect();
+        assert!(read_draft_images("", &many).is_err());
+
+        let mut large = PNG.to_vec();
+        large.resize(MAX_IMAGE_BYTES + 1, 0);
+        let refused = read_draft_images("![](images/big.png)", &[draft_image("big.png", &large)])
+            .unwrap_err();
+        assert!(refused.contains("MB"), "{refused}");
+    }
+
+    #[test]
+    fn placing_pictures_points_them_at_the_guide_s_own_folder() {
+        let body = "![The opening](images/opening.png) and images/opening.png in prose, \
+                    <img src=\"images/icon.png\" width=\"20\"/>, ![own](images/elsewhere.png)";
+        let placed = place_images(
+            body,
+            "setons-air",
+            &["opening.png".to_string(), "icon.png".to_string()],
+        );
+        assert_eq!(
+            placed,
+            "![The opening](images/setons-air/opening.png) and images/opening.png in prose, \
+             <img src=\"images/setons-air/icon.png\" width=\"20\"/>, ![own](images/elsewhere.png)"
+        );
+        assert_eq!(
+            guide_image_path("setons-air", "opening.png"),
+            "guides/images/setons-air/opening.png"
+        );
+    }
+
+    #[test]
+    fn a_pull_request_is_one_guide_and_its_pictures_or_it_needs_a_hand() {
+        let files = |paths: &[&str]| paths.iter().map(|p| p.to_string()).collect::<Vec<_>>();
+
+        let clean = files(&[
+            "guides/setons-air.md",
+            "guides/images/setons-air/opening.png",
+            "guides/images/setons-air/push.jpg",
+        ]);
+        let id = submitted_guide_id(&clean);
+        assert_eq!(id.as_deref(), Some("setons-air"));
+        assert!(foreign_files(id.as_deref(), &clean).is_empty());
+
+        // A merge takes every file, so anything else turns the one press off.
+        let sneaky = files(&[
+            "guides/setons-air.md",
+            ".github/workflows/validate.yml",
+            "catalogue.json",
+            "guides/images/other-guide/x.png",
+            "guides/images/setons-air/script.js",
+        ]);
+        assert_eq!(
+            foreign_files(Some("setons-air"), &sneaky),
+            files(&[
+                ".github/workflows/validate.yml",
+                "catalogue.json",
+                "guides/images/other-guide/x.png",
+                "guides/images/setons-air/script.js",
+            ])
+        );
+
+        // Two guides, or none, is not a submission.
+        assert_eq!(
+            submitted_guide_id(&files(&["guides/a.md", "guides/b.md"])),
+            None
+        );
+        assert_eq!(submitted_guide_id(&files(&["guides/images/a/x.png"])), None);
+        assert_eq!(foreign_files(None, &files(&["guides/a.md"])).len(), 1);
+    }
+
+    #[test]
+    fn a_pull_request_with_foreign_files_or_no_guide_is_not_acceptable_in_one_press() {
+        let mut row = GuideSubmission {
+            number: 9,
+            entry: Some(entry()),
+            guide: Some("# Guide\n".into()),
+            pull: Some(SubmissionPull {
+                head_sha: "abc".into(),
+                ..SubmissionPull::default()
+            }),
+            ..GuideSubmission::default()
+        };
+        assert!(row.is_acceptable());
+
+        if let Some(pull) = row.pull.as_mut() {
+            pull.foreign = vec!["catalogue.json".into()];
+        }
+        assert!(!row.is_acceptable());
+
+        if let Some(pull) = row.pull.as_mut() {
+            pull.foreign.clear();
+        }
+        row.guide = None;
+        assert!(!row.is_acceptable(), "the guide could not be read");
+
+        // An issue needs only its entry, as before.
+        let issue = GuideSubmission {
+            entry: Some(entry()),
+            ..GuideSubmission::default()
+        };
+        assert!(issue.is_acceptable());
     }
 }

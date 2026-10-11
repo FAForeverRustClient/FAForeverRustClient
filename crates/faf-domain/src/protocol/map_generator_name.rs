@@ -30,6 +30,8 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use super::map_generator::{GenerationType, GeneratorOptions};
+
 /// Density resolution the generator discretises to (`NUM_BINS`).
 ///
 /// Densities never travel as raw percentages: they are binned to one of 127
@@ -230,6 +232,17 @@ pub struct DecodedMapName {
     /// numbers across the JS boundary, and because a formatted instant is what
     /// the caller wants anyway.
     pub generated_at: Option<String>,
+    /// The generator settings this map was made with, ready to be saved as a
+    /// preset (#421): size, spawns, teams, symmetry, style and densities, or
+    /// the visibility preset of a tournament/blind/unexplored map. Never the
+    /// seed or the release, because a preset is a recipe for *new* maps.
+    ///
+    /// `None` when the name does not carry the whole recipe: no option bytes
+    /// at all (the triple would only be the generator's defaults, guessed),
+    /// an ordinal from a newer generator than this client's tables, or a
+    /// layout this decoder does not recognise. Half a recipe saved as if it
+    /// were the whole one would generate different maps without saying so.
+    pub options: Option<GeneratorOptions>,
 }
 
 impl DecodedMapName {
@@ -307,11 +320,14 @@ pub fn decode(map_name: &str) -> Option<DecodedMapName> {
         style: None,
         visibility: None,
         generated_at: None,
+        options: None,
     };
 
     let Some(option_segment) = segments.get(5) else {
         return Some(decoded);
     };
+    // Cleared below by anything that leaves part of the recipe unknown.
+    let mut recoverable = true;
     let options = decode_base32(option_segment)?;
     // The lobby server hand-writes map names to steer generation, so the
     // option bytes are not guaranteed present: each one is read only if it is
@@ -331,6 +347,7 @@ pub fn decode(map_name: &str) -> Option<DecodedMapName> {
         // lives in its own trailing segment.
         4 if segments.len() >= 7 => {
             decoded.visibility = lookup(&VISIBILITIES, options[3]);
+            recoverable &= decoded.visibility.is_some();
             decoded.generated_at = read_long(&decode_base32(segments[6])?)
                 .and_then(|seconds| chrono::DateTime::from_timestamp(seconds, 0))
                 .map(|instant| instant.to_rfc3339());
@@ -340,6 +357,7 @@ pub fn decode(map_name: &str) -> Option<DecodedMapName> {
         len if len > 3 => {
             if options[3] as i8 >= 0 {
                 decoded.symmetry = lookup_symmetry(options[3]);
+                recoverable &= decoded.symmetry.is_some();
             }
             decoded.style = match len {
                 5 => Some(DecodedStyle::Predefined {
@@ -353,13 +371,72 @@ pub fn decode(map_name: &str) -> Option<DecodedMapName> {
                     reclaim_density: normalize_bin(options[8]),
                     resource_density: normalize_bin(options[9]),
                 }),
-                _ => None,
+                // Only a symmetry: the generator was left to pick the style.
+                4 => None,
+                _ => {
+                    recoverable = false;
+                    None
+                }
             };
         }
+        // Fewer than the three bytes of the basic triple.
+        len if len < 3 => recoverable = false,
         _ => {}
     }
 
+    if recoverable {
+        decoded.options = recover_options(&decoded);
+    }
     Some(decoded)
+}
+
+/// The generator options that make maps like this one, or `None` when an
+/// ordinal was too new for this client's tables to name.
+///
+/// List fields carry a single entry rather than the single-value fields being
+/// set, because the lists are what the Generate map dialog edits: a preset
+/// loaded there shows its choices instead of hiding them in fields the dialog
+/// has no control for. Densities go back to the bin units the sliders use,
+/// as a range of one value.
+fn recover_options(decoded: &DecodedMapName) -> Option<GeneratorOptions> {
+    let generation_type = match decoded.visibility.as_deref() {
+        None => GenerationType::Casual,
+        Some("TOURNAMENT") => GenerationType::Tournament,
+        Some("BLIND") => GenerationType::Blind,
+        Some("UNEXPLORED") => GenerationType::Unexplored,
+        Some(_) => return None,
+    };
+    let mut options = GeneratorOptions {
+        spawn_count: Some(decoded.spawn_count),
+        map_size: Some(decoded.map_size),
+        num_teams: Some(decoded.num_teams),
+        generation_type,
+        symmetries: decoded.symmetry.iter().cloned().collect(),
+        ..GeneratorOptions::default()
+    };
+    let bin = |density: f32| Some(f32::from(bin_percentage(density)));
+    match &decoded.style {
+        None => {}
+        Some(DecodedStyle::Predefined { style }) => options.styles = vec![style.clone()?],
+        Some(DecodedStyle::Custom {
+            terrain_style,
+            texture_style,
+            resource_style,
+            prop_style,
+            reclaim_density,
+            resource_density,
+        }) => {
+            options.terrain_styles = vec![terrain_style.clone()?];
+            options.texture_styles = vec![texture_style.clone()?];
+            options.resource_styles = vec![resource_style.clone()?];
+            options.prop_styles = vec![prop_style.clone()?];
+            options.reclaim_density_min = bin(*reclaim_density);
+            options.reclaim_density_max = bin(*reclaim_density);
+            options.resource_density_min = bin(*resource_density);
+            options.resource_density_max = bin(*resource_density);
+        }
+    }
+    Some(options)
 }
 
 fn lookup_symmetry(ordinal: u8) -> Option<String> {
@@ -498,6 +575,69 @@ mod tests {
         );
         assert!((resource_density - 1.0).abs() < 1e-6, "{resource_density}");
         assert_eq!(bin_percentage(reclaim_density), 64);
+    }
+
+    #[test]
+    fn a_predefined_style_name_recovers_its_settings_as_a_preset() {
+        // #421: the preset is the recipe, not the map, so no seed or release.
+        let options = decode("neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj")
+            .unwrap()
+            .options
+            .expect("a predefined-style name carries the whole recipe");
+        assert_eq!(options.map_size, Some(512));
+        assert_eq!(options.spawn_count, Some(6));
+        assert_eq!(options.num_teams, Some(2));
+        assert_eq!(options.symmetries, vec!["POINT2".to_string()]);
+        assert_eq!(options.styles, vec!["MOUNTAIN_RANGE".to_string()]);
+        assert_eq!(options.generation_type, GenerationType::Casual);
+        assert!(options.seed.is_empty());
+        assert_eq!(options.version, None);
+    }
+
+    #[test]
+    fn a_custom_style_name_recovers_component_styles_and_density_bins() {
+        let options = decode("neroxis_map_generator_1.22.1_mmyctirfxqlx6_baeaj7yja4aqoxza")
+            .unwrap()
+            .options
+            .expect("a custom-style name carries the whole recipe");
+        assert_eq!(options.spawn_count, Some(8));
+        assert_eq!(options.num_teams, Some(4));
+        // The generator chose the symmetry, so the preset leaves it free.
+        assert!(options.symmetries.is_empty());
+        assert!(options.styles.is_empty());
+        assert_eq!(options.terrain_styles, vec!["FLOODED".to_string()]);
+        assert_eq!(options.texture_styles, vec!["SYRTIS".to_string()]);
+        assert_eq!(options.resource_styles, vec!["LOW_MEX".to_string()]);
+        assert_eq!(options.prop_styles, vec!["ROCK_FIELD".to_string()]);
+        // 0.75 and 0.25 are bins 95 and 32: the units the sliders speak.
+        assert_eq!(options.reclaim_density_min, Some(95.0));
+        assert_eq!(options.reclaim_density_max, Some(95.0));
+        assert_eq!(options.resource_density_min, Some(32.0));
+        assert_eq!(options.resource_density_max, Some(32.0));
+    }
+
+    #[test]
+    fn a_tournament_name_recovers_as_a_tournament_preset() {
+        let options = decode("neroxis_map_generator_1.22.1_wu7icwk3azjf4_ayeaeaa_aaaaaadkqecre")
+            .unwrap()
+            .options
+            .expect("size, spawns, teams and visibility are the whole recipe");
+        assert_eq!(options.generation_type, GenerationType::Tournament);
+        assert_eq!(options.map_size, Some(512));
+    }
+
+    #[test]
+    fn a_name_that_hides_part_of_its_recipe_offers_no_preset() {
+        // Only a seed: size, spawns and teams would be guesses.
+        let seed_only = decode("neroxis_map_generator_1.22.1_aaaaaaaaaayds").unwrap();
+        assert!(seed_only.options.is_none());
+        // A style ordinal newer than this client's table (ordinal 250).
+        let unknown_style = decode("neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeah2").unwrap();
+        assert_eq!(
+            unknown_style.style,
+            Some(DecodedStyle::Predefined { style: None })
+        );
+        assert!(unknown_style.options.is_none());
     }
 
     #[test]

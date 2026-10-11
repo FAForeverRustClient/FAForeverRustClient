@@ -146,7 +146,7 @@ export function ChannelTabs({
               {channel.unread > 0 && (
                 <span
                   className={`section-tab-count${channel.unreadMentions > 0 ? " is-mention" : ""}`}
-                  aria-label={`${channel.unread} unread`}
+                  aria-label={t("chat.channels.unread", { count: channel.unread })}
                 >
                   {channel.unread > 99 ? "99+" : channel.unread}
                 </span>
@@ -156,8 +156,8 @@ export function ChannelTabs({
               <button
                 type="button"
                 className="chat-tab-close"
-                aria-label={`Leave ${channel.name}`}
-                title={`Leave ${channel.name}`}
+                aria-label={t("chat.channels.leave", { channel: partyChannelLabel(channel.name) })}
+                title={t("chat.channels.leave", { channel: partyChannelLabel(channel.name) })}
                 onClick={(e) => {
                   e.stopPropagation();
                   onLeave(channel.name);

@@ -55,7 +55,7 @@ impl MatchStatus {
 /// Which part of the event a match belongs to.
 ///
 /// An explicit field here, where Challonge used the sign of the round number.
-/// The server writes `wb` / `lb` / `gf` / `sw` / `ffa`.
+/// The server writes `wb` / `lb` / `gf` / `3p` / `sw` / `ffa`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum BracketSide {
@@ -64,6 +64,11 @@ pub enum BracketSide {
     Losers,
     /// The bout between the two bracket winners.
     GrandFinal,
+    /// The two beaten semi-finalists of a single elimination, playing for 3rd.
+    ///
+    /// Its own side on the wire, so nothing that walks the winners bracket
+    /// takes it for a second final: it carries the final's round number.
+    ThirdPlace,
     /// A Swiss round, which has no elimination tree at all.
     Swiss,
     /// A free-for-all round: many entrants, no two sides.
@@ -75,6 +80,7 @@ impl BracketSide {
         match raw.trim().to_ascii_lowercase().as_str() {
             "l" | "lb" | "losers" | "lower" => Self::Losers,
             "gf" | "grandfinal" | "grand_final" => Self::GrandFinal,
+            "3p" => Self::ThirdPlace,
             "sw" | "swiss" => Self::Swiss,
             "ffa" => Self::FreeForAll,
             _ => Self::Winners,
@@ -88,10 +94,65 @@ impl BracketSide {
             Self::Winners => "wb",
             Self::Losers => "lb",
             Self::GrandFinal => "gf",
+            Self::ThirdPlace => "3p",
             Self::Swiss => "sw",
             Self::FreeForAll => "ffa",
         }
     }
+}
+
+/// Who is still standing in a running elimination (`survivors`).
+///
+/// Split the way the service splits it: the winners side, and in a double
+/// elimination the losers side too. Each in seed order, by team id.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Survivors {
+    pub winners: Vec<String>,
+    pub losers: Vec<String>,
+}
+
+impl Survivors {
+    /// How many are still standing, on both sides.
+    pub fn alive(&self) -> i32 {
+        i32::try_from(self.winners.len() + self.losers.len()).unwrap_or(i32::MAX)
+    }
+}
+
+/// How an event was stopped before its final, where it was (`earlyFinish`).
+///
+/// No champion is recorded: the standings are locked where they stood, which
+/// is what a qualifier that only has to find its top four wants.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EarlyFinish {
+    /// Unix seconds.
+    pub at: Option<u32>,
+    /// The organiser who stopped it, or the service's own name for itself.
+    pub by: String,
+    /// Whether the survivor count stopped it rather than an organiser.
+    pub automatic: bool,
+    /// The count it was set to stop at, where it stopped by itself.
+    pub target: i32,
+    /// How many were still standing, and who, by name.
+    pub alive: i32,
+    pub names: Vec<String>,
+    /// The matches that were never played (`unplayed`). `None` for a record
+    /// from before the service kept the list, where every match that had not
+    /// finished counts, as the website reads it.
+    #[serde(default)]
+    pub unplayed: Option<Vec<String>>,
+}
+
+/// The per-round best-of lists an organiser can set before the draw
+/// (`plan.roundsList`, `wbList`, `lbList`), one entry per round from round 1.
+/// A round nobody set is `None`: the list may have gaps.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PlanLists {
+    pub rounds: Vec<Option<i32>>,
+    pub winners: Vec<Option<i32>>,
+    pub losers: Vec<Option<i32>>,
 }
 
 /// One row of the standings table.
@@ -113,6 +174,281 @@ pub struct Standing {
     pub wins: i32,
     pub losses: i32,
     pub game_diff: i32,
+    /// The Swiss tiebreak "sum of the Swiss wins of every opponent this team
+    /// beat", when the event breaks ties that way; `None` everywhere else.
+    pub beaten: Option<i32>,
+}
+
+/// How a Swiss event separates equal records, after wins and fewer losses.
+///
+/// The website's per-tournament choice (`tiebreak`): game difference, which is
+/// what every event created before the choice keeps, or the sum of the scores
+/// of the opponents beaten followed by a seeded coin flip, the Invitational's
+/// rule.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum SwissTiebreak {
+    #[default]
+    GameDiff,
+    Beaten,
+}
+
+impl SwissTiebreak {
+    /// Anything but `beaten` is game difference, as the service reads it.
+    pub fn from_wire(value: &str) -> Self {
+        if value == "beaten" {
+            Self::Beaten
+        } else {
+            Self::GameDiff
+        }
+    }
+}
+
+impl SwissTiebreak {
+    /// The service's spelling (`tiebreak`).
+    pub fn as_wire(self) -> &'static str {
+        match self {
+            Self::GameDiff => "gd",
+            Self::Beaten => "beaten",
+        }
+    }
+}
+
+/// Who chooses their opponent when opponents are picked (`pickMode`).
+///
+/// - `Half`: the top half of the seeds, each from the bottom half, in seed
+///   order. The only mode for a main bracket.
+/// - `Unbeaten`: in Swiss playoffs, only those who went through without a
+///   loss; everyone else is drawn, a different record against each other
+///   where possible.
+/// - `Bottom`: the unbeaten again, but only from the lowest record through;
+///   the rest are paired by seed, best against lowest. Forces the `beaten`
+///   tiebreak.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum PickMode {
+    #[default]
+    Half,
+    Unbeaten,
+    Bottom,
+}
+
+impl PickMode {
+    /// `cleanPickMode`: anything unknown is `half`.
+    pub fn from_wire(value: &str) -> Self {
+        match value {
+            "unbeaten" => Self::Unbeaten,
+            "bottom" => Self::Bottom,
+            _ => Self::Half,
+        }
+    }
+
+    pub fn as_wire(self) -> &'static str {
+        match self {
+            Self::Half => "half",
+            Self::Unbeaten => "unbeaten",
+            Self::Bottom => "bottom",
+        }
+    }
+}
+
+/// One list of the per-round best-of plan an organiser edits before the draw
+/// (`set_plan_round_bo`): a single elimination's rounds, a double
+/// elimination's winners or losers rounds, or its grand final.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum PlanList {
+    Rounds,
+    Winners,
+    Losers,
+    GrandFinal,
+}
+
+impl PlanList {
+    pub fn as_wire(self) -> &'static str {
+        match self {
+            Self::Rounds => "rounds",
+            Self::Winners => "wb",
+            Self::Losers => "lb",
+            Self::GrandFinal => "gf",
+        }
+    }
+}
+
+/// A Swiss stage's playoff bracket as planned (`plan.stage2` and the `s2*`
+/// keys): how many go through, into what, and how long the matches are.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct StageTwoPlan {
+    /// Double elimination rather than single.
+    pub double: bool,
+    /// How many go through (`s2CutTo`).
+    pub cut_to: i32,
+    /// Every playoff match but the final (`s2Bo`).
+    pub best_of: i32,
+    /// The playoff final (`s2Final`).
+    pub final_best_of: i32,
+    /// A double bracket's grand final (`s2Gf`).
+    pub grand_final: i32,
+    /// Whether the winners finalist starts the grand final a game up.
+    pub handicap: bool,
+    /// Whether the beaten semi-finalists play for 3rd (single only).
+    pub third_place: bool,
+}
+
+/// A running Swiss stage's playoffs (`playoffs`, with `stage2`): who picks,
+/// and how far the setup has come.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Playoffs {
+    /// Who picks their opponent, or `None` for nobody: seeded as they stand.
+    pub pick: Option<PickMode>,
+    /// The playoffs exist in some form: picking, or built.
+    pub made: bool,
+    /// The playoff bracket is drawn.
+    pub built: bool,
+    /// A playoff match has begun, so nothing can be undone or redone.
+    pub locked: bool,
+    pub swiss_done: bool,
+    pub redraws: i32,
+    pub double: bool,
+    pub cut_to: i32,
+    /// The playoff field in seed order, once built.
+    pub field: Vec<String>,
+    pub third_place: bool,
+}
+
+/// One pick made in a pick phase: `picker` chose `target`.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PickMade {
+    pub picker: String,
+    pub target: String,
+}
+
+/// One line of a pick phase's log.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PickLogEntry {
+    pub by: String,
+    pub by_name: String,
+    pub target: String,
+    pub at: Option<u32>,
+    /// Made by the clock running out, with the standard matchup.
+    pub auto: bool,
+}
+
+/// A team's Swiss record as a pick phase shows it (`records`), `W-L`.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TeamRecord {
+    pub team_id: String,
+    pub record: String,
+}
+
+/// Seeds choosing their opponent (`picks`), for the main bracket or a Swiss
+/// stage's playoffs. Sent to everyone; only `my_turn` is this account's own.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PickPhase {
+    /// Still choosing; `false` once every pick is made.
+    pub open: bool,
+    pub half: i32,
+    /// The whole field, in seed order.
+    pub field: Vec<String>,
+    /// Who picks, in order.
+    pub order: Vec<String>,
+    pub picks: Vec<PickMade>,
+    /// Who can still be picked.
+    pub available: Vec<String>,
+    /// Whose pick it is.
+    pub turn: Option<String>,
+    /// Whether it is this account's team's pick.
+    pub my_turn: bool,
+    /// Seconds left on the clock when the event was read; `None` for no clock.
+    pub seconds_left: Option<i32>,
+    pub seconds_per_pick: Option<i32>,
+    pub log: Vec<PickLogEntry>,
+    /// For a Swiss stage's playoffs rather than the main bracket.
+    pub stage_two: bool,
+    /// Only the unbeaten pick (`mode: unbeaten`, which `bottom` is too).
+    pub unbeaten: bool,
+    /// The rest are paired by seed rather than drawn (`rest: seed`).
+    pub rest_seeded: bool,
+    /// Who the unbeaten pick from.
+    pub pool: Vec<String>,
+    /// The pool is the lowest record through (`poolRule: bottom`).
+    pub pool_bottom: bool,
+    pub records: Vec<TeamRecord>,
+    /// The pairs drawn for everyone else, once built.
+    pub drawn: Vec<(String, String)>,
+}
+
+/// One group table of an imported event (`importedGroups`), as its source
+/// ranked it: wins, then game difference, then name.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportedGroup {
+    pub name: String,
+    /// Matches played in the group.
+    pub played: i32,
+    pub rows: Vec<ImportedRow>,
+}
+
+/// One entrant's line in an imported group table.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportedRow {
+    pub name: String,
+    pub wins: i32,
+    pub losses: i32,
+    pub games_won: i32,
+    pub games_lost: i32,
+}
+
+/// One final placing of an imported event (`importedStandings`). Ties are the
+/// source's own and are kept.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportedPlacing {
+    pub rank: i32,
+    pub name: String,
+}
+
+/// What an organiser takes from another event's map database (`copy_maps`).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct MapPick {
+    /// Whole pools, with every map in them.
+    pub pool_ids: Vec<String>,
+    /// Single maps, on top of the pools' own.
+    pub map_ids: Vec<String>,
+}
+
+/// A Swiss stage's record cuts (`winCut`, `lossCut`): a team leaves the stage
+/// on reaching that many wins or that many losses, rather than after a fixed
+/// number of rounds. Zero is off, which is what every event without them has.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SwissCuts {
+    pub wins: i32,
+    pub losses: i32,
+}
+
+impl SwissCuts {
+    /// The round count the cuts imply, or `None` without cuts.
+    ///
+    /// The server's `swissCutRounds`, and the number `start_bracket` uses in
+    /// place of whatever round count the start dialog sends: the longest a team
+    /// can last is one short of each cut, plus the game that decides it.
+    pub fn rounds(&self) -> Option<i32> {
+        match (self.wins.max(0), self.losses.max(0)) {
+            (0, 0) => None,
+            (0, losses) => Some(losses),
+            (wins, 0) => Some(wins),
+            (wins, losses) => Some(wins + losses - 1),
+        }
+    }
 }
 
 /// Why a team sits where it does.
@@ -123,6 +459,10 @@ pub enum StandingOutcome {
     /// Not knocked out, and not the champion: still playing.
     StillIn,
     LostFinal,
+    /// Beat the other semi-final loser in the 3rd place match.
+    WonThirdPlace,
+    /// Lost the 3rd place match, and so is 4th rather than a shared 3rd.
+    LostThirdPlace,
     #[serde(rename_all = "camelCase")]
     OutIn {
         bracket: BracketSide,
@@ -240,6 +580,9 @@ pub struct TourneyMatch {
     /// The ban/pick run, when the event has vetoes and this match has reached
     /// the point of having one.
     pub veto: Option<MatchVeto>,
+    /// The faction veto, where the event runs them, in the slice this account
+    /// may see.
+    pub faction_veto: Option<MatchFactionVeto>,
     /// Everyone in this free-for-all lobby. Empty for a two-sided match, which
     /// uses `team1`/`team2` instead.
     pub entrants: Vec<String>,
@@ -253,6 +596,12 @@ pub struct TourneyMatch {
     /// confirmed. The server insists on one per newly reported game, which is
     /// what makes a bracket auditable after the fact.
     pub replay_ids: Vec<String>,
+    /// Replays of games that ended in a draw and were played again. They
+    /// score nothing, but casters and the archive want the recordings.
+    pub draw_replay_ids: Vec<String>,
+    /// The team that forfeited, when the series ended that way. A walkover
+    /// stores that side's score as -1, which is shown as FF, never as a number.
+    pub forfeit: Option<String>,
 }
 
 impl TourneyMatch {
@@ -284,6 +633,38 @@ impl TourneyMatch {
             _ => None,
         }
     }
+
+    /// Whether a game of this series has been played: it is live, or it
+    /// carries a score. The service locks a series' length from that point
+    /// (`set_match_bo`, `set_round_bo`).
+    ///
+    /// The service asks its own `games` list, which is not modelled; a live
+    /// status or a score is how that list shows from outside.
+    pub fn has_games(&self) -> bool {
+        self.status == MatchStatus::Live
+            || self.score1.is_some_and(|score| score != 0)
+            || self.score2.is_some_and(|score| score != 0)
+    }
+
+    /// Whether anything has happened in this match that taking it away would
+    /// destroy: a result, a game, a submission waiting, or a single map or
+    /// faction choice. The service's `thirdPlaceStarted`.
+    pub fn has_started(&self) -> bool {
+        if self.status == MatchStatus::Done || self.has_games() || self.pending_report.is_some() {
+            return true;
+        }
+        let map_choice = self.veto.as_ref().is_some_and(|veto| {
+            veto.step_index > 0 || !veto.banned.is_empty() || !veto.picks.is_empty()
+        });
+        // Faction choices stay secret until both sides are done, so a side
+        // that is done is the only trace a start leaves in this view.
+        let faction_choice = self.faction_veto.as_ref().is_some_and(|veto| {
+            veto.games
+                .iter()
+                .any(|game| game.team1_done || game.team2_done)
+        });
+        map_choice || faction_choice
+    }
 }
 
 /// A result one team submitted, which the other has to confirm.
@@ -301,6 +682,8 @@ pub struct PendingReport {
     /// Who submitted it, for the "waiting on X" line.
     pub by_name: String,
     pub replay_ids: Vec<String>,
+    /// Replays of drawn games the submitter attached, shown to whoever confirms.
+    pub draw_replay_ids: Vec<String>,
     /// Unix seconds.
     pub at: Option<u32>,
 }
@@ -380,6 +763,9 @@ pub enum MatchPlan {
         early: i32,
         semi: i32,
         final_bo: i32,
+        /// Whether the two beaten semi-finalists play for 3rd. Built at the
+        /// draw only with four entrants or more and no divisions.
+        third_place: bool,
     },
     #[serde(rename_all = "camelCase")]
     Double {
@@ -412,6 +798,7 @@ impl MatchPlan {
                 early: 3,
                 semi: 3,
                 final_bo: 5,
+                third_place: false,
             },
             BracketKind::Double => Self::Double {
                 wb: 3,
@@ -440,13 +827,14 @@ impl MatchPlan {
     }
 }
 
-/// A result the organiser sets on a match.
+/// A result set on a match, by an organiser (`report`) or by a player for the
+/// other side to confirm (`report_submit`).
 ///
-/// The replay id lists stay on the type because `report` accepts them and an
-/// archive is worth keeping, but nothing is required to fill them: they are
-/// mandatory only on `report_submit`, the *player* path, and that path is not
-/// used. `report` guards them with `if (Array.isArray(b.replayIds))`, so an
-/// empty list simply stores none.
+/// The replay ids are optional on the organiser's path, which guards them with
+/// `if (Array.isArray(b.replayIds))`, so an empty list simply stores none. The
+/// player's path insists on exactly one per new game; see
+/// [`Self::is_player_submittable`]. A player's report never carries a winner or
+/// a forfeit: `report_submit` reads neither.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct MatchReport {
@@ -491,8 +879,8 @@ impl MatchReport {
     /// grand final starts the upper-bracket side at 1-0, so its first score
     /// cannot be zero.
     ///
-    /// Two conditions were removed here on purpose, because they belonged to the
-    /// player path this client no longer uses:
+    /// Two conditions belong to the player path alone, and are checked by
+    /// [`Self::is_player_submittable`] instead:
     ///
     /// - **One replay id per new game.** Only `report_submit` insists on that.
     ///   Requiring it stopped an organiser entering a score they already knew.
@@ -522,6 +910,40 @@ impl MatchReport {
             }
         };
         scores_fit && winner_fits
+    }
+
+    /// Whether `report_submit`, the players' path, will take this.
+    ///
+    /// The server's own checks, in its order: both scores between zero and the
+    /// wins the series needs, a handicapped final not below 1-0, not both sides
+    /// reaching it, no score lower than the confirmed one, at least one new game,
+    /// and exactly one replay id per new game. A lower score is the organiser's
+    /// to fix, through `report`.
+    ///
+    /// An id counts when it holds a digit: the server strips everything else
+    /// and drops what is left empty.
+    pub fn is_player_submittable(&self, entry: &TourneyMatch) -> bool {
+        let needed = (entry.best_of + 1) / 2;
+        let current1 = entry
+            .score1
+            .unwrap_or(if entry.handicap > 0 { 1 } else { 0 });
+        let current2 = entry.score2.unwrap_or(0);
+        let scores_fit = self.score1 >= 0
+            && self.score2 >= 0
+            && self.score1 <= needed
+            && self.score2 <= needed
+            && !(entry.handicap > 0 && self.score1 < 1)
+            && !(self.score1 == needed && self.score2 == needed);
+        if !scores_fit || self.score1 < current1 || self.score2 < current2 {
+            return false;
+        }
+        let new_games = self.score1 + self.score2 - current1 - current2;
+        let ids = self
+            .replay_ids
+            .iter()
+            .filter(|id| id.chars().any(|c| c.is_ascii_digit()))
+            .count();
+        new_games >= 1 && ids == new_games as usize
     }
 
     /// Whether this is the forfeit shorthand: a forfeiting team and nothing else.
@@ -656,7 +1078,13 @@ pub enum BracketConfig {
     /// A free-for-all is drawn from its own configuration and asks nothing.
     FreeForAll,
     /// One best-of per round, deepest last.
-    Single { rounds: Vec<i32> },
+    #[serde(rename_all = "camelCase")]
+    Single {
+        rounds: Vec<i32>,
+        /// Whether the two beaten semi-finalists play for 3rd. The service
+        /// skips it below four entrants and with divisions.
+        third_place: bool,
+    },
     #[serde(rename_all = "camelCase")]
     Double {
         /// Winners rounds, `ceil(log2(teams))` of them.
@@ -717,6 +1145,15 @@ impl BracketConfig {
                 rounds: (1..=rounds)
                     .map(|round| if round == rounds { 5 } else { 3 })
                     .collect(),
+                // What the service falls back to when the start config does
+                // not say: the stored plan's choice.
+                third_place: matches!(
+                    event.plan,
+                    Some(MatchPlan::Single {
+                        third_place: true,
+                        ..
+                    })
+                ),
             },
         }
     }
@@ -731,7 +1168,7 @@ impl BracketConfig {
         let rounds = rounds_for(teams.max(2));
         match self {
             Self::FreeForAll => true,
-            Self::Single { rounds: list } => list.len() as i32 == rounds,
+            Self::Single { rounds: list, .. } => list.len() as i32 == rounds,
             Self::Double { wb, lb, .. } => {
                 wb.len() as i32 == rounds && lb.len() as i32 == (2 * rounds - 2).max(0)
             }

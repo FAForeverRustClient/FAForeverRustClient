@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { StatusNotice } from "../../design-system/StatusNotice";
+import { EmptyState } from "../../design-system/EmptyState";
 import { PlayerName } from "../../shared/components/nameColors";
 import { ipc } from "../../ipc/client";
-import type { CoopMission, Game, PlayerProfile, VaultMap } from "../../ipc/bindings";
+import type { CoopMission, Game, VaultMap } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { GameFiltersModal, type GameFilterRule } from "./browser/GameFiltersModal";
 import { HostGameModal } from "./host/HostGameModal";
@@ -36,19 +38,17 @@ import {
 import { useCountryLabel } from "../../shared/hooks/useCountryLabel";
 import { isGeneratedMap, mapPresentation, mapSize } from "../../shared/mapPresentation";
 import { openPlayerCard } from "../../shared/playerCardActions";
-import { PlayerNoteModal } from "../../shared/components/PlayerNoteEditor";
-import { UserMenu, type UserMenuTarget } from "../../shared/components/UserMenu";
+import { usePlayerMenu } from "../../shared/hooks/usePlayerMenu";
 import { findPlayer } from "../../store/reducer";
-import { assignedPlayerColor, includesName, nickKey } from "../../shared/nameColorsUtil";
-import { noteForPlayer } from "../../shared/rules/playerNotes";
-import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
-import { requestReplaySearch } from "../../shared/replaySearchIntent";
 import { splitGoAdapterTitle } from "../../shared/goAdapterTitle";
 import "./browser/custom-games.css";
 import "./game-dialogs.css";
 import "./play.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import { joinGame } from "../../shared/joinGame";
+import { plainError } from "../../shared/plainError";
+import { useForgetFiltersOnLeave, useRememberedFilter } from "../../shared/filterMemory";
+import { DEFAULT_BROWSING_PREFERENCES } from "../../shared/browsingPreferences";
 
 /// How often the Galactic War player count is re-asked while the Play tab is
 /// open. A minute: often enough that the number is not stale advice about
@@ -179,7 +179,13 @@ function GameDetails({
     || (lobby.join.type === "launched" && !isLaunchedThis)
     || (isInGame && !isPlayerInGame && !isHost);
 
-  let joinLabel = t("lobby.details.joinGame");
+  // A join this game refused, said here, beside the button that tries again.
+  // It was an 11 px line in the status bar, in English, with no way out.
+  const failedHere = lobby.join.type === "failed" && lobby.join.payload.id === game.id
+    ? plainError(lobby.join.payload.reason)
+    : null;
+
+  let joinLabel = failedHere ? t("lobby.details.joinAgain") : t("lobby.details.joinGame");
   let joinDisabled = false;
   let joinTitle: string | undefined;
 
@@ -346,7 +352,7 @@ function GameDetails({
                     </span>
                     {showsStats && (
                       <span className="game-team-stats">
-                        Avg: {avgRating} | Total: {totalRating}
+                        {t("lobby.details.teamStats", { average: avgRating ?? "", total: totalRating ?? "" })}
                       </span>
                     )}
                   </div>
@@ -390,6 +396,9 @@ function GameDetails({
         )}
       </div>
       <div className="game-detail-footer">
+        {failedHere && (
+          <StatusNotice tone="error" detail={lobby.join.type === "failed" ? lobby.join.payload.reason : undefined}>{t("lobby.details.joinFailed", { reason: failedHere })}</StatusNotice>
+        )}
         <Button className="game-detail-join" variant="primary" disabled={joinDisabled} title={joinTitle} onClick={onJoin}>{joinLabel}</Button>
       </div>
     </aside>
@@ -401,18 +410,12 @@ export function LobbyView() {
   const lobby = useAppStore((state) => state.state.lobby);
   const maps = useAppStore((state) => state.state.maps);
   const social = useAppStore((state) => state.state.social);
-  const chatPreferences = useAppStore((state) => state.state.settings.chat);
-  const player = useAppStore((state) => state.state.auth.player);
-  const self = player?.name ?? "";
-  const liveGames = useAppStore((state) => state.state.lobby.liveGames);
-  const party = useAppStore((state) => state.state.lobby.party);
-  const playerNotes = useAppStore((state) => state.state.settings.social.playerNotes);
   const galacticWar = useAppStore((state) => state.state.galacticWar);
   const selectedMissionId = useAppStore((state) => state.state.coop.selectedMissionId);
   const browsing = useAppStore((state) => state.state.settings.browsing);
   const mods = useAppStore((state) => state.state.mods);
   const gameBrowser = browsing.customGamesBrowser;
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useRememberedFilter("play.search", "");
   const sort: SortMode = gameBrowser.sort;
   const sortReversed = gameBrowser.sortReversed;
   const gameView: GameViewMode = browsing.customGamesView;
@@ -424,71 +427,22 @@ export function LobbyView() {
   const rules: GameFilterRule[] = gameBrowser.rules;
   const foeSet = useMemo(() => new Set(social.foes.map((f) => f.toLowerCase())), [social.foes]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [previewGame, setPreviewGame] = useState<Game | null>(null);
+  // A join that fails opens that game in the panel, where the reason and the
+  // way to try again are. It is the game the player just asked to join, from
+  // the list, a double-click or the preview, so this follows their action
+  // rather than moving anything on its own.
+  const failedJoinId = lobby.join.type === "failed" ? lobby.join.payload.id : null;
+  useEffect(() => {
+    if (failedJoinId !== null) setSelectedId(failedJoinId);
+  }, [failedJoinId]);
+  // The game the large preview was opened on, followed through the live list
+  // while it is open: a snapshot kept showing the map the lobby had when the
+  // dialog opened, however often the host changed it since (#384).
+  const [previewSnapshot, setPreviewGame] = useState<Game | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [hostOpen, setHostOpen] = useState(false);
   const [passwordGame, setPasswordGame] = useState<Game | null>(null);
   const [password, setPassword] = useState("");
-  const [menu, setMenu] = useState<UserMenuTarget | null>(null);
-  const [noteTarget, setNoteTarget] = useState<PlayerProfile | null>(null);
-
-  const openUserMenu = useCallback((nickname: string, event: React.MouseEvent) => {
-    event.preventDefault();
-    setMenu({
-      nickname,
-      profile: findPlayer(useAppStore.getState().state.social, nickname),
-      x: event.clientX,
-      y: event.clientY,
-    });
-  }, []);
-  const closeUserMenu = useCallback(() => setMenu(null), []);
-
-  const openConversation = useCallback((user: string) => {
-    if (!user) return;
-    ipc.send({ kind: "Chat", command: { type: "joinChannel", payload: { channel: user } } });
-    ipc.send({ kind: "Chat", command: { type: "selectChannel", payload: { channel: user } } });
-    ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "chat" } } });
-  }, []);
-
-  const setPlayerNameColor = useCallback((nickname: string, color: string | null) => {
-    const preferences = useAppStore.getState().state.settings.chat;
-    const key = nickKey(nickname);
-    const players = Object.fromEntries(
-      Object.entries(preferences.nameColors.players).filter(([p]) => nickKey(p) !== key),
-    );
-    if (color) players[nickname] = color;
-    ipc.send({
-      kind: "Settings",
-      command: {
-        type: "setChat",
-        payload: {
-          preferences: {
-            ...preferences,
-            nameColors: { ...preferences.nameColors, players },
-          },
-        },
-      },
-    });
-  }, []);
-
-  const setMuted = useCallback((nickname: string, muted: boolean) => {
-    const preferences = useAppStore.getState().state.settings.chat;
-    const withoutPlayer = preferences.mutedPlayers.filter(
-      (p) => p.localeCompare(nickname, undefined, { sensitivity: "accent" }) !== 0,
-    );
-    ipc.send({
-      kind: "Settings",
-      command: {
-        type: "setChat",
-        payload: {
-          preferences: {
-            ...preferences,
-            mutedPlayers: muted ? [...withoutPlayer, nickname] : withoutPlayer,
-          },
-        },
-      },
-    });
-  }, []);
 
   useEffect(() => {
     if (useAppStore.getState().state.lobby.status === "disconnected") connect();
@@ -565,17 +519,18 @@ export function LobbyView() {
     // mission is never rated, so hiding the unranked games hid all of them.
   }, [applyFilters, coopGames, foeSet, hideFoes, hideModded, hidePrivate, maps.vault, rules, search, sort, sortReversed]);
 
-  const selected = filtered.find((game) => game.id === selectedId) ?? filtered[0] ?? null;
-  const inGame = (list: Game[], nickname: string) =>
-    list.find((g) => Object.values(g.teams).some((team) => team.includes(nickname)));
-  const menuHostedGame = menu && customGames.find((g) => g.host === menu.nickname);
-  const menuLiveGame = menu ? inGame(liveGames, menu.nickname) : undefined;
-  const inParty = (id: number) => party.members.some((m) => m.playerId === id);
-  const menuNameColor = menu
-    ? assignedPlayerColor(chatPreferences.nameColors.players, menu.nickname)
-    : undefined;
-  const menuIsMuted = !!menu && includesName(chatPreferences.mutedPlayers, menu.nickname);
-
+  // Only ever the game the player picked. Falling back to the first row put a
+  // different game under the Join button whenever the picked one closed,
+  // launched or was filtered out, and with nothing picked the panel followed
+  // whatever the live list sorted to the top. Both broke the rule that a
+  // jumping list must never make a misclick join the wrong game.
+  const selected =
+    selectedId === null ? null : (filtered.find((game) => game.id === selectedId) ?? null);
+  const previewGame = previewSnapshot
+    ? customGames.find((game) => game.id === previewSnapshot.id)
+      ?? coopGames.find((game) => game.id === previewSnapshot.id)
+      ?? previewSnapshot
+    : null;
   const connected = lobby.status === "connected";
   const inMatchmaker = lobby.playMode === "matchmaking";
   const inCoop = lobby.playMode === "coop";
@@ -588,31 +543,84 @@ export function LobbyView() {
     } else void join(game.id);
   };
 
+  // The same menu as everywhere else, with this tab's join, which asks for
+  // the password first.
+  const { openPlayerMenu, playerMenu } = usePlayerMenu({ joinGame: requestJoin });
+
   const selectGameView = (view: GameViewMode) => {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
-        payload: { preferences: { ...browsing, customGamesView: view } },
+        type: "patchBrowsing",
+        payload: { patch: { customGamesView: view } },
       },
     });
   };
 
   const updateGameBrowser = (changes: Partial<typeof gameBrowser>) => {
-    const current = useAppStore.getState().state.settings.browsing;
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
+        type: "patchBrowsing",
         payload: {
-          preferences: {
-            ...current,
-            customGamesBrowser: { ...current.customGamesBrowser, ...changes },
+          patch: {
+            customGamesBrowser: changes,
           },
         },
       },
     });
   };
+
+  // With filters never remembered (#447), the next visit starts unfiltered.
+  // The switches and rules only: the sort order is not a filter.
+  useForgetFiltersOnLeave(() => {
+    const defaults = DEFAULT_BROWSING_PREFERENCES.customGamesBrowser;
+    updateGameBrowser({
+      hidePrivate: defaults.hidePrivate,
+      hideModded: defaults.hideModded,
+      hideUnranked: defaults.hideUnranked,
+      hideFoes: defaults.hideFoes,
+      applyFilters: defaults.applyFilters,
+      rules: defaults.rules,
+    });
+  });
+
+  // Why the list is empty, which decides what it says and what it offers.
+  // "No games match. Adjust the search or the filters" used to stand for all
+  // of these, so a player who was not connected went looking for a filter.
+  const emptyGames =
+    lobby.status === "disconnected" ? (
+      <EmptyState icon="globe" title={t("lobby.browser.disconnected")} hint={t("lobby.browser.disconnectedHint")}>
+        <Button onClick={() => ipc.send({ kind: "Lobby", command: { type: "connect" } })}>
+          {t("status.reconnect")}
+        </Button>
+      </EmptyState>
+    ) : lobby.status === "connecting" ? (
+      <EmptyState icon="refresh" title={t("lobby.browser.connecting")} />
+    ) : customGames.length === 0 ? (
+      <EmptyState icon="play" title={t("lobby.browser.noGames")} hint={t("lobby.browser.noGamesHint")}>
+        <Button onClick={() => { setCoopMissionToHost(null); setHostOpen(true); }}>
+          {t("lobby.toolbar.hostGame")}
+        </Button>
+      </EmptyState>
+    ) : (
+      <EmptyState icon="search" title={t("lobby.browser.noMatch")} hint={t("lobby.browser.noMatchHint")}>
+        <Button
+          onClick={() => {
+            setSearch("");
+            updateGameBrowser({
+              hidePrivate: false,
+              hideModded: false,
+              hideUnranked: false,
+              hideFoes: false,
+              applyFilters: false,
+            });
+          }}
+        >
+          {t("lobby.browser.clearFilters")}
+        </Button>
+      </EmptyState>
+    );
 
   // Same shape as the list's column drag: the saved width seeds a local copy,
   // the drag moves the copy, and letting go persists it. A settings write per
@@ -622,10 +630,21 @@ export function LobbyView() {
   );
   const [draggedDetailWidth, setDraggedDetailWidth] = useState<number | null>(null);
   const detailDragOrigin = useRef<number | null>(null);
+  const detailHidden = useAppStore(
+    (state) => state.state.settings.browsing.customGamesBrowser.detailHidden,
+  );
   const currentDetailWidth = draggedDetailWidth ?? detailWidth(savedDetailWidth);
   const detailStyle = useMemo(
-    () => ({ gridTemplateColumns: `minmax(360px, 1fr) 5px ${currentDetailWidth}px` }),
-    [currentDetailWidth],
+    // The divider's track is the whole gap, as the chat roster's is, so the
+    // two tabs space their side panel the same. Folded away (#370, #377), the
+    // list takes the whole width: the toolbar holds the button that brings the
+    // panel back, so the gap has nothing left to hold.
+    () => ({
+      gridTemplateColumns: detailHidden
+        ? "minmax(360px, 1fr)"
+        : `minmax(360px, 1fr) var(--space-3) ${currentDetailWidth}px`,
+    }),
+    [currentDetailWidth, detailHidden],
   );
   const onDetailDrag = (delta: number) => {
     detailDragOrigin.current ??= currentDetailWidth;
@@ -716,6 +735,13 @@ export function LobbyView() {
       ) : inCoop ? (
         <CoopPanel
           games={filteredCoopGames}
+          // The search box is this view's own state, which the panel cannot
+          // reach: without this its Clear filters left the typed text in place.
+          // No ranked filter here, as the co-op toolbar has none to show.
+          onClearFilters={() => {
+            setSearch("");
+            updateGameBrowser({ hidePrivate: false, hideModded: false, hideFoes: false, applyFilters: false });
+          }}
           viewMode={gameView}
           toolbar={(
             <CustomGamesToolbar
@@ -771,6 +797,8 @@ export function LobbyView() {
               setCoopMissionToHost(null);
               setHostOpen(true);
             }}
+            detailHidden={detailHidden}
+            onToggleDetails={() => updateGameBrowser({ detailHidden: !detailHidden })}
           />
 
           <CustomGamesBrowser
@@ -782,27 +810,44 @@ export function LobbyView() {
             onSelect={setSelectedId}
             onJoin={requestJoin}
             onPreview={setPreviewGame}
+            empty={emptyGames}
           />
           {/* The divider sits between the list and the panel rather than on
-              either, so dragging it reads as moving the boundary. */}
-          <ResizeHandle
-            className="custom-games-divider"
-            label={t("lobby.browser.resizeDetails")}
-            onDrag={onDetailDrag}
-            onEnd={onDetailCommit}
-            onReset={onDetailReset}
-          />
-          {selected ? (
+              either, so dragging it reads as moving the boundary. The panel
+              folds away and back from the toolbar (#370, #377); the choice is
+              a setting, so it holds across restarts. */}
+          {!detailHidden && (
+            <div className="custom-games-divider">
+              <ResizeHandle
+                label={t("lobby.browser.resizeDetails")}
+                onDrag={onDetailDrag}
+                onEnd={onDetailCommit}
+                onReset={onDetailReset}
+              />
+            </div>
+          )}
+          {detailHidden ? null : selected ? (
             <GameDetails
               game={selected}
               onJoin={() => requestJoin(selected)}
-              onOpenUserMenu={openUserMenu}
+              onOpenUserMenu={openPlayerMenu}
               onPreview={() => setPreviewGame(selected)}
             />
           ) : (
             <aside className="game-detail-panel surface-panel empty">
-              <Icon name="play" size={24} />
-              <p>{t("lobby.details.selectGame")}</p>
+              {/* A refused join for a game that has since gone from the list
+                  (the host left, it launched): the panel is where the reader
+                  looks after pressing Join, so the reason is said here too. */}
+              {lobby.join.type === "failed" ? (
+                <StatusNotice tone="error" detail={lobby.join.payload.reason}>
+                  {t("lobby.details.joinFailed", { reason: plainError(lobby.join.payload.reason) })}
+                </StatusNotice>
+              ) : (
+                <>
+                  <Icon name="play" size={24} />
+                  <p>{t("lobby.details.selectGame")}</p>
+                </>
+              )}
             </aside>
           )}
         </div>
@@ -847,68 +892,7 @@ export function LobbyView() {
         />
       )}
 
-      {menu && (
-        <UserMenu
-          target={menu}
-          self={self}
-          isFriend={includesName(social.friends, menu.profile?.login || menu.nickname)}
-          isFoe={includesName(social.foes, menu.profile?.login || menu.nickname)}
-          isMuted={menuIsMuted}
-          hostedGame={menuHostedGame ?? undefined}
-          liveGame={menuLiveGame}
-          canInvite={!!menu.profile && !inParty(menu.profile.id)}
-          canKickFromParty={
-            !!menu.profile &&
-            party.ownerId === (player?.id ?? -1) &&
-            inParty(menu.profile.id)
-          }
-          nameColor={menuNameColor}
-          actions={{
-            privateMessage: openConversation,
-            viewProfile: (playerId, nickname) => void openPlayerCard(playerId, nickname),
-            copyUsername: (nickname) => void navigator.clipboard?.writeText(nickname),
-            joinGame: (game) => void requestJoin(game),
-            watchGame: (game) =>
-              ipc.send({
-                kind: "Replays",
-                command: { type: "watchLive", payload: { uid: game.id, modName: game.modName, map: game.map } },
-              }),
-            viewReplays: (username) => {
-              requestReplaySearch({ ...EMPTY_REPLAY_QUERY, player: username, exactPlayer: true });
-              ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
-            },
-            inviteToParty: (id) =>
-              ipc.send({ kind: "Lobby", command: { type: "inviteToParty", payload: { playerId: id } } }),
-            setRelation: (profile, relation, member) =>
-              ipc.send({
-                kind: "Social",
-                command: {
-                  type: "setRelation",
-                  payload: { playerId: profile.id, login: profile.login, relation, member },
-                },
-              }),
-            kickFromParty: (id) =>
-              ipc.send({ kind: "Lobby", command: { type: "kickPartyMember", payload: { playerId: id } } }),
-            setNameColor: setPlayerNameColor,
-            setMuted,
-            editNote: setNoteTarget,
-            reportPlayer: (profile) =>
-              ipc.send({
-                kind: "Reporting",
-                command: { type: "open", payload: { playerId: profile.id, login: profile.login } },
-              }),
-          }}
-          onClose={closeUserMenu}
-        />
-      )}
-      {noteTarget && (
-        <PlayerNoteModal
-          playerId={noteTarget.id}
-          login={noteTarget.login}
-          initialNote={noteForPlayer(playerNotes, noteTarget.id)}
-          onClose={() => setNoteTarget(null)}
-        />
-      )}
+      {playerMenu}
       {previewGame && (
         <Modal className="game-preview-modal" onClose={() => setPreviewGame(null)}>
           <GamePreviewDialog

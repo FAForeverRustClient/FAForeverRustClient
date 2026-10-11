@@ -8,7 +8,9 @@ function clearTransientDownload(status: ReplayDownloadStatus): ReplayDownloadSta
 export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplayState {
   switch (event.type) {
     case "connecting":
-      return { ...state, status: { type: "connecting" }, lastWarning: null };
+      return { ...state, status: { type: "connecting" }, lastWarning: null, preparing: null };
+    case "preparing":
+      return state.status.type === "connecting" ? { ...state, preparing: event.payload.step } : state;
     // Both of these clear a *transient* download. Watching a vault replay
     // downloads it into the cache as part of playback, so its completion has no
     // `vaultDownloaded` event to end the status bar's task; leaving it running
@@ -20,12 +22,14 @@ export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplaySta
         ...state,
         status: { type: "playing", payload: { uid: event.payload.uid } },
         lastWarning: event.payload.warning,
+        preparing: null,
         downloadStatus: clearTransientDownload(state.downloadStatus),
       };
     case "failed":
       return {
         ...state,
         status: { type: "failed", payload: { reason: event.payload.reason } },
+        preparing: null,
         downloadStatus: clearTransientDownload(state.downloadStatus),
       };
     // And so does a start that was called off: the download it had begun has
@@ -34,6 +38,7 @@ export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplaySta
       return {
         ...state,
         status: { type: "idle" },
+        preparing: null,
         downloadStatus: clearTransientDownload(state.downloadStatus),
       };
     case "liveTrackingScheduled":
@@ -118,6 +123,9 @@ export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplaySta
         detailsLoading: event.payload.uid,
         detailsError: null,
       };
+    // Details are kept per replay, so a late answer fills in its own entry.
+    // Only the newest request's failure is recorded, and an answer clears only
+    // its own: mirrors `faf_domain::state::replays::reduce`.
     case "detailsLoaded":
       return {
         ...state,
@@ -126,14 +134,16 @@ export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplaySta
           ...state.replayDetails,
           [event.payload.uid]: event.payload.details,
         },
-        detailsError: null,
+        detailsError: state.detailsError?.uid === event.payload.uid ? null : (state.detailsError ?? null),
       };
     case "detailsFailed":
-      return {
-        ...state,
-        detailsLoading: state.detailsLoading === event.payload.uid ? null : state.detailsLoading,
-        detailsError: event.payload.reason,
-      };
+      return state.detailsLoading === event.payload.uid
+        ? {
+          ...state,
+          detailsLoading: null,
+          detailsError: { uid: event.payload.uid, reason: event.payload.reason },
+        }
+        : state;
     case "analysisLoading":
       return {
         ...state,
@@ -144,21 +154,21 @@ export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplaySta
           ? null
           : state.analysis,
       };
+    // One analysis is held, so only the newest request's answer or failure
+    // may land. An older read finishing last would replace the newer answer,
+    // and the open panel would reject it and wait on "reading" for nothing.
     case "analysisLoaded":
-      return {
-        ...state,
-        analysis: event.payload.analysis,
-        analysisLoading: state.analysisLoading === event.payload.analysis.uid
-          ? null
-          : state.analysisLoading,
-        analysisError: null,
-      };
+      return state.analysisLoading === event.payload.analysis.uid
+        ? { ...state, analysis: event.payload.analysis, analysisLoading: null, analysisError: null }
+        : state;
     case "analysisFailed":
-      return {
-        ...state,
-        analysisLoading: state.analysisLoading === event.payload.uid ? null : state.analysisLoading,
-        analysisError: event.payload.reason,
-      };
+      return state.analysisLoading === event.payload.uid
+        ? {
+          ...state,
+          analysisLoading: null,
+          analysisError: { uid: event.payload.uid, reason: event.payload.reason },
+        }
+        : state;
     case "mapsResolved": {
       // Mirrors the `resolved_maps` inserts in the Rust reducer: an empty map
       // is an answer, so it is written like any other and the view stops

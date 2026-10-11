@@ -1,8 +1,14 @@
 import type { PlayerCardEvent, PlayerCardState, RatingHistoryPoint } from "../../ipc/bindings";
 
 function mergeHistory(current: RatingHistoryPoint[], incoming: RatingHistoryPoint[]): RatingHistoryPoint[] {
-  const byTime = new Map(current.map((point) => [point.timestamp, point]));
-  for (const point of incoming) byTime.set(point.timestamp, point);
+  // The first point seen at an instant stands, as with the twin's stable sort
+  // followed by `dedup_by`: one already held beats a later page's copy, and
+  // within one page the earlier entry wins. Overwriting here drew a different
+  // rating at that instant than the backend held.
+  const byTime = new Map<string, RatingHistoryPoint>();
+  for (const point of [...current, ...incoming]) {
+    if (!byTime.has(point.timestamp)) byTime.set(point.timestamp, point);
+  }
   // Code-unit comparison, matching the twin's `timestamp.cmp`. These are RFC
   // 3339 instants, so byte order is chronological order, and running a collator
   // over a paged-in history of thousands of points bought nothing.

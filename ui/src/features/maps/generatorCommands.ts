@@ -21,9 +21,9 @@ export const loadOptions = (version?: string | null) =>
   send({ type: "loadOptions", payload: { version: version ?? null } });
 export const setOptions = (options: GeneratorOptions) =>
   send({ type: "setOptions", payload: { options } });
-export const savePreset = (name: string, options: GeneratorOptions) =>
-  send({ type: "savePreset", payload: { name, options } });
-export const loadPresets = () => send({ type: "loadPresets" });
+// Saving lives in shared/ because the lobby's map preview saves presets too,
+// and both must draw request ids from the same counter.
+export { loadPresets, savePreset } from "../../shared/generatorPresets";
 export const deletePreset = (name: string) => send({ type: "deletePreset", payload: { name } });
 export const preflight = (options: GeneratorOptions) => send({ type: "preflight", payload: { options } });
 export const decodeNames = (mapNames: string[]) => send({ type: "decodeNames", payload: { mapNames } });

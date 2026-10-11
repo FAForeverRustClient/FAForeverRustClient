@@ -96,6 +96,23 @@ pub enum UpdateProgress {
     Finished(Result<(), String>),
 }
 
+/// What the last preparation run stamped into the live install, as far as a
+/// recording needs it.
+///
+/// Every field is optional because the stamp is written best-effort and only
+/// rolling branches (`fafdevelop`, `fafbeta`) carry a git revision at all; a
+/// stable `faf` install has a signature and nothing else.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct InstalledBuild {
+    /// Full commit of the game repository the install was patched to.
+    pub git_sha: Option<String>,
+    /// The seven-character form of `git_sha`, which is what players see.
+    pub git_short_sha: Option<String>,
+    /// Short hash over the installed file list, identifying the build even
+    /// when no git revision is known.
+    pub signature: Option<String>,
+}
+
 #[async_trait]
 pub trait GameUpdaterPort: Send + Sync {
     /// Patch the featured mod and stage the map, streaming progress.
@@ -106,6 +123,29 @@ pub trait GameUpdaterPort: Send + Sync {
     /// calls it unconditionally rather than trying to guess whether an update
     /// is due, exactly as both reference clients do.
     async fn prepare(&self, request: GamePreparation) -> mpsc::Receiver<UpdateProgress>;
+
+    /// Put each of these map folders where a live game looks for them,
+    /// downloading the ones that are missing. Answers the folders that could
+    /// not be fetched, with why; a failure is not fatal to the others.
+    ///
+    /// For the maps of a matchmaker pool, fetched before the search starts
+    /// (see `launcher::prepare_search`). Defaulted to "nothing to do" so a test
+    /// double that has no maps folder need not pretend to have one.
+    async fn ensure_maps(&self, _folders: &[String]) -> Vec<(String, String)> {
+        Vec::new()
+    }
+
+    /// The build stamp of the live install, if one is configured and a
+    /// preparation run has stamped it.
+    ///
+    /// The updater owns this because it is the side that writes the stamp
+    /// (see `infra::game_updater`). It is synchronous since it is one small
+    /// local read made while a launch is being assembled. Defaulted to
+    /// "unknown" so a test double without an install need not invent one; a
+    /// recording then simply carries no build details.
+    fn installed_build(&self) -> Option<InstalledBuild> {
+        None
+    }
 }
 
 #[cfg(test)]

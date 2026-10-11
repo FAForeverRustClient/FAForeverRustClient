@@ -17,6 +17,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 import { clamp01, hexToHsv, hsvToHex, normalizeHex, type Hsv } from "./colorMath";
 import { useTranslation } from "../i18n/useTranslation";
+import { useOverlayLayer } from "./useOverlayLayer";
 import "./color-input.css";
 
 interface Props {
@@ -70,20 +71,16 @@ export function ColorInput({ value, onChange, "aria-label": ariaLabel, className
       if (popoverRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
       setOpen(false);
     };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      // Only the picker: a menu or modal underneath must stay open.
-      event.stopPropagation();
-      setOpen(false);
-      triggerRef.current?.focus();
-    };
     window.addEventListener("pointerdown", onPointerDown, true);
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => {
-      window.removeEventListener("pointerdown", onPointerDown, true);
-      window.removeEventListener("keydown", onKeyDown, true);
-    };
+    return () => window.removeEventListener("pointerdown", onPointerDown, true);
   }, [open]);
+
+  // Escape closes only the picker: while it is open it is the top of the
+  // overlay stack, so a menu or modal underneath stays open.
+  useOverlayLayer(open, () => {
+    setOpen(false);
+    triggerRef.current?.focus();
+  });
 
   const commit = (next: Hsv) => {
     setHsv(next);

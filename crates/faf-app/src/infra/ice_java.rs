@@ -257,7 +257,8 @@ impl IcePort for JavaAdapter {
 
         // ICE servers (the Java adapter doesn't fetch these itself).
         let ice =
-            fetch_ice_servers(&self.http, &self.config.api_base, &token, params.game_id).await?;
+            fetch_ice_servers_retrying(&self.http, &self.config.api_base, &token, params.game_id)
+                .await?;
 
         // Reserving a port means binding it and letting it go, so the numbers
         // are free when they are chosen and not necessarily when the adapter
@@ -347,13 +348,81 @@ struct IceServers {
     force_relay: bool,
 }
 
+/// Waits between attempts at the ICE session when the API answers "try again".
+///
+/// The API answers `/ice/session/game/{id}` with `503 Service Unavailable: no
+/// available server` when it has momentarily no relay to hand out, and that
+/// failed the whole launch at the first answer: the game was not started and
+/// the other players waited on an empty seat. Java treats a 503 (and a 429) as
+/// "API unreachable" and retries every request with a backoff
+/// (`FafApiAccessor.apiRetrySpec`: 5 attempts, from 5 seconds, with jitter).
+///
+/// Shorter than Java's on purpose. Java fetches the session in parallel with
+/// the map download and the replay server; here it is a step of the launch
+/// itself, inside the server's sixty seconds for a matchmaker host
+/// (`LadderService.launch_match`), so the waits add up to twenty-one seconds.
+const ICE_SESSION_RETRY_WAITS: [std::time::Duration; 4] = [
+    std::time::Duration::from_secs(1),
+    std::time::Duration::from_secs(3),
+    std::time::Duration::from_secs(7),
+    std::time::Duration::from_secs(10),
+];
+
+/// [`fetch_ice_servers`], tried again while the API says it is busy.
+async fn fetch_ice_servers_retrying(
+    http: &reqwest::Client,
+    api_base: &str,
+    token: &str,
+    game_id: i32,
+) -> Result<IceServers, String> {
+    let mut waits = ICE_SESSION_RETRY_WAITS.iter();
+    loop {
+        match fetch_ice_servers(http, api_base, token, game_id).await {
+            Err(IceSessionError::Busy(reason)) => {
+                let Some(wait) = waits.next() else {
+                    return Err(reason);
+                };
+                tracing::warn!(
+                    game_id,
+                    %reason,
+                    retry_in_seconds = wait.as_secs(),
+                    "the ICE session is not available yet; trying again"
+                );
+                tokio::time::sleep(*wait).await;
+            }
+            Err(IceSessionError::Failed(reason)) => return Err(reason),
+            Ok(servers) => return Ok(servers),
+        }
+    }
+}
+
+/// Why the ICE session could not be had: worth another try, or not.
+#[derive(Debug, PartialEq, Eq)]
+enum IceSessionError {
+    /// 503 or 429: the API's own "not now". The two statuses Java retries.
+    Busy(String),
+    Failed(String),
+}
+
+impl IceSessionError {
+    fn for_status(status: reqwest::StatusCode, reason: String) -> Self {
+        if status == reqwest::StatusCode::SERVICE_UNAVAILABLE
+            || status == reqwest::StatusCode::TOO_MANY_REQUESTS
+        {
+            Self::Busy(reason)
+        } else {
+            Self::Failed(reason)
+        }
+    }
+}
+
 /// `GET {api}/ice/session/game/{id}` → `{ servers: [...], forceRelay: bool }`.
 async fn fetch_ice_servers(
     http: &reqwest::Client,
     api_base: &str,
     token: &str,
     game_id: i32,
-) -> Result<IceServers, String> {
+) -> Result<IceServers, IceSessionError> {
     let url = format!(
         "{}/ice/session/game/{game_id}",
         api_base.trim_end_matches('/')
@@ -364,16 +433,23 @@ async fn fetch_ice_servers(
         .header(reqwest::header::ACCEPT, "application/json")
         .send()
         .await
-        .map_err(|e| format!("ice servers request failed: {e}"))?;
+        .map_err(|e| IceSessionError::Failed(format!("ice servers request failed: {e}")))?;
     let status = resp.status();
-    let body = resp.text().await.map_err(|e| format!("read failed: {e}"))?;
+    let body = resp
+        .text()
+        .await
+        .map_err(|e| IceSessionError::Failed(format!("read failed: {e}")))?;
     if !status.is_success() {
-        return Err(format!(
-            "ice servers returned {status}: {}",
-            body.chars().take(200).collect::<String>()
+        return Err(IceSessionError::for_status(
+            status,
+            format!(
+                "ice servers returned {status}: {}",
+                body.chars().take(200).collect::<String>()
+            ),
         ));
     }
-    let value: Value = serde_json::from_str(&body).map_err(|e| format!("invalid JSON: {e}"))?;
+    let value: Value = serde_json::from_str(&body)
+        .map_err(|e| IceSessionError::Failed(format!("invalid JSON: {e}")))?;
     Ok(IceServers {
         servers: value
             .get("servers")
@@ -530,6 +606,36 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn only_the_apis_not_now_answers_are_tried_again() {
+        // Java's `apiRetrySpec` retries exactly these two.
+        for busy in [
+            reqwest::StatusCode::SERVICE_UNAVAILABLE,
+            reqwest::StatusCode::TOO_MANY_REQUESTS,
+        ] {
+            assert_eq!(
+                IceSessionError::for_status(busy, "x".into()),
+                IceSessionError::Busy("x".into())
+            );
+        }
+        for failed in [
+            reqwest::StatusCode::UNAUTHORIZED,
+            reqwest::StatusCode::NOT_FOUND,
+            reqwest::StatusCode::INTERNAL_SERVER_ERROR,
+        ] {
+            assert_eq!(
+                IceSessionError::for_status(failed, "x".into()),
+                IceSessionError::Failed("x".into())
+            );
+        }
+        // Inside the server's sixty seconds for a matchmaker host.
+        let total: u64 = ICE_SESSION_RETRY_WAITS
+            .iter()
+            .map(|wait| wait.as_secs())
+            .sum();
+        assert!(total < 30);
+    }
     use crate::infra::jsonrpc::RpcNotification;
     use serde_json::json;
 

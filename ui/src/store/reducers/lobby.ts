@@ -61,8 +61,15 @@ export function reduceLobby(state: LobbyState, event: LobbyEvent): LobbyState {
       // a join the dropped socket left behind is one the server has already
       // forgotten. The lists stay, because the replacement connection resends
       // them and emptying the Play tab would make a blip look like a
-      // disconnection.
-      return { ...state, status: "connecting", join: { type: "idle" } };
+      // disconnection. A game already running outlives the socket, and so does
+      // a matchmaker launch under way; a search does not, because the server
+      // ends it with the connection. See the Rust twin in `state/lobby.rs`.
+      return {
+        ...state,
+        status: "connecting",
+        join: state.join.type === "launched" || state.join.type === "inGame" ? state.join : { type: "idle" },
+        matchmaking: state.matchmaking.type === "launching" ? state.matchmaking : { type: "idle" },
+      };
     case "connected":
       return { ...state, status: "connected" };
     // Another tab asked for the host dialog; the Play tab opens it when it sees
@@ -154,16 +161,29 @@ export function reduceLobby(state: LobbyState, event: LobbyEvent): LobbyState {
           payload: { id: event.payload.id, conflicts: event.payload.conflicts },
         },
       };
-    case "joinCancelled":
-      return state.join.type === "joining" ||
-        state.join.type === "preparing" ||
-        state.join.type === "needsModReplacement"
-        ? { ...state, join: { type: "idle" } }
-        : state;
+    case "joinCancelled": {
+      // A matchmaker launch called off while its files came down has no
+      // process whose exit would free the panel, so the cancel does.
+      const preparing = state.join.type === "joining" || state.join.type === "preparing";
+      if (!preparing && state.join.type !== "needsModReplacement") return state;
+      return {
+        ...state,
+        join: { type: "idle" },
+        matchmaking: preparing && state.matchmaking.type === "launching" ? { type: "idle" } : state.matchmaking,
+      };
+    }
     case "inGame":
       return { ...state, join: { type: "inGame" } };
     case "launchFailed":
-      return { ...state, join: { type: "launchFailed", payload: { reason: event.payload.reason } } };
+      // The same for a launch that failed before there was a game.
+      return {
+        ...state,
+        join: { type: "launchFailed", payload: { reason: event.payload.reason } },
+        matchmaking:
+          state.matchmaking.type === "launching" || state.matchmaking.type === "matchFound"
+            ? { type: "idle" }
+            : state.matchmaking,
+      };
     case "gameTerminated":
       // A matchmaker game that ends leaves the search finished too. The server
       // sends no `search_info` when a match ends, so without this the panel

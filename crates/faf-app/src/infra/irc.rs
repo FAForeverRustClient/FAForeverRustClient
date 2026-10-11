@@ -123,7 +123,7 @@ impl ConnectionSlots {
     ///
     /// Without this the supervisor could give up (a bad token, ten failed
     /// attempts) while `IrcClient` still held a clone of the update sender, so
-    /// the service's `recv()` never returned `None`, its `chat_active` guard
+    /// the service's `recv()` never returned `None`, its chat connection guard
     /// was never released, and every later `Connect` returned immediately: the
     /// status bar offered a reconnect that silently did nothing for the rest
     /// of the session. That is exactly the state a laptop resume produced.

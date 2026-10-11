@@ -209,7 +209,8 @@ export function GameSummaryCard({
         )}
         <div className="chat-game-popover-info">
           <strong>{splitGoAdapterTitle(presence.game.title).title || t("chat.game.untitled")}</strong>
-          <span>{presentation.displayName}</span>
+          {/* Worded as the replay tab's cards word it (#448). */}
+          <span>{t("replays.card.onMap", { map: presentation.displayName })}</span>
         </div>
         {action ? (
           <div className="chat-game-popover-side">
@@ -220,13 +221,18 @@ export function GameSummaryCard({
           <span className={`chat-game-status is-${presence.status}`}>{status}</span>
         )}
       </header>
+      {/* Each fact with the icon the replay tab's cards give it (#448). */}
       <div className="chat-game-meta">
-        <span>{presence.game.modName.toUpperCase()}</span>
-        <span>{t("chat.game.players", { count: presence.game.players, max: presence.game.maxPlayers })}</span>
+        <span><Icon name="mods" size={13} />{presence.game.modName.toUpperCase()}</span>
+        <span>
+          <Icon name="users" size={13} />
+          {t("chat.game.players", { count: presence.game.players, max: presence.game.maxPlayers })}
+        </span>
         {/* Named where it is not the global board, and so is every rating in
             the lineup below it. */}
         {presence.game.averageRating > 0 && (
           <span>
+            <Icon name="activity" size={13} />
             {leaderboard === GLOBAL_LEADERBOARD
               ? t("chat.game.average", { rating: presence.game.averageRating })
               : t("chat.game.boardAverage", {
@@ -237,6 +243,7 @@ export function GameSummaryCard({
         )}
         {elapsed !== null && (
           <span className="chat-game-elapsed">
+            <Icon name="clock" size={13} />
             {elapsedLabel} <b>{formatGameTime(elapsed)}</b>
           </span>
         )}
@@ -245,9 +252,14 @@ export function GameSummaryCard({
         <div className="chat-game-teams">
           {teams.map((team) => (
             <section className="chat-game-team surface" key={team.id}>
+              {/* The replay tab's team line (#448): the team, then how many
+                  play in it and their combined rating. */}
               <h4>
-                <span>{team.label} ({team.players.length})</span>
-                {team.rating !== null && <span>{team.rating}</span>}
+                <span>{team.label}</span>
+                <span>
+                  {t("replays.detail.playerCount", { count: team.players.length })}
+                  {team.rating !== null && ` · ${t("lobby.browser.teamRating", { rating: team.rating })}`}
+                </span>
               </h4>
               <ul>
                 {team.players.map((player) => (
@@ -289,7 +301,7 @@ export function GameSummaryCard({
                       onOpenConversation={onOpenConversation}
                       onPlayerContextMenu={onPlayerContextMenu}
                     />
-                    {player.rating !== null && <small>({player.rating})</small>}
+                    {player.rating !== null && <small>{player.rating}</small>}
                   </li>
                 ))}
               </ul>

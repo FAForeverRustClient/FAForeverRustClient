@@ -13,19 +13,38 @@
 // render bare names, which is how the same entrant could appear as a face in one
 // section and a string in another.
 
+import { useEffect, useState } from "react";
 import { Button } from "../../../design-system/Button";
-import type { AccountSearch, PlayerSummary, SeedOrder, Tourney } from "../../../ipc/bindings";
+import type {
+  AccountSearch,
+  EntrantRatings,
+  PlayerSummary,
+  Replacement,
+  Tourney,
+  TourneyLoadStatus,
+  TourneyPlayer,
+} from "../../../ipc/bindings";
+import type { EntrantActions } from "../tourneyActions";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { AccountPicker } from "./AccountPicker";
+import { BanPlayerDialog } from "./BanPlayerDialog";
+import { PlayerRatingsDialog } from "./PlayerRatingsDialog";
+import { ReplacePlayerDialog } from "./ReplacePlayerDialog";
 import { PlayerChip } from "../PlayerChip";
+import { teamNameOf } from "../bracket/matchParts";
 import { INVITE_STATUS_LABELS } from "../tourneyPresentation";
-import { mayReseed, pendingSignups, profileOf, profileOfInvite } from "../../../shared/rules/tourneyRules";
+import {
+  mayReseed,
+  pendingSignups,
+  profileOf,
+  profileOfInvite,
+  teamRating,
+} from "../../../shared/rules/tourneyRules";
 
 interface EntrantAdminProps {
   event: Tourney;
   /** The shared name-search state; one picker is in use at a time. */
   accountSearch: AccountSearch;
-  onSearchAccounts: (query: string) => void;
   /**
    * The FAF accounts behind the entrants, as loaded beside the event.
    *
@@ -36,13 +55,16 @@ interface EntrantAdminProps {
    */
   profiles: PlayerSummary[];
   busy: boolean;
-  onAdd: (name: string, rating: number | null) => void;
-  onRespondSignup: (playerId: string, accept: boolean) => void;
-  onRemove: (playerId: string) => void;
-  onInvite: (name: string) => void;
-  onUninvite: (fafId: number) => void;
-  onReseed: (order: SeedOrder) => void;
-  onSplit: (divisions: number) => void;
+  /**
+   * The organiser's commands over the field: the name search, adding,
+   * approving, inviting, removing, seeding, dividing, ratings and bans.
+   */
+  entrants: EntrantActions;
+  /** One entrant's every rating (issue 158). */
+  playerRatings: EntrantRatings | null;
+  playerRatingsStatus: TourneyLoadStatus;
+  /** Put somebody else in an entrant's place, keeping the place's results. */
+  onReplace: (playerId: string, replacement: Replacement) => void;
 }
 
 export function EntrantAdmin(props: EntrantAdminProps) {
@@ -51,9 +73,68 @@ export function EntrantAdmin(props: EntrantAdminProps) {
 
   const pending = pendingSignups(event);
   const signupsOpen = event.status === "signup";
+  /** The entrant whose ratings are open, or null. */
+  const [ratingsOf, setRatingsOf] = useState<TourneyPlayer | null>(null);
+  /** The entrant about to be banned, or null. */
+  const [banning, setBanning] = useState<TourneyPlayer | null>(null);
+  /** The entrant whose place is being handed to somebody else, or null. */
+  const [replacing, setReplacing] = useState<TourneyPlayer | null>(null);
+  const acceptedInvites = event.invites.filter((invite) => invite.status === "accepted").length;
+  // The organiser's own order, by hand, until it is saved. Starts from the
+  // seeds the service holds and follows them when a save or a reshuffle lands.
+  const bySeed = () => [...event.teams].sort((left, right) => left.seed - right.seed).map((team) => team.id);
+  const stored = bySeed().join(",");
+  const [order, setOrder] = useState<string[]>(bySeed);
+  useEffect(() => setOrder(stored === "" ? [] : stored.split(",")), [stored]);
+  const moved = order.join(",") !== stored;
+  const move = (index: number, by: number) => {
+    const target = index + by;
+    if (target < 0 || target >= order.length) return;
+    const next = [...order];
+    [next[index], next[target]] = [next[target], next[index]];
+    setOrder(next);
+  };
+  // A solo entry often has no name of its own and reads as its player, as it
+  // does everywhere else in the tab.
+  const teamName = (teamId: string) => teamNameOf(event, teamId) ?? teamId;
 
   return (
     <div className="tournament-entrant-admin">
+      {ratingsOf !== null && (
+        <PlayerRatingsDialog
+          player={ratingsOf}
+          ratings={props.playerRatings}
+          status={props.playerRatingsStatus}
+          onLoad={(refresh) => props.entrants.loadRatings(ratingsOf.id, refresh)}
+          onClose={() => setRatingsOf(null)}
+        />
+      )}
+      {banning !== null && (
+        <BanPlayerDialog
+          event={event}
+          player={banning}
+          busy={busy}
+          onBan={(reason, expires, remove) => {
+            props.entrants.ban(banning, reason, expires, remove);
+            setBanning(null);
+          }}
+          onClose={() => setBanning(null)}
+        />
+      )}
+      {replacing !== null && (
+        <ReplacePlayerDialog
+          event={event}
+          player={replacing}
+          accountSearch={props.accountSearch}
+          busy={busy}
+          onSearchAccounts={props.entrants.searchAccounts}
+          onReplace={(replacement) => {
+            props.onReplace(replacing.id, replacement);
+            setReplacing(null);
+          }}
+          onClose={() => setReplacing(null)}
+        />
+      )}
       {pending.length > 0 && (
         <section>
           <h5>{t("tournaments.admin.pending")}</h5>
@@ -73,11 +154,11 @@ export function EntrantAdmin(props: EntrantAdminProps) {
                 <Button
                   variant="primary"
                   disabled={busy}
-                  onClick={() => props.onRespondSignup(player.id, true)}
+                  onClick={() => props.entrants.respondSignup(player.id, true)}
                 >
                   {t("tournaments.admin.approve")}
                 </Button>
-                <Button disabled={busy} onClick={() => props.onRespondSignup(player.id, false)}>
+                <Button disabled={busy} onClick={() => props.entrants.respondSignup(player.id, false)}>
                   {t("tournaments.admin.decline")}
                 </Button>
               </li>
@@ -108,13 +189,13 @@ export function EntrantAdmin(props: EntrantAdminProps) {
             search={props.accountSearch}
             busy={busy}
             submitLabel={t("tournaments.admin.add")}
-            onQueryChange={props.onSearchAccounts}
+            onQueryChange={props.entrants.searchAccounts}
             // Always without a rating. `org_add_player` accepts one, but only
             // an unrated event has any use for it, and there the rating is set
             // afterwards in the team admin, where `maySetRating` gates it.
             // Asking on every add would put a field in front of every organiser
             // for a number the service ignores in all but one kind of event.
-            onPick={(login) => props.onAdd(login, null)}
+            onPick={(login) => props.entrants.add(login, null)}
           />
         </section>
       )}
@@ -126,8 +207,8 @@ export function EntrantAdmin(props: EntrantAdminProps) {
           search={props.accountSearch}
           busy={busy}
           submitLabel={t("tournaments.admin.invite")}
-          onQueryChange={props.onSearchAccounts}
-          onPick={props.onInvite}
+          onQueryChange={props.entrants.searchAccounts}
+          onPick={props.entrants.invite}
         />
         {event.invites.length > 0 && (
           <ul className="tournament-entrant-list">
@@ -145,7 +226,7 @@ export function EntrantAdmin(props: EntrantAdminProps) {
                     )}
                   </span>
                   <span className="muted">{t(INVITE_STATUS_LABELS[invite.status])}</span>
-                  <Button disabled={busy} onClick={() => props.onUninvite(invite.fafId)}>
+                  <Button disabled={busy} onClick={() => props.entrants.uninvite(invite.fafId)}>
                     {t("tournaments.admin.uninvite")}
                   </Button>
                 </li>
@@ -181,7 +262,32 @@ export function EntrantAdmin(props: EntrantAdminProps) {
                     {player.late && (
                       <span className="tournament-badge">{t("tournaments.entrants.late")}</span>
                     )}
-                    <Button disabled={busy} onClick={() => props.onRemove(player.id)}>
+                    {/* Every board, not only the one that counts: issue 158. A
+                        hand-added entrant has no account to ask about. */}
+                    {player.fafId !== null && (
+                      <Button
+                        disabled={busy}
+                        onClick={() => {
+                          setRatingsOf(player);
+                          props.entrants.loadRatings(player.id, false);
+                        }}
+                      >
+                        {t("tournaments.admin.ratings")}
+                      </Button>
+                    )}
+                    {/* For somebody in a team: the mid-event drop-out, whose
+                        place and results should outlive them. */}
+                    {player.teamId !== null && (
+                      <Button disabled={busy} onClick={() => setReplacing(player)}>
+                        {t("tournaments.replace.replace")}
+                      </Button>
+                    )}
+                    {player.fafId !== null && (
+                      <Button disabled={busy} onClick={() => setBanning(player)}>
+                        {t("tournaments.admin.ban")}
+                      </Button>
+                    )}
+                    <Button disabled={busy} onClick={() => props.entrants.remove(player.id)}>
                       {t("tournaments.admin.remove")}
                     </Button>
                   </li>
@@ -197,24 +303,21 @@ export function EntrantAdmin(props: EntrantAdminProps) {
         <section>
           <h5>{t("tournaments.admin.seeding")}</h5>
           <div className="tournament-detail-actions">
-            <Button disabled={busy} onClick={() => props.onReseed({ type: "randomise" })}>
+            <Button disabled={busy} onClick={() => props.entrants.reseed({ type: "randomise" })}>
               {t("tournaments.admin.randomise")}
             </Button>
-            {/* By rating, best first: the order the server would produce
-                itself, sent explicitly so it is a decision rather than a
-                default nobody chose. */}
+            {/* Highest combined rating first, unrated last, as the website
+                orders it. Worked out from the ratings on screen right now, so
+                an organiser's edit to one counts at once. It used to sort by
+                team size and the old seed, which is not a rating order at all. */}
             <Button
               disabled={busy}
               onClick={() =>
-                props.onReseed({
+                props.entrants.reseed({
                   type: "explicit",
                   payload: {
                     team_ids: [...event.teams]
-                      .sort(
-                        (left, right) =>
-                          right.playerIds.length - left.playerIds.length ||
-                          left.seed - right.seed,
-                      )
+                      .sort((left, right) => teamRating(event, right) - teamRating(event, left))
                       .map((team) => team.id),
                   },
                 })
@@ -222,6 +325,56 @@ export function EntrantAdmin(props: EntrantAdminProps) {
             >
               {t("tournaments.admin.seedByRating")}
             </Button>
+            {/* Only where somebody accepted an invitation: the service has no
+                invite order to follow otherwise. */}
+            {acceptedInvites > 0 && (
+              <Button
+                disabled={busy}
+                title={t("tournaments.admin.seedByInviteHint", { count: acceptedInvites })}
+                onClick={() => props.entrants.reseed({ type: "inviteOrder" })}
+              >
+                {t("tournaments.admin.seedByInvite")}
+              </Button>
+            )}
+          </div>
+
+          {/* By hand: seed 1 at the top. Moves stay local until saved, so a
+              reorder is one decision rather than a request per click. */}
+          <ol className="tournament-seed-list">
+            {order.map((teamId, index) => (
+              <li key={teamId} className="tournament-seed-row">
+                <span className="mono muted">{index + 1}</span>
+                <span className="tournament-seed-name">{teamName(teamId)}</span>
+                <span className="mono muted">{(() => {
+                  const team = event.teams.find((held) => held.id === teamId);
+                  return team === undefined ? "" : teamRating(event, team) || "";
+                })()}</span>
+                <Button
+                  disabled={busy || index === 0}
+                  aria-label={t("tournaments.admin.seedUp")}
+                  onClick={() => move(index, -1)}
+                >
+                  {"▲"}
+                </Button>
+                <Button
+                  disabled={busy || index === order.length - 1}
+                  aria-label={t("tournaments.admin.seedDown")}
+                  onClick={() => move(index, 1)}
+                >
+                  {"▼"}
+                </Button>
+              </li>
+            ))}
+          </ol>
+          <div className="tournament-detail-actions">
+            <Button
+              variant="primary"
+              disabled={busy || !moved}
+              onClick={() => props.entrants.reseed({ type: "explicit", payload: { team_ids: order } })}
+            >
+              {t("tournaments.admin.seedSave")}
+            </Button>
+            {moved && <span className="muted">{t("tournaments.admin.seedUnsaved")}</span>}
           </div>
 
           <label className="tournament-field tournament-divisions">
@@ -229,7 +382,7 @@ export function EntrantAdmin(props: EntrantAdminProps) {
             <select
               value={event.divisions}
               disabled={busy}
-              onChange={(changed) => props.onSplit(Number(changed.target.value) || 1)}
+              onChange={(changed) => props.entrants.splitDivisions(Number(changed.target.value) || 1)}
             >
               <option value={0}>{t("tournaments.admin.oneField")}</option>
               {[2, 3, 4, 5, 6].map((count) => (

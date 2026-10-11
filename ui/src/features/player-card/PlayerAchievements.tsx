@@ -31,7 +31,7 @@ function AchievementCard({ achievement }: { achievement: PlayerAchievement }) {
         {(achievement.unlockersCount !== null || achievement.unlockersPercent !== null) && (
           <small className="muted">
             {t("playerCard.achievements.unlockers", {
-              count: achievement.unlockersCount === null ? "N/A" : formatNumber(achievement.unlockersCount),
+              count: achievement.unlockersCount === null ? t("common.notAvailable") : formatNumber(achievement.unlockersCount),
             })}
             {achievement.unlockersPercent !== null ? ` (${achievement.unlockersPercent.toFixed(1)}%)` : ""}
           </small>

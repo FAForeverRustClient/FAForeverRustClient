@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { designedOrder, resolveColumnOrder, withColumnMoved } from "../../../shared/hooks/useColumnOrder";
 import {
   columnTemplate,
   columnWidths,
@@ -92,6 +93,26 @@ describe("the game list's column widths", () => {
       .toEqual([320, 170 + (80 - MIN_BROWSER_COLUMN_PX), MIN_BROWSER_COLUMN_PX, 100, 75]);
     expect(withColumnResized(widths, 2, -5000))
       .toEqual([320, MIN_BROWSER_COLUMN_PX, 80 + (170 - MIN_BROWSER_COLUMN_PX), 100, 75]);
+  });
+
+  it("stops the game column at a readable width from either side", () => {
+    // Moved to the right of another column, the game column is the one the
+    // divider in front of it takes from when dragged right.
+    const widths = [190, 320, 170];
+    expect(withColumnResized(widths, 1, 5000, 1)[1]).toBe(MIN_GAME_COLUMN_PX);
+  });
+
+  it("moves a column to where it is dropped", () => {
+    expect(withColumnMoved([0, 1, 2, 3, 4, 5], 0, 3)).toEqual([1, 2, 3, 0, 4, 5]);
+    expect(withColumnMoved([0, 1, 2, 3, 4, 5], 5, 0)).toEqual([5, 0, 1, 2, 3, 4]);
+    expect(resolveColumnOrder([], 6)).toEqual(designedOrder(6));
+    expect(resolveColumnOrder([5, 4, 3, 2, 1, 0], 6)).toEqual([5, 4, 3, 2, 1, 0]);
+    // An order saved for a table with a different number of columns.
+    expect(resolveColumnOrder([1, 0], 6)).toEqual(designedOrder(6));
+  });
+
+  it("gives the game column the slack wherever it is drawn", () => {
+    expect(columnTemplate([170, 320, 80], 1)).toBe("170px minmax(0, 1fr) 80px");
   });
 
   it("gives the game column whatever the other four leave", () => {

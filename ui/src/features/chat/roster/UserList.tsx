@@ -11,6 +11,8 @@
 // than from IRC, so an IRC-only nickname simply renders bare.
 //
 // Double-click opens a private conversation; right-click opens the user menu.
+// From the keyboard, Enter or Space on a row opens the conversation, since a
+// keyboard has no double-click (see `opensConversationOnClick`).
 
 import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatPreferences, ChatUser, Game, PlayerProfile, SocialState, VaultMap } from "../../../ipc/bindings";
@@ -19,6 +21,7 @@ import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
 import { playersByNickname } from "../../../store/reducer";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { useRememberedFilter } from "../../../shared/filterMemory";
 import {
   USER_CATEGORY_LABELS,
   USER_CATEGORY_ORDER,
@@ -72,6 +75,19 @@ function measureItemHeight(list: HTMLElement): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : FALLBACK_ITEM_HEIGHT;
 }
 
+/**
+ * Whether a click on a roster row opens the conversation.
+ *
+ * A pointer opens it on double-click, and a single click stays free for the
+ * rating card that hovering or focusing a row shows. Enter and Space activate a
+ * button with a click whose `detail` (the click count) is 0, and that is the
+ * only activation a keyboard has, so it opens the conversation directly: the
+ * row was a button that did nothing at all when pressed.
+ */
+export function opensConversationOnClick(clickCount: number): boolean {
+  return clickCount === 0;
+}
+
 type RosterFlatItem =
   | { type: "header"; category: UserCategory; count: number; collapsed: boolean; key: string }
   | { type: "user"; user: ChatUser; category: UserCategory; key: string };
@@ -89,7 +105,8 @@ export const UserList = memo(function UserList({
   menuTarget,
 }: Props) {
   const { t } = useTranslation();
-  const [filter, setFilter] = useState("");
+  // Remembered as the filter setting says (#447).
+  const [filter, setFilter] = useRememberedFilter("chat.users", "", (value) => typeof value === "string");
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(600);
   const [itemHeight, setItemHeight] = useState(FALLBACK_ITEM_HEIGHT);
@@ -108,15 +125,20 @@ export const UserList = memo(function UserList({
     [preferences.hiddenRosterCategories],
   );
 
+  // One category and a direction, applied by the backend to the list it
+  // holds: a list rebuilt here, even from the newest snapshot, lost a fold
+  // when two headers were clicked inside one round trip.
   const toggleCategory = useCallback(
     (category: UserCategory) => {
-      const current = useAppStore.getState().state.settings.chat;
-      const next = current.hiddenRosterCategories.includes(category)
-        ? current.hiddenRosterCategories.filter((entry) => entry !== category)
-        : [...current.hiddenRosterCategories, category];
+      const hiddenNow = useAppStore
+        .getState()
+        .state.settings.chat.hiddenRosterCategories.includes(category);
       ipc.send({
         kind: "Settings",
-        command: { type: "setChat", payload: { preferences: { ...current, hiddenRosterCategories: next } } },
+        command: {
+          type: "setListMember",
+          payload: { list: "hiddenRosterCategories", value: category, member: !hiddenNow },
+        },
       });
     },
     [],
@@ -238,11 +260,10 @@ export const UserList = memo(function UserList({
                           type="button"
                           className="chat-roster-heading"
                           aria-expanded={!item.collapsed}
-                          title={
-                            item.collapsed
-                              ? `Show ${t(USER_CATEGORY_LABELS[item.category])}`
-                              : `Hide ${t(USER_CATEGORY_LABELS[item.category])}`
-                          }
+                          title={t(
+                            item.collapsed ? "chat.roster.showCategory" : "chat.roster.hideCategory",
+                            { category: t(USER_CATEGORY_LABELS[item.category]) },
+                          )}
                           onClick={() => toggleCategory(item.category)}
                         >
                           <Icon
@@ -332,6 +353,9 @@ const RosterRow = memo(function RosterRow({
           ref={anchorRef as React.RefObject<HTMLButtonElement>}
           type="button"
           className="chat-roster-identity"
+          onClick={(e) => {
+            if (opensConversationOnClick(e.detail)) onOpenConversation(user.name);
+          }}
           onDoubleClick={() => onOpenConversation(user.name)}
           {...cardProps}
         >

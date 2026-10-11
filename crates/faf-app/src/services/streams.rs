@@ -20,7 +20,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use faf_domain::state::{
-    LiveStream, NotificationAction, NotificationKind, StreamsCommand, StreamsEvent,
+    LiveStream, NotificationAction, NotificationKind, StreamsCommand, StreamsEvent, StreamsStatus,
 };
 
 use crate::runtime::{EventSink, ServiceCtx};
@@ -37,11 +37,14 @@ async fn check(ctx: &ServiceCtx, out: &EventSink) {
     if !ctx.ports.streams.can_check() {
         return;
     }
+    // Nothing known yet this session: a stream found now was already running
+    // when the client started, and is announced as such.
+    let first = out.with_state(|state| state.streams.status == StreamsStatus::Idle);
     out.emit(StreamsEvent::Checking);
     match ctx.ports.streams.list_live().await {
         Ok(streams) => {
             out.emit(StreamsEvent::Loaded { streams });
-            announce(out);
+            announce(out, first);
         }
         // Logged rather than notified. Nobody asked to be told that a poll they
         // never started failed; the slice records it so the links tab can stop
@@ -57,8 +60,10 @@ async fn check(ctx: &ServiceCtx, out: &EventSink) {
 ///
 /// Reads the post-reduce slice through the sink rather than the list that just
 /// arrived, because "which of these is new" is a question about the state, and
-/// the state is where the answer is kept.
-fn announce(out: &EventSink) {
+/// the state is where the answer is kept. `already_running` is the first look
+/// of the session: those broadcasts did not just start, they were on when the
+/// player came in, and the notification says so.
+fn announce(out: &EventSink, already_running: bool) {
     let (wanted, new): (bool, Vec<LiveStream>) = out.with_state(|state| {
         (
             state.settings.notifications.stream_live,
@@ -85,11 +90,16 @@ fn announce(out: &EventSink) {
     }
 
     for stream in &new {
+        let (title, body) = if already_running {
+            (running_title(stream), running_body(stream))
+        } else {
+            (title(stream), body(stream))
+        };
         services::notifications::add(
             out,
             NotificationKind::StreamLive,
-            title(stream),
-            body(stream),
+            title,
+            body,
             Some(NotificationAction::OpenStream {
                 url: stream.url.clone(),
             }),
@@ -118,6 +128,28 @@ fn body(stream: &LiveStream) -> String {
     match stream.viewers {
         Some(viewers) => format!("{viewers} watching on {}.", stream.platform.label()),
         None => format!("Live on {}.", stream.platform.label()),
+    }
+}
+
+/// The title for a stream that was already on when the client started:
+/// "FAFLive is currently online", in the channel's own spelling.
+fn running_title(stream: &LiveStream) -> String {
+    let name = stream.display_name.trim();
+    let name = if name.is_empty() { "FAF Live" } else { name };
+    format!("{name} is currently online")
+}
+
+/// Under it, what is on and how many are watching.
+fn running_body(stream: &LiveStream) -> String {
+    let title = stream.title.trim();
+    let audience = match stream.viewers {
+        Some(viewers) => format!("{viewers} watching on {}", stream.platform.label()),
+        None => format!("live on {}", stream.platform.label()),
+    };
+    if title.is_empty() {
+        format!("{}{}.", audience[..1].to_uppercase(), &audience[1..])
+    } else {
+        format!("{title} ({audience})")
     }
 }
 
@@ -172,6 +204,19 @@ mod tests {
             "412 watching on Twitch.",
         );
         assert_eq!(body(&stream("Ladder night", None)), "Live on Twitch.");
+    }
+
+    #[test]
+    fn a_stream_already_on_at_startup_is_announced_as_currently_online() {
+        assert_eq!(
+            running_title(&stream("Ladder night", Some(40))),
+            "FAFLive is currently online",
+        );
+        assert_eq!(
+            running_body(&stream("Ladder night", Some(40))),
+            "Ladder night (40 watching on Twitch)",
+        );
+        assert_eq!(running_body(&stream("", None)), "Live on Twitch.");
     }
 
     #[test]

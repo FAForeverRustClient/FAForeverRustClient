@@ -11,16 +11,15 @@ import { Button } from "../../../design-system/Button";
 import type { Tourney } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { formatMoment } from "../tourneyPresentation";
+import type { NewsActions } from "../tourneyActions";
 
 interface NewsPanelProps {
   event: Tourney;
   busy: boolean;
-  onPost: (body: string, important: boolean) => void;
-  onEdit: (newsId: string, body: string, important: boolean) => void;
-  onDelete: (newsId: string) => void;
+  news: Pick<NewsActions, "post" | "edit" | "remove">;
 }
 
-export function NewsPanel({ event, busy, onPost, onEdit, onDelete }: NewsPanelProps) {
+export function NewsPanel({ event, busy, news }: NewsPanelProps) {
   const { t } = useTranslation();
   const [body, setBody] = useState("");
   const [important, setImportant] = useState(false);
@@ -38,7 +37,7 @@ export function NewsPanel({ event, busy, onPost, onEdit, onDelete }: NewsPanelPr
           onSubmit={(submitted) => {
             submitted.preventDefault();
             if (body.trim() === "") return;
-            onPost(body, important);
+            news.post(body, important);
             setBody("");
             setImportant(false);
           }}
@@ -110,7 +109,7 @@ export function NewsPanel({ event, busy, onPost, onEdit, onDelete }: NewsPanelPr
                     >
                       {t("tournaments.news.edit")}
                     </Button>
-                    <Button disabled={busy} onClick={() => onDelete(post.id)}>
+                    <Button disabled={busy} onClick={() => news.remove(post.id)}>
                       {t("tournaments.news.remove")}
                     </Button>
                   </>
@@ -122,7 +121,7 @@ export function NewsPanel({ event, busy, onPost, onEdit, onDelete }: NewsPanelPr
                   onSubmit={(submitted) => {
                     submitted.preventDefault();
                     if (editing.body.trim() === "") return;
-                    onEdit(editing.id, editing.body, editing.important);
+                    news.edit(editing.id, editing.body, editing.important);
                     setEditing(null);
                   }}
                 >

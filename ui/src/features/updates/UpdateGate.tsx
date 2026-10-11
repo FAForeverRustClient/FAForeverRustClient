@@ -10,12 +10,14 @@
 // becomes a gate. `updateRequiredRelease` decides that, mirroring the domain,
 // and it refuses to gate in the cases where gating would trap somebody: a
 // prerelease, a release with no installer for this platform, and anything
-// short of a check that actually found a newer version. This file adds the
-// fourth: a game in progress.
+// short of a check that actually found a newer version. This file adds two
+// more: a join or matchmaker search in progress, and a download that has
+// failed, after which the player may carry on for the rest of the session.
 //
 // The banner stays mounted underneath. When the gate lifts for a game, the
 // banner is what keeps the update visible.
 
+import { useState } from "react";
 import type { ClientRelease, ClientUpdateState } from "../../ipc/bindings";
 import { Modal } from "../../design-system/Modal";
 import { Button } from "../../design-system/Button";
@@ -34,22 +36,33 @@ const send = (type: "download" | "install") =>
 export function UpdateGate() {
   const update = useAppStore((s) => s.state.clientUpdate);
   const join = useAppStore((s) => s.state.lobby.join);
+  const matchmaking = useAppStore((s) => s.state.lobby.matchmaking);
+  // The version the player chose to carry on without, for this session only:
+  // offered once a download has failed, so a network that can never fetch the
+  // installer does not lock the whole client. Not persisted on purpose; the
+  // gate is back at the next start, and the banner keeps the update in view.
+  const [deferred, setDeferred] = useState<string | null>(null);
 
   const release = updateRequiredRelease(update);
-  if (release === null) return null;
+  if (release === null || deferred === release.version) return null;
 
   // The one carve-out that is not the domain's to make, because the domain's
   // update slice cannot see the lobby. Taking the client away mid-match costs
   // the player the chat, the lobby and the score screen of a game already
   // running, which is a worse outcome than another twenty minutes on the old
-  // build. The gate returns by itself when the game ends.
-  if (join.type === "launched" || join.type === "inGame") return null;
+  // build. The gate returns by itself when the game ends. Every stage of a
+  // join counts, not only the running game: a gate that rose over a map
+  // download or the preparation dialog covered the one way to cancel it. So
+  // does a matchmaker search, whose match-found prompt has a timer.
+  if (join.type !== "idle") return null;
+  if (matchmaking.type !== "idle" && matchmaking.type !== "cancelled") return null;
 
   return (
     <UpdateGateDialog
       release={release}
       status={update.status}
       currentVersion={update.currentVersion}
+      onDefer={() => setDeferred(release.version)}
     />
   );
 }
@@ -58,6 +71,8 @@ interface DialogProps {
   release: ClientRelease;
   status: ClientUpdateState["status"];
   currentVersion: string;
+  /** Carry on without the update for this session; offered after a failure. */
+  onDefer?: () => void;
 }
 
 /**
@@ -67,7 +82,7 @@ interface DialogProps {
  * repository has no DOM in its test environment, and anything that reads the
  * store renders as though the store were empty.
  */
-export function UpdateGateDialog({ release, status, currentVersion }: DialogProps) {
+export function UpdateGateDialog({ release, status, currentVersion, onDefer }: DialogProps) {
   const { t } = useTranslation();
   const percent = updatePercent(status);
   const notesUrl = optionalHttpsUrl(release.notesUrl);
@@ -135,9 +150,20 @@ export function UpdateGateDialog({ release, status, currentVersion }: DialogProp
           </Button>
         )}
         {notesUrl && (
-          <Button onClick={() => void openHttpsUrl(notesUrl)}>{t("updates.whatsNew")}</Button>
+          <Button onClick={() => void openHttpsUrl(notesUrl)}>
+            {status.type === "failed" ? t("updates.required.openPage") : t("updates.whatsNew")}
+          </Button>
+        )}
+        {/* The way out, and only after a failure: the normal path still
+            cannot be waved away, but a download that cannot succeed here must
+            not leave the player with no client at all. */}
+        {status.type === "failed" && onDefer && (
+          <Button onClick={onDefer}>{t("updates.required.later")}</Button>
         )}
       </div>
+      {status.type === "failed" && (
+        <p className="update-gate-versions muted">{t("updates.required.failedHint")}</p>
+      )}
     </Modal>
   );
 }

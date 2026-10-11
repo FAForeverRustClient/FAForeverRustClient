@@ -1,0 +1,64 @@
+/* An on/off control: a native checkbox under a drawn track, so the keyboard,
+   the accessible name and the checked state are the browser's own. */
+.switch {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  width: 38px;
+  height: 22px;
+  cursor: pointer;
+}
+
+.switch input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.switch-track {
+  display: flex;
+  align-items: center;
+  width: 38px;
+  height: 22px;
+  padding: 3px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  box-sizing: border-box;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.switch-track span {
+  width: 14px;
+  height: 14px;
+  background: var(--color-muted);
+  border-radius: 50%;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.switch input:checked + .switch-track {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.switch input:checked + .switch-track span {
+  background: var(--color-accent-contrast);
+  transform: translateX(16px);
+}
+
+.switch input:focus-visible + .switch-track {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.switch input:disabled + .switch-track {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

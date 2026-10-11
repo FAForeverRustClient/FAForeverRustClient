@@ -13,10 +13,17 @@ import { Modal } from "../../../design-system/Modal";
 import { ipc } from "../../../ipc/client";
 import type { CoopMission } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { useRememberedFilter } from "../../../shared/filterMemory";
+import { translateCoopMissionDescription, translateCoopMissionName } from "../../../i18n";
 import { useAppStore } from "../../../store/store";
 import { focusListboxOption, nextListboxIndex } from "../../../shared/listboxNavigation";
 import { loadLocalMapPreviews } from "../../../shared/hooks/useLocalMapPreview";
-import { scenarioBadge, sortCoopScenarios } from "../coop/coopScenarios";
+import {
+  displayScenarioName,
+  scenarioBadge,
+  sortCoopMissions,
+  sortCoopScenarios,
+} from "../coop/coopScenarios";
 import { CoopMissionArt } from "./CoopMissionArt";
 import { HostModsColumn } from "./HostModsColumn";
 import { HostTopConfig } from "./HostTopConfig";
@@ -55,7 +62,12 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
   const [titleTouched, setTitleTouched] = useState(
     initialTitle !== undefined || remembered.title !== "",
   );
-  const [missionSearch, setMissionSearch] = useState("");
+  // Remembered as the filter setting says (#447).
+  const [missionSearch, setMissionSearch] = useRememberedFilter(
+    "host.coop.missions",
+    "",
+    (value) => typeof value === "string",
+  );
   const [campaignId, setCampaignId] = useState<number | null>(null);
   // Where the mission comes from, in order: an explicit "host this one" from
   // the leaderboard, then the mission this dialog was last on, then whatever
@@ -124,23 +136,31 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
 
   const missionsInCampaign = useMemo(() => {
     const search = missionSearch.trim().toLocaleLowerCase();
-    return coop.missions
-      .filter((mission) =>
-        activeCampaignId === NO_CAMPAIGN
-          ? mission.scenarioId === null
-          : mission.scenarioId === activeCampaignId,
-      )
-      .filter(
-        (mission) =>
-          !search ||
-          mission.name.toLocaleLowerCase().includes(search) ||
-          mission.mapFolderName.toLocaleLowerCase().includes(search),
-      )
-      .sort((a, b) => a.name.localeCompare(b.name));
+    // Campaign order, the same as the records view (#457), not the alphabet.
+    return sortCoopMissions(
+      coop.missions
+        .filter((mission) =>
+          activeCampaignId === NO_CAMPAIGN
+            ? mission.scenarioId === null
+            : mission.scenarioId === activeCampaignId,
+        )
+        .filter(
+          (mission) =>
+            !search ||
+            mission.name.toLocaleLowerCase().includes(search) ||
+            mission.mapFolderName.toLocaleLowerCase().includes(search),
+        ),
+    );
   }, [activeCampaignId, coop.missions, missionSearch]);
 
   const selected: CoopMission | undefined =
     missionsInCampaign.find((mission) => mission.id === missionId) ?? missionsInCampaign[0];
+  const selectedDescription = selected
+    ? translateCoopMissionDescription(
+        selected.mapFolderName,
+        selected.description,
+      )
+    : "";
 
   // One batch per campaign rather than one read per click: the art lives in the
   // installed map folders, and reading twenty of them once is cheaper than
@@ -172,7 +192,7 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
       if (JSON.stringify(browsing.hostCoop) === JSON.stringify(hostCoop)) return;
       ipc.send({
         kind: "Settings",
-        command: { type: "setBrowsing", payload: { preferences: { ...browsing, hostCoop } } },
+        command: { type: "patchBrowsing", payload: { patch: { hostCoop } } },
       });
     },
     [],
@@ -290,7 +310,9 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
                     }}
                   >
                     <div className="host-gametype-title-row">
-                      <span className="host-gametype-name">{campaign.name}</span>
+                      <span className="host-gametype-name">
+                        {displayScenarioName(campaign, t)}
+                      </span>
                       <span className="host-coop-faction-badge" data-faction={scenarioBadge(campaign)}>
                         {t(`lobby.coop.badge.${scenarioBadge(campaign)}`)}
                       </span>
@@ -340,8 +362,11 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
                   className={`host-map-row${selected?.id === mission.id ? " active" : ""}`}
                   onClick={() => setMissionId(mission.id)}
                 >
-                  <span className="host-map-name" title={mission.name}>
-                    {mission.name}
+                  <span
+                    className="host-map-name"
+                    title={translateCoopMissionName(mission.mapFolderName, mission.name)}
+                  >
+                    {translateCoopMissionName(mission.mapFolderName, mission.name)}
                   </span>
                   <span className="host-map-meta">{mission.mapFolderName}</span>
                 </button>
@@ -387,8 +412,10 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
                 host dialog: the overlay dimmed the corner of every preview to
                 repeat what the row below already says. */}
             <div className="host-preview-name">
-              <span title={selected?.name}>
-                {selected?.name ?? t("lobby.coop.selectMission")}
+              <span title={selected ? translateCoopMissionName(selected.mapFolderName, selected.name) : undefined}>
+                {selected
+                  ? translateCoopMissionName(selected.mapFolderName, selected.name)
+                  : t("lobby.coop.selectMission")}
               </span>
             </div>
 
@@ -400,8 +427,10 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
                   <dt>{t("lobby.coop.mapFolder")}</dt>
                   <dd>{selected.mapFolderName}</dd>
                 </dl>
-                {selected.description && (
-                  <p className="host-map-description">{selected.description}</p>
+                {selectedDescription && (
+                  <p className="host-map-description">
+                    {selectedDescription}
+                  </p>
                 )}
               </div>
             )}

@@ -10,7 +10,7 @@
 // forty lines.
 
 import { useMemo, useState } from "react";
-import { SectionTabs } from "../../../design-system/SectionTabs";
+import { SectionTabs, sectionPanelProps } from "../../../design-system/SectionTabs";
 import type { ReplayPlayerStats } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { ReplayChartFrame } from "./ReplayChartFrame";
@@ -259,9 +259,10 @@ export function ReplayGameStats({ stats }: { stats: ReplayPlayerStats[] }) {
           { id: "balance", label: t("replays.insights.balance") },
         ]}
         onChange={setTab}
+        idPrefix="replay-stats"
       />
 
-      <div className="replay-stats-grid">
+      <div className="replay-stats-grid" {...sectionPanelProps("replay-stats", tab)}>
         {tab === "scores" && (
           <BarChart
             {...zoom("scores")}

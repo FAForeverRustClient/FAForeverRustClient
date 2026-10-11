@@ -1,17 +1,21 @@
 // A replay as a card: the vault's and the local library's, the facts they
 // share, and the map art both lead with.
 
+import { useState } from "react";
+import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
 import type { ReplayTeam, VaultReplay } from "../../ipc/bindings";
-import { formatAgeOrDate, formatShortDateTime } from "../../shared/format/dates";
+import { formatAgeOrDate, formatDate, formatShortDateTime } from "../../shared/format/dates";
 import { formatDuration } from "../../shared/format/durations";
-import { effectiveReplayMapName } from "../../shared/mapPresentation";
+import { effectiveReplayMapName, extractGeneratedMapSeed } from "../../shared/mapPresentation";
+import { useNamedMapGeneration } from "../../shared/hooks/useNamedMapGeneration";
 import { MapThumbnail } from "../../shared/components/MapThumbnail";
 import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { replayMapKey, replayMapPresentation } from "./coopReplayMap";
 import { useAppStore } from "../../store/store";
 import { useGameRating } from "./useGameRating";
 import { playerCount, ReplayCardRoster, mergeReplayTeamsWithLocal } from "./ReplayRoster";
+import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
 /**
@@ -92,11 +96,60 @@ export function replayCardTitle(title: string, fallback: string): { full: string
 
 // Mirrors the Java client's replay_card.fxml: a 2-column icon-less meta grid
 // (date/players, mod/rating, duration) below the thumbnail.
-export function ReplayMetaFact({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+/**
+ * "Generate map" in a card thumbnail's top-right corner, for a generated map
+ * that is not on disk yet, as the replay detail panel has it. Only for a full
+ * generator name: a bare placeholder carries no seed to build from, and the
+ * detail panel is where the replay file is fetched to find one.
+ *
+ * The generator's status does not say which map it is building, so the
+ * spinner is this card's only when this card started it. Every other card's
+ * button waits, disabled, because the generator builds one map at a time.
+ * The card itself opens on a click and watches on a double click, so the
+ * button keeps both to itself.
+ */
+export function ReplayThumbGenerate({ mapName }: { mapName: string }) {
+  const { t } = useTranslation();
+  const mapGen = useNamedMapGeneration(mapName);
+  const [requested, setRequested] = useState(false);
+  const mine = requested && mapGen.isGenerating;
+  if (!extractGeneratedMapSeed(mapName) || (!mapGen.canGenerate && !mine)) return null;
+  const label = t(mine ? "lobby.details.generatingMap" : "lobby.details.generateMap");
   return (
-    <span className="replay-meta-fact" title={label}>
+    <button
+      type="button"
+      className="replay-card-thumb-generate"
+      disabled={mapGen.isGenerating}
+      title={label}
+      aria-label={label}
+      onClick={(event) => {
+        event.stopPropagation();
+        setRequested(true);
+        mapGen.generate();
+      }}
+      onDoubleClick={(event) => event.stopPropagation()}
+    >
+      <Icon name={mine ? "refresh" : "plus"} size={14} className={mine ? "spin" : undefined} />
+    </button>
+  );
+}
+
+export function ReplayMetaFact({
+  icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: IconName;
+  label: string;
+  value: string;
+  /** More than the cell has room for, shown in the tooltip after the label. */
+  detail?: string;
+}) {
+  return (
+    <span className="replay-meta-fact" title={detail ? `${label}: ${detail}` : label}>
       <Icon name={icon} size={13} />
-      <span>{value || "N/A"}</span>
+      <span>{value || t("common.notAvailable")}</span>
     </span>
   );
 }
@@ -105,17 +158,20 @@ function ReplayMetaGrid({ replay }: { replay: ReplayCardData }) {
   const { t } = useTranslation();
   return (
     <div className="replay-meta-grid muted">
-      {/* Date *and* time of day. The date alone answers "which day was this"
-          and not "which of that evening's games was this", which is the
-          question someone scanning their own recent replays is actually
-          asking: the list view has printed the clock time in its Played column
-          all along, and the card was the odd one out. */}
+      {/* The date on the card, the date and time of day on hover. The cell
+          is too narrow for both, and with both in it the time was always cut
+          to an ellipsis after the date, which read as the date being cut
+          short. The time still answers "which of that evening's games was
+          this" for anyone who points at it, and the list view prints it in
+          its Played column. The player count leads the grid and the date
+          sits beside it, in the right-hand column. */}
+      <ReplayMetaFact icon="users" label={t("replays.card.players")} value={`${playerCount(replay.teams)}`} />
       <ReplayMetaFact
         icon="calendar"
         label={t("replays.card.played")}
-        value={formatShortDateTime(replay.startTime, "")}
+        value={formatDate(replay.startTime, "")}
+        detail={formatShortDateTime(replay.startTime, "")}
       />
-      <ReplayMetaFact icon="users" label={t("replays.card.players")} value={`${playerCount(replay.teams)}`} />
       <ReplayMetaFact icon="mods" label={t("replays.card.featuredMod")} value={replay.modName} />
       <ReplayMetaFact
         icon="activity"
@@ -183,6 +239,7 @@ export function ReplayLibraryCard({
   replay,
   watched,
   selected = false,
+  showResults = false,
   watch,
   onOpen,
   onDoubleClick,
@@ -191,6 +248,8 @@ export function ReplayLibraryCard({
   replay: ReplayCardData;
   watched: boolean;
   selected?: boolean;
+  /** Outcomes and rating changes on the lineup. See `ReplayCardRoster`. */
+  showResults?: boolean;
   /** The footer's action. See `ReplayCardWatch`. */
   watch?: ReplayCardWatch;
   onOpen: () => void;
@@ -232,47 +291,65 @@ export function ReplayLibraryCard({
       }}
     >
       <div className="replay-card-left">
-        <ReplayMapThumb
-          url={replay.mapThumbnailUrl}
-          mapName={mapKey}
-          className="replay-card-thumb"
-          emptyClassName="replay-card-thumb-empty"
-          iconSize={32}
-        />
+        <span className="replay-card-thumb-wrap">
+          <ReplayMapThumb
+            url={replay.mapThumbnailUrl}
+            mapName={mapKey}
+            className="replay-card-thumb"
+            emptyClassName="replay-card-thumb-empty"
+            iconSize={32}
+          />
+          {/* The map key, not the vault's `map`: for most generated maps the
+              vault records only a placeholder with no seed in it, and the
+              full name is what the replay file says, resolved for every
+              such card on the page (`resolvedMaps`). */}
+          <ReplayThumbGenerate mapName={mapKey} />
+        </span>
         <ReplayStars replay={replay} />
         <ReplayMetaGrid replay={replay} />
       </div>
       <div className="replay-card-right">
-        <div className="replay-card-header">
-          <span className="replay-card-title" title={cardTitle.full} aria-label={cardTitle.full}>{cardTitle.display}</span>
-          <span className="replay-card-submap muted">{t("replays.card.onMap", { map: presentation.displayName || replay.map })}</span>
-        </div>
-        <ReplayCardRoster teams={replay.teams} onPlayerMenu={onPlayerMenu} />
-        {/* The id and the way in, on one line in the corner: the label that
-            says which replay this is, and the button that plays it. */}
-        <div className="replay-card-footer">
-          {replay.footerNote && <span className="muted">{replay.footerNote}</span>}
-          <span className="muted">{replay.idLabel}</span>
+        <div className="replay-card-top">
+          <div className="replay-card-header">
+            <span className="replay-card-title" title={cardTitle.full} aria-label={cardTitle.full}>{cardTitle.display}</span>
+            {/* The id at the end of the map line: it says which replay this
+                is, and kept under Watch it read as part of the button. */}
+            <span className="replay-card-submap muted">
+              {t("replays.card.onMap", { map: presentation.displayName || replay.map })}
+              {replay.idLabel && <span className="replay-card-id"> · {replay.idLabel}</span>}
+            </span>
+          </div>
+          {/* The way in, in the top-right corner beside the title it plays:
+              the client's own primary button, as Watch is in the replay's
+              detail dialog, rather than a style of its own. */}
           {watch && (
-            <button
-              type="button"
-              className="replay-card-watch"
-              disabled={watch.disabled}
-              aria-label={watch.ariaLabel}
-              title={watch.ariaLabel}
-              // The card opens on a click and watches on a double click, and
-              // neither is what was asked for here.
-              onClick={(event) => {
-                event.stopPropagation();
-                watch.onClick();
-              }}
-              onDoubleClick={(event) => event.stopPropagation()}
-            >
-              <Icon name="play" size={13} />
-              <span>{watch.label}</span>
-            </button>
+            <div className="replay-card-corner">
+              <Button
+                variant="primary"
+                className="replay-card-watch"
+                disabled={watch.disabled}
+                aria-label={watch.ariaLabel}
+                title={watch.ariaLabel}
+                // The card opens on a click and watches on a double click, and
+                // neither is what was asked for here.
+                onClick={(event) => {
+                  event.stopPropagation();
+                  watch.onClick();
+                }}
+                onDoubleClick={(event) => event.stopPropagation()}
+              >
+                <Icon name="play" size={15} />
+                <span>{watch.label}</span>
+              </Button>
+            </div>
           )}
         </div>
+        <ReplayCardRoster teams={replay.teams} showResults={showResults} onPlayerMenu={onPlayerMenu} />
+        {replay.footerNote && (
+          <div className="replay-card-footer">
+            <span className="muted">{replay.footerNote}</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -282,6 +359,7 @@ export function ReplayCard({
   replay,
   watched,
   busy = false,
+  showResults = false,
   onOpen,
   onDoubleClick,
   onWatch,
@@ -291,6 +369,8 @@ export function ReplayCard({
   watched: boolean;
   /** A game is already starting, so a second "watch" would go nowhere. */
   busy?: boolean;
+  /** The vault's "Game result" switch (#454). */
+  showResults?: boolean;
   onOpen: () => void;
   onDoubleClick?: () => void;
   onWatch?: () => void;
@@ -330,6 +410,7 @@ export function ReplayCard({
         footerNote: replay.replayAvailable ? "" : t("replays.card.notUploaded"),
       }}
       watched={watched}
+      showResults={showResults}
       watch={watch}
       onOpen={onOpen}
       onDoubleClick={onDoubleClick}

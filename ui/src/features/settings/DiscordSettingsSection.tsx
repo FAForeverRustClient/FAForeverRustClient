@@ -1,19 +1,19 @@
-import type { DiscordPreferences } from "../../ipc/bindings";
+import type { DiscordPreferencesPatch } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 import { useTranslation } from "../../i18n/useTranslation";
 
-const save = (preferences: DiscordPreferences) =>
+const save = (patch: DiscordPreferencesPatch) =>
   ipc.send({
     kind: "Settings",
-    command: { type: "setDiscord", payload: { preferences } },
+    command: { type: "patchDiscord", payload: { patch } },
   });
 
 export function DiscordSettingsSection() {
   const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.discord);
-  const update = (patch: Partial<DiscordPreferences>) => void save({ ...preferences, ...patch });
+  const update = (patch: DiscordPreferencesPatch) => void save(patch);
 
   return (
     <>

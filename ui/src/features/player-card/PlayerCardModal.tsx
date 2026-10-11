@@ -2,19 +2,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
 import { Icon } from "../../design-system/Icon";
-import { SectionTabs } from "../../design-system/SectionTabs";
+import { SectionTabs, sectionPanelProps } from "../../design-system/SectionTabs";
 import { ipc } from "../../ipc/client";
-import type { PlayerProfile, PlayerRatingSummary, RatingHistoryPeriod } from "../../ipc/bindings";
+import type { PlayerCardProfile, PlayerProfile, PlayerRatingSummary, RatingHistoryPeriod } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { flagSrc } from "../../shared/countryFlags";
 import { useCountryLabel } from "../../shared/hooks/useCountryLabel";
 import { noteForPlayer } from "../../shared/rules/playerNotes";
 import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
+import { leaderboardLabel } from "../../shared/playerRatings";
 import { requestReplaySearch } from "../../shared/replaySearchIntent";
 import { PlayerAchievements } from "./PlayerAchievements";
 import { PlayerClanView } from "./PlayerClanView";
 import { PlayerOverview } from "./PlayerOverview";
-import { OwnAvatarPicker } from "./OwnAvatarPicker";
 import { PlayerResults } from "./PlayerResults";
 import { PlayerMapStatistics } from "./PlayerMapStatistics";
 import { PlayerStatistics } from "./PlayerStatistics";
@@ -125,7 +125,9 @@ function PlayerLookupSearch({
           };
         })
       : [];
-    return [...online, ...fromApi].slice(0, 12);
+    // As many as the API suggests (50) after the online ones; the list
+    // scrolls, and the arrow keys keep the active one in view.
+    return [...online, ...fromApi].slice(0, 58);
   }, [lookup, trimmedQuery, players]);
 
   useEffect(() => {
@@ -164,7 +166,10 @@ function PlayerLookupSearch({
       } else if (query.trim()) {
         handleSelect(null, query.trim());
       }
-    } else if (e.key === "Escape") {
+    } else if (e.key === "Escape" && isOpen) {
+      // An open suggestion list is the first thing Escape closes; only a
+      // second press, with the list already gone, reaches the card itself.
+      e.stopPropagation();
       setIsOpen(false);
     }
   };
@@ -212,6 +217,8 @@ function PlayerLookupSearch({
               role="option"
               aria-selected={index === activeIndex}
               className={`player-card-suggestion-item ${index === activeIndex ? "is-selected" : ""}`}
+              // Kept in view as the arrow keys walk a list longer than the box.
+              ref={index === activeIndex ? (element) => element?.scrollIntoView({ block: "nearest" }) : undefined}
               onMouseDown={(e) => {
                 e.preventDefault();
                 handleSelect(player.id, player.login);
@@ -311,7 +318,7 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
         <label><span>{t("playerCard.history.queue")}</span><select value={rating.leaderboardId} onChange={(event) => {
           const next = ratings.find((candidate) => candidate.leaderboardId === Number(event.target.value));
           if (next) onRatingChange(next);
-        }}>{ratings.map((candidate) => <option key={candidate.leaderboardId} value={candidate.leaderboardId}>{candidate.name}</option>)}</select></label>
+        }}>{ratings.map((candidate) => <option key={candidate.leaderboardId} value={candidate.leaderboardId}>{leaderboardLabel(candidate.technicalName)}</option>)}</select></label>
         <label><span>{t("playerCard.history.period")}</span><select value={period} onChange={(event) => setPeriod(event.target.value as RatingHistoryPeriod)}>{PERIODS.map((item) => <option key={item.value} value={item.value}>{t(item.label)}</option>)}</select></label>
       </div>
 
@@ -323,11 +330,11 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
         <div>
           <span>{t("playerCard.history.current")}</span>
           <strong>{rating.rating}</strong>
-          <small>{rating.name}</small>
+          <small>{leaderboardLabel(rating.technicalName)}</small>
         </div>
         <div>
           <span>{t(peakIsAuthoritative ? "playerCard.history.peakAllTime" : "playerCard.history.peakLoaded")}</span>
-          <strong>{peak?.toFixed(0) ?? "N/A"}</strong>
+          <strong>{peak?.toFixed(0) ?? t("common.notAvailable")}</strong>
           {peak != null && <small>{peak - rating.rating >= 0
             ? t("playerCard.history.aboveCurrent", { amount: (peak - rating.rating).toFixed(0) })
             : t("playerCard.history.isRecord")}</small>}
@@ -339,8 +346,8 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
         </div>
         <div>
           <span>{t("playerCard.history.deviation")}</span>
-          <strong>±{rating.deviation?.toFixed(0) ?? "N/A"}</strong>
-          <small>{t("playerCard.history.skillEstimate", { mean: rating.mean?.toFixed(0) ?? "N/A" })}</small>
+          <strong>±{rating.deviation?.toFixed(0) ?? t("common.notAvailable")}</strong>
+          <small>{t("playerCard.history.skillEstimate", { mean: rating.mean?.toFixed(0) ?? t("common.notAvailable") })}</small>
         </div>
       </div>
 
@@ -390,8 +397,15 @@ export function PlayerCardModal() {
   const playerNotes = useAppStore((store) => store.state.settings.social.playerNotes);
   const [tab, setTab] = useState<PlayerCardTab>("overview");
   const [ratingId, setRatingId] = useState<number | null>(null);
-  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const profile = state.profile;
+  // The profile `tab` was chosen for. The effect below chooses it a render
+  // after a new profile lands, and until then `tab` is still the previous
+  // player's: drawing it mounted that tab for the new player, so a card left
+  // on Maps started the new player's whole-history scan the moment another
+  // name was opened, and then switched to Overview anyway. Overview, which
+  // asks for nothing, stands in for that one render.
+  const [tabFor, setTabFor] = useState<PlayerCardProfile | null>(null);
+  const shownTab: PlayerCardTab = tabFor === profile ? tab : "overview";
   const knownPlayer = profile
     ? social.players.find((candidate) => candidate.id === profile.playerId)
       ?? social.players.find((candidate) => candidate.login.localeCompare(profile.login, undefined, { sensitivity: "base" }) === 0)
@@ -403,7 +417,7 @@ export function PlayerCardModal() {
     // Overview unless the click that opened the card asked for a tab (#361).
     setTab(takePlayerCardTab() ?? "overview");
     setRatingId(profile.ratings[0]?.leaderboardId ?? null);
-    setAvatarPickerOpen(false);
+    setTabFor(profile);
   }, [profile]);
 
   if (!state.open) return null;
@@ -414,8 +428,12 @@ export function PlayerCardModal() {
   const playerNote = profile ? noteForPlayer(playerNotes, profile.playerId) : "";
   const setRelation = (relation: "friend" | "foe", member: boolean) => profile && ipc.send({ kind: "Social", command: { type: "setRelation", payload: { playerId: profile.playerId, login: profile.login, relation, member } } });
   const openHistory = (next: PlayerRatingSummary) => { setRatingId(next.leaderboardId); setTab("ratings"); };
+  // Join, select, then switch tab: the order `usePlayerMenu` uses. Joining
+  // alone only made the conversation active when no channel was, so the
+  // player landed on whatever chat had been open before.
   const messagePlayer = async (login: string) => {
     await ipc.settle({ kind: "Chat", command: { type: "joinChannel", payload: { channel: login } } });
+    await ipc.settle({ kind: "Chat", command: { type: "selectChannel", payload: { channel: login } } });
     await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "chat" } } });
     closePlayerCard();
   };
@@ -427,7 +445,14 @@ export function PlayerCardModal() {
   };
 
   return (
-    <Modal className="player-card-modal" onClose={() => void closePlayerCard()}>
+    <Modal
+      className="player-card-modal"
+      // The player's name, as the heading shows it: "Dialog" named nothing.
+      ariaLabel={t("playerCard.dialogAria", {
+        name: profile?.login || state.requestedLogin || t("playerCard.fallbackName"),
+      })}
+      onClose={() => void closePlayerCard()}
+    >
       <div className="player-card-header">
         <div className="player-card-identity">
           {country && (
@@ -452,19 +477,11 @@ export function PlayerCardModal() {
         {profile && <div className="player-card-actions">
           <Button onClick={() => void navigator.clipboard.writeText(profile.login)}>{t("playerCard.action.copyName")}</Button>
           <Button onClick={browseReplays}>{t("playerCard.action.replays")}</Button>
-          {isMe && <Button onClick={() => setAvatarPickerOpen((open) => !open)}>{t("playerCard.action.chooseAvatar")}</Button>}
           {!isMe && <Button onClick={() => void messagePlayer(profile.login)}>{t("playerCard.action.message")}</Button>}
           {!isMe && <Button onClick={() => setRelation("friend", !isFriend)}>{t(isFriend ? "playerCard.action.removeFriend" : "playerCard.action.addFriend")}</Button>}
           {!isMe && <Button onClick={() => setRelation("foe", !isFoe)}>{t(isFoe ? "playerCard.action.removeFoe" : "playerCard.action.markFoe")}</Button>}
         </div>}
       </div>
-
-      {profile && isMe && avatarPickerOpen && (
-        <OwnAvatarPicker
-          currentUrl={profile.avatars.find((avatar) => avatar.selected)?.url ?? ""}
-          onClose={() => setAvatarPickerOpen(false)}
-        />
-      )}
 
       {state.profileStatus === "loading" && <div className="player-card-loading muted">{t("playerCard.profileLoading")}</div>}
       {state.profileStatus === "failed" && <div className="player-card-error"><p>{state.profileError}</p><Button onClick={() => void openPlayerCard(null, state.requestedLogin)}>{t("playerCard.retry")}</Button></div>}
@@ -474,22 +491,23 @@ export function PlayerCardModal() {
               of pill buttons: these switch a view, they do not perform an
               action. */}
           <SectionTabs
-            active={tab}
+            active={shownTab}
             ariaLabel={t("playerCard.sections.aria")}
             className="player-card-tabs"
             items={TABS.map((item) => ({ id: item.id, label: t(item.label) }))}
             onChange={setTab}
+            idPrefix="player-card"
           />
-          <div className="player-card-content">
-            {tab === "overview" && <PlayerOverview profile={profile} note={playerNote} onOpenHistory={openHistory} />}
-            {tab === "ratings" && rating && <PlayerRatingHistory rating={rating} ratings={profile.ratings} onRatingChange={(next) => setRatingId(next.leaderboardId)} />}
-            {tab === "ratings" && !rating && <div className="player-card-empty muted">{t("playerCard.noRatingHistory")}</div>}
-            {tab === "statistics" && <PlayerStatistics profile={profile} />}
-            {tab === "maps" && <PlayerMapStatistics playerId={profile.playerId} />}
-            {tab === "results" && <PlayerResults playerId={profile.playerId} />}
-            {tab === "achievements" && <PlayerAchievements achievements={profile.achievements} />}
-            {tab === "names" && <div className="player-names-view"><table className="surface-panel"><thead><tr><th>{t("playerCard.names.name")}</th><th>{t("playerCard.names.usedUntil")}</th></tr></thead><tbody>{profile.names.map((record) => <tr key={`${record.name}-${record.changeTime}`}><td>{record.name}</td><td>{formatDateTime(record.changeTime)}</td></tr>)}</tbody></table>{profile.names.length === 0 && <p className="muted">{t("playerCard.names.empty")}</p>}</div>}
-            {tab === "clan" && (
+          <div className="player-card-content" {...sectionPanelProps("player-card", shownTab)}>
+            {shownTab === "overview" && <PlayerOverview profile={profile} country={country} note={playerNote} onOpenHistory={openHistory} avatarsSelectable={Boolean(isMe)} />}
+            {shownTab === "ratings" && rating && <PlayerRatingHistory rating={rating} ratings={profile.ratings} onRatingChange={(next) => setRatingId(next.leaderboardId)} />}
+            {shownTab === "ratings" && !rating && <div className="player-card-empty muted">{t("playerCard.noRatingHistory")}</div>}
+            {shownTab === "statistics" && <PlayerStatistics profile={profile} />}
+            {shownTab === "maps" && <PlayerMapStatistics playerId={profile.playerId} />}
+            {shownTab === "results" && <PlayerResults playerId={profile.playerId} />}
+            {shownTab === "achievements" && <PlayerAchievements achievements={profile.achievements} />}
+            {shownTab === "names" && <div className="player-names-view"><table className="surface-panel"><thead><tr><th>{t("playerCard.names.name")}</th><th>{t("playerCard.names.usedUntil")}</th></tr></thead><tbody>{profile.names.map((record) => <tr key={`${record.name}-${record.changeTime}`}><td>{record.name}</td><td>{formatDateTime(record.changeTime)}</td></tr>)}</tbody></table>{profile.names.length === 0 && <p className="muted">{t("playerCard.names.empty")}</p>}</div>}
+            {shownTab === "clan" && (
               <PlayerClanView
                 clan={profile.clan}
                 selfLogin={me?.name ?? ""}

@@ -18,6 +18,7 @@ function entry(playerId: number, rank: number, rating: number | null): Leaderboa
     wonGames: null,
     updateTime: null,
     division: null,
+    subdivision: null,
     divisionOrder: null,
     highestScore: null,
     divisionImageUrl: null,

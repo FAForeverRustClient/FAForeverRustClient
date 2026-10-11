@@ -121,7 +121,8 @@ impl ClanPort for ClanClient {
             .append_pair("filter", &format!("id=={player_id}"))
             .append_pair(
                 "include",
-                "clanMembership.clan.memberships.player,clanMembership.clan.leader,clanMembership.clan.founder",
+                // Each member's avatar with them, for the roster's cards.
+                "clanMembership.clan.memberships.player.avatarAssignments.avatar,clanMembership.clan.leader,clanMembership.clan.founder",
             )
             .append_pair("page[size]", "1");
 

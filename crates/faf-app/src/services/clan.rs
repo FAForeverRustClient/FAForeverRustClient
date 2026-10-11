@@ -7,14 +7,28 @@
 //! roster held three relationships deep. A local simulation of any of those
 //! would be wrong within one action.
 //!
-//! Writes are serialised (`clan_mutation`) because command order is not
+//! Writes are serial in the command policy (`Key::ClanWrite`) because command order is not
 //! response order, and two overlapping edits would otherwise reload in the
 //! wrong order and leave the older answer standing.
 
 use faf_domain::state::{ClanAction, ClanCommand, ClanEvent, ClanIdentity, ClanInvitation};
 
 use crate::ports::RequestError;
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+
+/// The clan service's request generations. Owned by this service.
+#[derive(Default)]
+pub struct ClanContext {
+    /// Only the newest load may land. Loads overlap: opening the screen again,
+    /// or the reload at the end of a write, can start while an earlier read is
+    /// still out, and an older answer arriving last would put back the
+    /// identity, roster or status from before the newer one.
+    load_generation: LatestRequest,
+    /// Only the newest invite-field answer may land: the field searches per
+    /// keystroke, and an earlier prefix arriving late would replace the list
+    /// with matches for something no longer typed.
+    candidate_generation: LatestRequest,
+}
 
 /// Below this, a candidate search would return the first page of every account
 /// on FAF. The same floor the tournament entrant picker uses.
@@ -59,6 +73,12 @@ pub async fn handle(cmd: ClanCommand, ctx: &ServiceCtx, out: &EventSink) {
             });
             match ctx.ports.clan.invite(&clan_id, player_id).await {
                 Ok(token) => {
+                    // A ready invitation closes the candidate list, so a search
+                    // still in flight no longer owns it: its answer would
+                    // reopen the list beside the token and invite a second
+                    // click. Only on success, because a failed invite leaves
+                    // the list open and the field still searching.
+                    ctx.clan.candidate_generation.invalidate();
                     out.emit(ClanEvent::InvitationReady {
                         invitation: ClanInvitation {
                             token,
@@ -137,9 +157,19 @@ pub async fn handle(cmd: ClanCommand, ctx: &ServiceCtx, out: &EventSink) {
 /// Two requests rather than one because they answer different questions and
 /// only the first is cheap: `me` is the identity every screen needs, and the
 /// roster is only wanted by the screen that draws it.
+///
+/// Each answer is checked against the newest load, the reload after a write
+/// included, because it begins after the write has finished and so is the
+/// only read guaranteed to see it. A refusal is checked as well: a stale
+/// failure would mark a screen failed that a newer read has already filled.
 async fn load(ctx: &ServiceCtx, out: &EventSink) {
+    let generation = ctx.clan.load_generation.begin();
     out.emit(ClanEvent::Loading);
-    let identity = match ctx.ports.clan.me().await {
+    let identity = ctx.ports.clan.me().await;
+    if !ctx.clan.load_generation.is_current(generation) {
+        return;
+    }
+    let identity = match identity {
         Ok(identity) => identity,
         Err(error) => {
             out.emit(ClanEvent::LoadFailed {
@@ -157,7 +187,13 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
         return;
     }
 
-    match ctx.ports.clan.clan(identity.player_id).await {
+    let clan = ctx.ports.clan.clan(identity.player_id).await;
+    if !ctx.clan.load_generation.is_current(generation) {
+        // A newer load overtook this one between its two reads; its identity
+        // is as stale as its roster, so neither is worth emitting.
+        return;
+    }
+    match clan {
         Ok(clan) => {
             // Resolved here rather than by the adapter, because it is a join
             // between two answers: `/clans/me` names the clan and the clan
@@ -194,11 +230,15 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
 /// nothing changed: a 403 usually means somebody else already changed the
 /// thing being refused, and leaving the old answer on screen is how a player
 /// ends up pressing a button that cannot work any more.
+///
+/// One at a time: every command that comes here is serial in the command
+/// policy (`Key::ClanWrite`), so two overlapping edits cannot reload in
+/// response order and leave the older answer standing.
 async fn write<F>(action: ClanAction, ctx: &ServiceCtx, out: &EventSink, effect: F)
 where
     F: std::future::Future<Output = Result<(), RequestError>>,
 {
-    let _guard = ctx.clan_mutation.acquire().await;
+    crate::runtime::expect_admitted(crate::runtime::Key::ClanWrite);
     out.emit(ClanEvent::ActionStarted { action });
     match effect.await {
         Ok(()) => out.emit(ClanEvent::ActionSucceeded { action }),
@@ -209,19 +249,23 @@ where
 
 async fn search_candidates(query: &str, ctx: &ServiceCtx, out: &EventSink) {
     let query = query.trim();
+    // Claimed before anything else, including the early return: clearing the
+    // field is a newer answer too. Without it, a lookup for "Nu" still in
+    // flight when the field is emptied would land after the empty list and
+    // put its matches back under an empty field.
+    let generation = ctx.clan.candidate_generation.begin();
     if query.chars().count() < MIN_CANDIDATE_QUERY {
         out.emit(ClanEvent::CandidatesLoaded {
             candidates: Vec::new(),
         });
         return;
     }
-    let generation = ctx.clan_candidate_generation.begin();
     let found = ctx
         .ports
         .player_card
         .search_players(query, MAX_CANDIDATES)
         .await;
-    if !ctx.clan_candidate_generation.is_current(generation) {
+    if !ctx.clan.candidate_generation.is_current(generation) {
         // A later keystroke is already in flight; this answer is for a prefix
         // the field no longer holds.
         return;

@@ -144,11 +144,20 @@ describe("naming a leaderboard", () => {
     // The report: this printed "Tmm 4v4 FullShare" in the replay tab's game
     // mode picker.
     expect(leaderboardLabel("tmm_4v4_fullShare")).toBe("4v4 Full Share");
-    expect(leaderboardLabel("tmm_4v4_full_share")).toBe("4v4 Full Share");
-    expect(leaderboardLabel("tmm_4v4_share_until_death")).toBe("4v4 Share Until Death");
+    expect(leaderboardLabel("tmm_9v9_share_until_death")).toBe("9v9 Share Until Death");
   });
 
-  it("leaves a name that is not a queue alone apart from its underscores", () => {
+  it("names the 4v4 queues the way the leaderboard tab always did", () => {
+    // Full share stopped being a distinction when the no-share queue was
+    // retired, so the queue left over is just "4v4".
+    expect(leaderboardLabel("tmm_4v4_full_share")).toBe("4v4");
+    expect(leaderboardLabel("tmm_4v4_share_until_death")).toBe("4v4 No Share");
+  });
+
+  it("names a league after its queue, through the catalogue", () => {
+    // These were written in Rust once, where no translation reached them.
     expect(leaderboardLabel("1v1_league")).toBe("1v1 League");
+    expect(leaderboardLabel("4v4_full_share_league")).toBe("4v4 League");
+    expect(leaderboardLabel("4v4_share_until_death_league")).toBe("4v4 No Share League");
   });
 });

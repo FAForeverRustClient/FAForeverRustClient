@@ -20,6 +20,15 @@
   flex: 1 1 auto;
 }
 
+/* What follows the spacer belongs on the right, wrapped or not. On a narrow
+   window those controls wrap onto a line of their own, and the spacer stays
+   behind at the end of the line above, so "More filters" and "Clear" landed
+   on the left under the presets. An automatic left margin pushes the first
+   of them right on whichever line it ends up on, and the rest follow it. */
+.search-panel-secondary > .spacer + * {
+  margin-left: auto;
+}
+
 /* Separates the presets, which replace the whole search, from the toggles that
    modify the current one. */
 .search-panel-divider {

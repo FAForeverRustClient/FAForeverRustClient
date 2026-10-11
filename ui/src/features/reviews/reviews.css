@@ -22,11 +22,6 @@
   text-transform: uppercase;
 }
 
-.reviews-error {
-  margin: 0 0 var(--space-4);
-  padding: var(--space-3);
-}
-
 /* ── Distribution ────────────────────────────────────────────────────────── */
 
 .reviews-summary {
@@ -163,10 +158,6 @@
 
 .reviews-submit.is-ok {
   color: var(--color-ok);
-}
-
-.reviews-submit.is-error {
-  color: var(--color-error);
 }
 
 /* ── Everyone else ───────────────────────────────────────────────────────── */

@@ -8,6 +8,7 @@
 import { useMemo, useState } from "react";
 import { Icon } from "../../design-system/Icon";
 import { usePlayerHistory } from "./usePlayerHistory";
+import { HistoryScopeNote } from "./HistoryScopeNote";
 import { useAppStore } from "../../store/store";
 import { leaderboardTotalGames, rankedRecord } from "./rankedRecord";
 import { formatDecimal, formatNumber } from "../../i18n";
@@ -60,7 +61,7 @@ const FIRST_DIRECTION: Record<SortColumn, "asc" | "desc"> = {
 
 export function PlayerMapStatistics({ playerId }: Props) {
   const { t } = useTranslation();
-  const { stats, status, error } = usePlayerHistory(playerId);
+  const { stats, status, error, full, loadFull } = usePlayerHistory(playerId);
   // The leaderboards' own games-played totals, which is what faftracker prints
   // as "ranked games" rather than what its scan read. See `rankedRecord`.
   const ratings = useAppStore((state) => state.state.playerCard.profile?.ratings);
@@ -160,67 +161,71 @@ export function PlayerMapStatistics({ playerId }: Props) {
   }
 
   const summary = rankedRecord(stats, leaderboardTotalGames(ratings));
+  // Picked here rather than taken as the first row: the backend's order is a
+  // convenience, and the summary should not change meaning if it ever moves.
+  const leaderboardGap = summary.draws - stats.undecided;
+  const recordNote = [
+    stats.unranked > 0 ? t("playerCard.maps.unrankedNote", { count: stats.unranked }) : null,
+    leaderboardGap > 0 ? t("playerCard.maps.leaderboardGapNote", { count: leaderboardGap }) : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const mostPlayed = stats.maps.reduce<(typeof stats.maps)[number] | null>(
+    (best, entry) => (best === null || entry.games > best.games ? entry : best),
+    null,
+  );
 
   return (
     <div className="player-maps-view">
-      <div className="player-maps-summary surface-panel">
-        <div className="player-maps-figure">
-          <span className="player-maps-value">{formatNumber(stats.totalGames)}</span>
-          <span className="player-maps-label">{t("playerCard.maps.gamesTotal")}</span>
+      {/* Three figures, each with the breakdown under it, rather than six
+          equal ones: ranked and unranked are parts of the games total, and the
+          record is what the win rate is made of. Same divided grid as the
+          account and clan facts, so the card reads as one piece. */}
+      <dl className="player-account-details player-maps-summary surface">
+        <div>
+          <dt>{t("playerCard.maps.gamesTotal")}</dt>
+          <dd className="player-maps-value">{formatNumber(stats.totalGames)}</dd>
+          <dd className="player-maps-detail">
+            {t("playerCard.maps.gamesSplit", {
+              ranked: formatNumber(summary.rankedGames),
+              unranked: formatNumber(summary.unrankedGames),
+            })}
+          </dd>
         </div>
-        <div className="player-maps-figure">
-          <span className="player-maps-value">{formatNumber(summary.rankedGames)}</span>
-          <span className="player-maps-label">{t("playerCard.maps.rankedGames")}</span>
-        </div>
-        <div className="player-maps-figure">
-          <span className="player-maps-value">{formatNumber(summary.unrankedGames)}</span>
-          <span className="player-maps-label">{t("playerCard.maps.unrankedGames")}</span>
-        </div>
-        <div className="player-maps-figure">
-          <span className="player-maps-value">
+        <div>
+          <dt>{t("playerCard.maps.winRate")}</dt>
+          <dd className="player-maps-value">
             {summary.winRate === null ? "–" : `${formatDecimal(summary.winRate)}%`}
-          </span>
-          <span className="player-maps-label">{t("playerCard.maps.winRate")}</span>
+          </dd>
+          <dd className="player-maps-detail">
+            {t("playerCard.maps.recordSplit", {
+              wins: formatNumber(summary.wins),
+              losses: formatNumber(summary.losses),
+              draws: formatNumber(summary.draws),
+            })}
+          </dd>
         </div>
-        <div className="player-maps-figure">
-          <span className="player-maps-value">
-            {record(summary.wins, summary.losses, summary.draws)}
-          </span>
-          <span className="player-maps-label">{t("playerCard.maps.record")}</span>
+        <div>
+          <dt>{t("playerCard.maps.distinctMaps")}</dt>
+          <dd className="player-maps-value">{formatNumber(stats.maps.length)}</dd>
+          <dd className="player-maps-detail" title={mostPlayed ? label(mostPlayed) : undefined}>
+            {mostPlayed ? t("playerCard.maps.mostPlayed", { map: label(mostPlayed) }) : t("common.notAvailable")}
+          </dd>
         </div>
-        <div className="player-maps-figure">
-          <span className="player-maps-value">{formatNumber(stats.maps.length)}</span>
-          <span className="player-maps-label">{t("playerCard.maps.distinctMaps")}</span>
-        </div>
-      </div>
+      </dl>
 
       {/* Said plainly rather than hidden: the numbers cover a prefix of the
           history, and a reader comparing them to the profile deserves to know. */}
-      {stats.truncated && (
-        <p className="player-maps-note muted">{t("playerCard.maps.truncated")}</p>
-      )}
+      <HistoryScopeNote stats={stats} full={full} onLoadFull={loadFull} />
 
-      {/* Same reason. The record covers only the games FAF scored, so a player
-          whose history is mostly unranked lobbies sees a small W/L beside a
-          large game count, and is owed the arithmetic. */}
-      {stats.unranked > 0 && (
-        <p className="player-maps-note muted">
-          {t("playerCard.maps.unrankedNote", { count: stats.unranked })}
-        </p>
-      )}
-
-      {/* And when the leaderboards count more ranked games than the history
-          endpoint returned, those games are in the draws column without
-          anybody having drawn them. faftracker does this silently; saying it
-          costs one line and is the difference between a number and a claim. */}
-      {summary.draws > stats.undecided && (
-        <p className="player-maps-note muted">
-          {t("playerCard.maps.leaderboardGapNote", {
-            count: summary.draws - stats.undecided,
-          })}
-        </p>
-      )}
-
+      {/* Same reason, as one note. The record covers only the games FAF
+          scored, so a player whose history is mostly unranked lobbies sees a
+          small W/L beside a large game count, and is owed the arithmetic. And
+          when the leaderboards count more ranked games than the history
+          endpoint returned, those sit in the draws column without anybody
+          having drawn them; faftracker does this silently. Two sentences
+          rather than one message, because each count can appear alone. */}
+      {recordNote && <p className="player-maps-note muted">{recordNote}</p>}
 
       <div className="search-field player-maps-search">
         <input

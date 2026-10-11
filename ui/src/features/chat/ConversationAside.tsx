@@ -11,6 +11,7 @@
 // all while you are typing.
 
 import type { Game, SocialState, VaultMap } from "../../ipc/bindings";
+import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ipc } from "../../ipc/client";
@@ -108,10 +109,12 @@ export function ConversationAside({
           onPlayerContextMenu={onPlayerContextMenu}
         />
         <div className="chat-aside-actions">
+          {/* The way in as the replay tab's cards offer it: the client's
+              primary button (#448). Generating a missing map stays a quiet
+              one beside it. */}
           {(mapGen.canGenerate || mapGen.isGenerating) && (
-            <button
-              type="button"
-              className="chat-head-action chat-aside-action"
+            <Button
+              className="chat-aside-action"
               disabled={mapGen.isGenerating}
               onClick={mapGen.generate}
             >
@@ -121,12 +124,12 @@ export function ConversationAside({
                 className={mapGen.isGenerating ? "spin" : undefined}
               />
               {mapGen.generateLabel}
-            </button>
+            </Button>
           )}
-          <button type="button" className="chat-head-action chat-aside-action" onClick={act}>
-            <Icon name={watching ? "eye" : "play"} size={14} />
+          <Button variant="primary" className="chat-aside-action chat-aside-primary" onClick={act}>
+            <Icon name="play" size={15} />
             {watching ? t("chat.aside.watch") : t("chat.aside.join")}
-          </button>
+          </Button>
         </div>
       </div>
     </aside>

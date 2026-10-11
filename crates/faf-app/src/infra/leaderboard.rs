@@ -4,9 +4,9 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use faf_domain::state::{
-    is_retired_leaderboard, leaderboard_display_name, leaderboard_display_rank, BoardRating,
-    LeaderboardEntry, LeaderboardTier, League, LeagueSeason, PlayerRatings, RatingLeaderboard,
-    RatingPage, RatingQuery, SeasonLeaderboard,
+    is_retired_leaderboard, leaderboard_display_rank, BoardRating, LeaderboardEntry,
+    LeaderboardTier, League, LeagueSeason, PlayerRatings, RatingLeaderboard, RatingPage,
+    RatingQuery, SeasonLeaderboard,
 };
 use futures_util::{stream, StreamExt, TryStreamExt};
 use serde_json::Value;
@@ -15,6 +15,7 @@ use crate::infra::env_or;
 use crate::infra::jsonapi::{
     fetch_document, rel_target, rel_targets, resource_index, JsonApiDoc, JsonApiResource,
 };
+use crate::infra::league_keys::{division_key, subdivision_key};
 use crate::ports::LeaderboardPort;
 
 /// The most rows the API returns for one request, whatever `page[size]`
@@ -529,44 +530,6 @@ fn avatar_info(
     (url, tooltip)
 }
 
-fn display_key(value: &str) -> String {
-    let raw = value
-        .rsplit('.')
-        .next()
-        .unwrap_or(value)
-        .replace(['_', '-'], " ");
-    raw.split_whitespace()
-        .map(|word| {
-            let mut chars = word.chars();
-            chars
-                .next()
-                .map(|first| first.to_uppercase().chain(chars).collect::<String>())
-                .unwrap_or_default()
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn pretty_mode_name(technical_name: &str, fallback: &str) -> String {
-    // The queues and the leagues both, from the table in the domain that the
-    // profile reads too. League resources are in it for the same reason they
-    // were in the `match` this replaces: they carry a localization key ending
-    // in `.name`, which is a lookup rather than a label, and rendering its last
-    // segment put "Name" in the league tabs.
-    if let Some(name) = leaderboard_display_name(technical_name) {
-        return name.to_string();
-    }
-    if !fallback.is_empty()
-        && !fallback
-            .rsplit('.')
-            .next()
-            .is_some_and(|part| part.eq_ignore_ascii_case("name"))
-    {
-        return display_key(fallback);
-    }
-    display_key(technical_name)
-}
-
 /// Put a list of boards in the order the client presents them.
 ///
 /// The API sorts leaderboards by id and leagues by technical name, neither of
@@ -588,10 +551,8 @@ fn parse_rating_leaderboards(doc: &JsonApiDoc) -> Vec<RatingLeaderboard> {
             if is_retired_leaderboard(&technical_name) {
                 return None;
             }
-            let name_key = string_attr(resource, "nameKey").unwrap_or_default();
             Some(RatingLeaderboard {
                 id,
-                name: pretty_mode_name(&technical_name, name_key),
                 technical_name,
                 // A `descriptionKey` is a translation lookup, not prose. The
                 // Java client resolves it through its localization bundle;
@@ -616,10 +577,8 @@ fn parse_leagues(doc: &JsonApiDoc) -> Vec<League> {
             if is_retired_leaderboard(&technical_name) {
                 return None;
             }
-            let name_key = string_attr(resource, "nameKey").unwrap_or_default();
             Some(League {
                 id,
-                name: pretty_mode_name(&technical_name, name_key),
                 technical_name,
                 description: string_attr(resource, "description")
                     .unwrap_or_default()
@@ -661,7 +620,6 @@ fn parse_seasons(doc: &JsonApiDoc) -> Vec<LeagueSeason> {
                 league_id,
                 leaderboard_id,
                 season_number,
-                name: format!("Season {season_number}"),
                 start_date,
                 end_date,
                 placement_games: i32_attr(resource, "placementGames").unwrap_or_default(),
@@ -755,9 +713,11 @@ fn parse_rating_page(doc: &JsonApiDoc, query: &RatingQuery) -> RatingPage {
         entries.push(LeaderboardEntry {
             player_id,
             rank: (page - 1) * page_size + offset as i32 + 1,
+            // Empty when the API left the player out; the UI says so in the
+            // reader's language.
             player_name: player
                 .and_then(|value| string_attr(value, "login"))
-                .unwrap_or("unknown")
+                .unwrap_or_default()
                 .to_string(),
             avatar_url,
             avatar_tooltip,
@@ -769,6 +729,7 @@ fn parse_rating_page(doc: &JsonApiDoc, query: &RatingQuery) -> RatingPage {
             won_games: stats.won_games,
             update_time: stats.update_time,
             division: None,
+            subdivision: None,
             division_order: None,
             highest_score: None,
             division_image_url: None,
@@ -807,19 +768,20 @@ fn resolve_tier(
 ) -> Option<LeaderboardTier> {
     let division =
         rel_target(&resource.relationships, "leagueSeasonDivision").and_then(|key| index.get(&key));
+    // Identifiers, not labels: the UI names a division from its catalogue,
+    // and an empty one (the API left the division out) as well.
     let division_name = division
         .and_then(|value| string_attr(value, "nameKey"))
-        .map(display_key)
-        .unwrap_or_else(|| "Placement".into());
+        .map(division_key)
+        .unwrap_or_default();
     let subdivision = string_attr(resource, "nameKey")
-        .map(display_key)
+        .map(subdivision_key)
         .unwrap_or_default();
     let division_index = division
         .and_then(|value| i32_attr(value, "divisionIndex"))
         .unwrap_or_default();
     let subdivision_index = i32_attr(resource, "subdivisionIndex").unwrap_or_default();
     Some(LeaderboardTier {
-        name: format!("{division_name} {subdivision}").trim().to_string(),
         division: division_name,
         subdivision,
         division_order: division_index * 1_000 + subdivision_index,
@@ -886,10 +848,11 @@ fn build_season_entries(
         .map(|entry| LeaderboardEntry {
             player_id: entry.player_id,
             rank: 0,
+            // Empty for a player the lookup did not return; the UI words it.
             player_name: players
                 .get(&entry.player_id)
                 .map(|player| player.name.clone())
-                .unwrap_or_else(|| "unknown".into()),
+                .unwrap_or_default(),
             avatar_url: players
                 .get(&entry.player_id)
                 .and_then(|player| player.avatar_url.clone()),
@@ -903,7 +866,8 @@ fn build_season_entries(
             games_played: entry.games_played,
             won_games: None,
             update_time: None,
-            division: entry.tier.as_ref().map(|tier| tier.name.clone()),
+            division: entry.tier.as_ref().map(|tier| tier.division.clone()),
+            subdivision: entry.tier.as_ref().map(|tier| tier.subdivision.clone()),
             division_order: entry.tier.as_ref().map(|tier| tier.division_order),
             highest_score: entry.tier.as_ref().map(|tier| tier.highest_score),
             division_image_url: entry.tier.as_ref().and_then(|tier| tier.image_url.clone()),
@@ -965,6 +929,7 @@ fn fake_entry(player_id: i32, rank: i32, name: &str, rating: i32) -> Leaderboard
         won_games: Some(95 - rank * 3),
         update_time: Some("2026-08-01T12:00:00Z".into()),
         division: None,
+        subdivision: None,
         division_order: None,
         highest_score: None,
         division_image_url: None,
@@ -980,19 +945,16 @@ impl LeaderboardPort for FakeLeaderboard {
             RatingLeaderboard {
                 id: 1,
                 technical_name: "global".into(),
-                name: "Global".into(),
                 description: "All ranked games".into(),
             },
             RatingLeaderboard {
                 id: 2,
                 technical_name: "ladder_1v1".into(),
-                name: "1v1".into(),
                 description: "Ranked one versus one".into(),
             },
             RatingLeaderboard {
                 id: 3,
                 technical_name: "tmm_2v2".into(),
-                name: "2v2".into(),
                 description: "Team matchmaker".into(),
             },
         ])
@@ -1001,8 +963,7 @@ impl LeaderboardPort for FakeLeaderboard {
     async fn list_leagues(&self) -> Result<Vec<League>, String> {
         Ok(vec![League {
             id: 1,
-            technical_name: "ladder_1v1".into(),
-            name: "1v1".into(),
+            technical_name: "1v1_league".into(),
             description: "Seasonal competitive ladder".into(),
         }])
     }
@@ -1064,7 +1025,6 @@ impl LeaderboardPort for FakeLeaderboard {
             league_id,
             leaderboard_id: 2,
             season_number: 12,
-            name: "Season 12".into(),
             start_date: "2026-07-01T00:00:00Z".into(),
             end_date: "2026-09-30T23:59:59Z".into(),
             placement_games: 10,
@@ -1076,8 +1036,7 @@ impl LeaderboardPort for FakeLeaderboard {
     async fn list_season_leaderboard(&self, _season_id: i32) -> Result<SeasonLeaderboard, String> {
         let tiers = vec![
             LeaderboardTier {
-                name: "Silver III".into(),
-                division: "Silver".into(),
+                division: "silver".into(),
                 subdivision: "III".into(),
                 division_order: 2003,
                 highest_score: 1000,
@@ -1085,8 +1044,7 @@ impl LeaderboardPort for FakeLeaderboard {
                 medium_image_url: None,
             },
             LeaderboardTier {
-                name: "Gold I".into(),
-                division: "Gold".into(),
+                division: "gold".into(),
                 subdivision: "I".into(),
                 division_order: 3001,
                 highest_score: 1600,
@@ -1102,7 +1060,8 @@ impl LeaderboardPort for FakeLeaderboard {
         for (index, entry) in entries.iter_mut().enumerate() {
             entry.score = Some(1500 - index as i32 * 170);
             let tier = if index == 2 { &tiers[0] } else { &tiers[1] };
-            entry.division = Some(tier.name.clone());
+            entry.division = Some(tier.division.clone());
+            entry.subdivision = Some(tier.subdivision.clone());
             entry.division_order = Some(tier.division_order);
             entry.highest_score = Some(tier.highest_score);
             entry.returning_player = Some(false);
@@ -1205,7 +1164,7 @@ mod tests {
     }
 
     #[test]
-    fn league_names_use_technical_names_when_api_name_key_is_generic() {
+    fn leagues_are_listed_by_technical_name_in_the_queues_order() {
         let doc: JsonApiDoc = serde_json::from_value(json!({
             "data": [
                 {
@@ -1241,10 +1200,14 @@ mod tests {
         .unwrap();
 
         let parsed = parse_leagues(&doc);
-        let names: Vec<_> = parsed.iter().map(|league| league.name.as_str()).collect();
+        // The names are the UI's to write; what arrives is the identifier.
+        let names: Vec<_> = parsed
+            .iter()
+            .map(|league| league.technical_name.as_str())
+            .collect();
         assert_eq!(
             names,
-            ["1v1 League", "2v2 League", "4v4 League"],
+            ["1v1_league", "2v2_league", "4v4_full_share_league"],
             "the no-share league is a season nobody can enter, so it is not listed"
         );
     }
@@ -1274,7 +1237,9 @@ mod tests {
             "included": [{ "type": "leagueSeasonDivision", "id": "4", "attributes": { "nameKey": "Bronze", "divisionIndex": 1 } }]
         })).unwrap();
         let parsed = parse_tiers(&tiers);
-        assert_eq!(parsed[0].name, "Bronze III");
+        // Name keys as the API sent them, for the UI to name.
+        assert_eq!(parsed[0].division, "bronze");
+        assert_eq!(parsed[0].subdivision, "III");
         assert_eq!(parsed[0].division_order, 1003);
         assert_eq!(parsed[0].highest_score, 1200);
         assert_eq!(
@@ -1296,8 +1261,7 @@ mod tests {
                 games_played: 10,
                 returning_player: false,
                 tier: Some(LeaderboardTier {
-                    name: "Silver I".into(),
-                    division: "Silver".into(),
+                    division: "silver".into(),
                     subdivision: "I".into(),
                     division_order: 2001,
                     highest_score: 1600,
@@ -1311,8 +1275,7 @@ mod tests {
                 games_played: 10,
                 returning_player: false,
                 tier: Some(LeaderboardTier {
-                    name: "Gold III".into(),
-                    division: "Gold".into(),
+                    division: "gold".into(),
                     subdivision: "III".into(),
                     division_order: 3003,
                     highest_score: 1000,
@@ -1347,6 +1310,8 @@ mod tests {
         );
         assert_eq!(entries[0].avatar_tooltip.as_deref(), Some("Gold Champion"));
         assert_eq!(entries[0].rank, 1);
+        assert_eq!(entries[0].division.as_deref(), Some("gold"));
+        assert_eq!(entries[0].subdivision.as_deref(), Some("III"));
     }
 
     #[test]

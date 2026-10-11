@@ -183,10 +183,15 @@
    in and was cut mid-sentence on anything longer than a paragraph: "a complete
    disaster for my mod with its description". The grid still gives the browser
    everything else, and the column stops growing at 440 px so the cards beside
-   it keep their own width. */
+   it keep their own width.
+
+   It also stops taking 440 px before the cards have anywhere to go: at the
+   default 1100 px window a fixed 440 left one column of cards, so the first
+   result sat at the fold. A third of the width, between 300 and 440, gives
+   two columns there and the full panel on a wide window. */
 .vault-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
+  grid-template-columns: minmax(0, 1fr) clamp(300px, 34%, 440px);
   align-items: start;
   gap: var(--space-4);
   min-width: 0;

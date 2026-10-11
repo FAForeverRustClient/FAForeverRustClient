@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 
+import { Switch } from "../../design-system/Switch";
 import { addSettingsIndexEntry, removeSettingsIndexEntry } from "./settingsSearch";
 
 /**
@@ -19,7 +20,41 @@ export function SettingsSectionScope({
   section: string;
   children: ReactNode;
 }) {
-  return <SectionContext.Provider value={section}>{children}</SectionContext.Provider>;
+  const ref = useRef<HTMLDivElement>(null);
+  // The choices inside a dropdown are words people search for too ("pioneer"
+  // finds the ICE adapter picker, whose label says only "ICE adapter"), and
+  // no row passes them to the index. They are read off the rendered options
+  // rather than listed a second time, for the reason at the top of
+  // `settingsSearch`, and read again whenever the section's markup changes,
+  // so a language switch or a list that loads late is picked up. Only a
+  // difference touches the index, so typing elsewhere in the tab is cheap.
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    let indexed: string[] = [];
+    const sync = () => {
+      const next = [...new Set(
+        [...root.querySelectorAll("option")]
+          .map((option) => option.textContent?.trim() ?? "")
+          .filter(Boolean),
+      )];
+      for (const phrase of indexed) if (!next.includes(phrase)) removeSettingsIndexEntry(section, phrase);
+      for (const phrase of next) if (!indexed.includes(phrase)) addSettingsIndexEntry(section, phrase);
+      indexed = next;
+    };
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(root, { childList: true, subtree: true, characterData: true });
+    return () => {
+      observer.disconnect();
+      for (const phrase of indexed) removeSettingsIndexEntry(section, phrase);
+    };
+  }, [section]);
+  return (
+    <SectionContext.Provider value={section}>
+      <div ref={ref} className="settings-section-scope">{children}</div>
+    </SectionContext.Provider>
+  );
 }
 
 /**
@@ -117,16 +152,5 @@ export function SettingsSwitch({
   label: string;
   disabled?: boolean;
 }) {
-  return (
-    <label className="settings-switch">
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.checked)}
-        aria-label={label}
-      />
-      <span className="settings-switch-track" aria-hidden="true"><span /></span>
-    </label>
-  );
+  return <Switch checked={checked} onChange={onChange} label={label} disabled={disabled} />;
 }

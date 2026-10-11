@@ -43,6 +43,15 @@ enum FrontendMessage {
 struct Core(Arc<App>);
 
 pub fn run() {
+    // Before anything else: this process may be the Steam status helper the
+    // launcher starts beside a game, which is not a client. It must not open a
+    // window, and it must not reach the single-instance check below, which
+    // would hand it to the running client as a second start.
+    let arguments: Vec<String> = std::env::args().collect();
+    if let Some(code) = faf_app::infra::steam_presence::run_helper_if_asked(&arguments) {
+        std::process::exit(code);
+    }
+
     #[cfg(windows)]
     if std::env::var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").is_err() {
         std::env::set_var(
@@ -142,12 +151,15 @@ pub fn run() {
             commands::import_notification_sound,
             commands::list_notification_sounds,
             commands::read_notification_sound,
-            commands::remove_notification_sound,
+            commands::import_background_image,
+            commands::read_background_image,
             commands::open_version_folder,
             commands::reveal_replay,
             commands::read_latest_log,
             commands::webview_engine,
             commands::system_date_pattern,
+            commands::report_webview_stall,
+            commands::report_event_cost,
             commands::exit_app
         ])
         .run(tauri::generate_context!())
@@ -163,6 +175,11 @@ mod tests {
     fn windows_config() -> serde_json::Value {
         serde_json::from_str(include_str!("../tauri.windows.conf.json"))
             .expect("valid windows tauri config")
+    }
+
+    fn linux_config() -> serde_json::Value {
+        serde_json::from_str(include_str!("../tauri.linux.conf.json"))
+            .expect("valid linux tauri config")
     }
 
     fn capabilities() -> serde_json::Value {
@@ -260,6 +277,47 @@ mod tests {
         assert_eq!(
             windows["../natives/jre/"], "natives/jre/",
             "the packaged Java resolver expects this directory layout"
+        );
+    }
+
+    /// Valve's library is a different file on each platform, and the steam
+    /// status looks for it under `natives/steam/` by the name the SDK gives
+    /// it there. So each platform file bundles its own, with the notice that
+    /// says it is not MIT beside it, and the base bundles neither.
+    #[test]
+    fn each_platform_bundles_its_own_steamworks_library_and_its_notice() {
+        let base = tauri_config();
+        let base = base["bundle"]["resources"]
+            .as_object()
+            .expect("base resources");
+        assert!(base.keys().all(|source| !source.contains("steamworks")));
+
+        for (config, source, name) in [
+            (windows_config(), "win64", "steam_api64.dll"),
+            (linux_config(), "linux64", "libsteam_api.so"),
+        ] {
+            let resources = config["bundle"]["resources"]
+                .as_object()
+                .expect("platform resources")
+                .clone();
+            assert_eq!(
+                resources[&format!("../vendor/steamworks/{source}/{name}")],
+                format!("natives/steam/{name}")
+            );
+            assert_eq!(
+                resources["../vendor/steamworks/README.md"],
+                "natives/steam/README.md"
+            );
+        }
+        assert_eq!(
+            faf_app::infra::steam_presence::LIBRARY.map(|(name, _)| name),
+            if cfg!(windows) {
+                Some("steam_api64.dll")
+            } else if cfg!(target_os = "linux") {
+                Some("libsteam_api.so")
+            } else {
+                None
+            }
         );
     }
 

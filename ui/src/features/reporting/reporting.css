@@ -49,13 +49,8 @@
 
 .report-history > .muted { margin: auto; }
 
-.report-history-error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  color: var(--color-error);
-}
+/* The list already spaces its children with a gap; a margin would add to it. */
+.report-history > .status-notice { margin: 0; }
 
 .report-history-card { padding: var(--space-3); }
 .report-history-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }

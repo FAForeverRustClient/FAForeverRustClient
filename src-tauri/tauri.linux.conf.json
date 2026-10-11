@@ -1,0 +1,8 @@
+{
+  "bundle": {
+    "resources": {
+      "../vendor/steamworks/linux64/libsteam_api.so": "natives/steam/libsteam_api.so",
+      "../vendor/steamworks/README.md": "natives/steam/README.md"
+    }
+  }
+}

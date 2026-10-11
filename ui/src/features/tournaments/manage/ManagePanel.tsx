@@ -20,34 +20,40 @@
 //   Players     the field: add, approve, invite, remove, seed, divide
 //   Teams       who plays with whom, while that is still open
 //   Maps        the database, the pools, and which round plays which
-//   Organisers  co-organisers and casters
+//   Organisers  co-organisers and casters, and leaving the team
 //   Series      this edition's label, and the events that feed it
+//   Bans        who may not enter this event at all
 //   Chat        the silenced list, and the way back in
+//
+// Ending early sits beside the lifecycle rather than behind a tile: it is the
+// one decision made mid-event, usually in a hurry, by someone watching the
+// bracket reach its top four.
 
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type {
+  DescImageAnswer,
   AccountSearch,
-  BracketConfig,
-  FormatDraft,
-  MapDraft,
+  EntrantRatings,
+  RenameCheck,
+  TourneyLoadStatus,
   MapListStatus,
-  PoolDraft,
   PlayerSummary,
-  QualifierRule,
-  SeedOrder,
-  SeriesDraft,
   Tourney,
-  TourneyDraft,
   TourneyPhase,
   TourneySeries,
   VaultMap,
 } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { BracketSetupDialog } from "./BracketSetupDialog";
+import { BansPanel } from "./BansPanel";
+import { EndEarlyPanel } from "./EndEarlyPanel";
 import { EntrantAdmin } from "./EntrantAdmin";
+import { ImagesPanel } from "./ImagesPanel";
+import { RenamesPanel } from "./RenamesPanel";
+import { VetoSettingsPanel } from "./VetoSettingsPanel";
 import { FormatPanel } from "./FormatPanel";
 import { TournamentForm } from "./TournamentForm";
 import { MapDbPanel } from "./MapDbPanel";
@@ -58,10 +64,26 @@ import { SeriesPanel } from "./SeriesPanel";
 import { TeamAdmin } from "./TeamAdmin";
 import {
   isLegalFrom,
+  mayConfigureFactionVeto,
   mayEditFormat,
+  mayEditVeto,
+  mayEndEarly,
   mayPublish,
+  mayReopenEarly,
+  mayRepullRatings,
   mayShuffleTeams,
 } from "../../../shared/rules/tourneyRules";
+import { FactionVetoPanel } from "./FactionVetoPanel";
+import type { MapImport } from "./MapImportDialog";
+import { PlayoffsPanel } from "./PlayoffsPanel";
+import type {
+  ChatActions,
+  EntrantActions,
+  MapActions,
+  OrganiserActions,
+  SeriesActions,
+  TeamActions,
+} from "../tourneyActions";
 
 const PHASE_LABELS: Record<TourneyPhase, MessageKey> = {
   formTeams: "tournaments.manage.formTeams",
@@ -72,7 +94,15 @@ const PHASE_LABELS: Record<TourneyPhase, MessageKey> = {
 };
 
 /** The groups the board is made of. Everything else on the panel is inline. */
-type ManageGroup = "settings" | "players" | "teams" | "maps" | "organisers" | "series" | "chat";
+type ManageGroup =
+  | "settings"
+  | "players"
+  | "teams"
+  | "maps"
+  | "organisers"
+  | "series"
+  | "bans"
+  | "chat";
 
 const GROUP_LABELS: Record<ManageGroup, MessageKey> = {
   settings: "tournaments.manage.settings",
@@ -81,8 +111,23 @@ const GROUP_LABELS: Record<ManageGroup, MessageKey> = {
   maps: "tournaments.manage.maps",
   organisers: "tournaments.manage.organisers",
   series: "tournaments.manage.series",
+  bans: "tournaments.manage.bans",
   chat: "tournaments.manage.mutes",
 };
+
+/**
+ * The organiser's notes, as the website keeps them at the foot of its Admin
+ * tab: the handful of things nobody finds by looking, said where they are.
+ * Rewritten for this client's own places rather than copied, since half of the
+ * website's point at its own tabs.
+ */
+const NOTES: MessageKey[] = [
+  "tournaments.notes.maps",
+  "tournaments.notes.bestOf",
+  "tournaments.notes.news",
+  "tournaments.notes.running",
+  "tournaments.notes.corrections",
+];
 
 const PHASE_HINTS: Record<TourneyPhase, MessageKey> = {
   formTeams: "tournaments.manage.formTeamsHint",
@@ -96,6 +141,8 @@ interface ManagePanelProps {
   event: Tourney;
   vault: VaultMap[];
   vaultStatus: MapListStatus;
+  /** Where the service lives, for the organisers' uploaded map pictures. */
+  assetBase: string;
   /** Every series, for the picker. */
   series: TourneySeries[];
   /** The other events, as candidates for a qualifier link. */
@@ -104,59 +151,52 @@ interface ManagePanelProps {
   profiles: PlayerSummary[];
   /** Forwarded to `EntrantAdmin`'s name pickers. */
   accountSearch: AccountSearch;
-  onSearchAccounts: (query: string) => void;
+  /** The last check of entrant names against FAF. */
+  renames: RenameCheck | null;
+  renamesStatus: TourneyLoadStatus;
+  /** One entrant's every rating. */
+  playerRatings: EntrantRatings | null;
+  playerRatingsStatus: TourneyLoadStatus;
+  /** Importing maps from another event. */
+  mapImport: MapImport;
   busy: boolean;
-  /** Save the settings. The form is inline here, so there is no dialog. */
-  onEditInfo: (draft: TourneyDraft) => void;
-  onPublish: () => void;
-  onAdvance: (phase: TourneyPhase, config?: BracketConfig) => void;
-  onArchive: () => void;
-  onAssignPool: (roundKey: string, poolId: string) => void;
+  /** The last picture pasted into the event's text and stored. */
+  pastedImage?: DescImageAnswer | null;
+  /** A site admin, for whom archiving is deleting and the category is open. */
+  siteAdmin?: boolean;
   onOpenUrl: (url: string) => void;
-  onAddPlayer: (name: string, rating: number | null) => void;
-  onSetCaptain: (teamId: string, playerId: string) => void;
-  onMovePlayer: (playerId: string, teamId: string | null) => void;
-  onEditPlayer: (playerId: string, note: string, rating: number | null) => void;
-  onRespondSignup: (playerId: string, accept: boolean) => void;
-  onRemovePlayer: (playerId: string) => void;
-  onInvitePlayer: (name: string) => void;
-  onUninvite: (fafId: number) => void;
-  onReseed: (order: SeedOrder) => void;
-  onSplitDivisions: (divisions: number) => void;
-  onSetDivision: (teamId: string, division: number) => void;
-  onSaveMap: (map: MapDraft) => void;
-  onPublishMap: (mapId: string, published: boolean) => void;
-  onDeleteMap: (mapId: string) => void;
-  onMute: (fafId: number, name: string, muted: boolean) => void;
-  onAddOrganiser: (fafId: number, name: string) => void;
-  onSetOrganiserVisibility: (fafId: number, hidden: boolean) => void;
-  onSetCaster: (fafId: number, name: string, casting: boolean) => void;
-  onAbandon: (abandoned: boolean) => void;
-  onEditFormat: (format: FormatDraft) => void;
-  onSetSeries: (seriesId: string | null) => void;
-  onSaveSeries: (draft: SeriesDraft) => void;
-  onAddQualifier: (qualifierId: string, rule: QualifierRule) => void;
-  onRemoveQualifier: (linkId: string) => void;
-  onSavePool: (pool: PoolDraft) => void;
-  onPublishPool: (poolId: string, published: boolean) => void;
-  onDeletePool: (poolId: string) => void;
+  /** The lifecycle, the settings form (inline here, so no dialog) and the staff. */
+  organiser: OrganiserActions;
+  /** The field: adding, approving, inviting, seeding, dividing. */
+  entrants: EntrantActions;
+  /** Handing a team's armband to somebody else. */
+  teams: Pick<TeamActions, "setCaptain">;
+  /** The map database, the pools, the rounds' pools and the faction veto. */
+  maps: MapActions;
+  seriesActions: SeriesActions;
+  /** Unmuting, from the silenced list. */
+  chat: Pick<ChatActions, "mute">;
 }
 
-export function ManagePanel({
+/**
+ * Memoised: the organiser's longest section, and none of the chat polls or
+ * pinned-room posts that redraw the pane above it reach anything in here.
+ */
+export const ManagePanel = memo(function ManagePanel({
   event,
   vault,
   profiles,
   accountSearch,
   busy,
-  onEditInfo,
-  onPublish,
-  onAdvance,
-  onArchive,
-  onAssignPool,
   onOpenUrl,
+  organiser,
+  entrants,
+  teams,
+  maps,
+  seriesActions,
+  chat,
   ...rest
-}: ManagePanelProps) {
-  const { t } = useTranslation();
+}: ManagePanelProps) {  const { t } = useTranslation();
   // Reopening throws the teams away, so it is offered apart from the two steps
   // that move forward rather than beside them.
   // A draft event forms its teams by drafting, so `formTeams` is not offered
@@ -197,7 +237,7 @@ export function ManagePanel({
           busy={busy}
           onClose={() => setDrawing(false)}
           onStart={(config) => {
-            onAdvance("startBracket", config);
+            organiser.advance("startBracket", config);
             setDrawing(false);
           }}
         />
@@ -216,6 +256,12 @@ export function ManagePanel({
             {tile("maps", t("tournaments.manage.mapsNote", { count: event.mapDb.length }))}
             {tile("organisers")}
             {tile("series")}
+            {tile(
+              "bans",
+              event.bans.length > 0
+                ? t("tournaments.manage.bansNote", { count: event.bans.length })
+                : undefined,
+            )}
             {event.chatMutes.length > 0 &&
               tile("chat", t("tournaments.manage.chatNote", { count: event.chatMutes.length }))}
           </div>
@@ -237,7 +283,7 @@ export function ManagePanel({
                 <>
                   <p className="muted">{t("tournaments.manage.unpublishedHint")}</p>
                   <div className="tournament-detail-actions">
-                    <Button variant="primary" disabled={busy} onClick={onPublish}>
+                    <Button variant="primary" disabled={busy} onClick={organiser.publish}>
                       <Icon name="eye" size={16} /> {t("tournaments.manage.publish")}
                     </Button>
                   </div>
@@ -256,7 +302,7 @@ export function ManagePanel({
                       // first: the best-of per round, which only makes sense once the
                       // team count is known and is therefore never asked earlier.
                       onClick={() =>
-                        phase === "startBracket" ? setDrawing(true) : onAdvance(phase)
+                        phase === "startBracket" ? setDrawing(true) : organiser.advance(phase)
                       }
                     >
                       {t(PHASE_LABELS[phase])}
@@ -266,7 +312,7 @@ export function ManagePanel({
                   <Button
                     disabled={busy}
                     title={t(PHASE_HINTS.reopenSignups)}
-                    onClick={() => onAdvance("reopenSignups")}
+                    onClick={() => organiser.advance("reopenSignups")}
                   >
                     {t(PHASE_LABELS.reopenSignups)}
                   </Button>
@@ -285,6 +331,24 @@ export function ManagePanel({
               <ManageLink event={event} onOpen={onOpenUrl} />
             </section>
 
+            {/* A running Swiss stage's playoffs: who picks, the clock, how
+                equal records are ordered, and undoing or redoing them. */}
+            {event.status === "running" && event.playoffs !== null && (
+              <section className="tournament-tile is-wide">
+                <h5>{t("tournaments.playoffs.title")}</h5>
+                <PlayoffsPanel event={event} busy={busy} onAdmin={organiser.admin} />
+              </section>
+            )}
+
+            {(mayEndEarly(event) || mayReopenEarly(event)) && (
+              <section className="tournament-tile is-wide">
+                <h5>
+                  {t(mayReopenEarly(event) ? "tournaments.endEarly.endedTitle" : "tournaments.endEarly.title")}
+                </h5>
+                <EndEarlyPanel event={event} busy={busy} onAdmin={organiser.admin} />
+              </section>
+            )}
+
             {/* Last, and together: both of these end the event, and one tile is how
                 the difference between them gets stated. Abandoning leaves it visible
                 and says it was called off, and is reversible here; archiving hides it
@@ -298,11 +362,11 @@ export function ManagePanel({
                   disabled={busy}
                   onClick={() => {
                     if (event.abandoned) {
-                      rest.onAbandon(false);
+                      organiser.abandon(false);
                       return;
                     }
                     if (window.confirm(t("tournaments.manage.abandonConfirm", { name: event.name }))) {
-                      rest.onAbandon(true);
+                      organiser.abandon(true);
                     }
                   }}
                 >
@@ -311,22 +375,58 @@ export function ManagePanel({
                     : t("tournaments.manage.abandon")}
                 </Button>
               </div>
+              {/* The website's category switch: organisers choose once, at
+                  creation, and only a site admin changes it afterwards. */}
+              {rest.siteAdmin === true && !event.imported && (
+                <div className="tournament-step">
+                  <h6>{t("tournaments.manage.categoryTitle")}</h6>
+                  <p className="tournament-step-hint muted">{t("tournaments.manage.categoryHint")}</p>
+                  <Button
+                    disabled={busy}
+                    onClick={() => {
+                      const category = event.category === "official" ? "community" : "official";
+                      if (window.confirm(t(category === "official" ? "tournaments.manage.toOfficialConfirm" : "tournaments.manage.toCommunityConfirm"))) {
+                        organiser.admin({ type: "setCategory", payload: { category } });
+                      }
+                    }}
+                  >
+                    {t(event.category === "official" ? "tournaments.manage.toCommunity" : "tournaments.manage.toOfficial")}
+                  </Button>
+                </div>
+              )}
+              {/* The service's `delete` archives for an organiser and deletes
+                  outright for a site admin. The website's button says
+                  "archive" either way; here a site admin is told the truth. */}
               <div className="tournament-step">
-                <h6>{t("tournaments.manage.archive")}</h6>
-                <p className="tournament-step-hint muted">{t("tournaments.manage.archiveHint")}</p>
+                <h6>{t(rest.siteAdmin === true ? "tournaments.manage.deleteForever" : "tournaments.manage.archive")}</h6>
+                <p className="tournament-step-hint muted">
+                  {t(rest.siteAdmin === true ? "tournaments.manage.deleteForeverHint" : "tournaments.manage.archiveHint")}
+                </p>
                 <Button
+                  variant={rest.siteAdmin === true ? "danger" : undefined}
                   disabled={busy}
                   onClick={() => {
-                    if (window.confirm(t("tournaments.manage.archiveConfirm", { name: event.name }))) {
-                      onArchive();
-                    }
+                    const confirm =
+                      rest.siteAdmin === true
+                        ? t("tournaments.manage.deleteForeverConfirm", { name: event.name })
+                        : t("tournaments.manage.archiveConfirm", { name: event.name });
+                    if (window.confirm(confirm)) organiser.archive();
                   }}
                 >
-                  {t("tournaments.manage.archive")}
+                  {t(rest.siteAdmin === true ? "tournaments.manage.deleteForever" : "tournaments.manage.archive")}
                 </Button>
               </div>
             </section>
           </div>
+
+          <details className="tournament-notes">
+            <summary>{t("tournaments.notes.title")}</summary>
+            <ul className="muted">
+              {NOTES.map((key) => (
+                <li key={key}>{t(key)}</li>
+              ))}
+            </ul>
+          </details>
         </>
       ) : (
         <>
@@ -347,15 +447,43 @@ export function ManagePanel({
                 series={rest.series}
                 busy={busy}
                 inline
-                onSubmit={onEditInfo}
+                onUploadImage={organiser.uploadImage}
+                pastedImage={rest.pastedImage}
+                onSubmit={organiser.editInfo}
                 onClose={() => setOpen(null)}
               />
               {mayEditFormat(event) && (
                 <div className="tournament-step">
                   <h6>{t("tournaments.manage.format")}</h6>
-                  <FormatPanel event={event} busy={busy} onSave={rest.onEditFormat} />
+                  <FormatPanel event={event} busy={busy} onSave={organiser.editFormat} />
                 </div>
               )}
+              {/* Beside the form's rating fields, because it is what makes a
+                  change to them count for the people already entered: the
+                  service never rewrites a stored rating on its own. */}
+              {mayRepullRatings(event) && (
+                <div className="tournament-step">
+                  <h6>{t("tournaments.ratings.repullTitle")}</h6>
+                  <p className="tournament-step-hint muted">
+                    {t("tournaments.ratings.repullHint", { count: event.players.length })}
+                  </p>
+                  <Button
+                    disabled={busy || event.players.length === 0}
+                    onClick={() => organiser.admin({ type: "repullRatings" })}
+                  >
+                    {t("tournaments.ratings.repull", { count: event.players.length })}
+                  </Button>
+                </div>
+              )}
+              <div className="tournament-step">
+                <h6>{t("tournaments.images.title")}</h6>
+                <ImagesPanel
+                  event={event}
+                  assetBase={rest.assetBase}
+                  busy={busy}
+                  onAdmin={organiser.admin}
+                />
+              </div>
             </section>
           )}
 
@@ -366,16 +494,24 @@ export function ManagePanel({
               event={event}
               profiles={profiles}
               accountSearch={accountSearch}
-              onSearchAccounts={rest.onSearchAccounts}
               busy={busy}
-              onAdd={rest.onAddPlayer}
-              onRespondSignup={rest.onRespondSignup}
-              onRemove={rest.onRemovePlayer}
-              onInvite={rest.onInvitePlayer}
-              onUninvite={rest.onUninvite}
-              onReseed={rest.onReseed}
-              onSplit={rest.onSplitDivisions}
+              entrants={entrants}
+              playerRatings={rest.playerRatings}
+              playerRatingsStatus={rest.playerRatingsStatus}
+              onReplace={(playerId, replacement) =>
+                organiser.admin({ type: "replacePlayer", payload: { playerId, with: replacement } })
+              }
             />
+            <div className="tournament-step">
+              <h6>{t("tournaments.renames.title")}</h6>
+              <RenamesPanel
+                check={rest.renames}
+                status={rest.renamesStatus}
+                busy={busy}
+                onCheck={entrants.checkRenames}
+                onAdmin={organiser.admin}
+              />
+            </div>
           </section>
           )}
 
@@ -389,10 +525,10 @@ export function ManagePanel({
                 event={event}
                 profiles={profiles}
                 busy={busy}
-                onSetCaptain={rest.onSetCaptain}
-                onMovePlayer={rest.onMovePlayer}
-                onEditPlayer={rest.onEditPlayer}
-                onSetDivision={rest.onSetDivision}
+                onSetCaptain={teams.setCaptain}
+                onMovePlayer={entrants.movePlayer}
+                onEditPlayer={entrants.editPlayer}
+                onSetDivision={entrants.setDivision}
               />
             </section>
           )}
@@ -414,10 +550,13 @@ export function ManagePanel({
                     event={event}
                     vault={vault}
                     vaultStatus={rest.vaultStatus}
+                    assetBase={rest.assetBase}
                     busy={busy}
-                    onSave={rest.onSaveMap}
-                    onPublish={rest.onPublishMap}
-                    onDelete={rest.onDeleteMap}
+                    onSave={maps.saveMap}
+                    onPublish={maps.publishMap}
+                    onDelete={maps.deleteMap}
+                    onAdmin={organiser.admin}
+                    imports={rest.mapImport}
                   />
                 </li>
                 <li
@@ -432,9 +571,10 @@ export function ManagePanel({
                   <PoolEditor
                     event={event}
                     busy={busy}
-                    onSave={rest.onSavePool}
-                    onPublish={rest.onPublishPool}
-                    onDelete={rest.onDeletePool}
+                    onSave={maps.savePool}
+                    onPublish={maps.publishPool}
+                    onDelete={maps.deletePool}
+                    onAdmin={organiser.admin}
                   />
                 </li>
                 <li
@@ -449,12 +589,32 @@ export function ManagePanel({
                   <MapPoolPanel
                     event={event}
                     vault={vault}
+                    assetBase={rest.assetBase}
                     busy={busy}
-                    onAssign={onAssignPool}
-                    onSavePool={rest.onSavePool}
+                    onAssign={maps.assignPool}
+                    onSavePool={maps.savePool}
                   />
                 </li>
               </ol>
+              {mayEditVeto(event) && (
+                <>
+                  <h6>{t("tournaments.form.vetoLegend")}</h6>
+                  <VetoSettingsPanel
+                    key={JSON.stringify(event.veto)}
+                    event={event}
+                    busy={busy}
+                    onAdmin={organiser.admin}
+                  />
+                </>
+              )}
+              {/* Beside the maps because the website keeps the two veto
+                  settings together: both decide what a match's run holds. */}
+              {mayConfigureFactionVeto(event) && (
+                <>
+                  <h6>{t("tournaments.faction.adminTitle")}</h6>
+                  <FactionVetoPanel event={event} busy={busy} onSave={maps.setFactionVeto} />
+                </>
+              )}
             </section>
           )}
 
@@ -465,10 +625,11 @@ export function ManagePanel({
               event={event}
               accountSearch={accountSearch}
               busy={busy}
-              onSearchAccounts={rest.onSearchAccounts}
-              onAdd={rest.onAddOrganiser}
-              onSetVisibility={rest.onSetOrganiserVisibility}
-              onSetCaster={rest.onSetCaster}
+              onSearchAccounts={entrants.searchAccounts}
+              onAdd={organiser.addOrganiser}
+              onSetVisibility={organiser.setOrganiserVisibility}
+              onSetCaster={organiser.setCaster}
+              onRemove={(fafId) => organiser.admin({ type: "removeOrganiser", payload: { fafId } })}
             />
           </section>
           )}
@@ -480,12 +641,25 @@ export function ManagePanel({
               series={rest.series}
               events={rest.events}
               busy={busy}
-              onSetSeries={rest.onSetSeries}
-              onSaveSeries={rest.onSaveSeries}
-              onAddQualifier={rest.onAddQualifier}
-              onRemoveQualifier={rest.onRemoveQualifier}
+              actions={seriesActions}
+              onSeedFrom={(linkId, seedFrom) =>
+                organiser.admin({ type: "qualifierSeed", payload: { linkId, seedFrom } })
+              }
             />
           </section>
+          )}
+
+          {open === "bans" && (
+            <section className="tournament-tile is-wide">
+              <h5>{t("tournaments.manage.bans")}</h5>
+              <BansPanel
+                event={event}
+                accountSearch={accountSearch}
+                busy={busy}
+                onSearchAccounts={entrants.searchAccounts}
+                onAdmin={organiser.admin}
+              />
+            </section>
           )}
 
           {/* Who is silenced, and the way back. Muting happens on the post that
@@ -501,7 +675,7 @@ export function ManagePanel({
                     <Button
                       type="button"
                       disabled={busy}
-                      onClick={() => rest.onMute(mute.fafId, mute.name, false)}
+                      onClick={() => chat.mute(mute.fafId, mute.name, false)}
                     >
                       {t("tournaments.manage.unmute")}
                     </Button>
@@ -515,4 +689,4 @@ export function ManagePanel({
       )}
     </div>
   );
-}
+});

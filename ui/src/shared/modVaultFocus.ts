@@ -18,6 +18,14 @@ export function requestModVaultFocus(modName: string) {
   requested = modName.trim();
 }
 
+/**
+ * Whether a request is waiting, without taking it: the tab uses this to land
+ * on the vault before the vault view, which takes it, has mounted.
+ */
+export function hasModVaultFocus(): boolean {
+  return Boolean(requested);
+}
+
 /** Take the pending request, if any. Returns it once and forgets it. */
 export function takeModVaultFocus(): string | null {
   const pending = requested;

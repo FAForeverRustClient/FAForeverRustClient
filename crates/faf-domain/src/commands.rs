@@ -12,8 +12,8 @@ use crate::state::{
     EventsCommand, GalacticWarCommand, GuidesCommand, LeaderboardCommand, LobbyCommand,
     MapGeneratorCommand, MapsCommand, ModsCommand, NavCommand, NotificationCommand,
     PlayerCardCommand, ReplayCommand, ReportingCommand, ReviewsCommand, SessionCommand,
-    SettingsCommand, SocialCommand, StreamsCommand, TourneyCommand, TrainingCommand,
-    TutorialsCommand, UploadsCommand,
+    SettingsCommand, SocialCommand, StreamsCommand, TourneyCommand, TourneyRead, TourneyWrite,
+    TrainingCommand, TutorialsCommand, UploadsCommand,
 };
 
 // No `Eq`: `ReplayCommand` carries a `ReplayQuery`, which has an `f32`
@@ -139,6 +139,18 @@ impl From<SocialCommand> for AppCommand {
 impl From<TourneyCommand> for AppCommand {
     fn from(c: TourneyCommand) -> Self {
         AppCommand::Tourney(c)
+    }
+}
+
+impl From<TourneyRead> for AppCommand {
+    fn from(c: TourneyRead) -> Self {
+        AppCommand::Tourney(c.into())
+    }
+}
+
+impl From<TourneyWrite> for AppCommand {
+    fn from(c: TourneyWrite) -> Self {
+        AppCommand::Tourney(c.into())
     }
 }
 

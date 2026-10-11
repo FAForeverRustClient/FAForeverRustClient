@@ -1,0 +1,45 @@
+/* The header row of every list view: the Play tab's games, the replay lists,
+   the live table and the matchmaker's recent games.
+
+   One look, defined once. Each list used to colour its own header, so a change
+   made to one reached only that one: the Play tab's was dark and the other
+   three were the raised surface. The Play tab's is the one kept. A list adds
+   `list-head` to its header row (a grid row, or a table's `tr`) and keeps only
+   its own sizing and layout; colour, type and the moving state come from here.
+
+   A table paints its header on the cells, not on the row, so the cells of a
+   `tr.list-head` take the same background. */
+.list-head,
+.list-head > th {
+  color: var(--color-subtle);
+  background: var(--color-sidebar);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.list-head:not(tr),
+.list-head > th {
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* The column being moved: a quiet lift under the pointer, and the grabbing
+   cursor across the whole header while it is held. */
+.list-head > .is-moving {
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm, 4px);
+  box-shadow: 0 0 0 6px var(--color-surface-raised);
+}
+
+/* A table cell keeps its square corners and stays inside its own box: the
+   ring above would spill over its neighbours' borders. */
+.list-head > th.is-moving {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.list-head.is-moving,
+.list-head.is-moving * {
+  cursor: grabbing;
+}

@@ -4,7 +4,16 @@
 use faf_domain::protocol::changelog::ChangelogRelease;
 use faf_domain::state::{ChangelogCommand, ChangelogEvent, ChangelogStatus};
 
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+
+/// The changelog's request generation. Owned by this service.
+#[derive(Default)]
+pub struct ChangelogContext {
+    /// Only the newest note may land. Clicking two releases in a row must not
+    /// leave the first one's text on screen because it answered second, and a
+    /// cached selection must not be overwritten by a slower earlier fetch.
+    entry_generation: LatestRequest,
+}
 
 pub async fn handle(cmd: ChangelogCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
@@ -14,14 +23,13 @@ pub async fn handle(cmd: ChangelogCommand, ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn load(ctx: &ServiceCtx, out: &EventSink) {
-    // Held across the whole load, including the status read below: that read is
-    // a check-then-act, and commands are dispatched concurrently, so without
-    // this two visits in quick succession both see "not ready" and both fetch
-    // the index. A dropped `Load` loses nothing, because the run already in
-    // flight ends by selecting the newest patch itself.
-    let Some(_guard) = ctx.changelog_active.try_acquire() else {
-        return;
-    };
+    crate::runtime::expect_admitted(crate::runtime::Key::Changelog);
+    // One load at a time, including the status read below: that read is a
+    // check-then-act, and commands are dispatched concurrently, so without the
+    // command policy's single flight (`Key::Changelog`) two visits in quick
+    // succession both see "not ready" and both fetch the index. A dropped
+    // `Load` loses nothing, because the run already in flight ends by
+    // selecting the newest patch itself.
 
     // The index is re-read on every visit rather than once per session. It was
     // held for the session on the grounds that it does not change, which is
@@ -73,7 +81,7 @@ async fn select(id: String, ctx: &ServiceCtx, out: &EventSink) {
     // release answers with no round trip at all, and it must still invalidate
     // an older note that is still in flight: otherwise the slow one lands last
     // and silently replaces the selection the user just made.
-    let generation = ctx.changelog_entry_generation.begin();
+    let generation = ctx.changelog.entry_generation.begin();
 
     let (cached, release) = out.with_state(|state| {
         (
@@ -103,7 +111,7 @@ async fn select(id: String, ctx: &ServiceCtx, out: &EventSink) {
 
     out.emit(ChangelogEvent::EntryLoading { id: id.clone() });
     let loaded = ctx.ports.changelog.load_entry(release).await;
-    if !ctx.changelog_entry_generation.is_current(generation) {
+    if !ctx.changelog.entry_generation.is_current(generation) {
         // A newer selection is already in flight or has already landed;
         // emitting now would move the reader back to the release they left.
         return;

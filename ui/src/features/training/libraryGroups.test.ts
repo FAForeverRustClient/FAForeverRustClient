@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { collectionsOf } from "./libraryGroups";
+import { channelsForMode, collectionsOf, modeOptions } from "./libraryGroups";
 import type { TrainingProfile, TrainingResource } from "../../ipc/bindings";
 
 const base: TrainingResource = {
@@ -145,5 +145,71 @@ describe("collectionsOf", () => {
     const once = collectionsOf([...team, ...ladder], profile());
     const twice = collectionsOf([...team, ...ladder], profile());
     expect(once.map((g) => g.key)).toEqual(twice.map((g) => g.key));
+  });
+});
+
+describe("modes that differ only in case", () => {
+  it("are one shelf, headed by the first spelling met", () => {
+    const shouting = entry({ title: "Shouting", gameModes: ["1V1"] });
+    const groups = collectionsOf([...ladder, shouting], profile());
+    expect(groups.map((group) => group.key)).toEqual(["1v1"]);
+    expect(groups[0].entries).toHaveLength(4);
+  });
+
+  it("are one chip, in the common list's spelling", () => {
+    const modes = modeOptions([entry({ gameModes: ["1V1", "Nomads"] }), entry({ gameModes: ["nomads "] })]);
+    expect(modes.filter((mode) => mode.toLowerCase() === "1v1")).toEqual(["1v1"]);
+    expect(modes.filter((mode) => mode.toLowerCase() === "nomads")).toEqual(["Nomads"]);
+  });
+});
+
+describe("collectionsOf, the whole library", () => {
+  it("splits every mode's shelf by kind, build orders first", () => {
+    const groups = collectionsOf(
+      [
+        entry({ title: "Road to GM", kind: "video", gameModes: ["1v1"] }),
+        entry({ title: "Arcane", kind: "buildOrder", gameModes: ["1v1"] }),
+        entry({ title: "Ladder guide", kind: "guide", gameModes: ["1v1"] }),
+      ],
+      profile(),
+      "forYou",
+      true,
+    );
+    expect(groups.map((group) => [group.key, group.kind])).toEqual([
+      ["1v1", "buildOrder"],
+      ["1v1", "guide"],
+      ["1v1", "video"],
+    ]);
+  });
+
+  it("leaves channels off the shelves: they are a row of creators of their own", () => {
+    const groups = collectionsOf(
+      [entry({ title: "A channel", kind: "community", gameModes: ["1v1"] })],
+      profile(),
+      "forYou",
+      true,
+    );
+    expect(groups).toEqual([]);
+  });
+});
+
+describe("the channels a chapter points at for more", () => {
+  const catalogue = [
+    entry({ id: "a", title: "Seraphim-Com on YouTube", kind: "community", url: "https://www.youtube.com/@Seraphim-Com", gameModes: ["Seton's Clutch"] }),
+    entry({ id: "b", title: "FoleyBTS on YouTube", kind: "community", url: "https://www.youtube.com/@FoleyBTS", gameModes: ["seton's clutch"] }),
+    entry({ id: "c", title: "Bullydozer on YouTube", kind: "community", url: "https://www.youtube.com/@BullydozerFAF", gameModes: ["1v1"] }),
+    entry({ id: "d", title: "A Seton's video", kind: "video", url: "https://www.youtube.com/watch?v=x", gameModes: ["Seton's Clutch"] }),
+    entry({ id: "e", title: "A channel with no address", kind: "community", gameModes: ["Seton's Clutch"] }),
+  ];
+
+  it("are the channels tagged with the chapter's mode, however it is spelt", () => {
+    expect(channelsForMode(catalogue, "Seton's Clutch").map((channel) => channel.id)).toEqual(["b", "a"]);
+    expect(channelsForMode(catalogue, "1V1").map((channel) => channel.id)).toEqual(["c"]);
+  });
+
+  it("are never material, and never somewhere nothing can be opened", () => {
+    expect(channelsForMode(catalogue, "Seton's Clutch").some((channel) => channel.kind !== "community")).toBe(false);
+    expect(channelsForMode(catalogue, "4v4")).toEqual([]);
+    expect(channelsForMode(catalogue, "")).toEqual([]);
   });
 });

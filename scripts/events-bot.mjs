@@ -65,7 +65,9 @@ const FREQUENCY_WEEKLY = 2;
  * tournament nor cup, and matching prose would drop game nights whose
  * description happens to mention one.
  */
-const TOURNEY_SERVICE_HOSTS = ["tournaments.doodlepros.com"];
+// FAF has hosted the service since October 2026; announcements written before
+// that still link the old address, and they are the same tournaments.
+const TOURNEY_SERVICE_HOSTS = ["tournaments.faforever.com", "tournaments.doodlepros.com"];
 
 /**
  * Whether Discord's copy of this event is a tournament the client already has.

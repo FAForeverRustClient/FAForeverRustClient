@@ -265,11 +265,12 @@ async fn turning_rich_presence_off_clears_the_status_immediately() {
     let before = h.published_count();
     h.app
         .dispatch(
-            SettingsCommand::SetDiscord {
-                preferences: DiscordPreferences {
+            SettingsCommand::PatchDiscord {
+                patch: DiscordPreferences {
                     enabled: false,
                     disallow_joins: false,
-                },
+                }
+                .into(),
             }
             .into(),
         )
@@ -294,11 +295,12 @@ async fn disallowing_joins_withholds_the_secret_but_keeps_the_status() {
     let before = h.published_count();
     h.app
         .dispatch(
-            SettingsCommand::SetDiscord {
-                preferences: DiscordPreferences {
+            SettingsCommand::PatchDiscord {
+                patch: DiscordPreferences {
                     enabled: true,
                     disallow_joins: true,
-                },
+                }
+                .into(),
             }
             .into(),
         )

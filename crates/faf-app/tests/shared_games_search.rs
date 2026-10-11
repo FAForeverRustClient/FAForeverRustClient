@@ -3,7 +3,7 @@
 //! Searching for "games A and B both played" cannot be one request: the API
 //! derives a filter's join alias from the property path, so two clauses on
 //! `playerStats.player.login` share a join and match nothing. The client asks
-//! per player and intersects the ids (`ReplayClient::search_shared_games`).
+//! per player and intersects the ids (`ReplayVault::search_shared_games`).
 //!
 //! The pieces are unit-tested where they are pure (`replay_query`), and the two
 //! API constructs the workaround relies on are already carried by shipped code
@@ -25,17 +25,15 @@
 //! searching for both finds at least that game and that every row really does
 //! contain both of them.
 
-use std::sync::Arc;
-
-use faf_app::infra::{FakeGame, FakeMapGenerator, ReplayClient, TokenStore};
-use faf_app::ports::ReplayPort;
+use faf_app::infra::{ReplayConfig, ReplayLibrary, ReplayVault, TokenStore};
+use faf_app::ports::ReplayVaultPort;
 use faf_domain::protocol::replay_query::ReplayQuery;
 use faf_domain::state::VaultReplay;
 
-fn client(token: String) -> ReplayClient {
+fn client(token: String) -> ReplayVault {
     let tokens = TokenStore::new();
     tokens.set(token);
-    ReplayClient::faf(tokens, Arc::new(FakeGame), Arc::new(FakeMapGenerator))
+    ReplayVault::new(&ReplayConfig::faf(), tokens, ReplayLibrary::shared())
 }
 
 fn logins(replay: &VaultReplay) -> Vec<String> {

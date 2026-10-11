@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "../../../design-system/Button";
 import type { Game, LiveReplayTracking } from "../../../ipc/bindings";
 import type { MapPresentation } from "../../../shared/mapPresentation";
@@ -7,7 +7,11 @@ import { LiveReplayRow } from "./LiveReplayRow";
 import { replayDelayRemaining, type LiveSortKey, type SortDirection } from "../../../shared/liveReplayModel";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { ResizeHandle } from "../../../design-system/ResizeHandle";
-import { useColumnWidths } from "../../../shared/hooks/useColumnWidths";
+import { useListColumns } from "../../../shared/hooks/useListColumns";
+import type { MovableHeaderCell } from "../../../shared/hooks/useColumnOrder";
+
+/** What makes a header cell movable, and says which column it is. */
+type HeaderCellProps = MovableHeaderCell & { "data-column": number; title: string; className?: string };
 
 function SortHeader({
   label,
@@ -15,7 +19,7 @@ function SortHeader({
   currentKey,
   direction,
   onSort,
-  className,
+  cellProps,
   handle,
 }: {
   label: string;
@@ -23,12 +27,12 @@ function SortHeader({
   currentKey: LiveSortKey;
   direction: SortDirection;
   onSort: (key: LiveSortKey) => void;
-  className?: string;
-  handle?: JSX.Element;
+  cellProps: HeaderCellProps;
+  handle?: ReactNode;
 }) {
   const active = currentKey === sortKey;
   return (
-    <th className={className} aria-sort={active ? direction : "none"}>
+    <th {...cellProps} aria-sort={active ? direction : "none"}>
       <button onClick={() => onSort(sortKey)}>
         {label}
         <span aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span>
@@ -55,19 +59,24 @@ const DEFAULT_COLUMN_PX = [120, 110, 260, 84, 84, 150, 130, 128];
  */
 const FLEXIBLE_COLUMN = 2;
 
+/** What each designed column sorts by, where it sorts at all. */
+const COLUMN_SORTS: (LiveSortKey | null)[] = [null, "started", "title", "players", "rating", "host", "mods", null];
+
+/** Extra classes per designed column, for its alignment. */
+const COLUMN_CLASSES = ["live-map-column", "", "", "live-number-column", "live-number-column", "", "", "live-watch-column"];
+
 interface Props {
   busy: boolean;
   games: Array<{ game: Game; presentation: MapPresentation; mapSize: string | null }>;
   matchingCount: number;
   totalCount: number;
-  expandedId: number | null;
   sortKey: LiveSortKey;
   sortDirection: SortDirection;
   previewsLoading: boolean;
   batchSize: number;
   tracking: LiveReplayTracking | null;
   onSort: (key: LiveSortKey) => void;
-  onToggle: (id: number) => void;
+  onOpen: (id: number) => void;
   onPlayerMenu: PlayerMenuOpener;
   onLoadMore: () => void;
 }
@@ -78,7 +87,16 @@ export function LiveReplayTable(props: Props) {
   // interval scales timer work with the result count (75 rows per batch).
   // Mature rows receive a stable zero wait, so React.memo still skips them on
   // the one-second ticks needed by newly launched games.
-  const columns = useColumnWidths("liveReplayColumns", DEFAULT_COLUMN_PX, FLEXIBLE_COLUMN);
+  const headerRef = useRef<HTMLTableRowElement | null>(null);
+  // Widths, order and reset as every list view has them: see `useListColumns`.
+  const list = useListColumns({
+    widthsField: "liveReplayColumns",
+    orderField: "liveReplayOrder",
+    defaults: DEFAULT_COLUMN_PX,
+    flexible: FLEXIBLE_COLUMN,
+    headerRef,
+  });
+  const { order, moving, widths: columns } = list;
   const [ageNow, setAgeNow] = useState(() => Date.now());
   const [waitNow, setWaitNow] = useState(() => Date.now());
   const hasDelayedReplay = props.games.some(({ game }) => replayDelayRemaining(game, waitNow) > 0);
@@ -104,25 +122,66 @@ export function LiveReplayTable(props: Props) {
     t("replays.column.mods"),
     t("replays.column.watch"),
   ];
+  const moveHint = t("lobby.browser.moveColumn");
   /**
-   * The divider in front of a column, standing where that column starts.
+   * The divider in front of the column drawn at `position`, standing where
+   * that column starts.
    *
-   * It trades width between the two columns it separates, so it lands under
-   * the cursor and no other divider moves. The first column has nothing in
-   * front of it; every other cell, the Watch column included, carries one.
+   * It trades width between the two columns either side of it on screen, so
+   * it lands under the cursor and no other divider moves. The first column
+   * drawn has nothing in front of it. It names the column that grows as it is
+   * dragged right: the one drawn before it, unless that is the game column,
+   * which has no width of its own to name.
    */
-  const divider = (boundary: number) => (
-    <ResizeHandle
-      className="live-replay-col-handle is-ruled"
-      label={t("lobby.browser.resizeColumn", {
-        column: columnLabels[boundary - 1 === FLEXIBLE_COLUMN ? boundary : boundary - 1],
-      })}
-      onStart={columns.onStart}
-      onDrag={(delta) => columns.onDrag(boundary, delta)}
-      onEnd={columns.onCommit}
-      onReset={columns.onReset}
-    />
-  );
+  const divider = (position: number) => {
+    const column = order[position];
+    const before = order[position - 1];
+    return (
+      <ResizeHandle
+        className="live-replay-col-handle is-ruled"
+        label={t("lobby.browser.resizeColumn", {
+          column: columnLabels[before === FLEXIBLE_COLUMN ? column : before],
+        })}
+        onStart={columns.onStart}
+        onDrag={(delta) => columns.onDrag(position, delta)}
+        onEnd={columns.onCommit}
+        onReset={list.reset}
+      />
+    );
+  };
+  /** One header cell, for the designed column `column` drawn at `position`. */
+  const headerCell = (column: number, position: number) => {
+    const sortKey = COLUMN_SORTS[column];
+    const handle = position > 0 ? divider(position) : null;
+    const cellProps: HeaderCellProps = {
+      ...list.cell(column),
+      "data-column": column,
+      title: moveHint,
+      className: `${COLUMN_CLASSES[column]}${moving === column ? " is-moving" : ""}`.trim() || undefined,
+    };
+    if (sortKey === null) {
+      // Nothing to sort by: still a keyboard stop, so Alt and an arrow key
+      // can move it.
+      return (
+        <th key={column} {...cellProps} tabIndex={0}>
+          {handle}
+          {columnLabels[column]}
+        </th>
+      );
+    }
+    return (
+      <SortHeader
+        key={column}
+        label={columnLabels[column]}
+        sortKey={sortKey}
+        currentKey={props.sortKey}
+        direction={props.sortDirection}
+        onSort={props.onSort}
+        cellProps={cellProps}
+        handle={handle}
+      />
+    );
+  };
 
   return (
     <div className="live-replay-table-wrap surface-panel">
@@ -135,24 +194,20 @@ export function LiveReplayTable(props: Props) {
             it for one release, and the table then stopped a third of the way
             across a wide window while the titles beside it were cut off. */}
         <colgroup>
-          {columns.drawn.map((width, index) =>
-            index === FLEXIBLE_COLUMN ? (
-              <col key={columnLabels[index]} />
+          {order.map((column) =>
+            column === FLEXIBLE_COLUMN ? (
+              <col key={column} />
             ) : (
-              <col key={columnLabels[index]} style={{ width: `${width}px` }} />
+              <col key={column} style={{ width: `${columns.drawn[column]}px` }} />
             ),
           )}
         </colgroup>
         <thead>
-          <tr>
-            <th className="live-map-column">{columnLabels[0]}</th>
-            <SortHeader label={columnLabels[1]} sortKey="started" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} handle={divider(1)} />
-            <SortHeader label={columnLabels[2]} sortKey="title" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} handle={divider(2)} />
-            <SortHeader label={columnLabels[3]} sortKey="players" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} className="live-number-column" handle={divider(3)} />
-            <SortHeader label={columnLabels[4]} sortKey="rating" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} className="live-number-column" handle={divider(4)} />
-            <SortHeader label={columnLabels[5]} sortKey="host" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} handle={divider(5)} />
-            <SortHeader label={columnLabels[6]} sortKey="mods" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} handle={divider(6)} />
-            <th className="live-watch-column">{divider(7)}{columnLabels[7]}</th>
+          {/* The cells in the stored order: a table cell cannot be moved with
+              CSS `order` the way the grid lists move theirs. Each says which
+              column it is, which is how a drag finds them. */}
+          <tr className={`list-head${moving !== null ? " is-moving" : ""}`} ref={headerRef}>
+            {order.map((column, position) => headerCell(column, position))}
           </tr>
         </thead>
         <tbody>
@@ -160,15 +215,15 @@ export function LiveReplayTable(props: Props) {
             <LiveReplayRow
               key={game.id}
               busy={props.busy}
-              expanded={props.expandedId === game.id}
               game={game}
               ageNow={ageNow}
               waitSeconds={replayDelayRemaining(game, waitNow)}
-              onToggle={props.onToggle}
+              onOpen={props.onOpen}
               onPlayerMenu={props.onPlayerMenu}
               presentation={presentation}
               mapSize={mapSize}
               tracking={props.tracking}
+              order={order}
             />
           ))}
         </tbody>

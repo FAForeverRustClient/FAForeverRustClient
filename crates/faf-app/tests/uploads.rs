@@ -10,7 +10,9 @@ use async_trait::async_trait;
 use faf_app::infra::fake_ports;
 use faf_app::ports::UploadsPort;
 use faf_app::{App, Ports};
-use faf_domain::state::{UploadKind, UploadRequest, UploadStatus, UploadsCommand, UploadsState};
+use faf_domain::state::{
+    NotificationKind, UploadKind, UploadRequest, UploadStatus, UploadsCommand, UploadsState,
+};
 use tokio::sync::mpsc;
 
 /// Records what it was asked to publish, and reports a scripted run.
@@ -272,6 +274,46 @@ async fn closing_mid_publish_keeps_the_run_alive() {
         "the publish to finish anyway",
     )
     .await;
+
+    // And with no dialog left to show it, the result arrives as a notification.
+    let notified = h
+        .app
+        .snapshot()
+        .notifications
+        .items
+        .iter()
+        .any(|item| item.kind == NotificationKind::UploadFinished);
+    assert!(notified, "a hidden publish must say how it ended");
+}
+
+#[tokio::test]
+async fn a_publish_watched_to_the_end_raises_no_notification() {
+    let h = harness(UploadStatus::Succeeded, Duration::ZERO);
+    h.app
+        .dispatch(
+            UploadsCommand::Open {
+                request: request(UploadKind::Map, "my_map.v0001"),
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+    h.app.dispatch(UploadsCommand::Start.into()).await.unwrap();
+    settle(
+        &h.app,
+        |state| state.status == UploadStatus::Succeeded,
+        "the publish to finish",
+    )
+    .await;
+
+    // The open dialog already shows the outcome; a second copy is noise.
+    assert!(h
+        .app
+        .snapshot()
+        .notifications
+        .items
+        .iter()
+        .all(|item| item.kind != NotificationKind::UploadFinished));
 }
 
 #[tokio::test]

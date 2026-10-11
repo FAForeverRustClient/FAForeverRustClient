@@ -87,6 +87,8 @@ ui/          ← depends on generated faf-ipc TS bindings only
 
 A service can **never** reach a socket or the filesystem directly: only through a `Port` trait. `infra` is the only module allowed to do real IO. This is what makes everything testable and stops coupling rot.
 
+Services and infra share a crate, so the compiler does not enforce this; `scripts/check-architecture.mjs` does, for exactly what it checks: no `crate::infra` path in a service, no `std::fs`/`tokio::fs` in a service, no service calling another service's `handle` directly (that goes through `runtime::run_command`), and no clock read (`SystemTime::now` and friends) in `faf-domain` outside test code. A passing check means those rules hold, not that every boundary in this document does.
+
 ### Why these 4 crates
 
 - **`faf-domain`** is pure and dependency-free, so the reducer and protocol codecs: the bulk of the logic: are trivially unit-testable with zero setup.
@@ -174,19 +176,40 @@ commands in (mpsc) ──▶ Dispatcher routes to Service
                               └─▶ broadcast event to src-tauri ──▶ emit("app://event")
 ```
 
-The reduce step and the frontend-emit step consume the **same event value**, so backend state and frontend store are guaranteed identical.
+The reduce step and the frontend-emit step consume the **same event value**, so backend state and frontend store see identical inputs in the same order. That does not make them identical: the frontend applies events with hand-written TypeScript twins of the Rust reducers, and only the conformance fixture (§3.6) checks that the two interpret an event the same way. Variants the fixture baselines as uncovered are unchecked.
 
-Runtime concurrency is expressed as policy, not as raw synchronization fields:
+Which commands may run together is declared in one table,
+`faf-app/runtime/command_policy.rs`. For every command it names a lane
+(ordinary, or priority for releases and navigation) and an admission rule:
 
-- `SingleFlight` rejects overlapping ownership of one long-running operation;
-- `LatestRequest` gives replaceable reads a generation token so stale results cannot land;
-- `SerialMutation` orders short writes that must not overtake one another.
+- concurrent;
+- single-flight on a key: a second command of that kind while one runs is dropped;
+- serial on a key: commands of that kind run one after another, in dispatch order;
+- service-guarded: the service holds a guard over part of the command or across
+  commands (the lobby and chat sockets, the join slot, sign-in, settings), named in
+  the table so it is still the whole story.
 
-These types live in `faf-app/runtime/policies.rs`. Services choose the policy that
-matches the operation; they do not select atomic memory orderings or share bare
-mutation mutexes. Long-lived lobby/chat connections deliberately remain
-single-flight rather than serial mutations, so `Disconnect` is never queued
-behind the connection task.
+The match is exhaustive, so a new command does not compile until its policy is
+chosen. `CommandAdmission` enforces it where a command leaves its queue, and
+`runtime::run_command` applies it when one service starts another's command.
+`docs/CONCURRENCY.md` lists every key and service guard with what may overlap,
+what is dropped or queued, the cancellation guarantee and the test that pins it.
+
+Where a slice's policy splits its commands into a set, the type carries the set
+rather than three lists kept in step. `TourneyCommand` is an untagged pair of
+`TourneyRead` and `TourneyWrite` (the wire format is the inner enums' own
+`{ type, payload }`): the table says `TourneyCommand::Write(_)` is serial on
+`Key::TourneyWrite`, and the service's router and write handler match the halves
+exhaustively, with no fallback arm.
+
+Stale answers are a separate concern and stay with the services:
+`LatestRequest` (in `faf-app/runtime/policies.rs`) gives replaceable reads a
+generation token so an older response cannot land over a newer one.
+
+Each service owns an operational context (its generations, locks and
+cancellation tokens) defined in its own module with private fields; `ServiceCtx`
+holds one per service. What another service needs is a named method on the
+owner's context, so a cross-domain dependency is visible where it is used.
 
 ### 3.6 Frontend mirror
 
@@ -271,6 +294,12 @@ Each external system is a `Port` trait in `faf-app/ports`, implemented in
 the [`Ports` bundle in `crates/faf-app/src/ports/mod.rs`](../crates/faf-app/src/ports/mod.rs).
 Do not duplicate that list here: adding a port must update the bundle, while a
 hand-maintained documentation table can silently drift.
+
+A broad system is several traits cut by capability rather than one wide trait
+(`ports/replay.rs`, `ports/tourney.rs`). The real adapter and the offline fake
+implement them all and one instance fills every slot, so state written through
+one is read through another; a test double implements only the trait it
+exercises and takes the fake for the rest.
 
 Read-only request ports may use `ports::RequestError` when the frontend can act
 on the distinction between expired authentication, temporary unavailability,
@@ -362,7 +391,8 @@ Each feature = *new slice + new service + new port impl*. None can introduce spa
   clearest demonstration of what the port boundary is for. It shipped against FAF's Challonge
   bridge (`ChallongeController` forwarding `/challonge/**` with FAF's own key), and was later
   repointed at `faf-tournaments`, the tournament team's own service, without the slice's
-  *shape* changing: `TourneyPort` replaced `TournamentsPort`, `infra/tourney.rs` replaced the
+  *shape* changing: `TourneyPort` (since split by capability into the `Tourney*Port` traits)
+  replaced `TournamentsPort`, `infra/tourney.rs` replaced the
   Challonge form encoding, and the service's read/write policies carried over untouched.
 
   Three conventions come out of it, and all three generalise:
@@ -382,8 +412,8 @@ Each feature = *new slice + new service + new port impl*. None can introduce spa
   2. **A write reloads rather than patches.** Confirming a score advances the winner along
      the bracket, eliminates the loser and can finish the tournament outright, none of which
      is in the response. So the service re-reads the list and the open event after every
-     mutation. Writes are serialised (`tourney_mutation`) and detail reads carry a generation
-     token (`tourney_detail_generation`), because command order is not response order.
+     mutation. Writes are serial in the command policy (`Key::TourneyWrite`) and detail reads carry a generation
+     token (`TourneyContext::detail_generation`), because command order is not response order.
   3. **The server's refusal is the best error message available.** `faf-tournaments` answers
      400 and 403 with a sentence written for the player: which rating gate they missed, when
      check-in opens, how many replay ids are still wanted. `infra/tourney.rs` passes it
@@ -462,12 +492,12 @@ Each feature = *new slice + new service + new port impl*. None can introduce spa
      conclusion: the client never even computes an opinion to be wrong about.
 
   A third point is about shape rather than policy. A submission's issue body is written by
-  the client and read back by it: prose for the reviewer, a delimited region for a guide
-  written in the client, and a fenced JSON block holding the catalogue entry. Because the
-  client authored it, accepting is a *copy* rather than a rewrite, which is what makes a
-  one-press accept honest rather than a form that reopens everything the author already
-  answered. An issue opened by hand has no block, is still listed and still readable, and
-  says so instead of offering a button that would do nothing.
+  the client and read back by it: a filled-in GitHub issue form, one `### ` heading per
+  field, the same shape GitHub writes for the repository's own issue form. There is no
+  JSON in it and no id; the id is derived from the title. Because the client authored the
+  form, accepting is a *copy* rather than a rewrite, which is what makes a one-press
+  accept honest rather than a form that reopens everything the author already answered.
+  Headings inside the guide text are part of the guide, not field boundaries.
 
 Remaining order: chat → vault → launcher/ICE → replay → social → updater.
 

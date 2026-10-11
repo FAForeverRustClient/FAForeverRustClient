@@ -5,7 +5,7 @@ use faf_domain::state::SettingsState;
 
 use crate::ports::SettingsPort;
 
-/// Returns a fixed [`SettingsState`] on load; `save` is a no-op.
+/// Returns a fixed [`SettingsState`] on load; `save` is a no-op that succeeds.
 #[derive(Debug, Clone, Default)]
 pub struct FakeSettings {
     pub initial: SettingsState,
@@ -17,5 +17,7 @@ impl SettingsPort for FakeSettings {
         self.initial.clone()
     }
 
-    async fn save(&self, _settings: &SettingsState) {}
+    async fn save(&self, _settings: &SettingsState) -> Result<(), String> {
+        Ok(())
+    }
 }

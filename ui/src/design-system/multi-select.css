@@ -7,6 +7,36 @@
   min-width: 0;
 }
 
+/* Label beside the trigger, the way a toolbar labels its selects ("Channel
+   [Every channel]"): muted sentence case rather than the search panel's
+   small capitals above a field, and the trigger at the toolbar's 32 px. */
+.multi-select.is-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.multi-select.is-inline > .search-panel-label {
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Hung from the trigger's right edge: from the left it would start under
+   the label beside the trigger rather than under the trigger. */
+.multi-select.is-inline > .multi-select-popover {
+  right: 0;
+  left: auto;
+}
+
+.multi-select.is-inline > .multi-select-trigger {
+  width: auto;
+  min-width: 140px;
+  max-width: 220px;
+  height: 32px;
+  font-size: 12px;
+}
+
 .multi-select-trigger {
   display: flex;
   align-items: center;
@@ -60,6 +90,23 @@
 
 .multi-select-option:hover {
   background: var(--color-surface-hover);
+}
+
+/* The detail sits at the far end of the row, so a column of counts lines up
+   down the list. */
+.multi-select-option-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.multi-select-option-detail {
+  flex: none;
+  padding-left: var(--space-3);
+  color: var(--color-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .multi-select-empty {

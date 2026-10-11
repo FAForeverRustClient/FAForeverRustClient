@@ -10,7 +10,7 @@
 //! same two futures (`updateFeaturedModToLatest` + `downloadIfNecessary`)
 //! before calling `launchOfflineGame`.
 
-use faf_domain::state::{TutorialsCommand, TutorialsEvent, TUTORIALS_FEATURED_MOD};
+use faf_domain::state::{JoinState, TutorialsCommand, TutorialsEvent, TUTORIALS_FEATURED_MOD};
 
 use crate::ports::{GamePreparation, UpdateProgress};
 use crate::runtime::{EventSink, ServiceCtx};
@@ -35,9 +35,7 @@ pub async fn handle(cmd: TutorialsCommand, ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn launch(tutorial_id: i32, ctx: &ServiceCtx, out: &EventSink) {
-    let Some(_guard) = ctx.tutorial_launch_active.try_acquire() else {
-        return;
-    };
+    crate::runtime::expect_admitted(crate::runtime::Key::TutorialLaunch);
     let Some(tutorial) = out.with_state(|state| {
         state
             .tutorials
@@ -47,16 +45,30 @@ async fn launch(tutorial_id: i32, ctx: &ServiceCtx, out: &EventSink) {
             .cloned()
     }) else {
         out.emit(TutorialsEvent::LaunchFailed {
+            tutorial_id,
             reason: "that tutorial is no longer in the list".into(),
         });
         return;
     };
+
+    // Before anything is patched. The game slot holds one process, so
+    // launching now would end the game in progress, and patching the
+    // tutorials mod under a running game is no better. The same refusal
+    // "Play offline" gives, and for the same reason.
+    if game_is_running(ctx, out) {
+        out.emit(TutorialsEvent::LaunchFailed {
+            tutorial_id,
+            reason: "Forged Alliance is already running. Close it before starting a lesson.".into(),
+        });
+        return;
+    }
 
     // Checked here rather than only by disabling the button: the button is one
     // route to this command, and a tutorial can stop being playable between
     // the list loading and the click.
     if !tutorial.is_playable() {
         out.emit(TutorialsEvent::LaunchFailed {
+            tutorial_id,
             reason: format!("“{}” cannot be played yet", tutorial.title),
         });
         return;
@@ -87,7 +99,10 @@ async fn launch(tutorial_id: i32, ctx: &ServiceCtx, out: &EventSink) {
         }
     }
     if let Err(reason) = outcome {
-        out.emit(TutorialsEvent::LaunchFailed { reason });
+        out.emit(TutorialsEvent::LaunchFailed {
+            tutorial_id,
+            reason,
+        });
         return;
     }
 
@@ -104,6 +119,23 @@ async fn launch(tutorial_id: i32, ctx: &ServiceCtx, out: &EventSink) {
             super::replays::cancel_live_tracking(out);
             out.emit(TutorialsEvent::Launched { tutorial_id });
         }
-        Err(reason) => out.emit(TutorialsEvent::LaunchFailed { reason }),
+        Err(reason) => out.emit(TutorialsEvent::LaunchFailed {
+            tutorial_id,
+            reason,
+        }),
     }
+}
+
+/// Whether Forged Alliance is running for this client, or about to be: a
+/// process the port started, a game the lobby is tracking, or a launch the
+/// lobby has already ordered.
+fn game_is_running(ctx: &ServiceCtx, out: &EventSink) -> bool {
+    ctx.ports.process.game_running()
+        || ctx.lobby.running_game_id().is_some()
+        || out.with_state(|state| {
+            matches!(
+                state.lobby.join,
+                JoinState::Launched { .. } | JoinState::InGame
+            )
+        })
 }

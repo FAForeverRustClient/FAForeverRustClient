@@ -1,5 +1,5 @@
 import type { SVGProps } from "react";
-import { FACTION_COLORS, FACTION_NAMES } from "../factions";
+import { FACTION_COLORS, factionLabel } from "../factions";
 import { RandomFactionMark } from "./RandomFactionMark";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -48,7 +48,7 @@ export function FactionIcon({ faction, size = 16, style, ...props }: FactionIcon
   const glyph = FACTION_PATHS[faction];
   if (!glyph) return null;
 
-  const name = FACTION_NAMES[faction] ?? t("factions.unknown");
+  const name = factionLabel(faction);
   return (
     <svg
       aria-label={name}

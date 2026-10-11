@@ -113,6 +113,15 @@ pub trait ProcessPort: Send + Sync {
         false
     }
 
+    /// Whether a game this port started, online or offline, is still running.
+    ///
+    /// Starting another one would replace it: the game slot holds one process
+    /// and ends the previous one. Java refuses instead (`GameRunner.startOffline`
+    /// and every other launch check `isRunning`), and so does "Play offline".
+    fn game_running(&self) -> bool {
+        false
+    }
+
     /// Launch the game. Returns once the process has been spawned. Errors if the
     /// executable can't be resolved or started.
     async fn launch_game(&self, params: GameLaunchParams) -> Result<(), String>;
@@ -174,6 +183,19 @@ pub trait ProcessPort: Send + Sync {
     /// Defaulted to nothing, because a launcher that cannot run a Windows
     /// binary through a wrapper has nothing to record.
     fn set_launch_wrapper(&self, _wrapper: String, _wine_prefix: String) {}
+
+    /// Whether the next game should show on Steam as Forged Alliance being
+    /// played, for as long as it runs (issue 364).
+    ///
+    /// Read at launch, so switching it during a game changes the next one.
+    /// Defaulted to nothing, because a launcher that starts no process has no
+    /// game to show.
+    fn set_steam_presence(&self, _enabled: bool) {}
+
+    /// Whether the next game's window should be made borderless and stretched
+    /// over its monitor (#445). Read at launch, like the Steam status, and
+    /// defaulted to nothing for a launcher that starts no process.
+    fn set_borderless_window(&self, _enabled: bool) {}
 
     /// Spell a path the way the game this launcher starts will be able to open
     /// it.

@@ -3,8 +3,9 @@ import { Icon } from "../../../design-system/Icon";
 import type { MatchmakerQueue, PlayerLeaguePlacement, PlayerRatingSummary } from "../../../ipc/bindings";
 import { UNLISTED_DIVISION_IMAGE } from "./MatchmakerPlayerCard";
 import { formatClockDuration } from "../../../shared/format/durations";
-import { matchReaches, QUEUE_POP_INTERVAL_SECONDS, queueRatingBuckets } from "./queueRatingRange";
-import { t } from "../../../i18n";
+import { placementLabel } from "../../../shared/leagueNames";
+import { queueRatingBuckets } from "./queueRatingRange";
+import { formatNumber, t } from "../../../i18n";
 
 export type QueueDisplayState = "idle" | "searching" | "found" | "launching" | "cancelled";
 
@@ -77,7 +78,9 @@ export function MatchmakerQueueCard({
   // question both leave open is whether the queue is empty around your rating
   // or empty everywhere, which decides whether waiting is worth it.
   const buckets = queueRatingBuckets(queue, rating, ownSearches);
-  const reaches = inRange !== null && rating ? matchReaches(rating) : null;
+  // Only when a band is marked as yours, which is when the rating is certain
+  // enough to place you at all.
+  const myMean = buckets.some((bucket) => bucket.mine) ? (rating?.mean ?? null) : null;
   return (
     <article
       className={
@@ -123,8 +126,8 @@ export function MatchmakerQueueCard({
               queue at all, so it leads rather than sharing a row of four
               equally sized statistics. */}
           <span className="matchmaker-queue-rating">
-            <strong>{rating ? rating.rating.toLocaleString("en-US") : "N/A"}</strong>
-            <small>{rating ? "your rating" : "unrated"}</small>
+            <strong>{rating ? formatNumber(rating.rating) : t("common.notAvailable")}</strong>
+            <small>{t(rating ? "lobby.matchmaker.yourRating" : "lobby.matchmaker.unratedHint")}</small>
             {/* The division for *this* queue, under its rating. A player is
                 placed per leaderboard, so the badge only means anything next
                 to the queue it belongs to. */}
@@ -132,7 +135,7 @@ export function MatchmakerQueueCard({
               className="matchmaker-queue-division"
               src={placement?.imageUrl || UNLISTED_DIVISION_IMAGE}
               alt=""
-              title={placement?.division || t("lobby.matchmaker.unplaced")}
+              title={placementLabel(placement) ?? t("lobby.matchmaker.unplaced")}
               loading="lazy"
               decoding="async"
               draggable={false}
@@ -157,59 +160,63 @@ export function MatchmakerQueueCard({
               // own button and a focusable popover in there would be a control
               // inside a control.
               <span className="matchmaker-queue-breakdown" aria-hidden>
-                <b>{t("lobby.matchmaker.queueByRating")}</b>
+                <span className="matchmaker-queue-breakdown-head">
+                  <b>{t("lobby.matchmaker.queueByRating")}</b>
+                  {/* The bands are the server's search windows, centred on
+                      each player's mean, so the arrow follows your mean too
+                      and not the conservative rating on the card. Saying the
+                      number is what keeps the arrow from looking misplaced. */}
+                  {myMean !== null && (
+                    <span>{t("lobby.matchmaker.yourMatchmakingRating", {
+                      rating: Math.round(myMean).toLocaleString("en-US"),
+                    })}</span>
+                  )}
+                </span>
+                {/* Green is the count of a band holding somebody who would
+                    take this search: whether waiting here can produce a game.
+                    Your own band is marked by the arrow in the first column
+                    rather than by a colour, so the two never read as one
+                    signal. Neither needed a line of explanation under the
+                    list, so there is none. */}
                 {buckets.map((bucket) => (
                   <span
                     key={bucket.min}
                     className={[
+                      "matchmaker-queue-band",
                       bucket.inRange > 0 ? "is-in-range" : "",
                       bucket.mine ? "is-mine" : "",
                     ].filter(Boolean).join(" ")}
                   >
+                    <span className="matchmaker-queue-band-marker">
+                      {bucket.mine && <Icon name="arrowRight" size={12} />}
+                    </span>
                     <em>{bucket.min} – {bucket.max}</em>
-                    {/* Which of the band is a fair match, whenever that
-                        differs from how many are in it -- *including* when
-                        none of them are.
-
-                        "0 of 5" was the one case this left out, and it is the
-                        case the whole breakdown exists for: a band printed as
-                        a bare "5" next to a headline of "0 in your range" is
-                        the same contradiction the per-band figure was added to
-                        settle, and it is the band nearest your own rating that
-                        hits it. A band is bucketed by the middle of each
-                        search's window, so five searches can sit in the band
-                        your rating is in and none of their windows reach you.
+                    {/* How many are waiting in the band, always. Whether any of
+                        them would match you is the green, so a band nobody in
+                        which reaches you reads as its plain count rather than
+                        "0 of 1", which read as an empty band. Only a band
+                        where some but not all would match says how many do.
                         See `RatingBucket.inRange`. */}
-                    <i>{bucket.inRange === bucket.count
-                      ? bucket.count
-                      : t("lobby.matchmaker.someOfBand", { inRange: bucket.inRange, count: bucket.count })}</i>
+                    <i>{bucket.inRange > 0 && bucket.inRange < bucket.count
+                      ? t("lobby.matchmaker.someOfBand", { inRange: bucket.inRange, count: bucket.count })
+                      : bucket.count}</i>
                   </span>
                 ))}
-                {buckets.some((bucket) => bucket.mine) && (
-                  <small>{t("lobby.matchmaker.yourBand")}</small>
-                )}
-                {/* How "in range" is counted, because the ranges the server
-                    publishes are not the ones it matches on (#303). */}
-                {reaches && queue.teamSize === 1 ? (
-                  <small className="matchmaker-queue-breakdown-note">
-                    {t("lobby.matchmaker.reachNote", {
-                      now: Math.round(reaches.now),
-                      step: Math.round(reaches.perPop),
-                      interval: formatClockDuration(QUEUE_POP_INTERVAL_SECONDS),
-                    })}
-                  </small>
-                ) : queue.teamSize > 1 ? (
-                  <small className="matchmaker-queue-breakdown-note">{t("lobby.matchmaker.teamReachNote")}</small>
-                ) : null}
               </span>
             )}
           </span>
           <span><Icon name="play" size={14} /> {t("lobby.matchmaker.activeCount", { count: activeGames })}</span>
-          {inRange !== null && (
-            <span title={t("lobby.matchmaker.inRangeHint")}>
-              <Icon name="check" size={14} /> {t("lobby.matchmaker.inRange", { count: inRange })}
-            </span>
-          )}
+          {/* Always a line, invisible while there is no answer. The answer
+              needs your rating, which arrives after the tab has drawn, and a
+              line added then made every card taller and pushed the page
+              down a moment after it opened. */}
+          <span
+            className={inRange === null ? "matchmaker-queue-fact-pending" : undefined}
+            title={inRange === null ? undefined : t("lobby.matchmaker.inRangeHint")}
+            aria-hidden={inRange === null || undefined}
+          >
+            <Icon name="check" size={14} /> {t("lobby.matchmaker.inRange", { count: inRange ?? 0 })}
+          </span>
           {/* Only for the size, which is the one the note names. A card
               disabled because somebody else leads the party said "party too
               large" as well, which is a different fact and not true. */}

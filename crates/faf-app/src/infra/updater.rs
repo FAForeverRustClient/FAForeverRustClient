@@ -20,7 +20,7 @@ use tokio::sync::mpsc;
 use crate::infra::session::TokenStore;
 use crate::infra::{cache_dir, env_or, game_updater, maps};
 use crate::ports::{
-    GamePreparation, GameUpdaterPort, PreparationStep, ProcessPort, UpdateProgress,
+    GamePreparation, GameUpdaterPort, InstalledBuild, PreparationStep, ProcessPort, UpdateProgress,
 };
 
 /// Endpoints and install details the updater needs.
@@ -159,6 +159,32 @@ impl GameUpdaterPort for GameUpdaterClient {
         });
 
         rx
+    }
+
+    async fn ensure_maps(&self, folders: &[String]) -> Vec<(String, String)> {
+        let mut failures = Vec::new();
+        let maps_dir = maps::maps_dir();
+        for folder in folders {
+            // Already on disk is the common case, and costs a directory read.
+            if let Err(reason) = game_updater::ensure_live_map(
+                &self.http,
+                &self.config.content_base,
+                &maps_dir,
+                folder,
+                &|_| {},
+            )
+            .await
+            {
+                failures.push((folder.clone(), reason));
+            }
+        }
+        failures
+    }
+
+    fn installed_build(&self) -> Option<InstalledBuild> {
+        // Asked for on every launch, like `run` above, so the stamp read is
+        // always the one in the install Settings currently points at.
+        game_updater::read_installed_build(&self.process.game_install_dir()?)
     }
 }
 

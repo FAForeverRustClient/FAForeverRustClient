@@ -72,6 +72,23 @@ pub enum Relation {
     Foe,
 }
 
+/// What the API said about a login nobody online answers to.
+///
+/// The user menu opens on names from replays, results and leaderboards, most
+/// of them offline, and every account action (friend, foe, note) addresses the
+/// player by id. `id` is `None` when the API knows no such account, which is
+/// the answer for an IRC-only nickname.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LoginLookup {
+    pub login: String,
+    pub id: Option<i32>,
+}
+
+/// How many account lookups are kept. A menu opened on a few hundred offline
+/// names in one session is a lot; the oldest answers go first.
+pub const MAX_LOGIN_LOOKUPS: usize = 200;
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SocialState {
@@ -81,6 +98,8 @@ pub struct SocialState {
     pub foes: Vec<String>,
     /// Every FAF account currently announced online, sorted by login.
     pub players: Vec<PlayerProfile>,
+    /// Accounts looked up by login for the user menu, oldest first.
+    pub login_lookups: Vec<LoginLookup>,
 }
 
 impl SocialState {
@@ -136,6 +155,9 @@ pub enum SocialEvent {
     PlayersRemoved { logins: Vec<String> },
     /// The lobby connection went away; relations are no longer authoritative.
     Cleared,
+    /// The API answered an account lookup by login: the id, or `None` for a
+    /// login with no account behind it.
+    LoginLookedUp { login: String, id: Option<i32> },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -158,6 +180,10 @@ pub enum SocialCommand {
         relation: Relation,
         member: bool,
     },
+    /// Find the account behind a login nobody online answers to, so the user
+    /// menu can offer an offline player the same account actions as an
+    /// online one.
+    LookUpLogin { login: String },
 }
 
 pub fn reduce(state: &mut SocialState, event: &SocialEvent) {
@@ -202,6 +228,20 @@ pub fn reduce(state: &mut SocialState, event: &SocialEvent) {
             });
         }
         SocialEvent::Cleared => *state = SocialState::default(),
+        SocialEvent::LoginLookedUp { login, id } => {
+            // The newest answer replaces an older one for the same login and
+            // moves to the end, so the cap drops the answers asked for longest
+            // ago.
+            state
+                .login_lookups
+                .retain(|lookup| !lookup.login.eq_ignore_ascii_case(login));
+            state.login_lookups.push(LoginLookup {
+                login: login.clone(),
+                id: *id,
+            });
+            let excess = state.login_lookups.len().saturating_sub(MAX_LOGIN_LOOKUPS);
+            state.login_lookups.drain(..excess);
+        }
     }
 }
 
@@ -364,6 +404,7 @@ mod tests {
             friends: names(&["Aurora"]),
             foes: Vec::new(),
             players: vec![profile(1, "Aurora"), profile(2, "Zed")],
+            login_lookups: Vec::new(),
         };
         reduce(
             &mut s,
@@ -383,6 +424,10 @@ mod tests {
             friends: names(&["Aurora"]),
             foes: names(&["Griefer"]),
             players: vec![profile(1, "Aurora")],
+            login_lookups: vec![LoginLookup {
+                login: "Zed".into(),
+                id: Some(2),
+            }],
         };
         reduce(&mut s, &SocialEvent::Cleared);
         assert_eq!(s, SocialState::default());
@@ -425,5 +470,43 @@ mod tests {
         );
         assert_eq!(s.player("aurora").map(|p| p.id), Some(1));
         assert_eq!(s.player("AURORA").map(|p| p.id), Some(1));
+    }
+
+    fn looked_up(login: &str, id: Option<i32>) -> SocialEvent {
+        SocialEvent::LoginLookedUp {
+            login: login.into(),
+            id,
+        }
+    }
+
+    #[test]
+    fn a_login_lookup_is_kept_once_with_its_newest_answer_last() {
+        let mut s = SocialState::default();
+        reduce(&mut s, &looked_up("Aurora", Some(1)));
+        reduce(&mut s, &looked_up("bot", None));
+        reduce(&mut s, &looked_up("aurora", Some(1)));
+        assert_eq!(
+            s.login_lookups,
+            vec![
+                LoginLookup {
+                    login: "bot".into(),
+                    id: None
+                },
+                LoginLookup {
+                    login: "aurora".into(),
+                    id: Some(1)
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn login_lookups_drop_the_oldest_past_the_cap() {
+        let mut s = SocialState::default();
+        for n in 0..=MAX_LOGIN_LOOKUPS {
+            reduce(&mut s, &looked_up(&format!("player{n}"), Some(n as i32)));
+        }
+        assert_eq!(s.login_lookups.len(), MAX_LOGIN_LOOKUPS);
+        assert_eq!(s.login_lookups[0].login, "player1");
     }
 }

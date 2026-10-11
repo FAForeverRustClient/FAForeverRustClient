@@ -146,6 +146,22 @@ describe("channel bookkeeping", () => {
     expect(next.retainedHistories).toEqual([]);
   });
 
+  it("keeps a retained history when the same leave arrives twice", () => {
+    // Rust replaces a retained history only when the leave has messages to
+    // keep. The twin used to drop it on any leave, so a duplicate
+    // `channelLeft` (found by the ordering fixture) lost the conversation
+    // the first one had saved.
+    const saved = message({ content: "remember this" });
+    const leave: ChatEvent = { type: "channelLeft", payload: { channel: "#uef" } };
+    const next = apply(
+      state({ channels: [channel("#uef", { messages: [saved] })], activeChannel: "#uef" }),
+      leave,
+      leave,
+    );
+
+    expect(next.retainedHistories).toEqual([{ channel: "#uef", messages: [saved] }]);
+  });
+
   it("opens a conversation that has not been joined yet", () => {
     // Rust: `ChannelSelected` uses `ensure_channel`. Opening a private
     // conversation sends `joinChannel` and `selectChannel` back to back, but
@@ -287,9 +303,10 @@ describe("unread counting", () => {
     expect(receive(inactive(), {}).channels[0]).toMatchObject({ unread: 1, unreadMentions: 0 });
   });
 
-  it("does not count messages in the active channel", () => {
+  it("counts messages in the active channel until it is read", () => {
+    // Active is not read: the channel stays active while the player is away.
     const next = receive(state({ channels: [channel("#uef")], activeChannel: "#uef" }), {});
-    expect(next.channels[0].unread).toBe(0);
+    expect(next.channels[0].unread).toBe(1);
   });
 
   it("does not count our own lines, or client commentary", () => {
@@ -313,6 +330,15 @@ describe("unread counting", () => {
     expect(next.channels[0]).toMatchObject({ unread: 1, unreadMentions: 1 });
   });
 
+  it("counts a reply to our own line as a mention", () => {
+    // Rust: `answers`. The reply names nobody; its id is what points at us.
+    let next = receive(inactive(), { sender: "Ada", msgid: "srv-ours" });
+    next = receive(next, { msgid: "srv-answer", replyTo: "srv-ours", content: "agreed" });
+    expect(next.channels[0]).toMatchObject({ unread: 1, unreadMentions: 1 });
+    next = receive(next, { replyTo: "srv-answer", content: "same" });
+    expect(next.channels[0]).toMatchObject({ unread: 2, unreadMentions: 1 });
+  });
+
   it("treats every message in a private conversation as a mention", () => {
     // Rust: `is_private` short-circuits the mention check.
     const next = apply(state({ channels: [channel("Bob")], activeChannel: "#other" }), {
@@ -320,6 +346,17 @@ describe("unread counting", () => {
       payload: { channel: "Bob", message: message({ content: "hey" }) },
     });
     expect(next.channels[0]).toMatchObject({ unread: 1, unreadMentions: 1 });
+  });
+
+  it("does not let joins and parts push the conversation out (#441)", () => {
+    let next = state({ channels: [channel("#uef")], activeChannel: "#uef" });
+    next = receive(next, { content: "said" });
+    for (let i = 0; i < 520; i += 1) {
+      next = receive(next, { kind: "info", content: `join ${i}` });
+    }
+    const messages = next.channels[0].messages;
+    expect(messages.some((kept) => kept.content === "said")).toBe(true);
+    expect(messages).toHaveLength(501);
   });
 
   it("keeps only the most recent messages", () => {

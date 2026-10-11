@@ -6,7 +6,6 @@ function rating(technicalName: string, gamesPlayed: number): PlayerRatingSummary
   return {
     leaderboardId: 1,
     technicalName,
-    name: technicalName,
     rating: 1500,
     mean: 1500,
     deviation: 100,

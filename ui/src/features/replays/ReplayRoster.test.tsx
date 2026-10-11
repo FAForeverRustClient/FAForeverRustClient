@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { mergeReplayTeamsWithLocal, parseOutcome, outcomeLabel, ReplayCardRoster, ReplayDetailRoster } from "./ReplayRoster";
+import { mergeReplayTeamsWithLocal, parseOutcome, outcomeLabel, ReplayCardRoster, ReplayDetailRoster, replayWinner } from "./ReplayRoster";
 import type { LocalReplayTeam, ReplayTeam } from "../../ipc/bindings";
 
 describe("ReplayRoster outcomes", () => {
@@ -344,5 +344,45 @@ describe("ReplayRoster outcomes", () => {
 
     const nonInteractiveMarkup = renderToStaticMarkup(<ReplayCardRoster teams={teams} interactive={false} />);
     expect(nonInteractiveMarkup).toContain('title="played as TheWeakie"');
+  });
+});
+
+describe("the vault's game result switch (#454)", () => {
+  const teams = [
+    { team: 2, players: [{ name: "Alice", faction: 1, rating: 1500, outcome: "VICTORY", score: 0 }] },
+    { team: 3, players: [{ name: "Bob", faction: 2, rating: 1500, outcome: "DEFEAT", score: 0 }] },
+  ] as ReplayTeam[];
+
+  it("tints a card's sides by their outcome only when asked, as the detail view does", () => {
+    const hidden = renderToStaticMarkup(<ReplayCardRoster teams={teams} />);
+    expect(hidden).not.toContain("data-outcome");
+    expect(hidden).not.toContain("data-results");
+    const shown = renderToStaticMarkup(<ReplayCardRoster teams={teams} showResults />);
+    expect(shown).toContain('data-results="true"');
+    expect(shown).toContain('data-outcome="victory"');
+    expect(shown).toContain('data-outcome="defeat"');
+    // No badge in the header line, which is what pushed the count onto a
+    // second line on a narrow card.
+    expect(shown).not.toContain("replay-team-outcome");
+  });
+
+  it("keeps a player's rating and its change together at the row's end", () => {
+    const rated = [
+      { team: 2, players: [{ name: "Alice", faction: 1, rating: 1500, ratingChange: 12, outcome: "VICTORY", score: 0 }] },
+      { team: 3, players: [{ name: "Bob", faction: 2, rating: 1500, ratingChange: -12, outcome: "DEFEAT", score: 0 }] },
+    ] as ReplayTeam[];
+    const shown = renderToStaticMarkup(<ReplayCardRoster teams={rated} showResults />);
+    expect(shown).toMatch(/<span class="replay-card-player-stats"><span class="muted">1500<\/span><span class="replay-player-rating-change positive"[^>]*>\+12<\/span><\/span>/);
+  });
+
+  it("names the winner for a list row, and nothing when there is no result", () => {
+    expect(replayWinner(teams)).toBe("Won: Team 1");
+    const ffa = [{ team: 1, players: [
+      { name: "Alice", faction: 1, rating: 1500, outcome: "VICTORY", score: 0 },
+      { name: "Bob", faction: 2, rating: 1500, outcome: "DEFEAT", score: 0 },
+    ] }] as ReplayTeam[];
+    expect(replayWinner(ffa)).toBe("Won: Alice");
+    const unknown = [{ team: 2, players: [{ name: "Alice", faction: 1, rating: 1500, outcome: "", score: 0 }] }] as ReplayTeam[];
+    expect(replayWinner(unknown)).toBeNull();
   });
 });

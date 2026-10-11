@@ -11,11 +11,19 @@ import type { LeaderboardColumn, TableColumn } from "./LeaderboardTable";
 import { crossRatingIndex, LeaderboardTable } from "./LeaderboardTable";
 import { PlayerDetailsPanel } from "./PlayerDetailsPanel";
 import { ipc } from "../../ipc/client";
-import type { LeaderboardEntry, RatingQuery } from "../../ipc/bindings";
+import type { RatingQuery } from "../../ipc/bindings";
 import { formatNumber, type MessageKey } from "../../i18n";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import { DateInput } from "../../design-system/DateInput";
+import { plainError } from "../../shared/plainError";
+import { leaderboardLabel } from "../../shared/playerRatings";
+import {
+  filterMemoryNow,
+  isFilterRecord,
+  rememberedFilter,
+  useRememberFilter,
+} from "../../shared/filterMemory";
 
 /**
  * The columns beside the boards.
@@ -46,16 +54,73 @@ function dayEnd(day: string): string | null {
   return day ? new Date(`${day}T23:59:59.999`).toISOString() : null;
 }
 
+/** The executed query's values for the fields the search form edits. */
+function searchFieldsKey(query: RatingQuery): string {
+  return JSON.stringify([
+    query.player,
+    query.activeOnly,
+    query.updatedAfter,
+    query.updatedBefore,
+    query.pageSize,
+  ]);
+}
+
+/** Where the board's filters are remembered (#447), and where they start. */
+const RATING_FILTERS = "leaderboard.rating";
+type RatingFilters = Pick<RatingQuery, "player" | "activeOnly" | "updatedAfter" | "updatedBefore">;
+const NO_RATING_FILTERS: RatingFilters = {
+  player: "",
+  activeOnly: true,
+  updatedAfter: null,
+  updatedBefore: null,
+};
+
+function ratingFiltersOf(query: RatingQuery): RatingFilters {
+  return {
+    player: query.player,
+    activeOnly: query.activeOnly,
+    updatedAfter: query.updatedAfter,
+    updatedBefore: query.updatedBefore,
+  };
+}
+
+/** A remembered copy, field by field, so a stray key never reaches a query. */
+function keptRatingFilters(value: unknown): RatingFilters | null {
+  if (!isFilterRecord(value)) return null;
+  const day = (field: unknown) => (typeof field === "string" ? field : null);
+  return {
+    player: typeof value.player === "string" ? value.player : "",
+    activeOnly: typeof value.activeOnly === "boolean" ? value.activeOnly : true,
+    updatedAfter: day(value.updatedAfter),
+    updatedBefore: day(value.updatedBefore),
+  };
+}
+
 function load(query: RatingQuery) {
   ipc.send({ kind: "Leaderboard", command: { type: "loadRatings", payload: { query } } });
+}
+
+/**
+ * The "include previous names" box is a way of searching, not a fact about one
+ * search, so it is remembered in the settings rather than reset whenever the
+ * tab opens again (#424).
+ */
+function rememberIncludeFormerNames(leaderboardIncludeFormerNames: boolean) {
+  ipc.send({
+    kind: "Settings",
+    command: { type: "patchBrowsing", payload: { patch: { leaderboardIncludeFormerNames } } },
+  });
 }
 
 export function RatingLeaderboardPanel() {
   const { t } = useTranslation();
   const state = useAppStore((store) => store.state.leaderboard);
   const browsing = useAppStore((store) => store.state.settings.browsing);
+  const savedIncludeFormerNames = browsing.leaderboardIncludeFormerNames;
   const [player, setPlayer] = useState(state.ratingQuery.player);
-  const [includeFormerNames, setIncludeFormerNames] = useState(state.ratingQuery.includeFormerNames);
+  // Held here as well so a click shows at once rather than after the round
+  // trip; the saved value wins whenever it changes.
+  const [includeFormerNames, setIncludeFormerNames] = useState(savedIncludeFormerNames);
   const [activeOnly, setActiveOnly] = useState(state.ratingQuery.activeOnly);
   const [after, setAfter] = useState(dayValue(state.ratingQuery.updatedAfter));
   const [before, setBefore] = useState(dayValue(state.ratingQuery.updatedBefore));
@@ -65,23 +130,23 @@ export function RatingLeaderboardPanel() {
   const visibleColumns = (browsing.leaderboardRatingColumns ?? [
     "games", "updated",
   ]) as LeaderboardColumn[];
-  const [selected, setSelected] = useState<LeaderboardEntry | null>(null);
+  // The player, not the row: holding the `LeaderboardEntry` itself kept the
+  // details panel on the rank, rating and games count of the page it was
+  // clicked on, while a refresh had already put new numbers in the table.
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
+  // One column and a direction, applied by the backend to the list it holds:
+  // a list rebuilt from this render lost a column when two boxes were ticked
+  // inside one round trip. The last visible column stays, as before; were a
+  // race to remove it anyway, the backend falls back to the default columns.
   const toggleColumn = (key: LeaderboardColumn) => {
-    const updated = visibleColumns.includes(key)
-      ? visibleColumns.filter((col) => col !== key)
-      : [...visibleColumns, key];
-    if (updated.length === 0) return;
+    const visible = visibleColumns.includes(key);
+    if (visible && visibleColumns.length === 1) return;
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
-        payload: {
-          preferences: {
-            ...browsing,
-            leaderboardRatingColumns: updated,
-          },
-        },
+        type: "setListMember",
+        payload: { list: "leaderboardRatingColumns", value: key, member: !visible },
       },
     });
   };
@@ -90,16 +155,48 @@ export function RatingLeaderboardPanel() {
     if (state.catalogStatus.type !== "ready" || state.ratingsStatus.type !== "idle") return;
     const preferred = state.ratingLeaderboards.find((board) => board.technicalName === state.ratingQuery.leaderboard)
       ?? state.ratingLeaderboards[0];
-    if (preferred) void load({ ...state.ratingQuery, leaderboard: preferred.technicalName, page: 1 });
+    // The first load of a session starts from the filters left before a
+    // restart, when the filter setting keeps them that long (#447).
+    const kept = filterMemoryNow() === "restart"
+      ? keptRatingFilters(rememberedFilter<unknown>(RATING_FILTERS, null))
+      : null;
+    if (preferred) void load({ ...state.ratingQuery, ...kept, leaderboard: preferred.technicalName, page: 1 });
   }, [state.catalogStatus.type, state.ratingLeaderboards, state.ratingQuery, state.ratingsStatus.type]);
 
+  // With filters never remembered (#447), a visit after the first starts from
+  // the unfiltered board again. The board it is ranked by and the page length
+  // are not filters.
   useEffect(() => {
-    setSelected((current) => current && state.ratingPage.entries.some((entry) => entry.playerId === current.playerId)
+    const current = useAppStore.getState().state.leaderboard;
+    if (filterMemoryNow() !== "never" || current.ratingsStatus.type === "idle") return;
+    const filters = ratingFiltersOf(current.ratingQuery);
+    if (JSON.stringify(filters) === JSON.stringify(NO_RATING_FILTERS)) return;
+    void load({ ...current.ratingQuery, ...NO_RATING_FILTERS, page: 1 });
+  }, []);
+
+  const executedFilters = useMemo(() => ratingFiltersOf(state.ratingQuery), [state.ratingQuery]);
+  useRememberFilter(RATING_FILTERS, executedFilters);
+
+  // A player no longer on the page is no longer selected.
+  useEffect(() => {
+    setSelectedId((current) => current !== null && state.ratingPage.entries.some((entry) => entry.playerId === current)
       ? current
       : null);
   }, [state.ratingPage.entries]);
 
   useEffect(() => {
+    setIncludeFormerNames(savedIncludeFormerNames);
+  }, [savedIncludeFormerNames]);
+
+  // The search fields follow the executed query only when its values for
+  // those fields change. Paging, Refresh and ranking by another board each
+  // re-run the executed query, and copying it back on every answer threw away
+  // a player name or a date typed but not searched for yet.
+  const syncedSearch = useRef<string | null>(null);
+  useEffect(() => {
+    const search = searchFieldsKey(state.ratingQuery);
+    if (search === syncedSearch.current) return;
+    syncedSearch.current = search;
     setPlayer(state.ratingQuery.player);
     setActiveOnly(state.ratingQuery.activeOnly);
     setAfter(dayValue(state.ratingQuery.updatedAfter));
@@ -125,6 +222,7 @@ export function RatingLeaderboardPanel() {
 
   const currentBoard = state.ratingLeaderboards.find((board) => board.technicalName === state.ratingQuery.leaderboard);
   const entries = state.ratingPage.entries;
+  const selected = entries.find((entry) => entry.playerId === selectedId) ?? null;
   // Every board gets a column. Which of them the page is ranked by is the
   // column header that was last pressed, not a tab above the table.
   const boardColumns: TableColumn[] = state.ratingLeaderboards.map(
@@ -159,14 +257,15 @@ export function RatingLeaderboardPanel() {
   };
   const changePage = (page: number) => void load({ ...state.ratingQuery, page });
   const columns: TableColumn[] = ["rank", "player", ...boardColumns, ...visibleColumns];
+  // The remembered "include previous names" choice survives Clear: it says how
+  // the next name is looked up, and with the name cleared it filters nothing.
   const clearFilters = () => {
     setPlayer("");
-    setIncludeFormerNames(false);
     setActiveOnly(true);
     setAfter("");
     setBefore("");
     setPageSize(100);
-    void load({ ...state.ratingQuery, page: 1, pageSize: 100, activeOnly: true, updatedAfter: null, updatedBefore: null, player: "", includeFormerNames: false });
+    void load({ ...state.ratingQuery, page: 1, pageSize: 100, activeOnly: true, updatedAfter: null, updatedBefore: null, player: "", includeFormerNames });
   };
 
   return (
@@ -177,7 +276,7 @@ export function RatingLeaderboardPanel() {
           five boards was the same choice offered twice. */}
       {currentBoard && (
         <p className="leaderboard-description muted">
-          <span>{t("leaderboard.ratings.rankedByBoard", { board: currentBoard.name })}</span>
+          <span>{t("leaderboard.ratings.rankedByBoard", { board: leaderboardLabel(currentBoard.technicalName) })}</span>
           {currentBoard.description && <span className="leaderboard-description-note">{currentBoard.description}</span>}
         </p>
       )}
@@ -239,12 +338,16 @@ export function RatingLeaderboardPanel() {
         </SearchField>
         {/* Off by default, because it turns a lookup into a list of
             candidates: part of any name, current or former, and a released
-            name can have been worn by several accounts (#299). */}
+            name can have been worn by several accounts (#299). Once ticked
+            it stays ticked, across restarts too (#424). */}
         <label className="option-check leaderboard-search-former" title={t("leaderboard.ratings.includeFormerNamesHint")}>
           <input
             type="checkbox"
             checked={includeFormerNames}
-            onChange={(event) => setIncludeFormerNames(event.target.checked)}
+            onChange={(event) => {
+              setIncludeFormerNames(event.target.checked);
+              rememberIncludeFormerNames(event.target.checked);
+            }}
           />
           {t("leaderboard.ratings.includeFormerNames")}
         </label>
@@ -265,18 +368,20 @@ export function RatingLeaderboardPanel() {
       <div className="leaderboard-main-grid">
         <div className={`leaderboard-results surface-panel${state.ratingsStatus.type === "loading" ? " is-loading" : ""}`}>
           {state.ratingsStatus.type === "failed" ? (
-            <div className="leaderboard-state leaderboard-error">{state.ratingsStatus.payload.reason}</div>
+            <div className="leaderboard-state leaderboard-error" title={state.ratingsStatus.payload.reason}>
+              {plainError(state.ratingsStatus.payload.reason)}
+            </div>
           ) : entries.length === 0 && state.ratingsStatus.type === "loading" ? (
-            <div className="leaderboard-state muted">Loading rankings…</div>
+            <div className="leaderboard-state muted">{t("leaderboard.ratings.loadingRankings")}</div>
           ) : (
             <LeaderboardTable
               entries={entries}
               columns={columns}
-              boards={state.ratingLeaderboards}
               activeBoard={state.ratingQuery.leaderboard}
               crossRatings={crossRatings}
-              selectedPlayerId={selected?.playerId ?? null}
-              onSelect={setSelected}
+              scrollResetKey={state.ratingQuery}
+              selectedPlayerId={selectedId}
+              onSelect={(entry) => setSelectedId(entry.playerId)}
               onRankBy={(leaderboard) => void load({ ...state.ratingQuery, leaderboard, page: 1 })}
               emptyMessage={t("leaderboard.ratings.empty")}
             />

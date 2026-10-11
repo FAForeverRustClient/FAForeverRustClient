@@ -16,6 +16,7 @@ export type IconName =
   | "changelog"
   | "github"
   | "twitch"
+  | "discord"
   | "settings"
   | "logout"
   | "arrowRight"
@@ -24,6 +25,7 @@ export type IconName =
   | "chevronRight"
   | "chevronDown"
   | "chevronUp"
+  | "panelRight"
   | "activity"
   | "search"
   | "filter"
@@ -61,7 +63,11 @@ export type IconName =
   // Local storage: the cache and the paths the client keeps on disk.
   | "drive"
   // The network: connectivity to other players.
-  | "globe";
+  | "globe"
+  // Something FAF itself runs: the official entries on the events calendar.
+  | "shield"
+  // Something failed: the icon errors carry, so the colour is not the only sign.
+  | "alert";
 
 interface IconProps extends SVGProps<SVGSVGElement> {
   name: IconName;
@@ -72,7 +78,11 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
   const paths: Record<IconName, ReactNode> = {
     home: <><path d="M3 10.5 12 3l9 7.5" /><path d="M5.5 9.5V21h13V9.5M9 21v-6h6v6" /></>,
     news: <><path d="M5 3h11a3 3 0 0 1 3 3v15H6a3 3 0 0 1-3-3V5" /><path d="M7 7h8M7 11h8M7 15h5" /></>,
-    chat: <><path d="M20 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h11a3 3 0 0 1 3 3Z" /><path d="M7 8h10M7 12h7" /></>,
+    // The upper text line at 8.8 rather than 8: at the 15px the chat tabs draw
+    // this at, 8 fell on the boundary between two pixel rows and was smeared
+    // into a grey two-pixel band on a 1080p screen, while 8.8 and 12 both land
+    // on a row's centre and draw as clean one-pixel lines.
+    chat: <><path d="M20 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h11a3 3 0 0 1 3 3Z" /><path d="M7 8.8h10M7 12h7" /></>,
     play: <><path d="m9 8 7 4-7 4Z" /><circle cx="12" cy="12" r="9" /></>,
     replays: <><path d="M4 12a8 8 0 1 0 2.34-5.66L4 8.68" /><path d="M4 4v4.68h4.68M10 8.5l5 3.5-5 3.5Z" /></>,
     maps: <><path d="m3 6 5-3 8 3 5-3v15l-5 3-8-3-5 3Z" /><path d="M8 3v15M16 6v15" /></>,
@@ -86,6 +96,9 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     github: <><path d="M15 22v-3.3c0-1.1-.4-1.9-1-2.3 3.3-.4 6.7-1.6 6.7-7.1 0-1.6-.6-2.9-1.6-3.9.2-.4.7-1.9-.2-3.8 0 0-1.3-.4-4.1 1.5a14 14 0 0 0-7.5 0C4.5 1.2 3.2 1.6 3.2 1.6c-.9 1.9-.4 3.4-.2 3.8-1 1-1.6 2.3-1.6 3.9 0 5.5 3.4 6.7 6.7 7.1-.6.4-1 1.1-1 2.3V22" /><path d="M7.1 18.3c-3 .9-3-1.4-4.2-1.8" /></>,
     // The Twitch glyph, drawn in this set's outline style.
     twitch: <><path d="M4 3h16v11l-5 5h-4l-3 3v-3H4Z" /><path d="M11 8v4M16 8v4" /></>,
+    // The Discord mark, drawn in this set's outline style: the face, its two
+    // eyes, and the smile line along its chin.
+    discord: <><path d="M8.2 5.2A15 15 0 0 0 4.4 6.5C2.3 9.7 1.7 12.8 2 15.9a15 15 0 0 0 4.6 2.4l1.1-1.9M15.8 5.2a15 15 0 0 1 3.8 1.3c2.1 3.2 2.7 6.3 2.4 9.4a15 15 0 0 1-4.6 2.4l-1.1-1.9" /><path d="M7.6 16.3c2.9 1.3 5.9 1.3 8.8 0M7.9 7.6c2.7-.9 5.5-.9 8.2 0" /><circle cx="9.1" cy="12.3" r="1.2" /><circle cx="14.9" cy="12.3" r="1.2" /></>,
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.97 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.52-1.03H3v-4h.08A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 10 3.05V3h4v.08a1.7 1.7 0 0 0 1.03 1.52 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 7l-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 20.92 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z" /></>,
     logout: <><path d="M10 17l5-5-5-5M15 12H3" /><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" /></>,
     arrowRight: <><path d="M5 12h14M13 6l6 6-6 6" /></>,
@@ -94,6 +107,7 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     chevronRight: <path d="m9 18 6-6-6-6" />,
     chevronDown: <path d="m6 9 6 6 6-6" />,
     chevronUp: <path d="m6 15 6-6 6 6" />,
+    panelRight: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></>,
     activity: <path d="M3 12h4l2.5-7 5 14 2.5-7h4" />,
     search: <><circle cx="10" cy="10" r="6" /><path d="m14.5 14.5 5 5" /></>,
     filter: <path d="M4 6h16M7 12h10M10 18h4" />,
@@ -124,6 +138,8 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     user: <><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>,
     drive: <><rect x="2" y="6" width="20" height="12" rx="2" /><path d="M6 12h.01M10 12h.01" /><path d="M14 12h4" /></>,
     globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18Z" /></>,
+    shield: <><path d="M12 3 5 6v5.5c0 4.2 2.9 7.8 7 9.5 4.1-1.7 7-5.3 7-9.5V6l-7-3Z" /><path d="m9 12 2.2 2.2L15.5 10" /></>,
+    alert: <><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5" /><circle cx="12" cy="16.5" r=".8" fill="currentColor" stroke="none" /></>,
     trash: (
       <>
         <polyline points="3 6 5 6 21 6" />

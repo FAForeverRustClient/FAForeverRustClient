@@ -7,19 +7,23 @@
 //    again cycles through the other matches (Java's `AutoCompletionHelper`,
 //    Python's `ChatLineEdit.try_completion`). The nickname replaces the partial
 //    word and nothing else: neither reference client appends a separator, and
-//    the `: ` this used to add at the start of a line was ours alone.
+//    the `: ` this used to add at the start of a line was ours alone. When
+//    there is nothing to complete, Tab moves focus as it does anywhere else
+//    (see `nickCompletion.ts`).
 //  * Up/Down walk the history of sent lines (Python's `prev_history`/
 //    `next_history`), so correcting a typo doesn't mean retyping.
 //
 // Slash commands are *not* interpreted here: the backend owns that grammar
 // (`faf-domain::protocol::chat_input`). This component only sends raw text.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { EmojiPicker } from "./EmojiPicker";
 import { partyChannelLabel } from "../../../shared/partyChat";
+import { readDraft, writeDraft } from "./composerDrafts";
+import { tabCompletion, type Completion } from "./nickCompletion";
 
 /** How many sent lines to keep for Up/Down recall. */
 const MAX_HISTORY = 50;
@@ -42,13 +46,12 @@ interface Props {
    * has no typing notices to send.
    */
   onTyping?: (composing: boolean, channel: string) => void;
-}
-
-interface Completion {
-  /** Text before the word being completed. */
-  prefix: string;
-  matches: string[];
-  index: number;
+  /**
+   * Which saved draft this box edits. Defaults to the channel name; party chat
+   * passes its own key so the same room open in the Chat tab keeps a separate
+   * line (see `composerDrafts.ts`).
+   */
+  draftKey?: string;
 }
 
 export function Composer({
@@ -59,9 +62,17 @@ export function Composer({
   onTyping = () => {},
   replyTo = null,
   onCancelReply,
+  draftKey,
 }: Props) {
   const { t } = useTranslation();
-  const [draft, setDraft] = useState("");
+  const key = draftKey ?? channel;
+  const [draft, setDraftText] = useState(() => readDraft(key));
+  // Every change is mirrored into the session's draft store as it happens, so
+  // the line survives a channel switch and the composer unmounting alike.
+  const setDraft = (value: string) => {
+    setDraftText(value);
+    writeDraft(key, value);
+  };
   const inputRef = useRef<HTMLInputElement>(null);
   const completion = useRef<Completion | null>(null);
   const history = useRef<string[]>([]);
@@ -90,29 +101,6 @@ export function Composer({
     historyIndex.current = null;
     completion.current = null;
     setDraft("");
-  };
-
-  const complete = () => {
-    const active = completion.current;
-    if (active) {
-      // Subsequent Tab: cycle to the next candidate for the same partial word.
-      const index = (active.index + 1) % active.matches.length;
-      completion.current = { ...active, index };
-      setDraft(active.prefix + active.matches[index]);
-      return;
-    }
-
-    const separator = draft.lastIndexOf(" ");
-    const partial = draft.slice(separator + 1);
-    if (!partial) return;
-    const matches = nicknames
-      .filter((n) => n.toLowerCase().startsWith(partial.toLowerCase()))
-      .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-    if (matches.length === 0) return;
-
-    const prefix = draft.slice(0, separator + 1);
-    completion.current = { prefix, matches, index: 0 };
-    setDraft(prefix + matches[0]);
   };
 
   /**
@@ -153,9 +141,13 @@ export function Composer({
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Tab" && !e.ctrlKey && !e.altKey) {
+    if (e.key === "Tab" && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      const outcome = tabCompletion(draft, nicknames, completion.current, e.shiftKey);
+      // Not ours: leave the event alone so focus moves on (or back).
+      if (!outcome) return;
       e.preventDefault();
-      complete();
+      completion.current = outcome.completion;
+      setDraft(outcome.text);
       return;
     }
     if (e.key === "ArrowUp" || e.key === "ArrowDown") {
@@ -200,13 +192,25 @@ export function Composer({
     if (left === channel) return;
     previousChannel.current = channel;
     onTyping(false, left);
-    setDraft("");
     completion.current = null;
     historyIndex.current = null;
     // `onTyping` is intentionally not a dependency: it is a fresh closure on
     // every render, and re-running this on each one would retract constantly.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel]);
+
+  // Switching conversation brings back whatever was left unsent in the one
+  // being opened. The line being left needs no saving here: `setDraft` has
+  // already stored every change to it. A layout effect, so the new
+  // conversation never paints for a frame with the old one's text in its box.
+  const previousKey = useRef(key);
+  useLayoutEffect(() => {
+    if (previousKey.current === key) return;
+    previousKey.current = key;
+    setDraftText(readDraft(key));
+    completion.current = null;
+    historyIndex.current = null;
+  }, [key]);
 
   return (
     <form className="chat-compose-shell" onSubmit={submit}>

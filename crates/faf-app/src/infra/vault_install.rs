@@ -107,7 +107,12 @@ pub async fn bounded_body_with_progress(
     let mut received = 0_u64;
     let mut stream = response.bytes_stream();
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|error| format!("could not read {subject}: {error}"))?;
+        let chunk = chunk.map_err(|error| {
+            format!(
+                "could not read {subject}: {}",
+                crate::infra::http::describe_transport_error(&error)
+            )
+        })?;
         received = received
             .checked_add(chunk.len() as u64)
             .ok_or_else(|| format!("{subject} is too large"))?;
@@ -175,7 +180,12 @@ pub async fn bounded_body_to_file(
     let mut received = 0_u64;
     let mut stream = response.bytes_stream();
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|error| format!("could not read {subject}: {error}"))?;
+        let chunk = chunk.map_err(|error| {
+            format!(
+                "could not read {subject}: {}",
+                crate::infra::http::describe_transport_error(&error)
+            )
+        })?;
         received = received
             .checked_add(chunk.len() as u64)
             .ok_or_else(|| format!("{subject} is too large"))?;

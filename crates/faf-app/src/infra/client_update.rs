@@ -167,7 +167,12 @@ impl GitHubUpdates {
             .header(reqwest::header::ACCEPT, "application/vnd.github+json")
             .send()
             .await
-            .map_err(|e| format!("could not reach the release list: {e}"))?;
+            .map_err(|e| {
+                format!(
+                    "could not reach the release list: {}",
+                    crate::infra::http::describe_transport_error(&e)
+                )
+            })?;
 
         let status = response.status();
         // Bounded like every other body in the client. This was the one that
@@ -232,7 +237,12 @@ impl GitHubUpdates {
             .header(reqwest::header::USER_AGENT, USER_AGENT)
             .send()
             .await
-            .map_err(|e| format!("could not reach the installer: {e}"))?;
+            .map_err(|e| {
+                format!(
+                    "could not reach the installer: {}",
+                    crate::infra::http::describe_transport_error(&e)
+                )
+            })?;
         if !response.status().is_success() {
             return Err(format!(
                 "the installer download returned {}",
@@ -263,7 +273,12 @@ impl GitHubUpdates {
         use tokio::io::AsyncWriteExt as _;
         let write_result: Result<(), String> = async {
             while let Some(chunk) = stream.next().await {
-                let chunk = chunk.map_err(|e| format!("the installer download failed: {e}"))?;
+                let chunk = chunk.map_err(|e| {
+                    format!(
+                        "the installer download failed: {}",
+                        crate::infra::http::describe_transport_error(&e)
+                    )
+                })?;
                 received = received
                     .checked_add(chunk.len() as u64)
                     .ok_or_else(|| "the installer is too large".to_string())?;

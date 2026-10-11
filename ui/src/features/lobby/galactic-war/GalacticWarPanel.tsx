@@ -16,6 +16,7 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import type { MessageKey } from "../../../i18n";
 import { useAppStore } from "../../../store/store";
 import { FactionIcon } from "../../../shared/components/FactionIcon";
+import { galacticWarFactionLabel } from "../../../shared/factions";
 import { openHttpsUrl } from "../../../shared/externalLinks";
 import { canLaunch, installTarget, isBusy, updateAvailable } from "../../../shared/rules/galacticWarActions";
 import { ringSegments, type RingSegment } from "./galacticWarRing";
@@ -303,6 +304,10 @@ export function GalacticWarPanel() {
                   numbered differently by the spec and the running server. */}
               {factions.map((faction, index) => {
                 const segment = segments[index];
+                const factionName = galacticWarFactionLabel(
+                  faction.name || faction.longName || "",
+                  faction.longName || faction.name || "",
+                );
                 const figures: Array<{ key: string; label: string; value: number }> = [
                   {
                     key: "planets",
@@ -324,7 +329,7 @@ export function GalacticWarPanel() {
                   <li className="gw-faction" key={`${faction.name}-${index}`}>
                     <div className="gw-faction-head" style={{ borderColor: segment.color }}>
                       <FactionIcon faction={segment.faction} size={18} />
-                      <span className="gw-faction-name">{faction.longName || faction.name}</span>
+                      <span className="gw-faction-name">{factionName}</span>
                     </div>
 
                     {/* Territory leads the card: it is the one figure that says

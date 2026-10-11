@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pagination } from "../../../design-system/Pagination";
+import { StatusNotice } from "../../../design-system/StatusNotice";
 import type { ReplayQuery } from "../../../ipc/bindings";
 import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
-import { loadStatusNote } from "../../../shared/loadStatusNote";
-import { isUnknownVaultMap } from "../../../shared/mapPresentation";
+import { isSeedlessGeneratedMap, isUnknownVaultMap } from "../../../shared/mapPresentation";
 import { isoDaysAgo, personalReplayQuery } from "../../../shared/replayQuery";
 import { loadStoredSet, saveStoredSet } from "../../../shared/storage";
 import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
@@ -14,8 +14,21 @@ import { ReplayDetailPanel } from "../ReplayDetailPanel";
 import { ReplayViewSwitch, type ReplayViewMode } from "../ReplayViewSwitch";
 import { subscribeReplaySearch, takeReplaySearch } from "../../../shared/replaySearchIntent";
 import { VaultSearch } from "./VaultSearch";
+import { ReplayPageSize } from "./AdvancedReplayFilters";
+import { Button } from "../../../design-system/Button";
+import { Icon } from "../../../design-system/Icon";
 import "../online-replays.css";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { plainError } from "../../../shared/plainError";
+import {
+  filterMemoryNow,
+  isFilterRecord,
+  rememberedFilter,
+  useRememberFilter,
+} from "../../../shared/filterMemory";
+
+/** Where the vault's search is remembered (#447). */
+const ONLINE_REPLAY_FILTERS = "replays.online";
 
 /**
  * The selector's answer when nothing has been resolved yet. A literal `{}` in
@@ -56,19 +69,21 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   // state, which the store keeps sorted and replaces wholesale, so the
   // identity check upstream is enough and nothing needs memoising here.
   const friends = useAppStore((s) => s.state.social.friends);
-  const note = loadStatusNote(vaultStatus, t("replays.vault.searching"), t("replays.vault.loadFailed"));
   const browsing = useAppStore((s) => s.state.settings.browsing);
   const viewMode: ReplayViewMode = browsing.replaysView;
   const setViewMode = (mode: ReplayViewMode) => {
     void ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
-        payload: { preferences: { ...browsing, replaysView: mode } },
+        type: "patchBrowsing",
+        payload: { patch: { replaysView: mode } },
       },
     });
   };
   const [openUid, setOpenUid] = useState<number | null>(null);
+  // The detail panel's "Game result" switch, for the whole page at once
+  // (#454). Off by default, as there: a result is a spoiler until asked for.
+  const [showResults, setShowResults] = useState(false);
   const [selectedUid, setSelectedUid] = useState<number | null>(null);
   const [watchedUids, setWatchedUids] = useState<Set<number>>(() =>
     loadStoredSet(WATCHED_STORAGE_KEY, (value): value is number => typeof value === "number"),
@@ -105,10 +120,27 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   useEffect(() => {
     const state = useAppStore.getState().state;
     const playerToSearch = self || state.settings.browsing.replayVaultPlayer;
+    const memory = filterMemoryNow();
     if (!runRequestedSearch() && !handedOver.current) {
       const status = state.replays.vaultStatus.type;
-      if (status === "idle") {
-        if (playerToSearch) searchVault(personalReplayQuery(playerToSearch, isoDaysAgo(365)));
+      // The search left before a restart, when the filter setting keeps
+      // filters that long (#447). Otherwise the landing search below.
+      const kept = status === "idle" && memory === "restart"
+        ? rememberedFilter<ReplayQuery | null>(ONLINE_REPLAY_FILTERS, null, isFilterRecord)
+        : null;
+      if (kept) {
+        refreshed.current = true;
+        searchVault(kept);
+      } else if (status === "idle") {
+        if (playerToSearch) {
+          // The landing search is this visit's fresh one, so it counts as the
+          // re-run. Unarmed, the first search of a session (the vault player
+          // was not remembered yet, so it changes) re-ran the landing query
+          // over the reader's own: "Skip short replays" did nothing on the
+          // first press and switched itself back off.
+          refreshed.current = true;
+          searchVault(personalReplayQuery(playerToSearch, isoDaysAgo(365)));
+        }
       } else if (status !== "loading" && !refreshed.current) {
         refreshed.current = true;
         // Every later visit runs the search that is on screen again, rather
@@ -118,7 +150,12 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
         // and pressing Search by hand to see it is not something a reader
         // should have to know to do. A search already in flight is left to
         // finish, and a failed one gets another try on the way back in.
-        searchVault(state.replays.vaultQuery);
+        //
+        // With filters never remembered (#447) that is the landing search
+        // instead, at the page length in effect, which is not a filter.
+        searchVault(memory === "never" && playerToSearch
+          ? { ...personalReplayQuery(playerToSearch, isoDaysAgo(365)), pageSize: state.replays.vaultQuery.pageSize }
+          : state.replays.vaultQuery);
       }
     }
     // The two dropdowns' contents. Both are cheap and cached in state, so
@@ -127,6 +164,9 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     loadLeaderboards();
   }, [self, browsing.replayVaultPlayer, runRequestedSearch]);
 
+  // The search on screen, for the next visit or the next start (#447).
+  useRememberFilter(ONLINE_REPLAY_FILTERS, query);
+
   // And for the request that arrives while this tab is already open.
   useEffect(() => subscribeReplaySearch(() => { runRequestedSearch(); }), [runRequestedSearch]);
 
@@ -134,10 +174,14 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   // instead: the first 64 KiB of each, which is the envelope and enough of the
   // stream to read the scenario the engine loaded. Once per game, because an
   // answer is remembered whether or not it found anything, and only for the
-  // rows this page actually turned up.
+  // rows this page actually turned up. A generated map the listing names
+  // without its seed is asked about too: the card cannot generate it without
+  // the seed, which is why most of them showed no generate button.
   useEffect(() => {
     const unread = vault
-      .filter((replay) => isUnknownVaultMap(replay.map) && !(replay.uid in resolvedMaps))
+      .filter((replay) =>
+        (isUnknownVaultMap(replay.map) || (isSeedlessGeneratedMap(replay.map) && replay.replayAvailable))
+        && !(replay.uid in resolvedMaps))
       .map((replay) => replay.uid);
     if (unread.length === 0) return;
     ipc.send({ kind: "Replays", command: { type: "resolveMaps", payload: { uids: unread } } });
@@ -148,12 +192,15 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
       void ipc.send({
         kind: "Settings",
         command: {
-          type: "setBrowsing",
-          payload: { preferences: { ...browsing, replayVaultPlayer: newQuery.player } },
+          type: "patchBrowsing",
+          payload: { patch: { replayVaultPlayer: newQuery.player } },
         },
       });
     }
-    searchVault(newQuery);
+    // The page size is set on the results line, not in the form, so a search
+    // from the form keeps the one in effect: clearing the filters is not a
+    // request for a different page length.
+    searchVault({ ...newQuery, pageSize: query.pageSize });
   };
 
   const openReplay = vault.find((r) => r.uid === openUid) ?? null;
@@ -233,10 +280,36 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
                   pages: totalPages ?? 1,
                 })}
           </span>
-          {note && <span className="online-replay-status-note muted">· {note}</span>}
         </div>
-        <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
+        <div className="online-replay-view-bar-right">
+          <Button
+            className="replay-detail-reveal-btn"
+            aria-pressed={showResults}
+            onClick={() => setShowResults((visible) => !visible)}
+          >
+            <Icon name="eye" size={13} />
+            <span>{t(showResults ? "replays.detail.hideResults" : "replays.detail.gameResult")}</span>
+          </Button>
+          {/* Applies at once, to the search on screen, from its first page. */}
+          <ReplayPageSize
+            value={query.pageSize}
+            onChange={(pageSize) => searchVault({ ...query, pageSize, page: 1 })}
+          />
+          <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
+        </div>
       </div>
+      {/* A failed search as a line of its own with the way to run it again.
+          It was a muted fragment after "0 shown · 1 pages", which read as an
+          empty result rather than a failure. */}
+      {vaultStatus.type === "failed" && (
+        <StatusNotice
+          tone="error"
+          action={{ label: t("common.retry"), onClick: () => searchVault(query) }}
+          detail={vaultStatus.payload.reason}
+        >
+          {t("replays.vault.loadFailed")}: {plainError(vaultStatus.payload.reason)}
+        </StatusNotice>
+      )}
       {vaultStatus.type === "ready" && vault.length === 0 && (
         /* Past the end is not the same as no matches. Landing on an empty page
            after paging forward means the search worked and this page is beyond
@@ -253,6 +326,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
               replay={r}
               watched={watchedUids.has(r.uid)}
               busy={busy}
+              showResults={showResults}
               onOpen={() => setOpenUid(r.uid)}
               onDoubleClick={() => r.replayAvailable && !busy && markWatchedAndPlay(r.uid)}
               onWatch={() => {
@@ -270,6 +344,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
           groupByDate={query.sortBy === "startTime" || query.sortBy === "endTime"}
           selectedUid={selectedUid}
           watchedUids={watchedUids}
+          showResults={showResults}
           onOpen={(uid) => {
             setSelectedUid(uid);
             setOpenUid(uid);

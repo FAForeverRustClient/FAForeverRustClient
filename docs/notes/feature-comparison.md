@@ -59,7 +59,7 @@ Dateien wurden inzwischen entfernt (siehe Abschnitt "Erledigt").
 | Spiel hosten (Titel, Mod, Rating-Range, Passwort) | ✅ | ✅ | ✅ | `ui/src/features/lobby/HostGameModal.tsx` |
 | Beitreten inkl. passwortgeschützter Spiele | ✅ | ✅ | ✅ | `ui/src/features/lobby/PrivateGameDialog.tsx` |
 | Spielfilter (Titel/Host/Map/Mod/Rating) | ✅ | ✅ | ✅ | `ui/src/features/lobby/GameFiltersModal.tsx` |
-| Sortierung + Listen-/Kachelansicht, persistiert | ✅ | ✅ | ✅ | `CustomGamesToolbar.tsx`, Persistenz via `Settings.setBrowsing` |
+| Sortierung + Listen-/Kachelansicht, persistiert | ✅ | ✅ | ✅ | `CustomGamesToolbar.tsx`, Persistenz via `Settings.patchBrowsing` |
 | Matchmaker-Queues (`matchmaker_info`) | ✅ | ✅ | ✅ | `lobby_ws.rs:617` + `parse_matchmaker_queues():1263` |
 | Queue betreten/verlassen | ✅ | ✅ | ✅ | `lobby_ws.rs:222 fn matchmake()` |
 | Mehrere Queues gleichzeitig | ✅ | ✅ | ✅ | `ui/src/features/lobby/MatchmakingPanel.tsx` |

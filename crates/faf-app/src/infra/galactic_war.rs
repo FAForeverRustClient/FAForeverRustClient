@@ -236,12 +236,12 @@ impl GalacticWarGateway {
         url: &str,
         progress: &mpsc::Sender<InstallProgress>,
     ) -> Result<Vec<u8>, String> {
-        let response = self
-            .http
-            .get(url)
-            .send()
-            .await
-            .map_err(|error| format!("could not download the Galactic War client: {error}"))?;
+        let response = self.http.get(url).send().await.map_err(|error| {
+            format!(
+                "could not download the Galactic War client: {}",
+                crate::infra::http::describe_transport_error(&error)
+            )
+        })?;
         if !response.status().is_success() {
             return Err(format!(
                 "the download server answered {}",
@@ -258,8 +258,12 @@ impl GalacticWarGateway {
         let mut reported = 0_u64;
         let mut stream = response.bytes_stream();
         while let Some(chunk) = stream.next().await {
-            let chunk = chunk
-                .map_err(|error| format!("could not read the Galactic War archive: {error}"))?;
+            let chunk = chunk.map_err(|error| {
+                format!(
+                    "could not read the Galactic War archive: {}",
+                    crate::infra::http::describe_transport_error(&error)
+                )
+            })?;
             received = received
                 .checked_add(chunk.len() as u64)
                 .ok_or_else(|| "the Galactic War archive is too large".to_string())?;

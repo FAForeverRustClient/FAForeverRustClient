@@ -17,6 +17,39 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::ports::NotificationSoundsPort;
+
+/// [`NotificationSoundsPort`] over the real `sounds/` directory.
+pub struct StoredSounds;
+
+impl NotificationSoundsPort for StoredSounds {
+    fn accepts(&self, name: &str) -> bool {
+        is_safe_name(name)
+    }
+
+    fn remove(&self, name: &str) -> Result<(), String> {
+        remove_sound(name)
+    }
+
+    fn exists(&self, name: &str) -> bool {
+        sound_path(name).is_ok_and(|path| path.is_file())
+    }
+}
+
+/// The same rules about names, and a directory that is never touched: for
+/// tests and the offline shell.
+pub struct NoStoredSounds;
+
+impl NotificationSoundsPort for NoStoredSounds {
+    fn accepts(&self, name: &str) -> bool {
+        is_safe_name(name)
+    }
+
+    fn remove(&self, _name: &str) -> Result<(), String> {
+        Ok(())
+    }
+}
+
 /// Extensions a webview can decode. Checked on import so the failure is "that
 /// is not a sound file" at the moment of picking, rather than silence weeks
 /// later when the notification it was chosen for finally fires.

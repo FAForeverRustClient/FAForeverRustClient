@@ -92,6 +92,19 @@ describe("a co-op replay's mission", () => {
     );
   });
 
+  it("takes the file's full name for a generated map the listing names without a seed", () => {
+    // What the backend writes for a game with no map version, which is how the
+    // API lists most games on a generated map.
+    const generic = { map: "Neroxis Map Generator", title: "hello", modName: "faf" };
+    const full = "neroxis_map_generator_1.12.0_bgrd2acjkfmq4_aiea";
+    expect(replayMapKey(missions, generic, full)).toBe(full);
+    // Until the file has been read, the listing's name is all there is.
+    expect(replayMapKey(missions, generic)).toBe("Neroxis Map Generator");
+    // A listing that already has the seed keeps its own.
+    const seeded = { ...generic, map: full };
+    expect(replayMapKey(missions, seeded, "something else")).toBe(full);
+  });
+
   it("does not let a short mission name match a fragment of an unrelated title", () => {
     const shortNamed = [mission({ id: 9, name: "Hunt", mapFolderName: "SCCA_Coop_X.v0001" })];
     expect(coopMissionByTitle("Bug hunting practice", shortNamed)).toBeUndefined();

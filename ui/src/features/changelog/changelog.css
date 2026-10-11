@@ -1,30 +1,31 @@
 /*
- * Changelog: a release list beside one patch note.
+ * Changelog: the release list, and one reading surface for the open note.
  *
- * The note is long-form reading, so it gets a measure limit and generous line
- * height rather than the dense rows the rest of the client uses for tables.
+ * The note is long-form reading, so it gets a reading measure and a generous
+ * line height rather than the dense rows the rest of the client uses. Its
+ * sections live inside the same surface: a column beside the note when the
+ * surface is wide, a row of jump links above it when it is not. Which one is
+ * decided by the surface's own width (a container query), not the window's,
+ * because the shell's sidebar takes a share of the window that varies.
  */
 
 .changelog-view {
   display: grid;
-  grid-template-columns: minmax(224px, 260px) minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
   gap: var(--space-4);
   height: 100%;
   min-height: 0;
   box-sizing: border-box;
 }
 
-.changelog-view.has-toc {
-  grid-template-columns: minmax(224px, 260px) minmax(0, 1fr) minmax(180px, 220px);
-}
+/* ── The release list ──────────────────────────────────────────────────── */
 
 .changelog-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   min-height: 0;
   padding: var(--space-3) 0 var(--space-3) var(--space-3);
-  border-radius: var(--radius-lg);
 }
 
 .changelog-search {
@@ -33,60 +34,56 @@
 }
 
 .changelog-releases {
-  display: flex;
   flex: 1 1 auto;
-  flex-direction: column;
-  gap: 2px;
   min-height: 0;
-  box-sizing: border-box;
+  padding-right: var(--space-2);
   overflow-y: auto;
-  padding-right: var(--space-3);
-  /* Keep these at auto so Chromium/WebView2 applies the WebKit width below. */
-  scrollbar-color: auto;
-  scrollbar-width: auto;
+  /* A row scrolled into view stops below the sticky year heading rather than
+     under it. */
+  scroll-padding-top: 36px;
+  scrollbar-width: thin;
+}
+
+.changelog-list-note {
+  margin: var(--space-3) var(--space-2);
+  color: var(--color-muted);
+  font-size: 13px;
 }
 
 .changelog-year + .changelog-year {
-  margin-top: 10px;
+  margin-top: var(--space-1);
 }
 
-.changelog-year.is-collapsed + .changelog-year.is-collapsed {
-  margin-top: 4px;
-}
-
+/* Sticky and opaque, with no margin under it: a margin is not painted, and a
+   row scrolling up showed through the gap it left. */
 .changelog-year-toggle {
   position: sticky;
   top: 0;
   z-index: 1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
-  margin: 0 0 4px;
-  padding: 8px 10px 8px 6px;
+  min-height: 32px;
+  padding: 0 var(--space-2) 0 6px;
   font: inherit;
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--color-muted);
+  font-weight: 650;
+  color: var(--color-text);
   text-align: left;
-  text-transform: uppercase;
   background: var(--color-surface);
-  border: 1px solid transparent;
+  border: 0;
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
 .changelog-year-toggle:hover {
-  color: var(--color-text);
   background: var(--color-surface-hover);
 }
 
 .changelog-year-toggle:focus-visible {
-  border-color: var(--color-border-strong);
   outline: 2px solid var(--color-accent);
-  outline-offset: -1px;
+  outline-offset: -2px;
 }
 
 .changelog-year-toggle svg {
@@ -94,104 +91,147 @@
   color: var(--color-subtle);
 }
 
-.changelog-release-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-}
-
-.changelog-release {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex: 1 1 auto;
-  gap: 8px;
-  min-width: 0;
-  padding: 6px 8px 6px 12px;
-  font: inherit;
-  color: var(--color-text);
-  text-align: left;
-  cursor: pointer;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-}
-
-.changelog-release:hover {
-  background: var(--color-surface-hover);
-}
-
-.changelog-release.active {
-  background: var(--color-surface-raised);
-  border-color: var(--color-border-strong);
-}
-
-.changelog-branch-info {
-  display: inline-grid;
-  flex: none;
-  width: 26px;
-  height: 26px;
-  place-items: center;
-  padding: 0;
-  color: var(--color-muted);
-  cursor: help;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 50%;
-}
-
-.changelog-branch-info:hover,
-.changelog-branch-info:focus-visible {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
-  border-color: var(--color-border);
-}
-
-.changelog-branch-info:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
-}
-
-.changelog-release-id {
-  font-size: 12.5px;
-  font-weight: 600;
+.changelog-year-count {
+  margin-left: auto;
+  color: var(--color-subtle);
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
-.changelog-release-meta {
+.changelog-year-releases {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+/* The `display` above outranks the browser's own rule for `hidden`, which
+   left every folded year open. */
+.changelog-year-releases[hidden] {
+  display: none;
+}
+
+/* Number, kind, date: three columns so the dates line up down the list and
+   the kinds read as a column rather than as badges of different widths. */
+.changelog-release {
+  display: grid;
+  grid-template-columns: 4.5ch minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 30px;
+  padding: 0 var(--space-2) 0 22px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-muted);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 100ms ease, color 100ms ease;
+}
+
+.changelog-release:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.changelog-release:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.changelog-release[aria-current="page"] {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+}
+
+.changelog-release-id {
+  font-variant-numeric: tabular-nums;
+}
+
+.changelog-release-kind,
+.changelog-release-note {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.changelog-release-date {
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A game patch is the release people read; a hotfix is the release they
+   skim past. A patch's number and kind are in the patch colour the event
+   calendar already uses; a hotfix row stays muted. Neither is bold. */
+.changelog-release.is-patch {
+  color: var(--color-text);
+}
+
+.changelog-release.is-patch .changelog-release-id,
+.changelog-release.is-patch .changelog-release-kind {
+  color: var(--color-event-patch);
+}
+
+/* A rolling branch has a name, not a number, and a description in place of
+   a kind and a date. The description goes on its own line under the name:
+   beside it, the narrow list cut it off after two words. */
+.changelog-release.is-branch {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  padding-left: 8px;
+  color: var(--color-text);
+}
+
+/* The featured mod's mark from the host dialog, at a size that sits beside
+   two lines of text. */
+.changelog-release-icon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  color: var(--color-muted);
+}
+
+.changelog-release:hover .changelog-release-icon,
+.changelog-release[aria-current="page"] .changelog-release-icon {
+  color: var(--color-text);
+}
+
+.changelog-release-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   min-width: 0;
 }
 
-/* A hotfix and a game patch are different kinds of read, so they are told
-   apart at a glance rather than by reading the word. */
-.changelog-kind {
-  padding: 1px 5px;
-  font-size: 11px;
-  font-weight: 550;
-  border-radius: 999px;
+.changelog-release.is-branch .changelog-release-note {
+  max-width: 100%;
+  color: var(--color-muted);
+  line-height: 1.35;
+  white-space: normal;
 }
 
-.changelog-kind-patch {
-  color: var(--color-ok);
-  background: color-mix(in srgb, var(--color-ok) 16%, transparent);
-}
+/* ── The reading surface ───────────────────────────────────────────────── */
 
-.changelog-kind-hotfix {
-  color: var(--color-warn);
-  background: color-mix(in srgb, var(--color-warn) 16%, transparent);
-}
-
-/* ── The note ──────────────────────────────────────────────────────────── */
 .changelog-note {
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  border-radius: var(--radius-lg);
+  overflow: hidden;
+  container-type: inline-size;
+  container-name: changelog-note;
 }
 
 .changelog-note-head {
@@ -200,110 +240,271 @@
   justify-content: space-between;
   gap: var(--space-4);
   flex-shrink: 0;
-  padding: 16px 20px 14px;
+  padding: 18px 24px 16px;
   border-bottom: 1px solid var(--color-border);
 }
 
-.changelog-note-title {
+.changelog-note-heading {
   min-width: 0;
 }
 
-.changelog-note-head h2 {
+.changelog-note-head h1 {
   margin: 0;
-  font-size: 19px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
   overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
-.changelog-note-date {
-  margin: 4px 0 0;
+/* At least one line tall: a branch entry has no kind and no date, and an
+   empty line collapsing to nothing moved the note up when one was picked. */
+.changelog-note-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: 18px;
+  gap: 6px var(--space-3);
+  margin: 6px 0 0;
+  color: var(--color-muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
-  color: var(--color-muted);
 }
 
-.changelog-external {
+.changelog-kind-tag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  flex: none;
-  padding: 6px 10px;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 550;
   color: var(--color-text);
-  cursor: pointer;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  font-weight: 600;
 }
 
-.changelog-external:hover {
+.changelog-kind-tag.is-patch {
+  color: var(--color-event-patch);
+}
+
+/* The title line and the date line as bars of the same heights, and the
+   whole header at least the height the step buttons give the real one. */
+.changelog-head-skeleton {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-height: 49px;
+}
+
+.changelog-head-skeleton > span {
+  display: block;
+  width: 220px;
+  height: 25px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+}
+
+.changelog-head-skeleton > span + span {
+  width: 140px;
+  height: 18px;
+}
+
+.changelog-note-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Newer and older, as one control: the arrows point the way the list runs. */
+.changelog-step {
+  display: inline-flex;
+  height: 32px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.changelog-step-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  padding: 0;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: background-color 100ms ease;
+}
+
+.changelog-step-btn + .changelog-step-btn {
+  border-left: 1px solid var(--color-border);
+}
+
+.changelog-step-btn:hover:not(:disabled) {
   background: var(--color-surface-hover);
 }
 
-.changelog-note-body {
+.changelog-step-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.changelog-step-btn:disabled {
+  color: var(--color-subtle);
+  cursor: default;
+  opacity: 0.5;
+}
+
+.changelog-external {
+  gap: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* One scroll for the whole reading area, so its scrollbar sits on the
+   panel's edge rather than between the note and its contents. It is a size
+   container so the pinned contents column can be capped at its height
+   (`100cqh`) and scroll on its own when a balance patch lists more units
+   than fit. */
+.changelog-note-scroll {
   flex: 1 1 auto;
-  width: 100%;
-  max-width: none;
-  min-width: 0;
   min-height: 0;
-  box-sizing: border-box;
   overflow-y: auto;
-  padding: 20px 24px 32px;
+  scrollbar-width: thin;
+  container-type: size;
+  container-name: changelog-scroll;
+}
+
+/* The note at a reading measure, left-aligned; the contents column, when
+   there is room for it, at the panel's right. */
+.changelog-note-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 72ch);
+  justify-content: space-between;
+  gap: 48px;
+  padding: 24px 28px 48px;
+}
+
+/* A jump from the contents glides to its section, unless reduced motion was
+   asked for. */
+@media (prefers-reduced-motion: no-preference) {
+  .changelog-note-scroll {
+    scroll-behavior: smooth;
+  }
 }
 
 .changelog-note-copy {
-  width: 100%;
-  max-width: 86ch;
-}
-
-/* ── Table of Contents ─────────────────────────────────────────────────── */
-.changelog-toc {
-  position: sticky;
-  top: 0;
-  align-self: start;
   min-width: 0;
-  max-height: 100%;
-  box-sizing: border-box;
-  padding: 12px 0 12px var(--space-4);
-  overflow-y: auto;
-  background: transparent;
-  border: 0;
-  border-left: 1px solid var(--color-border);
-  border-radius: 0;
 }
 
+/* ── Sections: a column when there is room, a row of links when not ───── */
+
+.changelog-toc {
+  display: none;
+}
+
+.changelog-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 var(--space-4);
+  padding: 0 0 var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.changelog-jump-item {
+  min-height: 28px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 100ms ease, border-color 100ms ease;
+}
+
+.changelog-jump-item:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.changelog-jump-item:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@container changelog-note (min-width: 900px) {
+  .changelog-note-layout.has-toc {
+    grid-template-columns: minmax(0, 72ch) 220px;
+  }
+
+  .changelog-note-layout.has-toc .changelog-jump {
+    display: none;
+  }
+
+  /* Pinned to the top of the scroll, and no taller than it: the layout's top
+     and bottom padding come off the height so it never reaches past the
+     panel. */
+  .changelog-toc {
+    position: sticky;
+    top: 24px;
+    display: block;
+    align-self: start;
+    max-height: calc(100cqh - 48px);
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+}
+
+/* Lined up with the entries' text, not with the rail they hang from. */
 .changelog-toc-title {
-  margin: 0 0 10px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  margin: 0 0 var(--space-2);
+  padding-left: 13px;
   color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .changelog-toc-list {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: 1px solid var(--color-border);
 }
 
+/* The active entry is marked on the rail the list hangs from: a 1px line
+   that turns to text colour, in place of a coloured bar. */
 .changelog-toc-item {
   display: block;
   width: 100%;
-  padding: 5px 0;
+  margin-left: -1px;
+  padding: 4px 0 4px 12px;
   font: inherit;
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 1.35;
   color: var(--color-muted);
   text-align: left;
   overflow-wrap: anywhere;
-  cursor: pointer;
   background: transparent;
   border: 0;
-  transition: color 120ms ease;
+  border-left: 1px solid transparent;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+/* A unit is one line, cut short with its full name on hover: wrapped, a
+   column of two-line unit names read as ragged text rather than as a list. */
+.changelog-toc-item.depth-2 {
+  padding-left: 24px;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--color-subtle);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
 }
 
 .changelog-toc-item:hover {
@@ -312,99 +513,91 @@
 
 .changelog-toc-item:focus-visible {
   outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
-.changelog-toc-item.active {
+.changelog-toc-item.is-active {
   color: var(--color-text);
   font-weight: 600;
+  border-left-color: var(--color-text);
 }
 
-.changelog-toc-item-level-1 {
-  font-weight: 600;
-  color: var(--color-muted);
-}
-
-.changelog-toc-item-level-1.active {
-  color: var(--color-text);
-}
-
-.changelog-toc-item-level-3 {
-  padding-left: var(--space-3);
-  font-size: 12.5px;
-}
-
-.changelog-toc-item-level-4 {
-  padding-left: 24px;
-  font-size: 12px;
-  color: var(--color-subtle);
-}
+/* ── The note itself ───────────────────────────────────────────────────── */
 
 .changelog-heading {
-  margin: 22px 0 8px;
+  margin: 32px 0 10px;
+  color: var(--color-text);
   font-weight: 650;
   letter-spacing: -0.01em;
-  color: var(--color-text);
   scroll-margin-top: 16px;
 }
 
-.changelog-note-copy > .changelog-heading:first-child {
+.changelog-note-copy > .changelog-heading:first-child,
+.changelog-jump + .changelog-heading {
   margin-top: 0;
 }
 
-.changelog-heading-1 {
-  font-size: 16px;
-}
-
 .changelog-heading-2 {
-  padding-bottom: 5px;
-  font-size: 14.5px;
-  border-bottom: 1px solid var(--color-border);
+  font-size: 20px;
 }
 
-.changelog-heading-3,
+.changelog-heading-3 {
+  margin-top: 24px;
+  font-size: 17px;
+}
+
 .changelog-heading-4 {
-  font-size: 13px;
+  margin-top: 20px;
+  font-size: 14px;
   color: var(--color-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
-.changelog-paragraph {
-  margin: 0 0 10px;
-  font-size: 13px;
-  line-height: 1.6;
+.changelog-paragraph,
+.changelog-list {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.65;
   color: var(--color-text);
 }
 
 .changelog-list {
-  margin: 0 0 10px;
-  padding-left: 18px;
-  font-size: 13px;
-  line-height: 1.6;
+  padding-left: 20px;
 }
 
 .changelog-list .changelog-list {
-  margin: 3px 0 6px;
+  margin: 4px 0 6px;
 }
 
 .changelog-list li {
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
-/* ── Unit header: the icon the site's Liquid tag renders ───────────────── */
+.changelog-list li::marker {
+  color: var(--color-subtle);
+}
+
+/* The unit a block of balance changes is about: its icon, then its name, as
+   the site's Liquid tag renders it. A hairline above separates one unit from
+   the last unit's list. */
 .changelog-unit {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 20px 0 10px;
-  padding: 8px 0;
-  background: transparent;
-  border-bottom: 1px solid var(--color-border);
+  gap: 12px;
+  margin: 24px 0 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+  scroll-margin-top: 16px;
+}
+
+.changelog-heading + .changelog-unit,
+.changelog-jump + .changelog-unit {
+  margin-top: 8px;
+  padding-top: 0;
+  border-top: 0;
 }
 
 /* A header can name a whole unit family, so the icons wrap rather than
-   squeezing the caption out of the row. */
+   squeezing the name out of the row. */
 .changelog-unit-icons {
   display: flex;
   flex: none;
@@ -414,8 +607,8 @@
 
 .changelog-unit-icon {
   flex: none;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
   border-radius: var(--radius-sm);
   user-select: none;
@@ -426,20 +619,22 @@
 }
 
 .changelog-unit-name {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 650;
 }
 
 /* ── Balance changes read as a diff ────────────────────────────────────── */
+
 .changelog-change {
   display: inline-flex;
-  align-items: center;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
+  font-variant-numeric: tabular-nums;
 }
 
 .changelog-change-label {
-  font-weight: 550;
+  font-weight: 600;
 }
 
 .changelog-change-label::after {
@@ -453,7 +648,7 @@
 }
 
 .changelog-new {
-  font-weight: 550;
+  font-weight: 600;
   color: var(--color-ok);
 }
 
@@ -463,24 +658,24 @@
 }
 
 /* ── Inline runs ───────────────────────────────────────────────────────── */
+
 .changelog-link,
 .changelog-issue {
   padding: 0;
   font: inherit;
-  color: var(--color-accent);
-  cursor: pointer;
+  color: var(--color-text);
   background: none;
   border: 0;
+  cursor: pointer;
   text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
-  text-decoration-style: dotted;
-  text-underline-offset: 2px;
+  text-decoration-color: var(--color-subtle);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
 
 .changelog-link:hover,
 .changelog-issue:hover {
-  color: var(--color-text);
-  text-decoration-style: dotted;
+  text-decoration-color: var(--color-text);
 }
 
 .changelog-link:focus-visible,
@@ -494,34 +689,87 @@
   font-variant-numeric: tabular-nums;
 }
 
-.changelog-note-body code {
+.changelog-note-copy code {
   padding: 1px 5px;
   font-family: var(--font-mono);
   font-size: 12px;
   background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
 }
 
-@media (max-width: 900px) {
-  .changelog-view {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(140px, 32%) 1fr;
-  }
+/* ── Waiting and failing ───────────────────────────────────────────────── */
 
-  .changelog-toc {
-    display: none;
-  }
-
+/* The shape of a note while it loads, rather than a sentence where the
+   note will be. Still while reduced motion is asked for. */
+.changelog-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-@media (max-width: 560px) {
+.changelog-skeleton > span {
+  display: block;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  animation: changelog-pulse 1.4s ease-in-out infinite;
+}
+
+.changelog-skeleton > span:first-child {
+  width: 40%;
+  height: 16px;
+  margin-bottom: 6px;
+}
+
+.changelog-skeleton > span.is-short {
+  width: 60%;
+}
+
+@keyframes changelog-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .changelog-skeleton > span {
+    animation: none;
+  }
+}
+
+.changelog-note-failed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  font-size: 13px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.changelog-note-failed p {
+  margin: 0;
+}
+
+/* ── Narrow ────────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .changelog-view {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(160px, 34%) minmax(0, 1fr);
+  }
+}
+
+@container changelog-note (max-width: 560px) {
   .changelog-note-head {
-    align-items: stretch;
     flex-direction: column;
     gap: var(--space-3);
   }
 
-  .changelog-external {
-    align-self: flex-start;
+  .changelog-note-layout {
+    padding: 18px 18px 32px;
   }
 }

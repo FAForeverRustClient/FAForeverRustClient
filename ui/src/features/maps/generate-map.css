@@ -496,12 +496,12 @@
   align-items: center;
 }
 
+/* Wraps rather than ending in "...": every language but English runs longer
+   than the 105px column, and a cut-off label could not be read at all (issue 459). */
 .generate-map-row-label {
   font-size: 12px;
   color: var(--color-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 /* A row whose control is taller than one field: a text box with buttons under
@@ -556,8 +556,10 @@
 .generate-map-checks-group {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
   min-height: 34px;
+  min-width: 0;
 }
 
 .generate-map-tools-group {
@@ -577,7 +579,7 @@
 
 .generate-map-tools-group button {
   flex: 1;
-  white-space: nowrap;
+  min-width: 0;
 }
 
 /* The name field above its buttons rather than beside them. Side by side, a
@@ -601,25 +603,22 @@
   align-items: stretch;
 }
 
-/* Both buttons exactly one line tall, whatever they say.
-   `min-height` alone let a label that did not fit wrap to a second line, so
-   the button beside it -- whose label did fit -- ended up visibly shorter.
-   The height is the one every other control in this dialog uses, and `nowrap`
-   keeps a longer translation from reintroducing the wrap it was caused by. */
+/* Both buttons the same height, whatever they say. A longer translation
+   wraps to a second line rather than being cut off (issue 459), and the row's
+   `align-items: stretch` keeps the button beside it just as tall. */
 .generate-map-preset-save-group-buttons > * {
   flex: 1;
   min-width: 0;
-  height: 34px;
-  white-space: nowrap;
+  min-height: 34px;
 }
 
 .generate-map-check {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
   font-size: 12px;
   color: var(--color-text);
-  white-space: nowrap;
   cursor: pointer;
   user-select: none;
 }
@@ -844,4 +843,22 @@
 .generate-map-row.is-superseded .generate-map-row-label,
 .generate-map-row.is-superseded .generate-map-row-control {
   opacity: 0.55;
+}
+
+/* The dialog's pickers and sliders wrap a long summary instead of cutting it
+   to "...". Translations run longer than English, and in this narrow column
+   the cut-off text was all there was to read (issue 459). */
+.generate-map .multi-select-summary {
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.generate-map .multi-select-trigger {
+  height: auto;
+  min-height: 34px;
+}
+
+.generate-map .range-slider-head {
+  flex-wrap: wrap;
 }

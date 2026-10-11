@@ -118,6 +118,16 @@ pub struct SeriesEdition {
     pub champion_team_id: Option<String>,
     /// The winning team's name, already resolved by the service.
     pub champion: String,
+    /// Whether this account may run it: a director sees other organisers'
+    /// drafts in a series without any right to them (`canManage`).
+    #[serde(default)]
+    pub can_manage: bool,
+    /// Needed for the status pill, which says "Signups not open yet" rather
+    /// than "Signups open" while a scheduled opening is ahead.
+    #[serde(default)]
+    pub signup_opens_at: Option<u32>,
+    #[serde(default)]
+    pub event_days: Vec<String>,
 }
 
 /// One series with its editions, from `GET /api/series/{id}`.
@@ -139,6 +149,9 @@ pub struct SeriesDetail {
     /// needs every tournament in the database to decide. The client holds the
     /// list it was sent, not the database.
     pub can_edit: bool,
+    /// Who may not enter any edition, where this account may edit the series.
+    #[serde(default)]
+    pub bans: Vec<TourneyBan>,
 }
 
 /// A series being created or renamed.

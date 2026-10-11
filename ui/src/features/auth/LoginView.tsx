@@ -44,8 +44,8 @@ export function LoginView() {
       ipc.send({
         kind: "Settings",
         command: {
-          type: "setGeneral",
-          payload: { preferences: { ...generalPreferences, autoLogin: remember } },
+          type: "patchGeneral",
+          payload: { patch: { autoLogin: remember } },
         },
       });
     }
@@ -53,6 +53,9 @@ export function LoginView() {
   };
   const cancelLogin = () => ipc.send({ kind: "Auth", command: { type: "cancelLogin" } });
   const playOffline = () => ipc.send({ kind: "Auth", command: { type: "playOffline" } });
+  // The game itself, into its own menu, as the Java client's button does
+  // (#397). Opening this client offline is the archive button beside it.
+  const launchOfflineGame = () => ipc.send({ kind: "Auth", command: { type: "launchOfflineGame" } });
   // The archive is the reason the offline session exists, so it gets its own
   // way in rather than being a tab you find once you are inside. The tab is
   // chosen before the session opens, so the shell lands on the replays
@@ -96,7 +99,7 @@ export function LoginView() {
             already on this disk is the whole of what most people want here,
             and naming it is what makes that visible from the login screen. */}
         <div className="login-offline-row">
-          <Button className="login-offline-button" onClick={playOffline} disabled={busy}>
+          <Button className="login-offline-button" onClick={launchOfflineGame} disabled={busy}>
             <Icon name="play" size={15} /> {t("auth.playOffline")}
           </Button>
           <Button className="login-offline-button" onClick={openLocalReplays} disabled={busy}>
@@ -115,8 +118,8 @@ export function LoginView() {
               ipc.send({
                 kind: "Settings",
                 command: {
-                  type: "setGeneral",
-                  payload: { preferences: { ...generalPreferences, autoLogin: checked } },
+                  type: "patchGeneral",
+                  payload: { patch: { autoLogin: checked } },
                 },
               });
             }}

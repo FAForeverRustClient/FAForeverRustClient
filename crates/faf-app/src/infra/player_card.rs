@@ -7,11 +7,11 @@ use faf_domain::protocol::game_outcome::{
     moved_a_rating, outcome_for, GameRows, PlayerRow, RatingChange,
 };
 use faf_domain::state::{
-    aggregate_map_stats, leaderboard_display_name, sort_league_placements, sort_rating_summaries,
-    AccountLookupMatch, ClanMember, MatchmakerPlayerProfile, PlayedGame, PlayerAchievement,
-    PlayerAchievementState, PlayerAvatar, PlayerCardProfile, PlayerClan, PlayerEventCount,
-    PlayerLeaguePlacement, PlayerMapStats, PlayerNameRecord, PlayerRatingSummary, PlayerSummary,
-    RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
+    aggregate_map_stats, sort_league_placements, sort_rating_summaries, AccountLookupMatch,
+    ClanMember, MatchmakerPlayerProfile, PlayedGame, PlayerAchievement, PlayerAchievementState,
+    PlayerAvatar, PlayerCardProfile, PlayerClan, PlayerEventCount, PlayerLeaguePlacement,
+    PlayerMapStats, PlayerNameRecord, PlayerRatingSummary, PlayerSummary, RatingHistoryPage,
+    RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
 };
 use serde_json::Value;
 
@@ -20,6 +20,7 @@ use crate::infra::jsonapi::{
     document_index as index, fetch_document, fetch_document_typed, rel_many, rel_one, value_f64,
     value_i32, value_string, JsonApiDoc, JsonApiResource as Resource, ResourceIndex as Index,
 };
+use crate::infra::league_keys::{division_key, subdivision_key};
 use crate::ports::{PlayerCardPort, RequestError};
 
 const MAX_PAGE_SIZE: usize = 10_000;
@@ -131,7 +132,7 @@ impl PlayerCardClient {
             .append_pair("filter", filter)
             .append_pair(
                 "include",
-                "avatarAssignments.avatar,names,clanMembership.clan.memberships.player,clanMembership.clan.leader,clanMembership.clan.founder",
+                "avatarAssignments.avatar,names,clanMembership.clan.memberships.player.avatarAssignments.avatar,clanMembership.clan.leader,clanMembership.clan.founder",
             )
             .append_pair("page[size]", &page_size.to_string());
         self.get(url, token).await
@@ -233,6 +234,37 @@ impl PlayerCardClient {
                 }
             }
         }
+    }
+
+    /// Accounts whose login starts with `prefix` (already quoted), most global
+    /// games first. Failure is an empty list: the name search still answers.
+    async fn most_active_accounts(&self, prefix: &str, token: &str) -> Vec<AccountLookupMatch> {
+        let Ok(mut url) = self.url("leaderboardRating") else {
+            return Vec::new();
+        };
+        url.query_pairs_mut()
+            .append_pair(
+                "filter",
+                &format!("leaderboard.technicalName==\"{GLOBAL_BOARD}\";player.login=={prefix}"),
+            )
+            .append_pair("include", "player")
+            .append_pair("sort", "-totalGames")
+            .append_pair("page[size]", &ACTIVE_CANDIDATES.to_string());
+        let Ok(doc) = self.get(url, token).await else {
+            return Vec::new();
+        };
+        let index = index(&doc);
+        doc.data
+            .iter()
+            .filter_map(|entry| {
+                let player = related(entry, "player", &index)?;
+                Some(AccountLookupMatch {
+                    player_id: player.id.parse().ok()?,
+                    login: text(player, "login"),
+                    former_name: None,
+                })
+            })
+            .collect()
     }
 
     async fn ratings(&self, player_id: i32, token: &str) -> Result<JsonApiDoc, String> {
@@ -352,12 +384,29 @@ impl PlayerCardPort for PlayerCardClient {
             .ok_or_else(|| RequestError::unauthorized("Sign in to FAF to look up players."))?;
         let prefix = quote_prefix(trimmed);
         let mut url = self.url("player").map_err(RequestError::unexpected)?;
+        // More rows than are shown, in name order, and ranked here (#393).
+        // Asking for exactly `limit` returned the first ten accounts by id
+        // that matched, which for a common start like `fatal` or `valkyr` are
+        // ten old accounts, and the player being typed was never among them
+        // until the name was nearly complete.
         url.query_pairs_mut()
             .append_pair("filter", &format!("(login=={prefix},names.name=={prefix})"))
             .append_pair("include", "names")
-            .append_pair("page[size]", &limit.max(1).to_string());
-        let doc = fetch_document_typed(&self.http, url, &token).await?;
-        Ok(account_matches(&doc, trimmed))
+            .append_pair("sort", "login")
+            .append_pair("page[size]", &LOOKUP_CANDIDATES.to_string());
+        // Alongside it, the most active accounts with the same start. A start
+        // like `fatal` is shared by far more accounts than one page holds, and
+        // in name order `fatal_potatoe` comes after every `fatal` followed by a
+        // letter or a digit, so the player being looked for was routinely not
+        // among the hundred at all. Somebody being looked up has usually
+        // played; ranking by global games puts them first.
+        let (doc, active) = tokio::join!(
+            fetch_document_typed(&self.http, url, &token),
+            self.most_active_accounts(&prefix, &token),
+        );
+        let mut matches = merged_account_matches(account_matches(&doc?, trimmed), active, trimmed);
+        matches.truncate(limit.max(1));
+        Ok(matches)
     }
 
     async fn players_by_login(
@@ -573,6 +622,27 @@ impl PlayerCardPort for PlayerCardClient {
     }
 
     async fn load_map_stats(&self, player_id: i32) -> Result<PlayerMapStats, String> {
+        self.scan_map_stats(player_id, MAX_HISTORY_GAMES).await
+    }
+
+    async fn load_recent_map_stats(
+        &self,
+        player_id: i32,
+        limit: usize,
+    ) -> Result<PlayerMapStats, String> {
+        self.scan_map_stats(player_id, limit.clamp(1, MAX_HISTORY_GAMES))
+            .await
+    }
+}
+
+impl PlayerCardClient {
+    /// The history scan behind both [`PlayerCardPort::load_map_stats`] and
+    /// its recent-games form, stopping after `max_games`.
+    async fn scan_map_stats(
+        &self,
+        player_id: i32,
+        max_games: usize,
+    ) -> Result<PlayerMapStats, String> {
         let token = self.token()?;
         let mut games: Vec<PlayedGame> = Vec::new();
         let mut truncated = false;
@@ -589,7 +659,14 @@ impl PlayerCardPort for PlayerCardClient {
                 truncated = true;
                 break;
             }
-            let last = (page + HISTORY_PAGE_CONCURRENCY - 1).min(MAX_HISTORY_PAGES);
+            // No more pages in a batch than the limit can use: a recent scan
+            // of a thousand games is ten pages, not the twelve three full
+            // batches would ask for. A server that pages shorter than asked
+            // still gets there, a page at a time past the estimate.
+            let wanted_pages = max_games.div_ceil(HISTORY_PAGE_SIZE).max(page);
+            let last = (page + HISTORY_PAGE_CONCURRENCY - 1)
+                .min(MAX_HISTORY_PAGES)
+                .min(wanted_pages);
             // Several pages at once. A full history is seventy-odd requests,
             // and one at a time is the whole of why opening a profile took a
             // minute where faftracker took seconds against the same API; it
@@ -606,8 +683,8 @@ impl PlayerCardPort for PlayerCardClient {
                     ended = true;
                 }
                 games.extend(rows);
-                if games.len() >= MAX_HISTORY_GAMES {
-                    games.truncate(MAX_HISTORY_GAMES);
+                if games.len() > max_games || (games.len() == max_games && !ended) {
+                    games.truncate(max_games);
                     truncated = true;
                     break 'scan;
                 }
@@ -937,36 +1014,6 @@ fn optional_number(resource: &Resource, name: &str) -> Option<f64> {
     resource.attributes.get(name).and_then(Value::as_f64)
 }
 
-fn display_key(value: &str) -> String {
-    let raw = value
-        .rsplit('.')
-        .next()
-        .unwrap_or(value)
-        .replace(['_', '-'], " ");
-    raw.split_whitespace()
-        .map(|word| {
-            let mut chars = word.chars();
-            chars
-                .next()
-                .map(|first| first.to_uppercase().chain(chars).collect::<String>())
-                .unwrap_or_default()
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn pretty_board(technical_name: &str, fallback: &str) -> String {
-    // One table, in the domain, shared with the leaderboard tab: these two
-    // used to name the same queue from two `match` arms, and had drifted.
-    if let Some(name) = leaderboard_display_name(technical_name) {
-        return name.to_string();
-    }
-    if !fallback.is_empty() {
-        return display_key(fallback);
-    }
-    display_key(technical_name)
-}
-
 fn parse_identity(doc: &JsonApiDoc, player: &Resource) -> Result<PlayerCardProfile, String> {
     let index = index(doc);
     let player_id = player
@@ -1049,6 +1096,7 @@ fn parse_clan(player: &Resource, index: &Index<'_>) -> Option<PlayerClan> {
                 login: text(account, "login"),
                 joined_at: text(member, "createTime"),
                 account_created_at: text(account, "createTime"),
+                avatar_url: selected_avatar_url(account, index),
             })
         })
         .collect();
@@ -1078,7 +1126,6 @@ fn parse_ratings(doc: &JsonApiDoc) -> Vec<PlayerRatingSummary> {
             let technical_name = text(board, "technicalName");
             Some(PlayerRatingSummary {
                 leaderboard_id: board.id.parse().ok()?,
-                name: pretty_board(&technical_name, &text(board, "nameKey")),
                 technical_name,
                 rating: displayed_rating(number(rating, "rating")),
                 mean: number(rating, "mean"),
@@ -1203,16 +1250,11 @@ fn parse_placement_rows(doc: &JsonApiDoc) -> Vec<PlacementRow> {
                 player_id: integer(score, "loginId"),
                 order,
                 placement: PlayerLeaguePlacement {
-                    technical_name: technical_name.clone(),
-                    leaderboard: pretty_board(&technical_name, &text(board, "nameKey")),
-                    season: display_key(&text(season, "nameKey")),
-                    division: format!(
-                        "{} {}",
-                        display_key(&text(division, "nameKey")),
-                        display_key(&text(subdivision, "nameKey"))
-                    )
-                    .trim()
-                    .to_string(),
+                    technical_name,
+                    season_number: integer(season, "seasonNumber"),
+                    // Identifiers for the UI to name, not labels.
+                    division: division_key(&text(division, "nameKey")),
+                    subdivision: subdivision_key(&text(subdivision, "nameKey")),
                     score: integer(score, "score"),
                     highest_score: integer(subdivision, "highestScore"),
                     games_played: integer(score, "gameCount"),
@@ -1291,6 +1333,48 @@ fn period_cutoff(period: RatingHistoryPeriod) -> Option<String> {
         RatingHistoryPeriod::All => return None,
     };
     Some(cutoff.format("%Y-%m-%dT%H:%M:%SZ").to_string())
+}
+
+/// How many accounts a lookup reads before ranking them: the most the API
+/// hands out in one page.
+const LOOKUP_CANDIDATES: usize = 100;
+
+/// How many of the most active matching accounts a lookup asks for: as many as
+/// are shown, so the whole list can be the active ones when a start is common,
+/// and an exact match or a former name still takes its place at the top.
+const ACTIVE_CANDIDATES: usize = 50;
+
+/// One list out of the two lookups: an account whose login is the query
+/// itself first, then the most active accounts, then the rest of the name
+/// search in its own order (current logins, then former names). Each account
+/// once.
+fn merged_account_matches(
+    by_name: Vec<AccountLookupMatch>,
+    active: Vec<AccountLookupMatch>,
+    query: &str,
+) -> Vec<AccountLookupMatch> {
+    let wanted = query.trim();
+    let mut merged: Vec<AccountLookupMatch> = Vec::with_capacity(by_name.len() + active.len());
+    let push = |candidate: AccountLookupMatch, merged: &mut Vec<AccountLookupMatch>| {
+        if !merged
+            .iter()
+            .any(|held| held.player_id == candidate.player_id)
+        {
+            merged.push(candidate);
+        }
+    };
+    for candidate in by_name.iter().chain(active.iter()) {
+        if candidate.former_name.is_none() && candidate.login.eq_ignore_ascii_case(wanted) {
+            push(candidate.clone(), &mut merged);
+        }
+    }
+    for candidate in active {
+        push(candidate, &mut merged);
+    }
+    for candidate in by_name {
+        push(candidate, &mut merged);
+    }
+    merged
 }
 
 /// Which accounts matched a login-or-former-name prefix, and how (#315).
@@ -1599,7 +1683,6 @@ impl PlayerCardPort for FakePlayerCard {
                 PlayerRatingSummary {
                     leaderboard_id: 1,
                     technical_name: "global".into(),
-                    name: "Global".into(),
                     rating: 1842,
                     mean: 2260.0,
                     deviation: 139.3,
@@ -1610,7 +1693,6 @@ impl PlayerCardPort for FakePlayerCard {
                 PlayerRatingSummary {
                     leaderboard_id: 2,
                     technical_name: "ladder_1v1".into(),
-                    name: "1v1".into(),
                     rating: 1710,
                     mean: 2120.0,
                     deviation: 136.7,
@@ -1621,9 +1703,9 @@ impl PlayerCardPort for FakePlayerCard {
             ],
             league_placements: vec![PlayerLeaguePlacement {
                 technical_name: "ladder_1v1".into(),
-                leaderboard: "1v1".into(),
-                season: "Season 12".into(),
-                division: "Diamond II".into(),
+                season_number: 12,
+                division: "diamond".into(),
+                subdivision: "II".into(),
                 score: 1470,
                 highest_score: 1600,
                 games_played: 38,
@@ -1785,6 +1867,33 @@ mod tests {
     /// went unnoticed because `search_players` had no caller and no test ever
     /// built the string. Asserting the string is the only thing that would have
     /// caught it short of a live request.
+    #[test]
+    fn the_most_active_matches_come_before_the_rest_of_the_name_search() {
+        // #393: in name order `fatal_potatoe` sorts behind every other
+        // `fatal...`, so the activity ranking is what puts it in the list.
+        let account = |player_id: i32, login: &str, former: Option<&str>| AccountLookupMatch {
+            player_id,
+            login: login.into(),
+            former_name: former.map(str::to_string),
+        };
+        let by_name = vec![
+            account(1, "fatal1", None),
+            account(2, "Fatal", None),
+            account(3, "fatalx", None),
+            account(4, "renamed", Some("fatalold")),
+        ];
+        let active = vec![
+            account(9, "fatal_potatoe", None),
+            account(3, "fatalx", None),
+        ];
+
+        let merged = merged_account_matches(by_name, active, "fatal");
+
+        let order: Vec<i32> = merged.iter().map(|found| found.player_id).collect();
+        // The exact login first, then by activity, then the rest, each once.
+        assert_eq!(order, vec![2, 9, 3, 1, 4]);
+    }
+
     #[test]
     fn the_account_lookup_lists_every_holder_of_a_former_name() {
         let doc: JsonApiDoc = serde_json::from_value(serde_json::json!({
@@ -1955,7 +2064,7 @@ mod tests {
             ],
             "included": [
                 { "type": "leaderboard", "id": "b", "attributes": { "technicalName": "ladder_1v1" } },
-                { "type": "leagueSeason", "id": "s", "attributes": { "nameKey": "season_1" }, "relationships": { "leaderboard": { "data": { "type": "leaderboard", "id": "b" } } } },
+                { "type": "leagueSeason", "id": "s", "attributes": { "nameKey": "season_1", "seasonNumber": 1 }, "relationships": { "leaderboard": { "data": { "type": "leaderboard", "id": "b" } } } },
                 { "type": "leagueSeasonDivision", "id": "bronze", "attributes": { "nameKey": "bronze", "divisionIndex": 1 } },
                 { "type": "leagueSeasonDivision", "id": "diamond", "attributes": { "nameKey": "diamond", "divisionIndex": 4 } },
                 { "type": "leagueSeasonDivisionSubdivision", "id": "low", "attributes": { "nameKey": "ii", "subdivisionIndex": 2 }, "relationships": { "leagueSeasonDivision": { "data": { "type": "leagueSeasonDivision", "id": "bronze" } } } },
@@ -1964,8 +2073,13 @@ mod tests {
         })).unwrap();
 
         let placements = parse_placements(&doc);
-        assert_eq!(placements[0].division, "Diamond I");
-        assert_eq!(placements[1].division, "Bronze Ii");
+        // Name keys, normalised: the division lower-case, the Roman numeral
+        // upper-case. The UI names them.
+        assert_eq!(placements[0].division, "diamond");
+        assert_eq!(placements[0].subdivision, "I");
+        assert_eq!(placements[1].division, "bronze");
+        assert_eq!(placements[1].subdivision, "II");
+        assert_eq!(placements[0].season_number, 1);
         // The subdivision's ceiling, which is what the progress bar in the
         // matchmaker identity divides the score by.
         assert_eq!(placements[0].highest_score, 1500);
@@ -1993,7 +2107,7 @@ mod tests {
             ],
             "included": [
                 { "type": "leaderboard", "id": "b", "attributes": { "technicalName": "ladder_1v1" } },
-                { "type": "leagueSeason", "id": "s", "attributes": { "nameKey": "season_1" }, "relationships": { "leaderboard": { "data": { "type": "leaderboard", "id": "b" } } } },
+                { "type": "leagueSeason", "id": "s", "attributes": { "nameKey": "season_1", "seasonNumber": 1 }, "relationships": { "leaderboard": { "data": { "type": "leaderboard", "id": "b" } } } },
                 { "type": "leagueSeasonDivision", "id": "bronze", "attributes": { "nameKey": "bronze", "divisionIndex": 1 } },
                 { "type": "leagueSeasonDivision", "id": "diamond", "attributes": { "nameKey": "diamond", "divisionIndex": 4 } },
                 { "type": "leagueSeasonDivisionSubdivision", "id": "low", "attributes": { "nameKey": "ii", "subdivisionIndex": 2 }, "relationships": { "leagueSeasonDivision": { "data": { "type": "leagueSeasonDivision", "id": "bronze" } } } },
@@ -2004,9 +2118,9 @@ mod tests {
         let by_player = parse_placements_by_player(&doc);
         assert_eq!(by_player.len(), 2);
         // Each player's own list is still highest division first.
-        assert_eq!(by_player[&7][0].division, "Diamond I");
-        assert_eq!(by_player[&7][1].division, "Bronze Ii");
-        assert_eq!(by_player[&9][0].division, "Diamond I");
+        assert_eq!(by_player[&7][0].division, "diamond");
+        assert_eq!(by_player[&7][1].division, "bronze");
+        assert_eq!(by_player[&9][0].division, "diamond");
         assert_eq!(by_player[&9].len(), 1);
         // Nobody asked about is invented.
         assert!(!by_player.contains_key(&8));

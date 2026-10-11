@@ -120,10 +120,19 @@ pub(crate) fn read_notification_sound(name: String) -> Result<Vec<u8>, String> {
     std::fs::read(&path).map_err(|error| format!("could not read {}: {error}", path.display()))
 }
 
-/// Forget one stored sound.
+/// Copy a picked picture in as the interface's background (#439). Returns the
+/// name it was stored under, which is what goes in the settings.
 #[tauri::command]
-pub(crate) fn remove_notification_sound(name: String) -> Result<(), String> {
-    faf_app::infra::notification_sounds::remove_sound(&name)
+pub(crate) fn import_background_image(path: String) -> Result<String, String> {
+    faf_app::infra::backgrounds::import_background(std::path::Path::new(&path))
+}
+
+/// The stored background's bytes, read here for the same reason the sounds
+/// are: see [`read_notification_sound`].
+#[tauri::command]
+pub(crate) fn read_background_image(name: String) -> Result<Vec<u8>, String> {
+    let path = faf_app::infra::backgrounds::background_path(&name)?;
+    std::fs::read(&path).map_err(|error| format!("could not read {}: {error}", path.display()))
 }
 
 #[tauri::command]
@@ -214,10 +223,63 @@ pub(crate) async fn dispatch_and_wait(
     core.dispatch_and_wait(command).await
 }
 
+/// The webview's main thread was busy for this much of the last few seconds,
+/// so clicks waited. Written to the client log beside the backend's own
+/// late-command warnings, so a client that seemed stuck says which side it
+/// was stuck on. `place` is the open tab, cut short in case it is not.
+#[tauri::command]
+pub(crate) fn report_webview_stall(
+    busy_milliseconds: u32,
+    longest_milliseconds: u32,
+    place: String,
+) {
+    let place: String = place.chars().take(48).collect();
+    tracing::warn!(
+        busy_milliseconds,
+        longest_milliseconds,
+        %place,
+        "the webview was busy for most of the last five seconds; clicks waited"
+    );
+}
+
+/// What applying backend events cost the webview over its last window: how
+/// many, how long in total, and the slowest one by name. Sent only when the
+/// window was expensive (see `ui/src/ipc/eventCost.ts`), so a populated
+/// session leaves measurements in the log rather than an impression of
+/// slowness. `slowest_event` is a slice and event name, cut short in case it
+/// is not.
+#[tauri::command]
+pub(crate) fn report_event_cost(
+    events: u32,
+    total_milliseconds: u32,
+    slowest_event: String,
+    slowest_milliseconds: u32,
+) {
+    let slowest_event: String = slowest_event.chars().take(64).collect();
+    tracing::warn!(
+        events,
+        total_milliseconds,
+        %slowest_event,
+        slowest_milliseconds,
+        "applying backend events cost the webview this much over a 30-second window"
+    );
+}
+
 /// Backend → UI: a consistent snapshot for initial hydration.
+///
+/// Logged with its size and how long the copy took: the snapshot carries the
+/// map and mod catalogues, it crosses the IPC boundary once per webview load,
+/// and its size is the number every argument about the state mirror needs.
+/// Measuring the size serialises it once more, which is fine for a call made
+/// once per load.
 #[tauri::command]
 pub(crate) fn snapshot(core: tauri::State<'_, Core>) -> VersionedSnapshot {
-    core.0.versioned_snapshot()
+    let started = std::time::Instant::now();
+    let snapshot = core.0.versioned_snapshot();
+    let copy_seconds = started.elapsed().as_secs_f32();
+    let bytes = serde_json::to_vec(&snapshot).map_or(0, |json| json.len());
+    tracing::info!(bytes, copy_seconds, "webview hydration snapshot");
+    snapshot
 }
 
 /// Terminate the application process cleanly.

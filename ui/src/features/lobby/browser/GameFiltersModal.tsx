@@ -206,7 +206,11 @@ export function GameFiltersModal({ rules, applyFilters, onApplyFiltersChange, on
                   onChange={(e) => setEditValue(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") saveEdit();
-                    if (e.key === "Escape") cancelEdit();
+                    if (e.key === "Escape") {
+                      // Abandons the edit only; the dialog stays open.
+                      e.stopPropagation();
+                      cancelEdit();
+                    }
                   }}
                   placeholder={t("lobby.filters.valuePlaceholder")}
                   aria-label={t("lobby.filters.valueAria")}

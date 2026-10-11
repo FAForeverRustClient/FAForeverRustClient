@@ -1,8 +1,13 @@
 # FAForever Client: design philosophy
 
-v1 · July 2026
+v2 · October 2026
 
 > **I know where everything is.**
+
+This document holds the principles. The concrete values (colours, typeface, radii, spacing) live in
+`ui/src/design-system/tokens.css`, and the working rules in `AGENTS.md` ("UI Design Language").
+Where this document and those two disagree, **the code and AGENTS.md win** and this document is
+the one to fix.
 
 The FAForever client is a precision instrument for people who spend thousands of hours in it.
 Every design decision is measured against one sentence: **the user must never have to guess where
@@ -36,7 +41,7 @@ alignment, consistent typography, disciplined colour. Not out of decoration.
 
 ### P1. Function beats aesthetics
 
-No visual effect may make legibility, hit area, response time or legibility worse. Beauty that
+No visual effect may make legibility, hit area or response time worse. Beauty that
 costs usability is discarded, without discussion.
 
 **Test:** does any user complete any task more slowly because of this change? Then it is wrong, no
@@ -67,17 +72,21 @@ you see at least 15 to 20 rows of a list without scrolling (at 1080p)?
 
 ### P4. Colour is semantics, never decoration
 
-Greyscale carries the entire structure. Orange `#FF8C00` means exactly one thing, "this is the way
-forward": primary actions, active states, links, focus. Red is errors and nothing else. Green is
-online or ready and nothing else. A colour that means nothing does not appear.
+Greyscale carries the entire structure. The accent is neutral, not a hue: white on the dark theme,
+near-black on the light one. It means "this is the way forward": primary actions, active states,
+focus. Status colours are reserved for status: red is errors, green is online or ready, amber is
+caution, and none of them is ever used for decoration or for an action. The remaining hues are
+data identity (factions, leagues, unit categories, event categories, the rating figure), each
+meaning exactly the thing it labels. A colour that means nothing does not appear.
 
 **Test:** can you say what every coloured pixel means? Does the screen work completely in greyscale
 (colour blindness)?
 
 ### P5. Depth is focus
 
-The base state is flat: one plane, surface steps and hairline rules instead of shadows. The only
-real depth layer is an overlay for a task that demands focus right now (hosting a lobby, uploading
+The base state is flat: one plane, surface steps and hairline rules instead of shadows. Shadows
+belong only to what floats above that plane (a popover, a menu, a dialog), from the three
+elevation tokens, never written per feature. The only real depth layer is an overlay for a task that demands focus right now (hosting a lobby, uploading
 a map, a critical error): background dimmed, one task, one way out. Critical errors **always**
 appear as an overlay, so the layer itself says "important" rather than the colour alone. That is
 also the safeguard for colour blindness.
@@ -101,7 +110,8 @@ System state (connection, login, running game) can be read at a fixed place at a
 must never have to check whether "everything still works". When something takes time, the skeleton
 of the screen is there immediately (filters, sorting, structure) and only the content loads, with a
 restrained animation. All text is terse and technically precise: state plus way out, never
-apologetic prose. The UI language is English.
+apologetic prose. Source strings are written in English and every one goes through the translation
+catalogues; none is hard-coded in a component.
 
 **Test:** does every error message answer, in one sentence, what happened and what to do now? Does
 the layout stay put while loading?
@@ -135,36 +145,48 @@ individual screens.
 
 ### Colour
 
+Components use the semantic tokens from `tokens.css` and never raw colour values. The values below
+are the canonical forgeDark theme; forgeLight and the two reference-client themes reinterpret the
+same tokens.
+
 | Token | Meaning |
 |---|---|
-| **Greyscale ramp** | carries 100 % of the structure: surfaces, lines, text hierarchy through white alpha |
-| **Accent `#FF8C00`** | "the way forward": primary action, active state, link, focus. Nothing else |
-| **Error `#FF5B5B`** | errors only; critical errors additionally as an overlay (P5) |
-| **OK `#2ECC8F`** | online / ready / connected. Status, never action |
-| **Warnings** | have no colour of their own: icon plus precise text, and a border if needed. Orange is taken as the accent and may never mean "caution" |
+| **Greyscale ramp** (`--color-bg`, `--color-surface*`, `--color-border*`, `--color-text`, `--color-muted`, `--color-subtle`) | carries 100 % of the structure: surfaces, hairlines, and a three-step text hierarchy |
+| **Accent** `--color-accent` (`#ffffff`; `#1b1b1b` on forgeLight) | "the way forward": primary action, active state, focus. Neutral by design, so it never competes with status |
+| **Error** `--color-error` (`#e06c75`) | errors only; critical errors additionally as an overlay (P5) |
+| **OK** `--color-ok` (`#70b98a`) | online / ready / connected. Status, never action |
+| **Warn** `--color-warn` (`#d6a35d`) | caution: something needs attention but nothing has failed. Always with an icon and precise text, never colour alone. The accent is neutral, so amber is free to mean exactly this |
+| **Identity hues** (`--color-faction-*`, `--color-league-*`, `--color-unit-*`, `--color-event-*`, `--color-rating`) | label the thing they name in data: a faction, a league, a unit category, an event type, the rating a card was opened for |
+
+Text contrast is not a matter of taste: every text token clears **4.5:1** on the surfaces it is
+drawn on, the quietest (`--color-subtle`) included. Demote with `--color-muted` or
+`--color-subtle`, never by lowering contrast further.
 
 ### Typography
 
-One typeface: **Geist** (OFL-licensed and therefore contributor-safe; Suisse Int'l is out on
-licence, Inter on being unremarkable). Weights 400/500/600. All numbers in data contexts use
-`tabular-nums`, so ratings, times and player counts line up exactly in lists. Hierarchy comes from
-size, weight and opacity, never from additional typefaces.
+One typeface: **Inter** (`--font-sans`), with the system UI stack as fallback. The reference-client
+themes swap it for their client's face (Roboto, Segoe UI) through the same token. All numbers in
+data contexts use `tabular-nums`, so ratings, times and player counts line up exactly in lists.
+Hierarchy comes from size, weight and the text colour tokens, never from additional typefaces.
 
 | Size / weight | Use |
 |---|---|
-| 28 / 600 | screen title |
-| 18 / 600 | section or card |
-| 15 / 400 | body text, forms |
-| 14 / 400 | list rows (dense content) |
-| 13 / 500 | LABELS, COLUMN HEADS, META |
+| 20 / 600 | view title |
+| 16 to 18 / 600 | section, panel or detail heading |
+| 14 / 400 | body text, forms (13 in the compact density) |
+| 13 / 400 to 500 | list rows, controls (dense content) |
+| 12 / 400 to 600 | secondary text, meta, column heads |
+| 11 | the floor: labels, captions, badges. **Nothing renders smaller**, uppercase micro-labels included |
 
 ### Space and form
 
-- A 4 px grid, scale 4 / 8 / 12 / 16 / 24 / 32 / 48. No value outside the scale.
-- Two density contexts (P3): the **frame** uses 16 to 48, **lists** use 4 to 12 with row heights of
-  32 to 40 px.
-- Radius 3 to 4 px everywhere: technical, not friendly-round. Hairline borders (white alpha 8 to
-  14 %) instead of shadows.
+- A 4 px grid. The spacing tokens are 4 / 8 / 12 / 16 (`--space-1` to `--space-4`); larger gaps
+  are multiples of 8.
+- Two density contexts (P3): the **frame** uses 16 and up, **lists** use 4 to 12, and controls are
+  32 to 40 px tall.
+- Radii are soft, from 6 to 16 px: `--radius-sm` 6, `--radius-md` 8, `--radius-lg` 12,
+  `--radius-xl` 16, and `--radius-pill` for capsules. Hairline borders (white alpha 8 to 16 %,
+  `--color-border` and `--color-border-strong`) instead of shadows.
 - Alignment is absolute: everything sits on shared sight lines. A column that is off by 1 px is a
   bug.
 
@@ -180,10 +202,11 @@ size, weight and opacity, never from additional typefaces.
 
 ### Icons
 
-- One style only: line icons, uniform stroke width (1.5 px), monochrome in the text colour around
-  them.
+- One style only: outline icons from the shared `Icon` component, one uniform stroke width,
+  drawn in `currentColor` so they take the text colour around them, legible at 16 to 20 px.
 - Always with a label in navigation: an icon alone never carries meaning (legibility beats space).
-- Icons follow the colour semantics: orange only when active or actionable, red only on error.
+  An icon-only control elsewhere carries an accessible label.
+- Icons follow the colour semantics: accent only when active, a status colour only for that status.
 
 ### States and language
 
@@ -206,8 +229,9 @@ Every view defines four states before it counts as finished: loaded, loading, em
   otherwise back to native.
 - Desktop first: right-click context menus, hover states, multi-select and drag and drop are
   expected tools, not extras.
-- Full keyboard operability is declared debt, not a blocker: focus rings (orange, P4) are built in
-  from the start so that it costs nothing later.
+- Full keyboard operability is declared debt, not a blocker: focus rings are built in from the
+  start so that it costs nothing later. A focus ring is `outline: 2px solid var(--color-accent)`,
+  solid and clearly visible on every surface; a faint glow is not a focus indicator.
 
 ---
 
@@ -233,10 +257,14 @@ questions. One "no" means back to the drawing board.
 
 - **Live list freshness** contradicts P2 and is documented as an owner decision. Condition:
   click-validated game ids. To be reviewed after real user testing.
-- **Final typeface:** Geist is set as the recommendation; Inter stays as an alternative.
+- **Typeface and palette** are decided and shipped: Inter, the neutral accent, the 6 to 16 px radius
+  scale. An earlier version of this document proposed Geist, an orange accent and 3 to 4 px radii;
+  the code went the other way and this document follows it.
 - **Notification defaults:** configurable is decided (P8). The default matrix (what is on out of
   the box?) is decided with the chat feature. Proposal: quiet by default, everything off while a
   game is running.
-- **forgeLight and legacy themes** are out of scope. P1 to P3 and P5 to P9 apply across themes;
-  P4 (colour semantics) is reassigned per theme.
+- **Themes:** forgeDark and forgeLight are the canonical themes. The Java and Python client themes
+  reinterpret the same semantic tokens (their accent is that client's blue or teal) and may never
+  require a component fork. P1 to P9 apply across all of them; P4's roles stay fixed while each
+  theme picks its own values for them.
 - **Contributor and dev surfaces** follow the same rules: there is no "internal second-class UI".

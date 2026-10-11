@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
-import type { GamePreferences } from "../../ipc/bindings";
+import type { GamePreferencesPatch } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { Button } from "../../design-system/Button";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
-import { gameNeedsALaunchWrapper } from "../../shared/platform";
+import { gameNeedsALaunchWrapper, runsOnWindows } from "../../shared/platform";
 
-const save = (preferences: GamePreferences) =>
-  ipc.send({ kind: "Settings", command: { type: "setGame", payload: { preferences } } });
+const save = (patch: GamePreferencesPatch) =>
+  ipc.send({ kind: "Settings", command: { type: "patchGame", payload: { patch } } });
 
 export function GameSettingsSection() {
   const { t } = useTranslation();
@@ -22,17 +22,16 @@ export function GameSettingsSection() {
   const commitArguments = () => {
     if (argumentsText === persistedText) return;
     void save({
-      ...preferences,
       additionalArguments: argumentsText.split(/\r?\n/).map((argument) => argument.trim()).filter(Boolean),
     });
   };
 
   const setAutoGenerate = (autoGenerateMaps: boolean) => {
-    void save({ ...preferences, autoGenerateMaps });
+    void save({ autoGenerateMaps });
   };
 
   const setConfirmDownloads = (confirmDownloadsBeforeJoining: boolean) => {
-    void save({ ...preferences, confirmDownloadsBeforeJoining });
+    void save({ confirmDownloadsBeforeJoining });
   };
 
   const [wrapperText, setWrapperText] = useState(preferences.launchWrapper ?? "");
@@ -40,11 +39,11 @@ export function GameSettingsSection() {
   useEffect(() => setWrapperText(persistedWrapper), [persistedWrapper]);
   const commitWrapper = () => {
     if (wrapperText.trim() === persistedWrapper) return;
-    void save({ ...preferences, launchWrapper: wrapperText.trim() });
+    void save({ launchWrapper: wrapperText.trim() });
   };
 
   const setPipeLiveReplay = (pipeLiveReplay: boolean) => {
-    void save({ ...preferences, pipeLiveReplay });
+    void save({ pipeLiveReplay });
   };
 
   return (
@@ -75,6 +74,21 @@ export function GameSettingsSection() {
         />
       </SettingRow>
 
+
+      {/* Windows only: on Linux the game is a Wine window, and the window
+          manager there has its own answer (#445). */}
+      {runsOnWindows() && (
+        <SettingRow
+          label={t("settings.game.borderlessWindow")}
+          hint={t("settings.game.borderlessWindowHint")}
+        >
+          <SettingsSwitch
+            checked={preferences.borderlessWindow ?? false}
+            onChange={(borderlessWindow) => void save({ borderlessWindow })}
+            label={t("settings.game.borderlessWindow")}
+          />
+        </SettingRow>
+      )}
 
       <SettingRow
         label={t("settings.game.pipeLiveReplay")}

@@ -1,18 +1,21 @@
-import type { AppearancePreferences, ChatPreferences, UiDensity } from "../../ipc/bindings";
+import type { AppearancePreferencesPatch, ChatPreferencesPatch, UiDensity } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 import { ChatNameColorSettings } from "./ChatNameColorSettings";
 import { ThemePicker } from "./ThemePicker";
+import { BackgroundSettings } from "./BackgroundSettings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
 
-const save = (preferences: AppearancePreferences) =>
-  ipc.send({ kind: "Settings", command: { type: "setAppearance", payload: { preferences } } });
+// Patches, not whole groups: a group copied out of this render's snapshot
+// would carry the old value of anything changed since, and revert it.
+const save = (patch: AppearancePreferencesPatch) =>
+  ipc.send({ kind: "Settings", command: { type: "patchAppearance", payload: { patch } } });
 
 /** The chat slice keeps its own two display settings; this register draws them. */
-const saveChat = (preferences: ChatPreferences) =>
-  ipc.send({ kind: "Settings", command: { type: "setChat", payload: { preferences } } });
+const saveChat = (patch: ChatPreferencesPatch) =>
+  ipc.send({ kind: "Settings", command: { type: "patchChat", payload: { patch } } });
 
 /** Within `MIN_UI_SCALE`/`MAX_UI_SCALE` in the domain, which clamps anything else. */
 const UI_SCALES = [100, 125, 150, 175] as const;
@@ -89,10 +92,9 @@ export function AppearanceSettingsSection() {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
+        type: "patchBrowsing",
         payload: {
-          preferences: {
-            ...browsing,
+          patch: {
             vaultPageSize: size === DEFAULT_VAULT_PAGE_SIZE ? 0 : size,
           },
         },
@@ -107,6 +109,7 @@ export function AppearanceSettingsSection() {
         <span className="setting-label">{t("settings.appearance.theme")}</span>
         <ThemePicker />
       </div>
+      <BackgroundSettings />
       <SettingRow label={t("settings.appearance.interfaceDensity")}>
         <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.interfaceDensity")}>
           {(["compact", "comfortable"] as UiDensity[]).map((density) => (
@@ -115,7 +118,7 @@ export function AppearanceSettingsSection() {
               key={density}
               className={preferences.density === density ? "is-active" : ""}
               aria-pressed={preferences.density === density}
-              onClick={() => void save({ ...preferences, density })}
+              onClick={() => void save({ density })}
             >
               {t(density === "compact" ? "settings.appearance.compact" : "settings.appearance.comfortable")}
             </button>
@@ -130,7 +133,7 @@ export function AppearanceSettingsSection() {
               key={scale}
               className={preferences.uiScale === scale ? "is-active" : ""}
               aria-pressed={preferences.uiScale === scale}
-              onClick={() => void save({ ...preferences, uiScale: scale })}
+              onClick={() => void save({ uiScale: scale })}
             >
               {scale}%
             </button>
@@ -150,7 +153,7 @@ export function AppearanceSettingsSection() {
                 key={option.value}
                 className={isActive ? "is-active" : ""}
                 aria-pressed={isActive}
-                onClick={() => void save({ ...preferences, gameTileColumns: option.value })}
+                onClick={() => void save({ gameTileColumns: option.value })}
               >
                 {"labelKey" in option ? t(option.labelKey) : option.label}
               </button>
@@ -190,7 +193,7 @@ export function AppearanceSettingsSection() {
                 key={option.value}
                 className={isActive ? "is-active" : ""}
                 aria-pressed={isActive}
-                onClick={() => void save({ ...preferences, sidebarWidth: option.value })}
+                onClick={() => void save({ sidebarWidth: option.value })}
               >
                 {t(option.labelKey)}
               </button>
@@ -204,7 +207,7 @@ export function AppearanceSettingsSection() {
       >
         <SettingsSwitch
           checked={preferences.replayFlags}
-          onChange={(replayFlags) => void save({ ...preferences, replayFlags })}
+          onChange={(replayFlags) => void save({ replayFlags })}
           label={t("settings.appearance.replayFlags")}
         />
       </SettingRow>
@@ -214,7 +217,7 @@ export function AppearanceSettingsSection() {
       >
         <SettingsSwitch
           checked={preferences.hoverPanels}
-          onChange={(hoverPanels) => void save({ ...preferences, hoverPanels })}
+          onChange={(hoverPanels) => void save({ hoverPanels })}
           label={t("settings.appearance.hoverPanels")}
         />
       </SettingRow>
@@ -237,7 +240,7 @@ export function AppearanceSettingsSection() {
                     key={option.value}
                     className={isActive ? "is-active" : ""}
                     aria-pressed={isActive}
-                    onClick={() => void save({ ...preferences, hoverOpenDelayMs: option.value })}
+                    onClick={() => void save({ hoverOpenDelayMs: option.value })}
                   >
                     {"labelKey" in option ? t(option.labelKey) : option.label}
                   </button>
@@ -262,7 +265,7 @@ export function AppearanceSettingsSection() {
                     key={option.value}
                     className={isActive ? "is-active" : ""}
                     aria-pressed={isActive}
-                    onClick={() => void save({ ...preferences, hoverCloseDelayMs: option.value })}
+                    onClick={() => void save({ hoverCloseDelayMs: option.value })}
                   >
                     {"labelKey" in option ? t(option.labelKey) : option.label}
                   </button>
@@ -275,7 +278,7 @@ export function AppearanceSettingsSection() {
       <SettingRow label={t("settings.appearance.reduceMotion")} hint={t("settings.appearance.reduceMotionHint")}>
         <SettingsSwitch
           checked={preferences.reduceMotion}
-          onChange={(reduceMotion) => void save({ ...preferences, reduceMotion })}
+          onChange={(reduceMotion) => void save({ reduceMotion })}
           label={t("settings.appearance.reduceMotion")}
         />
       </SettingRow>
@@ -294,7 +297,7 @@ export function AppearanceSettingsSection() {
       <SettingRow label={t("settings.chat.colorEveryName")} hint={t("settings.chat.colorEveryNameHint")}>
         <SettingsSwitch
           checked={chat.coloredNames}
-          onChange={(coloredNames) => void saveChat({ ...chat, coloredNames })}
+          onChange={(coloredNames) => void saveChat({ coloredNames })}
           label={t("settings.chat.colorEveryName")}
         />
       </SettingRow>

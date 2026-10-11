@@ -12,7 +12,7 @@
 // account login, and the small fallback below covers a tab mounted before that
 // event arrived.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
@@ -33,7 +33,7 @@ import "./chat.css";
 import { t, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { joinGame as joinLobbyGame } from "../../shared/joinGame";
-import { partyChatChannel } from "../../shared/partyChat";
+import { partyChannelLabel, partyChatChannel } from "../../shared/partyChat";
 
 /** Mirrors `faf_domain::state::chat::DEFAULT_CHANNEL`. */
 const DEFAULT_CHANNEL = "#aeolus";
@@ -158,6 +158,23 @@ export function ChatView() {
     [channels, activeChannelName],
   );
 
+  // Reading the open channel. It counts unread like any other now (active is
+  // not read: see the chat reducer), so it is marked read here, where it is on
+  // screen, and only while the window has focus. Messages that arrive behind a
+  // running game stay counted until the player is actually back.
+  const activeName = active?.name ?? "";
+  const activeUnread = active?.unread ?? 0;
+  useEffect(() => {
+    if (!activeName) return;
+    if (activeUnread === 0) return;
+    const markRead = () => {
+      if (document.hasFocus()) void selectChannel(activeName);
+    };
+    markRead();
+    window.addEventListener("focus", markRead);
+    return () => window.removeEventListener("focus", markRead);
+  }, [activeName, activeUnread]);
+
   const isLive = chatStatus === "connected" || chatStatus === "connecting";
   const self = username || player?.name || "";
 
@@ -227,7 +244,7 @@ export function ChatView() {
     if (preferences.rosterWidth === width) return;
     ipc.send({
       kind: "Settings",
-      command: { type: "setChat", payload: { preferences: { ...preferences, rosterWidth: width } } },
+      command: { type: "patchChat", payload: { patch: { rosterWidth: width } } },
     });
   }, []);
 
@@ -245,14 +262,40 @@ export function ChatView() {
     // later click reports the failure in the language now selected.
   }, [games, liveGames, t]);
 
+  // Where the conversation's own card starts, below the channel tabs and the
+  // row of controls, so a private conversation's side panel can start level
+  // with it rather than level with the tabs (#448). Measured rather than
+  // summed from the stylesheet: the tabs and the row wrap at narrow widths.
+  // The conversation area rather than the card itself, so the panel does not
+  // jump down when the search bar opens over the card: the bar is part of
+  // the conversation, and without it the two start at the same pixel.
+  const chatRef = useRef<HTMLDivElement>(null);
+  const [cardTop, setCardTop] = useState(0);
+  const privateConversation = Boolean(active && isPrivateChannel(active.name));
+  useLayoutEffect(() => {
+    const root = chatRef.current;
+    const card = root?.querySelector<HTMLElement>(".chat-main .chat-scroll-wrap");
+    if (!privateConversation || !root || !card) return;
+    const measure = () => setCardTop(Math.max(0, Math.round(
+      card.getBoundingClientRect().top - root.getBoundingClientRect().top,
+    )));
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(root);
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, [privateConversation, active?.name]);
+
   const chatStyle = {
+    "--chat-card-top": `${cardTop}px`,
     "--chat-roster-width": `${rosterWidth}px`,
     "--chat-font-size": `${chatPreferences.fontSize || 13}px`,
     "--chat-sender-width": `${chatPreferences.senderWidth || 116}px`,
   } as CSSProperties;
 
   return (
-    <div className="chat" style={chatStyle}>
+    <div className="chat" style={chatStyle} ref={chatRef}>
       <section className="chat-main">
         <ChannelTabs
           channels={channels}
@@ -283,9 +326,9 @@ export function ChatView() {
               onChange={(event) => ipc.send({
                 kind: "Settings",
                 command: {
-                  type: "setChat",
+                  type: "patchChat",
                   payload: {
-                    preferences: { ...chatPreferences, showJoinsParts: event.target.checked },
+                    patch: { showJoinsParts: event.target.checked },
                   },
                 },
               })}
@@ -317,6 +360,7 @@ export function ChatView() {
             onUnreact={(msgid, emoji) => void unreact(active.name, msgid, emoji)}
             onReply={(message) => setReplyTo({ msgid: message.msgid ?? "", sender: message.sender })}
             findByMsgid={findByMsgid}
+            conversationLabel={partyChannelLabel(active.name)}
             searchRequest={searchRequest}
             onGameLink={activateGameLink}
           />

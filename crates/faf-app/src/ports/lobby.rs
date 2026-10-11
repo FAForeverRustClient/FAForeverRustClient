@@ -75,7 +75,16 @@ pub enum LobbyUpdate {
         player_id: i32,
         login: String,
     },
-    Vetoes(Vec<PlayerVeto>),
+    /// The vetoes the server holds for this player, after it changed them.
+    ///
+    /// `forced` is the server's own flag: a token on a map was taken back
+    /// because the pools changed under the selection, rather than a selection
+    /// just sent being trimmed to the rules. Java tells the player only then
+    /// (`TeamMatchmakingService.onVetoesChanged`).
+    Vetoes {
+        vetoes: Vec<PlayerVeto>,
+        forced: bool,
+    },
     /// Our friends/foes lists, resolved from account ids to logins. Re-sent
     /// whenever a `player_info` resolves an id we couldn't name before.
     Relations {

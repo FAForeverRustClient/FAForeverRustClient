@@ -6,6 +6,7 @@ import { Icon } from "../../design-system/Icon";
 import { ConfirmDialog } from "../../design-system/ConfirmDialog";
 import { VaultFeaturedBadge } from "../../design-system/VaultFeaturedBadge";
 import { openReviews } from "../../shared/openReviews";
+import { plainError } from "../../shared/plainError";
 import type {
   InstalledMod,
   ModInstallStatus,
@@ -22,7 +23,7 @@ export function installNote(status: ModInstallStatus): string | null {
   switch (status.type) {
     case "idle": return null;
     case "installing": return t("mods.vault.working", { uid: status.payload.uid });
-    case "failed": return t("mods.vault.installFailed", { reason: status.payload.reason });
+    case "failed": return t("mods.vault.installFailed", { reason: plainError(status.payload.reason) });
   }
 }
 
@@ -30,12 +31,30 @@ export function toggleNote(status: ModToggleStatus): string | null {
   switch (status.type) {
     case "idle": return null;
     case "toggling": return t("mods.vault.updating", { uid: status.payload.uid });
-    case "failed": return t("mods.vault.toggleFailed", { reason: status.payload.reason });
+    case "failed": return t("mods.vault.toggleFailed", { reason: plainError(status.payload.reason) });
   }
 }
 
 export function cleanDescription(value: string): string {
-  return value.replace(/^<LOC\s+[^>]+>/i, "").trim();
+  return value
+    .replace(/^<LOC\s+[^>]+>/i, "")
+    .trim()
+    // Lua long-string brackets left on the text. `mod_info.lua` writes a long
+    // description as `[[ ... ]]`, and a parser that reads it a line at a time
+    // keeps only the opening `[[`: the vault itself serves "[[" as the whole
+    // description of some mods, which the details dialog printed as is.
+    .replace(/^\[=*\[/, "")
+    .replace(/\]=*\]$/, "")
+    .trim();
+}
+
+/**
+ * The description worth showing: the vault's when it says anything once
+ * cleaned, otherwise the one in the installed `mod_info.lua`, which the
+ * client parses itself and may have read whole where the vault did not.
+ */
+export function bestDescription(vault: string | undefined, local: string): string {
+  return cleanDescription(vault ?? "") || cleanDescription(local);
 }
 
 function ratingLabel(mod: VaultMod): string {
@@ -107,7 +126,7 @@ export function ModCard({
 
         <span className="mod-vault-card-copy">
           <strong title={mod.displayName}>{mod.displayName}</strong>
-          <small>{mod.author ? t("mods.vault.byAuthor", { author: mod.author }) : t("mods.vault.unknownAuthor")}{mod.version ? ` · v${mod.version}` : ""}</small>
+          <small>{mod.author ? t("mods.vault.byAuthor", { author: mod.author }) : t("mods.vault.unknownAuthor")}{mod.version ? ` · ${t("common.version", { version: mod.version })}` : ""}</small>
         </span>
 
         {/* One line instead of a three-column ruled table: the values are a
@@ -115,7 +134,7 @@ export function ModCard({
             the facts did. */}
         <span className="mod-vault-card-facts">
           <span className="mod-vault-facts-row">
-            <span className={`mod-vault-type ${mod.modType}`}>{mod.modType === "ui" ? "UI" : "SIM"}</span>
+            <span className={`mod-vault-type ${mod.modType}`}>{t(mod.modType === "ui" ? "mods.vault.typeBadge.ui" : "mods.vault.typeBadge.sim")}</span>
             {mod.modType === "sim" && (
               <span className={`mod-vault-type ${mod.ranked ? "ranked" : "unranked"}`}>
                 {t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}
@@ -141,7 +160,7 @@ export function ModCard({
                 : t("mods.vault.noReviews")}
             >
               <Icon name="star" size={12} />
-              {mod.reviews ? t("mods.vault.ratingSummary", { rating: (mod.ratingTenths / 10).toFixed(1), reviews: mod.reviews }) : "N/A"}
+              {mod.reviews ? t("mods.vault.ratingSummary", { rating: (mod.ratingTenths / 10).toFixed(1), reviews: mod.reviews }) : t("common.notAvailable")}
             </span>
           </span>
         </span>
@@ -231,7 +250,7 @@ export function ModDetailPanel({
           name={mod.displayName}
           details={[
             { label: t("mods.vault.author"), value: mod.author },
-            { label: t("mods.vault.version"), value: `v${mod.version}` },
+            { label: t("mods.vault.version"), value: t("common.version", { version: mod.version }) },
             { label: t("mods.vault.uid"), value: mod.uid },
           ]}
           onClose={() => setReporting(false)}
@@ -278,7 +297,7 @@ export function ModDetailPanel({
         <div className="vault-detail-props">
           <div className="vault-prop-row">
             <span className="vault-prop-label">{t("mods.vault.version")}</span>
-            <span className="vault-prop-value">{mod.version ? `v${mod.version}` : "N/A"}</span>
+            <span className="vault-prop-value">{mod.version ? t("common.version", { version: mod.version }) : t("common.notAvailable")}</span>
           </div>
           <div className="vault-prop-row">
             <span className="vault-prop-label">{t("mods.vault.communityRating")}</span>

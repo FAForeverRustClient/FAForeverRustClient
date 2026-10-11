@@ -148,8 +148,8 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     id: "tournaments",
     name: "links.entry.tournaments",
     hint: "links.entry.tournamentsHint",
-    href: "https://tournaments.doodlepros.com/",
-    origin: "community",
+    href: "https://tournaments.faforever.com/",
+    origin: "official",
     section: "tools",
   },
   {

@@ -36,6 +36,9 @@ const cancelWatch = () =>
 export function ReplayStartDialog() {
   const { t } = useTranslation();
   const status = useAppStore((state) => state.state.replays.status);
+  // What is being fetched right now: an old engine build can be dozens of
+  // files on a slow line, and a bar alone read as stuck (#392).
+  const preparing = useAppStore((state) => state.state.replays.preparing);
   const [hidden, setHidden] = useState(false);
   // A failure is only this dialog's to report when this dialog is the reason
   // the user is waiting. The live tab refuses a game that started four minutes
@@ -69,6 +72,12 @@ export function ReplayStartDialog() {
             ? status.payload.reason
             : t("replays.starting.detail")}
         </p>
+        {!failed && preparing && (
+          <p className="muted replay-starting-step" aria-live="polite">
+            {preparing.detail}
+            {preparing.progress !== null ? ` (${preparing.progress}%)` : ""}
+          </p>
+        )}
         {!failed && (
           <div
             className="replay-starting-bar"

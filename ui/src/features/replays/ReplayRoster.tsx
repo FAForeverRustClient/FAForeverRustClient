@@ -18,7 +18,7 @@ function teamName(team: number, soleTeam: boolean): string {
   if (soleTeam) {
     return team === 1 ? t("replays.roster.freeForAll") : t("replays.roster.players");
   }
-  if (team > 1) return `Team ${team - 1}`;
+  if (team > 1) return t("replays.live.team", { team: team - 1 });
   return t("replays.roster.unassigned");
 }
 
@@ -57,6 +57,28 @@ export function teamOutcome(players: ReplayPlayer[]): OutcomeKind | "unknown" {
   if (kinds.includes("draw")) return "draw";
   if (kinds.includes("defeat")) return "defeat";
   return "unknown";
+}
+
+/**
+ * Who won, in a few words for a list row (#454): the winning team's name, or
+ * the winners' names in a game without teams. `null` when the replay has no
+ * recorded outcome at all.
+ */
+export function replayWinner(teams: (ReplayTeam | RosterTeam)[]): string | null {
+  const playing = teams.filter((team) => !isObserverTeam(team.team));
+  const soleTeam = playing.length === 1;
+  if (soleTeam) {
+    const winners = playing[0].players.filter((player) => parseOutcome(player.outcome) === "victory");
+    if (winners.length > 0) return t("replays.vault.winner", { winner: winners.map((player) => player.name).join(", ") });
+  } else {
+    const winning = playing.filter((team) => teamOutcome(team.players) === "victory");
+    if (winning.length > 0) {
+      return t("replays.vault.winner", { winner: winning.map((team) => teamName(team.team, false)).join(", ") });
+    }
+  }
+  const kinds = playing.map((team) => teamOutcome(team.players));
+  if (kinds.includes("draw")) return t("replays.roster.draw");
+  return null;
 }
 
 export type RosterPlayer = ReplayPlayer & {
@@ -303,9 +325,20 @@ function playerActionTitle(
 export function ReplayCardRoster({
   teams,
   interactive = false,
+  showResults = false,
   onPlayerMenu,
 }: {
   teams: (ReplayTeam | RosterTeam)[];
+  /**
+   * The vault's "Game result" switch (#454), the same one the detail panel
+   * has, shown the way the detail panel shows it: each side becomes a panel
+   * tinted by its outcome, and each player's rating change follows the
+   * rating. No outcome badge in the team's header line, which on a card
+   * pushed the player count onto a second line. A side with no recorded
+   * outcome stays neutral rather than saying "unknown", which on every card
+   * of an unrated page would be noise.
+   */
+  showResults?: boolean;
   /**
    * Whether a name in here is a control at all.
    *
@@ -324,7 +357,11 @@ export function ReplayCardRoster({
   const soleTeam = nonObserverTeams.length === 1;
   const isSingleTeamGame = teams.length === 1;
   return (
-    <div className="replay-card-teams" data-sole-team={soleTeam ? "true" : undefined}>
+    <div
+      className="replay-card-teams"
+      data-sole-team={soleTeam ? "true" : undefined}
+      data-results={showResults ? "true" : undefined}
+    >
       {teams.map((team) => {
         const observer = isObserverTeam(team.team);
         // Two columns only where a team has the card's full width to itself.
@@ -332,15 +369,25 @@ export function ReplayCardRoster({
         // too narrow for a name.
         const isSplit = (isSingleTeamGame || soleTeam) && team.players.length > CARD_TEAM_SPLIT_AT;
         const rowCount = isSplit ? Math.ceil(team.players.length / 2) : undefined;
+        // A free-for-all is one "team" whose players each have their own
+        // result: the whole panel would take the winner's colour, so there it
+        // is each player's row that does.
+        const perPlayer = showResults && !observer && soleTeam;
+        const outcome = showResults && !observer && !soleTeam ? teamOutcome(team.players) : "unknown";
         return (
-          <section key={team.team} className="replay-card-team">
+          <section
+            key={team.team}
+            className="replay-card-team"
+            data-observer={observer ? "true" : undefined}
+            data-outcome={outcome === "unknown" ? undefined : outcome}
+            // The tint says it; this says it to whoever cannot see the tint.
+            aria-label={outcome === "unknown" ? undefined : `${teamName(team.team, soleTeam)}: ${outcomeLabel(outcome)}`}
+          >
             {!isSingleTeamGame && (
               <header className="replay-card-team-title">
                 <span>{teamName(team.team, soleTeam)}</span>
                 <span>
-                  {team.players.length} {observer
-                    ? (team.players.length === 1 ? "observer" : "observers")
-                    : (team.players.length === 1 ? "player" : "players")}
+                  {t(observer ? "replays.roster.observerCount" : "replays.detail.playerCount", { count: team.players.length })}
                 </span>
               </header>
             )}
@@ -353,8 +400,13 @@ export function ReplayCardRoster({
                 const isRenamed = Boolean(
                   alias && alias.toLocaleLowerCase() !== player.name.toLocaleLowerCase(),
                 );
+                const playerOutcome = perPlayer ? parseOutcome(player.outcome) : "";
                 return (
-                  <div key={player.name} className="replay-player">
+                  <div
+                    key={player.name}
+                    className="replay-player"
+                    data-outcome={playerOutcome || undefined}
+                  >
                     {interactive ? (
                       <button
                         type="button"
@@ -406,7 +458,23 @@ export function ReplayCardRoster({
                         <PlayerName name={player.name} />
                       </span>
                     )}
-                    {player.rating !== null && <span className="muted">{player.rating}</span>}
+                    {/* The rating and, with the result shown, its change, as one
+                        group at the row's end. Two loose items in a row laid
+                        out space-between left the rating floating in the
+                        middle of the row as soon as the change joined it. */}
+                    <span className="replay-card-player-stats">
+                      {player.rating !== null && <span className="muted">{player.rating}</span>}
+                      {showResults && !observer && player.ratingChange !== null && player.ratingChange !== undefined && (
+                        <span
+                          className={`replay-player-rating-change ${
+                            player.ratingChange > 0 ? "positive" : player.ratingChange < 0 ? "negative" : "zero"
+                          }`}
+                          title={t("replays.roster.ratingChange")}
+                        >
+                          {formatSigned(player.ratingChange)}
+                        </span>
+                      )}
+                    </span>
                   </div>
                 );
               })}
@@ -449,6 +517,7 @@ export function ReplayDetailRoster({
   showResults = false,
   avatarByLogin,
   onPlayerMenu,
+  titlesAbove = false,
 }: {
   teams: (ReplayTeam | RosterTeam)[];
   /**
@@ -468,6 +537,13 @@ export function ReplayDetailRoster({
    * on its own, which is all a surface with nowhere to put a menu can offer.
    */
   onPlayerMenu?: PlayerMenuOpener;
+  /**
+   * Each team's name, rating and outcome stand above its card instead of
+   * inside it, with the first of two teams aligned to its card's right edge
+   * so the two names meet in the middle. Every replay surface asks for this
+   * now; the default stays for anything that has not.
+   */
+  titlesAbove?: boolean;
 }) {
   useLocale();
   if (teams.length === 0) return null;
@@ -483,6 +559,7 @@ export function ReplayDetailRoster({
       className="replay-detail-teams"
       data-layout={versus ? "versus" : undefined}
       data-sole-team={soleTeam ? "true" : undefined}
+      data-titles-above={titlesAbove ? "true" : undefined}
     >
       {teams.map((team, index) => {
         const observer = isObserverTeam(team.team);
@@ -504,29 +581,45 @@ export function ReplayDetailRoster({
         const isSplit = (isSingleTeamGame || soleTeam) && team.players.length > 4;
         const rowCount = isSplit ? Math.ceil(team.players.length / 2) : undefined;
         const showHeader = !isSingleTeamGame || (showResults && Boolean(outcomeText));
-        return (
-          <Fragment key={team.team}>
-            {versus && index === 1 && <span className="replay-detail-versus" aria-hidden>vs</span>}
-            {/* Green and red say who won, so they may only appear once the
-                result is on screen. Before that the panels are neutral: a
-                colour keyed to which team happens to be listed first told the
-                reader something the game never said. */}
+        const outcomeBadge = showResults && outcomeText && (
+          <span className={`replay-team-outcome ${outcomeKind || "unknown"}`}>
+            {outcomeText}
+          </span>
+        );
+        // Above the card: the name over the combined rating, and the outcome
+        // beside them once the result is on screen.
+        const headingAbove = titlesAbove && showHeader && (
+          <header className="replay-detail-team-heading">
+            <span className="replay-detail-team-heading-text">
+              <span className="replay-detail-team-heading-name">
+                {!isSingleTeamGame ? teamName(team.team, soleTeam) : ""}
+              </span>
+              {!isSingleTeamGame && teamRating !== null && (
+                <span className="replay-detail-team-heading-rating" title={t("replays.roster.combinedRating")}>
+                  {t("lobby.browser.teamRating", { rating: teamRating })}
+                </span>
+              )}
+            </span>
+            {outcomeBadge}
+          </header>
+        );
+        const card = (
+            /* Green and red say who won, so they may only appear once the
+               result is on screen. Before that the panels are neutral: a
+               colour keyed to which team happens to be listed first told the
+               reader something the game never said. */
             <section
               className="replay-detail-team surface-panel"
               data-outcome={showResults && outcomeKind ? outcomeKind : undefined}
             >
-              {showHeader && (
+              {showHeader && !titlesAbove && (
                 <header className="replay-detail-team-title">
                   <span>{!isSingleTeamGame ? teamName(team.team, soleTeam) : ""}</span>
                   <span className="replay-detail-team-summary">
                     {!isSingleTeamGame && teamRating !== null && (
-                      <span title={t("replays.roster.combinedRating")}>{teamRating} rating</span>
+                      <span title={t("replays.roster.combinedRating")}>{t("lobby.browser.teamRating", { rating: teamRating })}</span>
                     )}
-                    {showResults && outcomeText && (
-                      <span className={`replay-team-outcome ${outcomeKind || "unknown"}`}>
-                        {outcomeText}
-                      </span>
-                    )}
+                    {outcomeBadge}
                   </span>
                 </header>
               )}
@@ -594,6 +687,16 @@ export function ReplayDetailRoster({
                 })}
               </div>
             </section>
+        );
+        return (
+          <Fragment key={team.team}>
+            {versus && index === 1 && <span className="replay-detail-versus" aria-hidden>vs</span>}
+            {titlesAbove ? (
+              <div className="replay-detail-team-column">
+                {headingAbove}
+                {card}
+              </div>
+            ) : card}
           </Fragment>
         );
       })}

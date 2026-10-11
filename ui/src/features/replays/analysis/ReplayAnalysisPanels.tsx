@@ -80,12 +80,12 @@ export function ReplayPlayersPanel({ analysis }: { analysis: ReplayAnalysis }) {
                   </span>
                 </td>
                 <td>{player.team > 1 ? player.team - 1 : t("replays.roster.freeForAll")}</td>
-                <td>{player.rating === null ? "N/A" : player.rating}</td>
+                <td>{player.rating === null ? t("common.notAvailable") : player.rating}</td>
                 <td className="replay-activity-count">{player.commands}</td>
                 <td>
                   <span className="replay-activity-rate">
                     <span className="replay-activity-rate-value">
-                      {player.perMinute === null ? "N/A" : formatDecimal(player.perMinute)}
+                      {player.perMinute === null ? t("common.notAvailable") : formatDecimal(player.perMinute)}
                     </span>
                     <span
                       className="replay-activity-bar"

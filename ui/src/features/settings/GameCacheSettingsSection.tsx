@@ -8,14 +8,14 @@ import { useAppStore } from "../../store/store";
 import { formatBytes } from "../../shared/format/formatBytes";
 import { useTranslation } from "../../i18n/useTranslation";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
-import type { GamePreferences } from "../../ipc/bindings";
+import type { GamePreferencesPatch } from "../../ipc/bindings";
 
 /// Mirrors `faf_domain::state::settings::MAX_KEPT_GENERATED_MAPS`, so the
 /// input never offers a number the backend would quietly clamp.
 const MAX_KEPT_GENERATED_MAPS = 500;
 
-const save = (preferences: GamePreferences) =>
-  ipc.send({ kind: "Settings", command: { type: "setGame", payload: { preferences } } });
+const save = (patch: GamePreferencesPatch) =>
+  ipc.send({ kind: "Settings", command: { type: "patchGame", payload: { patch } } });
 
 export function GameCacheSettingsSection() {
   const { t } = useTranslation();
@@ -24,26 +24,23 @@ export function GameCacheSettingsSection() {
   const [showDoc, setShowDoc] = useState(false);
 
   const setKeepGeneratedMaps = (keepGeneratedMaps: boolean) => {
-    void save({ ...preferences, keepGeneratedMaps });
+    void save({ keepGeneratedMaps });
   };
 
   const setKeepGeneratedMapsLimit = (keepGeneratedMapsLimit: number) => {
     void save({
-      ...preferences,
       keepGeneratedMapsLimit: Math.max(0, Math.min(MAX_KEPT_GENERATED_MAPS, keepGeneratedMapsLimit)),
     });
   };
 
   const setCacheLifetime = (days: number) => {
     void save({
-      ...preferences,
       cacheLifetimeDays: days === 0 ? null : days,
     });
   };
 
   const setCacheSizeAlert = (gb: number) => {
     void save({
-      ...preferences,
       cacheSizeAlertGb: gb === 0 ? null : gb,
     });
   };
@@ -145,7 +142,7 @@ export function GameCacheSettingsSection() {
       >
         <SettingsSwitch
           checked={preferences.cacheRollingBranches ?? false}
-          onChange={(cacheRollingBranches) => void save({ ...preferences, cacheRollingBranches })}
+          onChange={(cacheRollingBranches) => void save({ cacheRollingBranches })}
           label={t("settings.game.cacheRollingBranches")}
         />
       </SettingRow>

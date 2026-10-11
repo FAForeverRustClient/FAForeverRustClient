@@ -27,9 +27,9 @@ use faf_app::ports::{
 };
 use faf_app::{App, Ports};
 use faf_domain::protocol::vault_query::MapVaultQuery;
+use faf_domain::state::settings::GamePreferencesPatch;
 use faf_domain::state::{
-    GamePreferences, HostGameConfig, InstalledMap, LobbyCommand, MatchmakerMapPool,
-    SettingsCommand, VaultMap,
+    HostGameConfig, InstalledMap, LobbyCommand, MatchmakerMapPool, SettingsCommand, VaultMap,
 };
 use tokio::sync::mpsc;
 
@@ -218,11 +218,11 @@ async fn a_built_map_reaches_the_keep_list_from_the_launch_path_too() {
     let h = harness().await;
     h.app
         .dispatch_and_wait(
-            SettingsCommand::SetGame {
-                preferences: GamePreferences {
-                    keep_generated_maps: true,
-                    ..GamePreferences::default()
-                },
+            SettingsCommand::PatchGame {
+                patch: Box::new(GamePreferencesPatch {
+                    keep_generated_maps: Some(true),
+                    ..GamePreferencesPatch::default()
+                }),
             }
             .into(),
         )

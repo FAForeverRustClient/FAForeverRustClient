@@ -26,10 +26,11 @@ The alternatives, and why this one:
   are prose, not relational data.
 - **A Git repository**: no service, no auth to read, CDN-fast, versioned and
   cacheable offline, with the commit log as the audit trail and the
-  collaborator list as the trainer list. Note that a submission is an *issue*
-  and accepting it commits straight to `main`: there is no pull request in the
-  loop, because what needed reviewing was the guide and that already happened
-  on the issue.
+  collaborator list as the trainer list. A link is submitted as an *issue*,
+  and accepting it commits the entry straight to `main`. A guide written in
+  the client is a *pull request*, because it is a file and may carry
+  pictures, and an issue can hold neither: accepting merges exactly the
+  commit the trainer read, then adds the entry the same way.
 
 The repository is `FAForeverRustClient/guides`.
 
@@ -47,7 +48,9 @@ guides/                           FAForeverRustClient/guides
 ├─ catalogue.json                 THE manifest the client fetches
 ├─ guides/
 │  ├─ setons-t1-build-order.md    long-form guides, one file each
-│  └─ economy-fundamentals.md
+│  ├─ economy-fundamentals.md
+│  └─ images/
+│     └─ setons-t1-build-order/   a guide's pictures, in a folder named after it
 └─ .github/
    ├─ ISSUE_TEMPLATE/
    │  └─ training-submission.yml  the form a submission by hand is filled in on
@@ -142,9 +145,9 @@ client.
 
 | Field | Meaning |
 | --- | --- |
-| `discordUrl` | The training community's invite. An empty value hides the hero's Discord button rather than sending anyone to a guess. |
+| `discordUrl` | The invite to FAF's Discord, which is the whole community server and not a training room; the button says so. An empty value hides the hero's Discord button rather than sending anyone to a guess. |
 | `replayReviewChannel` | The channel a replay review is asked in, as a `https://discord.com/channels/<guild>/<channel>` address. Discord's desktop application follows one straight there, and the client copies the request on the way, so the player lands in the right place with one paste left to do. Turn on Developer Mode in Discord and use *Copy Link* on the channel. Empty falls back to the invite. |
-| `replayReviewUrl` | Where replay reviews are discussed, for a reader who wants to browse them. The request itself goes to `discordUrl`: Discord is where they are answered, and it cannot take a prefilled message, so the client writes the request and the player pastes it. |
+| `replayReviewUrl` | Read but not shown. It named the forum's "I need help" category, which has nothing to do with replay reviews: those are asked for and answered in the Discord review channel and nowhere else, so the hero's "past reviews" button opens `replayReviewChannel`. |
 | `replayReviewCategory` | That category as a NodeBB id. Only used for the forum link; a request needs neither. |
 | `contributeUrl` / `contributeCategory` | The forum fallback for submissions, used only by a build with no catalogue repository configured. Otherwise a submission is an issue. |
 | `wikiUrl` | The wiki's entry point. |
@@ -175,11 +178,12 @@ row is not something a reader can act on.
 | `kind` | `video`, `guide`, `buildOrder`, `replayAnalysis`, `lesson`, `community`. Defaults to `guide`. |
 | `level` | `beginner`, `intermediate`, `advanced`, or absent. |
 | `topics` | `economy`, `buildOrder`, `micro`, `strategy`, `armyComposition`, `mapControl`, `scouting`, `factions`, `teamplay`, `interface`. A closed set on purpose: free tags produce forty near-synonyms nobody can filter by. |
-| `gameModes` | Free text (`1v1`, `4v4`, `custom`, `coop`, a mod's own queue). The filter offers whatever the catalogue contains. `custom` means a game outside the matchmaker and is the one word with a rule behind it: see below. |
+| `gameModes` | The matchmaker queues (`1v1`, `2v2`, `3v3`, `4v4`), plus `Seton's Clutch` as a tag of its own: see below. Free text, so a mod's own queue works too, and the filter offers whatever the catalogue contains. |
 | `maps` | Map names as a player reads them. Matched case-insensitively and by substring, so `Setons Clutch`, `SCMP_009` and "Seton's" find each other. |
+| `imageUrl` | The picture the entry's tile and page lead with. For a build order, the exact preview of the vault folder its replays were recorded on, `https://content.faforever.com/maps/previews/large/<folder>.png`: a map name alone can resolve to the wrong folder (two vault maps are called Seton's Clutch, and the one the name finds is a remake). Read the folder off a replay's header, `mapname`. Leave it out on a video: the still is derived from the address. For a channel, its own channel picture (the `og:image` of the channel page): the library shows creators as round avatars, the way the platforms do. |
 | `ratingMin` / `ratingMax` | Either may be absent, and an absent bound is open. Stated numbers win over the band a `level` implies. |
-| `related` | Other resource ids. This is what makes the library a graph rather than a list: a guide about a mistake can point at the lesson that fixes it. Ids that no longer resolve are dropped rather than drawn as dead rows. |
-| `approvedBy` | Who vouched for it. Rendered as "Reviewed by", never "official": accepting a guide is not the same as having checked every sentence, and a label implying otherwise is worse than none. |
+| `related` | Other resource ids. This is what makes the library a graph rather than a list: a guide about a mistake can point at the lesson that fixes it. Ids that no longer resolve are dropped rather than drawn as dead rows. An index whose `related` lists two or more entries that each name only it back is a series: the library shows it as one card and its page lists the parts. Videos sharing a YouTube playlist are a series the same way, except build orders, which stay one card per map. |
+| `approvedBy` | Who vouched for it. Rendered as "Reviewed by", never "official": accepting a guide is not the same as having checked every sentence, and a label implying otherwise is worse than none. Accepting a submission from the client sets it to the accepting GitHub login. |
 
 ### A video, a series, or a channel?
 
@@ -241,31 +245,27 @@ Two things the envelope decides, worth knowing before recording:
   the map's real vault preview with no transform. A recording of a map that is
   not in the vault still draws its routes, just without the terrain under them.
 
-### `custom`, and why most team material needs it
+### Seton's Clutch is not 4v4
 
-FAF keeps five ratings, and the client judges an entry by the one its modes
-name. `4v4` is the *matchmaker* 4v4 leaderboard. Most of what the community
-teaches is not matchmaker material at all: Seton's, Dual Gap and the rest are
-lobby games, rated on the leaderboard FAF calls `global`. An entry tagged only
-`4v4` is therefore measured against a queue its reader may never have entered,
-and often against no rating at all.
+A mode is a matchmaker queue: `4v4` is the 4v4 queue and its leaderboard. FAF
+keeps five ratings, and the client judges an entry by the one its modes name,
+so a Seton's build order tagged `4v4` was measured against a queue its reader
+may never have entered. Seton's is a lobby format with its own slots, builds
+and meta, and a player looking for it is not looking for the queue.
 
-So the catalogue says `custom`, which is the word used in a lobby, and the
-client resolves it to the `global` leaderboard. The two are interchangeable
-everywhere: choosing either in the filter finds both.
-
-**Pair it with a team size, `custom` first:**
+So Seton's material says so, as a tag of its own:
 
 ```json
-{ "gameModes": ["custom", "4v4"] }
+{ "gameModes": ["Seton's Clutch"], "maps": ["Setons Clutch"] }
 ```
 
-The order decides the rating, because the first mode that resolves wins, and
-`custom` resolving first is the point. The size is still worth stating second:
-the profile is read from local replay headers, and a replay header records how
-many players were in the game and not whether the matchmaker put them there. So
-`4v4` is what actually matches a Seton's player's recent games, while `custom`
-is what picks the right rating for them.
+It gets its own shelf and its own chip beside the queues. No leaderboard is
+called that, so the entry is judged by the reader's overall rating, which is
+the one a lobby game is rated on. The map is what puts it in front of a
+Seton's player: the profile's recent maps come from their replays.
+
+`custom` still resolves to the `global` leaderboard for anything else played
+outside the matchmaker, so an older entry tagged that way keeps working.
 
 ### Reading a guide inside the client
 
@@ -319,7 +319,12 @@ Both halves run inside the client. This section is the contract between them.
 
 ### What a submission looks like
 
-A submission is a GitHub issue labelled `training-submission`. Its body is a
+A submission is a GitHub issue whose title starts with `Training submission:`.
+The queue goes by that prefix, not by the `training-submission` label: GitHub
+silently drops the `labels` parameter of a prefilled new-issue link when the
+person opening it is not a collaborator, so a label filter hides exactly the
+submissions that come from players. The label is still added when the client
+closes an issue. Its body is a
 **filled-in form**, which is exactly what GitHub renders when somebody answers
 an issue form: a `### ` heading per field, then the answer.
 
@@ -384,6 +389,69 @@ An issue somebody typed freehand carries no form at all. It is still listed and
 still readable in the queue; it just cannot be accepted in one step, and the
 client says so rather than offering a button that would do nothing.
 
+### A guide with pictures: a pull request
+
+A guide written in the client is not an issue but a pull request, because it is
+a file and may carry pictures. An issue's body is capped at 65,536 characters
+and the API takes no attachments, so neither a long guide nor a screenshot
+could travel that way. A link alone, with nothing written, is still an issue.
+
+Sending one builds a single commit through the Git data API, on top of the
+catalogue's `main`:
+
+```
+guides/<id>.md                    the guide
+guides/images/<id>/<name>.png     each picture it shows
+```
+
+The editor writes a picture as `images/<name>`, relative to the guide, because
+the id is not known until the guide is sent. Sending rewrites those references
+to `images/<id>/<name>`, which is where the file sits relative to
+`guides/<id>.md`; that is also how GitHub's own Markdown view reads the path,
+so the pull request shows the pictures in place. A picture that was attached
+and then deleted from the text is not committed.
+
+Pictures are PNG, JPEG, GIF or WebP, recognised by their bytes rather than
+their names; at most 5 MB each, 20 per guide and 25 MB together. A picture's
+name is lowercase letters, digits and hyphens plus its extension. The form
+names files that way, and the backend refuses anything else rather than
+renaming it, so the name the text refers to and the file's name stay one thing.
+
+The commit goes on a branch `submission/<id>-<time>`: in the repository itself
+for somebody who may push to it, otherwise in the author's own fork, which the
+client creates if there is none and allows maintainers to edit. The pull
+request's body is the same filled-in form as an issue's, with the guide field
+pointing at the file.
+
+The queue lists open pull requests whose title starts with
+`Training submission:` next to the issues. For each one it reads the changed
+files and the guide itself at the head commit, from the raw host rather than
+through the API. The guide's pictures resolve against that address, so a
+trainer sees them before anything is merged.
+
+**What may be accepted in one press.** A pull request that adds exactly one
+`guides/<id>.md` and pictures under `guides/images/<id>/`, and nothing else.
+Accepting merges, and a merge takes every file: a pull request that also
+changes the catalogue, the repository's checks or anybody else's guide is
+listed with the files named and has to be reviewed on GitHub. So does one that
+modifies or renames a file rather than adding it.
+
+**What accepting a pull request does.**
+
+1. Checks the pull request still points at the commit the queue read, and
+   refuses if it has moved on: what the trainer read is what goes in.
+2. Squash-merges exactly that commit (`sha` is sent with the merge, so GitHub
+   refuses too if it moved in between).
+3. Adds the entry to `catalogue.json` exactly as for an issue, with its `url`
+   pointing at the guide's raw address. The guide file is already there byte
+   for byte, so it is not written again.
+4. Comments where it landed, labels it, and removes the branch if it lived in
+   the repository itself.
+
+It is as safe to repeat as an issue's accept: a merged pull request is not
+merged again, and the comment marker says whether the catalogue step is done.
+Declining comments the reason and closes the pull request.
+
 ### What accepting does
 
 1. commits `guides/<id>.md`, if the submission carried a written guide, and
@@ -393,8 +461,38 @@ client says so rather than offering a button that would do nothing.
 3. comments on the issue saying where it landed, and closes it.
 
 The commit is guarded by the file's content hash: if somebody committed in
-between, GitHub refuses rather than overwriting them, and the client re-reads
-and retries once. Declining comments the reason and closes the issue.
+between, GitHub refuses (409, or 422 for a stale hash) rather than overwriting
+them, and the client re-reads and retries once. The retry goes by the HTTP
+status, never by GitHub's wording. Declining comments the reason and closes the
+issue.
+
+Before anything is written the client checks three things, so a refusal
+leaves the repository as it was:
+
+- **Permission.** The account's permission on the repository is read first.
+  Accepting needs push, declining needs triage or more. Without it nothing is
+  committed and, in particular, no "declined" comment is posted.
+- **The entry is valid.** The same per-entry rules as the repository's
+  `.github/validate.mjs`: an id in the right shape, a title, a link that is
+  `https://`, and a rating band whose minimum is not above its maximum. An
+  entry that would turn the repository's CI red is refused with the reason.
+- **The id is free.** The id is the slug of the title (Cyrillic and accented
+  letters transliterated, `guide-<issue number>` when nothing usable is
+  left). If that id is already in the catalogue or under `guides/`, `-2`,
+  `-3` and so on are tried, so accepting never replaces an existing entry.
+
+Accepting and declining are safe to repeat. Each verdict comment carries a
+hidden marker, a write whose content is unchanged is skipped, and a closed
+issue that already carries the verdict is reported as done. If a step fails
+after the commit (the comment, say), the error says what landed and that
+pressing the same button again finishes it. An issue that was declined cannot
+be accepted, and the other way round.
+
+Closing changes the issue's state and adds labels. It never replaces the
+label set, so labels a maintainer put on the issue survive.
+
+The queue reads up to ten pages of 100 issues each, and as many of open pull
+requests.
 
 One cosmetic consequence worth knowing: the client re-serialises
 `catalogue.json` through a JSON parser, which sorts object keys. The first
@@ -464,7 +562,7 @@ with a GitHub app, so accepting has to happen on GitHub.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `FAF_TRAINING_CATALOGUE_URL` | none | Where the client reads `catalogue.json`. Unset, it uses the small catalogue shipped in the client. |
+| `FAF_TRAINING_CATALOGUE_URL` | `https://raw.githubusercontent.com/FAForeverRustClient/guides/main/catalogue.json` | Where the client reads `catalogue.json`. Unset, it reads this repository. Set to an empty value, the remote catalogue is off: no request is made and the snapshot shipped in the client is shown. |
 | `FAF_GUIDES_GITHUB_CLIENT_ID` | `Ov23li9p0m7RMbNfLUgv` | The OAuth app above. Set it empty to turn catalogue maintenance off in a build. |
 | `FAF_GUIDES_REPO` | `FAForeverRustClient/guides` | The repository submissions and commits go to. |
 | `FAF_GUIDES_API_BASE` | `https://api.github.com` | For a GitHub Enterprise host or a test double. |

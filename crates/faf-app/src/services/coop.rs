@@ -8,7 +8,20 @@
 
 use faf_domain::state::{rank_results, CoopCommand, CoopEvent, CoopStatus};
 
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+
+/// Co-op's request generations. Owned by this service.
+///
+/// Generations discard replies from superseded co-op requests. The runtime
+/// intentionally executes commands concurrently, so request order is not
+/// response order.
+#[derive(Default)]
+pub struct CoopContext {
+    /// The mission catalogue.
+    catalog_generation: LatestRequest,
+    /// The leaderboard for the selected mission and player count.
+    leaderboard_generation: LatestRequest,
+}
 
 pub async fn handle(cmd: CoopCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
@@ -50,10 +63,10 @@ pub async fn handle(cmd: CoopCommand, ctx: &ServiceCtx, out: &EventSink) {
 /// the reducer opened on. Latest-wins: a slower earlier fetch never lands
 /// over a newer one.
 async fn load_catalog(ctx: &ServiceCtx, out: &EventSink) {
-    let generation = ctx.coop_catalog_generation.begin();
+    let generation = ctx.coop.catalog_generation.begin();
     out.emit(CoopEvent::CatalogLoading);
     let result = ctx.ports.coop.list_catalog().await;
-    if !ctx.coop_catalog_generation.is_current(generation) {
+    if !ctx.coop.catalog_generation.is_current(generation) {
         return;
     }
     match result {
@@ -79,7 +92,7 @@ async fn load_leaderboard(ctx: &ServiceCtx, out: &EventSink) {
     let Some(mission_id) = mission_id else {
         return; // Nothing selected: an empty catalog, or a failed load.
     };
-    let generation = ctx.coop_leaderboard_generation.begin();
+    let generation = ctx.coop.leaderboard_generation.begin();
 
     out.emit(CoopEvent::LeaderboardLoading);
     let result = ctx
@@ -87,7 +100,7 @@ async fn load_leaderboard(ctx: &ServiceCtx, out: &EventSink) {
         .coop
         .list_leaderboard(mission_id, player_count)
         .await;
-    if !ctx.coop_leaderboard_generation.is_current(generation) {
+    if !ctx.coop.leaderboard_generation.is_current(generation) {
         return;
     }
     match result {

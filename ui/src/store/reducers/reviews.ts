@@ -28,8 +28,11 @@ export function summarize(reviews: Review[]): ReviewSummary {
   };
 }
 
+// The whole target, name included, as the Rust twin compares it: the same map
+// opened from another view under another name is another request, and its
+// predecessor's answer is dropped there.
 const sameTarget = (a: ReviewsState["target"], b: ReviewsState["target"]) =>
-  a !== null && b !== null && a.kind === b.kind && a.id === b.id;
+  a !== null && b !== null && a.kind === b.kind && a.id === b.id && a.name === b.name;
 
 export function reduceReviews(state: ReviewsState, event: ReviewsEvent): ReviewsState {
   switch (event.type) {

@@ -7,8 +7,10 @@
 // first when a draft has two problems. These cases stay for what they say out
 // loud about each rule.
 
+import { createElement, type ReactElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { draftOf } from "./TournamentForm";
+import { draftOf, FormFrame, TournamentForm } from "./TournamentForm";
 import { rejectionOf } from "../../../shared/rules/tourneyRules";
 import { tourney } from "../fixtures";
 import type { TourneyDraft } from "../../../ipc/bindings";
@@ -86,5 +88,48 @@ describe("draftOf", () => {
     // Format fields come along so the form can show them, even though editing
     // never sends them.
     expect(from.teamSize).toBe(3);
+  });
+});
+
+describe("TournamentForm frame", () => {
+  /**
+   * The element type the form renders as its root, on each of several renders.
+   *
+   * The form is called from inside a probe component so its hooks have a
+   * render to belong to; the probe itself renders nothing.
+   */
+  function rootTypes(inline: boolean, names: string[]): unknown[] {
+    const seen: unknown[] = [];
+    function Probe({ name }: { name: string }) {
+      const root = TournamentForm({
+        event: tourney({ name }),
+        series: [],
+        busy: false,
+        inline,
+        onSubmit: () => {},
+        onClose: () => {},
+      }) as ReactElement;
+      seen.push(root.type);
+      return null;
+    }
+    for (const name of names) renderToStaticMarkup(createElement(Probe, { name }));
+    return seen;
+  }
+
+  it("keeps one component type across renders, so edits do not remount the fields", () => {
+    // A frame built inside the form was a new type on every render, which
+    // made React unmount and remount every field on every keystroke.
+    for (const inline of [true, false]) {
+      const [first, second] = rootTypes(inline, ["Weekend Cup", "Weekend Cup 2"]);
+      expect(first).toBe(FormFrame);
+      expect(second).toBe(first);
+    }
+  });
+
+  it("frames an inline form as the section itself", () => {
+    const html = renderToStaticMarkup(
+      createElement(FormFrame, { inline: true, title: "Edit", onClose: () => {}, children: "body" }),
+    );
+    expect(html).toBe('<div class="tournament-form is-inline">body</div>');
   });
 });

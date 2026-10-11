@@ -1,4 +1,5 @@
 import { getLocale, intlTag, t } from "../../i18n";
+import { hourCycleOptions, uses24HourClock } from "./clock";
 import { formatRelativeDuration } from "./durations";
 import { formatWithTokens, systemDateTokens } from "./systemDate";
 
@@ -50,12 +51,26 @@ export function formatShortDate(value: string | number, fallback = t("common.unk
   return formatDate(value, fallback, SHORT_DATE_OPTIONS);
 }
 
-export function formatTime(value: string | number, fallback = t("common.unknown")): string {
+/**
+ * The time of day, on the player's 24- or 12-hour clock (issue 425).
+ *
+ * `use24HourTime` defaults to the stored preference; a component that stays
+ * mounted while the switch flips passes the value it subscribed to, so it
+ * redraws.
+ */
+export function formatTime(
+  value: string | number,
+  fallback = t("common.unknown"),
+  use24HourTime = uses24HourClock(),
+): string {
   if (value === "" || (typeof value === "number" && value <= 0)) return fallback;
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? fallback
-    : date.toLocaleTimeString(clientIntlTag(), { timeStyle: "short" });
+    : date.toLocaleTimeString(clientIntlTag(), {
+        timeStyle: "short",
+        ...hourCycleOptions(use24HourTime),
+      });
 }
 
 /**
@@ -71,7 +86,11 @@ export function formatShortDateTime(value: string | number, fallback = t("common
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return fallback;
   if (systemDateTokens()) {
-    return `${numericDate(date)} ${date.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit" })}`;
+    return `${numericDate(date)} ${date.toLocaleTimeString(clientIntlTag(), {
+      hour: "2-digit",
+      minute: "2-digit",
+      ...hourCycleOptions(),
+    })}`;
   }
   return date.toLocaleString(clientIntlTag(), {
     year: "numeric",
@@ -79,6 +98,7 @@ export function formatShortDateTime(value: string | number, fallback = t("common
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    ...hourCycleOptions(),
   });
 }
 
@@ -87,7 +107,11 @@ export function formatDateTime(value: string | number, fallback = t("common.unkn
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? fallback
-    : date.toLocaleString(clientIntlTag(), { dateStyle: "medium", timeStyle: "short" });
+    : date.toLocaleString(clientIntlTag(), {
+        dateStyle: "medium",
+        timeStyle: "short",
+        ...hourCycleOptions(),
+      });
 }
 
 /// A week. Past it, "how long ago" stops being the useful reading.

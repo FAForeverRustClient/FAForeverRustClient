@@ -381,6 +381,19 @@ pub struct MapGeneratorState {
     /// The saved preset library, newest first. Empty until loaded.
     #[serde(default)]
     pub presets: Vec<GeneratorPreset>,
+    /// What became of the last preset save, named by the request that asked.
+    /// The dialog used to call a save done once a new list held the name, and
+    /// an unrelated refresh after a failed overwrite still held the old one.
+    #[serde(default)]
+    pub preset_save: Option<PresetSaveOutcome>,
+}
+
+/// The answer to one SavePreset.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PresetSaveOutcome {
+    pub request_id: u32,
+    pub saved: bool,
 }
 
 // No `Eq`: `OptionsChanged` carries `GeneratorOptions`.
@@ -432,6 +445,11 @@ pub enum MapGeneratorEvent {
     PresetsLoaded {
         presets: Vec<GeneratorPreset>,
     },
+    /// A SavePreset finished, stored or not, for the request that sent it.
+    PresetSaveFinished {
+        request_id: u32,
+        saved: bool,
+    },
 }
 
 // No `Eq`: `Generate` carries `GeneratorOptions`.
@@ -482,6 +500,19 @@ pub enum MapGeneratorCommand {
     DecodeNames {
         map_names: Vec<String>,
     },
+    /// Read the previews of these installed generated maps from disk, for the
+    /// tiles that are showing them.
+    ///
+    /// Asked for by a tile, one map at a time, instead of every preview in the
+    /// maps folder arriving with each scan of it. That push sent the whole
+    /// folder's pictures as base64 in one event, at least twice for every map
+    /// generated from the host dialog, and an event is a script the webview
+    /// has to parse: past a few dozen generated maps that is what ran the page
+    /// out of memory (#402). Java reads each preview from disk when a tile
+    /// shows it (`MapService.getGeneratedMapPreview`).
+    LoadPreviews {
+        map_names: Vec<String>,
+    },
     /// Fetch the generator's `--help` text.
     LoadHelp {
         #[serde(default)]
@@ -494,6 +525,9 @@ pub enum MapGeneratorCommand {
     SavePreset {
         name: String,
         options: GeneratorOptions,
+        /// Handed back in [`MapGeneratorEvent::PresetSaveFinished`].
+        #[serde(default)]
+        request_id: u32,
     },
     /// Re-read the preset library from disk.
     LoadPresets,
@@ -557,6 +591,12 @@ pub fn reduce(state: &mut MapGeneratorState, event: &MapGeneratorEvent) {
         MapGeneratorEvent::NamesDecoded { decoded } => state.decoded.extend(decoded.clone()),
         MapGeneratorEvent::HelpLoaded { text } => state.help_text = text.clone(),
         MapGeneratorEvent::PresetsLoaded { presets } => state.presets = presets.clone(),
+        MapGeneratorEvent::PresetSaveFinished { request_id, saved } => {
+            state.preset_save = Some(PresetSaveOutcome {
+                request_id: *request_id,
+                saved: *saved,
+            });
+        }
     }
 }
 

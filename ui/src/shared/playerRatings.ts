@@ -32,18 +32,38 @@ export function gameLeaderboard(ratingType: string | null | undefined): string {
   return ratingType || GLOBAL_LEADERBOARD;
 }
 
-// Only "Global" is prose. The queue names are the community's own shorthand
-// and stay identical in every language.
+// Only "Global", "League" and "No Share" are prose. The queue names are the
+// community's own shorthand and stay identical in every language.
+//
+// The older technical names are here too: the API still lists them beside the
+// current ones, and the Rust side, which used to name boards itself, knew
+// them. "Full share" says nothing since the queue it was distinguished from
+// was retired, so a full-share 4v4 is just "4v4".
 const LEADERBOARD_LABELS: Record<string, string> = {
   ladder_1v1: "1v1",
+  ladder1v1: "1v1",
   tmm_2v2: "2v2",
+  ladder2v2: "2v2",
   tmm_3v3: "3v3",
+  ladder3v3: "3v3",
   tmm_4v4: "4v4",
+  tmm_4v4_full_share: "4v4",
+  ladder4v4: "4v4",
+  "4v4_full_share": "4v4",
 };
 
-/** How a leaderboard is named in the UI: "Global", "1v1", "2v2", ... */
+/** The no-share 4v4, as a queue and as the stem of its league. */
+const NO_SHARE_BOARDS = new Set(["tmm_4v4_share_until_death", "4v4_share_until_death"]);
+
+/**
+ * How a leaderboard or league is named in the UI: "Global", "1v1", "2v2",
+ * "1v1 League", "4v4 No Share", ...
+ */
 export function leaderboardLabel(technicalName: string): string {
   if (technicalName === GLOBAL_LEADERBOARD) return t("chat.rating.global");
+  const league = /^(.+)_league$/.exec(technicalName);
+  if (league) return t("leaderboard.name.league", { board: leaderboardLabel(league[1]) });
+  if (NO_SHARE_BOARDS.has(technicalName)) return t("leaderboard.name.noShare", { board: "4v4" });
   return LEADERBOARD_LABELS[technicalName] ?? prettyLeaderboardName(technicalName);
 }
 

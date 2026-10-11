@@ -21,11 +21,25 @@
 // Avatar picker, clan-leader messages, and moderator powers remain omitted
 // because they need separate backend flows. Player notes are local persisted
 // preferences and are available for every resolved FAF account.
+//
+// Everything that acts on the account is offered whether the player is online
+// or not. Friend, foe, note and report address the account by id, which the
+// online list has and a replay lineup does not, so for somebody offline the
+// caller looks the login up and passes `account`; until the answer is in those
+// entries are shown greyed out rather than left out, so the menu does not
+// change shape under the pointer. Only what needs them online (join, watch,
+// invite, kick) depends on presence.
+//
+// No "Mute player": the foe list is the one way to stop hearing from somebody,
+// as in both reference clients, with Settings > Chat > "Hide foe messages"
+// deciding whether a foe's messages are shown. Somebody muted before that
+// change can still be unmuted here.
 
 import { ColorInput } from "../../design-system/ColorInput";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Game, PlayerProfile } from "../../ipc/bindings";
+import type { AccountRef } from "../../store/reducers/social";
 import { DEFAULT_COLOR_PICKER_VALUE } from "./nameColors";
 import { useTranslation } from "../../i18n/useTranslation";
 import "./user-menu.css";
@@ -48,22 +62,22 @@ export interface UserMenuActions {
   watchGame: (game: Game) => void;
   viewReplays: (username: string) => void;
   inviteToParty: (playerId: number) => void;
-  setRelation: (profile: PlayerProfile, relation: "friend" | "foe", member: boolean) => void;
+  setRelation: (account: AccountRef, relation: "friend" | "foe", member: boolean) => void;
   kickFromParty: (playerId: number) => void;
   setNameColor: (nickname: string, color: string | null) => void;
   setMuted: (nickname: string, muted: boolean) => void;
-  reportPlayer: (profile: PlayerProfile) => void;
-  /**
-   * Report somebody the lobby's player list does not know, by name: a
-   * replay's lineup is mostly players who are offline (#321). Absent where
-   * the caller cannot do that.
-   */
-  reportPlayerByLogin?: (login: string) => void;
-  editNote: (profile: PlayerProfile) => void;
+  reportPlayer: (account: AccountRef) => void;
+  editNote: (account: AccountRef) => void;
 }
 
 interface Props {
   target: UserMenuTarget;
+  /**
+   * The FAF account behind the name: the online profile's, or a lookup's
+   * answer for somebody offline. `undefined` while the lookup is out, `null`
+   * when there is no such account (an IRC-only nickname).
+   */
+  account: AccountRef | null | undefined;
   /** Our own nickname: most actions make no sense pointed at ourselves. */
   self: string;
   isFriend: boolean;
@@ -84,10 +98,11 @@ interface Props {
 
 type Entry =
   | { kind: "separator" }
-  | { kind: "item"; label: string; onSelect: () => void; danger?: boolean };
+  | { kind: "item"; label: string; onSelect: () => void; danger?: boolean; disabled?: boolean; hint?: string };
 
 export function UserMenu({
   target,
+  account,
   self,
   isFriend,
   isFoe,
@@ -108,8 +123,23 @@ export function UserMenu({
   const isSelf = !!self && nickname.localeCompare(self, undefined, { sensitivity: "accent" }) === 0;
 
   const entries: Entry[] = [];
-  const item = (label: string, onSelect: () => void, danger?: boolean) =>
-    entries.push({ kind: "item", label, onSelect, danger });
+  const item = (label: string, onSelect: () => void, danger?: boolean, hint?: string) =>
+    entries.push({ kind: "item", label, onSelect, danger, hint });
+  // An entry that acts on the account: offered for anybody with one, greyed
+  // out while an offline player's account is still being looked up.
+  const accountItem = (label: string, act: (known: AccountRef) => void, danger?: boolean, hint?: string) => {
+    if (account === null) return;
+    entries.push({
+      kind: "item",
+      label,
+      onSelect: () => {
+        if (account) act(account);
+      },
+      danger,
+      disabled: account === undefined,
+      hint: account === undefined ? t("chat.menu.lookingUp") : hint,
+    });
+  };
   const separator = () => {
     if (entries.length > 0 && entries[entries.length - 1].kind !== "separator") {
       entries.push({ kind: "separator" });
@@ -125,44 +155,38 @@ export function UserMenu({
   if (!isSelf) item(t("chat.menu.privateMessage"), () => actions.privateMessage(nickname));
   item(t("chat.menu.copyUsername"), () => actions.copyUsername(nickname));
 
-  // What they are doing now, and what they have done. All of it needs a FAF
-  // account: an IRC-only nickname has no games and no note to keep.
-  if (profile) {
-    separator();
-    if (hostedGame) item(t("chat.menu.joinGame"), () => actions.joinGame(hostedGame));
-    if (liveGame) item(t("chat.menu.watchLive"), () => actions.watchGame(liveGame));
-    item(t("chat.menu.viewReplays"), () => actions.viewReplays(profile.login || nickname));
-    item(t("chat.menu.editNote"), () => actions.editNote(profile));
-  }
+  // What they are doing now, and what they have done. Join and watch need
+  // them online; replays and the note need only the account, so an IRC-only
+  // nickname gets neither.
+  separator();
+  if (profile && hostedGame) item(t("chat.menu.joinGame"), () => actions.joinGame(hostedGame));
+  if (profile && liveGame) item(t("chat.menu.watchLive"), () => actions.watchGame(liveGame));
+  if (account !== null) item(t("chat.menu.viewReplays"), () => actions.viewReplays(account?.login || nickname));
+  accountItem(t("chat.menu.editNote"), (known) => actions.editNote(known));
 
-  // How you stand with them. Muting is the one entry here that works without
-  // an account, because it acts on the nickname the channel shows.
+  // How you stand with them. Invite and kick act on the party, so they need
+  // them online; friend and foe act on the account.
   if (!isSelf) {
     separator();
-    if (profile) {
-      if (canInvite) item(t("chat.menu.inviteToParty"), () => actions.inviteToParty(profile.id));
-      item(t(isFriend ? "chat.menu.removeFriend" : "chat.menu.addFriend"), () =>
-        actions.setRelation(profile, "friend", !isFriend),
-      );
-      item(t(isFoe ? "chat.menu.removeFoe" : "chat.menu.addFoe"), () =>
-        actions.setRelation(profile, "foe", !isFoe),
-      );
-    }
-    item(t(isMuted ? "chat.menu.unmute" : "chat.menu.mute"), () =>
-      actions.setMuted(nickname, !isMuted),
+    if (profile && canInvite) item(t("chat.menu.inviteToParty"), () => actions.inviteToParty(profile.id));
+    accountItem(t(isFriend ? "chat.menu.removeFriend" : "chat.menu.addFriend"), (known) =>
+      actions.setRelation(known, "friend", !isFriend),
     );
+    accountItem(
+      t(isFoe ? "chat.menu.removeFoe" : "chat.menu.addFoe"),
+      (known) => actions.setRelation(known, "foe", !isFoe),
+      false,
+      isFoe ? undefined : t("chat.menu.foeHint"),
+    );
+    if (isMuted) item(t("chat.menu.unmute"), () => actions.setMuted(nickname, false));
     if (profile && canKickFromParty) {
       item(t("chat.menu.kickFromParty"), () => actions.kickFromParty(profile.id), true);
     }
   }
 
-  if (!isSelf && (profile || actions.reportPlayerByLogin)) {
+  if (!isSelf && account !== null) {
     separator();
-    item(
-      t("chat.menu.reportPlayer"),
-      () => (profile ? actions.reportPlayer(profile) : actions.reportPlayerByLogin?.(nickname)),
-      true,
-    );
+    accountItem(t("chat.menu.reportPlayer"), (known) => actions.reportPlayer(known), true);
   }
 
   // Keep the menu on screen: flip rather than clip when it would overflow.
@@ -227,6 +251,8 @@ export function UserMenu({
             type="button"
             role="menuitem"
             className={`chat-user-menu-item${entry.danger ? " is-danger" : ""}`}
+            disabled={entry.disabled}
+            title={entry.hint}
             onClick={() => {
               entry.onSelect();
               onClose();

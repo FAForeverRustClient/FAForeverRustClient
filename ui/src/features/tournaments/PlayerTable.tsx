@@ -7,7 +7,7 @@
 
 import type { PlayerSummary, Tourney, TourneyPlayer, TourneyTeam } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
-import { PlayerChip } from "./PlayerChip";
+import { EntrantName } from "./EntrantName";
 import { rankedEntrants } from "./tourneyPresentation";
 import { profileOf } from "../../shared/rules/tourneyRules";
 
@@ -72,11 +72,7 @@ export function PlayerTable({
                 <td className="mono muted">{index + 1}</td>
                 <td>
                   <span className="tournament-entrant-name">
-                    {profile ? (
-                      <PlayerChip player={profile} overrideName={player.name} />
-                    ) : (
-                      player.name
-                    )}
+                    <EntrantName name={player.name} fafId={player.fafId} profile={profile} />
                     {player.note !== "" && <span className="muted"> ({player.note})</span>}
                     {player.pending && (
                       <span className="tournament-badge">{t("tournaments.entrants.pending")}</span>
@@ -87,6 +83,14 @@ export function PlayerTable({
                     {player.manual && (
                       <span className="tournament-badge" title={t("tournaments.entrants.manual")}>
                         {t("tournaments.entrants.manualShort")}
+                      </span>
+                    )}
+                    {/* Sent only to organisers and to people signed up here, so
+                        a match can be arranged without a round trip through the
+                        chat. */}
+                    {player.discord !== "" && (
+                      <span className="tournament-discord muted" title={t("tournaments.entrants.discord")}>
+                        {"\u{1F4AC}"} {player.discord}
                       </span>
                     )}
                   </span>
@@ -114,22 +118,27 @@ export function PlayerTable({
                   <td className="muted">{team === null ? NO_RATING : teamName(team)}</td>
                 )}
                 {showStanding && (
-                  <td className="tournament-entrant-standing">
-                    {team !== null && team.seed > 0 && (
-                      <span className="muted">
-                        {t("tournaments.entrants.seed", { seed: team.seed })}
-                      </span>
-                    )}
-                    {team !== null && team.checkedIn && (
-                      <span className="tournament-badge is-running">
-                        {t("tournaments.entrants.checkedIn")}
-                      </span>
-                    )}
-                    {team !== null && team.finalRank !== null && (
-                      <span className="tournament-badge">
-                        {t("tournaments.entrants.finalRank", { rank: team.finalRank })}
-                      </span>
-                    )}
+                  <td>
+                    {/* The flex row lives inside the cell. On the cell itself
+                        it stopped being a table cell, so its height and its
+                        bottom border no longer lined up with the rest. */}
+                    <span className="tournament-entrant-standing">
+                      {team !== null && team.seed > 0 && (
+                        <span className="muted">
+                          {t("tournaments.entrants.seed", { seed: team.seed })}
+                        </span>
+                      )}
+                      {team !== null && team.checkedIn && (
+                        <span className="tournament-badge is-running">
+                          {t("tournaments.entrants.checkedIn")}
+                        </span>
+                      )}
+                      {team !== null && team.finalRank !== null && (
+                        <span className="tournament-badge">
+                          {t("tournaments.entrants.finalRank", { rank: team.finalRank })}
+                        </span>
+                      )}
+                    </span>
                   </td>
                 )}
               </tr>

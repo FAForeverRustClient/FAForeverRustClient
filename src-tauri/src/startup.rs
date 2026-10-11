@@ -110,6 +110,26 @@ pub(crate) fn locate_bundled_helpers(app: &tauri::App) {
             }
         }
     }
+
+    // Valve's library, for showing a game on Steam. Windows and Linux only,
+    // and absent from a build that does not carry it, in which case the
+    // setting that uses it simply does nothing.
+    if let Some((library_name, _)) = faf_app::infra::steam_presence::LIBRARY {
+        if std::env::var("FAF_STEAM_API_PATH")
+            .unwrap_or_default()
+            .is_empty()
+        {
+            if let Ok(resource_dir) = app.path().resource_dir() {
+                let bundled_library = resource_dir
+                    .join("natives")
+                    .join("steam")
+                    .join(library_name);
+                if bundled_library.is_file() {
+                    std::env::set_var("FAF_STEAM_API_PATH", bundled_library);
+                }
+            }
+        }
+    }
 }
 
 /// Build the core, drive its loop, forward its events, and kick off the
@@ -144,15 +164,29 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
                 // Re-establish an atomic state/event boundary rather
                 // than skipping deltas and permanently diverging from
                 // the authoritative Rust state.
-                Err(RecvError::Lagged(_)) => {
+                // Logged, with its size and how long it took to send: it is
+                // the whole state, map and mod catalogues included, and while
+                // the webview takes it in, nothing else on screen updates. A
+                // client that looked frozen for seconds left nothing behind to
+                // say whether this was why. Sizing it serialises it once more,
+                // which a lag, rare by design, can afford.
+                Err(RecvError::Lagged(skipped)) => {
+                    let started = std::time::Instant::now();
                     let (replacement, snapshot) = event_core.subscribe_versioned_with_snapshot();
                     events = replacement;
+                    let bytes = serde_json::to_vec(&snapshot.state).map_or(0, |json| json.len());
                     let _ = handle.emit(
                         EVENT_CHANNEL,
                         FrontendMessage::Snapshot {
                             revision: snapshot.revision,
                             state: Box::new(snapshot.state),
                         },
+                    );
+                    tracing::warn!(
+                        skipped,
+                        bytes,
+                        seconds = started.elapsed().as_secs_f32(),
+                        "webview event stream fell behind; sent a full state snapshot"
                     );
                 }
                 Err(RecvError::Closed) => break,

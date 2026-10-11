@@ -27,6 +27,9 @@ struct CountingMaps {
 impl MapsPort for CountingMaps {
     async fn list_vault(&self) -> Result<Vec<VaultMap>, String> {
         self.crawls.fetch_add(1, Ordering::SeqCst);
+        // Long enough for callers asking together to overlap, as views
+        // mounting together do against the real API.
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         if self.fail {
             return Err("the vault is unreachable".into());
         }
@@ -127,4 +130,25 @@ async fn a_failed_catalogue_is_retried() {
         2,
         "a failure must be retryable"
     );
+}
+
+/// Several views mounting together each ask for the catalogue. The `Loading`
+/// status alone did not stop that: commands run concurrently, so callers asking
+/// at once could all read the status before any crawl had set it, and each
+/// crawled every page.
+#[tokio::test]
+async fn callers_asking_at_once_share_one_crawl() {
+    let (app, crawls) = app_with(false);
+
+    let asks = (0..5).map(|_| app.dispatch_and_wait(MapsCommand::LoadVault.into()));
+    for result in futures_util::future::join_all(asks).await {
+        result.unwrap();
+    }
+
+    assert_eq!(
+        crawls.load(Ordering::SeqCst),
+        1,
+        "callers asking together must share one crawl"
+    );
+    assert_eq!(app.snapshot().maps.vault_status, MapListStatus::Ready);
 }

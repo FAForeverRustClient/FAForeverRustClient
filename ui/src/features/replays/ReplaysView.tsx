@@ -1,7 +1,7 @@
 // Replays workspace: backend state selects data; each tab owns its presentation state.
-import { useEffect, useState } from "react";
-import { SectionTabs } from "../../design-system/SectionTabs";
-import type { ReplayStatus } from "../../ipc/bindings";
+import { useEffect } from "react";
+import { SectionTabs, sectionPanelProps } from "../../design-system/SectionTabs";
+import type { ReplaysSection, ReplayStatus } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { LiveReplayView } from "./live/LiveReplayView";
@@ -12,7 +12,7 @@ import "./replays.css";
 import { t, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
-type SubView = "live" | "online" | "local";
+type SubView = ReplaysSection;
 
 /**
  * The line above the tabs, for progress only.
@@ -45,16 +45,29 @@ const SUB_VIEWS: Record<
   local: { label: "replays.source.local", Component: LocalReplayView },
 };
 
+/**
+ * The source is the backend's, like the Play tab's mode, so it survives the
+ * workspace unmounting when another tab is chosen: coming back to Replays
+ * lands on the source that was left, not on Online every time.
+ */
+const selectSubView = (section: SubView) =>
+  ipc.send({ kind: "Nav", command: { type: "selectReplaysSection", payload: { section } } });
+
+// Every "Replays" button elsewhere in the client (a profile, a leaderboard
+// row, a matchmaker result) asks for a vault search, and the vault is the
+// Online tab. Listened for here, at module level, and not in the component:
+// the request is made *before* the button navigates, so a workspace that is
+// not mounted yet would miss it and open on whichever source was remembered,
+// Live or Local, where the search sits unread (issue 351). The module not
+// being loaded yet is no gap: until it has been, nothing can have moved the
+// remembered source off Online.
+subscribeReplaySearch(() => {
+  if (useAppStore.getState().state.nav.replaysSection !== "online") selectSubView("online");
+});
+
 export function ReplaysView() {
   const { t: translate } = useTranslation();
-  const [subView, setSubView] = useState<SubView>("online");
-  // Every "Replays" button elsewhere in the client (a profile, a leaderboard
-  // row, a matchmaker result) asks for a vault search, and the vault is the
-  // Online tab. Opened from a player who was clicked in the Replays tab
-  // itself, the workspace is already mounted and kept whichever tab was in
-  // front: Live, where the search sat unread until somebody happened to click
-  // Online (issue 351).
-  useEffect(() => subscribeReplaySearch(() => setSubView("online")), []);
+  const subView = useAppStore((state) => state.state.nav.replaysSection);
   // An offline session has the archive on this disk and nothing else: the
   // vault and the live games are both server questions.
   const offline = useAppStore((state) => state.state.auth.mode === "offline");
@@ -88,9 +101,12 @@ export function ReplaysView() {
         ariaLabel={translate("replays.source.aria")}
         className="replay-source-tabs"
         items={sources.map((key) => ({ id: key, label: translate(SUB_VIEWS[key].label) }))}
-        onChange={setSubView}
+        onChange={selectSubView}
+        idPrefix="replay-source"
       />
-      <Component busy={busy} />
+      <div {...sectionPanelProps("replay-source", activeSource)}>
+        <Component busy={busy} />
+      </div>
     </div>
   );
 }

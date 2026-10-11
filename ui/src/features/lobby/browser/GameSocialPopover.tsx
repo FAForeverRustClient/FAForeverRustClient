@@ -85,7 +85,7 @@ export function GameSocialPopover({
                 )}
                 <PlayerName name={login} className="game-friend-name" />
                 {teamName && <span className="game-friend-team">{teamName}</span>}
-                <span className="game-friend-rating">{rating === null ? "N/A" : rating}</span>
+                <span className="game-friend-rating">{rating === null ? t("common.notAvailable") : rating}</span>
               </button>
             </li>
           );

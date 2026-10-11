@@ -7,14 +7,14 @@
 // file in the Local tab too. A file with no game id gets no button, since a
 // note on it could never be found again.
 //
-// Not a second `Modal`, for the reason `ReplayInsights` gives: the replay
-// panel underneath is one, and `Modal` closes on Escape from a bubble-phase
-// listener. This takes Escape in the capture phase, so one press closes the
-// notes and leaves the replay open.
+// Drawn over the replay panel, as `ReplayInsights` is, and one layer of the
+// overlay stack while open: one press of Escape closes the notes and leaves
+// the replay open.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { useOverlayLayer } from "../../design-system/useOverlayLayer";
 import { ipc } from "../../ipc/client";
 import { useTranslation } from "../../i18n/useTranslation";
 import {
@@ -45,16 +45,7 @@ export function ReplayNotesDialog({
   const [comment, setComment] = useState(note?.comment ?? "");
   const [tags, setTags] = useState((note?.tags ?? []).join(", "));
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      onClose();
-    };
-    document.addEventListener("keydown", onKeyDown, true);
-    return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [onClose]);
+  useOverlayLayer(true, onClose);
 
   const save = (nextComment: string, nextTags: string[]) => {
     ipc.send({

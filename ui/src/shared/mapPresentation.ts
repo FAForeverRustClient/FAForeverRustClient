@@ -1,5 +1,6 @@
 import type { CoopFaction, CoopMission, MapInstallStatus, VaultMap } from "../ipc/bindings";
 import { t } from "../i18n";
+import { plainError } from "./plainError";
 import { useAppStore } from "../store/store";
 
 /** Preview used when a generated map has no rendered map image yet. */
@@ -276,6 +277,16 @@ export function isUnknownVaultMap(mapName: string): boolean {
 }
 
 /**
+ * Did this listing name a generated map only as the generator, without the
+ * seed? The vault records most generated games that way, and a name without
+ * its seed can neither be generated nor matched to a preview: the replay file
+ * has the whole name, as it has a co-op mission's.
+ */
+export function isSeedlessGeneratedMap(mapName: string): boolean {
+  return isGeneratedMap(mapName) && !extractGeneratedMapSeed(mapName);
+}
+
+/**
  * Prefer the technical map name from a matching local replay when a vault
  * replay only contains the generic Neroxis display name. The technical name
  * is the key used by the locally generated preview cache.
@@ -351,14 +362,20 @@ export function mapThumbnailCandidates(
   const baseName = baseMapName(mapName);
   const officialKey = officialMapFor(mapName)?.folderName;
   const size = large ? "large" : "small";
+  // Built from the folder name, as Java builds every game tile's preview
+  // (`MapService.loadPreview` with the folder, escaped and lower-cased). A
+  // folder with spaces in it is an old vault map's, `Phenom Spartiate v2`
+  // being one, and the preview service has those too
+  // (`previews/small/phenom%20spartiate%20v2.png`): leaving them out left such
+  // a map with no art at all whenever the vault record was missing (#385).
   const canonicalPreviewUrls = [
     officialKey
       ? `https://content.faforever.com/maps/previews/${size}/${officialKey}.png`
       : undefined,
-    normalized && !normalized.includes(" ")
+    normalized
       ? `https://content.faforever.com/maps/previews/${size}/${encodeURIComponent(normalized)}.png`
       : undefined,
-    baseName !== normalized && !baseName.includes(" ")
+    baseName !== normalized && baseName
       ? `https://content.faforever.com/maps/previews/${size}/${encodeURIComponent(baseName)}.png`
       : undefined,
   ];
@@ -531,14 +548,28 @@ export function kilometresLabel(units: number): string {
   return (units / UNITS_PER_KM).toFixed(2).replace(/\.?0+$/, "");
 }
 
+/**
+ * `10 km`: a length already in kilometres, with the unit as the catalogue
+ * writes it. Every map size in the client goes through this or
+ * `kilometresArea`, so the unit is worded in one place.
+ */
+export function kilometres(size: string | number): string {
+  return t("common.kilometres", { size });
+}
+
+/** `10 × 5 km`: a width and a height already in kilometres. */
+export function kilometresArea(width: string | number, height: string | number): string {
+  return t("common.kilometresArea", { width, height });
+}
+
 /** Both renderings of a width and height in generator units. */
 export function mapSizeOf(width: number, height: number): MapSize | null {
   if (!(width > 0) || !(height > 0)) return null;
   const w = kilometresLabel(width);
   const h = kilometresLabel(height);
   return {
-    full: `${w} × ${h} km`,
-    compact: w === h ? `${w} km` : `${w} × ${h} km`,
+    full: kilometresArea(w, h),
+    compact: w === h ? kilometres(w) : kilometresArea(w, h),
   };
 }
 
@@ -582,14 +613,14 @@ export function installNote(status: MapInstallStatus): string | null {
     case "installing":
       return t("maps.vault.working", { folder: status.payload.folderName });
     case "failed":
-      return t("maps.vault.operationFailed", { reason: status.payload.reason });
+      return t("maps.vault.operationFailed", { reason: plainError(status.payload.reason) });
   }
 }
 
 export function sizeLabel(map: { width?: number; height?: number }): string {
   const w = map.width ?? 512;
   const h = map.height ?? 512;
-  return `${kilometresLabel(w)} × ${kilometresLabel(h)} km`;
+  return kilometresArea(kilometresLabel(w), kilometresLabel(h));
 }
 
 export function ratingLabel(map: VaultMap): string {

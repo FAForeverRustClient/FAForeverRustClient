@@ -59,12 +59,13 @@ async fn choosing_an_adapter_reaches_the_port_and_is_stored() {
     let app = app_with(chosen.clone());
 
     app.dispatch(
-        SettingsCommand::SetConnectivity {
-            preferences: ConnectivityPreferences {
+        SettingsCommand::PatchConnectivity {
+            patch: ConnectivityPreferences {
                 adapter: IceAdapter::Go,
                 host_adapter: IceAdapter::Java,
                 selection_version: 1,
-            },
+            }
+            .into(),
         }
         .into(),
     )
@@ -104,12 +105,13 @@ async fn both_backends_remain_selectable() {
 
     for adapter in [IceAdapter::Go, IceAdapter::Java, IceAdapter::Go] {
         app.dispatch(
-            SettingsCommand::SetConnectivity {
-                preferences: ConnectivityPreferences {
+            SettingsCommand::PatchConnectivity {
+                patch: ConnectivityPreferences {
                     adapter,
                     host_adapter: IceAdapter::Java,
                     selection_version: 1,
-                },
+                }
+                .into(),
             }
             .into(),
         )

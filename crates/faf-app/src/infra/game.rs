@@ -24,6 +24,7 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use std::time::Duration;
@@ -138,6 +139,11 @@ pub struct GameProcess {
     /// deliberately not fatal, here or at launch time, because a replay that
     /// only exists locally is still a replay.
     replay_relay: Option<crate::infra::replay_relay::ReplayRelayConfig>,
+    /// Show each game on Steam while it runs; see `infra::steam_presence`.
+    /// Off until Settings says otherwise, which is also its default there.
+    steam_presence: AtomicBool,
+    /// Make the game's window borderless; see `infra::borderless`.
+    borderless_window: AtomicBool,
 }
 
 impl GameProcess {
@@ -149,6 +155,8 @@ impl GameProcess {
             exited: Arc::new(Notify::new()),
             replay_recorder: Mutex::new(None),
             replay_relay: None,
+            steam_presence: AtomicBool::new(false),
+            borderless_window: AtomicBool::new(false),
         }
     }
 
@@ -345,6 +353,7 @@ impl GameProcess {
         // froze on a blank post-shader-compile screen with zero further disk
         // activity, no crash, no error. `start_kill()` mirrors
         // `ProcessPort::kill`'s own termination call.
+        let game_pid = child.id();
         let running = Running {
             child,
             exe: install_key(&exe),
@@ -353,6 +362,24 @@ impl GameProcess {
             let _ = prev.child.start_kill();
         }
         self.watch_for_exit(slot);
+
+        // The game slot only: a live game or a tutorial is Forged Alliance
+        // being played, and a replay window is somebody watching one. Nothing
+        // to stop later, because the helper waits on this very process and
+        // ends when it does.
+        if slot == Slot::Game && self.steam_presence.load(Ordering::Relaxed) {
+            if let Some(game_pid) = game_pid {
+                crate::infra::steam_presence::start(game_pid);
+            }
+        }
+        // Both slots: a replay is watched in the same window a game is
+        // played in, and the player who wants one borderless wants the other
+        // so too.
+        if self.borderless_window.load(Ordering::Relaxed) {
+            if let Some(game_pid) = game_pid {
+                crate::infra::borderless::start(game_pid);
+            }
+        }
         Ok(())
     }
 
@@ -412,6 +439,10 @@ impl ProcessPort for GameProcess {
 
     fn replay_running(&self) -> bool {
         self.replay_child.lock().unwrap().is_some()
+    }
+
+    fn game_running(&self) -> bool {
+        self.game_child.lock().unwrap().is_some()
     }
 
     async fn launch_game(&self, params: GameLaunchParams) -> Result<(), String> {
@@ -503,6 +534,14 @@ impl ProcessPort for GameProcess {
         let mut config = self.config.lock().unwrap();
         config.launch_wrapper = wrapper;
         config.wine_prefix = wine_prefix;
+    }
+
+    fn set_steam_presence(&self, enabled: bool) {
+        self.steam_presence.store(enabled, Ordering::Relaxed);
+    }
+
+    fn set_borderless_window(&self, enabled: bool) {
+        self.borderless_window.store(enabled, Ordering::Relaxed);
     }
 
     fn game_argument_path(&self, path: &Path) -> String {
@@ -994,16 +1033,20 @@ fn build_arguments(
 /// Mirrors the Java client's `LaunchCommandBuilder` for `launchOfflineGame`:
 /// the init script for the featured mod, no bug reporter, and the scenario to
 /// load. Deliberately no `/gpgnet`: there is no adapter and no lobby.
+///
+/// An empty `map` leaves `/map` out, which opens the game's own menu rather
+/// than a scenario: the "Play offline" on the login screen (#397).
 fn offline_arguments(featured_mod: &str, map: &str, log_path: &str) -> Vec<String> {
-    vec![
+    let mut arguments = vec![
         "/init".into(),
         format!("init_{featured_mod}.lua"),
         "/nobugreport".into(),
-        "/map".into(),
-        map.into(),
-        "/log".into(),
-        log_path.to_string(),
-    ]
+    ];
+    if !map.is_empty() {
+        arguments.extend(["/map".into(), map.into()]);
+    }
+    arguments.extend(["/log".into(), log_path.to_string()]);
+    arguments
 }
 
 /// Inert game launcher: used offline and in tests. Launching is a no-op success.
@@ -1152,6 +1195,20 @@ mod tests {
             args: vec!["/numgames".into(), "5".into()],
             replay: Default::default(),
         }
+    }
+
+    #[test]
+    fn an_offline_launch_without_a_map_opens_the_game_menu() {
+        let menu = offline_arguments("faf", "", "game.log");
+        assert!(!menu.iter().any(|argument| argument == "/map"));
+        assert_eq!(&menu[..2], ["/init", "init_faf.lua"]);
+
+        let tutorial = offline_arguments("tutorials", "SCMP_001", "game.log");
+        let at = tutorial
+            .iter()
+            .position(|argument| argument == "/map")
+            .unwrap();
+        assert_eq!(tutorial[at + 1], "SCMP_001");
     }
 
     #[test]

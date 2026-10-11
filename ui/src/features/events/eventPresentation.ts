@@ -120,6 +120,56 @@ export function entryTime(entry: CalendarEntry): string {
   return `${start} - ${formatTime(entry.endsAt * 1000, "")}`;
 }
 
+/** The start time alone, or an empty string for an all-day entry. */
+export function entryStart(entry: CalendarEntry): string {
+  return entry.allDay ? "" : formatTime(entry.startsAt * 1000, "");
+}
+
+/** "Tue", for the agenda's date column. */
+export function weekdayShort(date: Date): string {
+  return date.toLocaleDateString(clientIntlTag(), { weekday: "short" });
+}
+
+/** "Oct", for the agenda's date column. */
+export function monthShort(date: Date): string {
+  return date.toLocaleDateString(clientIntlTag(), { month: "short" });
+}
+
+/**
+ * "Today" or "Tomorrow" in the player's language, or an empty string for any
+ * other day.
+ *
+ * From the runtime rather than the catalogues: `Intl.RelativeTimeFormat` with
+ * `numeric: "auto"` already has the word in every language the client ships.
+ */
+export function relativeDay(date: Date, now: Date): string {
+  const midnight = (value: Date) =>
+    new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+  // Rounded, because a day across a daylight-saving change is 23 or 25 hours.
+  const days = Math.round((midnight(date) - midnight(now)) / 86_400_000);
+  if (days !== 0 && days !== 1) return "";
+  try {
+    const word = new Intl.RelativeTimeFormat(clientIntlTag(), { numeric: "auto" }).format(
+      days,
+      "day",
+    );
+    return word.charAt(0).toLocaleUpperCase(clientIntlTag()) + word.slice(1);
+  } catch {
+    // A runtime without relative time formatting falls back to the weekday.
+    return "";
+  }
+}
+
+/** "Wednesday, 30 September 2026", for the detail panel. */
+export function fullDate(date: Date): string {
+  return date.toLocaleDateString(clientIntlTag(), {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 /** The reader's own zone, named, so the times above are unambiguous. */
 export function localZoneName(): string {
   try {

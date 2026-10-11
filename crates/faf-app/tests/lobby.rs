@@ -96,8 +96,9 @@ impl SettingsPort for RecordingSettings {
         }
     }
 
-    async fn save(&self, settings: &SettingsState) {
+    async fn save(&self, settings: &SettingsState) -> Result<(), String> {
         self.saved.lock().unwrap().push(settings.clone());
+        Ok(())
     }
 }
 
@@ -253,6 +254,11 @@ async fn connect_streams_game_snapshots() {
     assert!(matches!(
         events.recv().await.unwrap(),
         AppEvent::Lobby(faf_domain::state::LobbyEvent::Connected)
+    ));
+    // Login asks for the avatar list, which the avatar fallback needs.
+    assert!(matches!(
+        events.recv().await.unwrap(),
+        AppEvent::Lobby(faf_domain::state::LobbyEvent::AvatarsLoading)
     ));
 
     // The fake sends an immediate first snapshot: no waiting on the tick.
@@ -527,6 +533,10 @@ async fn duplicate_connect_is_dropped_single_flight() {
     ));
     assert!(matches!(
         events.recv().await.unwrap(),
+        AppEvent::Lobby(faf_domain::state::LobbyEvent::AvatarsLoading)
+    ));
+    assert!(matches!(
+        events.recv().await.unwrap(),
         AppEvent::Lobby(faf_domain::state::LobbyEvent::GamesUpdated { .. })
     ));
 
@@ -592,4 +602,206 @@ async fn join_emits_joining_then_launching() {
         JoinState::Launched { launch } => assert_eq!(launch.uid, 2),
         other => panic!("expected Launched, got {other:?}"),
     }
+}
+
+async fn search_started(
+    app: &App,
+    events: &mut tokio::sync::broadcast::Receiver<AppEvent>,
+) -> Vec<MatchmakingState> {
+    app.dispatch(
+        LobbyCommand::StartSearch {
+            queue_names: vec!["ladder1v1".into()],
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    let mut seen = Vec::new();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if let AppEvent::Lobby(LobbyEvent::MatchmakingUpdated { state }) =
+                events.recv().await.unwrap()
+            {
+                let searching = matches!(state, MatchmakingState::Searching { .. });
+                seen.push(state);
+                if searching {
+                    break;
+                }
+            }
+        }
+    })
+    .await
+    .expect("the search never started");
+    seen
+}
+
+#[tokio::test]
+async fn a_search_is_prepared_before_the_server_is_asked_for_it() {
+    // Java's order: get ready, then queue. The bar shows the first half.
+    let lobby = FakeLobby::default();
+    let ports = Ports {
+        lobby: Arc::new(lobby.clone()),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    let mut events = app.subscribe();
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    wait_for_initial_games(&mut events).await;
+
+    let seen = search_started(&app, &mut events).await;
+
+    assert_eq!(
+        seen.first(),
+        Some(&MatchmakingState::Preparing {
+            queue_names: vec!["ladder1v1".into()],
+        })
+    );
+    assert_eq!(
+        app.snapshot().lobby.matchmaking,
+        MatchmakingState::Searching {
+            queue_names: vec!["ladder1v1".into()],
+        }
+    );
+}
+
+#[tokio::test]
+async fn a_party_invite_cannot_be_accepted_while_searching() {
+    // The server would move the player into the party and leave their own
+    // search running, which as a member they could not stop.
+    let lobby = FakeLobby::default();
+    let ports = Ports {
+        lobby: Arc::new(lobby.clone()),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    let mut events = app.subscribe();
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    wait_for_initial_games(&mut events).await;
+    search_started(&app, &mut events).await;
+
+    app.dispatch(LobbyCommand::AcceptPartyInvite { player_id: 5 }.into())
+        .await
+        .unwrap();
+
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if let AppEvent::Notifications(NotificationEvent::Added { notification }) =
+                events.recv().await.unwrap()
+            {
+                if notification.title == "Cannot join the party" {
+                    assert!(notification.body.contains("Stop your search"));
+                    break;
+                }
+            }
+        }
+    })
+    .await
+    .expect("the refusal was never shown");
+}
+
+/// The fake lobby's avatar list holds the two Galactic War avatars; the
+/// tournament one below is in neither, which is what a lapsed one looks like.
+const AEON_AVATAR: &str = "https://content.faforever.com/faf/avatars/GW_Aeon.png";
+const CUP_AVATAR: &str = "https://content.faforever.com/faf/avatars/cup_winner.png";
+
+struct AvatarHistorySettings {
+    history: Vec<String>,
+    saved: Arc<Mutex<Vec<SettingsState>>>,
+}
+
+#[async_trait]
+impl SettingsPort for AvatarHistorySettings {
+    async fn load(&self) -> SettingsState {
+        SettingsState {
+            game: faf_domain::state::GamePreferences {
+                cache_lifetime_days: None,
+                ..faf_domain::state::GamePreferences::default()
+            },
+            avatar_history: self.history.clone(),
+            ..SettingsState::default()
+        }
+    }
+
+    async fn save(&self, settings: &SettingsState) -> Result<(), String> {
+        self.saved.lock().unwrap().push(settings.clone());
+        Ok(())
+    }
+}
+
+#[tokio::test]
+async fn a_lapsed_tournament_avatar_is_replaced_by_the_one_chosen_before_it() {
+    let lobby = FakeLobby::default();
+    let saved = Arc::new(Mutex::new(Vec::new()));
+    let ports = Ports {
+        lobby: Arc::new(lobby.clone()),
+        settings: Arc::new(AvatarHistorySettings {
+            history: vec![CUP_AVATAR.into(), AEON_AVATAR.into()],
+            saved: saved.clone(),
+        }),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    let mut events = app.subscribe();
+
+    app.dispatch_and_wait(faf_domain::state::SettingsCommand::Load.into())
+        .await
+        .unwrap();
+    app.dispatch_and_wait(faf_domain::state::AuthCommand::LoginTest.into())
+        .await
+        .unwrap();
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    wait_for_initial_games(&mut events).await;
+
+    // Login asked for the avatar list; our own `player_info` is the other half,
+    // and it names no avatar: the server stopped sending the lapsed one.
+    assert!(
+        lobby.push_update(LobbyUpdate::PlayersSeen(vec![PlayerProfile {
+            id: 42,
+            login: "TestCommander".into(),
+            ..PlayerProfile::default()
+        }]))
+    );
+
+    let mut notified = false;
+    for _ in 0..200 {
+        if app
+            .snapshot()
+            .settings
+            .avatar_history
+            .first()
+            .map(String::as_str)
+            == Some(AEON_AVATAR)
+            && notified
+        {
+            break;
+        }
+        while let Ok(event) = events.try_recv() {
+            if let AppEvent::Notifications(NotificationEvent::Added { notification }) = event {
+                notified |= notification.kind == NotificationKind::AvatarRestored;
+            }
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+
+    let snapshot = app.snapshot();
+    assert_eq!(
+        snapshot.settings.avatar_history,
+        vec![AEON_AVATAR.to_string(), CUP_AVATAR.to_string()]
+    );
+    let me = snapshot
+        .social
+        .players
+        .iter()
+        .find(|player| player.id == 42)
+        .unwrap();
+    assert_eq!(me.avatar_url, AEON_AVATAR);
+    assert!(notified, "the switch is announced once");
+    assert_eq!(
+        saved.lock().unwrap().last().unwrap().avatar_history,
+        snapshot.settings.avatar_history,
+        "the new order is saved, so the next login does not fall back again"
+    );
 }

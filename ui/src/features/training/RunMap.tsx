@@ -14,6 +14,7 @@
 
 import { useMemo, useState } from "react";
 
+import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { catColor, markerPaths, mmss, RECLAIM_COLOR, type Envelope } from "./recording";
 
@@ -27,6 +28,20 @@ interface Props {
 /** Engineers are what a build order's routing is about; the rest starts off. */
 const DEFAULT_CATS = ["engie"];
 
+/** The reader's word for each category the recorder and `refineCat` produce. */
+const CAT_LABELS: Record<string, MessageKey> = {
+  acu: "training.run.cat.acu",
+  factory: "training.run.cat.factory",
+  engie: "training.run.cat.engie",
+  mex: "training.run.cat.mex",
+  power: "training.run.cat.power",
+  reclaim: "training.run.cat.reclaim",
+  structure: "training.run.cat.structure",
+  unit: "training.run.cat.unit",
+  bomber: "training.run.cat.bomber",
+  interceptor: "training.run.cat.interceptor",
+};
+
 export function RunMap({ env, previewUrl, hovered, onHover }: Props) {
   const { t } = useTranslation();
   const { sizeX, sizeZ, playable } = env.meta.map;
@@ -37,6 +52,14 @@ export function RunMap({ env, previewUrl, hovered, onHover }: Props) {
   const [active, setActive] = useState<string[]>(() =>
     cats.filter((c) => DEFAULT_CATS.includes(c)),
   );
+  // Which categories are shown is a choice about one run. Opening the next
+  // one starts from the defaults again instead of inheriting the last run's
+  // ticks, which may not even exist in this one.
+  const [activeRun, setActiveRun] = useState(env);
+  if (activeRun !== env) {
+    setActiveRun(env);
+    setActive(cats.filter((c) => DEFAULT_CATS.includes(c)));
+  }
 
   if (!sizeX || !sizeZ) {
     // A run recorded before the map line existed. Its positions are real and
@@ -44,6 +67,13 @@ export function RunMap({ env, previewUrl, hovered, onHover }: Props) {
     // drawing an empty square.
     return <p className="muted training-run-problem">{t("training.run.noMapSize")}</p>;
   }
+
+  // A category this client has no word for is shown as the recorder named it
+  // rather than hidden.
+  const catLabel = (cat: string) => {
+    const key: MessageKey | undefined = CAT_LABELS[cat];
+    return key ? t(key) : cat;
+  };
 
   const toggle = (cat: string) =>
     setActive((prev) => (prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]));
@@ -65,7 +95,7 @@ export function RunMap({ env, previewUrl, hovered, onHover }: Props) {
           <label key={cat}>
             <input type="checkbox" checked={active.includes(cat)} onChange={() => toggle(cat)} />
             <span className="training-run-swatch" style={{ background: catColor(cat) }} />
-            {cat}
+            {catLabel(cat)}
             <span className="muted">{paths.filter((p) => p.cat === cat).length}</span>
           </label>
         ))}

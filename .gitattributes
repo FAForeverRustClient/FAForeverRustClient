@@ -15,3 +15,6 @@
 *.png binary
 *.ico binary
 *.icns binary
+
+# Valve's Steamworks libraries: byte-for-byte as the SDK ships them.
+vendor/steamworks/*/* binary

@@ -26,6 +26,9 @@ const TICK: Duration = Duration::from_secs(2);
 /// Delay before the fake server "accepts" a join and replies with a launch order.
 const JOIN_DELAY: Duration = Duration::from_millis(150);
 
+/// A game relay message as sent: the command and its arguments.
+pub type GameRelay = (String, Vec<serde_json::Value>);
+
 #[derive(Debug, Clone, Default)]
 pub struct FakeLobby {
     /// Cancels the in-flight connection's update loop. Shared so `disconnect`
@@ -36,6 +39,10 @@ pub struct FakeLobby {
     updates: Arc<Mutex<Option<mpsc::Sender<LobbyUpdate>>>>,
     matchmaking: Arc<Mutex<MatchmakingState>>,
     hosted: Arc<Mutex<Vec<HostGameConfig>>>,
+    /// When set, `join` records the request and leaves the answer to the
+    /// test (`answer_join`), so a test can act between the two.
+    held_joins: Arc<Mutex<Option<Vec<i32>>>>,
+    relays: Arc<Mutex<Vec<GameRelay>>>,
 }
 
 impl FakeLobby {
@@ -52,6 +59,26 @@ impl FakeLobby {
 
     pub fn hosted_configs(&self) -> Vec<HostGameConfig> {
         self.hosted.lock().unwrap().clone()
+    }
+
+    /// Stop answering joins on a timer; see `held_joins` and `answer_join`.
+    pub fn hold_join_answers(&self) {
+        *self.held_joins.lock().unwrap() = Some(Vec::new());
+    }
+
+    /// The join requests sent while answers are held, in order.
+    pub fn held_joins(&self) -> Vec<i32> {
+        self.held_joins.lock().unwrap().clone().unwrap_or_default()
+    }
+
+    /// Answer a join with its launch order, as the server would.
+    pub fn answer_join(&self, id: i32) -> bool {
+        self.push_update(LobbyUpdate::Launch(fake_launch(id)))
+    }
+
+    /// Every game relay message sent, in order.
+    pub fn game_relays(&self) -> Vec<GameRelay> {
+        self.relays.lock().unwrap().clone()
     }
 }
 
@@ -109,6 +136,7 @@ impl LobbyPort for FakeLobby {
                         team_size: 1,
                         num_players: 18,
                         queue_pop_time_seconds: 95,
+                        queue_pops_at: String::new(),
                         // A spread of searches so the offline shell shows the
                         // "in your range" count doing something. The 75%
                         // windows are the wider ones, as on the server.
@@ -146,6 +174,7 @@ impl LobbyPort for FakeLobby {
                         team_size: 2,
                         num_players: 12,
                         queue_pop_time_seconds: 150,
+                        queue_pops_at: String::new(),
                         boundary_80s: vec![RatingRange {
                             min: 900,
                             max: 1_300,
@@ -160,6 +189,7 @@ impl LobbyPort for FakeLobby {
                         team_size: 4,
                         num_players: 20,
                         queue_pop_time_seconds: 210,
+                        queue_pops_at: String::new(),
                         boundary_80s: Vec::new(),
                         boundary_75s: Vec::new(),
                     },
@@ -187,6 +217,10 @@ impl LobbyPort for FakeLobby {
         let Some(tx) = self.updates.lock().unwrap().clone() else {
             return false;
         };
+        if let Some(held) = self.held_joins.lock().unwrap().as_mut() {
+            held.push(id);
+            return true;
+        }
         tokio::spawn(async move {
             tokio::time::sleep(JOIN_DELAY).await;
             let _ = tx.send(LobbyUpdate::Launch(fake_launch(id))).await;
@@ -242,7 +276,12 @@ impl LobbyPort for FakeLobby {
             return;
         };
         tokio::spawn(async move {
-            let _ = tx.send(LobbyUpdate::Vetoes(vetoes)).await;
+            let _ = tx
+                .send(LobbyUpdate::Vetoes {
+                    vetoes,
+                    forced: false,
+                })
+                .await;
         });
     }
 
@@ -277,8 +316,10 @@ impl LobbyPort for FakeLobby {
         self.updates.lock().unwrap().is_some()
     }
 
-    fn send_game_relay(&self, _command: String, _args: Vec<serde_json::Value>) {
-        // The fake stops at the launch order; it doesn't simulate in-game relay.
+    fn send_game_relay(&self, command: String, args: Vec<serde_json::Value>) {
+        // The fake stops at the launch order; it doesn't simulate in-game
+        // relay, only records what was sent.
+        self.relays.lock().unwrap().push((command, args));
     }
 
     fn disconnect(&self) {

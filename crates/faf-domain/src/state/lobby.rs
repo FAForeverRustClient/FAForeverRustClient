@@ -131,27 +131,32 @@ impl HostGameConfig {
             return Err("Visibility must be public or friends only.".into());
         }
 
-        if self.enforce_rating_range {
-            let (Some(minimum), Some(maximum)) = (self.rating_min, self.rating_max) else {
-                return Err(
-                    "Both rating limits are required when rating enforcement is enabled.".into(),
-                );
-            };
-            if !(Self::MIN_RATING..=Self::MAX_RATING).contains(&minimum)
-                || !(Self::MIN_RATING..=Self::MAX_RATING).contains(&maximum)
-            {
-                return Err(format!(
-                    "Rating limits must be between {} and {}.",
-                    Self::MIN_RATING,
-                    Self::MAX_RATING
-                ));
-            }
+        // Either end may be open (#372): "800 to any" is a range the server
+        // takes as it is, because its `InclusiveRange` treats a missing bound
+        // as no bound. Demanding both only made somebody invent a maximum,
+        // and refused the game after the dialog had already closed on their
+        // choices.
+        //
+        // Checked and kept whether or not it is enforced. Unenforced, it is
+        // the range the lobby advertises (the server's
+        // `displayed_rating_range`), which Java sends either way
+        // (`CreateGameController.hostGame`) and which Java's join asks a
+        // player outside it to confirm. The host dialog has always offered
+        // the fields without the box ticked; the range was then dropped here.
+        let out_of_bounds = |limit: Option<i32>| {
+            limit.is_some_and(|value| !(Self::MIN_RATING..=Self::MAX_RATING).contains(&value))
+        };
+        if out_of_bounds(self.rating_min) || out_of_bounds(self.rating_max) {
+            return Err(format!(
+                "Rating limits must be between {} and {}.",
+                Self::MIN_RATING,
+                Self::MAX_RATING
+            ));
+        }
+        if let (Some(minimum), Some(maximum)) = (self.rating_min, self.rating_max) {
             if minimum > maximum {
                 return Err("Minimum rating cannot be greater than maximum rating.".into());
             }
-        } else {
-            self.rating_min = None;
-            self.rating_max = None;
         }
 
         Ok(self)
@@ -252,6 +257,20 @@ pub struct MatchmakerQueue {
     pub team_size: i32,
     pub num_players: i32,
     pub queue_pop_time_seconds: i32,
+    /// When the queue pops next, as an RFC 3339 instant on this machine's clock.
+    ///
+    /// The Java client counts down to the server's absolute `queue_pop_time`
+    /// (`MatchmakingQueueItemController`). This is the same instant, but taken
+    /// from `queue_pop_time_delta` at the moment the message arrived, so a
+    /// clock that is a minute off does not move the countdown by a minute.
+    /// Empty when the server sent no delta.
+    ///
+    /// The countdown used to be anchored in the Play tab instead, at whatever
+    /// moment the tab rendered the queue. A delta that had arrived while the
+    /// tab was closed then started counting from the moment it was opened, so
+    /// the timer ran late, and reached zero long after the pop it was counting
+    /// down to.
+    pub queue_pops_at: String,
     /// The rating windows of the searches queued right now, at roughly 80%
     /// match quality. One entry per search, not per player.
     ///
@@ -269,6 +288,17 @@ pub struct MatchmakerQueue {
 pub enum MatchmakingState {
     #[default]
     Idle,
+    /// The search was asked for and the client is getting ready for it: the
+    /// featured mod is being brought up to date and the queues' pool maps
+    /// downloaded, before the server is asked to queue anybody.
+    ///
+    /// That is the Java client's order (`TeamMatchmakingService.joinQueues`):
+    /// a match can be made the moment the search starts, and the host then has
+    /// sixty seconds to start the game. A patch or a map download that begins
+    /// only at that point can take longer than that, and the server then
+    /// cancels the match for all of its players.
+    #[serde(rename_all = "camelCase")]
+    Preparing { queue_names: Vec<String> },
     #[serde(rename_all = "camelCase")]
     Searching { queue_names: Vec<String> },
     #[serde(rename_all = "camelCase")]
@@ -315,6 +345,11 @@ impl MatchmakingState {
             Self::Searching { queue_names }
         };
         *self != before
+    }
+
+    /// Asked for a match and not yet given one: preparing or searching.
+    pub fn is_looking(&self) -> bool {
+        matches!(self, Self::Preparing { .. } | Self::Searching { .. })
     }
 
     pub fn searching_queues(&self) -> &[String] {
@@ -524,6 +559,85 @@ pub struct AvailableAvatar {
     pub tooltip: String,
 }
 
+/// How many avatar choices are remembered for the fallback below. Enough to
+/// walk back past a run of temporary avatars, few enough that the list never
+/// matters to the settings file.
+pub const AVATAR_HISTORY_LIMIT: usize = 8;
+
+/// What to do about the player's own avatar, once both the server's list of
+/// avatars they may wear and their own `player_info` are known.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AvatarReconciliation {
+    /// Nothing to change.
+    Keep,
+    /// Record this as the latest choice without sending anything: it was made
+    /// in another client, or (as an empty string) the avatar was cleared there.
+    Remember(String),
+    /// The avatar chosen last is no longer allowed; select this earlier one.
+    Restore(String),
+}
+
+/// Decide whether the player's avatar needs falling back.
+///
+/// The case it exists for is a rotational tournament avatar: it is assigned
+/// for a few months, and when it lapses or goes to the next winner the server
+/// simply stops sending it, leaving the player with no avatar at all. The
+/// player asked for "the last selected one" instead, so `history` is the
+/// avatars this client saw chosen, newest first, and an empty string in it is
+/// a deliberate choice of none.
+///
+/// The fallback only fires when the newest choice has left `available`. An
+/// empty avatar while that choice is still allowed means the player cleared
+/// it, here or in another client, and is remembered rather than overruled.
+pub fn reconcile_avatar(
+    history: &[String],
+    current: &str,
+    available: &[AvailableAvatar],
+) -> AvatarReconciliation {
+    let allowed = |url: &str| available.iter().any(|avatar| avatar.url == url);
+    let newest = history.first().map(String::as_str);
+
+    if !current.is_empty() && allowed(current) {
+        // Wearing something the server still allows. If it is not what this
+        // client last saw chosen, it was chosen elsewhere: that is now the
+        // choice to fall back from, and the old head becomes the fallback.
+        return if newest == Some(current) {
+            AvatarReconciliation::Keep
+        } else {
+            AvatarReconciliation::Remember(current.to_string())
+        };
+    }
+
+    match newest {
+        None | Some("") => AvatarReconciliation::Keep,
+        Some(url) if allowed(url) => {
+            if current.is_empty() {
+                AvatarReconciliation::Remember(String::new())
+            } else {
+                AvatarReconciliation::Keep
+            }
+        }
+        Some(_) => history
+            .iter()
+            .skip(1)
+            // An older "none" is where the walk stops: before this avatar the
+            // player wore nothing, and wearing nothing is what they have now.
+            .take_while(|url| !url.is_empty())
+            .find(|url| url.as_str() != current && allowed(url))
+            .map_or(AvatarReconciliation::Keep, |url| {
+                AvatarReconciliation::Restore(url.clone())
+            }),
+    }
+}
+
+/// `history` with `url` moved to the front, deduplicated and capped.
+pub fn remember_avatar(history: &[String], url: &str) -> Vec<String> {
+    std::iter::once(url.to_string())
+        .chain(history.iter().filter(|old| old.as_str() != url).cloned())
+        .take(AVATAR_HISTORY_LIMIT)
+        .collect()
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum AvatarListStatus {
@@ -571,7 +685,7 @@ pub struct LobbyState {
     pub status: LobbyStatus,
     pub games: Vec<Game>,
     /// Games currently in progress: not joinable, but watchable via a live
-    /// replay (see `faf-app`'s `ReplayPort::watch_live`).
+    /// replay (see `faf-app`'s `ReplayPlaybackPort::watch_live`).
     pub live_games: Vec<Game>,
     pub join: JoinState,
     pub matchmaker_queues: Vec<MatchmakerQueue>,
@@ -748,6 +862,13 @@ pub enum LobbyCommand {
         queue_name: String,
         start: bool,
     },
+    /// Start a search in these queues: prepare the install and the pool maps,
+    /// then ask the server to queue the party. See
+    /// [`MatchmakingState::Preparing`].
+    #[serde(rename_all = "camelCase")]
+    StartSearch {
+        queue_names: Vec<String>,
+    },
     LeaveParty,
     #[serde(rename_all = "camelCase")]
     KickPartyMember {
@@ -820,7 +941,26 @@ pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
             // finish. The lists are deliberately left alone: the server
             // resends them, and clearing them would make a two-second blip
             // look like a disconnection.
-            state.join = JoinState::Idle;
+            //
+            // A game that is already running is not a join, though. Forged
+            // Alliance outlives the socket, the client asks the server to
+            // restore its session on the next `welcome`, and the process exit
+            // still ends it with `GameTerminated`. Forgetting it here made the
+            // Play tab offer a new game while the old one was on screen.
+            if !matches!(state.join, JoinState::Launched { .. } | JoinState::InGame) {
+                state.join = JoinState::Idle;
+            }
+            // The same goes for a search. The server ends a player's search
+            // when their connection goes (`LadderService.on_connection_lost`)
+            // and says nothing about it on the next one, so a client that
+            // kept `Searching` showed a search that no longer existed, and its
+            // Stop sent a `stop` the server ignores: the panel could only be
+            // freed by a restart. A match found on the old connection is gone
+            // with it too. Only a launch that is already under way survives,
+            // for the same reason the game does above.
+            if !matches!(state.matchmaking, MatchmakingState::Launching { .. }) {
+                state.matchmaking = MatchmakingState::Idle;
+            }
         }
         LobbyEvent::Connected => state.status = LobbyStatus::Connected,
         LobbyEvent::HostPrepared { title } => state.host_prefill = Some(title.clone()),
@@ -904,19 +1044,33 @@ pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
             }
         }
         LobbyEvent::JoinCancelled => {
-            if matches!(
+            let preparing = matches!(
                 state.join,
-                JoinState::Joining { .. }
-                    | JoinState::Preparing { .. }
-                    | JoinState::NeedsModReplacement { .. }
-            ) {
+                JoinState::Joining { .. } | JoinState::Preparing { .. }
+            );
+            if preparing || matches!(state.join, JoinState::NeedsModReplacement { .. }) {
                 state.join = JoinState::Idle;
+            }
+            // A matchmaker launch called off while its files were coming down
+            // is over as a match: no process was started, so no exit will
+            // ever clear it, and the panel stayed on "Starting your match".
+            if preparing && matches!(state.matchmaking, MatchmakingState::Launching { .. }) {
+                state.matchmaking = MatchmakingState::Idle;
             }
         }
         LobbyEvent::InGame => state.join = JoinState::InGame,
         LobbyEvent::LaunchFailed { reason } => {
             state.join = JoinState::LaunchFailed {
                 reason: reason.clone(),
+            };
+            // The same for a launch that failed: there is no process whose
+            // exit would release the panel, which then waited for the server
+            // to cancel the match a minute or two later.
+            if matches!(
+                state.matchmaking,
+                MatchmakingState::Launching { .. } | MatchmakingState::MatchFound { .. }
+            ) {
+                state.matchmaking = MatchmakingState::Idle;
             }
         }
         LobbyEvent::GameTerminated => {
@@ -1180,12 +1334,99 @@ mod tests {
         assert!(state.available_avatars.is_empty());
     }
 
+    fn allowed(urls: &[&str]) -> Vec<AvailableAvatar> {
+        urls.iter()
+            .map(|url| AvailableAvatar {
+                url: (*url).into(),
+                tooltip: String::new(),
+            })
+            .collect()
+    }
+
+    fn history(urls: &[&str]) -> Vec<String> {
+        urls.iter().map(|url| (*url).to_string()).collect()
+    }
+
+    #[test]
+    fn a_lapsed_tournament_avatar_falls_back_to_the_one_chosen_before_it() {
+        // The report: won a tournament, wore its avatar, and when it rotates
+        // to the next winner the server sends nothing at all.
+        let choices = history(&["cup", "veteran", "clan"]);
+        assert_eq!(
+            reconcile_avatar(&choices, "", &allowed(&["veteran", "clan"])),
+            AvatarReconciliation::Restore("veteran".into())
+        );
+        // A server that still names the lapsed one is the same case.
+        assert_eq!(
+            reconcile_avatar(&choices, "cup", &allowed(&["veteran", "clan"])),
+            AvatarReconciliation::Restore("veteran".into())
+        );
+        // Further back when the one before has lapsed too.
+        assert_eq!(
+            reconcile_avatar(&choices, "", &allowed(&["clan"])),
+            AvatarReconciliation::Restore("clan".into())
+        );
+    }
+
+    #[test]
+    fn no_avatar_is_restored_over_a_deliberate_none() {
+        // Cleared here: the newest choice is "none".
+        assert_eq!(
+            reconcile_avatar(&history(&["", "cup"]), "", &allowed(&["cup"])),
+            AvatarReconciliation::Keep
+        );
+        // Wore nothing before the tournament avatar: nothing is the fallback.
+        assert_eq!(
+            reconcile_avatar(&history(&["cup", "", "clan"]), "", &allowed(&["clan"])),
+            AvatarReconciliation::Keep
+        );
+        // Cleared in another client while the avatar is still allowed.
+        assert_eq!(
+            reconcile_avatar(&history(&["cup", "clan"]), "", &allowed(&["cup", "clan"])),
+            AvatarReconciliation::Remember(String::new())
+        );
+    }
+
+    #[test]
+    fn a_choice_made_in_another_client_becomes_the_newest() {
+        assert_eq!(
+            reconcile_avatar(&history(&["clan"]), "cup", &allowed(&["cup", "clan"])),
+            AvatarReconciliation::Remember("cup".into())
+        );
+        assert_eq!(
+            reconcile_avatar(&[], "cup", &allowed(&["cup"])),
+            AvatarReconciliation::Remember("cup".into())
+        );
+        assert_eq!(
+            reconcile_avatar(&history(&["cup"]), "cup", &allowed(&["cup"])),
+            AvatarReconciliation::Keep
+        );
+        // Nothing remembered and nothing worn: nothing to do.
+        assert_eq!(
+            reconcile_avatar(&[], "", &allowed(&["cup"])),
+            AvatarReconciliation::Keep
+        );
+    }
+
+    #[test]
+    fn remembering_moves_a_choice_to_the_front_and_caps_the_list() {
+        assert_eq!(
+            remember_avatar(&history(&["a", "b", "c"]), "c"),
+            history(&["c", "a", "b"])
+        );
+        let long: Vec<String> = (0..AVATAR_HISTORY_LIMIT).map(|n| n.to_string()).collect();
+        let next = remember_avatar(&long, "new");
+        assert_eq!(next.len(), AVATAR_HISTORY_LIMIT);
+        assert_eq!(next[0], "new");
+    }
+
     fn queue(name: &str, team_size: i32, num_players: i32) -> MatchmakerQueue {
         MatchmakerQueue {
             queue_name: name.into(),
             team_size,
             num_players,
             queue_pop_time_seconds: 60,
+            queue_pops_at: String::new(),
             boundary_80s: Vec::new(),
             boundary_75s: Vec::new(),
         }
@@ -1465,6 +1706,112 @@ mod tests {
             state.matchmaking,
             MatchmakingState::Searching {
                 queue_names: vec!["ladder_1v1".into()],
+            }
+        );
+    }
+
+    #[test]
+    fn a_reconnect_ends_the_search_the_server_dropped_with_the_connection() {
+        for before in [
+            MatchmakingState::Preparing {
+                queue_names: vec!["ladder_1v1".into()],
+            },
+            MatchmakingState::Searching {
+                queue_names: vec!["ladder_1v1".into()],
+            },
+            MatchmakingState::MatchFound {
+                queue_name: "ladder_1v1".into(),
+            },
+            MatchmakingState::Cancelled { queue_name: None },
+        ] {
+            let mut state = LobbyState {
+                matchmaking: before.clone(),
+                ..LobbyState::default()
+            };
+            reduce(&mut state, &LobbyEvent::Connecting);
+            assert_eq!(state.matchmaking, MatchmakingState::Idle, "from {before:?}");
+        }
+    }
+
+    #[test]
+    fn a_reconnect_keeps_a_game_that_is_already_running() {
+        let mut state = LobbyState {
+            join: JoinState::InGame,
+            matchmaking: MatchmakingState::Launching {
+                queue_name: "tmm_2v2".into(),
+            },
+            ..LobbyState::default()
+        };
+
+        reduce(&mut state, &LobbyEvent::Connecting);
+
+        assert_eq!(state.join, JoinState::InGame);
+        assert_eq!(
+            state.matchmaking,
+            MatchmakingState::Launching {
+                queue_name: "tmm_2v2".into(),
+            }
+        );
+    }
+
+    #[test]
+    fn a_failed_matchmaker_launch_frees_the_panel() {
+        let mut state = LobbyState {
+            join: JoinState::Launched { launch: launch(5) },
+            matchmaking: MatchmakingState::Launching {
+                queue_name: "ladder_1v1".into(),
+            },
+            ..LobbyState::default()
+        };
+
+        reduce(
+            &mut state,
+            &LobbyEvent::LaunchFailed {
+                reason: "ice adapter: no port".into(),
+            },
+        );
+
+        assert_eq!(state.matchmaking, MatchmakingState::Idle);
+    }
+
+    #[test]
+    fn a_matchmaker_launch_cancelled_during_preparation_frees_the_panel() {
+        let mut state = LobbyState {
+            join: JoinState::Preparing {
+                phase: PreparationPhase::Downloading,
+                detail: String::new(),
+                progress: None,
+            },
+            matchmaking: MatchmakingState::Launching {
+                queue_name: "ladder_1v1".into(),
+            },
+            ..LobbyState::default()
+        };
+
+        reduce(&mut state, &LobbyEvent::JoinCancelled);
+
+        assert_eq!(state.join, JoinState::Idle);
+        assert_eq!(state.matchmaking, MatchmakingState::Idle);
+    }
+
+    #[test]
+    fn cancelling_nothing_leaves_a_running_matchmaker_game_alone() {
+        // `Disconnect` emits `JoinCancelled` as well; with the game up, the
+        // match is the process's to end.
+        let mut state = LobbyState {
+            join: JoinState::InGame,
+            matchmaking: MatchmakingState::Launching {
+                queue_name: "ladder_1v1".into(),
+            },
+            ..LobbyState::default()
+        };
+
+        reduce(&mut state, &LobbyEvent::JoinCancelled);
+
+        assert_eq!(
+            state.matchmaking,
+            MatchmakingState::Launching {
+                queue_name: "ladder_1v1".into(),
             }
         );
     }
@@ -1801,12 +2148,33 @@ mod tests {
             .contains("printable ASCII"));
     }
 
+    /// "800 to any" (#372): the server enforces an open end as no bound.
     #[test]
-    fn disabled_rating_enforcement_cannot_leak_stale_limits() {
+    fn an_enforced_range_may_leave_one_end_open() {
+        let mut floor = host_config();
+        floor.rating_max = None;
+        let floor = floor.validated().unwrap();
+        assert_eq!((floor.rating_min, floor.rating_max), (Some(800), None));
+
+        let mut out_of_bounds = host_config();
+        out_of_bounds.rating_max = None;
+        out_of_bounds.rating_min = Some(20_000);
+        assert!(out_of_bounds.validated().unwrap_err().contains("between"));
+    }
+
+    #[test]
+    fn an_unenforced_range_is_kept_as_the_advertised_one() {
+        // Java sends the range either way; unenforced, the server shows it
+        // and lets everybody in.
         let mut config = host_config();
         config.enforce_rating_range = false;
         let config = config.validated().unwrap();
-        assert_eq!(config.rating_min, None);
-        assert_eq!(config.rating_max, None);
+        assert_eq!(config.rating_min, Some(800));
+        assert_eq!(config.rating_max, Some(1_500));
+
+        let mut backwards = host_config();
+        backwards.enforce_rating_range = false;
+        backwards.rating_min = Some(1_600);
+        assert!(backwards.validated().is_err());
     }
 }

@@ -14,10 +14,12 @@ import type { WeekStart } from "../../ipc/bindings";
 /**
  * Chips one square draws before it starts counting the rest.
  *
- * Three fits the row height at the client's usual window size. The fourth is
- * replaced by "+2 more", which is what a reader needs to know is there.
+ * Two, because a chip in a square is two lines (the time, then the title) and
+ * three of them would make every row tall enough to push the last week below
+ * the fold at the client's default window size. The third is replaced by
+ * "+1 more", which is what a reader needs to know is there.
  */
-const CHIPS_PER_DAY = 3;
+const CHIPS_PER_DAY = 2;
 
 interface Props {
   anchor: Date;
@@ -25,6 +27,7 @@ interface Props {
   weekStart: WeekStart;
   byDay: Map<string, CalendarEntry[]>;
   reminded: ReadonlySet<string>;
+  selected: string | null;
   onOpen: (entry: CalendarEntry) => void;
   onOpenDay: (day: Date) => void;
 }
@@ -35,6 +38,7 @@ export function EventMonth({
   weekStart,
   byDay,
   reminded,
+  selected,
   onOpen,
   onOpenDay,
 }: Props) {
@@ -70,6 +74,7 @@ export function EventMonth({
                 className="event-day-number"
                 onClick={() => onOpenDay(day)}
                 aria-label={t("events.openDay", { day: key })}
+                aria-current={today ? "date" : undefined}
               >
                 {day.getDate()}
               </button>
@@ -79,6 +84,7 @@ export function EventMonth({
                     key={entry.id}
                     entry={entry}
                     reminded={reminded.has(entry.id)}
+                    selected={entry.id === selected}
                     onOpen={onOpen}
                   />
                 ))}

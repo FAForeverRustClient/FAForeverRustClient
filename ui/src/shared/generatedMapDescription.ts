@@ -66,12 +66,28 @@ const KNOWN: Array<{
   { key: "texturestyle", label: "maps.generate.texture" },
   { key: "resourcestyle", label: "maps.generate.resources" },
   { key: "propstyle", label: "maps.generate.props" },
+  { key: "reclaimdensity", label: "maps.generate.reclaimDensity", render: verbatim },
+  { key: "resourcedensity", label: "maps.generate.resourceDensity", render: verbatim },
   { key: "symmetry", label: "maps.generate.symmetry", render: renderSymmetry },
   { key: "terrainsymmetry", label: "maps.generate.terrainSymmetry", render: renderSymmetry },
   { key: "teamsymmetry", label: "maps.generate.teamSymmetry", render: renderSymmetry },
   { key: "spawnsymmetry", label: "maps.generate.spawnSymmetry", render: renderSymmetry },
+  { key: "generatorversion", label: "maps.generate.generatorVersion", render: verbatim },
   { key: "seed", label: "maps.generate.seed", render: verbatim },
 ];
+
+/**
+ * Other spellings of a known key, by canonical form.
+ *
+ * Generator versions disagree about what to call a few settings: newer ones
+ * write `Biome Name` where older ones wrote `Biome`, and the resource density
+ * is also printed as the mex density. Folding them onto one key keeps a
+ * description that carries both from showing the same setting twice.
+ */
+const ALIASES: ReadonlyMap<string, string> = new Map([
+  ["biomename", "biome"],
+  ["mexdensity", "resourcedensity"],
+]);
 
 const KNOWN_KEYS = new Set(KNOWN.map((entry) => entry.key));
 
@@ -212,7 +228,8 @@ function expand(rawKey: string, rawValue: string): Array<[string, string]> {
  * also what lets the second, populated one supersede the first, `null` one.
  */
 function canonicalise(key: string): string {
-  return key.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const canonical = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return ALIASES.get(canonical) ?? canonical;
 }
 
 function verbatim(value: string): string {

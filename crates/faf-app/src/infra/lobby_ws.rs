@@ -128,6 +128,9 @@ fn default_uid_path() -> String {
         .unwrap_or_else(|| executable.to_string())
 }
 
+/// See where the outgoing channel is made, in [`LobbyClient::connect`].
+const OUTGOING_FRAME_CAPACITY: usize = 1024;
+
 pub struct LobbyClient {
     config: LobbyConfig,
     tokens: TokenStore,
@@ -156,12 +159,23 @@ impl LobbyClient {
     /// Push a JSON frame onto the live connection's outgoing channel. Returns
     /// `false` if there is no active connection (so callers can log).
     fn send_frame(&self, frame: Value) -> bool {
-        self.outgoing
-            .lock()
-            .unwrap()
-            .as_ref()
-            .map(|tx| tx.try_send(frame).is_ok())
-            .unwrap_or(false)
+        let guard = self.outgoing.lock().unwrap();
+        let Some(tx) = guard.as_ref() else {
+            return false;
+        };
+        match tx.try_send(frame) {
+            Ok(()) => true,
+            Err(mpsc::error::TrySendError::Full(frame)) => {
+                // Every caller logs a `false` as "disconnected", which is not
+                // what happened here, so this says what did.
+                tracing::warn!(
+                    command = command_of(&frame),
+                    "lobby frame dropped: the outgoing queue is full"
+                );
+                false
+            }
+            Err(mpsc::error::TrySendError::Closed(_)) => false,
+        }
     }
 }
 
@@ -176,7 +190,14 @@ impl LobbyPort for LobbyClient {
         let (tx, rx) = mpsc::channel(8);
         // Channel for client→server frames (game_join, …). The receiver is drained
         // inside `run_session`; the sender is stored so `join` can reach the socket.
-        let (out_tx, out_rx) = mpsc::channel::<Value>(8);
+        //
+        // Sized for a game, not for a click. The ICE adapter's candidates and
+        // the game's own `GameState` / `GameResult` reports all leave through
+        // here, `try_send` drops what does not fit, and eight slots were one
+        // burst of candidates away from losing `GameState Ended`, the report
+        // the server ends a player's game on. Java's lobby writer queues
+        // without a bound.
+        let (out_tx, out_rx) = mpsc::channel::<Value>(OUTGOING_FRAME_CAPACITY);
         *self.outgoing.lock().unwrap() = Some(out_tx);
 
         let config = self.config.clone();
@@ -982,7 +1003,14 @@ async fn run_session(
                         }
                     }
                     "vetoes_info" => {
-                        match tx.send(LobbyUpdate::Vetoes(parse_vetoes(&value))).await {
+                        let forced = value.get("forced").and_then(Value::as_bool).unwrap_or(false);
+                        match tx
+                            .send(LobbyUpdate::Vetoes {
+                                vetoes: parse_vetoes(&value),
+                                forced,
+                            })
+                            .await
+                        {
                             Ok(()) => {}
                             Err(_) => break 'connection,
                         }
@@ -1909,6 +1937,14 @@ fn parse_rating_ranges(queue: &Value, key: &str) -> Vec<RatingRange> {
 }
 
 fn parse_matchmaker_queues(message: &Value) -> Vec<MatchmakerQueue> {
+    parse_matchmaker_queues_at(message, chrono::Utc::now())
+}
+
+/// [`parse_matchmaker_queues`] with the arrival time given, for the tests.
+fn parse_matchmaker_queues_at(
+    message: &Value,
+    received: chrono::DateTime<chrono::Utc>,
+) -> Vec<MatchmakerQueue> {
     message
         .get("queues")
         .and_then(Value::as_array)
@@ -1930,11 +1966,34 @@ fn parse_matchmaker_queues(message: &Value) -> Vec<MatchmakerQueue> {
                 .and_then(Value::as_f64)
                 .unwrap_or_default()
                 .round() as i32,
+            queue_pops_at: queue_pops_at(queue, received),
             boundary_80s: parse_rating_ranges(queue, "boundary_80s"),
             boundary_75s: parse_rating_ranges(queue, "boundary_75s"),
         })
         .filter(|queue| !queue.queue_name.is_empty())
         .collect()
+}
+
+/// The instant the queue pops next: the server's delta, counted from when the
+/// message arrived. See [`MatchmakerQueue::queue_pops_at`].
+///
+/// The delta rather than the server's own `queue_pop_time`, which is what the
+/// Java client reads: both name the same moment, but the absolute one is only
+/// right on a machine whose clock agrees with the server's, and the countdown
+/// is read against this machine's clock.
+fn queue_pops_at(queue: &Value, received: chrono::DateTime<chrono::Utc>) -> String {
+    let Some(delta) = queue
+        .get("queue_pop_time_delta")
+        .and_then(Value::as_f64)
+        .filter(|delta| delta.is_finite())
+    else {
+        return String::new();
+    };
+    // A pop already due is due now, not in the past: the server sends the
+    // next one with the queue's next update.
+    let millis = (delta.max(0.0) * 1000.0).round() as i64;
+    (received + chrono::Duration::milliseconds(millis))
+        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
 fn parse_party(message: &Value) -> PartyState {
@@ -2236,19 +2295,19 @@ fn host_frame(config: HostGameConfig) -> Value {
             None => Value::Null,
         },
     });
-    if config.enforce_rating_range {
-        // The flag, not just the bounds. The server reads all three
-        // (`lobbyconnection.on_game_host`) and only its `enforce_rating_range`
-        // makes `Game.is_visible_to_player` consult the range at all: sending
-        // the bounds alone produced a lobby that advertised a rating window
-        // and admitted anybody, which is what the report described.
-        frame["enforce_rating_range"] = json!(true);
-        if let Some(min) = config.rating_min {
-            frame["rating_min"] = json!(min);
-        }
-        if let Some(max) = config.rating_max {
-            frame["rating_max"] = json!(max);
-        }
+    // The flag, not just the bounds. The server reads all three
+    // (`lobbyconnection.on_game_host`) and only its `enforce_rating_range`
+    // makes `Game.is_visible_to_player` consult the range at all: sending the
+    // bounds alone produced a lobby that advertised a rating window and
+    // admitted anybody, which is what the report described. Sent either way,
+    // as Java does (`NewGameInfo`), so an unenforced range is still the one
+    // the lobby advertises.
+    frame["enforce_rating_range"] = json!(config.enforce_rating_range);
+    if let Some(min) = config.rating_min {
+        frame["rating_min"] = json!(min);
+    }
+    if let Some(max) = config.rating_max {
+        frame["rating_max"] = json!(max);
     }
     frame
 }
@@ -2971,6 +3030,27 @@ mod tests {
                 max: 1_300
             }]
         );
+    }
+
+    #[test]
+    fn the_next_pop_is_counted_from_when_the_message_arrived() {
+        let message = json!({
+            "command": "matchmaker_info",
+            "queues": [
+                { "queue_name": "ladder1v1", "queue_pop_time_delta": 42.4 },
+                { "queue_name": "tmm2v2", "queue_pop_time_delta": -3.0 },
+                { "queue_name": "tmm4v4" },
+            ],
+        });
+        let received = chrono::DateTime::parse_from_rfc3339("2026-10-01T12:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+
+        let queues = parse_matchmaker_queues_at(&message, received);
+
+        assert_eq!(queues[0].queue_pops_at, "2026-10-01T12:00:42.400Z");
+        assert_eq!(queues[1].queue_pops_at, "2026-10-01T12:00:00.000Z");
+        assert_eq!(queues[2].queue_pops_at, "");
     }
 
     #[test]

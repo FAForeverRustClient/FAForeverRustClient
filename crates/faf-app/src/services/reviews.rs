@@ -7,7 +7,16 @@
 
 use faf_domain::state::{clamp_score, own_review, ReviewsCommand, ReviewsEvent};
 
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+
+/// The review service's request generation. Owned by this service.
+#[derive(Default)]
+pub struct ReviewsContext {
+    /// Only the newest open, write or close may land. Opening another target,
+    /// or closing the panel, must not let a slower answer about the previous
+    /// one fill it.
+    generation: LatestRequest,
+}
 
 pub async fn handle(cmd: ReviewsCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
@@ -167,11 +176,11 @@ async fn refresh(
 }
 
 fn next_generation(ctx: &ServiceCtx) -> u64 {
-    ctx.reviews_generation.begin()
+    ctx.reviews.generation.begin()
 }
 
 fn is_current(ctx: &ServiceCtx, generation: u64) -> bool {
-    ctx.reviews_generation.is_current(generation)
+    ctx.reviews.generation.is_current(generation)
 }
 
 async fn latest_version(

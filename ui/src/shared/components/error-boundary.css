@@ -1,0 +1,47 @@
+/* A failed view: the shared empty state, then the error's own words folded
+   away for anybody reporting it. */
+.error-boundary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+}
+
+.error-boundary.is-app {
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-4);
+  background: var(--color-bg);
+  box-sizing: border-box;
+}
+
+.error-boundary-details {
+  width: min(560px, 100%);
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.error-boundary-details summary {
+  cursor: pointer;
+}
+
+.error-boundary-details summary:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.error-boundary-details pre {
+  overflow: auto;
+  max-height: 180px;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}

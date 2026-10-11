@@ -6,7 +6,7 @@
 // might want to go, because that is the thing worth a permanent place in the
 // sidebar and a repository list is not.
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { openHttpsUrl } from "../../shared/externalLinks";
@@ -22,6 +22,7 @@ import {
   type OriginFilter,
 } from "./linkDirectory";
 import "./links.css";
+import { useRememberedFilter } from "../../shared/filterMemory";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n";
 
@@ -125,9 +126,14 @@ function LinkCard({
 
 export function LinksView() {
   const { t } = useTranslation();
-  // Not in the nav slice: which chip is pressed is as ephemeral as a hover, and
-  // nothing in the backend has an opinion about it.
-  const [filter, setFilter] = useState<OriginFilter>(null);
+  // Not in the nav slice: nothing in the backend has an opinion about which
+  // chip is pressed. Remembered as the filter setting says, like every other
+  // list's filter (#447).
+  const [filter, setFilter] = useRememberedFilter<OriginFilter>(
+    "links.origin",
+    null,
+    (value) => value === null || typeof value === "string",
+  );
   const liveStreams = useAppStore((state) => state.state.streams.live);
 
   // Asked on open rather than waited for: the ticker runs every five minutes,

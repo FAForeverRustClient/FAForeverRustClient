@@ -6,7 +6,7 @@ filled in without touching the client.
 
 | What | Where it comes from | Needs |
 |---|---|---|
-| Tournaments | `TourneyPort`, already read by the client | nothing, works today |
+| Tournaments | `TourneyReadPort`, already read by the client | nothing, works today |
 | Released patches | the changelog index, already parsed by the client | nothing, works today |
 | Ladder pool rotation | a recurrence rule, shipped with the client | nothing |
 | CGN, meetups, game nights, an announced patch date | **this document** | one commit per event |
@@ -176,7 +176,7 @@ already draws that service's tournaments out of `TourneyState`, so mirroring the
 Discord copy as well puts **two squares on one afternoon for one tournament**.
 
 So a scheduled event that links to a tournament on
-`tournaments.doodlepros.com/t/…`, in its description or its location, is not
+`tournaments.faforever.com/t/…` (or its old host, `tournaments.doodlepros.com`), in its description or its location, is not
 mirrored. The link is the marker rather than the title: it is a fact about the
 event, where "Average Joe Olympics #6" contains neither the word tournament nor
 the word cup, and matching on prose would also drop a game night whose

@@ -89,7 +89,7 @@ export function TutorialsView() {
         </div>
         {total > 0 && (
           <span className="muted tutorials-count">
-            {total} {total === 1 ? "lesson" : "lessons"}
+            {t("tutorials.lessonCount", { count: total })}
           </span>
         )}
       </header>
@@ -192,6 +192,12 @@ function TutorialDetail({ tutorial, categoryName }: { tutorial: Tutorial; catego
       : null;
   const launched =
     launchState.type === "launched" && launchState.payload.tutorialId === tutorial.id;
+  // Keyed the same way: one lesson's failure under every lesson opened after
+  // it read as though each of them had failed too.
+  const failure =
+    launchState.type === "failed" && launchState.payload.tutorialId === tutorial.id
+      ? launchState.payload.reason
+      : null;
 
   return (
     <section className="surface-panel tutorial-detail">
@@ -213,10 +219,8 @@ function TutorialDetail({ tutorial, categoryName }: { tutorial: Tutorial; catego
           {/* Patching the tutorials mod and fetching the map is slow the first
               time; a silent client looks broken. */}
           {preparing !== null && <p className="muted tutorial-progress">{preparing}</p>}
-          {launched && <p className="tutorial-progress is-ok">Forged Alliance is starting…</p>}
-          {launchState.type === "failed" && (
-            <p className="tutorial-progress is-error">{launchState.payload.reason}</p>
-          )}
+          {launched && <p className="tutorial-progress is-ok">{t("tutorials.launched")}</p>}
+          {failure !== null && <p className="tutorial-progress is-error">{failure}</p>}
 
           <div className="tutorial-actions">
             <Button

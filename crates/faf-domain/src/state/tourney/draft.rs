@@ -120,6 +120,25 @@ impl Seeding {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TourneyDraft {
+    /// Pictures pasted into the text before the tournament exists. The text
+    /// holds each one's token (`pending-image-0`) where it goes; once the
+    /// event is created they are uploaded and the tokens become their paths.
+    #[serde(default)]
+    pub pending_images: Vec<PendingImage>,
+    /// A named format a tournament director may host (`presetId`), or `None`.
+    /// The service only checks the right to it and records its name; the
+    /// form's own values are what it stores.
+    pub preset_id: Option<String>,
+    /// A Swiss stage's record cuts, deciding matches and playoffs.
+    pub swiss: SwissExtras,
+    /// Whether seeds choose their opponent, and how.
+    pub picks: PickSettings,
+    /// How equal Swiss records are ordered.
+    pub tiebreak: SwissTiebreak,
+    /// End once this many are left (`stopAtAlive`), 0 for never.
+    pub stop_at_alive: i32,
+    /// A free-for-all's lobbies and rounds; `None` for a team event.
+    pub ffa: Option<FfaConfig>,
     pub name: String,
     /// The briefing, as markdown source. See [`Tourney::description`].
     pub description: String,
@@ -168,6 +187,20 @@ pub struct TourneyDraft {
     pub rating: RatingGate,
     /// Entrant cap. Zero means no cap, which is the server's own convention.
     pub max_teams: i32,
+    /// Whether a player may submit a score for the other side to confirm.
+    ///
+    /// On by default, as on the website. Always sent, from the event's own
+    /// value when editing: the service reads an absent key as on, and a
+    /// hardcoded value here used to turn it off on every event whose settings
+    /// were saved from the client.
+    pub player_reporting: bool,
+    /// Unix seconds by which a full team has to check in, or `None` for no
+    /// check-in, in which case teams enter in signup order.
+    pub check_in_deadline: Option<u32>,
+    /// The days a multi-day event runs on, as `YYYY-MM-DD`, or empty for an
+    /// event on its date alone. The service keeps the earliest as the event
+    /// date's day, with the event date's own time.
+    pub event_days: Vec<String>,
 }
 
 impl TourneyDraft {
@@ -177,6 +210,7 @@ impl TourneyDraft {
         Self {
             team_size: 2,
             plan: Some(MatchPlan::default_for(BracketKind::default())),
+            player_reporting: true,
             ..Self::default()
         }
     }
@@ -255,6 +289,13 @@ pub enum DraftRejection {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FormatDraft {
+    /// A Swiss stage's record cuts, deciding matches and playoffs. Sent in
+    /// `plan`, where keys left out keep their stored value.
+    pub swiss: SwissExtras,
+    pub picks: PickSettings,
+    pub tiebreak: SwissTiebreak,
+    /// A free-for-all's lobbies and rounds.
+    pub ffa: Option<FfaConfig>,
     pub competition: Competition,
     /// 1 to 6 for a team event, 1 to 3 for a free-for-all: the service clamps
     /// each to its own range.
@@ -269,6 +310,18 @@ impl FormatDraft {
     /// The event's current format, as the starting point for editing it.
     pub fn of(event: &Tourney) -> Self {
         Self {
+            swiss: SwissExtras {
+                cuts: event.swiss_cuts,
+                deciding_best_of: event.deciding_best_of,
+                stage_two: event.stage_two_plan,
+            },
+            picks: PickSettings {
+                on: event.pick_opponents,
+                minutes: event.pick_minutes,
+                mode: event.pick_mode,
+            },
+            tiebreak: event.swiss_tiebreak,
+            ffa: event.ffa.clone(),
             competition: event.competition,
             team_size: event.team_size,
             formation: event.formation,
@@ -324,6 +377,9 @@ pub struct Qualifier {
     /// addressed to an account. Worth showing rather than swallowing, since it
     /// is the organiser who then has to add them by hand.
     pub unreachable: Vec<String>,
+    /// The first of a block of seeds kept for this link's arrivals, in the
+    /// order they qualified, or 0 to seed them with everyone else.
+    pub seed_from: i32,
 }
 
 /// How many of a child's entrants go through, and by what measure.
@@ -400,6 +456,76 @@ pub struct FeedsInto {
     pub rule: QualifierRule,
     /// Unix seconds, once the parent has taken its entrants.
     pub applied: Option<u32>,
+}
+
+/// A picture pasted into the create form, waiting for the event to exist.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingImage {
+    /// The placeholder the text carries in its place.
+    pub token: String,
+    pub data_url: String,
+}
+
+impl TourneyDraft {
+    /// The text with each pending picture's token swapped for its path.
+    pub fn with_images_placed(&self, placed: &[(String, String)]) -> Self {
+        let swap = |text: &str| {
+            placed.iter().fold(text.to_string(), |held, (token, url)| {
+                held.replace(token.as_str(), url)
+            })
+        };
+        Self {
+            description: swap(&self.description),
+            rewards: swap(&self.rewards),
+            sponsors: swap(&self.sponsors),
+            lobby_options: swap(&self.lobby_options),
+            pending_images: Vec::new(),
+            ..self.clone()
+        }
+    }
+}
+
+/// A named format on the service (`GET /api/presets`): the Invitational, LotS.
+///
+/// Everyone may see that one exists; only a tournament director or a site
+/// admin gets its settings (`apply`) and may create with it. The service does
+/// not apply a preset itself: it checks the right to it, forces its category
+/// and records its name, and the form sends the settings as its own.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TourneyPreset {
+    pub id: String,
+    pub name: String,
+    pub blurb: String,
+    pub notes: Vec<String>,
+    /// Whether this account may host it.
+    pub allowed: bool,
+    /// Its settings, read as a tournament document so the form fills from it
+    /// exactly as it fills from an existing event; `None` where not allowed.
+    pub apply: Option<Box<Tourney>>,
+}
+
+/// A Swiss stage's settings beyond the match lengths: record cuts, the length
+/// of a deciding match, and a playoff bracket after it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SwissExtras {
+    /// Zero wins and losses is no cuts: a fixed number of rounds.
+    pub cuts: SwissCuts,
+    /// 0 for the normal length.
+    pub deciding_best_of: i32,
+    pub stage_two: Option<StageTwoPlan>,
+}
+
+/// Whether seeds choose their own opponent, the clock per pick in minutes,
+/// and who picks in a Swiss stage's playoffs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PickSettings {
+    pub on: bool,
+    pub minutes: i32,
+    pub mode: PickMode,
 }
 
 /// Why the service would refuse a qualifier link, in the order it checks.

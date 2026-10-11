@@ -1,4 +1,5 @@
 import { FactionIcon } from "../../../shared/components/FactionIcon";
+import { factionLabel } from "../../../shared/factions";
 import { useTranslation } from "../../../i18n/useTranslation";
 
 /**
@@ -57,6 +58,7 @@ export function MatchmakerFactionPicker({ selected, disabled, onChange }: Props)
     <div className="faction-chips" role="group" aria-label={t("lobby.matchmaker.factions.aria")}>
       {MATCHMAKER_FACTIONS.map((faction) => {
         const active = selected.includes(faction);
+        const label = factionLabel(FACTION_IDS[faction]);
         return (
           <button
             type="button"
@@ -66,12 +68,12 @@ export function MatchmakerFactionPicker({ selected, disabled, onChange }: Props)
             aria-pressed={active}
             className={active ? "faction-chip is-active" : "faction-chip"}
             title={t(active ? "lobby.matchmaker.queuingAs" : "lobby.matchmaker.alsoQueueAs", {
-              faction,
+              faction: label,
             })}
             onClick={() => toggle(faction)}
           >
             <FactionIcon faction={FACTION_IDS[faction]} size={22} />
-            <span>{faction}</span>
+            <span>{label}</span>
           </button>
         );
       })}

@@ -9,8 +9,9 @@ import type {
   GeneratorStatus,
   ValidationIssue,
 } from "../ipc/bindings";
+import type { MessageKey } from "../i18n/catalog/en";
 import type { Translation } from "../i18n/useTranslation";
-import { kilometresLabel } from "./mapPresentation";
+import { kilometres, kilometresLabel } from "./mapPresentation";
 
 /** Generator units per kilometre, the generator's own `MultipleMapSizeConverter`. */
 export const UNITS_PER_KM = 51.2;
@@ -46,7 +47,7 @@ export function sizeInKm(units: number): number {
 
 /** "10 km (512×512)", "17.5 km (896×896)". */
 export function formatMapSize(units: number): string {
-  return `${kilometresLabel(units)} km (${units}×${units})`;
+  return `${kilometres(kilometresLabel(units))} (${units}×${units})`;
 }
 
 /**
@@ -102,7 +103,7 @@ export function describeIssue(issue: ValidationIssue, t: Translation["t"]): stri
       });
     case "outOfRange":
       return t("maps.generate.issue.outOfRange", {
-        field: capitalise(issue.payload.field),
+        field: rangeFieldLabel(issue.payload.field, t),
         value: issue.payload.value,
         min: issue.payload.min,
         max: issue.payload.max,
@@ -128,9 +129,21 @@ export function isFatal(issue: ValidationIssue): boolean {
   return issue.kind !== "styleOutsideItsRange";
 }
 
-function capitalise(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
+/**
+ * The field an out-of-range issue names. The domain reports it as a plain
+ * English phrase ("spawn count"); the three it can send have catalog labels,
+ * and anything newer is only capitalised.
+ */
+function rangeFieldLabel(field: string, t: Translation["t"]): string {
+  const key = RANGE_FIELDS.get(field);
+  return key ? t(key) : field.charAt(0).toUpperCase() + field.slice(1);
 }
+
+const RANGE_FIELDS: ReadonlyMap<string, MessageKey> = new Map<string, MessageKey>([
+  ["spawn count", "maps.generate.field.spawnCount"],
+  ["team count", "maps.generate.field.teamCount"],
+  ["map size", "maps.generate.field.mapSize"],
+]);
 
 /**
  * A decoded map name as a short list of facts, most identifying first.
@@ -139,11 +152,13 @@ function capitalise(text: string): string {
  * map is before anyone spends two minutes generating it. Neither reference
  * client shows any of this.
  */
-export function summariseDecodedName(decoded: DecodedMapName): string[] {
+export function summariseDecodedName(decoded: DecodedMapName, t: Translation["t"]): string[] {
   const parts = [
     formatMapSize(decoded.mapSize),
-    `${decoded.spawnCount} spawns`,
-    decoded.numTeams === 0 ? "asymmetric" : `${decoded.numTeams} teams`,
+    t("maps.generate.summary.spawns", { count: decoded.spawnCount }),
+    decoded.numTeams === 0
+      ? t("maps.generate.summary.asymmetric")
+      : t("maps.generate.teamCount", { count: decoded.numTeams }),
   ];
   if (decoded.symmetry) parts.push(decoded.symmetry);
 

@@ -37,7 +37,10 @@ describe("browsing preferences", () => {
         hideFoes: true,
         applyFilters: true,
         columnWidths: [10, 5000, 200, 200, 200, 200, 200],
+        // A column twice and one missing: not an order.
+        columnOrder: [0, 0, 2, 3, 4, 5],
         detailWidth: 40,
+        detailHidden: false,
         rules: [
           { field: "title", constraint: "contains", value: "  no rush  " },
           { field: "title", constraint: "contains", value: "NO RUSH" },
@@ -90,9 +93,14 @@ describe("browsing preferences", () => {
       // that are not widths become zeros, which is how a column says it keeps
       // its designed width; dropping them would shift 9999 onto column three.
       replayListColumns: [10, 200, 0, -5, 9999],
+      replayListOrder: [],
       liveReplayColumns: [],
+      liveReplayOrder: [],
       coopBoardColumns: [],
       matchmakerRecentColumns: [],
+      matchmakerRecentOrder: [],
+      matchmakerInviteColumns: [],
+      matchmakerInviteOrder: [],
       modVaultPreset: "  UI  ",
       modPresets: [
         { name: "  Replay watching  ", uids: ["  a  ", "A", "", "b"] },
@@ -103,8 +111,12 @@ describe("browsing preferences", () => {
         { name: "   ", uids: ["c"] },
       ],
       leaderboardRatingColumns: ["deviation", "MEAN", "invalid_column"],
+      leaderboardIncludeFormerNames: true,
       replayVaultPlayer: "  VindexNoob  ",
+      replayChatChannel: "  ALLIES  ",
+      replayChatTransfers: "hide",
       legacyStorageMigrated: true,
+      rememberedFilters: {},
     });
 
     expect(normalized.favoriteMods).toEqual(["eco_graph"]);
@@ -164,9 +176,18 @@ describe("browsing preferences", () => {
       200,
       200,
     ]);
+    expect(normalized.customGamesBrowser.columnOrder).toEqual([]);
     expect(normalized.customGamesBrowser.detailWidth).toBe(MIN_DETAIL_PX);
     expect(normalized.leaderboardRatingColumns).toEqual(["mean", "deviation"]);
+    expect(normalized.leaderboardIncludeFormerNames).toBe(true);
     expect(normalized.replayVaultPlayer).toBe("VindexNoob");
+    expect(normalized.replayChatChannel).toBe("allies");
+    expect(normalized.replayChatTransfers).toBe("hide");
+  });
+
+  it("does not remember a whisper's channel, whose army number means someone else next game", () => {
+    const normalized = normalizeBrowsingPreferences({ ...DEFAULT_BROWSING_PREFERENCES, replayChatChannel: "3" });
+    expect(normalized.replayChatChannel).toBe("");
   });
 
   it("keeps the my-maps preset, and still rejects anything unknown", () => {

@@ -271,7 +271,7 @@ function NoClanPanel({ busy }: { busy: boolean }) {
 export function ClanManagement() {
   const { t } = useTranslation();
   const clan = useAppStore((state) => state.state.clan);
-  const [confirming, setConfirming] = useState<"leave" | "disband" | null>(null);
+  const [confirming, setConfirming] = useState<"disband" | null>(null);
 
   useEffect(() => {
     load();
@@ -394,34 +394,55 @@ export function ClanManagement() {
                 )}
               </section>
             </>
-          ) : (
-            <section className="clan-panel surface-panel">
-              <h4>{t("clan.leave.title")}</h4>
-              <p className="muted">{t("clan.leave.hint", { name: identity.clanName })}</p>
-              {confirming === "leave" ? (
-                <div className="clan-form-actions">
-                  <span>{t("clan.leave.confirm", { name: identity.clanName })}</span>
-                  <Button onClick={() => setConfirming(null)}>{t("clan.cancel")}</Button>
-                  <Button
-                    variant="danger"
-                    disabled={busy}
-                    onClick={() => {
-                      setConfirming(null);
-                      send({ type: "leave" });
-                    }}
-                  >
-                    {t("clan.leave.submit")}
-                  </Button>
-                </div>
-              ) : (
-                <Button variant="danger" disabled={busy} onClick={() => setConfirming("leave")}>
-                  {t("clan.leave.submit")}
-                </Button>
-              )}
-            </section>
-          )}
+          ) : null}
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * Leaving, for a member who is not the leader, drawn among the clan's header
+ * actions rather than in a panel of its own.
+ *
+ * Confirmed in place rather than in a dialog: the player card is already a
+ * modal, and a second one would close together with it on Escape.
+ *
+ * Whether it is drawn is the caller's call, from the card's own clan, which is
+ * there as soon as the tab is. The clan slice reloads every time the tab
+ * opens, and waiting on it made the button pop in on every visit; it is only
+ * needed to send, so it only holds the button disabled.
+ */
+export function LeaveClanAction({ clanName }: { clanName: string }) {
+  const { t } = useTranslation();
+  const clan = useAppStore((state) => state.state.clan);
+  const [confirming, setConfirming] = useState(false);
+  // Leaving deletes your membership, which the service finds in the loaded
+  // roster; before the first load there is nothing to delete yet.
+  const unavailable = clan.action.type === "working" || clan.clan === null;
+  return confirming ? (
+    <>
+      <span className="clan-leave-confirm">{t("clan.leave.confirm", { name: clanName })}</span>
+      <Button onClick={() => setConfirming(false)}>{t("clan.cancel")}</Button>
+      <Button
+        variant="danger"
+        disabled={unavailable}
+        onClick={() => {
+          setConfirming(false);
+          send({ type: "leave" });
+        }}
+      >
+        {t("clan.leave.submit")}
+      </Button>
+    </>
+  ) : (
+    <Button
+      variant="danger"
+      disabled={unavailable}
+      title={t("clan.leave.hint", { name: clanName })}
+      onClick={() => setConfirming(true)}
+    >
+      {t("clan.leave.submit")}
+    </Button>
   );
 }

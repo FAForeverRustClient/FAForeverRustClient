@@ -1,6 +1,6 @@
 import { ColorInput } from "../../design-system/ColorInput";
 import { useMemo, useState } from "react";
-import type { ChatNameColors, ChatPreferences } from "../../ipc/bindings";
+import type { ChatNameColorsPatch, ChatPreferences, ChatPreferencesPatch } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import {
@@ -8,6 +8,7 @@ import {
   STANDARD_CATEGORY_COLORS,
   type CategoryColorKey,
 } from "../../shared/nameColorsUtil";
+import { setPlayerNameColor } from "../../shared/preferenceCommands";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -30,7 +31,8 @@ export function ChatNameColorSettings({
   onSave,
 }: {
   preferences: ChatPreferences;
-  onSave: (preferences: ChatPreferences) => void;
+  /** Only what changed: see `preference_patch!` in the domain. */
+  onSave: (patch: ChatPreferencesPatch) => void;
 }) {
   const { t } = useTranslation();
   const [player, setPlayer] = useState("");
@@ -41,34 +43,22 @@ export function ChatNameColorSettings({
     [preferences.nameColors.players],
   );
 
-  const saveColors = (nameColors: ChatNameColors) => onSave({ ...preferences, nameColors });
+  const saveColors = (nameColors: ChatNameColorsPatch) => onSave({ nameColors });
   const setCategoryColor = (key: CategoryKey, color: string) => {
-    saveColors({ ...preferences.nameColors, [key]: color });
+    saveColors({ [key]: color });
   };
   const resetToStandardColors = () => {
-    saveColors({
-      ...preferences.nameColors,
-      ...STANDARD_CATEGORY_COLORS,
-    });
+    saveColors({ ...STANDARD_CATEGORY_COLORS });
   };
-  const removePlayer = (nickname: string) => {
-    saveColors({
-      ...preferences.nameColors,
-      players: Object.fromEntries(
-        assignedPlayers.filter(([candidate]) => candidate !== nickname),
-      ),
-    });
-  };
+  // Players go one at a time rather than as a rebuilt `players` map: a map
+  // built from this render's props dropped whichever change landed in between,
+  // so two quick edits kept only the second. The backend also replaces any
+  // other spelling of the same login.
+  const removePlayer = (nickname: string) => setPlayerNameColor(nickname, null);
   const addPlayer = () => {
     const nickname = player.trim();
     if (!nickname) return;
-    const players = Object.fromEntries(
-      assignedPlayers.filter(
-        ([candidate]) => candidate.localeCompare(nickname, undefined, { sensitivity: "accent" }) !== 0,
-      ),
-    );
-    players[nickname] = playerColor;
-    saveColors({ ...preferences.nameColors, players });
+    setPlayerNameColor(nickname, playerColor);
     setPlayer("");
   };
 
@@ -176,10 +166,7 @@ export function ChatNameColorSettings({
                   className="color-input-overlay"
                   value={color}
                   aria-label={t("settings.nameColors.changePlayerAria", { name: nickname })}
-                  onChange={(next) => saveColors({
-                    ...preferences.nameColors,
-                    players: { ...preferences.nameColors.players, [nickname]: next },
-                  })}
+                  onChange={(next) => setPlayerNameColor(nickname, next)}
                 />
               </label>
               <button

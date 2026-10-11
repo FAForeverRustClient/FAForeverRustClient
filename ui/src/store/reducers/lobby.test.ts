@@ -163,6 +163,7 @@ describe("disconnect", () => {
         teamSize: 1,
         numPlayers: 4,
         queuePopTimeSeconds: 30,
+        queuePopsAt: "",
         boundary80s: [{ min: 800, max: 1200 }],
         boundary75s: [{ min: 700, max: 1300 }],
       }],

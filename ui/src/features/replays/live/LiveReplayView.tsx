@@ -5,6 +5,7 @@ import { useAppStore } from "../../../store/store";
 import { isGeneratedMap, mapPresentation, mapSize } from "../../../shared/mapPresentation";
 import { isCustomGameRanked } from "../../../shared/gameRules";
 import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
+import { useForgetFiltersOnLeave } from "../../../shared/filterMemory";
 import { LiveReplayControls } from "./LiveReplayControls";
 import { LiveReplayCards } from "./LiveReplayCards";
 import { LiveReplayDetail } from "./LiveReplayDetail";
@@ -53,9 +54,8 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   const [filters, setFilters] = useState<LiveFilters>(browsing.liveReplayFilters);
   const filtersDirty = useRef(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
-  // The game whose detail panel is open. The table expands a row in place, as
-  // it always has; the grid opens the panel, the way the vault's grid does.
+  // The game whose detail window is open. The grid and the table both open
+  // it, the way the vault's grid and list do.
   const [openId, setOpenId] = useState<number | null>(null);
   const [sortKey, setSortKey] = useState<LiveSortKey>("started");
   const [sortDirection, setSortDirection] = useState<SortDirection>("descending");
@@ -69,9 +69,9 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
+        type: "patchBrowsing",
         payload: {
-          preferences: { ...useAppStore.getState().state.settings.browsing, liveReplayView: mode },
+          patch: { liveReplayView: mode },
         },
       },
     });
@@ -97,18 +97,28 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   useEffect(() => {
     if (!filtersDirty.current) return;
     const timer = window.setTimeout(() => {
-      const current = useAppStore.getState().state.settings.browsing;
       filtersDirty.current = false;
       ipc.send({
         kind: "Settings",
         command: {
-          type: "setBrowsing",
-          payload: { preferences: { ...current, liveReplayFilters: filters } },
+          type: "patchBrowsing",
+          payload: { patch: { liveReplayFilters: filters } },
         },
       });
     }, 200);
     return () => window.clearTimeout(timer);
   }, [filters]);
+
+  // With filters never remembered (#447), the next visit starts unfiltered.
+  useForgetFiltersOnLeave(() => {
+    ipc.send({
+      kind: "Settings",
+      command: {
+        type: "patchBrowsing",
+        payload: { patch: { liveReplayFilters: DEFAULT_LIVE_FILTERS } },
+      },
+    });
+  });
 
   const gameTypes = useMemo(
     () => [...new Set(liveGames.map((game) => game.gameType).filter(Boolean))].sort(),
@@ -206,12 +216,21 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   // list that refreshes itself every few seconds asks nothing the second time,
   // and only while this tab is open. The answers are shared with the detail
   // panel, which is why opening one costs nothing after this.
+  //
+  // "Asked" is remembered here as well as in state. The backend marks each
+  // game as being looked up with an event of its own, and every one of those
+  // re-ran this effect while the rest were still unmarked: a page of
+  // seventy-five cards sent about seventy overlapping requests, which filled
+  // every command slot the backend has, and a click on another tab waited
+  // behind them for as long as the vault took to answer.
+  const askedLookups = useRef(new Set<number>());
   useEffect(() => {
     if (viewMode !== "tiles") return;
     const unknown = visibleGames
       .map(({ game }) => game.id)
-      .filter((id) => !lookups?.[id]);
+      .filter((id) => !lookups?.[id] && !askedLookups.current.has(id));
     if (unknown.length === 0) return;
+    for (const id of unknown) askedLookups.current.add(id);
     ipc.send({ kind: "Replays", command: { type: "lookUpOnlineMany", payload: { uids: unknown } } });
   }, [lookups, viewMode, visibleGames]);
 
@@ -247,10 +266,6 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
       setSortDirection(key === "title" || key === "host" ? "ascending" : "descending");
     }
   }, [sortKey]);
-
-  const toggleExpanded = useCallback((id: number) => {
-    setExpandedId((current) => current === id ? null : id);
-  }, []);
 
   if (lobbyStatus !== "connected") {
     return (
@@ -307,21 +322,19 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
           games={visibleGames}
           matchingCount={filteredGames.length}
           totalCount={liveGames.length}
-          expandedId={expandedId}
           sortKey={sortKey}
           sortDirection={sortDirection}
           previewsLoading={mapVaultStatus.type === "loading"}
           batchSize={LIVE_REPLAY_BATCH_SIZE}
           tracking={tracking}
           onSort={changeSort}
-          onToggle={toggleExpanded}
+          onOpen={setOpenId}
           onPlayerMenu={openPlayerMenu}
           onLoadMore={() => setVisibleCount((current) => current + LIVE_REPLAY_BATCH_SIZE)}
         />
       )}
-      {/* The panel a card opens. Nothing but the grid opens it, because the
-          table expands its own row instead; both are the behaviour the reader
-          already knows from the tab they came from. */}
+      {/* The window a card or a row opens, the same one either way, as in
+          the online and local tabs. */}
       {openGame && (
         <LiveReplayDetail
           game={openGame}

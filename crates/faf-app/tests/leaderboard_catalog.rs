@@ -34,7 +34,6 @@ impl LeaderboardPort for CountingLeaderboard {
         Ok(vec![RatingLeaderboard {
             id: 1,
             technical_name: "global".into(),
-            name: "Global".into(),
             description: String::new(),
         }])
     }

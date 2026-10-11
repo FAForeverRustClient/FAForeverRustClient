@@ -205,9 +205,15 @@ export function gridColumnSpace(row: HTMLElement, columns: number): number {
 /**
  * The drawn width of column `index`, measured from one of its header row's
  * dividers. Every list draws its dividers inside its header cells, one cell
- * per column, so the column's cell is the header row's child at that index.
+ * per column, so the column's cell is the header row's child marked with that
+ * index, or, in a list that keeps its cells in designed order, the child at
+ * that index.
  */
 export function drawnColumnWidth(handle: HTMLElement, index: number): number | null {
-  const cell = handle.parentElement?.parentElement?.children[index];
+  const row = handle.parentElement?.parentElement;
+  // A table draws its cells in the stored order and marks each with the
+  // designed column it is (`data-column`); a grid list keeps them in designed
+  // order. See `designedCells` in `useColumnOrder`.
+  const cell = row?.querySelector(`:scope > [data-column="${index}"]`) ?? row?.children[index];
   return cell ? Math.round(cell.getBoundingClientRect().width) : null;
 }

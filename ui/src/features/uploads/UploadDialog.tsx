@@ -26,6 +26,7 @@ import { useAppStore } from "../../store/store";
 import { MapThumbnail } from "../../shared/components/MapThumbnail";
 import { formatBytes } from "../../shared/format/formatBytes";
 import { openHttpsUrl } from "../../shared/externalLinks";
+import { plainError } from "../../shared/plainError";
 import { uploadDescription, uploadFacts, vaultPresence } from "./uploadSubject";
 import "./uploads.css";
 import { t } from "../../i18n";
@@ -129,7 +130,7 @@ function statusLine(status: UploadsState["status"]): string | null {
     case "succeeded":
       return null;
     case "failed":
-      return status.payload.reason;
+      return plainError(status.payload.reason);
   }
 }
 
@@ -360,14 +361,24 @@ export function UploadDialog() {
 
       {done && <p className="upload-status is-ok">{t("uploads.published")}</p>}
       {line && (
-        <p className={status.type === "failed" ? "upload-status is-error" : "upload-status muted"}>
+        <p
+          className={status.type === "failed" ? "upload-status is-error" : "upload-status muted"}
+          title={status.type === "failed" ? status.payload.reason : undefined}
+        >
           {line}
           {percent !== null && ` ${percent}%`}
         </p>
       )}
 
       <div className="upload-actions">
-        <Button onClick={close}>{t(done ? "uploads.close" : "uploads.cancel")}</Button>
+        {/* "Hide" while publishing, because that is all it can do: the
+            archive is already with the server, which finishes it. It said
+            "Cancel", and authors believed their upload had been stopped. The
+            status bar keeps the progress, and a notification brings the
+            result. */}
+        <Button onClick={close} title={busy ? t("uploads.hideHint") : undefined}>
+          {t(done ? "uploads.close" : busy ? "uploads.hide" : "uploads.cancel")}
+        </Button>
         {!done && (
           <Button
             variant="primary"

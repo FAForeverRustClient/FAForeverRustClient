@@ -117,23 +117,49 @@
   }
 }
 
-/* Settings → Updates: the status line under the check button. */
+/* Settings → Updates: the status in two lines, then the check button at the
+   row's edge. */
 .update-settings-status {
   display: flex;
   min-width: 0;
   max-width: 100%;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--color-muted);
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
 }
 
-.update-settings-status > span {
+.update-settings-text {
+  display: grid;
+  gap: 2px;
   min-width: 0;
-  flex: 1 1 240px;
+  text-align: right;
+}
+
+.update-settings-headline {
+  color: var(--color-text);
+  font-size: 13px;
   overflow-wrap: anywhere;
+}
+
+/* The catalogue's phrases are written to follow "Running 0.7.0:", so they
+   start in lower case; standing alone they need the capital. */
+.update-settings-headline::first-letter {
+  text-transform: uppercase;
+}
+
+.update-settings-headline.is-ok { color: var(--color-ok); }
+.update-settings-headline.is-warn { color: var(--color-warn); }
+.update-settings-headline.is-error { color: var(--color-error); }
+
+.update-settings-meta {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.update-settings-status > .btn,
+.update-settings-status > button {
+  flex: none;
 }
 
 /* The update that is not an offer. Deliberately plain: it is not a decision

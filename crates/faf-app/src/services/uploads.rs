@@ -1,10 +1,12 @@
 //! Vault publishing orchestration.
 
 use faf_domain::state::{
-    is_safe_folder_name, ModsEvent, UploadKind, UploadStatus, UploadsCommand, UploadsEvent,
+    is_safe_folder_name, ModsEvent, NotificationKind, UploadKind, UploadStatus, UploadsCommand,
+    UploadsEvent,
 };
 
 use crate::runtime::{EventSink, ServiceCtx};
+use crate::services::notifications;
 
 pub async fn handle(cmd: UploadsCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
@@ -75,13 +77,12 @@ fn rescan_mods(ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn start(ctx: &ServiceCtx, out: &EventSink) {
-    let Some(_guard) = ctx.uploads_active.try_acquire() else {
-        return;
-    };
+    crate::runtime::expect_admitted(crate::runtime::Key::Upload);
     let state = out.with_state(|state| state.uploads.clone());
 
     // Both reference clients hold a global upload lock. A second publish would
-    // fight the first for the same temporary archive path.
+    // fight the first for the same temporary archive path, which is why
+    // `Start` is single-flight in the command policy (`Key::Upload`).
     if state.status.is_busy() {
         return;
     }
@@ -107,24 +108,72 @@ async fn start(ctx: &ServiceCtx, out: &EventSink) {
         return;
     }
 
+    let name = if request.display_name.trim().is_empty() {
+        request.folder_name.clone()
+    } else {
+        request.display_name.clone()
+    };
+    let kind = request.kind;
     let mut updates = ctx.ports.uploads.publish(request).await;
 
     // The port always ends with a terminal status; treating a stream that
     // closes without one as a failure keeps a panicked task from looking like
     // a successful publish.
-    let mut settled = false;
+    let mut last = None;
     while let Some(status) = updates.recv().await {
-        settled = matches!(
-            status,
-            UploadStatus::Succeeded | UploadStatus::Failed { .. }
-        );
+        last = Some(status.clone());
         out.emit(UploadsEvent::Progressed { status });
     }
-    if !settled {
-        out.emit(UploadsEvent::Progressed {
-            status: UploadStatus::Failed {
+    let outcome = match last {
+        Some(status @ (UploadStatus::Succeeded | UploadStatus::Failed { .. })) => status,
+        _ => {
+            let failed = UploadStatus::Failed {
                 reason: "the upload stopped without finishing".into(),
-            },
-        });
+            };
+            out.emit(UploadsEvent::Progressed {
+                status: failed.clone(),
+            });
+            failed
+        }
+    };
+    announce_if_hidden(out, kind, &name, &outcome);
+}
+
+/// Say how a publish ended when its dialog is no longer there to say it.
+///
+/// "Cancel" on a running publish only ever hid the dialog: the archive was
+/// already on its way and the server finishes what it receives. The author
+/// then had no progress and no result anywhere, and could believe the upload
+/// had been stopped. The dialog now calls that button "Hide", and this is the
+/// other half: the outcome arrives as a notification.
+fn announce_if_hidden(out: &EventSink, kind: UploadKind, name: &str, outcome: &UploadStatus) {
+    if out.with_state(|state| state.uploads.request.is_some()) {
+        return; // The dialog is open and shows the outcome itself.
+    }
+    let (what, which) = match kind {
+        UploadKind::Map => ("Map", "map"),
+        UploadKind::Mod => ("Mod", "mod"),
+    };
+    match outcome {
+        UploadStatus::Succeeded => notifications::add_text(
+            out,
+            NotificationKind::UploadFinished,
+            notifications::Text::new(format!("notifications.msg.{which}Published"))
+                .with("name", name),
+            format!("{what} published"),
+            format!("{name} is in the vault."),
+            None,
+        ),
+        UploadStatus::Failed { reason } => notifications::add_text(
+            out,
+            NotificationKind::Error,
+            notifications::Text::new(format!("notifications.msg.{which}NotPublished"))
+                .with("name", name)
+                .with("reason", reason),
+            format!("{what} not published"),
+            format!("{name} could not be published: {reason}. Open the upload again to retry."),
+            None,
+        ),
+        _ => {}
     }
 }

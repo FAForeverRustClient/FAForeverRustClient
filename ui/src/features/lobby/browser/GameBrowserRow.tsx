@@ -11,10 +11,12 @@ import { PlayerName } from "../../../shared/components/nameColors";
 import { formatAge, playingCount, showsUnrankedTag, simModsKeepGameRanked } from "../../../shared/gameRules";
 import { RatingRangeTag } from "./RatingRangeTag";
 import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
+import { featuredModLabel } from "../../../shared/featuredMods";
 import { hideGlobalLineup, useGameLineupPosition, useGameSocialPosition } from "./hoverPopovers";
 import { GameLineup } from "./GameLineup";
 import { GameSocialPopover, foesHere, friendsHere } from "./GameSocialPopover";
 import { EMPTY_SET } from "./GameTile";
+import { FittingChips } from "../../../shared/components/FittingChips";
 
 export const GameBrowserRow = memo(function GameBrowserRow({
   game,
@@ -23,7 +25,6 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   friendSet,
   foeSet = EMPTY_SET,
   now,
-  columnStyle,
   selected,
   onSelect,
   onJoin,
@@ -38,8 +39,6 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   /** The foe list, lower-cased once for the whole list. */
   foeSet?: ReadonlySet<string>;
   now?: number;
-  /** The column template, built once by the browser and shared by every row. */
-  columnStyle?: React.CSSProperties;
   selected: boolean;
   onSelect: () => void;
   onJoin: () => void;
@@ -62,6 +61,10 @@ export const GameBrowserRow = memo(function GameBrowserRow({
     hideSocial,
   } = useGameSocialPosition(game.id);
   const { title: shownTitle, goAdapter } = splitGoAdapterTitle(game.title);
+  // Plain FAF is what nearly every game is, so a chip saying so told nobody
+  // anything and took the room the chips that do differ needed (#378). Only
+  // another featured mod (beta, develop, Nomads, ...) gets one.
+  const otherMod = game.modName && game.modName.toLowerCase() !== "faf" ? game.modName : null;
   return (
     <>
       <button
@@ -69,7 +72,6 @@ export const GameBrowserRow = memo(function GameBrowserRow({
         className={
           `game-browser-row${friends.length > 0 ? " has-friend" : ""}${foes.length > 0 ? " has-foe" : ""}${selected ? " active" : ""}`
         }
-        style={columnStyle}
         onClick={onSelect}
         onDoubleClick={onJoin}
         onContextMenu={(event) => {
@@ -118,16 +120,18 @@ export const GameBrowserRow = memo(function GameBrowserRow({
 
         {/* The tags in a column of their own (#341). In the game cell they
             began wherever each host's name happened to end, so the same chip
-            stood at a different place in every row. */}
-          <div className="game-browser-tags-col game-browser-tags">
-            <i>{game.modName || "faf"}</i>
+            stood at a different place in every row. On one line: what does
+            not fit the column's width becomes "+N more", which lists every
+            tag on hover (#379). */}
+          <FittingChips className="game-browser-tags-col game-browser-tags" moreClassName="more">
+            {otherMod && <i title={featuredModLabel(otherMod)}>{featuredModLabel(otherMod)}</i>}
             {goAdapter && <i className="go-adapter" title={t("lobby.browser.goAdapterTitle")}>{t("lobby.browser.goAdapter")}</i>}
             {simModCount > 0 && (
               <i
                 className={simModsRanked ? "modded is-ranked" : "modded"}
                 title={t(simModsRanked ? "lobby.browser.simModsRanked" : "lobby.browser.simModsUnranked", { count: simModCount })}
               >
-                {simModCount} SIM
+                {t("lobby.browser.simModBadge", { count: simModCount })}
               </i>
             )}
             {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
@@ -182,7 +186,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
             {(game.ratingMin !== null || game.ratingMax !== null) && (
               <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
             )}
-          </div>
+          </FittingChips>
 
         <div className="game-browser-map-col">
           <strong title={presentation.displayName}>{presentation.displayName}</strong>
@@ -199,7 +203,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
         </div>
 
         <div className="game-browser-rating-col">
-          <span>{game.averageRating || "N/A"}</span>
+          <span>{game.averageRating || t("common.notAvailable")}</span>
         </div>
 
         <div className="game-browser-age-col">
