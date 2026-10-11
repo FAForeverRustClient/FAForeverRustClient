@@ -2570,155 +2570,24 @@ div.training-detail-guide-problem p {
   margin-top: 0;
 }
 
-/* ── the guide reader: the changelog's reading surface ─────────────── */
+/* ── the guide reader ────────────────────────────────────────────────── */
 
-/* The text at a reading measure, and its sections as a column beside it when
-   the reading area is wide enough for both: the changelog's layout, decided
-   by the area's own width rather than the window's, because the run layout
-   puts a guide in a column of its own. */
-.training-guide-frame {
-  container-type: inline-size;
-  container-name: training-guide;
-  min-width: 0;
-}
-
-/* The text keeps a reading measure; what is wide by nature does not.
-
-   The measure is what long text is most often got wrong by: past about
-   seventy-five characters a line, the eye loses its place on the way back to
-   the next one. 68ch is that at this size, since `ch` is the width of a zero
-   and the average letter is narrower. A tabset, a table or a screenshot gains
-   nothing from that limit and loses a lot to it (tab labels in two rows, a
-   table squeezed into wrapping cells), so those break out to the column's
-   whole width, up to `--guide-wide`. The contents stay on the right edge. */
-.training-guide {
-  --guide-wide: 1040px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  justify-content: space-between;
-  gap: 48px;
-  padding: 8px 4px 32px;
-}
-
-.training-markdown.training-guide-copy {
-  max-width: var(--guide-wide);
-}
-
-/* Each element measured in its own text's `ch`, so a heading's limit grows
-   with its size rather than wrapping a word earlier than its body does. */
-.training-markdown.training-guide-copy > *,
-.training-guide-tabpanel > * {
-  max-width: 68ch;
-}
-
-/* The breakouts, and the rules that go with them: a section's hairline over
-   a card as wide as the column would stop short of its edge otherwise. */
-.training-markdown.training-guide-copy > .training-guide-tabs,
-.training-markdown.training-guide-copy > .training-markdown-table,
-.training-markdown.training-guide-copy > .training-markdown-figure,
-.training-markdown.training-guide-copy > .training-guide-jump,
-.training-markdown.training-guide-copy > hr,
-.training-markdown.training-guide-copy > .training-guide-heading.is-rank-1,
+/* The surface itself (measure, headings, contents) is the shared
+   `ReadingLayout`. What only a guide has breaks out of the text's measure
+   here: a tabset and a table, and the same three inside a tab's panel. */
+.reading .reading-copy > .training-guide-tabs,
+.reading .reading-copy > .training-markdown-table,
 .training-guide-tabpanel > .training-markdown-table,
 .training-guide-tabpanel > .training-markdown-figure,
 .training-guide-tabpanel > hr {
   max-width: none;
 }
 
-/* A step above the panel text, which is sized for scanning rather than for
-   four thousand words, and the body a shade softer than the headings: white
-   on near black at full strength glares over a long read, and the headings
-   and the bold sentences the guides lean on stand out by being the brightest
-   thing on the page. */
-.training-markdown.training-guide-copy {
-  min-width: 0;
-  color: color-mix(in oklab, var(--color-text) 84%, var(--color-bg));
-  font-size: 15px;
-  line-height: 1.7;
-  font-kerning: normal;
+.training-guide-tabpanel > * {
+  max-width: 68ch;
 }
 
-/* Spacing in the text's own unit, so it scales with it: a paragraph break is
-   a line's height, a list item half of one. */
-.training-markdown.training-guide-copy p,
-.training-markdown.training-guide-copy ul,
-.training-markdown.training-guide-copy ol {
-  margin: 0 0 1em;
-}
-
-/* No last line of one word, which is what a paragraph's end looks like at
-   this measure about once a screen. */
-.training-markdown.training-guide-copy p,
-.training-markdown.training-guide-copy li {
-  text-wrap: pretty;
-}
-
-.training-markdown.training-guide-copy li {
-  margin-bottom: 0.35em;
-}
-
-.training-markdown.training-guide-copy li::marker {
-  color: var(--color-subtle);
-}
-
-.training-markdown.training-guide-copy strong {
-  color: var(--color-text);
-  font-weight: 650;
-}
-
-/* More room above a heading than under it, so it belongs to the text it
-   introduces rather than floating between two. */
-.training-guide-copy .training-guide-heading {
-  margin: 2.4em 0 0.6em;
-  color: var(--color-text);
-  font-weight: 650;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
-  text-wrap: balance;
-  scroll-margin-top: 16px;
-}
-
-.training-markdown.training-guide-copy > .training-guide-heading:first-child,
-.training-guide-jump + .training-guide-heading {
-  margin-top: 0;
-}
-
-/* A section: the size the changelog gives one, and a hairline over it so the
-   eye sees where the last one ended before it reads the next one's name. */
-/* A section and a part of one differ in size, weight and room alike: a step of
-   a few pixels alone read as two sizes of the same thing. */
-.training-guide-copy .training-guide-heading.is-rank-1 {
-  margin-top: 2em;
-  padding-top: 1em;
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  border-top: 1px solid var(--color-border);
-}
-
-.training-markdown.training-guide-copy > .training-guide-heading.is-rank-1:first-child,
-.training-guide-jump + .training-guide-heading.is-rank-1 {
-  padding-top: 0;
-  border-top: 0;
-}
-
-.training-guide-copy .training-guide-heading.is-rank-2 {
-  margin-top: 1.9em;
-  font-size: 17px;
-  font-weight: 600;
-}
-
-/* Anything deeper is a run-in label over its paragraph. */
-.training-guide-copy .training-guide-heading.is-rank-3 {
-  margin: 22px 0 6px;
-  color: var(--color-muted);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.training-guide-heading .training-markdown-icon {
+.reading-heading .training-markdown-icon {
   margin-right: 6px;
 }
 
@@ -2761,10 +2630,6 @@ div.training-detail-guide-problem p {
 
 .training-markdown-figure.is-align-center figcaption {
   text-align: center;
-}
-
-.training-guide-heading {
-  clear: both;
 }
 
 @media (max-width: 760px) {
@@ -2931,14 +2796,14 @@ div.training-detail-guide-problem p {
 
 /* A numbered list in a guide is a sequence of steps: each number in a disc,
    the discs joined by a line, so the order is the first thing seen. */
-.training-guide-copy > ol,
+.reading-copy > ol,
 .training-guide-tabpanel > ol {
   counter-reset: step;
   padding-left: 0;
   list-style: none;
 }
 
-.training-guide-copy > ol > li,
+.reading-copy > ol > li,
 .training-guide-tabpanel > ol > li {
   position: relative;
   min-height: 26px;
@@ -2947,7 +2812,7 @@ div.training-detail-guide-problem p {
   counter-increment: step;
 }
 
-.training-guide-copy > ol > li::before,
+.reading-copy > ol > li::before,
 .training-guide-tabpanel > ol > li::before {
   content: counter(step);
   position: absolute;
@@ -2966,7 +2831,7 @@ div.training-detail-guide-problem p {
   border-radius: 50%;
 }
 
-.training-guide-copy > ol > li:not(:last-child)::after,
+.reading-copy > ol > li:not(:last-child)::after,
 .training-guide-tabpanel > ol > li:not(:last-child)::after {
   content: "";
   position: absolute;
@@ -2995,7 +2860,7 @@ div.training-detail-guide-problem p {
 }
 
 /* Quotes and callouts read as an aside, not as body text in grey. */
-.training-markdown.training-guide-copy blockquote {
+.reading .reading-copy blockquote {
   margin: 18px 0;
   padding: 10px 14px;
   color: var(--color-text);
@@ -3005,27 +2870,27 @@ div.training-detail-guide-problem p {
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
-.training-markdown.training-guide-copy .training-markdown-table {
+.reading .reading-copy .training-markdown-table {
   margin: 16px 0 20px;
 }
 
-.training-markdown.training-guide-copy .training-markdown-table table {
+.reading .reading-copy .training-markdown-table table {
   min-width: 60%;
   font-size: 14px;
   line-height: 1.5;
 }
 
-.training-markdown.training-guide-copy .training-markdown-table th,
-.training-markdown.training-guide-copy .training-markdown-table td {
+.reading .reading-copy .training-markdown-table th,
+.reading .reading-copy .training-markdown-table td {
   padding: 7px 12px;
 }
 
-.training-markdown.training-guide-copy pre {
+.reading .reading-copy pre {
   margin: 16px 0;
   line-height: 1.55;
 }
 
-.training-markdown.training-guide-copy hr {
+.reading .reading-copy hr {
   height: 1px;
   margin: 28px 0;
   background: var(--color-border);
@@ -3102,127 +2967,6 @@ div.training-detail-guide-problem p {
   .training-guide-tab {
     transition: none;
   }
-}
-
-/* Sections as jump links above the text, when there is no room for a column. */
-.training-guide-jump {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0 0 24px;
-  padding: 0 0 18px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.training-guide-jump-item {
-  min-height: 28px;
-  padding: 0 10px;
-  color: var(--color-text);
-  font: inherit;
-  font-size: 12px;
-  line-height: 1.2;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  cursor: pointer;
-  transition: background-color 100ms ease, border-color 100ms ease;
-}
-
-.training-guide-jump-item:hover {
-  background: var(--color-surface-hover);
-  border-color: var(--color-border-strong);
-}
-
-.training-guide-jump-item:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-.training-guide-toc {
-  display: none;
-}
-
-@container training-guide (min-width: 940px) {
-  .training-guide.has-toc {
-    grid-template-columns: minmax(0, 1fr) 240px;
-  }
-
-  .training-guide.has-toc .training-guide-jump {
-    display: none;
-  }
-
-  /* Pinned beside the text as it scrolls, no taller than the tab. */
-  .training-guide-toc {
-    position: sticky;
-    top: 16px;
-    display: block;
-    align-self: start;
-    max-height: calc(100vh - 120px);
-    overflow-y: auto;
-    scrollbar-width: none;
-  }
-}
-
-/* Lined up with the entries' text, not with the rail they hang from. */
-.training-guide-toc-title {
-  margin: 0 0 var(--space-2);
-  padding-left: 13px;
-  color: var(--color-muted);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.training-guide-toc ol {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border-left: 1px solid var(--color-border);
-}
-
-/* The section being read is marked on the rail the list hangs from. */
-.training-guide-toc-item {
-  display: block;
-  width: 100%;
-  margin-left: -1px;
-  padding: 4px 0 4px 12px;
-  color: var(--color-muted);
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.35;
-  text-align: left;
-  overflow-wrap: anywhere;
-  background: transparent;
-  border: 0;
-  border-left: 1px solid transparent;
-  cursor: pointer;
-  transition: color 120ms ease, border-color 120ms ease;
-}
-
-.training-guide-toc-item.is-part {
-  padding-left: 24px;
-  overflow: hidden;
-  color: var(--color-subtle);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow-wrap: normal;
-}
-
-.training-guide-toc-item:hover {
-  color: var(--color-text);
-}
-
-.training-guide-toc-item:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: -2px;
-}
-
-.training-guide-toc-item.is-active {
-  color: var(--color-text);
-  font-weight: 600;
-  border-left-color: var(--color-text);
 }
 
 /* ── contribute: editor beside its preview ─────────────────────────── */

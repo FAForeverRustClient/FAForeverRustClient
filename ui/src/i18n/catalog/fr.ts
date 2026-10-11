@@ -318,6 +318,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "duration.daysHoursMinutes": "{days} j {hours} h {minutes} min",
   "common.now": "Maintenant",
   "common.any": "Indifférent",
+  "common.contents": "Sommaire",
   "common.pickDate": "Choisir une date",
   "common.close": "Fermer",
   "common.cancel": "Annuler",

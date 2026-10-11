@@ -2865,6 +2865,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.matchmaker.partyChatChannel": "Gruppenchat",
   "common.now": "Jetzt",
   "common.any": "Beliebig",
+  "common.contents": "Inhalt",
   "common.pickDate": "Datum wählen",
   "common.mapPreview": "Vorschau von {name}",
   "common.mapPreviewUnavailable": "Keine Vorschau für {name}",

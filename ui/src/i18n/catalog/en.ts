@@ -3275,6 +3275,7 @@ export const en = {
   "lobby.matchmaker.partyChatChannel": "party chat",
   "common.now": "Now",
   "common.any": "Any",
+  "common.contents": "Contents",
   "common.pickDate": "Pick a date",
   "common.mapPreview": "{name} preview",
   "common.mapPreviewUnavailable": "{name} preview unavailable",
