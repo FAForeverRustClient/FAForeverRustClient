@@ -51,6 +51,7 @@ import { ChangeCaptainDialog, SwapInDialog, TeamFromFreeAgentDialog } from "./Te
 import { PremadeTeams } from "./PremadeTeams";
 import { useTourneyDisplay } from "../display";
 import type { EntryActions, TeamActions } from "../tourneyActions";
+import { askConfirm, askText } from "../tourneyDialogs";
 
 interface TeamsPanelProps {
   event: Tourney;
@@ -726,8 +727,9 @@ function YourTeam({ event, team, name, profiles, busy, captain, now, ...on }: Yo
           <Button
             disabled={busy}
             onClick={() => {
-              const renamed = window.prompt(t("tournaments.teams.renamePrompt"), team.name);
-              if (renamed !== null && renamed.trim() !== "") on.teams.rename(team.id, renamed);
+              askText(t("tournaments.teams.renamePrompt"), team.name, (renamed) => on.teams.rename(team.id, renamed), {
+                maxLength: 30,
+              });
             }}
           >
             <Icon name="edit" size={14} /> {t("tournaments.teams.rename")}
@@ -736,7 +738,7 @@ function YourTeam({ event, team, name, profiles, busy, captain, now, ...on }: Yo
         <Button
           disabled={busy}
           onClick={() => {
-            if (window.confirm(t("tournaments.teams.leaveConfirm"))) on.teams.leave();
+            askConfirm(t("tournaments.teams.leaveConfirm"), () => on.teams.leave(), { danger: true });
           }}
         >
           <Icon name="logout" size={14} /> {t("tournaments.teams.leave")}
@@ -745,7 +747,7 @@ function YourTeam({ event, team, name, profiles, busy, captain, now, ...on }: Yo
           <Button
             disabled={busy}
             onClick={() => {
-              if (window.confirm(t("tournaments.teams.disbandConfirm"))) on.teams.disband(team.id);
+              askConfirm(t("tournaments.teams.disbandConfirm"), () => on.teams.disband(team.id), { danger: true });
             }}
           >
             <Icon name="trash" size={14} /> {t("tournaments.teams.disband")}
@@ -842,8 +844,9 @@ function TeamCard(props: TeamCardProps) {
         key="rename"
         disabled={busy}
         onClick={() => {
-          const renamed = window.prompt(t("tournaments.teams.renamePrompt"), team.name);
-          if (renamed !== null && renamed.trim() !== "") props.teams.rename(team.id, renamed);
+          askText(t("tournaments.teams.renamePrompt"), team.name, (renamed) => props.teams.rename(team.id, renamed), {
+            maxLength: 30,
+          });
         }}
       >
         {t("tournaments.teams.rename")}
@@ -855,7 +858,7 @@ function TeamCard(props: TeamCardProps) {
         key="disband"
         disabled={busy}
         onClick={() => {
-          if (window.confirm(t("tournaments.teams.disbandConfirm"))) props.teams.disband(team.id);
+          askConfirm(t("tournaments.teams.disbandConfirm"), () => props.teams.disband(team.id), { danger: true });
         }}
       >
         {t("tournaments.teams.disband")}

@@ -4069,6 +4069,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "tournaments.teams.formingHint": "Noch nicht voll: Zum Antreten braucht es {size} Spieler.",
   "tournaments.teams.yourTeam": "Dein Team",
   "tournaments.teams.openSlot": "Freier Platz",
+  "tournaments.dialog.confirmTitle": "Bist du sicher?",
+  "tournaments.dialog.confirm": "Bestätigen",
   "tournaments.teams.howPlaces": "So werden Plätze vergeben",
   "tournaments.teams.anyMember": "Jedes Teammitglied kann einchecken.",
   "tournaments.teams.checkInOpens": "Der Check-in öffnet am {when}.",

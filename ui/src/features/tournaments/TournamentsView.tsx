@@ -45,6 +45,7 @@ import { mayReport, openEvent, signupNeedsRating } from "../../shared/rules/tour
 import "./tournaments.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import { plainError } from "../../shared/plainError";
+import { TourneyDialogHost } from "./tourneyDialogs";
 
 /** How often the countdowns are recomputed. Minute resolution, minute ticks. */
 const TICK_MS = 60_000;
@@ -298,6 +299,7 @@ export function TournamentsView() {
           onClose={() => setReporting(null)}
         />
       )}
+      <TourneyDialogHost />
     </div>
   );
 }

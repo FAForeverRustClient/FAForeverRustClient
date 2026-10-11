@@ -30,6 +30,7 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import { RichText } from "../detail/RichText";
 import { formatMoment, STATUS_LABELS } from "../tourneyPresentation";
 import { AccountAdder, BanList } from "./BanList";
+import { askConfirm } from "../tourneyDialogs";
 
 type Tab = "requests" | "siteAdmins" | "directors" | "bans" | "logs" | "archived" | "articles";
 
@@ -205,9 +206,9 @@ export function ConsolePage(props: ConsoleProps) {
               onAdd={(fafId, name) => props.onWrite({ type: "siteAdminGrant", payload: { fafId, name } })}
               onRemove={(held) => {
                 const mine = held.fafId === data.me;
-                if (window.confirm(t(mine ? "tournaments.console.removeSelfAdmin" : "tournaments.console.removeAdmin"))) {
+                askConfirm(t(mine ? "tournaments.console.removeSelfAdmin" : "tournaments.console.removeAdmin"), () => {
                   props.onWrite({ type: "siteAdminRevoke", payload: { fafId: held.fafId } });
-                }
+                }, { danger: true });
               }}
             />
           )}
@@ -223,11 +224,11 @@ export function ConsolePage(props: ConsoleProps) {
               onAdd={(fafId, name) => props.onWrite({ type: "directorGrant", payload: { fafId, name } })}
               onRemove={(held) => {
                 const mine = held.fafId === data.me;
-                if (
-                  window.confirm(t(mine ? "tournaments.console.removeSelfDirector" : "tournaments.console.removeDirector"))
-                ) {
-                  props.onWrite({ type: "directorRevoke", payload: { fafId: held.fafId } });
-                }
+                askConfirm(
+                  t(mine ? "tournaments.console.removeSelfDirector" : "tournaments.console.removeDirector"),
+                  () => props.onWrite({ type: "directorRevoke", payload: { fafId: held.fafId } }),
+                  { danger: true },
+                );
               }}
             />
           )}
@@ -522,9 +523,9 @@ function RequestsTab(props: ConsoleProps & { data: SiteAdminData }) {
                       <Button
                         disabled={props.busy}
                         onClick={() => {
-                          if (window.confirm(t("tournaments.console.revokeConfirm"))) {
+                          askConfirm(t("tournaments.console.revokeConfirm"), () => {
                             props.onWrite({ type: "revoke", payload: { kind: queue.kind, fafId: held.fafId } });
-                          }
+                          }, { danger: true });
                         }}
                       >
                         {t("tournaments.console.revoke")}
@@ -698,9 +699,9 @@ function ArchivedTab({
                         variant="danger"
                         disabled={busy}
                         onClick={() => {
-                          if (window.confirm(t("tournaments.console.deleteConfirm"))) {
+                          askConfirm(t("tournaments.console.deleteConfirm"), () => {
                             onWrite({ type: "deleteTournament", payload: { tournamentId: held.id } });
-                          }
+                          }, { danger: true });
                         }}
                       >
                         <Icon name="trash" size={14} /> {t("tournaments.console.delete")}
@@ -779,9 +780,9 @@ function ArticlesTab(props: ConsoleProps & { data: SiteAdminData }) {
         <Button
           disabled={props.busy}
           onClick={() => {
-            if (window.confirm(t("tournaments.console.archiveArticleConfirm"))) {
+            askConfirm(t("tournaments.console.archiveArticleConfirm"), () => {
               props.onWrite({ type: "articleArchive", payload: { id: held.id, restore: false } });
-            }
+            }, { danger: true });
           }}
         >
           {t("tournaments.console.archive")}

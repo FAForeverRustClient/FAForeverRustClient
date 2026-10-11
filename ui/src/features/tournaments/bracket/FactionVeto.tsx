@@ -21,6 +21,7 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import { FactionIcon } from "../../../shared/components/FactionIcon";
 import { teamNameOf } from "./matchParts";
 import { FACTIONS } from "./vetoPresentation";
+import { askConfirm } from "../tourneyDialogs";
 
 export const FACTION_LABELS: Record<TourneyFaction, MessageKey> = {
   uef: "tournaments.faction.uef",
@@ -89,9 +90,9 @@ function ResetControls({
   const name = (teamId: string | null) => teamNameOf(event, teamId) ?? t("tournaments.bracket.tbd");
   const reset = (slot: 1 | 2 | null) => {
     const who = slot === null ? t("tournaments.faction.bothSides") : name(slot === 1 ? entry.team1 : entry.team2);
-    if (window.confirm(t("tournaments.faction.resetConfirm", { team: who, game: game.game }))) {
+    askConfirm(t("tournaments.faction.resetConfirm", { team: who, game: game.game }), () => {
       onReset(entry.id, game.game, slot);
-    }
+    }, { danger: true });
   };
   return (
     <span className="tournament-fveto-reset">

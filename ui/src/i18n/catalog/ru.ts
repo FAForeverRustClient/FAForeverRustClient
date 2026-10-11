@@ -4364,6 +4364,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "tournaments.teams.formingHint": "Пока не укомплектованы: для участия нужно {size} игроков.",
   "tournaments.teams.yourTeam": "Ваша команда",
   "tournaments.teams.openSlot": "Свободное место",
+  "tournaments.dialog.confirmTitle": "Вы уверены?",
+  "tournaments.dialog.confirm": "Подтвердить",
   "tournaments.teams.howPlaces": "Как распределяются места",
   "tournaments.teams.anyMember": "Отметиться может любой участник команды.",
   "tournaments.teams.checkInOpens": "Отметка откроется {when}.",

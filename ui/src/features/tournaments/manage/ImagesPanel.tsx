@@ -16,6 +16,7 @@ import type { Tourney, TourneyAdmin } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { unplacedImages } from "../../../shared/markdown";
+import { askConfirm } from "../tourneyDialogs";
 
 /** `MAX_DESC_IMAGES` on the service. */
 const MAX_IMAGES = 10;
@@ -73,9 +74,9 @@ export function ImagesPanel({ event, assetBase, busy, onAdmin }: ImagesPanelProp
                 type="button"
                 disabled={busy}
                 onClick={() => {
-                  if (window.confirm(t("tournaments.images.removeConfirm"))) {
+                  askConfirm(t("tournaments.images.removeConfirm"), () => {
                     onAdmin({ type: "removeImage", payload: { file } });
-                  }
+                  }, { danger: true });
                 }}
               >
                 {t("tournaments.images.remove")}

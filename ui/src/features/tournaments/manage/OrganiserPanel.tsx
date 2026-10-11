@@ -23,6 +23,7 @@ import type { AccountSearch, Tourney } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { mayRemoveOrganiser } from "../../../shared/rules/tourneyRules";
 import { AccountPicker } from "./AccountPicker";
+import { askConfirm } from "../tourneyDialogs";
 
 interface OrganiserPanelProps {
   event: Tourney;
@@ -71,7 +72,7 @@ export function OrganiserPanel(props: OrganiserPanelProps) {
                   const question = self
                     ? t("tournaments.organisers.leaveConfirm")
                     : t("tournaments.organisers.removeConfirm", { name: organiser.name });
-                  if (window.confirm(question)) props.onRemove(organiser.fafId);
+                  askConfirm(question, () => props.onRemove(organiser.fafId));
                 }}
               >
                 {t(

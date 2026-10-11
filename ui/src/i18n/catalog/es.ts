@@ -3949,6 +3949,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "tournaments.teams.formingHint": "Todavía incompletos: hacen falta {size} jugadores para entrar.",
   "tournaments.teams.yourTeam": "Tu equipo",
   "tournaments.teams.openSlot": "Plaza libre",
+  "tournaments.dialog.confirmTitle": "¿Seguro?",
+  "tournaments.dialog.confirm": "Confirmar",
   "tournaments.teams.howPlaces": "Cómo se asignan las plazas",
   "tournaments.teams.anyMember": "Cualquier miembro del equipo puede confirmar.",
   "tournaments.teams.checkInOpens": "La confirmación de asistencia abre el {when}.",

@@ -11,6 +11,7 @@ import { Icon } from "../../../design-system/Icon";
 import type { AccountSearch, PlayerSummary, TourneyBan } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { AccountPicker } from "../manage/AccountPicker";
+import { askConfirm } from "../tourneyDialogs";
 
 /** A `YYYY-MM-DD` as midnight UTC, the way the service reads an expiry. */
 function dayToSeconds(day: string): number | null {
@@ -134,7 +135,7 @@ export function BanList(props: BanListProps) {
                   <Button
                     disabled={props.busy}
                     onClick={() => {
-                      if (window.confirm(t("tournaments.bans.liftConfirm"))) props.onLift(ban.fafId);
+                      askConfirm(t("tournaments.bans.liftConfirm"), () => props.onLift(ban.fafId), { danger: true });
                     }}
                   >
                     {t("tournaments.bans.lift")}

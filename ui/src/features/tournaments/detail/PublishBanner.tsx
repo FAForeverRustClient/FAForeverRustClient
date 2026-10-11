@@ -13,6 +13,7 @@ import type { Tourney } from "../../../ipc/bindings";
 import type { OrganiserActions } from "../tourneyActions";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { formatMoment } from "../tourneyPresentation";
+import { askConfirm } from "../tourneyDialogs";
 
 interface PublishBannerProps {
   event: Tourney;
@@ -66,7 +67,7 @@ export function PublishBanner({ event, assetBase, busy, organiser }: PublishBann
           variant="primary"
           disabled={busy}
           onClick={() => {
-            if (window.confirm(t("tournaments.publish.confirm"))) organiser.publish();
+            askConfirm(t("tournaments.publish.confirm"), () => organiser.publish());
           }}
         >
           {t("tournaments.publish.now")}

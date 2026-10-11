@@ -8368,3 +8368,13 @@ button.tournament-chat-author:hover {
     transition: none;
   }
 }
+
+/* -- The tab's own text question (renaming, a typed rating) -- */
+
+.tournament-ask .tournament-field {
+  margin: var(--space-3) 0 var(--space-2);
+}
+
+.tournament-ask .tournament-field input {
+  font-size: 14px;
+}

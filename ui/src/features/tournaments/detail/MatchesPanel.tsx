@@ -30,6 +30,7 @@ import { hasGames, maySetMatchBestOf } from "../../../shared/rules/tourneyRules"
 import { matchPoolKey, poolForMatch } from "../bracket/poolPresentation";
 import { BYE, neverPlayed } from "../bracket/bracketPresentation";
 import { playersLabel, useTourneyDisplay } from "../display";
+import { askConfirm } from "../tourneyDialogs";
 
 /** The series lengths the service accepts. */
 const BEST_OF = [1, 3, 5, 7];
@@ -467,11 +468,13 @@ function MatchSlotEditor({
         value={current ?? ""}
         onChange={(changed) => {
           const value = changed.target.value;
-          if (value === BYE && !window.confirm(t("tournaments.matches.slotByeConfirm"))) return;
-          onAdmin({
-            type: "setMatchTeam",
-            payload: { matchId: entry.id, slot: number, teamId: value === "" ? null : value },
-          });
+          const apply = () =>
+            onAdmin({
+              type: "setMatchTeam",
+              payload: { matchId: entry.id, slot: number, teamId: value === "" ? null : value },
+            });
+          if (value === BYE) askConfirm(t("tournaments.matches.slotByeConfirm"), apply);
+          else apply();
         }}
       >
         <option value="">{t("tournaments.matches.slotEmpty")}</option>

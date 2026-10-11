@@ -4492,6 +4492,8 @@ export const en = {
   "tournaments.teams.formingHint": "Not full yet: {size} players are needed to enter.",
   "tournaments.teams.yourTeam": "Your team",
   "tournaments.teams.openSlot": "Open slot",
+  "tournaments.dialog.confirmTitle": "Are you sure?",
+  "tournaments.dialog.confirm": "Confirm",
   "tournaments.teams.howPlaces": "How places work",
   "tournaments.teams.anyMember": "Any team member can check in.",
   "tournaments.teams.checkInOpens": "Check-in opens {when}.",
