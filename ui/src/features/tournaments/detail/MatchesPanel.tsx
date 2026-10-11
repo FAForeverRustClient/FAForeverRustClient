@@ -357,8 +357,10 @@ function MatchDetails({
         <MatchPoolPicker event={event} entry={entry} onAssign={props.onAssignPool} />
       )}
       <MatchSlotEditor event={event} entry={entry} onAdmin={props.onAdmin} />
-      {!masked && replays(entry.replayIds, "tournaments.matches.replays")}
-      {!masked && replays(entry.drawReplayIds, "tournaments.matches.drawReplays")}
+      {/* The replays stay in streamer mode: what a caster opens to show the
+          game, and silent about the result until played. */}
+      {replays(entry.replayIds, "tournaments.matches.replays")}
+      {replays(entry.drawReplayIds, "tournaments.matches.drawReplays")}
       {masked && hasVeto(event, entry) && <p className="muted">{t("tournaments.display.vetoHidden")}</p>}
       {!masked && hasVeto(event, entry) && (
         <VetoPanel

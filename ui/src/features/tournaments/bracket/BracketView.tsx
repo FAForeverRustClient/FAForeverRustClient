@@ -846,8 +846,10 @@ function MatchCard({
 
         <span className="tournament-match-tools">
           {/* The FAF replays, played here in the client rather than linked to
-              the vault page. */}
-          {!masked && onWatchReplay !== undefined && replays.length > 0 && (
+              the vault page. Offered in streamer mode too: the replay is what a
+              caster opens to show the game, and it says nothing about the
+              result until it is played. */}
+          {onWatchReplay !== undefined && replays.length > 0 && (
             <ReplayMenu ids={replays} onWatch={onWatchReplay} />
           )}
           {display.streamer && matchupHidden && (
