@@ -779,6 +779,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "maps.view.noInstalledMatchHint": "Расширьте поиск.",
   "maps.view.installedCount": "{count} установлено",
   "maps.view.userMapsFolder": "Папка пользовательских карт",
+  "maps.view.generatedBadge": "Создана генератором карт Neroxis",
   "maps.view.publish": "Опубликовать",
   "maps.view.removing": "Удаление…",
   "maps.view.uninstall": "Удалить",
