@@ -2821,7 +2821,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "leaderboard.rating.leaderboardNumberTitle": "Qué hace la clasificación con ellos",
   "leaderboard.rating.formula": "puntuación = media - 3 x desviación",
   "leaderboard.rating.formulaWhy": "Muestra la parte baja de la campana en lugar de su centro, y lo hace a propósito. Es una lectura prudente: un jugador que figura con 1200 seguramente jugará mejor que 1200, y es poco probable que juegue peor. Tener certeza de un nivel cuenta por tanto tanto como alcanzarlo, y una cuenta nueva, con 1500 menos tres veces 500, figura con cero.",
-  "leaderboard.rating.formulaExample": "Un jugador con una media de 2260 y una desviación de 139 figura con 1842.",
+  "leaderboard.rating.formulaExample": "Un jugador con una media de 2260 y una desviación de 139,3 figura con 1842.",
   "leaderboard.rating.thirtyGames": "Como la desviación se resta tres veces, el número que figura sube deprisa al principio aunque la media apenas se mueva, y da saltos mientras lo hace. Por debajo de unas treinta partidas no significa gran cosa. Pasadas treinta o cuarenta, el sistema ya te ha aprendido, y empieza a significarlo.",
   "leaderboard.rating.nothingForAWinTitle": "Por qué a veces una victoria no da nada",
   "leaderboard.rating.nothingForAWinBody": "Antes de la partida, TrueSkill calcula quién debería ganar. Ganar una partida que tenías un 90 por ciento de probabilidades de ganar no le dice nada que no creyera ya, así que tu media se queda donde está y solo se encoge tu desviación. Ganar una que se esperaba que perdieras sí es noticia, y mueve la media. No ganarás mucho por una partida que debías ganar, y no perderás mucho por una que nunca ibas a ganar.",

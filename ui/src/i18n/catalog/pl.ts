@@ -2851,7 +2851,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "leaderboard.rating.leaderboardNumberTitle": "Co robi z nimi ranking",
   "leaderboard.rating.formula": "ranking = średnia - 3 x odchylenie",
   "leaderboard.rating.formulaWhy": "Pokazuje dolny kraniec krzywej, a nie jej środek, i robi to celowo. To odczyt ostrożny: gracz wpisany z 1200 prawdopodobnie zagra lepiej niż na 1200, a raczej nie zagra gorzej. Pewność co do poziomu liczy się więc tyle samo co jego osiągnięcie, a nowe konto, czyli 1500 minus trzy razy 500, wpisane jest z zerem.",
-  "leaderboard.rating.formulaExample": "Gracz ze średnią 2260 i odchyleniem 139 wpisany jest z 1842.",
+  "leaderboard.rating.formulaExample": "Gracz ze średnią 2260 i odchyleniem 139,3 wpisany jest z 1842.",
   "leaderboard.rating.thirtyGames": "Ponieważ odchylenie odejmowane jest potrójnie, wpisana liczba na początku szybko rośnie, nawet gdy średnia ledwie drgnie, i skacze przy tym w górę i w dół. Poniżej mniej więcej trzydziestu gier niewiele znaczy. Po trzydziestu do czterdziestu system już cię poznał i zaczyna znaczyć.",
   "leaderboard.rating.nothingForAWinTitle": "Dlaczego zwycięstwo czasem nic nie daje",
   "leaderboard.rating.nothingForAWinBody": "Przed grą TrueSkill wylicza, kto powinien wygrać. Wygranie gry, którą miałeś wygrać z 90 procentami szans, nie mówi mu nic, w co już nie wierzył, więc twoja średnia zostaje na miejscu i kurczy się tylko odchylenie. Wygranie takiej, w której miałeś przegrać, to nowina, i to rusza średnią. Nie zyskasz wiele za grę, którą miałeś wygrać, i nie stracisz wiele za taką, której i tak nie miałeś wygrać.",

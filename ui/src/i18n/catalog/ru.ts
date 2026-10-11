@@ -4434,7 +4434,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "tournaments.teamAdmin.notePlaceholder": "Замена, опоздал…",
   "tournaments.teamAdmin.saveNote": "Сохранить примечание",
   "tournaments.teamAdmin.setRating": "Рейтинг",
-  "tournaments.teamAdmin.ratingPrompt": "Рейтинг этого участника (0-4000). Это событие не берёт рейтинг из FAF.",
+  "tournaments.teamAdmin.ratingPrompt": "Рейтинг этого участника (0–4000). Это событие не берёт рейтинг из FAF.",
   "tournaments.admin.searching": "Ищем в FAF…",
   "tournaments.admin.noAccountFound": "Подходящей учётной записи FAF не нашлось.",
   "tournaments.admin.addAnyway": "Добавить «{name}» как введено",
