@@ -262,19 +262,18 @@ export function LocalReplaySearch({
           {t("replays.search.hideShort")}
         </Button>
         <span className="spacer" />
-        <button
-          type="button"
-          className="vault-toggle-advanced search-panel-toggle"
+        <Button
+          className="search-panel-toggle"
           aria-expanded={advanced}
           onClick={() => setAdvanced((current) => !current)}
         >
-          <Icon name="filter" size={14} />
+          <Icon name="filter" size={15} />
           {advanced
             ? t("replays.search.fewerFilters")
             : hiddenFilterCount
               ? t("replays.search.moreFiltersCount", { count: hiddenFilterCount })
               : t("replays.search.moreFilters")}
-        </button>
+        </Button>
         <Button type="button" onClick={() => apply(EMPTY_LOCAL_REPLAY_QUERY)}>{t("replays.search.clear")}</Button>
         <Button type="button" disabled={loading} onClick={onRefresh}><Icon name="refresh" size={15} /> {t("replays.search.refresh")}</Button>
         <Button type="button" variant="primary" disabled={busy} onClick={onOpenFile}>{t("replays.search.openFile")}</Button>
