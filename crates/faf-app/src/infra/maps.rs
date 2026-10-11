@@ -493,16 +493,26 @@ pub(in crate::infra) async fn install_vault_map(
     // part-way would otherwise delete the file the extraction is still
     // reading from. So does the call-off, which the worker asks before its
     // rename: see `CallOff`.
+    //
+    // The worker also asks the token itself. The call-off is only set once
+    // this task has been polled and seen the token cancelled, and a worker
+    // let go at the same moment could reach its rename first and install the
+    // map regardless: a cancel that came in while the archive unpacked was
+    // then lost whenever the worker won that race.
     let expected_folder = folder_name.to_string();
     let call_off = CallOff::default();
     let armed = call_off.arm();
     let asked = call_off.clone();
+    let token = called_off.clone();
     let unpacking = crate::infra::game_updater::unpack_map_leased(
         leases,
         dirs,
         folder_name.to_string(),
         move |dir| {
             install_archive_from_file(archive.path(), dir, Some(&expected_folder), |_| {
+                if token.is_cancelled() {
+                    asked.call_off();
+                }
                 asked.refuse_if_called_off()
             })
             .map(drop)
