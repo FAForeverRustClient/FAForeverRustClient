@@ -386,7 +386,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "leaderboard.ratings.leaderboardPages": "Страницы рейтинга",
   "leaderboard.ratings.playerName": "Имя игрока",
   "leaderboard.ratings.ratingQueues": "Рейтинговые очереди",
-  "leaderboard.ratings.rankedByBoard": "Сортировка по {board}. Нажмите на столбец другой панели, чтобы сортировать по ней.",
   "leaderboard.ratings.refreshRankings": "Обновить места",
   "leaderboard.ratings.rows": "Строк",
   "leaderboard.ratings.updatedAfter": "Обновлено после",

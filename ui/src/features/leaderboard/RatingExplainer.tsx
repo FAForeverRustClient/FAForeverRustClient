@@ -2,6 +2,7 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { openHttpsUrl } from "../../shared/externalLinks";
+import { ReadingLayout, type ReadingSection } from "../../shared/components/ReadingLayout";
 import { useTranslation } from "../../i18n/useTranslation";
 import { type MessageKey } from "../../i18n";
 import newPlayerCurve from "./assets/distribution-new-player.png";
@@ -15,6 +16,18 @@ import skillChain from "./assets/skill-chain.png";
 /// and the server, and a client tab that drifts from it is worse than no tab.
 const RATING_SYSTEM_WIKI = "https://wiki.faforever.com/en/Infrastructure/Rating-System";
 
+/// The page's sections in order, as the contents list them: each one's anchor
+/// and its title.
+const SECTIONS: Array<[id: string, title: MessageKey]> = [
+  ["rating-why-trueskill", "leaderboard.rating.whyTrueskillTitle"],
+  ["rating-two-numbers", "leaderboard.rating.twoNumbersTitle"],
+  ["rating-leaderboard-number", "leaderboard.rating.leaderboardNumberTitle"],
+  ["rating-nothing-for-a-win", "leaderboard.rating.nothingForAWinTitle"],
+  ["rating-teams", "leaderboard.rating.teamsTitle"],
+  ["rating-balance", "leaderboard.rating.balanceTitle"],
+  ["rating-which-games", "leaderboard.rating.whichGamesTitle"],
+];
+
 /// A figure from the wiki page, with the caption that says what to look at.
 ///
 /// Loaded lazily, and sized to the image rather than to a frame, so a wide
@@ -22,21 +35,20 @@ const RATING_SYSTEM_WIKI = "https://wiki.faforever.com/en/Infrastructure/Rating-
 function Figure({ src, alt, caption }: { src: string; alt: MessageKey; caption: MessageKey }) {
   const { t } = useTranslation();
   return (
-    <figure className="rating-explainer-figure">
+    <figure>
       <img src={src} alt={t(alt)} loading="lazy" decoding="async" />
       <figcaption>{t(caption)}</figcaption>
     </figure>
   );
 }
 
-function Section({ title, children }: { title: MessageKey; children: React.ReactNode }) {
+/// A section's heading, ranked as a guide's sections are so the page reads
+/// the way the training tab's guides do.
+function Heading({ id }: { id: string }) {
   const { t } = useTranslation();
-  return (
-    <section className="rating-explainer-section">
-      <h3>{t(title)}</h3>
-      {children}
-    </section>
-  );
+  const title = SECTIONS.find(([section]) => section === id)?.[1];
+  if (!title) return null;
+  return <h3 id={id} className="reading-heading is-rank-1">{t(title)}</h3>;
 }
 
 /**
@@ -56,21 +68,29 @@ function Section({ title, children }: { title: MessageKey; children: React.React
  * lists a rating beside its mean and deviation, and `2260 - 3 x 139.3 = 1842`
  * is that card's own arithmetic.
  *
- * A third tab rather than a dialog: prose a reader has to hold a modal open to
- * consult is prose they will not consult. It is not a `LeaderboardMode` though.
- * That enum is a domain type mirrored into the store and the conformance
- * fixture, and this page fetches nothing, has no status and cannot go stale.
+ * Laid out on the training tab's reading surface, the one its guides use: a
+ * header like a guide page's, the text at a reading measure and the sections
+ * as a contents column beside it. It opens as a dialog over the boards, so
+ * whoever asks how the numbers work comes back to the row they were on.
  */
 export function RatingExplainerPanel() {
   const { t } = useTranslation();
+  const sections: ReadingSection[] = SECTIONS.map(([id, title]) => ({ id, text: t(title), depth: 1 }));
   return (
-    <article className="rating-explainer surface-panel">
-      <header>
+    // Focusable, and so where the dialog it opens in puts the caret: its first
+    // control is the wiki link at the very end, and focusing that opened the
+    // page scrolled to the bottom. Focus here also lets the keys scroll it.
+    <div className="rating-explainer" tabIndex={0}>
+      <header className="rating-explainer-head">
+        <span className="rating-explainer-eyebrow">
+          <Icon name="leaderboard" size={13} /> {t("leaderboard.view.ratings")}
+        </span>
         <h2>{t("leaderboard.rating.explainTitle")}</h2>
-        <p className="muted">{t("leaderboard.rating.lede")}</p>
+        <p className="rating-explainer-lede">{t("leaderboard.rating.lede")}</p>
       </header>
 
-      <Section title="leaderboard.rating.whyTrueskillTitle">
+      <ReadingLayout sections={sections} contentsLabel={t("common.contents")}>
+        <Heading id="rating-why-trueskill" />
         <p>{t("leaderboard.rating.whyTrueskillBody")}</p>
         <p>{t("leaderboard.rating.inflation")}</p>
         <Figure
@@ -78,9 +98,8 @@ export function RatingExplainerPanel() {
           alt="leaderboard.rating.trajectoriesAlt"
           caption="leaderboard.rating.trajectoriesCaption"
         />
-      </Section>
 
-      <Section title="leaderboard.rating.twoNumbersTitle">
+        <Heading id="rating-two-numbers" />
         <p>{t("leaderboard.rating.twoNumbersBody")}</p>
         <p>{t("leaderboard.rating.meanAndDeviation")}</p>
         <p>{t("leaderboard.rating.newAccountBody")}</p>
@@ -90,7 +109,7 @@ export function RatingExplainerPanel() {
           caption="leaderboard.rating.newPlayerCaption"
         />
         <p>{t("leaderboard.rating.settledLead")}</p>
-        <div className="rating-explainer-figure-pair">
+        <div className="rating-explainer-figure-pair reading-wide">
           <Figure
             src={settledPlayerCurve}
             alt="leaderboard.rating.settledAlt"
@@ -102,30 +121,26 @@ export function RatingExplainerPanel() {
             caption="leaderboard.rating.afterThirtyCaption"
           />
         </div>
-      </Section>
 
-      <Section title="leaderboard.rating.leaderboardNumberTitle">
+        <Heading id="rating-leaderboard-number" />
         <p className="rating-explainer-formula">
           <code>{t("leaderboard.rating.formula")}</code>
         </p>
         <p>{t("leaderboard.rating.formulaWhy")}</p>
-        <p className="muted">{t("leaderboard.rating.formulaExample")}</p>
+        <p className="rating-explainer-aside">{t("leaderboard.rating.formulaExample")}</p>
         <p>{t("leaderboard.rating.thirtyGames")}</p>
-      </Section>
 
-      <Section title="leaderboard.rating.nothingForAWinTitle">
+        <Heading id="rating-nothing-for-a-win" />
         <p>{t("leaderboard.rating.nothingForAWinBody")}</p>
         <p>{t("leaderboard.rating.wentDownOnAWin")}</p>
-      </Section>
 
-      <Section title="leaderboard.rating.teamsTitle">
+        <Heading id="rating-teams" />
         <p>{t("leaderboard.rating.teamsBody")}</p>
-      </Section>
 
-      <Section title="leaderboard.rating.balanceTitle">
+        <Heading id="rating-balance" />
         <p>{t("leaderboard.rating.balanceBody")}</p>
         <p>{t("leaderboard.rating.balanceDeviation")}</p>
-        <div className="rating-explainer-figure-pair">
+        <div className="rating-explainer-figure-pair reading-wide">
           <Figure
             src={newPlayerCurve}
             alt="leaderboard.rating.newPlayerAlt"
@@ -143,13 +158,12 @@ export function RatingExplainerPanel() {
           alt="leaderboard.rating.skillChainAlt"
           caption="leaderboard.rating.skillChainCaption"
         />
-        <p className="muted">{t("leaderboard.rating.balanceCaveat")}</p>
-      </Section>
+        <p className="rating-explainer-aside">{t("leaderboard.rating.balanceCaveat")}</p>
 
-      <Section title="leaderboard.rating.whichGamesTitle">
+        <Heading id="rating-which-games" />
         <p>{t("leaderboard.rating.whichGamesBody")}</p>
         <p>{t("leaderboard.rating.unratedLead")}</p>
-        <ul className="rating-explainer-list">
+        <ul>
           <li>{t("leaderboard.rating.unratedSettings")}</li>
           <li>{t("leaderboard.rating.unratedMap")}</li>
           <li>{t("leaderboard.rating.unratedTeams")}</li>
@@ -157,14 +171,14 @@ export function RatingExplainerPanel() {
           <li>{t("leaderboard.rating.unratedSimMods")}</li>
           <li>{t("leaderboard.rating.unratedDesyncs")}</li>
         </ul>
-      </Section>
 
-      <div className="rating-explainer-actions">
-        <p className="muted rating-explainer-more">{t("leaderboard.rating.moreOnTheWiki")}</p>
-        <Button variant="primary" onClick={() => ipc.run(openHttpsUrl(RATING_SYSTEM_WIKI))}>
-          <Icon name="external" size={15} /> {t("leaderboard.rating.openWiki")}
-        </Button>
-      </div>
-    </article>
+        <div className="rating-explainer-actions reading-wide">
+          <p>{t("leaderboard.rating.moreOnTheWiki")}</p>
+          <Button variant="primary" onClick={() => ipc.run(openHttpsUrl(RATING_SYSTEM_WIKI))}>
+            <Icon name="external" size={15} /> {t("leaderboard.rating.openWiki")}
+          </Button>
+        </div>
+      </ReadingLayout>
+    </div>
   );
 }

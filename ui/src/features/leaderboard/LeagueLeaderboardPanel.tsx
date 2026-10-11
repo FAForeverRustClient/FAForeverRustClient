@@ -26,6 +26,10 @@ const selectLeague = (leagueId: number) => ipc.send({
   kind: "Leaderboard",
   command: { type: "selectLeague", payload: { leagueId } },
 });
+const selectSeason = (seasonId: number) => ipc.send({
+  kind: "Leaderboard",
+  command: { type: "selectSeason", payload: { seasonId } },
+});
 
 function SeasonPicker({
   label,
@@ -438,6 +442,19 @@ export function LeagueLeaderboardPanel() {
           onChange={(leagueId) => void selectLeague(leagueId)}
           idPrefix="leaderboard-league"
         />
+        {/* The season on the same line as the queues it is a season of. It
+            sat in the page header, nudged down to meet this line, where it
+            made the header taller than the ratings view's and moved the two
+            view tabs every time the view was switched. */}
+        {currentSeason && (
+          <LeagueSeasonToolbar
+            currentSeason={currentSeason}
+            seasons={state.seasons}
+            selectedSeasonId={state.selectedSeasonId}
+            disabled={state.seasonsStatus.type === "loading"}
+            onChange={(seasonId) => void selectSeason(seasonId)}
+          />
+        )}
       </div>
 
       {/* Everything under the tabs is the chosen league's, so it is that tab's
