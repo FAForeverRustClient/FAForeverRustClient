@@ -103,12 +103,19 @@ export function MultiSelect({
       // `Select`. Left open, the list stayed the top of the overlay stack
       // after Tab had moved past it, so the next Escape, pressed on some other
       // control, closed this list instead of whatever that control sat in and
-      // pulled focus back to the trigger. Only a move onto another element
+      // pulled focus back to the trigger. Only a move onto another control
       // counts: a press on a part of the popover that cannot take focus blurs
       // with no `relatedTarget`, and a press outside is handled above.
+      //
+      // Nor does focus landing on something that holds the list. A press on
+      // an option's text hands focus to the nearest focusable ancestor, and
+      // a dialog's panel is one (`tabIndex={-1}`), as is `.content`: the list
+      // took that for a move away and closed before the click could tick the
+      // box, so no option in the map generator could be chosen.
       onBlur={(event) => {
         const next = event.relatedTarget;
-        if (open && next && !rootRef.current?.contains(next)) setOpen(false);
+        const root = rootRef.current;
+        if (open && next && root && !root.contains(next) && !next.contains(root)) setOpen(false);
       }}
     >
       <span className="search-panel-label">{label}</span>

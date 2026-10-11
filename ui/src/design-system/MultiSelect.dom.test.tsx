@@ -6,7 +6,7 @@
 // anywhere. What it does own is Escape, through the overlay stack, and where
 // focus goes when Escape takes the checkbox that had it away.
 
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -173,6 +173,28 @@ describe("MultiSelect keyboard, mounted", () => {
     // loses focus and nothing else receives it.
     act(() => (document.activeElement as HTMLElement).blur());
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("inside a dialog, stays open when a press on an entry hands focus to the panel", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn<(selected: string[]) => void>();
+    render(
+      <Modal ariaLabel="Generate" onClose={() => undefined}>
+        <Harness onChange={onChange} />
+      </Modal>,
+    );
+    const trigger = screen.getByRole("button", { name: /^Mods:/ });
+    await user.click(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+
+    // What a press over an entry's text does in a browser: the nearest
+    // focusable ancestor takes focus, and a dialog's panel is one. Sent
+    // directly, since happy-dom does not move focus on a press like that.
+    fireEvent.focusOut(trigger, { relatedTarget: screen.getByRole("dialog") });
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+
+    await user.click(screen.getByRole("checkbox", { name: "FAF" }));
+    expect(onChange).toHaveBeenLastCalledWith(["faf"]);
   });
 
   it("inside a dialog, gives Escape to the open list first and the dialog only on the next press", async () => {
