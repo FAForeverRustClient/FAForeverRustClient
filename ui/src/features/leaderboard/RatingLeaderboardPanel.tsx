@@ -283,19 +283,14 @@ export function RatingLeaderboardPanel() {
       {/* No tabs for the boards. There is one table with every board in it,
           and the board the ladder is ranked by is chosen by pressing that
           board's column header, which marks itself as the ranked one. */}
+      {/* One toolbar for the table: the question on the left, and on the
+          right what it found and how the table shows it. They were a search
+          panel of two half-empty lines and a third line under it, with most
+          of a wide window empty on the right of all three. On a narrow window
+          the right-hand group wraps to a line of its own and keeps right. */}
       <SearchPanel
         className="leaderboard-search-panel"
         onSubmit={(event) => { event.preventDefault(); submit(); }}
-        secondary={(
-          <>
-            <Button className={activeOnly ? "active" : ""} onClick={() => changeActivityFilter(true)}>{t("leaderboard.ratings.activeThisMonth")}</Button>
-            <Button className={!activeOnly ? "active" : ""} onClick={() => changeActivityFilter(false)}>{t("leaderboard.ratings.allPlayers")}</Button>
-            <span className="spacer" />
-            <SearchPanelToggle expanded={filtersOpen} count={dateFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
-            <Button onClick={clearFilters}>{t("leaderboard.ratings.clear")}</Button>
-            <Button aria-label={t("leaderboard.ratings.refreshRankings")} onClick={() => void load(state.ratingQuery)}><Icon name="refresh" size={15} /> {t("leaderboard.ratings.refresh")}</Button>
-          </>
-        )}
         // The dates narrow "All players" to who played in a window. They used
         // to sit in the main row, greyed out, for the board's default of this
         // month's players, where they could not do anything; a date picked
@@ -313,48 +308,60 @@ export function RatingLeaderboardPanel() {
           </div>
         ) : undefined}
       >
-        {/* The name and the one thing that changes how it is looked up, on
-            the field's own label line, then the search: the row reads as one
-            question. A field label cannot hold the box, a label inside a
-            label being no label at all, so the field is spelled out here. */}
+        {/* The name, the search, and the one thing that changes how the name
+            is looked up: the row reads as one question. The field has no
+            caption over it any more, which was a line of its own; how the
+            name is matched is in its placeholder and its accessible name, and
+            the box beside it shows the same while somebody types. */}
         <div className="search-panel-field search-panel-field-grow leaderboard-search-player">
-          <div className="leaderboard-search-label-row">
-            <label className="search-panel-label" htmlFor={`${playerFieldId}-name`}>
-              {t(includeFormerNames ? "leaderboard.ratings.anyPlayerName" : "leaderboard.ratings.exactPlayer")}
-            </label>
-            {/* Off by default, because it turns a lookup into a list of
-                candidates: part of any name, current or former, and a released
-                name can have been worn by several accounts (#299). Once ticked
-                it stays ticked, across restarts too (#424). */}
-            <label className="option-check leaderboard-search-former" title={t("leaderboard.ratings.includeFormerNamesHint")}>
-              <input
-                type="checkbox"
-                checked={includeFormerNames}
-                onChange={(event) => {
-                  setIncludeFormerNames(event.target.checked);
-                  rememberIncludeFormerNames(event.target.checked);
-                }}
-              />
-              {t("leaderboard.ratings.includeFormerNames")}
-            </label>
-          </div>
           <input
             id={`${playerFieldId}-name`}
             className="search-panel-control"
             value={player}
-            placeholder={t("leaderboard.ratings.playerName")}
+            aria-label={t(includeFormerNames ? "leaderboard.ratings.anyPlayerName" : "leaderboard.ratings.exactPlayer")}
+            placeholder={t(includeFormerNames ? "leaderboard.ratings.anyPlayerName" : "leaderboard.ratings.playerName")}
             onChange={(event) => setPlayer(event.target.value)}
           />
         </div>
         <SearchPanelSubmit disabled={state.ratingsStatus.type === "loading"} />
-      </SearchPanel>
+        {/* Off by default, because it turns a lookup into a list of
+            candidates: part of any name, current or former, and a released
+            name can have been worn by several accounts (#299). Once ticked it
+            stays ticked, across restarts too (#424). */}
+        <label className="option-check leaderboard-search-former" title={t("leaderboard.ratings.includeFormerNamesHint")}>
+          <input
+            type="checkbox"
+            checked={includeFormerNames}
+            onChange={(event) => {
+              setIncludeFormerNames(event.target.checked);
+              rememberIncludeFormerNames(event.target.checked);
+            }}
+          />
+          {t("leaderboard.ratings.includeFormerNames")}
+        </label>
+        {/* One choice, so one control: the toolbar's own buttons joined into
+            a pair, the chosen one filled as a chosen toggle is elsewhere in
+            the client. Apart, they read as two actions; as the settings tab's
+            inset tray, they matched nothing else on the row. */}
+        <div className="leaderboard-activity" role="group" aria-label={t("leaderboard.ratings.whichPlayers")}>
+          {[true, false].map((only) => (
+            <Button
+              key={String(only)}
+              className={activeOnly === only ? "active" : ""}
+              aria-pressed={activeOnly === only}
+              onClick={() => changeActivityFilter(only)}
+            >
+              {t(only ? "leaderboard.ratings.activeThisMonth" : "leaderboard.ratings.allPlayers")}
+            </Button>
+          ))}
+        </div>
+        <SearchPanelToggle expanded={filtersOpen} count={dateFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
+        <Button onClick={clearFilters}>{t("leaderboard.ratings.clear")}</Button>
 
-      <div className="leaderboard-main-grid has-summary">
-        {/* What the search found and how it is laid out, over the table it
-            describes: the count on the left, and at the table's top right the
-            two settings that shape it, its page length and its columns, rather
-            than among the filters or over the player details. */}
-        <div className="leaderboard-summary">
+        {/* What the search found and how the table shows it. Refresh is here
+            rather than with the search: it runs the shown results again,
+            where Search asks a new question. */}
+        <div className="leaderboard-toolbar-results">
           <div className="leaderboard-summary-count">
             <Icon name="users" size={16} />
             <strong>
@@ -365,11 +372,7 @@ export function RatingLeaderboardPanel() {
                   formatted: formatNumber(state.ratingPage.totalResults),
                 })}
             </strong>
-            <span className="muted">
-              {t(state.ratingQuery.activeOnly ? "leaderboard.ratings.activeThisMonth" : "leaderboard.ratings.allPlayers")}
-            </span>
           </div>
-          <span className="spacer" />
           <label className="leaderboard-summary-rows">
             <span className="muted">{t("leaderboard.ratings.rows")}</span>
             <select className="search-panel-control" value={pageSize} onChange={(event) => changePageSize(Number(event.target.value))}>
@@ -404,8 +407,17 @@ export function RatingLeaderboardPanel() {
               ))}
             </div>}
           </div>
+          <Button
+            aria-label={t("leaderboard.ratings.refreshRankings")}
+            title={t("leaderboard.ratings.refreshRankings")}
+            onClick={() => void load(state.ratingQuery)}
+          >
+            <Icon name="refresh" size={15} />
+          </Button>
         </div>
+      </SearchPanel>
 
+      <div className="leaderboard-main-grid">
         <div className={`leaderboard-results surface-panel${state.ratingsStatus.type === "loading" ? " is-loading" : ""}`}>
           {state.ratingsStatus.type === "failed" ? (
             <div className="leaderboard-state leaderboard-error" title={state.ratingsStatus.payload.reason}>

@@ -2,6 +2,7 @@
   width: min(680px, 92vw);
   max-height: 84vh;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .reviews-head {

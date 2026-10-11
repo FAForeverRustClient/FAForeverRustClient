@@ -51,9 +51,17 @@ body {
    `::-webkit-scrollbar` rule. The changelog had already found that out the
    hard way and pins them back to `auto` on its own list; this is the same
    lesson, kept in one place. */
+
+/* The scrollbar's width, as a value: a scrolling area that keeps the room for
+   it (`scrollbar-gutter: stable`) takes this much off its right padding, so
+   its two sides match whether a scrollbar shows or not. */
+:root {
+  --scrollbar-size: 11px;
+}
+
 ::-webkit-scrollbar {
-  width: 11px;
-  height: 11px;
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
 }
 
 ::-webkit-scrollbar-track,

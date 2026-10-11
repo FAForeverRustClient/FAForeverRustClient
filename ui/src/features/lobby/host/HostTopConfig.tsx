@@ -3,7 +3,7 @@
 // exactly where a host may want to keep a rushing veteran out of a slow run.
 
 import { useTranslation } from "../../../i18n/useTranslation";
-import type { HostLobbySettings } from "./hostLobbySettings";
+import { MAX_HOST_TITLE, type HostLobbySettings } from "./hostLobbySettings";
 import { OptionalNumberInput } from "../../../design-system/NumberInput";
 import { useAppStore } from "../../../store/store";
 
@@ -27,7 +27,7 @@ export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
           name="faf-game-title"
           autoComplete={rememberTypedEntries ? "on" : "off"}
           value={settings.title}
-          maxLength={128}
+          maxLength={MAX_HOST_TITLE}
           aria-invalid={Boolean(settings.titleError)}
           aria-describedby={settings.titleError ? "host-title-error" : undefined}
           onChange={(event) => settings.setTitle(event.target.value)}

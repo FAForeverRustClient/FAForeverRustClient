@@ -489,6 +489,7 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg);
@@ -857,7 +858,11 @@
   flex-direction: column;
   gap: 12px;
   padding: 16px 10px 10px;
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). */
+  padding-right: max(0px, 10px - var(--scrollbar-size));
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .host-preview-thumb-wrap {
@@ -1176,6 +1181,7 @@
     height: auto;
     max-height: 60vh;
     overflow-y: auto;
+    scrollbar-gutter: stable;
   }
 
   .host-column {
@@ -1285,6 +1291,7 @@
   flex-direction: column;
   gap: 4px;
   overflow-y: auto;
+  /* No scrollbar gutter: a pop-up as wide as what opened it, where a reserved strip would narrow every entry for a scrollbar most lists never show. */
   max-height: 180px;
 }
 
@@ -1424,6 +1431,7 @@
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -1455,6 +1463,7 @@
     height: auto;
     max-height: 50vh;
     overflow-y: auto;
+    scrollbar-gutter: stable;
   }
 }
 
@@ -1744,6 +1753,7 @@
   margin: 0 0 var(--space-3);
   padding-left: var(--space-4);
   overflow-y: auto;
+  scrollbar-gutter: stable;
   font-size: 13px;
   line-height: 1.6;
 }
@@ -1872,6 +1882,7 @@
   margin: var(--space-2) 0 0;
   padding-left: var(--space-4);
   overflow-y: auto;
+  scrollbar-gutter: stable;
   color: var(--color-muted);
   font-size: 12px;
   line-height: 1.6;

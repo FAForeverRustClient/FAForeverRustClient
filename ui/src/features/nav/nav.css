@@ -8,8 +8,11 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  padding-top: 6px;
+  /* As much room under the last tab as over the first: without it the last
+     tab's highlight sat on the footer's rule. */
+  padding: 6px 0;
   overflow-y: auto;
+  /* No scrollbar gutter: the sidebar scrolls only in a very short window, and a reserved strip would move its icons off the centre of the rail. */
   overscroll-behavior: contain;
 }
 

@@ -5,6 +5,7 @@
   min-height: 0;
   height: 100%;
   overflow: auto;
+  scrollbar-gutter: stable;
   --leaderboard-detail-width: 300px;
 }
 
@@ -48,10 +49,13 @@
   color: var(--color-text);
 }
 
-/* Wide enough for the explainer's figures, which make their point side by
-   side; the modal's default reading width would stack them. */
+/* As wide as the page needs and no wider: the text at its measure, the
+   figures a little past it, and the contents beside them. At 1240 px the
+   column the text keeps to left a third of the dialog empty between the
+   text and the contents. Still wide enough for the paired figures to sit side
+   by side; the modal's default reading width would stack them. */
 .modal-panel.rating-explainer-modal {
-  width: min(1240px, 94vw);
+  width: min(1040px, 94vw);
   max-width: none;
   padding: 0;
 }
@@ -168,77 +172,83 @@
   margin-top: var(--space-3);
 }
 
-/* The name field is wider than the panel default: it is the whole of the
-   search row now, and a long login with a clan tag should fit. */
-.leaderboard-search-player {
-  max-width: 520px;
-}
-
-/* The field's label on the left, and on the right of the same line the one
-   option that changes how the name is looked up. */
-.leaderboard-search-label-row {
-  display: flex;
+/* One toolbar for the table: everything on one line, centred on it, since
+   nothing in it has a caption over it any more. */
+.leaderboard-search-panel .search-panel-primary {
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
 }
 
+/* A login with a clan tag fits in the panel's own cap; wider, the field was
+   the longest thing on the row and its label ended up far from its value. */
+.leaderboard-search-player {
+  max-width: 320px;
+}
+
+/* After the search, at the field's height and centred on it, so it reads as
+   part of the same question. */
 .leaderboard-search-former {
   flex: none;
-  font-size: 11px;
+  min-height: 34px;
+  margin: 0 var(--space-2) 0 var(--space-1);
 }
 
-/* Between the search and the table: what was found, and the two settings
-   that shape the table. One quiet line, not a second toolbar. */
-.leaderboard-summary {
+/* Two toolbar buttons sharing a border: the inner corners squared, the
+   second drawn one pixel over the first, and the chosen one filled as the
+   search panel fills a chosen toggle (`.search-panel-secondary`). */
+.leaderboard-activity {
+  display: inline-flex;
+  flex: none;
+}
+
+.leaderboard-activity > .btn-ghost {
+  white-space: nowrap;
+}
+
+.leaderboard-activity > .btn-ghost:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.leaderboard-activity > .btn-ghost:last-child {
+  margin-left: -1px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.leaderboard-activity > .btn-ghost.active {
+  position: relative;
+  color: var(--color-accent-contrast);
+  font-weight: 600;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* What was found and how the table shows it, pushed to the right edge. A
+   margin rather than a spacer, so it stays right on a line of its own when
+   the row wraps on a narrow window. */
+.leaderboard-toolbar-results {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2) var(--space-3);
-  padding: 0 2px;
-}
-
-/* The summary over the table's column only, so its settings end at the
-   table's right edge, and the player details level with the table below it. */
-.leaderboard-main-grid.has-summary {
-  grid-template-rows: auto minmax(0, 1fr);
-  row-gap: var(--space-2);
-}
-
-.leaderboard-main-grid.has-summary > .leaderboard-summary {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-.leaderboard-main-grid.has-summary > .leaderboard-results {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-.leaderboard-main-grid.has-summary > .leaderboard-player-panel {
-  grid-column: 2;
-  grid-row: 2;
-}
-
-.leaderboard-summary > .spacer {
-  flex: 1 1 auto;
+  margin-left: auto;
 }
 
 .leaderboard-summary-count {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-2);
   font-size: 13px;
+  white-space: nowrap;
 }
 
 .leaderboard-summary-count svg {
-  align-self: center;
   color: var(--color-muted);
 }
 
 .leaderboard-summary-count strong {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
@@ -438,6 +448,33 @@
   gap: var(--space-2);
 }
 
+/* The name opens the player menu, as a name in the chat tab does. It keeps
+   the name's own colour and says it can be clicked by its underline, on
+   hover and while its menu is open. Not `leaderboard-player-name`, which is
+   the details panel's large heading: shared, it drew every row's name at the
+   heading's size. */
+.leaderboard-name-button {
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.leaderboard-name-button:hover,
+.leaderboard-name-button.is-menu-open {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.leaderboard-name-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .leaderboard-avatar {
   flex: 0 0 auto;
   object-fit: contain;
@@ -482,7 +519,11 @@
      and over the page numbers below. */
   max-height: 100%;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   padding: var(--space-4);
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). */
+  padding-right: max(0px, var(--space-4) - var(--scrollbar-size));
 }
 
 .leaderboard-player-panel h3 {
@@ -790,6 +831,7 @@
   position: fixed;
   z-index: 100;
   overflow-y: auto;
+  /* No scrollbar gutter: a pop-up as wide as what opened it, where a reserved strip would narrow every entry for a scrollbar most lists never show. */
   padding: var(--space-1);
   overscroll-behavior: contain;
   background: var(--color-surface-raised);
@@ -1234,31 +1276,24 @@
 }
 
 
-/* The guide page's header: an eyebrow saying what kind of page this is, the
-   title at the size a guide's has, and the summary under it. A hairline then
-   separates it from the text. */
+/* The guide page's header: the title at the size a guide's has and the
+   summary under it, at the text's measure. The hairline under them runs the
+   whole width, over the text and the contents alike, so the page reads as
+   one sheet rather than a header that stops halfway. */
 .rating-explainer-head {
   display: grid;
   gap: var(--space-2);
-  max-width: 70ch;
   margin-bottom: var(--space-4);
   padding-bottom: 20px;
   border-bottom: 1px solid var(--color-border);
 }
 
-.rating-explainer-head + .reading-frame .reading {
-  padding-top: var(--space-4);
+.rating-explainer-head > * {
+  max-width: 68ch;
 }
 
-.rating-explainer-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+.rating-explainer-head + .reading-frame .reading {
+  padding-top: var(--space-4);
 }
 
 .rating-explainer-head h2 {
@@ -1278,20 +1313,170 @@
   opacity: 0.85;
 }
 
+/* The page's figures (`RatingFigures`): drawn in the theme's own ink on a
+   quiet panel a step darker than the dialog, with the sentence that says what
+   to look at under it. They break out of the text's measure to the column's
+   width, as a figure does on the reading surface. */
+.reading .reading-copy > .rating-figure,
+.rating-figure {
+  margin: 22px 0 26px;
+}
+
+.rating-figure-frame {
+  padding: 14px 16px 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.rating-figure-plot {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.rating-figure figcaption {
+  max-width: 68ch;
+  margin-top: 10px;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* Recessive: the axis and the grid are there to be read against, not at. */
+.rating-figure-axis {
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+}
+
+.rating-figure-grid {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.rating-figure-tick {
+  fill: var(--color-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rating-figure-label {
+  fill: var(--color-text);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.rating-figure-label.is-muted {
+  fill: var(--color-muted);
+}
+
+/* The thing a figure is about in the accent; anything it is measured against
+   in the muted ink. Names are written on the drawing, so nothing is told
+   apart by colour alone. */
+.rating-curve.is-focus,
+.rating-trajectory.is-focus,
+.rating-figure-label.is-focus {
+  color: var(--color-accent);
+}
+
+.rating-figure-label.is-focus {
+  fill: var(--color-accent);
+}
+
+.rating-curve.is-context {
+  color: var(--color-subtle);
+}
+
+.rating-curve-fill {
+  fill: color-mix(in srgb, currentColor 14%, transparent);
+  stroke: none;
+}
+
+.rating-curve-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.rating-curve.is-context .rating-curve-fill {
+  fill: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.rating-curve.is-context .rating-curve-line {
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+
+.rating-figure-marker line,
+.rating-figure-span line {
+  stroke: var(--color-muted);
+  stroke-width: 1;
+}
+
+.rating-figure-marker line {
+  stroke-dasharray: 3 3;
+}
+
+.rating-trajectory {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.rating-trajectory.is-context {
+  stroke: color-mix(in srgb, var(--color-muted) 70%, transparent);
+  stroke-width: 1.5;
+}
+
+.rating-trajectory.is-focus {
+  stroke: currentColor;
+  stroke-width: 2.5;
+}
+
+/* The figure's own background under the climbing line, where it crosses the
+   settled ones, so it reads as passing over them rather than through. */
+.rating-trajectory-halo {
+  fill: none;
+  stroke: var(--color-bg);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.rating-chain-player circle:first-child {
+  fill: var(--color-surface-raised);
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+}
+
+.rating-chain-glyph {
+  fill: none;
+  stroke: var(--color-muted);
+  stroke-width: 1.5;
+}
+
+.rating-chain-link line,
+.rating-chain-link path {
+  fill: none;
+  stroke: var(--color-muted);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* Two curves that make their point side by side, as wide as the column. */
 .rating-explainer-figure-pair {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: var(--space-4);
-  margin: 20px 0 22px;
+  margin: 22px 0 26px;
 }
 
-.rating-explainer-figure-pair figure {
+.rating-explainer-figure-pair .rating-figure {
   margin: 0;
-}
-
-.rating-explainer-figure-pair img {
-  max-height: 260px;
 }
 
 /* The formula as the one line of the page set in code. */
@@ -1305,11 +1490,15 @@
   border-radius: var(--radius-sm);
 }
 
-/* A worked example or a caveat, set off from the argument it belongs to. */
+/* A caveat, set off from the argument it belongs to as a quiet note: the
+   figures' panel, without the figure. It was a 2 px bar down its left, which
+   is a callout's costume rather than a note. */
 .reading .reading-copy > .rating-explainer-aside {
-  padding-left: var(--space-3);
+  padding: 12px 16px;
   color: var(--color-muted);
-  border-left: 2px solid var(--color-border-strong);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
 .rating-explainer-actions {

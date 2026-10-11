@@ -10,7 +10,7 @@ import { isOfficialMap } from "../../../shared/mapPresentation";
 import { MapUninstallDialog } from "../../maps/MapVaultComponents";
 import { GenerateMapModal } from "../../maps/GenerateMapModal";
 import { HostModsColumn } from "./HostModsColumn";
-import { useHostLobbySettings } from "./hostLobbySettings";
+import { MAX_HOST_TITLE, useHostLobbySettings } from "./hostLobbySettings";
 import {
   buildHostCatalogue,
   buildVaultIndex,
@@ -224,7 +224,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
             name="faf-game-title"
             autoComplete={rememberTypedEntries ? "on" : "off"}
             value={title}
-            maxLength={128}
+            maxLength={MAX_HOST_TITLE}
             aria-invalid={Boolean(titleError)}
             aria-describedby={titleError ? "host-title-error" : undefined}
             onChange={(event) => setTitle(event.target.value)}

@@ -108,6 +108,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .tournaments-list {
@@ -481,7 +482,11 @@
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-4);
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). */
+  padding-right: max(0px, var(--space-4) - var(--scrollbar-size));
   overflow-y: auto;
+  scrollbar-gutter: stable;
   min-height: 0;
 }
 
@@ -1758,6 +1763,7 @@
   flex-direction: column;
   gap: var(--space-1);
   overflow-y: auto;
+  scrollbar-gutter: stable;
   min-height: 0;
 }
 
@@ -1801,6 +1807,9 @@
   flex: 1 1 0;
   min-height: 0;
   padding: 14px 12px;
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). */
+  padding-right: max(0px, 12px - var(--scrollbar-size));
   scrollbar-gutter: stable;
 }
 
@@ -2482,6 +2491,7 @@
   gap: var(--space-2);
   max-height: 420px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .tournament-map-tile {
@@ -2731,6 +2741,7 @@
      sections below it off the pane. */
   max-height: 280px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .tournament-account-match {
@@ -6426,6 +6437,7 @@ button.tournament-chat-author:hover {
   margin: 0;
   padding: var(--space-1) 0;
   overflow-y: auto;
+  /* No scrollbar gutter: a pop-up as wide as what opened it, where a reserved strip would narrow every entry for a scrollbar most lists never show. */
   list-style: none;
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
@@ -6938,6 +6950,7 @@ button.tournament-chat-author:hover {
   gap: var(--space-1);
   max-height: 50vh;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .tournament-import-body h6 {
@@ -7668,8 +7681,12 @@ button.tournament-chat-author:hover {
 
 .tournament-article-preview {
   padding: var(--space-3);
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). */
+  padding-right: max(0px, var(--space-3) - var(--scrollbar-size));
   max-height: 420px;
   overflow: auto;
+  scrollbar-gutter: stable;
 }
 
 /* Premade teams forming during signups, one card per team name. */

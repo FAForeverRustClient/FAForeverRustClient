@@ -7,8 +7,12 @@
 import type { BracketSide, Tourney, TourneyMatch } from "../../ipc/bindings";
 import { t } from "../../i18n";
 
-/** `HostGameConfig::MAX_TITLE_CHARS`: the lobby server rejects anything longer. */
-const MAX_TITLE_CHARS = 128;
+/**
+ * `HostGameConfig::MAX_TITLE_CHARS`: the backend refuses to host with anything
+ * longer. Spelled out here because the host dialog's `MAX_HOST_TITLE` is the
+ * lobby feature's, which this one does not import from.
+ */
+const MAX_TITLE_CHARS = 64;
 
 /**
  * What an undecided slot is called in the title.

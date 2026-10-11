@@ -15,5 +15,14 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     target: "es2021",
+    // Licence comments (`/*! ... */`, `@license`) stay in the shipped code.
+    // The minifier dropped them all by default, which took the notices of
+    // the libraries and icon drawings the client ships out of the copy that
+    // ships, where their licences ask for them to be.
+    rolldownOptions: {
+      output: {
+        comments: { legal: true },
+      },
+    },
   },
 });

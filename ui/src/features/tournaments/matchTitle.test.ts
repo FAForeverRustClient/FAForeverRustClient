@@ -47,9 +47,9 @@ describe("matchTitle", () => {
 
   it("drops the event name before it truncates the pairing", () => {
     // The pairing is the half that tells the two players this is their game.
-    const long = tourney({ ...event, name: "W".repeat(140) });
+    const long = tourney({ ...event, name: "W".repeat(70) });
     const title = matchTitle(long, match());
-    expect(title.length).toBeLessThanOrEqual(128);
+    expect(title.length).toBeLessThanOrEqual(64);
     expect(title).toBe("R1: Nuggets vs Blue");
   });
 
@@ -59,6 +59,6 @@ describe("matchTitle", () => {
       players: [player({ id: "p1", name: "N".repeat(200), teamId: "t1" })],
       teams: [team({ id: "t1", playerIds: ["p1"] })],
     });
-    expect(matchTitle(huge, match()).length).toBe(128);
+    expect(matchTitle(huge, match()).length).toBe(64);
   });
 });
