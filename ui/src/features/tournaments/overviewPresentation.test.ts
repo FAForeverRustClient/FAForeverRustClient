@@ -4,9 +4,12 @@
 import { describe, expect, it } from "vitest";
 import {
   aliveCount,
+  formatCells,
   recentResults,
   resultRoundLabel,
+  rewardSplit,
   roundMapNames,
+  settingRows,
   stopAtRemaining,
 } from "./overviewPresentation";
 import { richParts } from "./richParts";
@@ -129,5 +132,91 @@ describe("richParts", () => {
 
   it("leaves a sentence without marks whole", () => {
     expect(richParts("No results yet.")).toEqual([{ kind: "text", text: "No results yet." }]);
+  });
+});
+
+describe("formatCells", () => {
+  it("splits a bracket event into who plays, the bracket, and the match length", () => {
+    const cells = formatCells(tourney({ teamSize: 1, bracketKind: "single" }), t);
+    expect(cells.map((cell) => [cell.label, cell.value])).toEqual([
+      ["tournaments.overview.format", "1v1"],
+      ["tournaments.section.bracket", "tournaments.overview.singleElim"],
+    ]);
+  });
+});
+
+describe("settingRows", () => {
+  it("reads one setting per line, with or without a bullet", () => {
+    expect(settingRows("- Game Type: FAF\nVictory Conditions: Assassination\n\n**Teams:** Locked")).toEqual({
+      rows: [
+        { key: "Game Type", value: "FAF" },
+        { key: "Victory Conditions", value: "Assassination" },
+        { key: "Teams", value: "Locked" },
+      ],
+      before: "",
+      after: "",
+    });
+  });
+
+  it("keeps the value's own colons and emphasis", () => {
+    expect(settingRows("Title: CC3 - Round X: Game X\nMods: *UI mods only*")?.rows).toEqual([
+      { key: "Title", value: "CC3 - Round X: Game X" },
+      { key: "Mods", value: "*UI mods only*" },
+    ]);
+  });
+
+  it("keeps the notes over and under the list, as the official events close theirs", () => {
+    const list = settingRows("Set these:\n- Game Type: FAF\n- Unrate: No\n*All other settings at default.*");
+    expect(list?.before).toBe("Set these:");
+    expect(list?.rows).toHaveLength(2);
+    expect(list?.after).toBe("*All other settings at default.*");
+  });
+
+  it("gives up on prose between settings, and on a list of one", () => {
+    expect(settingRows("Game Type: FAF\nPlease be on time.\nUnrate: No")).toBeNull();
+    expect(settingRows("Game Type: FAF")).toBeNull();
+    expect(settingRows("See https://example.com")).toBeNull();
+    expect(settingRows("")).toBeNull();
+  });
+});
+
+describe("rewardSplit", () => {
+  it("reads one placement per line, with the cash taken out of the rest", () => {
+    const split = rewardSplit(
+      ["## Prizes", "**1st:** $250 + Winner avatar", "**2nd:** $150 + Faction Face Avatar", "3rd: Faction Logo Avatar"].join(
+        "\n",
+      ),
+      "$400",
+    );
+    expect(split.places).toEqual([
+      { place: 1, top: false, cash: "$250", rest: "Winner avatar" },
+      { place: 2, top: false, cash: "$150", rest: "Faction Face Avatar" },
+      { place: 3, top: false, cash: "", rest: "Faction Logo Avatar" },
+    ]);
+    expect(split.notes).toBe("");
+  });
+
+  it("finds the cash after the prose and through a bold block", () => {
+    const split = rewardSplit("**1st - Champion avatar + $160\n2nd - Faction face + $80**", "");
+    expect(split.places.map((place) => [place.place, place.cash, place.rest])).toEqual([
+      [1, "$160", "Champion avatar"],
+      [2, "$80", "Faction face"],
+    ]);
+  });
+
+  it("keeps a Top N group and lines that are not placements", () => {
+    const split = rewardSplit("Top 4 qualify to the finals\n8 players minimum", "");
+    expect(split.places).toEqual([{ place: 4, top: true, cash: "", rest: "qualify to the finals" }]);
+    expect(split.notes).toBe("8 players minimum");
+  });
+
+  it("gives the whole total to first when the winner takes it all", () => {
+    const split = rewardSplit("The winner takes it all, and will also get an avatar.", "$75");
+    expect(split.places).toEqual([{ place: 1, top: false, cash: "$75", rest: "" }]);
+    expect(split.notes).toBe("The winner takes it all, and will also get an avatar.");
+  });
+
+  it("leaves text without a split as notes", () => {
+    expect(rewardSplit("Avatars for the winners", "$150")).toEqual({ places: [], notes: "Avatars for the winners" });
   });
 });

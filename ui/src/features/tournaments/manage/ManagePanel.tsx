@@ -84,6 +84,7 @@ import type {
   SeriesActions,
   TeamActions,
 } from "../tourneyActions";
+import { askConfirm } from "../tourneyDialogs";
 
 const PHASE_LABELS: Record<TourneyPhase, MessageKey> = {
   formTeams: "tournaments.manage.formTeams",
@@ -365,9 +366,9 @@ export const ManagePanel = memo(function ManagePanel({
                       organiser.abandon(false);
                       return;
                     }
-                    if (window.confirm(t("tournaments.manage.abandonConfirm", { name: event.name }))) {
+                    askConfirm(t("tournaments.manage.abandonConfirm", { name: event.name }), () => {
                       organiser.abandon(true);
-                    }
+                    }, { danger: true });
                   }}
                 >
                   {event.abandoned
@@ -385,9 +386,9 @@ export const ManagePanel = memo(function ManagePanel({
                     disabled={busy}
                     onClick={() => {
                       const category = event.category === "official" ? "community" : "official";
-                      if (window.confirm(t(category === "official" ? "tournaments.manage.toOfficialConfirm" : "tournaments.manage.toCommunityConfirm"))) {
+                      askConfirm(t(category === "official" ? "tournaments.manage.toOfficialConfirm" : "tournaments.manage.toCommunityConfirm"), () => {
                         organiser.admin({ type: "setCategory", payload: { category } });
-                      }
+                      });
                     }}
                   >
                     {t(event.category === "official" ? "tournaments.manage.toCommunity" : "tournaments.manage.toOfficial")}
@@ -410,7 +411,7 @@ export const ManagePanel = memo(function ManagePanel({
                       rest.siteAdmin === true
                         ? t("tournaments.manage.deleteForeverConfirm", { name: event.name })
                         : t("tournaments.manage.archiveConfirm", { name: event.name });
-                    if (window.confirm(confirm)) organiser.archive();
+                    askConfirm(confirm, () => organiser.archive());
                   }}
                 >
                   {t(rest.siteAdmin === true ? "tournaments.manage.deleteForever" : "tournaments.manage.archive")}

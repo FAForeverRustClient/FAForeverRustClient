@@ -124,7 +124,7 @@ const OFFICIAL_MAP_KEYS_BY_DISPLAY_NAME = new Map(
  * beside the vault record's size and the vault record's picture, which is one
  * map's name over another map's everything else.
  */
-function officialMapFor(mapName: string): OfficialMapInfo | undefined {
+export function officialMapFor(mapName: string): OfficialMapInfo | undefined {
   const byFolder = OFFICIAL_MAPS_BY_FOLDER.get(baseMapName(mapName));
   if (byFolder) return byFolder;
   const key = OFFICIAL_MAP_KEYS_BY_DISPLAY_NAME.get(mapName.trim().toLocaleLowerCase());

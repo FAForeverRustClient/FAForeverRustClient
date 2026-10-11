@@ -66,68 +66,69 @@ const IMAGE = /!\[([^\]]*)\]\(([^)\s]+)\)/;
 const LINK = /\[([^\]]+)\]\(([^)\s]+)\)/;
 const BOLD = /\*\*([^*\n]+?)\*\*/;
 const UNDERLINE = /__([^_\n]+?)__/;
-const ITALIC = /\*([^*\n]+?)\*/;
+// The website's own italic: a single star on each side, not half of a pair.
+const ITALIC = /(?<!\*)\*([^*\n]+)\*(?!\*)/;
+
+/** The constructs of a line, in the order the website replaces them. */
+const CONSTRUCTS = [
+  ["image", IMAGE],
+  ["link", LINK],
+  ["bold", BOLD],
+  ["underline", UNDERLINE],
+  ["italic", ITALIC],
+] as const;
 
 /**
  * Split one line into spans.
  *
- * Images before links, because `![alt](url)` also matches the link pattern, and
- * emphasis last so a `**bold**` inside a link label is left as written rather
- * than half-parsed. Recursive on the remainder rather than a global replace:
- * the website's version replaces into a string, which it can only do because it
+ * Whichever construct starts first in the line is taken, and what it wraps is
+ * split again. That is what the website's run of global replaces comes to:
+ * there, a link is replaced before the italic around it, and the italic then
+ * wraps the finished link; `__**name**__` is underlined bold. Taking a fixed
+ * order here instead broke both apart and left their marks as text. On a tie
+ * the website's order decides, which is what keeps `![alt](url)` an image
+ * rather than a `!` and a link. Recursive on the parts rather than a global
+ * replace: the website replaces into a string, which it can only do because it
  * is building one.
  */
 function spansOf(line: string, assetBase: string): MarkdownSpan[] {
   if (line === "") return [];
 
-  const image = IMAGE.exec(line);
-  if (image !== null) {
-    const url = imageUrl(image[2], assetBase);
+  let first: { kind: (typeof CONSTRUCTS)[number][0]; found: RegExpExecArray } | null = null;
+  for (const [kind, pattern] of CONSTRUCTS) {
+    const found = pattern.exec(line);
+    if (found !== null && (first === null || found.index < first.found.index)) first = { kind, found };
+  }
+  if (first === null) return [{ kind: "text", text: line, bold: false, italic: false, underline: false }];
+
+  const { kind, found } = first;
+  const before = spansOf(line.slice(0, found.index), assetBase);
+  const after = spansOf(line.slice(found.index + found[0].length), assetBase);
+
+  if (kind === "image") {
+    const url = imageUrl(found[2], assetBase);
     // An image that cannot be resolved keeps its alt text: an organiser's
     // caption is worth more than a gap where a picture would have been.
     const span: MarkdownSpan =
       url === null
-        ? { kind: "text", text: image[1], bold: false, italic: false, underline: false }
-        : { kind: "image", url, alt: image[1] };
-    return [
-      ...spansOf(line.slice(0, image.index), assetBase),
-      span,
-      ...spansOf(line.slice(image.index + image[0].length), assetBase),
-    ];
+        ? { kind: "text", text: found[1], bold: false, italic: false, underline: false }
+        : { kind: "image", url, alt: found[1] };
+    return [...before, span, ...after];
   }
 
-  const link = LINK.exec(line);
-  if (link !== null) {
-    const url = linkUrl(link[2]);
+  if (kind === "link") {
+    const url = linkUrl(found[2]);
     const span: MarkdownSpan =
       url === null
-        ? { kind: "text", text: link[1], bold: false, italic: false, underline: false }
-        : { kind: "link", text: link[1], url };
-    return [
-      ...spansOf(line.slice(0, link.index), assetBase),
-      span,
-      ...spansOf(line.slice(link.index + link[0].length), assetBase),
-    ];
+        ? { kind: "text", text: found[1], bold: false, italic: false, underline: false }
+        : { kind: "link", text: found[1], url };
+    return [...before, span, ...after];
   }
 
-  for (const [pattern, mark] of [
-    [BOLD, "bold"],
-    [UNDERLINE, "underline"],
-    [ITALIC, "italic"],
-  ] as const) {
-    const found = pattern.exec(line);
-    if (found === null) continue;
-    const inner = spansOf(found[1], assetBase).map((span) =>
-      span.kind === "text" ? { ...span, [mark]: true } : span,
-    );
-    return [
-      ...spansOf(line.slice(0, found.index), assetBase),
-      ...inner,
-      ...spansOf(line.slice(found.index + found[0].length), assetBase),
-    ];
-  }
-
-  return [{ kind: "text", text: line, bold: false, italic: false, underline: false }];
+  const inner = spansOf(found[1], assetBase).map((span) =>
+    span.kind === "text" ? { ...span, [kind]: true } : span,
+  );
+  return [...before, ...inner, ...after];
 }
 
 /**
@@ -151,7 +152,9 @@ export function parseMarkdown(source: string, assetBase = ""): MarkdownBlock[] {
       };
     }
 
-    const bullet = /^[-*]\s+(.*)$/.exec(line);
+    // `- ` only, as on the website: `* item` is a line that starts with an
+    // italic star, and `1. item` is text.
+    const bullet = /^-\s+(.*)$/.exec(line);
     if (bullet !== null) {
       return { kind: "bullet", spans: spansOf(bullet[1], assetBase) };
     }

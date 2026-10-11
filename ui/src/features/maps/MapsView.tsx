@@ -35,7 +35,14 @@ import { installNote, kilometres, kilometresLabel } from "../../shared/mapPresen
 import { sameVaultSearch } from "../../shared/vaultQuery";
 import { useAppStore } from "../../store/store";
 import { MapPreview } from "../../shared/components/MapPreview";
-import { findVaultMapByFolder, isOfficialMap, mapInstalled, sizeLabel } from "../../shared/mapPresentation";
+import {
+  findVaultMapByFolder,
+  isGeneratedMap,
+  isOfficialMap,
+  mapInstalled,
+  sizeLabel,
+} from "../../shared/mapPresentation";
+import { MapThumbnail } from "../../shared/components/MapThumbnail";
 import { MapCard, MapDetailPanel, MapHideDialog, MapRating, MapUninstallDialog } from "./MapVaultComponents";
 import { MapPreviewDialog } from "../../shared/components/MapPreviewZoom";
 import { GeneratorProgress, stillRunning } from "./GeneratorProgress";
@@ -893,6 +900,11 @@ function InstalledView({ busy }: { busy: boolean }) {
             {pageMaps.map((map) => {
               const metadata = vaultRecordOf(map.folderName);
               const isBusy = busy && installStatus.type === "installing" && installStatus.payload.folderName === map.folderName;
+              // A Neroxis map has no vault record and no CDN preview: its
+              // picture is the one the generator wrote into its folder, read
+              // the way the lobby reads it, and the generator's logo as the
+              // picture where there is none yet.
+              const generated = isGeneratedMap(map.folderName);
               return (
                 <article className="installed-map-card surface-panel" key={map.folderName}>
                   <button
@@ -902,7 +914,16 @@ function InstalledView({ busy }: { busy: boolean }) {
                     aria-label={t("maps.preview.enlarge", { name: metadata?.displayName || map.displayName })}
                     title={t("maps.preview.enlarge", { name: metadata?.displayName || map.displayName })}
                   >
-                    <MapPreview map={metadata ?? map} />
+                    {generated ? (
+                      <MapThumbnail
+                        mapName={map.folderName}
+                        vault={vault}
+                        className="map-vault-thumb"
+                        placeholderClassName="map-vault-thumb map-vault-preview-empty"
+                      />
+                    ) : (
+                      <MapPreview map={metadata ?? map} />
+                    )}
                   </button>
                   {/* The name gets the whole line, and the rating sits in the
                       corner rather than at the end of the facts line, where

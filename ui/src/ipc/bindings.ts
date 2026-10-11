@@ -4950,6 +4950,19 @@ export type MapsCommand = { type: "cancelVaultLoad" } |
 	folderNames: string[],
 } } |
 /**
+ *  Look maps up by display name that the catalogue does not hold yet.
+ *
+ *  For the tournament pages, which name a map the way its organiser chose
+ *  it and often leave its size out. The whole catalogue would answer that
+ *  too, and it is twelve megabytes a player opening a map pool should not
+ *  pay for, so only the names still missing are asked about. Matched
+ *  without regard to case; answered with `VaultFoldersResolved`, since the
+ *  records join `vault` the same way.
+ */
+{ type: "resolveVaultNames"; payload: {
+	displayNames: string[],
+} } |
+/**
  *  Read preview art straight out of the named installed map folders.
  *
  *  On demand rather than with the folder scan: a full maps folder is
@@ -5021,9 +5034,10 @@ export type MapsEvent = { type: "vaultLoading" } | { type: "vaultProgress"; payl
 	reason: string,
 } } |
 /**
- *  Catalogue records looked up by folder name for maps the catalogue does
- *  not hold, which in practice means versions withdrawn from the vault.
- *  Added to `vault`, never replacing anything in it.
+ *  Catalogue records looked up by folder or display name for maps the
+ *  catalogue does not hold: versions withdrawn from the vault, or a
+ *  catalogue that was never fetched. Added to `vault`, never replacing
+ *  anything in it.
  */
 { type: "vaultFoldersResolved"; payload: {
 	maps: VaultMap[],

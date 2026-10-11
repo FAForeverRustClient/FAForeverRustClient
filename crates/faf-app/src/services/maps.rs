@@ -158,6 +158,44 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 }
             }
         }
+        MapsCommand::ResolveVaultNames { display_names } => {
+            // Only what the index still lacks, compared the way a tournament
+            // map is matched to its record (`match_vault_map`).
+            let wanted: Vec<String> = out.with_state(|state| {
+                display_names
+                    .iter()
+                    .filter(|name| {
+                        let key = faf_domain::state::map_key(name);
+                        !key.is_empty()
+                            && !state
+                                .maps
+                                .vault
+                                .iter()
+                                .any(|map| faf_domain::state::map_key(&map.display_name) == key)
+                    })
+                    .cloned()
+                    .collect()
+            });
+            if wanted.is_empty() {
+                return;
+            }
+            match ctx
+                .ports
+                .maps
+                .find_vault_maps_by_display_name(&wanted)
+                .await
+            {
+                Ok(maps) if !maps.is_empty() => {
+                    out.emit(MapsEvent::VaultFoldersResolved { maps });
+                }
+                Ok(_) => tracing::debug!(?wanted, "no vault record under these map names"),
+                // Quiet, as for folders: a missing size is what the page
+                // showed before the lookup, not an error to report.
+                Err(reason) => {
+                    tracing::debug!(%reason, ?wanted, "could not look map names up");
+                }
+            }
+        }
         MapsCommand::LoadLocalPreviews { folder_names } => {
             // Only what has not been looked at yet. The event records an empty
             // result too, so a map whose folder holds no art is asked about

@@ -238,6 +238,35 @@ impl MapsPort for MapsClient {
         Ok(maps)
     }
 
+    async fn find_vault_maps_by_display_name(
+        &self,
+        display_names: &[String],
+    ) -> Result<Vec<VaultMap>, String> {
+        let token = self
+            .tokens
+            .get()
+            .ok_or_else(|| "not logged in".to_string())?;
+        let mut found = Vec::new();
+        // A map pool can name forty maps; the filter takes a bounded handful
+        // per request, like the folder lookup's.
+        for chunk in display_names.chunks(MAX_FOLDER_LOOKUPS) {
+            let Some(filter) = display_name_lookup_filter(chunk) else {
+                continue;
+            };
+            let mut url = url::Url::parse(&format!("{}/data/map", self.config.api_base))
+                .map_err(|e| format!("invalid API base: {e}"))?;
+            url.query_pairs_mut()
+                .append_pair("filter", &filter)
+                // Room for several uploads under one name for every name asked.
+                .append_pair("page[size]", "100")
+                .append_pair("include", MAP_VAULT_INCLUDE);
+            let doc = fetch_document(&self.http, url, &token).await?;
+            found.extend(parse_vault_maps(&doc));
+        }
+        self.raise_ratings(&token, &mut found).await;
+        Ok(found)
+    }
+
     async fn list_installed(&self) -> Result<Vec<InstalledMap>, String> {
         list_installed_dir(&maps_dir()).await
     }
@@ -651,6 +680,35 @@ fn folder_lookup_filter(folder_names: &[String]) -> Option<String> {
     }
     let quoted: Vec<String> = names.iter().map(|name| format!("\"{name}\"")).collect();
     Some(format!("versions.folderName=in=({})", quoted.join(",")))
+}
+
+/// `displayName=ini=(...)` over the names worth asking about, or `None` when
+/// none is.
+///
+/// `=ini=` is Elide's case-insensitive `in`: an organiser who typed `ambush
+/// pass` means the vault's `Ambush Pass`. A display name is free text, unlike
+/// a folder, so it keeps its apostrophes and spaces; only what would end the
+/// quoted value or read as a wildcard is refused, by dropping the name.
+fn display_name_lookup_filter(display_names: &[String]) -> Option<String> {
+    let mut names: Vec<String> = display_names
+        .iter()
+        .map(|name| name.trim().to_string())
+        .filter(|name| {
+            !name.is_empty()
+                && name.len() <= 128
+                && !name
+                    .chars()
+                    .any(|c| matches!(c, '"' | '\\' | '*') || c.is_control())
+        })
+        .collect();
+    names.sort_by_key(|name| name.to_lowercase());
+    names.dedup_by(|left, right| left.eq_ignore_ascii_case(right));
+    names.truncate(MAX_FOLDER_LOOKUPS);
+    if names.is_empty() {
+        return None;
+    }
+    let quoted: Vec<String> = names.iter().map(|name| format!("\"{name}\"")).collect();
+    Some(format!("displayName=ini=({})", quoted.join(",")))
 }
 
 pub(crate) use faf_domain::state::maps::base_folder_name;
@@ -1465,6 +1523,23 @@ mod tests {
             Some(r#"versions.folderName=in=("waters_of_isis.v0003")"#)
         );
         assert_eq!(folder_lookup_filter(&["a\"b".into()]), None);
+    }
+
+    #[test]
+    fn display_name_lookups_keep_free_text_and_refuse_filter_syntax() {
+        assert_eq!(
+            display_name_lookup_filter(&[
+                "Seton's Clutch".into(),
+                " seton's clutch ".into(),
+                "Ambush Pass".into(),
+                "x\"),hidden==false;(a".into(),
+                "Any*".into(),
+                "  ".into(),
+            ])
+            .as_deref(),
+            Some(r#"displayName=ini=("Ambush Pass","Seton's Clutch")"#)
+        );
+        assert_eq!(display_name_lookup_filter(&["a\\b".into()]), None);
     }
 
     #[tokio::test]

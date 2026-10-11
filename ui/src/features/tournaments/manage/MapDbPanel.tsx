@@ -27,6 +27,7 @@ import {
   tourneyMapImage,
 } from "../../../shared/rules/tourneyRules";
 import { MapSpec } from "../detail/MapsPanel";
+import { withKnownSize } from "../mapSizePresentation";
 import { MapEditor } from "./MapEditor";
 import { MapVaultPicker } from "./MapVaultPicker";
 import { MapImportDialog, type MapImport } from "./MapImportDialog";
@@ -181,9 +182,11 @@ export function MapDbPanel(props: MapDbPanelProps) {
                       name: held.name,
                       description: held.description,
                       published: held.published,
-                      // Carried unchanged: the service replaces the stored
-                      // spawn information with whatever the save sends.
-                      spec: held.spec,
+                      // Carried over: the service replaces the stored spawn
+                      // information with whatever the save sends. An empty
+                      // size comes back filled where the client knows the
+                      // map's, so saving the edit stores it.
+                      spec: withKnownSize(held.spec, held.name, vault),
                       image: null,
                       removeImage: false,
                     })
@@ -222,7 +225,9 @@ export function MapDbPanel(props: MapDbPanelProps) {
                 name,
                 description: "",
                 published: true,
-                spec: null,
+                // The picked map's size, chosen for the organiser the way the
+                // editor's select would offer it; spawns are theirs to add.
+                spec: withKnownSize(null, name, vault),
                 image: null,
                 removeImage: false,
               });

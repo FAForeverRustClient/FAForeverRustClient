@@ -6,6 +6,7 @@
 // hand-written lists, and the difference between them is two optional columns.
 
 import type { PlayerSummary, Tourney, TourneyPlayer, TourneyTeam } from "../../ipc/bindings";
+import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
 import { EntrantName } from "./EntrantName";
 import { rankedEntrants } from "./tourneyPresentation";
@@ -33,6 +34,10 @@ export function PlayerTable({
   showStanding = false,
 }: PlayerTableProps) {
   const { t } = useTranslation();
+  // Sent only to organisers and to people signed up here, so a match can be
+  // arranged without a round trip through the chat. A column of its own,
+  // drawn only when somebody has one: beside the name it read as part of it.
+  const showDiscord = players.some((player) => player.discord !== "");
 
   const teamOf = (player: TourneyPlayer): TourneyTeam | null =>
     player.teamId === null
@@ -55,6 +60,7 @@ export function PlayerTable({
           <tr>
             <th scope="col">{t("tournaments.entrants.rank")}</th>
             <th scope="col">{t("tournaments.entrants.player")}</th>
+            {showDiscord && <th scope="col">{t("tournaments.entrants.discord")}</th>}
             <th scope="col">{t("tournaments.entrants.ratingColumn")}</th>
             {showTeam && <th scope="col">{t("tournaments.entrants.team")}</th>}
             {showStanding && <th scope="col">{t("tournaments.entrants.standing")}</th>}
@@ -85,16 +91,19 @@ export function PlayerTable({
                         {t("tournaments.entrants.manualShort")}
                       </span>
                     )}
-                    {/* Sent only to organisers and to people signed up here, so
-                        a match can be arranged without a round trip through the
-                        chat. */}
-                    {player.discord !== "" && (
-                      <span className="tournament-discord muted" title={t("tournaments.entrants.discord")}>
-                        {"\u{1F4AC}"} {player.discord}
-                      </span>
-                    )}
                   </span>
                 </td>
+                {showDiscord && (
+                  <td className="tournament-entrants-discord">
+                    {player.discord !== "" ? (
+                      <span className="tournament-discord">
+                        <Icon name="discord" size={13} /> {player.discord}
+                      </span>
+                    ) : (
+                      <span className="muted">{NO_RATING}</span>
+                    )}
+                  </td>
+                )}
                 {/* The tournament's own rating, not the account's: it is taken
                     as of the event's rating date and may have been capped, so
                     the two really can differ and the one that decides seeding

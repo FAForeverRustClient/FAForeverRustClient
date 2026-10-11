@@ -17,6 +17,7 @@ import type { Tourney, TourneyAdmin } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { mayEndEarly, mayReopenEarly } from "../../../shared/rules/tourneyRules";
 import { teamNameOf } from "../bracket/matchParts";
+import { askConfirm } from "../tourneyDialogs";
 
 interface EndEarlyPanelProps {
   event: Tourney;
@@ -48,9 +49,9 @@ export function EndEarlyPanel({ event, busy, onAdmin }: EndEarlyPanelProps) {
         <Button
           disabled={busy}
           onClick={() => {
-            if (window.confirm(t("tournaments.endEarly.reopenConfirm"))) {
+            askConfirm(t("tournaments.endEarly.reopenConfirm"), () => {
               onAdmin({ type: "reopenEarly" });
-            }
+            });
           }}
         >
           {t("tournaments.endEarly.reopen")}
@@ -67,10 +68,12 @@ export function EndEarlyPanel({ event, busy, onAdmin }: EndEarlyPanelProps) {
   const setStop = (target: number) => {
     // A count the field has reached ends the event on the spot. The service
     // asks for a confirmation before doing that, and so does this.
-    if (target > 0 && alive <= target && !window.confirm(t("tournaments.endEarly.endsNow", { count: alive }))) {
+    const apply = () => onAdmin({ type: "stopAt", payload: { alive: target } });
+    if (target > 0 && alive <= target) {
+      askConfirm(t("tournaments.endEarly.endsNow", { count: alive }), apply, { danger: true });
       return;
     }
-    onAdmin({ type: "stopAt", payload: { alive: target } });
+    apply();
   };
 
   return (
@@ -113,7 +116,7 @@ export function EndEarlyPanel({ event, busy, onAdmin }: EndEarlyPanelProps) {
             <Button
               disabled={busy}
               onClick={() => {
-                if (window.confirm(t("tournaments.endEarly.clearConfirm"))) setStop(0);
+                askConfirm(t("tournaments.endEarly.clearConfirm"), () => setStop(0), { danger: true });
               }}
             >
               {t("tournaments.endEarly.clear")}
@@ -134,7 +137,7 @@ export function EndEarlyPanel({ event, busy, onAdmin }: EndEarlyPanelProps) {
             ]
               .filter(Boolean)
               .join("\n\n");
-            if (window.confirm(question)) onAdmin({ type: "finishEarly" });
+            askConfirm(question, () => onAdmin({ type: "finishEarly" }));
           }}
         >
           {t("tournaments.endEarly.finish")}

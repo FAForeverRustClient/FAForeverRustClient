@@ -21,6 +21,7 @@ import { RichText } from "../detail/RichText";
 import { bracketShort, eventDayCount } from "../orientation";
 import { formatDay, STATUS_LABELS } from "../tourneyPresentation";
 import { BanList } from "./BanList";
+import { askConfirm } from "../tourneyDialogs";
 
 const COLOURS: SeriesColour[] = ["amber", "blue", "green", "red", "purple", "plain"];
 
@@ -308,7 +309,7 @@ export function SeriesPage(props: SeriesPageProps) {
               variant="danger"
               disabled={props.busy}
               onClick={() => {
-                if (window.confirm(t("tournaments.seriesPage.deleteConfirm", { name: series.name }))) props.onDelete();
+                askConfirm(t("tournaments.seriesPage.deleteConfirm", { name: series.name }), () => props.onDelete(), { danger: true });
               }}
             >
               {t("tournaments.seriesPage.delete")}

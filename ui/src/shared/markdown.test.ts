@@ -53,6 +53,25 @@ describe("parseMarkdown", () => {
     expect(line.spans.some((span) => span.kind === "text" && span.bold)).toBe(false);
   });
 
+  it("wraps whatever comes first round what is inside it, as the website's replaces do", () => {
+    // Both from a real briefing, where a fixed order of patterns split the
+    // pair and left the marks on screen.
+    const [underlined] = parseMarkdown("on the __**#open-tourney-discussion**__ channel");
+    if (underlined.kind !== "paragraph") throw new Error("expected a paragraph");
+    expect(textOf(underlined)).toBe("on the #open-tourney-discussion channel");
+    expect(underlined.spans.some((span) => span.kind === "text" && span.bold && span.underline)).toBe(true);
+
+    const [aside] = parseMarkdown("*A joint effort with the [FAF Dojo](https://x.invalid/d), for coaching.*");
+    if (aside.kind !== "paragraph") throw new Error("expected a paragraph");
+    expect(aside.spans.some((span) => span.kind === "link")).toBe(true);
+    expect(aside.spans.filter((span) => span.kind === "text").every((span) => span.italic)).toBe(true);
+    expect(textOf(aside)).not.toContain("*");
+  });
+
+  it("takes only `- ` as a bullet, as the website does", () => {
+    expect(parseMarkdown("* not a list\n1. nor this").map((block) => block.kind)).toEqual(["paragraph", "paragraph"]);
+  });
+
   it("makes a link out of https and plain text out of anything else", () => {
     const [ok] = parseMarkdown("see the [rules](https://x.invalid/r)");
     if (ok.kind !== "paragraph") throw new Error("expected a paragraph");
