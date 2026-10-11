@@ -1,5 +1,8 @@
+// @vitest-environment happy-dom
+
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { collapsedHandleForDrag, RangeSlider, rangeReadout } from "./RangeSlider";
 
 describe("RangeSlider", () => {
@@ -35,9 +38,37 @@ describe("RangeSlider", () => {
   });
 
   it("chooses the collapsed handle from the initial drag direction", () => {
-    expect(collapsedHandleForDrag(-1)).toBe("low");
-    expect(collapsedHandleForDrag(1)).toBe("high");
+    expect(collapsedHandleForDrag(-3)).toBe("low");
+    expect(collapsedHandleForDrag(3)).toBe("high");
+    expect(collapsedHandleForDrag(-2)).toBeNull();
+    expect(collapsedHandleForDrag(2)).toBeNull();
     expect(collapsedHandleForDrag(0)).toBeNull();
+  });
+
+  it("does not choose a handle until the drag passes the threshold, then focuses it", () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <RangeSlider label="Density" min={0} max={127} low={64} high={64} onChange={onChange} />,
+    );
+    const track = container.querySelector<HTMLElement>(".range-slider-track");
+    const [lowInput, highInput] = Array.from(
+      container.querySelectorAll<HTMLInputElement>(".range-slider-input"),
+    );
+    if (!track) throw new Error("Range slider track was not rendered");
+    vi.spyOn(track, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 127, 34));
+    track.setPointerCapture = () => undefined;
+    track.hasPointerCapture = () => false;
+
+    fireEvent.pointerDown(lowInput, { pointerId: 1, clientX: 64 });
+    fireEvent.pointerMove(track, { pointerId: 1, clientX: 66 });
+    expect(document.activeElement).not.toBe(lowInput);
+    expect(document.activeElement).not.toBe(highInput);
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.pointerMove(track, { pointerId: 1, clientX: 67 });
+    expect(document.activeElement).toBe(highInput);
+    expect(onChange).toHaveBeenLastCalledWith(64, 67);
+    fireEvent.pointerUp(track, { pointerId: 1 });
   });
 
   describe("readout (#459)", () => {

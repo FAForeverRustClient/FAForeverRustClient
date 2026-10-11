@@ -23,7 +23,7 @@ interface Props {
 }
 
 export function collapsedHandleForDrag(delta: number): "low" | "high" | null {
-  if (delta === 0) return null;
+  if (Math.abs(delta) < 3) return null;
   return delta < 0 ? "low" : "high";
 }
 
@@ -41,6 +41,8 @@ export function RangeSlider({
   const { t } = useTranslation();
   const id = useId();
   const [activeHandle, setActiveHandle] = useState<"low" | "high" | null>(null);
+  const lowInputRef = useRef<HTMLInputElement>(null);
+  const highInputRef = useRef<HTMLInputElement>(null);
   const collapsedDrag = useRef<{
     pointerId: number;
     startX: number;
@@ -86,6 +88,8 @@ export function RangeSlider({
     if (e.target instanceof HTMLInputElement) {
       if (lowValue !== highValue) return;
       e.preventDefault();
+      // Native range dragging grabs whichever overlapping input is on top,
+      // so wait for a deliberate movement before selecting a boundary.
       collapsedDrag.current = { pointerId: e.pointerId, startX: e.clientX, handle: null };
       e.currentTarget.setPointerCapture(e.pointerId);
       return;
@@ -116,6 +120,8 @@ export function RangeSlider({
       if (handle === null) return;
       drag.handle = handle;
       setActiveHandle(drag.handle);
+      if (handle === "low") lowInputRef.current?.focus();
+      else highInputRef.current?.focus();
     }
 
     const rect = e.currentTarget.getBoundingClientRect();
@@ -163,6 +169,7 @@ export function RangeSlider({
         <span className="range-slider-rail" aria-hidden="true" />
         <span className="range-slider-fill" aria-hidden="true" />
         <input
+          ref={lowInputRef}
           type="range"
           className={`range-slider-input range-slider-input-low${low === null ? " is-unbounded" : ""}`}
           style={{ zIndex: lowZIndex }}
@@ -181,6 +188,7 @@ export function RangeSlider({
           }}
         />
         <input
+          ref={highInputRef}
           type="range"
           className={`range-slider-input range-slider-input-high${high === null ? " is-unbounded" : ""}`}
           style={{ zIndex: highZIndex }}
