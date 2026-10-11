@@ -1583,6 +1583,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.detail.gameVersion": "Wersja gry",
   "replays.detail.unknown": "Nieznane",
   "replays.detail.unrated": "Bez rankingu",
+  "replays.detail.notReviewed": "Bez oceny",
   "replays.detail.lineup": "Skład",
   "replays.detail.hideResults": "Ukryj wyniki",
   "replays.detail.noLineup": "Dla tej powtórki nie zapisano składu.",

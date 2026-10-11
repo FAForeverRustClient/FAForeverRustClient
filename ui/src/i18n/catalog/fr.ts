@@ -1616,6 +1616,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.detail.gameVersion": "Version du jeu",
   "replays.detail.unknown": "Inconnu",
   "replays.detail.unrated": "Non classée",
+  "replays.detail.notReviewed": "Sans évaluation",
   "replays.detail.lineup": "Composition",
   "replays.detail.hideResults": "Masquer les résultats",
   "replays.detail.noLineup": "Aucune composition n'a été enregistrée pour ce replay.",

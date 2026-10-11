@@ -1614,6 +1614,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.detail.gameVersion": "Versión del juego",
   "replays.detail.unknown": "Desconocido",
   "replays.detail.unrated": "Sin puntuación",
+  "replays.detail.notReviewed": "Sin valoración",
   "replays.detail.lineup": "Alineación",
   "replays.detail.hideResults": "Ocultar los resultados",
   "replays.detail.noLineup": "No se registró ninguna alineación para esta repetición.",

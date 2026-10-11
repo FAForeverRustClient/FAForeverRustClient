@@ -1965,6 +1965,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.detail.gameVersion": "Spielversion",
   "replays.detail.unknown": "Unbekannt",
   "replays.detail.unrated": "Ohne Rating",
+  "replays.detail.notReviewed": "Nicht bewertet",
   "replays.detail.lineup": "Aufstellung",
   "replays.detail.hideResults": "Ergebnisse verbergen",
   "replays.detail.noLineup": "Für dieses Replay wurde keine Aufstellung erfasst.",
