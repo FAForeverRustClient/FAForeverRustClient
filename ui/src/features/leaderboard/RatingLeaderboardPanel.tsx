@@ -1,11 +1,12 @@
 import { useOverlayLayer } from "../../design-system/useOverlayLayer";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import {
   SearchField,
   SearchPanel,
   SearchPanelSubmit,
+  SearchPanelToggle,
 } from "../../design-system/SearchPanel";
 import { Pagination } from "../../design-system/Pagination";
 import type { LeaderboardColumn, TableColumn } from "./LeaderboardTable";
@@ -18,7 +19,6 @@ import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import { DateInput } from "../../design-system/DateInput";
 import { plainError } from "../../shared/plainError";
-import { leaderboardLabel } from "../../shared/playerRatings";
 import {
   filterMemoryNow,
   isFilterRecord,
@@ -115,6 +115,7 @@ function rememberIncludeFormerNames(leaderboardIncludeFormerNames: boolean) {
 
 export function RatingLeaderboardPanel() {
   const { t } = useTranslation();
+  const playerFieldId = useId();
   const state = useAppStore((store) => store.state.leaderboard);
   const browsing = useAppStore((store) => store.state.settings.browsing);
   const savedIncludeFormerNames = browsing.leaderboardIncludeFormerNames;
@@ -127,6 +128,7 @@ export function RatingLeaderboardPanel() {
   const [before, setBefore] = useState(dayValue(state.ratingQuery.updatedBefore));
   const [pageSize, setPageSize] = useState(state.ratingQuery.pageSize);
   const [columnsOpen, setColumnsOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const columnsRef = useRef<HTMLDivElement>(null);
   const visibleColumns = (browsing.leaderboardRatingColumns ?? [
     "games", "updated",
@@ -222,7 +224,6 @@ export function RatingLeaderboardPanel() {
     };
   }, [columnsOpen]);
 
-  const currentBoard = state.ratingLeaderboards.find((board) => board.technicalName === state.ratingQuery.leaderboard);
   const entries = state.ratingPage.entries;
   const selected = entries.find((entry) => entry.playerId === selectedId) ?? null;
   // Every board gets a column. Which of them the page is ranked by is the
@@ -234,6 +235,7 @@ export function RatingLeaderboardPanel() {
     () => crossRatingIndex(state.crossRatings),
     [state.crossRatings],
   );
+  const dateFilterCount = Number(Boolean(after)) + Number(Boolean(before));
   const submit = () => void load({
     leaderboard: state.ratingQuery.leaderboard,
     page: 1,
@@ -258,6 +260,12 @@ export function RatingLeaderboardPanel() {
     });
   };
   const changePage = (page: number) => void load({ ...state.ratingQuery, page });
+  // Beside the table rather than among the filters, so it applies at once,
+  // as the column choice beside it does.
+  const changePageSize = (size: number) => {
+    setPageSize(size);
+    void load({ ...state.ratingQuery, pageSize: size, page: 1 });
+  };
   const columns: TableColumn[] = ["rank", "player", ...boardColumns, ...visibleColumns];
   // The remembered "include previous names" choice survives Clear: it says how
   // the next name is looked up, and with the name cleared it filters nothing.
@@ -272,17 +280,9 @@ export function RatingLeaderboardPanel() {
 
   return (
     <section className="leaderboard-panel">
-      {/* No tabs. There is one table with every board in it, and the board the
-          ladder is ranked by is chosen by pressing that board's column
-          header: a strip of tabs above a table whose columns are the same
-          five boards was the same choice offered twice. */}
-      {currentBoard && (
-        <p className="leaderboard-description muted">
-          <span>{t("leaderboard.ratings.rankedByBoard", { board: leaderboardLabel(currentBoard.technicalName) })}</span>
-          {currentBoard.description && <span className="leaderboard-description-note">{currentBoard.description}</span>}
-        </p>
-      )}
-
+      {/* No tabs for the boards. There is one table with every board in it,
+          and the board the ladder is ranked by is chosen by pressing that
+          board's column header, which marks itself as the ranked one. */}
       <SearchPanel
         className="leaderboard-search-panel"
         onSubmit={(event) => { event.preventDefault(); submit(); }}
@@ -291,83 +291,121 @@ export function RatingLeaderboardPanel() {
             <Button className={activeOnly ? "active" : ""} onClick={() => changeActivityFilter(true)}>{t("leaderboard.ratings.activeThisMonth")}</Button>
             <Button className={!activeOnly ? "active" : ""} onClick={() => changeActivityFilter(false)}>{t("leaderboard.ratings.allPlayers")}</Button>
             <span className="spacer" />
-            <span className="leaderboard-result-count muted">
-              {state.ratingPage.totalResults === null
-                ? `${state.ratingPage.entries.length} loaded`
-                : t("leaderboard.rating.playerCount", {
-                  count: state.ratingPage.totalResults,
-                  formatted: formatNumber(state.ratingPage.totalResults),
-                })}
-            </span>
-            <div className="leaderboard-columns" ref={columnsRef}>
-              <Button
-                className={`leaderboard-columns-trigger${columnsOpen ? " active" : ""}`}
-                aria-expanded={columnsOpen}
-                aria-haspopup="dialog"
-                onClick={() => setColumnsOpen((open) => !open)}
-              >
-                <Icon name="filter" size={16} /> {t("leaderboard.ratings.columns")}
-              </Button>
-              {columnsOpen && <div className="leaderboard-columns-menu" role="dialog" aria-label={t("leaderboard.ratings.visibleLeaderboardColumns")}>
-                <div className="leaderboard-columns-menu-header">
-                  <strong>{t("leaderboard.ratings.visibleColumns")}</strong>
-                  <button type="button" className="leaderboard-columns-close" aria-label={t("leaderboard.ratings.closeColumnsMenu")} onClick={() => setColumnsOpen(false)}>
-                    <Icon name="close" size={14} />
-                  </button>
-                </div>
-                {OPTIONAL_COLUMNS.map((column) => (
-                  <label key={column.key}>
-                    <input
-                      type="checkbox"
-                      checked={visibleColumns.includes(column.key)}
-                      onChange={() => toggleColumn(column.key)}
-                    />
-                    {t(column.label)}
-                  </label>
-                ))}
-              </div>}
-            </div>
+            <SearchPanelToggle expanded={filtersOpen} count={dateFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
             <Button onClick={clearFilters}>{t("leaderboard.ratings.clear")}</Button>
             <Button aria-label={t("leaderboard.ratings.refreshRankings")} onClick={() => void load(state.ratingQuery)}><Icon name="refresh" size={15} /> {t("leaderboard.ratings.refresh")}</Button>
           </>
         )}
+        // The dates narrow "All players" to who played in a window. They used
+        // to sit in the main row, greyed out, for the board's default of this
+        // month's players, where they could not do anything; a date picked
+        // here switches to all players, which is the only way it can apply.
+        advanced={filtersOpen ? (
+          <div className="search-panel-advanced">
+            <div className="search-panel-advanced-grid">
+              <SearchField label={t("leaderboard.ratings.updatedAfter")}>
+                <DateInput className="search-panel-control" value={after} onChange={(value) => { setAfter(value); if (value) setActiveOnly(false); }} />
+              </SearchField>
+              <SearchField label={t("leaderboard.ratings.updatedBefore")}>
+                <DateInput className="search-panel-control" value={before} onChange={(value) => { setBefore(value); if (value) setActiveOnly(false); }} />
+              </SearchField>
+            </div>
+          </div>
+        ) : undefined}
       >
-        <SearchField
-          label={t(includeFormerNames ? "leaderboard.ratings.anyPlayerName" : "leaderboard.ratings.exactPlayer")}
-          className="leaderboard-search-player"
-        >
-          <input className="search-panel-control" value={player} placeholder={t("leaderboard.ratings.playerName")} onChange={(event) => setPlayer(event.target.value)} />
-        </SearchField>
-        {/* Off by default, because it turns a lookup into a list of
-            candidates: part of any name, current or former, and a released
-            name can have been worn by several accounts (#299). Once ticked
-            it stays ticked, across restarts too (#424). */}
-        <label className="option-check leaderboard-search-former" title={t("leaderboard.ratings.includeFormerNamesHint")}>
+        {/* The name and the one thing that changes how it is looked up, on
+            the field's own label line, then the search: the row reads as one
+            question. A field label cannot hold the box, a label inside a
+            label being no label at all, so the field is spelled out here. */}
+        <div className="search-panel-field search-panel-field-grow leaderboard-search-player">
+          <div className="leaderboard-search-label-row">
+            <label className="search-panel-label" htmlFor={`${playerFieldId}-name`}>
+              {t(includeFormerNames ? "leaderboard.ratings.anyPlayerName" : "leaderboard.ratings.exactPlayer")}
+            </label>
+            {/* Off by default, because it turns a lookup into a list of
+                candidates: part of any name, current or former, and a released
+                name can have been worn by several accounts (#299). Once ticked
+                it stays ticked, across restarts too (#424). */}
+            <label className="option-check leaderboard-search-former" title={t("leaderboard.ratings.includeFormerNamesHint")}>
+              <input
+                type="checkbox"
+                checked={includeFormerNames}
+                onChange={(event) => {
+                  setIncludeFormerNames(event.target.checked);
+                  rememberIncludeFormerNames(event.target.checked);
+                }}
+              />
+              {t("leaderboard.ratings.includeFormerNames")}
+            </label>
+          </div>
           <input
-            type="checkbox"
-            checked={includeFormerNames}
-            onChange={(event) => {
-              setIncludeFormerNames(event.target.checked);
-              rememberIncludeFormerNames(event.target.checked);
-            }}
+            id={`${playerFieldId}-name`}
+            className="search-panel-control"
+            value={player}
+            placeholder={t("leaderboard.ratings.playerName")}
+            onChange={(event) => setPlayer(event.target.value)}
           />
-          {t("leaderboard.ratings.includeFormerNames")}
-        </label>
-        <SearchField label={t("leaderboard.ratings.updatedAfter")} className="leaderboard-search-date">
-          <DateInput className="search-panel-control" value={after} readOnly={activeOnly} aria-disabled={activeOnly} onChange={setAfter} />
-        </SearchField>
-        <SearchField label={t("leaderboard.ratings.updatedBefore")} className="leaderboard-search-date">
-          <DateInput className="search-panel-control" value={before} readOnly={activeOnly} aria-disabled={activeOnly} onChange={setBefore} />
-        </SearchField>
-        <SearchField label={t("leaderboard.ratings.rows")} className="leaderboard-search-rows">
-          <select className="search-panel-control" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
-            {[25, 50, 75, 100].map((size) => <option key={size} value={size}>{size}</option>)}
-          </select>
-        </SearchField>
+        </div>
         <SearchPanelSubmit disabled={state.ratingsStatus.type === "loading"} />
       </SearchPanel>
 
-      <div className="leaderboard-main-grid">
+      <div className="leaderboard-main-grid has-summary">
+        {/* What the search found and how it is laid out, over the table it
+            describes: the count on the left, and at the table's top right the
+            two settings that shape it, its page length and its columns, rather
+            than among the filters or over the player details. */}
+        <div className="leaderboard-summary">
+          <div className="leaderboard-summary-count">
+            <Icon name="users" size={16} />
+            <strong>
+              {state.ratingPage.totalResults === null
+                ? `${state.ratingPage.entries.length}`
+                : t("leaderboard.rating.playerCount", {
+                  count: state.ratingPage.totalResults,
+                  formatted: formatNumber(state.ratingPage.totalResults),
+                })}
+            </strong>
+            <span className="muted">
+              {t(state.ratingQuery.activeOnly ? "leaderboard.ratings.activeThisMonth" : "leaderboard.ratings.allPlayers")}
+            </span>
+          </div>
+          <span className="spacer" />
+          <label className="leaderboard-summary-rows">
+            <span className="muted">{t("leaderboard.ratings.rows")}</span>
+            <select className="search-panel-control" value={pageSize} onChange={(event) => changePageSize(Number(event.target.value))}>
+              {[25, 50, 75, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+            </select>
+          </label>
+          <div className="leaderboard-columns" ref={columnsRef}>
+            <Button
+              className={`leaderboard-columns-trigger${columnsOpen ? " active" : ""}`}
+              aria-expanded={columnsOpen}
+              aria-haspopup="dialog"
+              onClick={() => setColumnsOpen((open) => !open)}
+            >
+              <Icon name="filter" size={15} /> {t("leaderboard.ratings.columns")}
+            </Button>
+            {columnsOpen && <div className="leaderboard-columns-menu" role="dialog" aria-label={t("leaderboard.ratings.visibleLeaderboardColumns")}>
+              <div className="leaderboard-columns-menu-header">
+                <strong>{t("leaderboard.ratings.visibleColumns")}</strong>
+                <button type="button" className="leaderboard-columns-close" aria-label={t("leaderboard.ratings.closeColumnsMenu")} onClick={() => setColumnsOpen(false)}>
+                  <Icon name="close" size={14} />
+                </button>
+              </div>
+              {OPTIONAL_COLUMNS.map((column) => (
+                <label key={column.key} className="option-check">
+                  <input
+                    type="checkbox"
+                    checked={visibleColumns.includes(column.key)}
+                    onChange={() => toggleColumn(column.key)}
+                  />
+                  {t(column.label)}
+                </label>
+              ))}
+            </div>}
+          </div>
+        </div>
+
         <div className={`leaderboard-results surface-panel${state.ratingsStatus.type === "loading" ? " is-loading" : ""}`}>
           {state.ratingsStatus.type === "failed" ? (
             <div className="leaderboard-state leaderboard-error" title={state.ratingsStatus.payload.reason}>
@@ -389,7 +427,7 @@ export function RatingLeaderboardPanel() {
             />
           )}
         </div>
-        <PlayerDetailsPanel entry={selected} />
+        <PlayerDetailsPanel entry={selected} rankedBoard={state.ratingQuery.leaderboard} boards={state.ratingLeaderboards.map((board) => board.technicalName)} crossRatings={crossRatings} />
       </div>
 
       <div className="vault-pagination">

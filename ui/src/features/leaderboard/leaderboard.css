@@ -5,7 +5,7 @@
   min-height: 0;
   height: 100%;
   overflow: auto;
-  --leaderboard-detail-width: 230px;
+  --leaderboard-detail-width: 300px;
 }
 
 .leaderboard-header,
@@ -20,19 +20,40 @@
   align-items: center;
 }
 
+/* The two boards as tabs, with whatever belongs to the open one (a league's
+   season) and the way into the explainer on the same line. The tabs' own
+   underline runs the full width, so the line reads as one header. */
 .leaderboard-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--leaderboard-detail-width);
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-4);
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
 }
 
-.leaderboard-header > .leaderboard-season-toolbar {
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: center;
-  margin-left: 0;
+/* The full height of the header and the tabs at its foot, so each tab's
+   underline sits on the header's line however tall the league season picker
+   beside them makes it. Centred, they rose with it. */
+.leaderboard-mode-tabs {
+  flex: 1 1 auto;
+  align-self: stretch;
+  align-items: flex-end;
+  border-bottom: 0;
+}
+
+.leaderboard-explain-trigger {
+  flex: none;
+  color: var(--color-muted);
+  border-color: transparent;
+}
+
+.leaderboard-explain-trigger:hover:not(:disabled) {
+  color: var(--color-text);
+}
+
+/* Wide enough for the explainer's figures, which make their point side by
+   side; the modal's default reading width would stack them. */
+.modal-panel.rating-explainer-modal {
+  width: min(1240px, 94vw);
+  max-width: none;
+  padding: 0;
 }
 
 .leaderboard-header h2,
@@ -94,22 +115,6 @@
   min-height: 0;
 }
 
-/* What the table is ranked by, and what that board is. One line, since the
-   tabs that used to say the first half are gone. */
-.leaderboard-description {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2);
-  margin: var(--space-2) 0 0;
-  font-size: 12px;
-}
-
-.leaderboard-description-note {
-  padding-left: var(--space-2);
-  border-left: 1px solid var(--color-border);
-}
-
 .leaderboard-field {
   display: flex;
   flex-direction: column;
@@ -154,8 +159,7 @@
 }
 
 .leaderboard-field input:disabled,
-.leaderboard-field select:disabled,
-.leaderboard-search-date input[aria-disabled="true"] {
+.leaderboard-field select:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -164,24 +168,89 @@
   margin-top: var(--space-3);
 }
 
+/* The name field is wider than the panel default: it is the whole of the
+   search row now, and a long login with a clan tag should fit. */
 .leaderboard-search-player {
-  flex: 0 1 240px;
+  max-width: 520px;
 }
 
-/* Sits beside the name it widens, level with the inputs rather than their
-   labels. */
+/* The field's label on the left, and on the right of the same line the one
+   option that changes how the name is looked up. */
+.leaderboard-search-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .leaderboard-search-former {
   flex: none;
-  align-self: flex-end;
-  min-height: 34px;
+  font-size: 11px;
 }
 
-.leaderboard-search-date {
-  flex: 0 1 165px;
+/* Between the search and the table: what was found, and the two settings
+   that shape the table. One quiet line, not a second toolbar. */
+.leaderboard-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: 0 2px;
 }
 
-.leaderboard-search-rows {
-  flex: 0 1 100px;
+/* The summary over the table's column only, so its settings end at the
+   table's right edge, and the player details level with the table below it. */
+.leaderboard-main-grid.has-summary {
+  grid-template-rows: auto minmax(0, 1fr);
+  row-gap: var(--space-2);
+}
+
+.leaderboard-main-grid.has-summary > .leaderboard-summary {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.leaderboard-main-grid.has-summary > .leaderboard-results {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.leaderboard-main-grid.has-summary > .leaderboard-player-panel {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.leaderboard-summary > .spacer {
+  flex: 1 1 auto;
+}
+
+.leaderboard-summary-count {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: 13px;
+}
+
+.leaderboard-summary-count svg {
+  align-self: center;
+  color: var(--color-muted);
+}
+
+.leaderboard-summary-count strong {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-summary-rows {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+}
+
+.leaderboard-summary-rows select {
+  width: 84px;
 }
 
 .leaderboard-table-toolbar {
@@ -192,7 +261,6 @@
 
 .leaderboard-columns {
   position: relative;
-  align-self: flex-end;
 }
 
 .leaderboard-columns-trigger.active {
@@ -251,14 +319,6 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: 12px;
-}
-
-.leaderboard-result-count {
-  align-self: flex-end;
-  min-height: 34px;
-  margin-left: auto;
-  line-height: 34px;
   font-size: 12px;
 }
 
@@ -410,12 +470,18 @@
   font-weight: 650;
 }
 
+/* The selected player beside the table: who they are and where they stand
+   on every board, then what can be done with them. */
 .leaderboard-player-panel {
   display: flex;
   align-self: start;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
   height: fit-content;
+  /* Scrolls inside the row on a short window rather than running out of it
+     and over the page numbers below. */
+  max-height: 100%;
+  overflow-y: auto;
   padding: var(--space-4);
 }
 
@@ -427,87 +493,188 @@
   text-transform: uppercase;
 }
 
-.leaderboard-player-name {
-  overflow: hidden;
-  font-size: 18px;
-  font-weight: 650;
-  text-overflow: ellipsis;
+.leaderboard-player-empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: 20px var(--space-2);
+  color: var(--color-muted);
+  text-align: center;
 }
 
-.leaderboard-player-identity {
-  display: block;
+.leaderboard-player-empty p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
-.leaderboard-player-copy {
+.leaderboard-player-head {
+  display: grid;
+  gap: 6px;
+}
+
+.leaderboard-player-name-row {
   display: flex;
   min-width: 0;
-  flex-direction: column;
+  align-items: center;
   gap: var(--space-2);
 }
 
-.leaderboard-player-division {
+/* Never cut off: a long login with a clan tag breaks onto a second line
+   rather than losing its end. */
+.leaderboard-player-name {
+  min-width: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.leaderboard-player-standing {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  min-height: 32px;
-  margin: 0;
+  gap: var(--space-1) var(--space-2);
+  font-size: 12px;
+}
+
+.leaderboard-player-rank {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The tier on the standing line, under the name rather than beside it: as a
+   64px badge beside the name it left a long name a third of the panel. */
+.leaderboard-player-division {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .leaderboard-player-division img {
-  flex: 0 0 auto;
-  width: 64px;
-  height: 32px;
+  width: 36px;
+  height: 18px;
   object-fit: contain;
+}
+
+/* The training overview's facts strip (`.training-basis`), for one player: a
+   tinted band across the panel's full width, each value under its label, and
+   a hairline between the values of a row. */
+.leaderboard-player-facts {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 calc(-1 * var(--space-4));
+  padding: 14px var(--space-4);
+  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.leaderboard-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  row-gap: var(--space-3);
+  margin: 0;
+}
+
+.leaderboard-facts + .leaderboard-facts {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.leaderboard-facts > div {
+  min-width: 0;
+  padding: 0 var(--space-3);
+  border-left: 1px solid var(--color-border);
+}
+
+.leaderboard-facts > div:nth-child(3n + 1) {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.leaderboard-facts dt {
+  margin-bottom: 3px;
+  overflow: hidden;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.leaderboard-facts dd {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.leaderboard-facts dd.is-unknown {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+/* The board the page is ranked by, marked as its column header is. */
+.leaderboard-facts .is-ranked dt {
+  color: var(--color-text);
+}
+
+.leaderboard-facts .is-ranked dd {
+  font-weight: 700;
+}
+
+/* The replay detail's small icon button beside its id. */
+.leaderboard-copy-name {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: none;
   border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 100ms ease, color 100ms ease;
+}
+
+.leaderboard-copy-name:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.leaderboard-copy-name:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* A tier in the table: its badge at the height of the name beside it. */
+.leaderboard-division-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .leaderboard-division-icon,
 .leaderboard-division-icon-slot {
   display: inline-block;
-  width: 48px;
-  height: 24px;
+  flex: none;
+  width: 36px;
+  height: 18px;
   object-fit: contain;
   vertical-align: middle;
 }
 
 .leaderboard-division-icon-slot {
   border-radius: var(--radius-sm);
-}
-
-.leaderboard-player-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0;
-  margin: 0;
-  padding: var(--space-3) 0;
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.leaderboard-player-stats div {
-  min-width: 0;
-  padding: 0 var(--space-2);
-}
-
-.leaderboard-player-stats div:first-child {
-  padding-left: 0;
-}
-
-.leaderboard-player-stats div + div {
-  border-left: 1px solid var(--color-border);
-}
-
-.leaderboard-player-stats dt {
-  color: var(--color-muted);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.leaderboard-player-stats dd {
-  margin: var(--space-1) 0 0;
-  font-size: 16px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
 }
 
 .leaderboard-player-actions {
@@ -520,20 +687,24 @@
   width: 100%;
 }
 
-.leaderboard-player-action-grid {
+/* One action to a line, icon first, so a label is never broken in two the
+   way the old two-column grid broke "Copy name". */
+.leaderboard-player-action-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
+  gap: 2px;
 }
 
-.leaderboard-player-action-grid .btn-ghost {
+.leaderboard-player-action-list .btn-ghost {
   width: 100%;
   min-width: 0;
-  padding: 6px var(--space-2);
-  font-size: 11px;
   justify-content: flex-start;
-  text-align: left;
-  white-space: normal;
+  padding: 7px var(--space-3);
+  color: var(--color-text);
+  border-color: transparent;
+}
+
+.leaderboard-player-action-list .btn-ghost svg {
+  color: var(--color-muted);
 }
 
 .leaderboard-empty,
@@ -553,13 +724,14 @@
   color: var(--color-error-text);
 }
 
+/* At the right end of the league tab row, centred on it: the season picker,
+   then whether it is running and its dates, on one line. */
 .leaderboard-season-toolbar {
   flex: 0 0 auto;
-  align-self: center;
   align-items: center;
   justify-content: flex-end;
-  margin-left: var(--space-4);
-  transform: translateY(var(--space-3));
+  margin-left: auto;
+  padding-left: var(--space-4);
 }
 
 .leaderboard-season-toolbar .leaderboard-field {
@@ -946,10 +1118,9 @@
 .leaderboard-season-context {
   display: flex;
   flex: 0 1 auto;
-  align-items: flex-end;
-  flex-direction: column;
+  align-items: center;
   min-width: 0;
-  gap: var(--space-1);
+  gap: var(--space-3);
 }
 
 .leaderboard-season-context .leaderboard-season-picker {
@@ -1032,10 +1203,10 @@
     width: 100%;
   }
 
-  .leaderboard-header > .leaderboard-season-toolbar {
+  .leaderboard-league-header > .leaderboard-season-toolbar {
     width: 100%;
     margin: var(--space-2) 0 var(--space-3);
-    transform: none;
+    padding-left: 0;
   }
 
   .leaderboard-season-picker {
@@ -1056,127 +1227,105 @@
 
 }
 
-/* "How rating works": a page of documentation, so it reads like one. A tab
-   rather than a dialog, so it gets the panel padding the tables get and a
-   measure that does not run the full width of a leaderboard. */
+/* "How rating works": a dialog over the boards, laid out as a training guide
+   is read (the shared `ReadingLayout`), under a header like a guide page's. */
 .rating-explainer {
-  /* Twice the reading measure a paragraph wants, because this page is not only
-     paragraphs: the figures are 600 px wide screenshots and the pair of them
-     only makes its point side by side. */
-  max-width: 156ch;
-  padding: var(--space-4);
+  padding: 28px clamp(20px, 3vw, 36px) 8px;
 }
 
-.rating-explainer > header,
-.rating-explainer-section > p,
-.rating-explainer-list {
-  /* The prose keeps its measure inside that wider column. A 156ch line of body
-     text is unreadable however wide the window is. */
-  max-width: 82ch;
-}
 
-.rating-explainer > header {
+/* The guide page's header: an eyebrow saying what kind of page this is, the
+   title at the size a guide's has, and the summary under it. A hairline then
+   separates it from the text. */
+.rating-explainer-head {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 70ch;
   margin-bottom: var(--space-4);
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--color-border);
 }
 
-.rating-explainer h2 {
-  margin: 0 0 var(--space-1);
-  font-size: 19px;
+.rating-explainer-head + .reading-frame .reading {
+  padding-top: var(--space-4);
 }
 
-.rating-explainer-section {
-  margin-bottom: var(--space-5);
-}
-
-.rating-explainer h3 {
-  margin: 0 0 var(--space-2);
-  font-size: 14px;
-}
-
-.rating-explainer p {
-  margin: 0 0 var(--space-2);
-  color: var(--color-text);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.rating-explainer .muted {
+.rating-explainer-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
-.rating-explainer-list {
-  margin: 0 0 var(--space-2);
-  padding-left: var(--space-4);
+.rating-explainer-head h2 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.rating-explainer-lede {
+  margin: 0;
   color: var(--color-text);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.rating-explainer-list li {
-  margin-bottom: 5px;
-}
-
-.rating-explainer-formula code {
-  display: inline-block;
-  padding: 5px 9px;
-  color: var(--color-rating);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font-size: 14px;
-}
-
-/* The figures come from the wiki as PNGs of varying size. A fixed frame and
-   `contain` keep them from setting the width of the section, and the caption
-   is what carries the point: the picture on its own says "a bell curve". */
-.rating-explainer-figure {
-  margin: var(--space-3) 0;
-}
-
-.rating-explainer-figure img {
-  display: block;
-  max-width: 100%;
-  max-height: 320px;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.rating-explainer-figure figcaption {
-  margin-top: 6px;
-  color: var(--color-muted);
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.5;
+  opacity: 0.85;
 }
 
-/* The two settled curves sit side by side, because the point of them is the
-   comparison. They stack when there is no room for that to be a comparison. */
+/* Two curves that make their point side by side, as wide as the column. */
 .rating-explainer-figure-pair {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: var(--space-4);
-  grid-template-columns: repeat(auto-fit, minmax(280px, max-content));
+  margin: 20px 0 22px;
 }
 
-.rating-explainer-figure-pair .rating-explainer-figure img {
+.rating-explainer-figure-pair figure {
+  margin: 0;
+}
+
+.rating-explainer-figure-pair img {
   max-height: 260px;
 }
 
-.rating-explainer-figure-pair figcaption {
-  max-width: 46ch;
+/* The formula as the one line of the page set in code. */
+.rating-explainer-formula code {
+  display: inline-block;
+  padding: 6px 12px;
+  color: var(--color-text);
+  font-size: 14px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 }
 
-.rating-explainer-more {
-  margin: 0;
+/* A worked example or a caveat, set off from the argument it belongs to. */
+.reading .reading-copy > .rating-explainer-aside {
+  padding-left: var(--space-3);
+  color: var(--color-muted);
+  border-left: 2px solid var(--color-border-strong);
 }
 
 .rating-explainer-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding-top: var(--space-3);
+  margin-top: 2em;
+  padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
-  flex-wrap: wrap;
+}
+
+.reading .reading-copy > .rating-explainer-actions p {
+  margin: 0;
+  color: var(--color-muted);
 }
 
 /* A board's own column. Every board is on screen at once now, so the one the
@@ -1200,4 +1349,8 @@
 .leaderboard-table td.leaderboard-board-column.is-ranked {
   color: var(--color-text);
   font-weight: 700;
+}
+
+.rating-explainer:focus:not(:focus-visible) {
+  outline: none;
 }

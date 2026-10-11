@@ -513,19 +513,18 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
           {t("replays.search.hideShort")}
         </Button>
         <span className="spacer" />
-        <button
-          type="button"
-          className="vault-toggle-advanced search-panel-toggle"
+        <Button
+          className="search-panel-toggle"
           aria-expanded={advanced}
           onClick={() => setAdvanced((a) => !a)}
         >
-          <Icon name="filter" size={14} />
+          <Icon name="filter" size={15} />
           {advanced
             ? t("replays.search.fewerFilters")
             : hiddenFilterCount > 0
               ? t("replays.search.moreFiltersCount", { count: hiddenFilterCount })
               : t("replays.search.moreFilters")}
-        </button>
+        </Button>
         <Button type="button" onClick={reset}>
           {t("replays.search.clear")}
         </Button>

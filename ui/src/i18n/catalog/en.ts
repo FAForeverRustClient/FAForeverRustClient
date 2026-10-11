@@ -2936,7 +2936,6 @@ export const en = {
   "leaderboard.ratings.leaderboardPages": "Leaderboard pages",
   "leaderboard.ratings.playerName": "Player name",
   "leaderboard.ratings.ratingQueues": "Rating queues",
-  "leaderboard.ratings.rankedByBoard": "Ranked by {board}. Press another board's column to rank by that one.",
   "leaderboard.ratings.refreshRankings": "Refresh rankings",
   "leaderboard.ratings.rows": "Rows",
   "leaderboard.ratings.updatedAfter": "Updated after",
@@ -3080,7 +3079,6 @@ export const en = {
 
   "leaderboard.column.rank": "Rank",
   "leaderboard.column.player": "Player",
-  "leaderboard.column.league": "League",
   "leaderboard.name.league": "{board} League",
   "leaderboard.name.noShare": "{board} No Share",
   "leagues.division.bronze": "Bronze",
@@ -3275,6 +3273,7 @@ export const en = {
   "lobby.matchmaker.partyChatChannel": "party chat",
   "common.now": "Now",
   "common.any": "Any",
+  "common.contents": "Contents",
   "common.pickDate": "Pick a date",
   "common.mapPreview": "{name} preview",
   "common.mapPreviewUnavailable": "{name} preview unavailable",
