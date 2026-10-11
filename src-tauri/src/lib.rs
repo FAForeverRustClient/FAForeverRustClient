@@ -376,6 +376,10 @@ mod tests {
             "https://faforever.com/newshub",
             "https://www.faforever.com/dist/main.js",
             "https://faforever.github.io/spooky-db/",
+            // The Units tab's database. WebKitGTK asks about a frame's loads
+            // as well as the window's, so with the root missing here the
+            // frame's own page went to the browser (PR 463).
+            "https://faforever.github.io/etfreeman-db/#/",
         ] {
             assert!(crate::navigation::is_internal_navigation(&url(embedded)));
         }
