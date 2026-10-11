@@ -17,8 +17,10 @@ import type { MapPool, Tourney, TourneyMap, VaultMap } from "../../../ipc/bindin
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
+import { useVaultNameLookup } from "../../../shared/hooks/useVaultNameLookup";
 import { matchVaultMap, tourneyMapImage } from "../../../shared/rules/tourneyRules";
 import { labelForRoundKey } from "../bracket/matchLabels";
+import { needsSizeLookup, tourneyMapSize } from "../mapSizePresentation";
 import { formatMoment } from "../tourneyPresentation";
 
 interface MapsPanelProps {
@@ -70,17 +72,19 @@ export function MapSpec({ map }: { map: TourneyMap }) {
  */
 function MapTile({
   map,
+  size,
   picture,
   emptyLabel,
   onOpen,
 }: {
   map: TourneyMap;
+  /** From `tourneyMapSize`: the organiser's, else the one the client knows. */
+  size: string;
   picture: string;
   emptyLabel: string;
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
-  const size = map.spec?.size ?? "";
   return (
     <button
       type="button"
@@ -111,6 +115,7 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
   const db = event.mapDb;
   const byId = (mapId: string) => db.find((held) => held.id === mapId);
   const image = (map: TourneyMap) => (map.masked ? "" : tourneyMapImage(map, assetBase, vault));
+  const sizeOf = (map: TourneyMap) => tourneyMapSize(map, vault);
 
   // Where a map is played directly (pinned to a round), and which pools hold
   // it. Pool membership is not "played in", as on the website.
@@ -132,6 +137,10 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
   const pools = organiser ? event.mapPools : event.mapPools.filter((pool) => pool.published);
   const published = db.filter((map) => map.published).length;
 
+  // Sizes the organiser left out and the client cannot place yet: asked of
+  // the vault by name, once, rather than loading the whole catalogue for them.
+  useVaultNameLookup(visible.filter((map) => needsSizeLookup(map, vault)).map((map) => map.name));
+
   const noPicture = (map: TourneyMap) =>
     map.masked ? t("tournaments.maps.hidden") : t("tournaments.maps.noImage");
 
@@ -141,7 +150,7 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
     open === undefined
       ? ""
       : [
-          open.spec !== null && open.spec.size !== "" ? t("tournaments.maps.sizeShort", { size: open.spec.size }) : "",
+          sizeOf(open) !== "" ? t("tournaments.maps.sizeShort", { size: sizeOf(open) }) : "",
           ...inPools(open.id),
         ]
           .filter((part) => part !== "")
@@ -228,6 +237,7 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
                             <MapTile
                               key={mapId}
                               map={map}
+                              size={sizeOf(map)}
                               picture={image(map)}
                               emptyLabel={noPicture(map)}
                               onOpen={() => setEnlarged(mapId)}
@@ -279,6 +289,7 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
                 <article className="tournament-mapdb-card" key={map.id}>
                   <MapTile
                     map={map}
+                    size={sizeOf(map)}
                     picture={image(map)}
                     emptyLabel={noPicture(map)}
                     onOpen={() => setEnlarged(map.id)}

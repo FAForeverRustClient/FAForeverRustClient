@@ -382,7 +382,7 @@ function withoutVersion(folder: string): string {
  * the tournament server's own image, which is usually absent: the vault preview
  * is the picture players already recognise from the maps tab.
  */
-export function matchVaultMap(tourneyMap: TourneyMap, vault: VaultMap[]): VaultMap | null {
+export function matchVaultMap(tourneyMap: Pick<TourneyMap, "name">, vault: VaultMap[]): VaultMap | null {
   const wanted = mapKey(tourneyMap.name);
   if (wanted === "") return null;
   const index = vaultIndex(vault);
