@@ -14,6 +14,12 @@
 // field is locked there is one grid, in seed order, and nothing left to form:
 // the service refuses every team action from then on.
 //
+// Laid out as the Overview and the Players section are: the teams on the left,
+// each group in its own card, and in a narrower column on the right how full
+// the field is, the check-in, starting a team and how places are given out.
+// The rules used to sit as paragraphs above every grid, which pushed the teams
+// themselves below the fold; they are reference, so they moved aside.
+//
 // Invitations addressed to this account sit at the top, because they are the
 // one thing in the pane that is waiting on the reader rather than on somebody
 // else.
@@ -25,6 +31,7 @@ import type { PlayerSummary, Tourney, TourneyAdmin, TourneyPlayer, TourneyTeam }
 import { useTranslation } from "../../../i18n/useTranslation";
 import { EntrantName } from "../EntrantName";
 import { PlayerTable } from "../PlayerTable";
+import { fieldSummary } from "../entrantsPresentation";
 import { formatMoment } from "../tourneyPresentation";
 import {
   mayCheckIn,
@@ -69,6 +76,7 @@ export function TeamsPanel(props: TeamsPanelProps) {
   const [newName, setNewName] = useState("");
   const [sort, setSort] = useState<FreeAgentSort>("rating");
   const [dialog, setDialog] = useState<Dialog>(null);
+  const display = useTourneyDisplay();
 
   const organiser = event.viewer.organiser;
   const open = teamsAreOpen(event);
@@ -105,12 +113,17 @@ export function TeamsPanel(props: TeamsPanelProps) {
   if (!selfOrganised(event) && event.teams.length === 0) {
     // A solo event's teams are made by the organiser at the phase change, and a
     // draft event's by the captains. Offering to form one would be a trap.
-    return <p className="muted">{t("tournaments.teams.notYours")}</p>;
+    return (
+      <section className="tournament-panel tournament-teams-empty">
+        <Icon name="users" size={22} />
+        <p className="muted">{t("tournaments.teams.notYours")}</p>
+      </section>
+    );
   }
 
+  // The grids keep the lineup's order (entry order, or seeds once set); the
+  // cards leave the seed number off.
   const lineup = teamLineup(event);
-  const seedOf = new Map(lineup.seeds.map((entry) => [entry.teamId, entry.seed]));
-  const seeded = event.teams.some((team) => teamIsFull(event, team) && team.seed > 0);
   const byId = (ids: string[]) =>
     ids
       .map((id) => event.teams.find((team) => team.id === id))
@@ -118,22 +131,12 @@ export function TeamsPanel(props: TeamsPanelProps) {
   const participants = byId(lineup.participants);
   const waiting = byId(lineup.waiting);
   const forming = byId(lineup.forming);
-  const seedShown = (team: TourneyTeam): number | null => {
-    if (!open) return team.seed > 0 ? team.seed : null;
-    // An unseeded team in a seeded field carries seed 0: no badge, as on the
-    // website, rather than a "#0".
-    const seed = teamIsFull(event, team) ? (seedOf.get(team.id) ?? 0) : 0;
-    return seed > 0 ? seed : null;
-  };
-
   const card = (team: TourneyTeam, extra?: ReactNode) => (
     <TeamCard
       key={team.id}
       event={event}
       team={team}
       name={nameOf(team)}
-      seed={seedShown(team)}
-      projected={open && !seeded}
       profiles={props.profiles}
       busy={busy}
       isMine={team.id === mine?.id}
@@ -149,188 +152,234 @@ export function TeamsPanel(props: TeamsPanelProps) {
   );
 
   return (
-    <div className="tournament-teams">
-      {event.premadeTeams && event.teamSize > 1 && event.status === "signup" && (
-        <PremadeTeams event={event} busy={busy} onAdmin={props.onAdmin} />
-      )}
-      {invites.length > 0 && (
-        <section className="surface tournament-team-invites">
-          <h5>{t("tournaments.teams.invitedYou")}</h5>
-          <ul className="tournament-entrant-list">
-            {invites.map((team) => (
-              <li className="tournament-entrant" key={team.id}>
-                <span className="tournament-entrant-name">{nameOf(team)}</span>
-                <span className="muted">
-                  {t("tournaments.teams.size", { have: team.playerIds.length, want: event.teamSize })}
-                  {event.rating.maxTeam !== null &&
-                    ` · ${t("tournaments.teams.ratingOfMax", { rating: teamRating(event, team), max: event.rating.maxTeam })}`}
-                </span>
-                <Button variant="primary" disabled={busy} onClick={() => props.teams.respondInvite(team.id, true)}>
-                  {t("tournaments.teams.accept")}
-                </Button>
-                <Button disabled={busy} onClick={() => props.teams.respondInvite(team.id, false)}>
-                  {t("tournaments.teams.decline")}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+    <div className="tournament-columns tournament-teams">
+      <div className="tournament-columns-main">
+        {event.premadeTeams && event.teamSize > 1 && event.status === "signup" && (
+          <PremadeTeams event={event} busy={busy} onAdmin={props.onAdmin} />
+        )}
 
-      {mine !== null && open && (
-        <YourTeam
-          event={event}
-          team={mine}
-          name={nameOf(mine)}
-          profiles={props.profiles}
-          busy={busy}
-          captain={captainOf(mine)}
-          now={now}
-          onCheckIn={props.entry.checkIn}
-          teams={props.teams}
-          onCancelInvite={(playerId) =>
-            props.onAdmin({ type: "cancelTeamInvite", payload: { teamId: mine.id, playerId } })
-          }
-        />
-      )}
+        {invites.length > 0 && (
+          <TeamSection
+            className="is-callout"
+            title={t("tournaments.teams.invitedYou")}
+            count={String(invites.length)}
+          >
+            <ul className="tournament-team-rows">
+              {invites.map((team) => (
+                <li className="tournament-team-row" key={team.id}>
+                  <span className="tournament-team-row-name">{nameOf(team)}</span>
+                  <span className="tournament-team-chip mono">
+                    {t("tournaments.teams.size", { have: team.playerIds.length, want: event.teamSize })}
+                  </span>
+                  {event.rating.maxTeam !== null && (
+                    <span className="tournament-team-chip mono" title={t("tournaments.teams.combinedOfMax")}>
+                      {t("tournaments.teams.ratingOfMax", { rating: teamRating(event, team), max: event.rating.maxTeam })}
+                    </span>
+                  )}
+                  <span className="tournament-team-row-actions">
+                    <Button variant="primary" disabled={busy} onClick={() => props.teams.respondInvite(team.id, true)}>
+                      {t("tournaments.teams.accept")}
+                    </Button>
+                    <Button disabled={busy} onClick={() => props.teams.respondInvite(team.id, false)}>
+                      {t("tournaments.teams.decline")}
+                    </Button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </TeamSection>
+        )}
 
-      {canForm && (
-        <form
-          className="tournament-team-create"
-          onSubmit={(submitted) => {
-            submitted.preventDefault();
-            if (newName.trim() === "") return;
-            props.teams.create(newName);
-            setNewName("");
-          }}
-        >
-          <label className="tournament-field">
-            <span>{t("tournaments.teams.createLabel")}</span>
-            <input
-              value={newName}
-              onChange={(changed) => setNewName(changed.target.value)}
-              placeholder={t("tournaments.teams.createPlaceholder")}
-              maxLength={30}
-            />
-          </label>
-          <Button type="submit" variant="primary" disabled={busy || newName.trim() === ""}>
-            <Icon name="plus" size={16} /> {t("tournaments.teams.create")}
-          </Button>
-          <p className="muted">{t("tournaments.teams.createHint", { size: event.teamSize })}</p>
-        </form>
-      )}
-
-      {myPlayerId === null && open && <p className="muted">{t("tournaments.teams.enterFirst")}</p>}
-
-      {open && event.checkInDeadline !== null && (
-        <section className="surface tournament-team-section">
-          <h5>{t("tournaments.teams.checkInTitle")}</h5>
-          <p className={event.checkInDeadline < now ? "tournament-warning" : "muted"}>
-            {t(event.checkInDeadline < now ? "tournaments.teams.deadlinePassed" : "tournaments.teams.deadline", {
-              when: formatMoment(event.checkInDeadline, ""),
-            })}
-          </p>
-        </section>
-      )}
-
-      {event.teams.length === 0 && <p className="muted">{t("tournaments.teams.none")}</p>}
-
-      {open && event.teams.length > 0 && (
-        <>
-          <section className="tournament-team-section">
-            <h5>
-              {event.maxTeams > 0
-                ? t("tournaments.teams.participantsOf", { count: participants.length, cap: event.maxTeams })
-                : t("tournaments.teams.participants", { count: participants.length })}
-            </h5>
-            {event.minTeams > 0 && (
-              <p className="muted">
-                {event.maxTeams > 0
-                  ? t("tournaments.teams.minMax", { min: event.minTeams, max: event.maxTeams })
-                  : t("tournaments.teams.minOnly", { min: event.minTeams })}
-              </p>
-            )}
-            {participants.length > 0 ? (
-              <>
-                <p className="muted">
-                  {t("tournaments.teams.firstCome")}
-                  {event.maxTeams > 0 && ` ${t("tournaments.teams.signUpAnyway")}`}{" "}
-                  {t(seeded ? "tournaments.teams.seedIs" : "tournaments.teams.seedProjected")}
-                </p>
-                <ul className="tournament-team-grid">{participants.map((team) => card(team))}</ul>
-              </>
-            ) : (
-              <p className="muted">{t("tournaments.teams.noFullTeams")}</p>
-            )}
-          </section>
-
-          {waiting.length > 0 && (
-            <section className="tournament-team-section">
-              <h5>{t("tournaments.teams.waiting", { count: waiting.length })}</h5>
-              <p className="muted">
-                {t("tournaments.teams.waitingHint", { cap: event.maxTeams })}
-                {organiser && ` ${t("tournaments.teams.waitingSwapHint")}`}
-              </p>
-              <ul className="tournament-team-grid">
-                {waiting.map((team) =>
-                  card(
-                    team,
-                    organiser && participants.length > 0 ? (
-                      <Button disabled={busy} onClick={() => setDialog({ kind: "swap", team })}>
-                        {t("tournaments.teams.swapIn")}
-                      </Button>
-                    ) : null,
-                  ),
-                )}
-              </ul>
-            </section>
-          )}
-        </>
-      )}
-
-      {!open && event.teams.length > 0 && (
-        <ul className="tournament-team-grid">
-          {[...event.teams].sort((left, right) => left.seed - right.seed).map((team) => card(team))}
-        </ul>
-      )}
-
-      {/* The free agents: everyone who has entered and has no team.
-          Before the field is locked they are players still looking, and a
-          captain with room invites them from here. Afterwards they are the
-          service's `subs`, which is the same people under a different name:
-          a team that never filled up is dissolved and its members land here,
-          as do the members of any team the entrant cap pushed out. */}
-      {freeAgents.length > 0 &&
-        (open ? (
-          <FreeAgents
+        {mine !== null && open && (
+          <YourTeam
             event={event}
-            players={freeAgents}
+            team={mine}
+            name={nameOf(mine)}
             profiles={props.profiles}
             busy={busy}
-            sort={sort}
-            recruiting={recruiting}
-            onSort={setSort}
-            onInvite={props.teams.invite}
-            onCancelInvite={(teamId, playerId) =>
-              props.onAdmin({ type: "cancelTeamInvite", payload: { teamId, playerId } })
+            captain={captainOf(mine)}
+            now={now}
+            onCheckIn={props.entry.checkIn}
+            teams={props.teams}
+            onCancelInvite={(playerId) =>
+              props.onAdmin({ type: "cancelTeamInvite", payload: { teamId: mine.id, playerId } })
             }
-            onFromFreeAgent={organiser ? () => setDialog({ kind: "fromFreeAgent" }) : null}
           />
-        ) : (
-          <section className="tournament-free-agents">
-            <h5>{t("tournaments.teams.freeAgents", { count: freeAgents.length })}</h5>
-            <p className="muted">{t("tournaments.teams.freeAgentsReserve")}</p>
-            <PlayerTable event={event} profiles={props.profiles} players={freeAgents} />
-          </section>
-        ))}
+        )}
 
-      {open && forming.length > 0 && (
-        <section className="tournament-team-section">
-          <h5>{t("tournaments.teams.forming", { count: forming.length })}</h5>
-          <p className="muted">{t("tournaments.teams.formingHint", { size: event.teamSize })}</p>
-          <ul className="tournament-team-grid">{forming.map((team) => card(team))}</ul>
-        </section>
-      )}
+        {event.teams.length === 0 && (
+          <section className="tournament-panel tournament-teams-empty">
+            <Icon name="users" size={22} />
+            <p className="muted">{t("tournaments.teams.none")}</p>
+          </section>
+        )}
+
+        {open && event.teams.length > 0 && (
+          <>
+            <TeamSection
+              title={t("tournaments.teams.participants")}
+              count={event.maxTeams > 0 ? `${participants.length} / ${event.maxTeams}` : String(participants.length)}
+            >
+              {participants.length > 0 ? (
+                <ul className="tournament-team-grid">{participants.map((team) => card(team))}</ul>
+              ) : (
+                <p className="muted">{t("tournaments.teams.noFullTeams")}</p>
+              )}
+            </TeamSection>
+
+            {waiting.length > 0 && (
+              <TeamSection
+                title={t("tournaments.teams.waiting")}
+                count={String(waiting.length)}
+                hint={
+                  <>
+                    {t("tournaments.teams.waitingHint", { cap: event.maxTeams })}
+                    {organiser && ` ${t("tournaments.teams.waitingSwapHint")}`}
+                  </>
+                }
+              >
+                <ul className="tournament-team-grid">
+                  {waiting.map((team) =>
+                    card(
+                      team,
+                      organiser && participants.length > 0 ? (
+                        <Button disabled={busy} onClick={() => setDialog({ kind: "swap", team })}>
+                          {t("tournaments.teams.swapIn")}
+                        </Button>
+                      ) : null,
+                    ),
+                  )}
+                </ul>
+              </TeamSection>
+            )}
+          </>
+        )}
+
+        {!open && event.teams.length > 0 && (
+          <TeamSection title={t("tournaments.section.teams")} count={String(event.teams.length)}>
+            <ul className="tournament-team-grid">
+              {[...event.teams].sort(byStanding(event, display.streamer)).map((team) => card(team))}
+            </ul>
+          </TeamSection>
+        )}
+
+        {/* The free agents: everyone who has entered and has no team.
+            Before the field is locked they are players still looking, and a
+            captain with room invites them from here. Afterwards they are the
+            service's `subs`, which is the same people under a different name:
+            a team that never filled up is dissolved and its members land here,
+            as do the members of any team the entrant cap pushed out. */}
+        {freeAgents.length > 0 &&
+          (open ? (
+            <FreeAgents
+              event={event}
+              players={freeAgents}
+              profiles={props.profiles}
+              busy={busy}
+              sort={sort}
+              recruiting={recruiting}
+              onSort={setSort}
+              onInvite={props.teams.invite}
+              onCancelInvite={(teamId, playerId) =>
+                props.onAdmin({ type: "cancelTeamInvite", payload: { teamId, playerId } })
+              }
+              onFromFreeAgent={organiser ? () => setDialog({ kind: "fromFreeAgent" }) : null}
+            />
+          ) : (
+            <TeamSection
+              title={t("tournaments.teams.freeAgents")}
+              count={String(freeAgents.length)}
+              hint={t("tournaments.teams.freeAgentsReserve")}
+            >
+              <PlayerTable event={event} profiles={props.profiles} players={freeAgents} />
+            </TeamSection>
+          ))}
+
+        {open && forming.length > 0 && (
+          <TeamSection
+            title={t("tournaments.teams.forming")}
+            count={String(forming.length)}
+            hint={t("tournaments.teams.formingHint", { size: event.teamSize })}
+          >
+            <ul className="tournament-team-grid">{forming.map((team) => card(team))}</ul>
+          </TeamSection>
+        )}
+      </div>
+
+      <aside className="tournament-columns-aside">
+        {canForm && (
+          <section className="tournament-panel">
+            <h4>{t("tournaments.teams.createLabel")}</h4>
+            <form
+              className="tournament-team-create"
+              onSubmit={(submitted) => {
+                submitted.preventDefault();
+                if (newName.trim() === "") return;
+                props.teams.create(newName);
+                setNewName("");
+              }}
+            >
+              <input
+                value={newName}
+                onChange={(changed) => setNewName(changed.target.value)}
+                placeholder={t("tournaments.teams.createPlaceholder")}
+                aria-label={t("tournaments.teams.createPlaceholder")}
+                maxLength={30}
+              />
+              <Button type="submit" variant="primary" disabled={busy || newName.trim() === ""}>
+                <Icon name="plus" size={16} /> {t("tournaments.teams.create")}
+              </Button>
+            </form>
+            <p className="muted tournament-team-aside-note">
+              {t("tournaments.teams.createHint", { size: event.teamSize })}
+            </p>
+          </section>
+        )}
+
+        {myPlayerId === null && open && (
+          <section className="tournament-panel">
+            <p className="muted tournament-team-aside-note">{t("tournaments.teams.enterFirst")}</p>
+          </section>
+        )}
+
+        <FieldPanel event={event} open={open} forming={forming.length} freeAgents={freeAgents.length} />
+
+        {open && event.checkInDeadline !== null && (
+          <section className="tournament-panel">
+            <h4>{t("tournaments.teams.checkInTitle")}</h4>
+            <p
+              className={
+                event.checkInDeadline < now
+                  ? "tournament-team-checkin is-passed"
+                  : "tournament-team-checkin"
+              }
+            >
+              <span>
+                {t(event.checkInDeadline < now ? "tournaments.teams.deadlinePassed" : "tournaments.teams.deadline", {
+                  when: formatMoment(event.checkInDeadline, ""),
+                })}
+              </span>
+            </p>
+          </section>
+        )}
+
+        {open && event.teams.length > 0 && (
+          <section className="tournament-panel">
+            <h4>{t("tournaments.teams.howPlaces")}</h4>
+            <ul className="tournament-team-rules">
+              <li>{t("tournaments.teams.firstCome")}</li>
+              {event.maxTeams > 0 && <li>{t("tournaments.teams.signUpAnyway")}</li>}
+              {event.minTeams > 0 && (
+                <li>
+                  {event.maxTeams > 0
+                    ? t("tournaments.teams.minMax", { min: event.minTeams, max: event.maxTeams })
+                    : t("tournaments.teams.minOnly", { min: event.minTeams })}
+                </li>
+              )}
+            </ul>
+          </section>
+        )}
+      </aside>
 
       {dialog?.kind === "captain" && (
         <ChangeCaptainDialog
@@ -372,7 +421,181 @@ export function TeamsPanel(props: TeamsPanelProps) {
   );
 }
 
-/** A member's line: name, rating, captaincy and where to reach them. */
+/**
+ * The locked field's order: by final placing once the event has them (and the
+ * reader is not keeping results off screen), by seed before that.
+ */
+function byStanding(event: Tourney, streamer: boolean) {
+  const ranked = !streamer && event.teams.some((team) => team.finalRank !== null);
+  return (left: TourneyTeam, right: TourneyTeam) => {
+    if (ranked) {
+      const leftRank = left.finalRank ?? Number.MAX_SAFE_INTEGER;
+      const rightRank = right.finalRank ?? Number.MAX_SAFE_INTEGER;
+      if (leftRank !== rightRank) return leftRank - rightRank;
+    }
+    return left.seed - right.seed;
+  };
+}
+
+/**
+ * One group of the field in its own card: the heading with its count beside
+ * it, the right-hand tools if there are any, one line of what the group means,
+ * and the teams.
+ */
+function TeamSection({
+  title,
+  count,
+  hint,
+  tools,
+  className,
+  children,
+}: {
+  title: string;
+  count?: string;
+  hint?: ReactNode;
+  tools?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className={["tournament-panel", "tournament-team-section", className ?? ""].join(" ").trim()}>
+      <div className="tournament-team-section-head">
+        <h4>
+          {title}
+          {count !== undefined && <span className="tournaments-group-count">{count}</span>}
+        </h4>
+        {tools}
+      </div>
+      {hint !== undefined && <p className="muted tournament-team-section-hint">{hint}</p>}
+      {children}
+    </section>
+  );
+}
+
+/**
+ * How full the field is, the Players section's way: full teams against the
+ * cap on a bar with the floor marked, and under it where everyone else is.
+ */
+function FieldPanel({
+  event,
+  open,
+  forming,
+  freeAgents,
+}: {
+  event: Tourney;
+  open: boolean;
+  forming: number;
+  freeAgents: number;
+}) {
+  const { t } = useTranslation();
+  const field = fieldSummary(event);
+  const filled = field.max > 0 ? Math.min(1, field.count / field.max) : 0;
+  const enough = field.min === 0 || field.count >= field.min;
+  const checkedIn = event.teams.filter((team) => team.checkedIn).length;
+  return (
+    <section className="tournament-panel">
+      <h4>{t("tournaments.entrants.field")}</h4>
+      <div className="tournament-field-count">
+        <span className="tournament-field-number">{field.count}</span>
+        {field.max > 0 && <span className="tournament-field-of">/ {field.max}</span>}
+        <span className="tournament-field-unit">
+          {t(field.unit === "players" ? "tournaments.section.players" : "tournaments.section.teams")}
+        </span>
+      </div>
+      {field.max > 0 && (
+        <div className={enough ? "tournament-field-bar is-enough" : "tournament-field-bar"} aria-hidden>
+          <span style={{ width: `${Math.round(filled * 100)}%` }} />
+          {field.min > 0 && field.min < field.max && (
+            <i style={{ left: `${Math.round((field.min / field.max) * 100)}%` }} />
+          )}
+        </div>
+      )}
+      <dl className="tournament-field-ratings">
+        {open ? (
+          <div>
+            <dt>{t("tournaments.teams.forming")}</dt>
+            <dd>{forming}</dd>
+          </div>
+        ) : (
+          <div>
+            <dt>{t("tournaments.entrants.checkedIn")}</dt>
+            <dd>{checkedIn}</dd>
+          </div>
+        )}
+        <div>
+          <dt>{t("tournaments.teams.freeAgents")}</dt>
+          <dd>{freeAgents}</dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
+/**
+ * The combined rating against the event's team limit, as a thin bar. Nothing
+ * at all for a team where nobody has a rating: "0 combined" reads as a fact.
+ */
+function RatingMeter({ event, team }: { event: Tourney; team: TourneyTeam }) {
+  const { t } = useTranslation();
+  const combined = teamRating(event, team);
+  const max = event.rating.maxTeam;
+  if (teamMembers(event, team).every((member) => member.rating === null)) return null;
+  if (max === null || max <= 0) {
+    return (
+      <span className="tournament-team-rating mono" title={t("tournaments.teams.combinedTitle")}>
+        {t("tournaments.teams.combined", { rating: combined })}
+      </span>
+    );
+  }
+  const over = combined > max;
+  const share = Math.min(1, combined / max);
+  return (
+    <span
+      className={over ? "tournament-team-rating has-bar is-over" : "tournament-team-rating has-bar"}
+      title={t("tournaments.teams.combinedOfMax")}
+    >
+      <span className="mono">{t("tournaments.teams.ratingOfMax", { rating: combined, max })}</span>
+      <span className="tournament-team-rating-bar" aria-hidden>
+        <span style={{ width: `${Math.round(share * 100)}%` }} />
+      </span>
+    </span>
+  );
+}
+
+/**
+ * Who is on the team, captain first as the service lists them, and a dashed
+ * row for every place still open while the team can still be joined.
+ */
+function Roster({
+  event,
+  team,
+  profiles,
+  showOpen,
+}: {
+  event: Tourney;
+  team: TourneyTeam;
+  profiles: PlayerSummary[];
+  showOpen: boolean;
+}) {
+  const { t } = useTranslation();
+  const members = teamMembers(event, team);
+  const openSlots = showOpen ? Math.max(0, event.teamSize - members.length) : 0;
+  return (
+    <ul className="tournament-roster">
+      {members.map((member) => (
+        <MemberLine key={member.id} event={event} member={member} team={team} profiles={profiles} />
+      ))}
+      {Array.from({ length: openSlots }, (_, index) => (
+        <li className="tournament-roster-row is-open" key={`open-${index}`}>
+          <Icon name="plus" size={12} />
+          <span>{t("tournaments.teams.openSlot")}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** A member's line: name, captaincy, where to reach them, and rating. */
 function MemberLine({
   event,
   member,
@@ -385,23 +608,28 @@ function MemberLine({
   profiles: PlayerSummary[];
 }) {
   const { t } = useTranslation();
+  const captain = team.captainId === member.id && event.teamSize > 1;
   // The entry's own name wins over the account's: the tournament service owns
   // the entry, FAF owns the player, and an organiser's substitute label must
   // survive the lookup.
   return (
-    <li className="tournament-entrant">
-      <span className="tournament-entrant-name">
-        <EntrantName name={member.name} fafId={member.fafId} profile={profileOf(profiles, member)} />
+    <li className={captain ? "tournament-roster-row is-captain" : "tournament-roster-row"}>
+      <span className="tournament-roster-who">
+        <span className="tournament-entrant-name">
+          <EntrantName name={member.name} fafId={member.fafId} profile={profileOf(profiles, member)} />
+        </span>
+        {member.discord !== "" && (
+          <span className="tournament-discord muted" title={t("tournaments.entrants.discord")}>
+            <Icon name="discord" size={12} /> {member.discord}
+          </span>
+        )}
       </span>
-      {member.rating !== null && <span className="muted mono">{member.rating}</span>}
-      {team.captainId === member.id && event.teamSize > 1 && (
-        <span className="tournament-badge">{t("tournaments.teams.captain")}</span>
-      )}
-      {member.discord !== "" && (
-        <span className="tournament-discord muted" title={t("tournaments.entrants.discord")}>
-          {"\u{1F4AC}"} {member.discord}
+      {captain && (
+        <span className="tournament-badge tournament-roster-captain" title={t("tournaments.teams.captain")}>
+          <Icon name="crown" size={12} /> {t("tournaments.teams.captain")}
         </span>
       )}
+      <span className="tournament-roster-rating mono">{member.rating ?? "–"}</span>
     </li>
   );
 }
@@ -415,7 +643,7 @@ interface YourTeamProps {
   captain: boolean;
   now: number;
   onCheckIn: (checkedIn: boolean) => void;
-  teams: Pick<TeamActions, "leave" | "disband" | "rename">;
+  teams: Pick<TeamActions, "leave" | "disband" | "rename" | "respondJoin">;
   onCancelInvite: (playerId: string) => void;
 }
 
@@ -425,26 +653,31 @@ function YourTeam({ event, team, name, profiles, busy, captain, now, ...on }: Yo
   const full = teamIsFull(event, team);
   const opensLater = event.checkInOpensAt !== null && event.checkInOpensAt > now;
   return (
-    <section className="surface tournament-team-section is-mine">
-      <h5>
-        {t("tournaments.teams.yourTeam", { name })}{" "}
-        <span className={full ? "tournament-badge is-ok" : "tournament-badge"}>
-          {full
-            ? t("tournaments.teams.full")
-            : t("tournaments.teams.size", { have: team.playerIds.length, want: event.teamSize })}
-        </span>
-      </h5>
-      <ul className="tournament-entrant-list">
-        {teamMembers(event, team).map((member) => (
-          <MemberLine key={member.id} event={event} member={member} team={team} profiles={profiles} />
-        ))}
-      </ul>
+    <section className="tournament-panel tournament-my-team">
+      <div className="tournament-my-team-head">
+        <div className="tournament-my-team-title">
+          <h4>{t("tournaments.teams.yourTeam")}</h4>
+          <span className="tournament-my-team-name">{name}</span>
+        </div>
+        {full && (
+          <span className={team.checkedIn ? "tournament-badge is-ok" : "tournament-badge is-warn"}>
+            {t(team.checkedIn ? "tournaments.entrants.checkedIn" : "tournaments.teams.notCheckedIn")}
+          </span>
+        )}
+      </div>
 
-      {full && (
-        <div className="tournament-detail-actions">
+      <div className="tournament-my-team-meters">
+        <RatingMeter event={event} team={team} />
+      </div>
+
+      <Roster event={event} team={team} profiles={profiles} showOpen />
+
+      {full && (team.checkedIn || mayCheckIn(event, now) || opensLater) && (
+        <div className={team.checkedIn ? "tournament-my-team-checkin is-done" : "tournament-my-team-checkin"}>
+          {team.checkedIn && <Icon name="check" size={16} />}
           {team.checkedIn ? (
             <>
-              <span className="tournament-badge is-ok">{t("tournaments.entrants.checkedIn")}</span>
+              <span>{t("tournaments.entrants.checkedIn")}</span>
               {mayUndoCheckIn(event) && (
                 <Button disabled={busy} onClick={() => on.onCheckIn(false)}>
                   {t("tournaments.teams.undoCheckIn")}
@@ -453,30 +686,42 @@ function YourTeam({ event, team, name, profiles, busy, captain, now, ...on }: Yo
             </>
           ) : mayCheckIn(event, now) ? (
             <>
+              <span>{t("tournaments.teams.anyMember")}</span>
               <Button variant="primary" disabled={busy} onClick={() => on.onCheckIn(true)}>
                 {t("tournaments.action.checkIn")}
               </Button>
-              <span className="muted">{t("tournaments.teams.anyMember")}</span>
             </>
           ) : (
-            opensLater && (
-              <span className="muted">
-                {t("tournaments.teams.checkInOpens", { when: formatMoment(event.checkInOpensAt, "") })}
-              </span>
-            )
+            <span>{t("tournaments.teams.checkInOpens", { when: formatMoment(event.checkInOpensAt, "") })}</span>
           )}
         </div>
       )}
 
-      <div className="tournament-detail-actions">
-        <Button
-          disabled={busy}
-          onClick={() => {
-            if (window.confirm(t("tournaments.teams.leaveConfirm"))) on.teams.leave();
-          }}
-        >
-          {t("tournaments.teams.leave")}
-        </Button>
+      {/* An organiser answers on the team's card, as for every other team. */}
+      {captain && !event.viewer.organiser && (
+        <JoinRequests event={event} team={team} profiles={profiles} busy={busy} teams={on.teams} />
+      )}
+
+      {captain && !full && team.invites.length > 0 && (
+        <div className="tournament-team-requests">
+          <h6>{t("tournaments.teams.invitesSent", { count: team.invites.length })}</h6>
+          <ul className="tournament-team-rows">
+            {team.invites.map((invite) => (
+              <li className="tournament-team-row" key={invite.playerId}>
+                <span className="tournament-team-row-name">{invite.name}</span>
+                <span className="muted">{t("tournaments.teams.waitingForReply")}</span>
+                <span className="tournament-team-row-actions">
+                  <Button disabled={busy} onClick={() => on.onCancelInvite(invite.playerId)}>
+                    {t("common.cancel")}
+                  </Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="tournament-team-card-actions">
         {mayRename(event, team) && (
           <Button
             disabled={busy}
@@ -485,9 +730,17 @@ function YourTeam({ event, team, name, profiles, busy, captain, now, ...on }: Yo
               if (renamed !== null && renamed.trim() !== "") on.teams.rename(team.id, renamed);
             }}
           >
-            {t("tournaments.teams.rename")}
+            <Icon name="edit" size={14} /> {t("tournaments.teams.rename")}
           </Button>
         )}
+        <Button
+          disabled={busy}
+          onClick={() => {
+            if (window.confirm(t("tournaments.teams.leaveConfirm"))) on.teams.leave();
+          }}
+        >
+          <Icon name="logout" size={14} /> {t("tournaments.teams.leave")}
+        </Button>
         {captain && (
           <Button
             disabled={busy}
@@ -495,27 +748,10 @@ function YourTeam({ event, team, name, profiles, busy, captain, now, ...on }: Yo
               if (window.confirm(t("tournaments.teams.disbandConfirm"))) on.teams.disband(team.id);
             }}
           >
-            {t("tournaments.teams.disband")}
+            <Icon name="trash" size={14} /> {t("tournaments.teams.disband")}
           </Button>
         )}
       </div>
-
-      {captain && !full && team.invites.length > 0 && (
-        <div className="tournament-team-requests">
-          <h6>{t("tournaments.teams.invitesSent", { count: team.invites.length })}</h6>
-          <ul className="tournament-entrant-list">
-            {team.invites.map((invite) => (
-              <li className="tournament-entrant" key={invite.playerId}>
-                <span className="tournament-entrant-name">{invite.name}</span>
-                <span className="muted">{t("tournaments.teams.waitingForReply")}</span>
-                <Button disabled={busy} onClick={() => on.onCancelInvite(invite.playerId)}>
-                  {t("common.cancel")}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </section>
   );
 }
@@ -524,10 +760,6 @@ interface TeamCardProps {
   event: Tourney;
   team: TourneyTeam;
   name: string;
-  /** The seed shown on the card, where there is one to show. */
-  seed: number | null;
-  /** Whether that seed is only where the team's rating would put it. */
-  projected: boolean;
   profiles: PlayerSummary[];
   busy: boolean;
   isMine: boolean;
@@ -548,8 +780,6 @@ function TeamCard(props: TeamCardProps) {
   const open = teamsAreOpen(event);
   const organiser = event.viewer.organiser;
   const full = teamIsFull(event, team);
-  const combined = teamRating(event, team);
-  const max = event.rating.maxTeam;
   const openSlots = Math.max(0, event.teamSize - team.playerIds.length);
   // The captain hands over the armband, or an organiser does; only while the
   // service still takes team actions at all.
@@ -558,156 +788,183 @@ function TeamCard(props: TeamCardProps) {
   // repeating them on its card only made two places to look. An organiser
   // keeps theirs, because on every other card they are there too.
   const ownToolsAbove = open && props.isMine && !organiser;
+  // Out of a running event is news; out of a finished one is everybody but
+  // the winner, and fading the whole grid says nothing.
+  const eliminated = team.eliminated && !display.streamer && event.status !== "finished";
+  const rank = display.streamer ? null : team.finalRank;
+
+  const actions: ReactNode[] = [];
+  if (props.mayAsk)
+    actions.push(
+      <Button key="ask" variant="primary" disabled={busy} onClick={() => props.teams.requestJoin(team.id)}>
+        {t("tournaments.teams.askOpen", { count: openSlots })}
+      </Button>,
+    );
+  if (props.asked)
+    actions.push(
+      <span key="asked" className="tournament-badge is-warn">
+        {t("tournaments.teams.requestPending")}
+      </span>,
+      <Button key="cancel-ask" disabled={busy} onClick={() => props.teams.cancelJoin(team.id)}>
+        {t("tournaments.teams.cancelAsk")}
+      </Button>,
+    );
+  // Said out loud rather than left as a missing button: the server's refusal
+  // names the number the team would reach, and finding that out after
+  // clicking is worse.
+  if (props.overCap)
+    actions.push(
+      <span key="over" className="tournament-team-note">
+        {t("tournaments.teams.overCap")}
+      </span>,
+    );
+  if (mayChangeCaptain && !ownToolsAbove)
+    actions.push(
+      <Button key="captain" disabled={busy} onClick={props.onChangeCaptain}>
+        {t("tournaments.teams.changeCaptain")}
+      </Button>,
+    );
+  if (organiser && open && full)
+    actions.push(
+      <Button
+        key="checkin"
+        disabled={busy}
+        onClick={() => props.onAdmin({ type: "teamCheckIn", payload: { teamId: team.id, checkedIn: !team.checkedIn } })}
+      >
+        {t(team.checkedIn ? "tournaments.teams.uncheck" : "tournaments.action.checkIn")}
+      </Button>,
+    );
+  // An organiser may rename and disband any team; a captain only their own,
+  // and renaming only once.
+  if (mayRename(event, team) && !ownToolsAbove)
+    actions.push(
+      <Button
+        key="rename"
+        disabled={busy}
+        onClick={() => {
+          const renamed = window.prompt(t("tournaments.teams.renamePrompt"), team.name);
+          if (renamed !== null && renamed.trim() !== "") props.teams.rename(team.id, renamed);
+        }}
+      >
+        {t("tournaments.teams.rename")}
+      </Button>,
+    );
+  if (open && (organiser || (props.captain && !ownToolsAbove)))
+    actions.push(
+      <Button
+        key="disband"
+        disabled={busy}
+        onClick={() => {
+          if (window.confirm(t("tournaments.teams.disbandConfirm"))) props.teams.disband(team.id);
+        }}
+      >
+        {t("tournaments.teams.disband")}
+      </Button>,
+    );
+  if (props.extra) actions.push(<span key="extra">{props.extra}</span>);
 
   return (
     <li
       className={[
-        "surface tournament-team",
+        "tournament-team-card",
         props.isMine ? "is-mine" : "",
+        full ? "is-full" : "",
         // Streamer mode keeps who is out off screen too.
-        team.eliminated && !display.streamer ? "is-eliminated" : "",
+        eliminated ? "is-eliminated" : "",
       ]
         .filter((part) => part !== "")
         .join(" ")}
     >
-      {/* Two fixed rows rather than one wrapping one. With everything on a
-          single line the check-in badge sat beside the name on a short team
-          name and under it on a long one, so no two cards in the grid lined
-          up. The name owns the first row; the facts about the team own the
-          second. */}
-      <div className="tournament-team-header">
-        <div className="tournament-team-title">
-          {props.seed !== null && (
-            <span
-              className="tournament-team-seed mono"
-              title={t(props.projected ? "tournaments.teams.projectedSeed" : "tournaments.teams.seed")}
-            >
-              #{props.seed}
+      {/* Two fixed rows whatever the team has to show, so the rosters below
+          start at the same height in every card of a row: the name with its
+          placing or check-in, then the rating. */}
+      <div className="tournament-team-card-head">
+        <div className="tournament-team-card-title">
+          <span className="tournament-team-name" title={props.name}>
+            {props.name}
+          </span>
+          {rank !== null && (
+            <span className={rank <= 3 ? "tournament-team-rank is-podium mono" : "tournament-team-rank mono"}>
+              <Icon name="trophy" size={12} /> {rank}.
             </span>
           )}
-          <span className="tournament-team-name">{props.name}</span>
+          {open && full && team.checkedIn && (
+            <span className="tournament-badge is-ok">{t("tournaments.entrants.checkedIn")}</span>
+          )}
         </div>
-        <div className="tournament-team-meta muted">
-          <span className={full ? "tournament-team-count is-ok" : "tournament-team-count"}>
-            {t("tournaments.teams.size", { have: team.playerIds.length, want: event.teamSize })}
-          </span>
-          <span
-            className={max !== null && combined > max ? "tournament-team-count is-over" : "tournament-team-count"}
-            title={t(max !== null ? "tournaments.teams.combinedOfMax" : "tournaments.teams.combinedTitle")}
-          >
-            {max !== null
-              ? t("tournaments.teams.ratingOfMax", { rating: combined, max })
-              : t("tournaments.teams.combined", { rating: combined })}
-          </span>
-          {open && full && (
-            <span className={team.checkedIn ? "tournament-badge is-ok" : "tournament-badge"}>
-              {t(team.checkedIn ? "tournaments.entrants.checkedIn" : "tournaments.teams.notCheckedIn")}
-            </span>
-          )}
+        <div className="tournament-team-card-sub">
+          <RatingMeter event={event} team={team} />
         </div>
       </div>
 
-      <ul className="tournament-entrant-list">
-        {teamMembers(event, team).map((member) => (
-          <MemberLine key={member.id} event={event} member={member} team={team} profiles={props.profiles} />
-        ))}
-      </ul>
+      <Roster event={event} team={team} profiles={props.profiles} showOpen={open} />
 
-      {/* Requests are the captain's to answer, or an organiser's. */}
-      {(props.captain || organiser) && open && team.joinRequests.length > 0 && (
-        <div className="tournament-team-requests">
-          <h6>{t("tournaments.teams.requests")}</h6>
-          <ul className="tournament-entrant-list">
-            {team.joinRequests.map((ask) => {
-              const asker = event.players.find((player) => player.id === ask.playerId);
-              return (
-                <li className="tournament-entrant" key={ask.playerId}>
-                  <span className="tournament-entrant-name">
-                    <EntrantName
-                      name={ask.name}
-                      fafId={asker?.fafId ?? null}
-                      profile={asker ? profileOf(props.profiles, asker) : null}
-                    />
-                  </span>
-                  {asker !== undefined && asker.rating !== null && (
-                    <span className="muted mono">{asker.rating}</span>
-                  )}
-                  <Button
-                    variant="primary"
-                    disabled={busy || full}
-                    onClick={() => props.teams.respondJoin(team.id, ask.playerId, true)}
-                  >
-                    {t("tournaments.teams.accept")}
-                  </Button>
-                  <Button disabled={busy} onClick={() => props.teams.respondJoin(team.id, ask.playerId, false)}>
-                    {t("tournaments.teams.decline")}
-                  </Button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+      {/* Requests are the captain's to answer, or an organiser's. A captain
+          answers their own team's in the Your team card, with its other tools. */}
+      {(props.captain || organiser) && open && !ownToolsAbove && (
+        <JoinRequests event={event} team={team} profiles={props.profiles} busy={busy} teams={props.teams} />
       )}
 
-      <div className="tournament-match-actions">
-        {props.mayAsk && (
-          <Button variant="primary" disabled={busy} onClick={() => props.teams.requestJoin(team.id)}>
-            {t("tournaments.teams.askOpen", { count: openSlots })}
-          </Button>
-        )}
-        {props.asked && (
-          <>
-            <span className="muted">{t("tournaments.teams.requestPending")}</span>
-            <Button disabled={busy} onClick={() => props.teams.cancelJoin(team.id)}>
-              {t("tournaments.teams.cancelAsk")}
-            </Button>
-          </>
-        )}
-        {/* Said out loud rather than left as a missing button: the server's
-            refusal names the number the team would reach, and finding that
-            out after clicking is worse. */}
-        {props.overCap && <span className="muted">{t("tournaments.teams.overCap")}</span>}
-        {mayChangeCaptain && !ownToolsAbove && (
-          <Button disabled={busy} onClick={props.onChangeCaptain}>
-            {t("tournaments.teams.changeCaptain")}
-          </Button>
-        )}
-        {organiser && open && full && (
-          <Button
-            disabled={busy}
-            onClick={() =>
-              props.onAdmin({ type: "teamCheckIn", payload: { teamId: team.id, checkedIn: !team.checkedIn } })
-            }
-          >
-            {t(team.checkedIn ? "tournaments.teams.uncheck" : "tournaments.action.checkIn")}
-          </Button>
-        )}
-        {/* An organiser may rename and disband any team; a captain only their
-            own, and renaming only once. */}
-        {mayRename(event, team) && !ownToolsAbove && (
-          <Button
-            disabled={busy}
-            onClick={() => {
-              const renamed = window.prompt(t("tournaments.teams.renamePrompt"), team.name);
-              if (renamed !== null && renamed.trim() !== "") props.teams.rename(team.id, renamed);
-            }}
-          >
-            {t("tournaments.teams.rename")}
-          </Button>
-        )}
-        {open && (organiser || (props.captain && !ownToolsAbove)) && (
-          <Button
-            disabled={busy}
-            onClick={() => {
-              if (window.confirm(t("tournaments.teams.disbandConfirm"))) props.teams.disband(team.id);
-            }}
-          >
-            {t("tournaments.teams.disband")}
-          </Button>
-        )}
-        {props.extra}
-      </div>
+      {actions.length > 0 && <div className="tournament-team-card-actions">{actions}</div>}
     </li>
+  );
+}
+
+/** Players asking to join, each with the answer beside them. */
+function JoinRequests({
+  event,
+  team,
+  profiles,
+  busy,
+  teams,
+}: {
+  event: Tourney;
+  team: TourneyTeam;
+  profiles: PlayerSummary[];
+  busy: boolean;
+  teams: Pick<TeamActions, "respondJoin">;
+}) {
+  const { t } = useTranslation();
+  if (team.joinRequests.length === 0) return null;
+  const full = teamIsFull(event, team);
+  return (
+    <div className="tournament-team-requests">
+      <h6>
+        {t("tournaments.teams.requests")}
+        <span className="tournaments-group-count">{team.joinRequests.length}</span>
+      </h6>
+      <ul className="tournament-team-rows">
+        {team.joinRequests.map((ask) => {
+          const asker = event.players.find((player) => player.id === ask.playerId);
+          return (
+            <li className="tournament-team-row" key={ask.playerId}>
+              <span className="tournament-team-row-name">
+                <EntrantName
+                  name={ask.name}
+                  fafId={asker?.fafId ?? null}
+                  profile={asker ? profileOf(profiles, asker) : null}
+                />
+              </span>
+              {asker !== undefined && asker.rating !== null && (
+                <span className="tournament-roster-rating mono">{asker.rating}</span>
+              )}
+              <span className="tournament-team-row-actions">
+                <Button
+                  variant="primary"
+                  disabled={busy || full}
+                  onClick={() => teams.respondJoin(team.id, ask.playerId, true)}
+                >
+                  {t("tournaments.teams.accept")}
+                </Button>
+                <Button disabled={busy} onClick={() => teams.respondJoin(team.id, ask.playerId, false)}>
+                  {t("tournaments.teams.decline")}
+                </Button>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -738,7 +995,7 @@ function sortFreeAgents(players: TourneyPlayer[], sort: FreeAgentSort): TourneyP
 }
 
 /**
- * The players looking for a team, as the people captains are recruiting: a card
+ * The players looking for a team, as the people captains are recruiting: a tile
  * each, a sort, and the average of those rated.
  */
 function FreeAgents(props: FreeAgentsProps) {
@@ -755,70 +1012,76 @@ function FreeAgents(props: FreeAgentsProps) {
     new: t("tournaments.teams.sortNewest"),
   };
   return (
-    <section className="tournament-free-agents">
-      <div className="tournament-free-agents-head">
-        <h5>{t("tournaments.teams.freeAgents", { count: players.length })}</h5>
-        <div className="tournament-sort-toggle" role="group" aria-label={t("tournaments.teams.sortBy")}>
-          {(["rating", "name", "new"] as const).map((key) => (
+    <TeamSection
+      className="tournament-free-agents"
+      title={t("tournaments.teams.freeAgents")}
+      count={String(players.length)}
+      hint={
+        <>
+          {t("tournaments.teams.freeAgentsLooking")}
+          {average !== null && ` · ${t("tournaments.teams.averageRating", { rating: average })}`}
+          {recruiting !== null && ` · ${t("tournaments.teams.youCanInvite")}`}
+        </>
+      }
+      tools={
+        <div className="tournament-team-section-tools">
+          <div className="tournament-round-nav" role="group" aria-label={t("tournaments.teams.sortBy")}>
+            {(["rating", "name", "new"] as const).map((key) => (
+              <button
+                type="button"
+                key={key}
+                className={props.sort === key ? "is-active" : undefined}
+                aria-pressed={props.sort === key}
+                onClick={() => props.onSort(key)}
+              >
+                {sortLabel[key]}
+              </button>
+            ))}
+          </div>
+          {props.onFromFreeAgent !== null && (
             <Button
-              key={key}
-              variant={props.sort === key ? "primary" : "ghost"}
-              aria-pressed={props.sort === key}
-              onClick={() => props.onSort(key)}
+              disabled={busy || event.players.every((player) => player.teamId !== null)}
+              onClick={props.onFromFreeAgent}
             >
-              {sortLabel[key]}
+              <Icon name="plus" size={16} /> {t("tournaments.teams.fromFreeAgent")}
             </Button>
-          ))}
+          )}
         </div>
-      </div>
-      <p className="muted">
-        {t("tournaments.teams.freeAgentsLooking")}
-        {average !== null && ` · ${t("tournaments.teams.averageRating", { rating: average })}`}
-        {recruiting !== null && ` ${t("tournaments.teams.youCanInvite")}`}
-      </p>
+      }
+    >
       <ul className="tournament-free-agent-grid">
         {sortFreeAgents(players, props.sort).map((player) => {
           const invited = recruiting !== null && recruiting.invites.some((held) => held.playerId === player.id);
           return (
-            <li className="surface tournament-free-agent" key={player.id}>
-              <div className="tournament-free-agent-top">
+            <li className={invited ? "tournament-free-agent is-invited" : "tournament-free-agent"} key={player.id}>
+              <span className="tournament-free-agent-avatar" aria-hidden>
+                <Icon name="user" size={14} />
+              </span>
+              <span className="tournament-free-agent-who">
                 <span className="tournament-entrant-name">
                   <EntrantName name={player.name} fafId={player.fafId} profile={profileOf(props.profiles, player)} />
                 </span>
-                <span className="mono">{player.rating ?? "–"}</span>
-              </div>
-              {player.discord !== "" && (
-                <span className="tournament-discord muted" title={t("tournaments.entrants.discord")}>
-                  {"\u{1F4AC}"} {player.discord}
-                </span>
-              )}
-              {recruiting !== null && (
-                <div className="tournament-match-actions">
-                  {invited ? (
-                    <Button disabled={busy} onClick={() => props.onCancelInvite(recruiting.id, player.id)}>
-                      {t("tournaments.teams.cancelInvite")}
-                    </Button>
-                  ) : (
-                    <Button variant="primary" disabled={busy} onClick={() => props.onInvite(recruiting.id, player.id)}>
-                      {t("tournaments.teams.inviteAction")}
-                    </Button>
-                  )}
-                </div>
-              )}
+                {player.discord !== "" && (
+                  <span className="tournament-discord muted" title={t("tournaments.entrants.discord")}>
+                    <Icon name="discord" size={12} /> {player.discord}
+                  </span>
+                )}
+              </span>
+              <span className="tournament-roster-rating mono">{player.rating ?? "–"}</span>
+              {recruiting !== null &&
+                (invited ? (
+                  <Button disabled={busy} onClick={() => props.onCancelInvite(recruiting.id, player.id)}>
+                    {t("tournaments.teams.cancelInvite")}
+                  </Button>
+                ) : (
+                  <Button variant="primary" disabled={busy} onClick={() => props.onInvite(recruiting.id, player.id)}>
+                    {t("tournaments.teams.inviteAction")}
+                  </Button>
+                ))}
             </li>
           );
         })}
       </ul>
-      {props.onFromFreeAgent !== null && (
-        <div className="tournament-detail-actions">
-          <Button
-            disabled={busy || event.players.every((player) => player.teamId !== null)}
-            onClick={props.onFromFreeAgent}
-          >
-            <Icon name="plus" size={16} /> {t("tournaments.teams.fromFreeAgent")}
-          </Button>
-        </div>
-      )}
-    </section>
+    </TeamSection>
   );
 }

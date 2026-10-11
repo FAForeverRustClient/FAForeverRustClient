@@ -2827,43 +2827,568 @@
 }
 
 /* -- Teams ----------------------------------------------------------------
-   Invitations first: they are the one thing in the pane waiting on the reader
-   rather than on somebody else. */
+   The Players section's two columns: each group of teams in its own card on
+   the left, the field, the check-in and the rules on the right. Invitations
+   first: they are the one thing in the pane waiting on the reader rather than
+   on somebody else. */
 
-.tournament-teams {
+.tournament-teams-empty {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-subtle);
+}
+
+.tournament-teams-empty p {
+  margin: 0;
+}
+
+/* A group's heading: its name, the count beside it, its tools on the right. */
+.tournament-team-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  flex-wrap: wrap;
+  min-height: 28px;
+}
+
+.tournament-team-section-head h4 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tournament-team-section-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.tournament-team-section-tools .tournament-round-nav button {
+  height: 28px;
+  padding: 0 12px;
+  font-size: 11px;
+}
+
+.tournament-team-section > .tournament-team-section-hint {
+  margin-top: calc(var(--space-1) * -1);
+  max-width: 90ch;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Waiting on the reader: marked on the edge, as your own row is in the
+   Players table, rather than lit up across the whole card. */
+.tournament-team-section.is-callout {
+  border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+/* A line with a name, a fact or two, and its buttons at the end: an
+   invitation, a request to join, an invite sent. */
+.tournament-team-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
 }
 
-.tournament-team-invites {
-  padding: var(--space-3);
-  border-color: var(--color-accent);
+.tournament-team-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 40px;
+  padding: 6px 0;
+  border-top: 1px solid var(--color-border);
 }
 
-.tournament-team-invites h5,
-.tournament-team-requests h6 {
-  margin: 0 0 var(--space-2);
-  font-size: 12px;
+.tournament-team-row:first-child {
+  border-top: 0;
+}
+
+.tournament-team-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-team-row-actions {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+/* A fact beside a name, square like the tab's counters. */
+.tournament-team-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
   color: var(--color-muted);
-  letter-spacing: 0.08em;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-sm) - 2px);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* -- Team cards -----------------------------------------------------------
+   A grid rather than a column. A 2v2 with sixteen teams was two hundred
+   pixels of content in a two-thousand-pixel-wide column, read by scrolling
+   past fifteen cards to find your own. Each card: the seed and the name, how
+   full and how strong the team is as two bars, the roster with its open
+   places, and the actions along the bottom. */
+
+.tournament-team-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-3);
+}
+
+.tournament-team-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color 120ms ease;
+}
+
+.tournament-team-card:hover {
+  border-color: var(--color-border-strong);
+}
+
+.tournament-team-card.is-mine {
+  border-color: var(--color-accent);
+  box-shadow: inset 0 2px 0 var(--color-accent);
+}
+
+.tournament-team-card.is-eliminated {
+  opacity: 0.55;
+}
+
+.tournament-team-card.is-eliminated .tournament-team-name {
+  color: var(--color-muted);
+  text-decoration: line-through;
+}
+
+/* The card's head is a band of its own, two fixed rows: the name with its
+   placing or check-in beside it, then the rating. A hairline under it, so
+   every roster below starts on the same line across a row of cards. */
+.tournament-team-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tournament-team-card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 22px;
+}
+
+.tournament-team-card-title .tournament-team-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-team-card-title .tournament-badge {
+  flex: none;
+}
+
+/* Kept at its height when a team has no rating to show. */
+.tournament-team-card-sub {
+  display: flex;
+  align-items: center;
+  min-height: 16px;
+}
+
+.tournament-team-card-sub > .tournament-team-rating {
+  flex: 1;
+}
+
+.tournament-team-rank {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.tournament-team-rank.is-podium {
+  color: var(--color-rating);
+}
+
+.tournament-my-team-meters {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tournament-team-rating {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.tournament-team-rating-bar {
+  flex: 1;
+  height: 3px;
+  overflow: hidden;
+  background: var(--color-border);
+  border-radius: 1px;
+}
+
+.tournament-team-rating-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--color-rating);
+}
+
+.tournament-team-rating.is-over {
+  color: var(--color-error);
+}
+
+.tournament-team-rating.is-over .tournament-team-rating-bar > span {
+  background: var(--color-error);
+}
+
+/* The roster: hairlines between members, a dashed box for each open place. */
+.tournament-roster {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.tournament-roster-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 32px;
+  padding: 3px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.tournament-roster-row:first-child {
+  border-top: 0;
+}
+
+.tournament-roster-who {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tournament-roster-who .tournament-entrant-name,
+.tournament-free-agent-who .tournament-entrant-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-roster-who .tournament-discord,
+.tournament-free-agent-who .tournament-discord {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+
+.tournament-roster-captain {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  color: var(--color-rating);
+  background: color-mix(in srgb, var(--color-rating) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-rating) 40%, transparent);
+  font-size: 11px;
+}
+
+.tournament-roster-rating {
+  flex: none;
+  min-width: 4ch;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* An open place is a row like any member's, the same height on the same
+   hairline, only quieter: a team of one then reads as a roster with three
+   places to fill, lined up with the full teams beside it. */
+.tournament-roster-row.is-open {
+  gap: 6px;
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.tournament-roster-row.is-open > svg {
+  opacity: 0.7;
+}
+
+/* The buttons along the bottom, level across a row of cards. */
+.tournament-team-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+.tournament-team-note {
+  color: var(--color-warn);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.tournament-team-requests {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+.tournament-team-requests h6 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
+}
+
+.tournament-badge.is-warn {
+  color: var(--color-warn);
+}
+
+/* -- Your team ------------------------------------------------------------ */
+
+.tournament-my-team {
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.tournament-my-team-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  flex-wrap: wrap;
+}
+
+.tournament-my-team-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tournament-my-team-name {
+  overflow: hidden;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-my-team-meters {
+  max-width: 460px;
+}
+
+/* The check-in as a strip of its own: amber until it is done, green after. */
+.tournament-my-team-checkin {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warn) 35%, transparent);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+.tournament-my-team-checkin > span {
+  flex: 1;
+  color: var(--color-text);
+}
+
+.tournament-my-team-checkin.is-done {
+  color: var(--color-ok);
+  background: color-mix(in srgb, var(--color-ok) 9%, transparent);
+  border-color: color-mix(in srgb, var(--color-ok) 35%, transparent);
+}
+
+.tournament-my-team > .tournament-team-card-actions {
+  margin-top: 0;
+}
+
+/* -- Free agents ---------------------------------------------------------- */
+
+.tournament-free-agent-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-2);
+}
+
+/* The button wraps under the name rather than squeezing it: "Cancel invite"
+   is longer than most names beside it. */
+.tournament-free-agent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  min-width: 0;
+  padding: 8px 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color 120ms ease;
+}
+
+.tournament-free-agent:hover {
+  border-color: var(--color-border-strong);
+}
+
+.tournament-free-agent.is-invited {
+  border-color: color-mix(in srgb, var(--color-ok) 45%, var(--color-border));
+}
+
+.tournament-free-agent-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--color-subtle);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+}
+
+.tournament-free-agent-who {
+  display: flex;
+  flex: 1 1 90px;
+  flex-direction: column;
+  min-width: 90px;
+}
+
+.tournament-free-agent > button {
+  margin-left: auto;
+}
+
+/* -- The side column ------------------------------------------------------ */
+
+.tournament-teams .tournament-field-ratings {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
 }
 
 .tournament-team-create {
   display: flex;
-  align-items: flex-end;
-  gap: var(--space-3);
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-.tournament-team-create .tournament-field {
-  flex: 1 1 220px;
+.tournament-team-create input {
+  width: 100%;
 }
 
-.tournament-team-requests {
-  border-top: 1px solid var(--color-border);
-  padding-top: var(--space-2);
+.tournament-team-aside-note {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.tournament-team-checkin {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tournament-team-checkin.is-passed {
+  color: var(--color-warn);
+}
+
+/* How places are given out: reference, so small and to the side. */
+.tournament-team-rules {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.tournament-team-rules li {
+  position: relative;
+  padding-left: 14px;
+}
+
+.tournament-team-rules li::before {
+  content: "";
+  position: absolute;
+  top: 0.6em;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  background: var(--color-border-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tournament-team-card,
+  .tournament-free-agent {
+    transition: none;
+  }
 }
 
 /* -- News and entrant administration -------------------------------------- */
@@ -3904,48 +4429,6 @@
   min-height: 420px;
 }
 
-/* -- Teams as tiles -------------------------------------------------------
-   A grid rather than a column. A 2v2 with sixteen teams was two hundred
-   pixels of content in a two-thousand-pixel-wide column, read by scrolling
-   past fifteen cards to find your own. The tile is the unit people already
-   know from a forum: a title, the roster, and the actions along the bottom. */
-
-.tournament-team-grid {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--space-3);
-  align-items: start;
-}
-
-/* Cards in a row stay the same height, and the actions sit at the bottom of
-   each, so the buttons line up across the row instead of following the roster. */
-.tournament-team-grid > li {
-  height: 100%;
-}
-
-.tournament-team-grid .tournament-team {
-  height: 100%;
-  background: var(--color-surface-raised);
-}
-
-.tournament-team-grid .tournament-match-actions {
-  margin-top: auto;
-}
-
-/* The header reads as the tile's title bar: a rule under it separates the
-   name from the roster without a second surface. */
-.tournament-team-grid .tournament-team-header {
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.tournament-team-grid .tournament-team-name {
-  font-size: 14px;
-}
-
 /* -- Manage as tiles ------------------------------------------------------
    The organiser's sections, each in its own card. Some are a button and a
    sentence; some are a whole editor. The narrow ones share a row, the wide
@@ -4041,37 +4524,6 @@
 /* The pool is an overlay now (`.tournament-pool-modal`), so there is no panel
    under the bracket to style. The button that opens it stays here. */
 
-
-/* The tile's title bar: the name and its state on one row, the numbers on the
-   next. Fixed rows, so the rosters below start at the same height in every card
-   of a row however long a team called itself. */
-.tournament-team-grid .tournament-team-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.tournament-team-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.tournament-team-title .tournament-team-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tournament-team-meta {
-  display: flex;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  font-size: 12px;
-  min-height: 16px;
-}
 
 /* Official or community, as a soft chip. Quieter than the status beside it:
    the status is what changes, this is what the event *is*. */
@@ -6388,80 +6840,8 @@ button.tournament-chat-author:hover {
   margin: var(--space-2) 0 0;
 }
 
-.tournament-team-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.tournament-team-section.surface {
-  padding: var(--space-3);
-}
-
-.tournament-team-section.is-mine {
-  border-left: 3px solid var(--color-accent);
-}
-
-.tournament-team-section h5 {
-  margin: 0;
-}
-
 .tournament-warning {
   color: var(--color-warn);
-}
-
-.tournament-team-seed {
-  color: var(--color-rating);
-  margin-right: var(--space-1);
-}
-
-.tournament-team-count.is-ok {
-  color: var(--color-ok);
-}
-
-.tournament-team-count.is-over {
-  color: var(--color-error);
-}
-
-.tournament-free-agents-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.tournament-free-agents-head h5 {
-  margin: 0;
-}
-
-.tournament-sort-toggle {
-  display: flex;
-  gap: var(--space-1);
-}
-
-.tournament-free-agent-grid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: var(--space-2);
-}
-
-.tournament-free-agent {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-2);
-  min-width: 0;
-}
-
-.tournament-free-agent-top {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
-  min-width: 0;
 }
 
 .tournament-turn-banner {
