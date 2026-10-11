@@ -53,8 +53,14 @@ function TaskProgress({ label, progress }: { label: string; progress: number | n
       >
         <span style={percent === null ? undefined : { width: `${percent}%` }} />
       </span>
-      <span className="client-status-task-percent">
-        {percent === null ? t("status.active") : `${percent}%`}
+      {/* Empty without a measurement: the sweeping bar already says the work
+          is running, and "Active" beside it read as one label with the "+1"
+          after it. The slot keeps its width, so nothing beside it moves when
+          a number arrives, and the bar still says "Active" to a screen
+          reader. Hidden from it, because the slot is a live region and every
+          step of a download would be read out; the bar carries the value. */}
+      <span className="client-status-task-percent" aria-hidden="true">
+        {percent === null ? null : `${percent}%`}
       </span>
     </>
   );
@@ -105,8 +111,10 @@ export function GamePreparationStatus({
       >
         <span style={progress === null ? undefined : { width: `${progress}%` }} />
       </span>
-      <span className="client-status-task-percent">
-        {progress === null ? t("status.active") : `${progress}%`}
+      {/* Empty without a measurement, and hidden from a screen reader, as in
+          `TaskProgress`. */}
+      <span className="client-status-task-percent" aria-hidden="true">
+        {progress === null ? null : `${progress}%`}
       </span>
       {/* The join dialog can be hidden for a long patch, and this line is
           what stays: so it carries the dialog's Cancel too. */}
@@ -161,6 +169,12 @@ export interface BackgroundActivity {
   /** Which operation this is: stable across redraws, and what tests find. */
   id: string;
   label: string;
+  /**
+   * The start of `label` that names the work, when the rest of it only counts
+   * the work done. The slot is a live region, and a count read out again on
+   * every catalogue page is noise; the count stays on screen and on hover.
+   */
+  name?: string;
   /** Percent when the backend measures the work, `null` for a sweep. */
   progress: number | null;
   /** Stops it in the backend, where it can be stopped. */
@@ -316,6 +330,7 @@ export function useBackgroundActivities(): BackgroundActivity[] {
   const catalogue = (id: string, label: string, progress: AppState["maps"]["vaultProgress"], cancel: AppCommand): BackgroundActivity => ({
     id,
     label: progress ? t(progress.totalPages === null ? "status.activity.cataloguePages" : "status.activity.cataloguePagesTotal", { label, pages: progress.pages, total: progress.totalPages ?? 0 }) : label,
+    name: label,
     progress: progress?.totalPages ? Math.min(100, Math.round(100 * progress.pages / progress.totalPages)) : null,
     cancel: send(cancel),
   });
@@ -418,9 +433,16 @@ export function BackgroundActivityTask({ activities }: { activities: BackgroundA
   const title = rest.length > 0
     ? `${first.label}. ${t("status.activity.alsoRunning")}: ${rest.map((activity) => activity.label).join(", ")}`
     : first.label;
+  // Every language puts the name first ("{label}: {pages} pages"); a label
+  // that does not is shown and read whole.
+  const name = first.name !== undefined && first.label.startsWith(first.name) ? first.name : null;
   return (
     <div className="client-status-task" aria-live="polite" data-activity={first.id}>
-      <span className="client-status-task-label" title={title}>{first.label}</span>
+      <span className="client-status-task-label" title={title}>
+        {name === null ? first.label : (
+          <>{name}<span aria-hidden="true">{first.label.slice(name.length)}</span></>
+        )}
+      </span>
       <TaskProgress label={first.label} progress={first.progress} />
       {rest.length > 0 && (
         <span className="client-status-task-more" title={title}>+{rest.length}</span>

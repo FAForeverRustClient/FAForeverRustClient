@@ -156,6 +156,28 @@ describe("LobbyView custom games, mounted", () => {
     }
   });
 
+  it("shows the stepped-aside panel as away on its toolbar button, and brings it back on a press without folding it", async () => {
+    // The button used to read "Hide the details panel" while the empty panel
+    // was away, and its press saved the panel as folded: the next game picked
+    // then opened with no panel.
+    const width = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(700);
+    try {
+      const user = userEvent.setup();
+      mountPlayTab();
+      expect(screen.queryByText("Select a game to see its details.")).toBeNull();
+      const show = screen.getByRole("button", { name: "Show the details panel" });
+      expect(show.getAttribute("aria-pressed")).toBe("false");
+
+      clearSentCommands();
+      await user.click(show);
+      expect(screen.getByText("Select a game to see its details.")).toBeDefined();
+      expect(screen.getByRole("button", { name: "Hide the details panel" }).getAttribute("aria-pressed")).toBe("true");
+      expect(sentCommands()).toEqual([]);
+    } finally {
+      width.mockRestore();
+    }
+  });
+
   it("closes the preview on its Join, so a second click cannot send again, and shows a late refusal in the panel", async () => {
     const user = userEvent.setup();
     mountPlayTab();
@@ -289,10 +311,7 @@ const toolbar = () => {
 };
 
 describe("LobbyView filters, mounted", () => {
-  it("keeps the hide switches in the filters dialog, and counts every filter that is on on its button", async () => {
-    // Five checkboxes beside the search took the toolbar to two rows at the
-    // default window. They are in the dialog now, and the button's count is
-    // what still says that two of them are hiding games.
+  it("keeps the hide switches in the toolbar, and counts only the applied rules on the Filters button", async () => {
     const user = userEvent.setup();
     mountPlayTab({
       hidePrivate: true,
@@ -301,19 +320,15 @@ describe("LobbyView filters, mounted", () => {
       rules: [{ field: "map", constraint: "contains", value: "seton" }],
     });
 
-    expect(within(toolbar()).queryAllByRole("checkbox")).toEqual([]);
-    // Two switches and one applied rule.
-    await user.click(within(toolbar()).getByRole("button", { name: "Filters (3)" }));
-
-    const dialog = screen.getByRole("dialog");
-    const box = (name: string) => within(dialog).getByRole<HTMLInputElement>("checkbox", { name });
+    const box = (name: string) => within(toolbar()).getByRole<HTMLInputElement>("checkbox", { name });
     expect(box("Hide private").checked).toBe(true);
     expect(box("Hide sim-modded").checked).toBe(false);
     expect(box("Hide unranked").checked).toBe(false);
     expect(box("Hide foes").checked).toBe(true);
     expect(box("Apply filters").checked).toBe(true);
+    // The switches show for themselves that they are on, so only the rule counts.
+    expect(within(toolbar()).getByRole("button", { name: "Filters (1)" })).toBeDefined();
 
-    // A switch writes the same setting it wrote from the toolbar.
     clearSentCommands();
     await user.click(box("Hide sim-modded"));
     expect(sentCommands()).toEqual([
@@ -325,24 +340,21 @@ describe("LobbyView filters, mounted", () => {
 
     browserChanged({ hideModded: true });
     expect(box("Hide sim-modded").checked).toBe(true);
-    expect(within(toolbar()).getByRole("button", { name: "Filters (4)" })).toBeDefined();
+    expect(within(toolbar()).getByRole("button", { name: "Filters (1)" })).toBeDefined();
 
     // Rules that are not applied hide nothing, so they are not counted.
     browserChanged({ applyFilters: false });
-    expect(within(toolbar()).getByRole("button", { name: "Filters (3)" })).toBeDefined();
+    expect(box("Apply filters").checked).toBe(false);
+    expect(within(toolbar()).getByRole("button", { name: "Filters" })).toBeDefined();
   });
 
-  it("offers no ranked switch from co-op, where every mission is unranked, and does not count it", async () => {
-    const user = userEvent.setup();
+  it("offers no ranked switch from co-op, where every mission is unranked", () => {
     mountPlayTab({ hideUnranked: true, hidePrivate: true });
-    expect(within(toolbar()).getByRole("button", { name: "Filters (2)" })).toBeDefined();
+    expect(within(toolbar()).getByRole("checkbox", { name: "Hide unranked" })).toBeDefined();
 
     applyEvent({ kind: "Lobby", event: { type: "playModeChanged", payload: { mode: "coop" } } });
-    await user.click(within(toolbar()).getByRole("button", { name: "Filters (1)" }));
-
-    const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByRole("checkbox", { name: "Hide private" })).toBeDefined();
-    expect(within(dialog).queryByRole("checkbox", { name: "Hide unranked" })).toBeNull();
+    expect(within(toolbar()).getByRole("checkbox", { name: "Hide private" })).toBeDefined();
+    expect(within(toolbar()).queryByRole("checkbox", { name: "Hide unranked" })).toBeNull();
   });
 });
 

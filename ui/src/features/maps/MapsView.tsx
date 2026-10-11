@@ -414,7 +414,7 @@ function VaultView({ busy }: { busy: boolean }) {
           step={0.5}
           low={minimumRating}
           high={maximumRating}
-          format={(value) => `${value}â˜…`}
+          format={(value) => `${value}★`}
           onChange={(low, high) => { setFilter({ minimumRating: low, maximumRating: high }); }}
         />
         <RangeSlider
@@ -564,10 +564,10 @@ function VaultView({ busy }: { busy: boolean }) {
           map={previewMap}
           onClose={() => setPreviewMap(null)}
           meta={<>
-            {sizeLabel(previewMap)} Â· {t("maps.view.playerCount", { count: previewMap.maxPlayers })}
+            {sizeLabel(previewMap)} · {t("maps.view.playerCount", { count: previewMap.maxPlayers })}
             {typeof previewMap.ranked === "boolean" && (
               <>
-                {" Â· "}
+                {" · "}
                 <span className={previewMap.ranked ? "map-vault-type ranked" : "map-vault-type unranked"}>
                   {t(previewMap.ranked ? "maps.vault.ranked" : "maps.vault.unranked")}
                 </span>
@@ -833,7 +833,7 @@ function InstalledView({ busy }: { busy: boolean }) {
           step={0.5}
           low={minimumRating}
           high={maximumRating}
-          format={(value) => `${value}â˜…`}
+          format={(value) => `${value}★`}
           onChange={(low, high) => { setFilter({ minimumRating: low, maximumRating: high }); setPage(1); }}
         />
         <RangeSlider
@@ -914,7 +914,7 @@ function InstalledView({ busy }: { busy: boolean }) {
                     <small>{map.folderName}</small>
                     <small>
                       {sizeLabel(metadata ?? { width: map.width ?? 512, height: map.height ?? 512 })}
-                      {" Â· "}
+                      {" · "}
                       {t("maps.view.playerCount", { count: map.maxPlayers ?? metadata?.maxPlayers ?? 2 })}
                     </small>
                   </span>
@@ -960,7 +960,7 @@ function InstalledView({ busy }: { busy: boolean }) {
         <MapPreviewDialog
           map={previewMap}
           onClose={() => setPreviewMap(null)}
-          meta={<>{sizeLabel(previewMap)} Â· {t("maps.view.playerCount", { count: previewMap.maxPlayers ?? 2 })}</>}
+          meta={<>{sizeLabel(previewMap)} · {t("maps.view.playerCount", { count: previewMap.maxPlayers ?? 2 })}</>}
         />
       )}
       {pendingUninstall && (

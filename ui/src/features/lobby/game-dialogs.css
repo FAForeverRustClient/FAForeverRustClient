@@ -96,46 +96,11 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-top: 4px;
   font-size: 12px;
   color: var(--color-text);
   cursor: pointer;
   white-space: nowrap;
-}
-
-/* The filters dialog's two sections: the hide switches, then the rules with
-   the switch that applies them at the end of their heading. */
-.filter-section {
-  margin-top: var(--space-4);
-}
-
-.filter-section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.filter-section-title {
-  margin: 0;
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-/* As many to a line as fit, and the rest on the next: the four captions run
-   from "Hide foes" to the Spanish "Ocultar con mods de simulación". */
-.filter-switches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--space-4);
-  margin-top: var(--space-1);
-}
-
-.filter-switches .check-field {
-  color: var(--color-text);
-  cursor: pointer;
 }
 
 .play-dialog-actions {
@@ -173,7 +138,7 @@
 }
 
 .filter-rule-builder {
-  margin-top: var(--space-2);
+  margin-top: 20px;
 }
 
 .filter-rule-builder .filter-add-btn {

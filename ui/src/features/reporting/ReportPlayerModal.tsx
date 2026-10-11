@@ -260,6 +260,11 @@ export function ReportPlayerModal() {
                   {t("reporting.attachLogFailed")}: {plainError(attachment.payload.reason)}
                 </StatusNotice>
               )}
+              {/* Submit waits for a log while the box is ticked, so with none
+                  to be had it said nothing and stayed greyed out. */}
+              {(attachment.type === "unavailable" || attachment.type === "failed") && (
+                <p className="report-attach-hint">{t("reporting.attachLogUntick")}</p>
+              )}
               {excerpt && (
                 <ExcerptPreview
                   excerpt={excerpt}

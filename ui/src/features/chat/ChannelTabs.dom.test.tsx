@@ -46,4 +46,19 @@ describe("Channel tabs keyboard", () => {
     expect(document.activeElement).toBe(tabs[2]);
     expect(screen.getAllByRole("tab").map((tab) => tab.tabIndex)).toEqual([-1, 0]);
   });
+
+  it("stays on the channel being read when the X of another tab is clicked", () => {
+    // A mouse press focuses the X it lands on, which used to count as closing
+    // the focused tab and selected the closed tab's neighbour.
+    const leave = vi.fn();
+    render(<Harness leave={leave} />);
+    const close = screen.getByRole("button", { name: /#second/ });
+    close.focus();
+    fireEvent.click(close);
+
+    expect(leave).toHaveBeenCalledWith("#second");
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs.map((tab) => tab.getAttribute("aria-selected"))).toEqual(["true", "false"]);
+    expect(document.activeElement).toBe(tabs[0]);
+  });
 });

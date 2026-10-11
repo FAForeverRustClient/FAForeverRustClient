@@ -342,29 +342,12 @@
   overflow: auto;
 }
 
+/* The bracket tabs are the shared `SectionTabs` strip, drawn as every other
+   one is (`section-tabs.css`). The pill rules that drew them before stayed
+   behind at the same specificity, so the strip came out half pill and half
+   underline, depending on which file loaded last. */
 .map-pool-tabs {
-  display: flex;
-  gap: 4px;
   margin-top: 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.map-pool-tabs button {
-  min-height: 30px;
-  padding: 4px 10px;
-  color: var(--color-muted);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-}
-
-.map-pool-tabs button:hover,
-.map-pool-tabs button.active {
-  color: var(--color-text);
-  background: var(--color-surface-raised);
-  border-color: var(--color-border);
 }
 
 /* The map first: the picture fills the card and the words sit under it in a

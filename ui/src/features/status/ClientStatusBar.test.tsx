@@ -38,7 +38,8 @@ describe("GamePreparationStatus", () => {
 
     expect(markup).toContain('data-indeterminate="true"');
     expect(markup).not.toContain("aria-valuenow");
-    expect(markup).toContain("Active");
+    // No number to show, and no word in its place: the sweep says it runs.
+    expect(markup).toContain('<span class="client-status-task-percent" aria-hidden="true"></span>');
   });
 });
 
@@ -53,7 +54,10 @@ describe("BackgroundActivityTask", () => {
     // The id never stands alone: the line names what it is, not just a number.
     expect(markup).toContain("Downloading replay 27456965");
     expect(markup).toContain('data-indeterminate="true"');
-    expect(markup).toContain("Active");
+    // Empty beside the sweep ("Active +1" read as one label), while the bar
+    // still tells a screen reader that it is running.
+    expect(markup).toContain('<span class="client-status-task-percent" aria-hidden="true"></span>');
+    expect(markup).toContain('aria-valuetext="Active"');
     expect(markup).not.toContain("<button");
   });
 });

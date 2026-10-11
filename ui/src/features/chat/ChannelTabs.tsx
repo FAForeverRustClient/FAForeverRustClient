@@ -80,15 +80,22 @@ export function ChannelTabs({
   const addRef = useRef<HTMLButtonElement>(null);
   const tabStop = channels.some((channel) => channel.name === active) ? active : channels[0]?.name;
 
+  // Focus is moved off a tab that is about to go, so it is not dropped onto the
+  // page. Only closing the channel being read selects its neighbour: a mouse
+  // press focuses the X it lands on, so the focus test alone also held for the
+  // X of a background tab, and closing that one jumped you away from the
+  // channel you were reading.
   const leave = (name: string) => {
     const tab = tabRefs.current.get(name);
     if (tab?.parentElement?.contains(document.activeElement)) {
       const index = channels.findIndex((channel) => channel.name === name);
-      const next = channels[index + 1] ?? channels[index - 1];
+      const next = name === active ? (channels[index + 1] ?? channels[index - 1]) : null;
+      const stay = name === active ? undefined : tabRefs.current.get(active);
       if (next) {
         tabRefs.current.get(next.name)?.focus();
         onSelect(next.name);
-      } else addRef.current?.focus();
+      } else if (stay) stay.focus();
+      else addRef.current?.focus();
     }
     onLeave(name);
   };

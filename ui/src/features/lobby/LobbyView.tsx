@@ -7,7 +7,7 @@ import { PlayerName } from "../../shared/components/nameColors";
 import { ipc } from "../../ipc/client";
 import type { CoopMission, Game, VaultMap } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
-import { GameFiltersModal, type FilterSwitches, type GameFilterRule } from "./browser/GameFiltersModal";
+import { GameFiltersModal, type GameFilterRule } from "./browser/GameFiltersModal";
 import { activeFilterCount } from "./browser/gameFilterRules";
 import { HostGameModal } from "./host/HostGameModal";
 import { HostCoopModal } from "./host/HostCoopModal";
@@ -542,13 +542,9 @@ export function LobbyView() {
   const inMatchmaker = lobby.playMode === "matchmaking";
   const inCoop = lobby.playMode === "coop";
   const inGalacticWar = lobby.playMode === "galacticWar";
-  // The hide switches as the filters dialog offers them. Co-op has no ranked
-  // switch, as every mission is unranked, so the dialog opened from there
-  // leaves it out and so does the count on the Filters button.
-  const filterSwitches: FilterSwitches = inCoop
-    ? { hidePrivate, hideModded, hideFoes }
-    : { hidePrivate, hideModded, hideUnranked, hideFoes };
-  const filterCount = activeFilterCount(filterSwitches, applyFilters, rules.length);
+  // The rules the Filters button stands for, while they are applied. The hide
+  // switches sit beside it in the toolbar and show themselves.
+  const filterCount = activeFilterCount(applyFilters, rules.length);
 
   const requestJoin = (game: Game) => {
     if (game.passwordProtected) {
@@ -673,9 +669,15 @@ export function LobbyView() {
   const [revealHeld, setRevealHeld] = useState(false);
   const revealTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(revealTimer.current), []);
+  // Asked for from the toolbar while it had stepped aside: the empty panel
+  // then stays until it is folded away. The toolbar's button shows what is on
+  // screen, so it read "Show the details panel" there, and a press that left
+  // the panel away would have been a button that does nothing.
+  const [emptyKept, setEmptyKept] = useState(false);
   const detailGivesWay =
     revealHeld ||
     (detailEmpty &&
+      !emptyKept &&
       gameView === "list" &&
       draggedDetailWidth === null &&
       emptyDetailGivesWay(layoutWidth, currentDetailWidth, columnWidths(gameBrowser.columnWidths)));
@@ -693,6 +695,13 @@ export function LobbyView() {
     setSelectedId(id);
   }, []);
   const detailShown = !detailHidden && !detailGivesWay;
+  const toggleDetails = () => {
+    setEmptyKept(!detailShown);
+    // Folding a panel that only stepped aside was the old press here: it
+    // changed nothing on screen and saved the panel as folded, so the next
+    // game picked opened without it.
+    if (detailShown || detailHidden) updateGameBrowser({ detailHidden: detailShown });
+  };
   const detailStyle = useMemo(
     // The divider's track is the whole gap, as the chat roster's is, so the
     // two tabs space their side panel the same. Folded away (#370, #377), or
@@ -812,11 +821,19 @@ export function LobbyView() {
               search={search}
               sort={sort}
               viewMode={gameView}
+              hidePrivate={hidePrivate}
+              hideModded={hideModded}
+              hideFoes={hideFoes}
+              applyFilters={applyFilters}
               filterCount={filterCount}
               connected={connected}
               onSearch={setSearch}
               onSort={(value) => updateGameBrowser({ sort: value, sortReversed: false })}
               onViewMode={selectGameView}
+              onHidePrivate={(value) => updateGameBrowser({ hidePrivate: value })}
+              onHideModded={(value) => updateGameBrowser({ hideModded: value })}
+              onHideFoes={(value) => updateGameBrowser({ hideFoes: value })}
+              onApplyFilters={(value) => updateGameBrowser({ applyFilters: value })}
               onOpenFilters={() => setFiltersOpen(true)}
               onHost={() => handleHostCoop()}
               onRefresh={() => ipc.send({ kind: "Coop", command: { type: "refreshCatalog" } })}
@@ -838,18 +855,28 @@ export function LobbyView() {
             search={search}
             sort={sort}
             viewMode={gameView}
+            hidePrivate={hidePrivate}
+            hideModded={hideModded}
+            hideUnranked={hideUnranked}
+            hideFoes={hideFoes}
+            applyFilters={applyFilters}
             filterCount={filterCount}
             connected={connected}
             onSearch={setSearch}
             onSort={(value) => updateGameBrowser({ sort: value, sortReversed: false })}
             onViewMode={selectGameView}
+            onHidePrivate={(value) => updateGameBrowser({ hidePrivate: value })}
+            onHideModded={(value) => updateGameBrowser({ hideModded: value })}
+            onHideUnranked={(value) => updateGameBrowser({ hideUnranked: value })}
+            onHideFoes={(value) => updateGameBrowser({ hideFoes: value })}
+            onApplyFilters={(value) => updateGameBrowser({ applyFilters: value })}
             onOpenFilters={() => setFiltersOpen(true)}
             onHost={() => {
               setCoopMissionToHost(null);
               setHostOpen(true);
             }}
-            detailHidden={detailHidden}
-            onToggleDetails={() => updateGameBrowser({ detailHidden: !detailHidden })}
+            detailHidden={!detailShown}
+            onToggleDetails={toggleDetails}
           />
 
           <CustomGamesBrowser
@@ -909,8 +936,6 @@ export function LobbyView() {
           rules={rules}
           applyFilters={applyFilters}
           onApplyFiltersChange={(value) => updateGameBrowser({ applyFilters: value })}
-          switches={filterSwitches}
-          onSwitchesChange={(changes) => updateGameBrowser(changes)}
           onChange={(nextRules) =>
             updateGameBrowser({
               rules: nextRules,

@@ -7,28 +7,19 @@
 // should be is arithmetic, so it lives here and is tested here rather than
 // being reachable only by clicking.
 
-import type { FilterConstraint, FilterField, FilterSwitches, GameFilterRule } from "./GameFiltersModal";
+import type { FilterConstraint, FilterField, GameFilterRule } from "./GameFiltersModal";
 
 /**
- * How many filters are hiding games, for the count on the toolbar's Filters
- * button: each hide switch that is on, and each rule while the rules are
- * applied.
+ * How many rules are hiding games, for the count on the toolbar's Filters
+ * button: the rules while they are applied.
  *
- * The switches moved from the toolbar into the filters dialog, so this count
- * is the only sign of them left on screen, and it has to include them or a
- * list thinned by "Hide private" would look unfiltered. A rule that is not
- * applied hides nothing, so it is not counted either: the button used to count
- * every rule, which read as filters on while "Apply filters" was off. A switch
- * the caller leaves out (co-op has no ranked switch) is not counted.
+ * A rule that is not applied hides nothing, so it is not counted: the button
+ * used to count every rule, which read as filters on while "Apply filters" was
+ * off. The hide switches are not counted. They sit in the toolbar beside the
+ * button and show for themselves whether they are on.
  */
-export function activeFilterCount(
-  switches: FilterSwitches,
-  applyFilters: boolean,
-  ruleCount: number,
-): number {
-  const on = [switches.hidePrivate, switches.hideModded, switches.hideUnranked, switches.hideFoes]
-    .filter((value) => value === true).length;
-  return on + (applyFilters ? ruleCount : 0);
+export function activeFilterCount(applyFilters: boolean, ruleCount: number): number {
+  return applyFilters ? ruleCount : 0;
 }
 
 /**

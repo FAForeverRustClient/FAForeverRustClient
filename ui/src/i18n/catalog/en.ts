@@ -148,10 +148,6 @@ export const en = {
   "status.matchSetup.aria": "Match setup",
   "status.matchSetup.title": "Match setup: {detail}",
   "status.active": "Active",
-  "status.replay.action": "Downloading:",
-  "status.replay.subject": "Replay {uid}",
-  "status.replay.title": "Downloading replay {uid}",
-  "status.replay.aria": "Downloading replay",
   "status.join.connecting": "Connecting to match {id}…",
   "status.join.launched": "Initiating “{name}”",
   "status.join.failed": "Join failed: {reason}",
@@ -848,10 +844,6 @@ export const en = {
   // Game filter rules.
   "lobby.filters.title": "Manage game filters",
   "lobby.filters.subtitle": "Games matching any rule are excluded from the custom-games list.",
-  // The dialog's two sections: the hide switches that used to sit in the
-  // toolbar, and the rules, which "Apply filters" turns on and off.
-  "lobby.filters.quickTitle": "Quick filters",
-  "lobby.filters.rulesTitle": "Exclusion rules",
   "lobby.filters.fieldAria": "Filter field",
   "lobby.filters.constraintAria": "Filter constraint",
   "lobby.filters.valueAria": "Filter value",
@@ -5811,6 +5803,7 @@ export const en = {
   "reporting.attachLogPreparing": "Reading your game log…",
   "reporting.attachLogNone": "No game log is kept on this computer yet. The client keeps the logs of the online games it starts.",
   "reporting.attachLogFailed": "Could not read your game log",
+  "reporting.attachLogUntick": "To send the report without a log, untick the box above.",
   "reporting.attachLogSource.game": "From your log of game #{id}",
   "reporting.attachLogSource.latest": "From your most recent game log (game #{id})",
   "reporting.attachLogSource.latestUnknown": "From your most recent game log",

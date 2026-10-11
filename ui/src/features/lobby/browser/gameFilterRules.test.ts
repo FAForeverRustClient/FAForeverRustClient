@@ -4,24 +4,11 @@ import { activeFilterCount, cleanFilterValue, rulesWithPending } from "./gameFil
 import type { GameFilterRule } from "./GameFiltersModal";
 
 describe("activeFilterCount", () => {
-  const off = { hidePrivate: false, hideModded: false, hideUnranked: false, hideFoes: false };
-
-  it("counts every hide switch that is on", () => {
-    // The switches are in the filters dialog, so the count on its button is
-    // the only sign on the toolbar that they are hiding games.
-    expect(activeFilterCount(off, false, 0)).toBe(0);
-    expect(activeFilterCount({ ...off, hidePrivate: true, hideFoes: true }, false, 0)).toBe(2);
-    expect(activeFilterCount({ hidePrivate: true, hideModded: true, hideUnranked: true, hideFoes: true }, false, 0)).toBe(4);
-  });
-
   it("counts the rules only while they are applied", () => {
-    expect(activeFilterCount({ ...off, hideModded: true }, true, 3)).toBe(4);
-    expect(activeFilterCount({ ...off, hideModded: true }, false, 3)).toBe(1);
-  });
-
-  it("does not count a switch the list does not offer", () => {
-    // Co-op leaves the ranked switch out.
-    expect(activeFilterCount({ hidePrivate: true, hideModded: false, hideFoes: false }, false, 0)).toBe(1);
+    // A rule that is not applied hides nothing.
+    expect(activeFilterCount(true, 3)).toBe(3);
+    expect(activeFilterCount(false, 3)).toBe(0);
+    expect(activeFilterCount(true, 0)).toBe(0);
   });
 });
 

@@ -112,6 +112,9 @@
    in its place, so the menu keeps its shape when the answer lands. */
 .chat-user-menu-item:disabled {
   color: var(--color-subtle);
+  /* Dimmed as well, as disabled controls are across the design system: in
+     the Java and Python themes the subtle colour is close to body text. */
+  opacity: 0.6;
   cursor: default;
 }
 

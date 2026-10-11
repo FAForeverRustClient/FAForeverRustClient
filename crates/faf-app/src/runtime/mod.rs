@@ -1,6 +1,6 @@
 //! The runtime loop: command in, service, event out, reduce, broadcast.
 //!
-//! This is the closed unidirectional loop from ARCHITECTURE.md Ã‚Â§1/Ã‚Â§3.5. It owns the
+//! This is the closed unidirectional loop from ARCHITECTURE.md §1/§3.5. It owns the
 //! authoritative [`AppState`] and is the only thing that calls [`faf_domain::reduce`].
 //!
 //! [`App::new`] returns a handle plus an [`AppLoop`]; the caller decides how to drive
@@ -998,7 +998,7 @@ pub(crate) fn run_command<'a>(
     })
 }
 
-/// Route a command to the owning service. One arm per slice (ARCHITECTURE.md Ã‚Â§8).
+/// Route a command to the owning service. One arm per slice (ARCHITECTURE.md §8).
 async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
     match cmd {
         AppCommand::Session(c) => services::session::handle(c, ctx, sink).await,

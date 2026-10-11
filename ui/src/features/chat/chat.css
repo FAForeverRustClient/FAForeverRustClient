@@ -98,6 +98,9 @@ html.is-resizing-chat-roster * {
 
 .chat-input:disabled {
   color: var(--color-subtle);
+  /* Dimmed as well, as disabled controls are across the design system: in
+     the Java and Python themes the subtle colour is close to body text. */
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -324,6 +327,13 @@ html.is-resizing-chat-roster * {
      padding is a character of the line people read for hours. */
   padding: 14px 12px;
   scrollbar-gutter: stable;
+}
+
+/* Focused from code when the search bar closes, so the keys that follow
+   scroll the log. It is the log, not a control, and draws no ring of its own,
+   as the page does after a sidebar click (`.content:focus`). */
+.chat-messages:focus {
+  outline: none;
 }
 
 .chat-older-messages {

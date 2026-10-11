@@ -78,8 +78,9 @@ export function MapCard({
       >
         <span className="map-vault-image-wrap">
           <MapPreview map={map} />
-          {/* The rating owns the corner; "Featured" stacks under it. */}
-          <MapRating map={map} />
+          {/* Only the endorsement rides on the art, as on a mod card. The
+              rating stacked above it made two plates in one corner; it sits
+              with the other facts below now. */}
           {map.recommended && <VaultFeaturedBadge />}
         </span>
         <span className="map-vault-card-copy">
@@ -107,6 +108,7 @@ export function MapCard({
           <span className="map-vault-fact" title={t("maps.vault.dimensionsTitle", { size: sizeLabel(map) })}>
             {sizeLabel(map).replace(" km", "")}
           </span>
+          <MapRating map={map} />
         </span>
       </button>
       <div className="map-vault-card-action">

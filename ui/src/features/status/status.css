@@ -356,6 +356,9 @@ html[data-reduced-motion="true"] .client-status-progress[data-indeterminate="tru
 
 .client-status-action:disabled {
   color: var(--color-subtle);
+  /* Dimmed as well, as disabled controls are across the design system: in
+     the Java and Python themes the subtle colour is close to body text. */
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
