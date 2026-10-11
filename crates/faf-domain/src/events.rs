@@ -8,11 +8,11 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use crate::state::{
-    AuthEvent, ChangelogEvent, ChatEvent, ClanEvent, ClientUpdateEvent, CoopEvent, EventsEvent,
-    GalacticWarEvent, GuidesEvent, InstallEvent, LeaderboardEvent, LobbyEvent, MapGeneratorEvent,
-    MapsEvent, ModsEvent, NavEvent, NotificationEvent, PlayerCardEvent, ReplayEvent,
-    ReportingEvent, ReviewsEvent, SessionEvent, SettingsEvent, SocialEvent, StreamsEvent,
-    TourneyEvent, TrainingEvent, TutorialsEvent, UploadsEvent,
+    AuthEvent, ChangelogEvent, ChatEvent, ClanEvent, ClientUpdateEvent, ConnectivityEvent,
+    CoopEvent, EventsEvent, GalacticWarEvent, GuidesEvent, InstallEvent, LeaderboardEvent,
+    LobbyEvent, MapGeneratorEvent, MapsEvent, ModsEvent, NavEvent, NotificationEvent,
+    PlayerCardEvent, ReplayEvent, ReportingEvent, ReviewsEvent, SessionEvent, SettingsEvent,
+    SocialEvent, StreamsEvent, TourneyEvent, TrainingEvent, TutorialsEvent, UploadsEvent,
 };
 
 // No `Eq`: `ReplayEvent` carries an `f32` (vault replay review score).
@@ -49,6 +49,7 @@ pub enum AppEvent {
     ClientUpdate(ClientUpdateEvent),
     Install(InstallEvent),
     Settings(SettingsEvent),
+    Connectivity(ConnectivityEvent),
 }
 
 impl From<SessionEvent> for AppEvent {
@@ -216,6 +217,12 @@ impl From<GalacticWarEvent> for AppEvent {
 impl From<ClientUpdateEvent> for AppEvent {
     fn from(e: ClientUpdateEvent) -> Self {
         AppEvent::ClientUpdate(e)
+    }
+}
+
+impl From<ConnectivityEvent> for AppEvent {
+    fn from(e: ConnectivityEvent) -> Self {
+        AppEvent::Connectivity(e)
     }
 }
 

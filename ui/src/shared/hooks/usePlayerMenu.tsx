@@ -31,7 +31,7 @@ import { UserMenu, type UserMenuTarget } from "../components/UserMenu";
 // would otherwise never load.
 import { joinGame as joinLobbyGame } from "../joinGame";
 
-/** Open the menu for `nickname`, anchored at the pointer. */
+/** Open the menu for `nickname`, beside the element it was opened from. */
 export type PlayerMenuOpener = (nickname: string, event: MouseEvent) => void;
 
 const setRelation = (account: AccountRef, relation: "friend" | "foe", member: boolean) =>
@@ -74,9 +74,8 @@ export function usePlayerMenu(options: PlayerMenuOptions = {}): {
    *
    * The menu no longer prints the name across its top, so the name it belongs
    * to has to stay legible where it already is: a caller marks the row it
-   * opened the menu from and keeps it looking hovered. Without that the menu
-   * appears under the pointer, which has by then left the row, and nothing on
-   * screen says which of two hundred names it is about.
+   * opened the menu from and keeps it looking hovered while the pointer
+   * moves into the menu, so its source remains clear in a long list.
    */
   playerMenuTarget: string | null;
 } {
@@ -97,11 +96,13 @@ export function usePlayerMenu(options: PlayerMenuOptions = {}): {
     // Replace the webview's own context menu, which offers "Reload"/"Inspect".
     event.preventDefault();
     const social = useAppStore.getState().state.social;
+    const { left, right, top, bottom } = event.currentTarget.getBoundingClientRect();
     setMenu({
       nickname,
       profile: findPlayer(social, nickname),
       x: event.clientX,
       y: event.clientY,
+      anchor: { left, right, top, bottom },
     });
     // Somebody offline: the online list has no id for them, and friend, foe,
     // note and report all address the account by id. Asked once per name;

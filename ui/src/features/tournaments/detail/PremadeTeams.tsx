@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import { Button } from "../../../design-system/Button";
+import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
 import type { Tourney, TourneyAdmin, TourneyPlayer } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -110,9 +111,16 @@ export function PremadeTeams({
                     </span>
                   </div>
                   {group.members.map((player) => (
-                    <div key={player.id}>
-                      {player.name} {player.rating !== null && <span className="muted mono">{player.rating}</span>}
-                      {player.discord !== "" && <span className="muted"> {"\u{1F4AC}"} {player.discord}</span>}
+                    <div key={player.id} className="tournament-roster-row">
+                      <span className="tournament-roster-who">
+                        <span className="tournament-entrant-name">{player.name}</span>
+                        {player.discord !== "" && (
+                          <span className="tournament-discord muted" title={t("tournaments.entrants.discord")}>
+                            <Icon name="discord" size={12} /> {player.discord}
+                          </span>
+                        )}
+                      </span>
+                      <span className="tournament-roster-rating mono">{player.rating ?? "–"}</span>
                       {organiser && (
                         <button type="button" className="tournament-link-button" onClick={() => edit(player)}>
                           {t("tournaments.maps.edit")}

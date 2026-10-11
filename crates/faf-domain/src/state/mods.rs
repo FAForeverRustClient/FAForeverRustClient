@@ -139,6 +139,7 @@ pub struct ModPreset {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum ModListStatus {
+    Cancelled,
     #[default]
     Idle,
     Loading,
@@ -158,6 +159,10 @@ pub enum ModInstallStatus {
     #[serde(rename_all = "camelCase")]
     Installing {
         uid: String,
+        /// The download's share in percent, while the server says how big
+        /// the archive is; `None` otherwise, while it is unpacked, and for an
+        /// uninstall. See [`crate::state::MapInstallStatus::Installing`].
+        progress: Option<u8>,
     },
     Failed {
         reason: String,
@@ -216,6 +221,8 @@ pub struct ModsState {
     /// deliberately not what the Mods tab browses; see `browse`.
     pub vault: Vec<VaultMod>,
     pub vault_status: ModListStatus,
+    #[serde(default)]
+    pub vault_progress: Option<crate::state::maps::CatalogueProgress>,
     /// One page of a server-side vault search, which is what the Mods tab
     /// shows.
     pub browse: Vec<VaultMod>,
@@ -241,6 +248,10 @@ pub struct ModsState {
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum ModsEvent {
     VaultLoading,
+    VaultProgress {
+        progress: crate::state::maps::CatalogueProgress,
+    },
+    VaultCancelled,
     VaultSearching,
     #[serde(rename_all = "camelCase")]
     VaultSearched {
@@ -272,6 +283,13 @@ pub enum ModsEvent {
     Installing {
         uid: String,
     },
+    /// How far the install or update of `uid` has got. Lands only on the
+    /// install it names (mirrors `MapsEvent::InstallProgressed`).
+    #[serde(rename_all = "camelCase")]
+    InstallProgressed {
+        uid: String,
+        progress: Option<u8>,
+    },
     /// Install succeeded: carries the freshly-scanned installed list so
     /// the UI doesn't need a separate `LoadInstalled` round-trip (mirrors
     /// `MapsEvent::Installed`).
@@ -280,6 +298,11 @@ pub enum ModsEvent {
     },
     InstallFailed {
         reason: String,
+    },
+    /// The install of `uid` was called off: back to idle, not a failure.
+    #[serde(rename_all = "camelCase")]
+    InstallCancelled {
+        uid: String,
     },
     Uninstalled {
         installed: Vec<InstalledMod>,
@@ -311,6 +334,7 @@ pub enum ModsEvent {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum ModsCommand {
+    CancelVaultLoad,
     /// Fetch the whole catalogue once.
     LoadVault,
     /// Fetch the catalogue again even though it is loaded, for "Check for
@@ -320,13 +344,18 @@ pub enum ModsCommand {
     ReloadVault,
     /// Fetch one page of a vault search. Submit-driven, as in both reference
     /// clients.
-    SearchVault { query: ModVaultQuery },
+    SearchVault {
+        query: ModVaultQuery,
+    },
     /// Scan the user's mods folder (mirrors `MapsCommand::LoadInstalled`).
     LoadInstalled,
     /// Download and extract a mod version's zip (mirrors
     /// `MapsCommand::InstallMap`).
     #[serde(rename_all = "camelCase")]
-    InstallMod { uid: String, download_url: String },
+    InstallMod {
+        uid: String,
+        download_url: String,
+    },
     /// Ask how big these archives are, without downloading them.
     ///
     /// Exists for the dialog that asks whether a join may download mods: the
@@ -335,7 +364,9 @@ pub enum ModsCommand {
     /// storage server. One HEAD per mod, and the answer is cached in
     /// [`ModsState::download_sizes`] for the session.
     #[serde(rename_all = "camelCase")]
-    QueryDownloadSizes { targets: Vec<ModDownloadTarget> },
+    QueryDownloadSizes {
+        targets: Vec<ModDownloadTarget>,
+    },
     /// Replace an installed mod with the vault's current version.
     ///
     /// Not a client-side `uninstall` followed by an `install`, which is what
@@ -353,25 +384,63 @@ pub enum ModsCommand {
         folder_name: String,
         download_url: String,
     },
+    /// Call off the install or update of `uid` while it is still running.
+    ///
+    /// The same promise as `MapsCommand::CancelInstall`: the download stops
+    /// and its bytes are dropped, and an install already unpacking is unpacked
+    /// into a private folder that is removed instead of renamed into place.
+    /// An update is the exception once its download is whole: from there it
+    /// removes the old version and puts the new one in, and stopping between
+    /// the two would leave neither, so a call-off that late is ignored and
+    /// the update ends as it would have.
+    #[serde(rename_all = "camelCase")]
+    CancelInstall {
+        uid: String,
+    },
     /// Delete a mod folder (mirrors `MapsCommand::UninstallMap`).
     #[serde(rename_all = "camelCase")]
-    UninstallMod { folder_name: String, uid: String },
+    UninstallMod {
+        folder_name: String,
+        uid: String,
+    },
     /// Enable or disable an installed mod without uninstalling it (writes
     /// `game.prefs`'s `active_mods` table).
     #[serde(rename_all = "camelCase")]
-    ToggleMod { uid: String, enabled: bool },
+    ToggleMod {
+        uid: String,
+        enabled: bool,
+    },
     /// Replace the active set with exactly `uids`.
     ///
     /// Deliberately not a loop over [`Self::ToggleMod`]: every toggle rewrites
     /// `game.prefs` *and* rescans the whole mods folder, so applying a preset one
     /// mod at a time costs a rescan per mod and walks the list through every
     /// intermediate state on screen. This is one write and one rescan.
-    SetActiveMods { uids: Vec<String> },
+    SetActiveMods {
+        uids: Vec<String>,
+    },
 }
 
 pub fn reduce(state: &mut ModsState, event: &ModsEvent) {
     match event {
-        ModsEvent::VaultLoading => state.vault_status = ModListStatus::Loading,
+        ModsEvent::VaultLoading => {
+            state.vault_status = ModListStatus::Loading;
+            state.vault_progress = None;
+        }
+        ModsEvent::VaultProgress { progress } => state.vault_progress = Some(progress.clone()),
+        ModsEvent::VaultCancelled => {
+            // A reload ("Check for updates") called off leaves the catalogue
+            // it would have replaced, and that one is still whole: only a
+            // finished crawl fills `vault`. Marking it cancelled made
+            // everything that waits for a ready catalogue (the favourites
+            // list, the upload dialog's vault check) treat it as missing.
+            state.vault_status = if state.vault.is_empty() {
+                ModListStatus::Cancelled
+            } else {
+                ModListStatus::Ready
+            };
+            state.vault_progress = None;
+        }
         ModsEvent::VaultLoaded { mods } => {
             state.vault = mods.clone();
             state.vault_status = ModListStatus::Ready;
@@ -410,7 +479,29 @@ pub fn reduce(state: &mut ModsState, event: &ModsEvent) {
             }
         }
         ModsEvent::Installing { uid } => {
-            state.install_status = ModInstallStatus::Installing { uid: uid.clone() }
+            state.install_status = ModInstallStatus::Installing {
+                uid: uid.clone(),
+                progress: None,
+            }
+        }
+        ModsEvent::InstallProgressed { uid, progress } => {
+            if let ModInstallStatus::Installing {
+                uid: installing,
+                progress: shown,
+            } = &mut state.install_status
+            {
+                if installing == uid {
+                    *shown = *progress;
+                }
+            }
+        }
+        ModsEvent::InstallCancelled { uid } => {
+            if matches!(
+                &state.install_status,
+                ModInstallStatus::Installing { uid: installing, .. } if installing == uid
+            ) {
+                state.install_status = ModInstallStatus::Idle;
+            }
         }
         ModsEvent::Installed { installed } => {
             state.install_status = ModInstallStatus::Idle;
@@ -513,6 +604,33 @@ mod tests {
     }
 
     #[test]
+    fn a_cancelled_first_load_is_cancelled_and_a_cancelled_reload_keeps_the_catalogue() {
+        let mut s = ModsState::default();
+        reduce(&mut s, &ModsEvent::VaultLoading);
+        reduce(&mut s, &ModsEvent::VaultCancelled);
+        assert_eq!(
+            s.vault_status,
+            ModListStatus::Cancelled,
+            "nothing was loaded"
+        );
+
+        reduce(
+            &mut s,
+            &ModsEvent::VaultLoaded {
+                mods: vec![vault_mod("abc-123")],
+            },
+        );
+        reduce(&mut s, &ModsEvent::VaultLoading);
+        reduce(&mut s, &ModsEvent::VaultCancelled);
+        assert_eq!(
+            s.vault_status,
+            ModListStatus::Ready,
+            "the catalogue from before the reload is still loaded"
+        );
+        assert_eq!(s.vault.len(), 1);
+    }
+
+    #[test]
     fn vault_load_failure_records_reason() {
         let mut s = ModsState::default();
         reduce(
@@ -556,7 +674,8 @@ mod tests {
         assert_eq!(
             s.install_status,
             ModInstallStatus::Installing {
-                uid: "abc-123".into()
+                uid: "abc-123".into(),
+                progress: None,
             }
         );
         reduce(
@@ -568,6 +687,52 @@ mod tests {
         assert_eq!(s.install_status, ModInstallStatus::Idle);
         assert_eq!(s.installed.len(), 1);
         assert_eq!(s.installed_status, ModListStatus::Ready);
+    }
+
+    /// Progress and a cancel land only on the install they name, and a
+    /// cancel is not a failure.
+    #[test]
+    fn install_progress_and_cancel_follow_the_install_they_name() {
+        let mut s = ModsState::default();
+        reduce(
+            &mut s,
+            &ModsEvent::Installing {
+                uid: "abc-123".into(),
+            },
+        );
+        for (uid, progress) in [("abc-123", Some(30)), ("other", Some(80))] {
+            reduce(
+                &mut s,
+                &ModsEvent::InstallProgressed {
+                    uid: uid.into(),
+                    progress,
+                },
+            );
+        }
+        assert_eq!(
+            s.install_status,
+            ModInstallStatus::Installing {
+                uid: "abc-123".into(),
+                progress: Some(30),
+            }
+        );
+        reduce(
+            &mut s,
+            &ModsEvent::InstallCancelled {
+                uid: "other".into(),
+            },
+        );
+        assert!(matches!(
+            s.install_status,
+            ModInstallStatus::Installing { .. }
+        ));
+        reduce(
+            &mut s,
+            &ModsEvent::InstallCancelled {
+                uid: "abc-123".into(),
+            },
+        );
+        assert_eq!(s.install_status, ModInstallStatus::Idle);
     }
 
     #[test]

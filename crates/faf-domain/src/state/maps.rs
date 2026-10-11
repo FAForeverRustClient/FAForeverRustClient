@@ -126,6 +126,7 @@ pub struct MatchmakerMapPool {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum MapListStatus {
+    Cancelled,
     #[default]
     Idle,
     Loading,
@@ -172,6 +173,11 @@ pub enum MapInstallStatus {
     #[serde(rename_all = "camelCase")]
     Installing {
         folder_name: String,
+        /// How much of the archive has arrived, in percent, while the server
+        /// said how big it is. `None` before the first byte, for a server that
+        /// sent no length, while the archive is unpacked, and for an
+        /// uninstall: a bar that sweeps rather than one that claims a number.
+        progress: Option<u8>,
     },
     Failed {
         reason: String,
@@ -200,6 +206,13 @@ impl LocalMapPreview {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CatalogueProgress {
+    pub pages: u32,
+    pub total_pages: Option<u32>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct MapsState {
@@ -208,6 +221,8 @@ pub struct MapsState {
     /// deliberately not what the Maps tab browses; see `browse` below.
     pub vault: Vec<VaultMap>,
     pub vault_status: MapListStatus,
+    #[serde(default)]
+    pub vault_progress: Option<crate::state::maps::CatalogueProgress>,
     /// One page of a server-side vault search, which is what the Maps tab
     /// shows. Both reference clients browse this way rather than filtering a
     /// downloaded catalogue.
@@ -253,6 +268,10 @@ pub const MAX_LOCAL_PREVIEWS: usize = 128;
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum MapsEvent {
     VaultLoading,
+    VaultProgress {
+        progress: crate::state::maps::CatalogueProgress,
+    },
+    VaultCancelled,
     VaultSearching,
     /// One page of a vault search. Carries the query it answers so a late
     /// response cannot be mistaken for the current one.
@@ -272,9 +291,10 @@ pub enum MapsEvent {
     VaultLoadFailed {
         reason: String,
     },
-    /// Catalogue records looked up by folder name for maps the catalogue does
-    /// not hold, which in practice means versions withdrawn from the vault.
-    /// Added to `vault`, never replacing anything in it.
+    /// Catalogue records looked up by folder or display name for maps the
+    /// catalogue does not hold: versions withdrawn from the vault, or a
+    /// catalogue that was never fetched. Added to `vault`, never replacing
+    /// anything in it.
     VaultFoldersResolved {
         maps: Vec<VaultMap>,
     },
@@ -306,6 +326,13 @@ pub enum MapsEvent {
     Installing {
         folder_name: String,
     },
+    /// How far the install of `folder_name` has got; see
+    /// [`MapInstallStatus::Installing`]. Lands only on the install it names.
+    #[serde(rename_all = "camelCase")]
+    InstallProgressed {
+        folder_name: String,
+        progress: Option<u8>,
+    },
     /// Install succeeded: carries the freshly-scanned installed list so the
     /// UI doesn't need a separate `LoadInstalled` round-trip (mirrors the
     /// Python client's `MapsManagerDialog` re-scanning after every change).
@@ -314,6 +341,13 @@ pub enum MapsEvent {
     },
     InstallFailed {
         reason: String,
+    },
+    /// The install of `folder_name` was called off: back to idle, and not a
+    /// failure, because nothing went wrong. Nothing of the map is left on
+    /// disk, so the installed list does not change.
+    #[serde(rename_all = "camelCase")]
+    InstallCancelled {
+        folder_name: String,
     },
     Uninstalled {
         installed: Vec<InstalledMap>,
@@ -342,11 +376,14 @@ pub enum MapsEvent {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum MapsCommand {
+    CancelVaultLoad,
     /// Fetch the whole catalogue once, as the folder-name lookup index.
     LoadVault,
     /// Fetch one page of a vault search, the way both reference clients
     /// browse. Submit-driven: sent on search, sort and page changes.
-    SearchVault { query: MapVaultQuery },
+    SearchVault {
+        query: MapVaultQuery,
+    },
     /// Scan the user's maps folder (mirrors `MapsManagerDialog::setup_maplist`).
     LoadInstalled,
     /// Look maps up by folder name that the catalogue does not hold (#323).
@@ -360,7 +397,21 @@ pub enum MapsCommand {
     /// thumbnail URL is the only reliable address, so the UI asks for it once a
     /// tile has run out of other art.
     #[serde(rename_all = "camelCase")]
-    ResolveVaultFolders { folder_names: Vec<String> },
+    ResolveVaultFolders {
+        folder_names: Vec<String>,
+    },
+    /// Look maps up by display name that the catalogue does not hold yet.
+    ///
+    /// For the tournament pages, which name a map the way its organiser chose
+    /// it and often leave its size out. The whole catalogue would answer that
+    /// too, and it is twelve megabytes a player opening a map pool should not
+    /// pay for, so only the names still missing are asked about. Matched
+    /// without regard to case; answered with `VaultFoldersResolved`, since the
+    /// records join `vault` the same way.
+    #[serde(rename_all = "camelCase")]
+    ResolveVaultNames {
+        display_names: Vec<String>,
+    },
     /// Read preview art straight out of the named installed map folders.
     ///
     /// On demand rather than with the folder scan: a full maps folder is
@@ -369,18 +420,37 @@ pub enum MapsCommand {
     /// about to show, and each folder is read once for good: both sizes at a
     /// time, so a tile and a detail pane never race to re-read the same map.
     #[serde(rename_all = "camelCase")]
-    LoadLocalPreviews { folder_names: Vec<String> },
+    LoadLocalPreviews {
+        folder_names: Vec<String>,
+    },
     #[serde(rename_all = "camelCase")]
-    LoadMatchmakerPools { queue_name: String },
+    LoadMatchmakerPools {
+        queue_name: String,
+    },
     /// Download and extract a map version's zip (mirrors `maps._doDownloadMap`).
     #[serde(rename_all = "camelCase")]
     InstallMap {
         folder_name: String,
         download_url: String,
     },
+    /// Call off the install of `folder_name` while it is still running.
+    ///
+    /// A map can be half a gigabyte, and until this the only way to stop one
+    /// was to close the client. The download stops where it is and its file
+    /// is deleted; an archive already being unpacked is unpacked into a
+    /// private folder that is removed instead of renamed into place, so the
+    /// maps folder is left as it was either way. Does nothing once the
+    /// install has finished, or for an uninstall, which is not stopped
+    /// half-way on purpose: a half-deleted map is worse than either.
+    #[serde(rename_all = "camelCase")]
+    CancelInstall {
+        folder_name: String,
+    },
     /// Delete a map folder (mirrors `MapsManagerDialog::delete_map`).
     #[serde(rename_all = "camelCase")]
-    UninstallMap { folder_name: String },
+    UninstallMap {
+        folder_name: String,
+    },
     /// Withdraw a map version from the vault, or put it back (mirrors
     /// `MapService.hideMapVersion`, which only ever hides).
     ///
@@ -390,12 +460,23 @@ pub enum MapsCommand {
     /// carries the flag rather than assuming, because the client is not the
     /// authority on that: the server is.
     #[serde(rename_all = "camelCase")]
-    SetMapVersionHidden { version_id: i32, hidden: bool },
+    SetMapVersionHidden {
+        version_id: i32,
+        hidden: bool,
+    },
 }
 
 pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
     match event {
-        MapsEvent::VaultLoading => state.vault_status = MapListStatus::Loading,
+        MapsEvent::VaultLoading => {
+            state.vault_status = MapListStatus::Loading;
+            state.vault_progress = None;
+        }
+        MapsEvent::VaultProgress { progress } => state.vault_progress = Some(progress.clone()),
+        MapsEvent::VaultCancelled => {
+            state.vault_status = MapListStatus::Cancelled;
+            state.vault_progress = None;
+        }
         MapsEvent::VaultLoaded { maps } => {
             // The catalogue arrives once, after a crawl of the whole vault
             // that takes long enough for the Play tab to have looked up the
@@ -503,6 +584,32 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
         MapsEvent::Installing { folder_name } => {
             state.install_status = MapInstallStatus::Installing {
                 folder_name: folder_name.clone(),
+                progress: None,
+            }
+        }
+        MapsEvent::InstallProgressed {
+            folder_name,
+            progress,
+        } => {
+            // Only onto the install it measures: a step that arrives after
+            // that install ended, or was called off, describes nothing.
+            if let MapInstallStatus::Installing {
+                folder_name: installing,
+                progress: shown,
+            } = &mut state.install_status
+            {
+                if installing == folder_name {
+                    *shown = *progress;
+                }
+            }
+        }
+        MapsEvent::InstallCancelled { folder_name } => {
+            if matches!(
+                &state.install_status,
+                MapInstallStatus::Installing { folder_name: installing, .. }
+                    if installing == folder_name
+            ) {
+                state.install_status = MapInstallStatus::Idle;
             }
         }
         MapsEvent::Installed { installed } => {
@@ -776,7 +883,8 @@ mod tests {
         assert_eq!(
             s.install_status,
             MapInstallStatus::Installing {
-                folder_name: "scmp_009.v0001".into()
+                folder_name: "scmp_009.v0001".into(),
+                progress: None,
             }
         );
         reduce(
@@ -788,6 +896,99 @@ mod tests {
         assert_eq!(s.install_status, MapInstallStatus::Idle);
         assert_eq!(s.installed.len(), 1);
         assert_eq!(s.installed_status, MapListStatus::Ready);
+    }
+
+    /// The bar follows the download of the map it names, and nothing else: a
+    /// step for another folder, or one that arrives after the install ended,
+    /// is dropped.
+    #[test]
+    fn install_progress_lands_only_on_the_install_it_measures() {
+        let mut s = MapsState::default();
+        reduce(
+            &mut s,
+            &MapsEvent::InstallProgressed {
+                folder_name: "scmp_009.v0001".into(),
+                progress: Some(10),
+            },
+        );
+        assert_eq!(s.install_status, MapInstallStatus::Idle, "nothing running");
+
+        reduce(
+            &mut s,
+            &MapsEvent::Installing {
+                folder_name: "scmp_009.v0001".into(),
+            },
+        );
+        reduce(
+            &mut s,
+            &MapsEvent::InstallProgressed {
+                folder_name: "scmp_009.v0001".into(),
+                progress: Some(40),
+            },
+        );
+        reduce(
+            &mut s,
+            &MapsEvent::InstallProgressed {
+                folder_name: "another.v0001".into(),
+                progress: Some(90),
+            },
+        );
+        assert_eq!(
+            s.install_status,
+            MapInstallStatus::Installing {
+                folder_name: "scmp_009.v0001".into(),
+                progress: Some(40),
+            }
+        );
+        // Unpacking has nothing to measure.
+        reduce(
+            &mut s,
+            &MapsEvent::InstallProgressed {
+                folder_name: "scmp_009.v0001".into(),
+                progress: None,
+            },
+        );
+        assert_eq!(
+            s.install_status,
+            MapInstallStatus::Installing {
+                folder_name: "scmp_009.v0001".into(),
+                progress: None,
+            }
+        );
+    }
+
+    /// Calling an install off is not a failure, and it ends only the install
+    /// it names: a late cancel for another folder leaves the running one.
+    #[test]
+    fn a_cancelled_install_goes_back_to_idle_without_a_failure() {
+        let mut s = MapsState {
+            installed: vec![installed_map("other.v0001")],
+            ..MapsState::default()
+        };
+        reduce(
+            &mut s,
+            &MapsEvent::Installing {
+                folder_name: "scmp_009.v0001".into(),
+            },
+        );
+        reduce(
+            &mut s,
+            &MapsEvent::InstallCancelled {
+                folder_name: "another.v0001".into(),
+            },
+        );
+        assert!(matches!(
+            s.install_status,
+            MapInstallStatus::Installing { .. }
+        ));
+        reduce(
+            &mut s,
+            &MapsEvent::InstallCancelled {
+                folder_name: "scmp_009.v0001".into(),
+            },
+        );
+        assert_eq!(s.install_status, MapInstallStatus::Idle);
+        assert_eq!(s.installed.len(), 1, "the installed list is untouched");
     }
 
     #[test]

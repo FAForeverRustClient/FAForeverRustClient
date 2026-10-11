@@ -79,6 +79,11 @@ function block(entry: MarkdownBlock, key: number) {
     );
   }
 
+  // A blank line the organiser typed is a gap they meant. As an empty
+  // paragraph it had no height at all, and a briefing of sections ran together
+  // into one block.
+  if (spans.length === 0) return <div key={key} className="rich-text-gap" aria-hidden />;
+
   return (
     <p key={key} className="rich-text-line">
       {spans}

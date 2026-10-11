@@ -49,6 +49,53 @@ pub fn add_text(
     emit(out, kind, Some(text), title, body, action);
 }
 
+/// A failure whose body is a reason the client itself produced: an OS error,
+/// the HTTP client's English, a tool's complaint. Never the server's own
+/// words, such as a kick or a ban.
+///
+/// The reason travels as the entry's `reason` parameter as well as the
+/// English body. That parameter is what tells the UI the body is a failure
+/// reason it may word plainly, keeping the original on hover; a body without
+/// it is shown as sent. See `notificationText.ts`.
+pub fn add_failure(
+    out: &EventSink,
+    text: NotificationText,
+    title: impl Into<String>,
+    reason: impl Into<String>,
+) {
+    let reason = reason.into();
+    add_text(
+        out,
+        NotificationKind::Error,
+        text.with("reason", &reason),
+        title,
+        reason,
+        None,
+    );
+}
+
+/// [`add_failure`] for a failure that must be read whatever the alert
+/// settings say: a game, a replay or a search that did not start. Marked the
+/// same way, so the UI words the reason plainly here too, and with the action
+/// that leads back to what failed.
+pub fn add_required_failure(
+    out: &EventSink,
+    text: NotificationText,
+    title: impl Into<String>,
+    reason: impl Into<String>,
+    action: Option<NotificationAction>,
+) {
+    let reason = reason.into();
+    add_required_text(
+        out,
+        NotificationKind::Error,
+        text.with("reason", &reason),
+        title,
+        reason,
+        action,
+    );
+}
+
 /// Retain an operational message even when optional event alerts are disabled.
 /// Server rejections and forced game termination must never disappear because
 /// the user turned off match and chat notifications.

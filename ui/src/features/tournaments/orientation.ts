@@ -165,15 +165,20 @@ export function listKind(event: Tourney): string {
   return t("tournaments.format.kind", { size: `${event.teamSize}v${event.teamSize}`, bracket: bracketShort(event.bracketKind) });
 }
 
-/** The rating limits in one line, or empty where there are none. */
-export function listRatingLine(event: Tourney, t: Translate): string {
+/** The rating limits, the player's and the team's, or none. */
+export function listRatingParts(event: Tourney, t: Translate): string[] {
   const { min, max, maxTeam } = event.rating;
   const parts: string[] = [];
   if (min !== null && max !== null) parts.push(t("tournaments.list.ratingRange", { min, max }));
   else if (min !== null) parts.push(t("tournaments.list.ratingMin", { min }));
   else if (max !== null) parts.push(t("tournaments.list.ratingMax", { max }));
   if (maxTeam !== null) parts.push(t("tournaments.list.teamCap", { cap: maxTeam }));
-  return parts.join(" · ");
+  return parts;
+}
+
+/** The rating limits in one line, or empty where there are none. */
+export function listRatingLine(event: Tourney, t: Translate): string {
+  return listRatingParts(event, t).join(" · ");
 }
 
 /**
@@ -211,6 +216,20 @@ export function listCountdowns(event: Tourney, now: number): ListCountdowns {
   const signupsClose =
     live && event.status === "signup" && signupsOpen === null ? ahead(event.signupClosesAt) : null;
   return { signupsOpen, eventStarts, signupsClose };
+}
+
+/**
+ * How far through its signup window an event is, from 0 to 1, while signups
+ * are open and a close is set; null otherwise. The window runs from the
+ * opening, or from the event's creation where it never had one.
+ */
+export function signupProgress(event: Tourney, now: number): number | null {
+  if (listCountdowns(event, now).signupsClose === null || event.signupClosesAt === null) return null;
+  const from = event.signupOpensAt ?? event.createdAt;
+  if (from === null) return null;
+  const span = event.signupClosesAt - from;
+  if (span <= 0) return null;
+  return Math.min(1, Math.max(0, (now - from) / span));
 }
 
 /** The finished events grouped by the year they were played, newest first. */

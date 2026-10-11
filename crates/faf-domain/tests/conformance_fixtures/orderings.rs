@@ -430,6 +430,7 @@ slice_table! {
     galactic_war => "galacticWar",
     guides => "guides",
     client_update => "clientUpdate",
+    connectivity => "connectivity",
     settings => "settings",
     changelog => "changelog",
 }

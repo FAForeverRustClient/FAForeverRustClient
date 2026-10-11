@@ -10,6 +10,19 @@
 import type { FilterConstraint, FilterField, GameFilterRule } from "./GameFiltersModal";
 
 /**
+ * How many rules are hiding games, for the count on the toolbar's Filters
+ * button: the rules while they are applied.
+ *
+ * A rule that is not applied hides nothing, so it is not counted: the button
+ * used to count every rule, which read as filters on while "Apply filters" was
+ * off. The hide switches are not counted. They sit in the toolbar beside the
+ * button and show for themselves whether they are on.
+ */
+export function activeFilterCount(applyFilters: boolean, ruleCount: number): number {
+  return applyFilters ? ruleCount : 0;
+}
+
+/**
  * A filter value as the dialog stores it.
  *
  * Surrounding quotes come off because people paste them in from the Java

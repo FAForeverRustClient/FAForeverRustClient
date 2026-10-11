@@ -20,7 +20,8 @@ interface Props<T extends string | number> {
    * with `{...sectionPanelProps(prefix, active)}`, which supplies that id,
    * `role="tabpanel"` and the `aria-labelledby` back to its tab. Without one
    * the tabs still get stable ids, but no `aria-controls`, since it would
-   * point at an element that does not exist.
+   * point at an element that does not exist. Inactive panels are empty hidden
+   * shells here; callers mount only the active panel's expensive content.
    */
   idPrefix?: string;
 }
@@ -47,6 +48,17 @@ export function sectionPanelProps(prefix: string, id: string | number) {
     "aria-labelledby": sectionTabId(prefix, id),
     tabIndex: 0,
   };
+}
+
+/** DOM targets for lazy panels, without mounting their views or side effects. */
+export function InactiveSectionPanels<T extends string | number>({ prefix, active, items }: {
+  prefix: string;
+  active: T | null;
+  items: readonly { id: T }[];
+}) {
+  return <>{items.filter((item) => item.id !== active).map((item) => (
+    <div key={item.id} {...sectionPanelProps(prefix, item.id)} hidden tabIndex={-1} />
+  ))}</>;
 }
 
 /**
@@ -95,7 +107,7 @@ export function SectionTabs<T extends string | number>({
   const tabStop = activeIndex >= 0 ? activeIndex : 0;
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.nativeEvent.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
     const current = items.findIndex((item) => sectionTabId(prefix, item.id) === (event.target as HTMLElement).id);
     const next = nextTabIndex(event.key, current >= 0 ? current : activeIndex, items.length);
     if (next === null) return;
@@ -105,29 +117,32 @@ export function SectionTabs<T extends string | number>({
   };
 
   return (
-    <nav
-      ref={listRef}
-      className={`section-tabs ${className}`.trim()}
-      role="tablist"
-      aria-label={ariaLabel}
-      onKeyDown={onKeyDown}
-    >
-      {items.map((item, index) => (
-        <button
-          key={item.id}
-          type="button"
-          role="tab"
-          id={sectionTabId(prefix, item.id)}
-          aria-selected={active === item.id}
-          aria-controls={idPrefix ? sectionPanelId(prefix, item.id) : undefined}
-          tabIndex={index === tabStop ? 0 : -1}
-          className={active === item.id ? "active" : undefined}
-          onClick={() => onChange(item.id)}
-        >
-          <span className="section-tab-label">{item.label}</span>
-          {item.count !== undefined && <span className="section-tab-count">{item.count}</span>}
-        </button>
-      ))}
-    </nav>
+    <>
+      <nav
+        ref={listRef}
+        className={`section-tabs ${className}`.trim()}
+        role="tablist"
+        aria-label={ariaLabel}
+        onKeyDown={onKeyDown}
+      >
+        {items.map((item, index) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            id={sectionTabId(prefix, item.id)}
+            aria-selected={active === item.id}
+            aria-controls={idPrefix ? sectionPanelId(prefix, item.id) : undefined}
+            tabIndex={index === tabStop ? 0 : -1}
+            className={active === item.id ? "active" : undefined}
+            onClick={() => onChange(item.id)}
+          >
+            <span className="section-tab-label">{item.label}</span>
+            {item.count !== undefined && <span className="section-tab-count">{item.count}</span>}
+          </button>
+        ))}
+      </nav>
+      {idPrefix && <InactiveSectionPanels prefix={prefix} active={active} items={items} />}
+    </>
   );
 }

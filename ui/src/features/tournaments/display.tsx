@@ -3,7 +3,7 @@
 // The website's three header switches: "View as player" (an organiser browses
 // without their tools), "Show players" (a team's players instead of its name
 // in the bracket and the match lists) and "Streamer mode" (results hidden for
-// an on-stream reveal, one match at a time). None of them is ever sent to the
+// an on-stream reveal). None of them is ever sent to the
 // service; each is kept in this machine's storage, as the website keeps them
 // in the browser's, and each has a keyboard shortcut.
 
@@ -17,15 +17,21 @@ export interface TourneyDisplay {
   streamer: boolean;
   /** Whether this match's result is hidden right now. */
   masked: (entry: TourneyMatch) => boolean;
-  /** Reveal one hidden result, or hide it again. */
-  toggleReveal: (matchId: string) => void;
+  /**
+   * Whether this match's own teams are shown although a result that decided
+   * them is hidden: the matchup, "Player 1 vs Player 3", and never the result.
+   */
+  matchupShown: (entry: TourneyMatch) => boolean;
+  /** Show one match's teams, or hide them again. */
+  toggleMatchup: (matchId: string) => void;
 }
 
 const PLAIN: TourneyDisplay = {
   showPlayers: false,
   streamer: false,
   masked: () => false,
-  toggleReveal: () => undefined,
+  matchupShown: () => false,
+  toggleMatchup: () => undefined,
 };
 
 export const TourneyDisplayContext = createContext<TourneyDisplay>(PLAIN);
@@ -34,9 +40,13 @@ export function useTourneyDisplay(): TourneyDisplay {
   return useContext(TourneyDisplayContext);
 }
 
-/** A result streamer mode hides: a finished match not revealed yet. */
-export function isMasked(streamer: boolean, revealed: Set<string>, entry: TourneyMatch): boolean {
-  return streamer && entry.status === "done" && !revealed.has(entry.id);
+/**
+ * A result streamer mode hides: every finished match, for as long as the mode
+ * is on. The eye shows who plays whom, never the score; a result is seen by
+ * switching the mode off.
+ */
+export function isMasked(streamer: boolean, entry: TourneyMatch): boolean {
+  return streamer && entry.status === "done";
 }
 
 function readFlag(key: string): boolean {
@@ -70,9 +80,14 @@ export function useStoredFlag(key: string): [boolean, (on: boolean) => void] {
 
 const isString = (value: unknown): value is string => typeof value === "string";
 
-/** The results revealed during streamer mode, per tournament (`faf_reveal_{id}`). */
-export function useRevealed(tournamentId: string): [Set<string>, (matchId: string) => void] {
-  const key = `faf_reveal_${tournamentId}`;
+/**
+ * The matches whose teams were shown during streamer mode, per tournament.
+ *
+ * A key of its own: `faf_reveal_{id}` held revealed *results* when the eye
+ * still showed those, and reading it here would turn each into a matchup.
+ */
+export function useShownMatchups(tournamentId: string): [Set<string>, (matchId: string) => void] {
+  const key = `faf_matchup_${tournamentId}`;
   // Held with the key it was read for: opening another tournament reads that
   // one's set on the spot rather than showing the last one's for a render.
   const [held, setHeld] = useState(() => ({ key, set: loadStoredSet(key, isString) }));

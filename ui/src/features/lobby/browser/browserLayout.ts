@@ -4,8 +4,9 @@
 // list's columns and the panel next to them could not, so the only way to read
 // a long lobby title was to hope. Both are arithmetic rather than rendering,
 // so both live here with the bounds the backend enforces anyway. What a
-// divider drag does to a set of widths is the same question every other list
-// in the client asks, so the answer lives in `shared/tableColumns`.
+// divider drag does to a set of widths, and how a set is fitted to the space
+// it has, is the same question every other list in the client asks, so the
+// answer lives in `shared/tableColumns`.
 
 import {
   MAX_BROWSER_COLUMNS,
@@ -15,14 +16,31 @@ import {
 import {
   columnTemplate as templateFor,
   resolveColumnWidths,
-  withBoundaryDragged,
 } from "../../../shared/tableColumns";
 
 /**
  * The designed widths, in the order the header lists them: game, tags, map,
  * players, rating, age.
+ *
+ * Sized for the client's default 1100 by 720 window, where the list has about
+ * 700 pixels for its columns: an ordinary lobby title and its host fit the
+ * game column, a map name with its version fits the map column, and every
+ * header label fits beside its sort arrow. The tags column gave up the most
+ * for it: what does not fit there folds into a "+N more" chip anyway. The set
+ * this replaced added up to 935 pixels, so at that size every column was drawn
+ * at three quarters and titles, map names and three headings were cut off.
  */
-export const DEFAULT_COLUMN_WIDTHS: readonly number[] = [320, 190, 170, 80, 100, 75];
+export const DEFAULT_COLUMN_WIDTHS: readonly number[] = [254, 96, 150, 72, 80, 52];
+
+/**
+ * The narrowest each column is drawn, in the same order: a thumbnail and the
+ * start of a title with its host under it, one tag, the start of a map name,
+ * and the figures under Players, Rating and Age. Below these a column is not
+ * worth having on screen, so a list that cannot fit them scrolls sideways
+ * instead (see `fitColumns`). Together they fit the list beside the details
+ * panel at the default window, with a game selected.
+ */
+export const COLUMN_FLOORS: readonly number[] = [160, 40, 96, 36, 36, 36];
 
 /** How many columns the list had before the tags got one of their own. */
 const COLUMNS_BEFORE_TAGS = 5;
@@ -31,46 +49,25 @@ const COLUMNS_BEFORE_TAGS = 5;
  * The game column, which is the flexible one.
  *
  * It is the title, the host and the tags, so it is what a wide window should
- * be spent on and what a narrow one has to give up first. Its stored width is
- * kept -- a settings file written by an older release still means the same
- * thing position by position -- but nothing reads it any more: the column is
- * whatever the row has left after the other four.
+ * be spent on and what a narrow one takes from first. Its width is where that
+ * stops: below it, every column narrows in proportion.
  */
 export const FLEXIBLE_COLUMN = 0;
 
 /** The gap between two columns, matching `.game-browser-row`. */
 const COLUMN_GAP_PX = 16;
-/** A row's own padding either side, matching `.game-browser-row`. */
-const ROW_PADDING_PX = 16;
-/** The narrowest the game column can be dragged: a thumbnail and a word. */
-export const MIN_GAME_COLUMN_PX = 120;
-/** The smallest share a column is drawn at: only a window a few dozen pixels wide gets there. */
-const MIN_COLUMN_SCALE = 0.02;
-
 /**
- * What the columns are drawn at, from 1 (as dragged) down, so that the row
- * fits a list `listWidth` wide.
- *
- * The list is always as wide as the space it has (issue 341). Forced wider,
- * it scrolled sideways on a smaller screen and was far wider than anything in
- * it; left to squeeze one column, that column went first and then everything
- * spilled. So a list narrower than the columns together draws every column
- * narrower in proportion, the game column included, and the widths stored are
- * untouched: on a wider screen they come back exactly. A list wider than the
- * columns gives what is left over to the game column.
+ * The padding either side of the header and of every row, matching
+ * `.game-browser-head` and `.game-browser-row`, which must agree with each
+ * other or every cell sits off its divider. The live fitting reads it off the
+ * header (`gridColumnSpace`); this is the same figure for the arithmetic done
+ * before anything is laid out.
  */
-export function columnScale(listWidth: number, widths: readonly number[]): number {
-  if (listWidth <= 0) return 1;
-  const total = widths.reduce((sum, width) => sum + width, 0);
-  if (total <= 0) return 1;
-  const usable = listWidth - 2 * ROW_PADDING_PX - COLUMN_GAP_PX * (widths.length - 1);
-  return Math.min(1, Math.max(MIN_COLUMN_SCALE, usable / total));
-}
-
-/** The widths as drawn at `scale`. */
-export function scaledColumnWidths(widths: readonly number[], scale: number): number[] {
-  return widths.map((width) => Math.max(1, Math.round(width * scale)));
-}
+export const ROW_PADDING_PX = 12;
+/** The list panel's border and the room its vertical scrollbar takes. */
+const LIST_FRAME_PX = 14;
+/** The track the divider between the list and the details panel stands in. */
+const DETAIL_GAP_PX = 12;
 
 /** The detail panel's designed width, matching `custom-games.css`. */
 export const DEFAULT_DETAIL_WIDTH = 270;
@@ -90,48 +87,53 @@ export function columnWidths(stored: readonly number[] | undefined): number[] {
   return resolveColumnWidths(upgraded, DEFAULT_COLUMN_WIDTHS).slice(0, MAX_BROWSER_COLUMNS);
 }
 
-/** For `withBoundaryDragged`: every column of the game list has a width of its own. */
-const NO_FLEXIBLE_COLUMN = -1;
-
-/**
- * The widths after the divider in front of `boundary` has been dragged.
- *
- * Pair-wise, so the line lands under the cursor: what the column on the right
- * gives up the column on the left takes on. Resizing one column on its own
- * and letting the game column absorb it is what this replaced, and it meant
- * grabbing the divider between Map and Players moved the divider between Game
- * and Map while the one under the cursor stayed put.
- */
-export function withColumnResized(
-  widths: readonly number[],
-  boundary: number,
-  delta: number,
-  game = FLEXIBLE_COLUMN,
-): number[] {
-  // The game column trades width like any other now: it has a width of its
-  // own, so the divider beside it moves both of its neighbours and nothing
-  // else, on any screen. It stops at a readable floor, whichever side of the
-  // divider it is on once the columns can be moved.
-  const floor = Math.min(0, MIN_GAME_COLUMN_PX - widths[game]);
-  const bounded = boundary === game + 1 && delta < 0
-    ? Math.max(delta, floor)
-    : boundary === game && delta > 0
-      ? Math.min(delta, -floor)
-      : delta;
-  return withBoundaryDragged(widths, boundary, bounded, NO_FLEXIBLE_COLUMN);
-}
-
 /**
  * The CSS `grid-template-columns` for a set of widths.
  *
- * Four columns at the width they were given and the game column taking the
- * rest. The slack had a track of its own for one release, which kept the
- * columns off the far edge of a wide window but left the list stopping a
- * third of the way across it with nothing after it. A title that could have
- * used those pixels was being cut off at the same time.
+ * Five columns at the width they were given and the game column taking the
+ * rest, never less than its floor. The slack had a track of its own for one
+ * release, which kept the columns off the far edge of a wide window but left
+ * the list stopping a third of the way across it with nothing after it. A
+ * title that could have used those pixels was being cut off at the same time.
  */
 export function columnTemplate(widths: readonly number[], game = FLEXIBLE_COLUMN): string {
-  return templateFor(widths, game);
+  return templateFor(widths, game, COLUMN_FLOORS[FLEXIBLE_COLUMN]);
+}
+
+/**
+ * How wide the list has to be to draw `widths` without narrowing any of them:
+ * the columns, the gaps between them and the frame around them.
+ */
+export function listWidthFor(widths: readonly number[]): number {
+  const columns = widths.reduce(
+    (total, width, index) => total + Math.max(COLUMN_FLOORS[index] ?? 0, width),
+    0,
+  );
+  return columns + COLUMN_GAP_PX * (widths.length - 1) + 2 * ROW_PADDING_PX + LIST_FRAME_PX;
+}
+
+/**
+ * Whether the details panel, with no game in it, steps aside for the list.
+ *
+ * Empty, the panel says "select a game" and nothing else, and at the default
+ * window it took 270 pixels from a list that was cutting its titles and its
+ * headings short for want of them. So an empty panel is drawn only where the
+ * list beside it still has room for its columns as they are; anywhere
+ * narrower the list takes the whole row until a game is picked. Picking one
+ * brings the panel back at its usual width, and the rows stay where they were,
+ * so the click that selected a game is still on it for the second click of a
+ * double click.
+ *
+ * Unmeasured (zero), the panel stays: a list that has not been laid out yet
+ * has nothing to be squeezed.
+ */
+export function emptyDetailGivesWay(
+  layoutWidth: number,
+  detailWidth: number,
+  widths: readonly number[],
+): boolean {
+  if (layoutWidth <= 0) return false;
+  return layoutWidth - DETAIL_GAP_PX - detailWidth < listWidthFor(widths);
 }
 
 /** The detail panel's width after a drag, bounded the way the backend bounds it. */

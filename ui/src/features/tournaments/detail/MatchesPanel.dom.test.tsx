@@ -132,7 +132,7 @@ describe("MatchesPanel answering a reported result, mounted", () => {
         payload: { failure: { action, reason: "The report was already confirmed by an organiser", kind: "rejected" } },
       },
     });
-    expect(screen.getByText("The report was already confirmed by an organiser")).toBeDefined();
+    expect(screen.getByText("The report was already confirmed by an organiser.")).toBeDefined();
     expect(reject.hasAttribute("disabled")).toBe(false);
     expect(within(second).getByRole("button", { name: "Confirm" }).hasAttribute("disabled")).toBe(false);
   });
@@ -158,6 +158,6 @@ describe("MatchesPanel answering a reported result, mounted", () => {
       },
     });
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByText("Match already decided")).toBeDefined();
+    expect(screen.getByText("Match already decided.")).toBeDefined();
   });
 });

@@ -642,14 +642,14 @@
 }
 
 .changelog-old {
-  color: var(--color-error);
+  color: var(--color-error-text);
   text-decoration: line-through;
   text-decoration-color: color-mix(in srgb, var(--color-error) 55%, transparent);
 }
 
 .changelog-new {
   font-weight: 600;
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .changelog-change svg {
@@ -736,22 +736,6 @@
   .changelog-skeleton > span {
     animation: none;
   }
-}
-
-.changelog-note-failed {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  font-size: 13px;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.changelog-note-failed p {
-  margin: 0;
 }
 
 /* ── Narrow ────────────────────────────────────────────────────────────── */

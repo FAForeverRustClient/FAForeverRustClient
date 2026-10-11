@@ -12,6 +12,7 @@
 // account login, and the small fallback below covers a tab mounted before that
 // event arrived.
 
+import { sectionPanelProps } from "../../design-system/SectionTabs";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { ipc } from "../../ipc/client";
@@ -20,7 +21,7 @@ import { Icon } from "../../design-system/Icon";
 import type { ChatChannel, ChatStatus, Game, Reaction } from "../../ipc/bindings";
 import { isPrivateChannel } from "../../store/reducer";
 import { typistsAt } from "../../store/reducers/chat";
-import { ChannelTabs } from "./ChannelTabs";
+import { CHAT_TABS_ID, ChannelTabs } from "./ChannelTabs";
 import type { ChatGameLink } from "./messages/chatFormat";
 import { Composer } from "./messages/Composer";
 import { ConversationAside } from "./ConversationAside";
@@ -308,6 +309,7 @@ export function ChatView() {
           onLeave={(c) => void leaveChannel(c)}
         />
 
+        <div className="chat-channel-panel" {...(active ? sectionPanelProps(CHAT_TABS_ID, active.name) : {})}>
         {/* The strip above already names the channel, so this row carries only
             what it does not: the topic, and the controls that act on the
             conversation. */}
@@ -395,6 +397,7 @@ export function ChatView() {
           replyTo={replyTo}
           onCancelReply={() => setReplyTo(null)}
         />
+        </div>
       </section>
 
       {active && !isPrivateChannel(active.name) && (

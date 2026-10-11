@@ -1,0 +1,256 @@
+/* The connectivity check's results and the live relay table, under Settings >
+   Connectivity. Drawn as blocks between the setting rows, so they keep the
+   page's rhythm: the same padding and rule as `.setting-block`, and the
+   status colours only on the marks that carry an outcome. */
+
+.connectivity-check {
+  gap: var(--space-3);
+}
+
+.connectivity-check-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.connectivity-check-when {
+  margin-left: auto;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.connectivity-check-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.connectivity-check-lines:empty {
+  display: none;
+}
+
+.connectivity-check-line {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: var(--space-2);
+  padding: 10px var(--space-3);
+  background: var(--color-surface);
+}
+
+.connectivity-check-line + .connectivity-check-line {
+  border-top: 1px solid var(--color-border);
+}
+
+.connectivity-check-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--color-muted);
+}
+
+[data-outcome="pass"] > .connectivity-check-mark {
+  color: var(--color-ok-text);
+}
+
+[data-outcome="warn"] > .connectivity-check-mark {
+  color: var(--color-warn-text);
+}
+
+[data-outcome="fail"] > .connectivity-check-mark {
+  color: var(--color-error-text);
+}
+
+/* The arrows turn while a line is still being found out; still for anyone
+   who asked for less motion. Transform only. */
+[data-outcome="running"] > .connectivity-check-mark svg {
+  animation: connectivity-check-spin 1.2s linear infinite;
+}
+
+@keyframes connectivity-check-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-outcome="running"] > .connectivity-check-mark svg {
+    animation: none;
+  }
+}
+
+:root[data-reduced-motion="true"] [data-outcome="running"] > .connectivity-check-mark svg {
+  animation: none;
+}
+
+.connectivity-check-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  line-height: 20px;
+}
+
+.connectivity-check-title {
+  color: var(--color-text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.connectivity-check-title.is-address {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.connectivity-check-detail {
+  color: var(--color-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.connectivity-check-log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.connectivity-check-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.connectivity-check-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  margin-right: auto;
+  padding: 0 var(--space-2) 0 0;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.connectivity-check-toggle:hover {
+  color: var(--color-accent);
+}
+
+.connectivity-check-toggle:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.connectivity-check-toggle svg {
+  color: var(--color-muted);
+  transition: transform 150ms ease;
+}
+
+.connectivity-check-toggle svg.is-open {
+  transform: rotate(90deg);
+}
+
+.connectivity-check-note {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+/* The log block spaces its children with a gap, which the notice's own
+   margin would add to. */
+.status-notice.connectivity-check-failure {
+  margin: 0;
+}
+
+.connectivity-check-log-text {
+  max-height: 280px;
+  margin: 0;
+  padding: var(--space-3);
+  overflow: auto;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.connectivity-check-log-text:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.connectivity-relay-note {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.connectivity-relay {
+  gap: var(--space-2);
+}
+
+.connectivity-relay-summary {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.connectivity-relay-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.connectivity-relay-table th {
+  padding: 6px var(--space-2);
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.connectivity-relay-table td {
+  padding: 8px var(--space-2);
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.connectivity-relay-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.connectivity-relay-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--space-2);
+  background: var(--color-warn);
+  border-radius: var(--radius-pill);
+  vertical-align: middle;
+}
+
+[data-connected="true"] .connectivity-relay-dot {
+  background: var(--color-ok);
+}

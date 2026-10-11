@@ -27,6 +27,7 @@ import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ipc } from "../../ipc/client";
+import { plainError } from "../../shared/plainError";
 import { useAppStore } from "../../store/store";
 import "./replays.css";
 
@@ -57,6 +58,7 @@ export function ReplayStartDialog() {
 
   const failed = status.type === "failed" && announced.current;
   if (hidden || (status.type !== "connecting" && !failed)) return null;
+  const percent = preparing?.progress == null ? null : Math.min(100, Math.max(0, preparing.progress));
 
   const close = () => {
     announced.current = false;
@@ -67,9 +69,14 @@ export function ReplayStartDialog() {
     <Modal className="confirm-modal replay-starting-modal" onClose={close}>
       <div className="confirm-dialog-content">
         <h2>{t(failed ? "replays.starting.failedTitle" : "replays.starting.title")}</h2>
-        <p className="replay-starting-detail">
+        {/* A failure plainly, with the launcher's own words on hover for a
+            bug report: they can name paths and `os error` numbers. */}
+        <p
+          className="replay-starting-detail"
+          title={failed && status.type === "failed" ? status.payload.reason : undefined}
+        >
           {failed && status.type === "failed"
-            ? status.payload.reason
+            ? plainError(status.payload.reason)
             : t("replays.starting.detail")}
         </p>
         {!failed && preparing && (
@@ -79,14 +86,19 @@ export function ReplayStartDialog() {
           </p>
         )}
         {!failed && (
+          // Filled when the step in hand is measured (the replay's own
+          // download, an engine file), a sweep otherwise.
           <div
             className="replay-starting-bar"
-            data-indeterminate="true"
+            data-indeterminate={percent === null ? "true" : undefined}
             role="progressbar"
             aria-label={t("replays.starting.title")}
-            aria-valuetext={t("replays.starting.detail")}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={percent ?? undefined}
+            aria-valuetext={percent === null ? t("replays.starting.detail") : `${percent}%`}
           >
-            <span />
+            <span style={percent === null ? undefined : { transform: `scaleX(${percent / 100})` }} />
           </div>
         )}
         <div className="confirm-dialog-actions">

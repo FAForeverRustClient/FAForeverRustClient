@@ -10,6 +10,7 @@
 // on open, typing narrows, and the arrow keys walk the grid. The Java client's
 // emoticons popup is mouse-only and is worse for it.
 
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../../../design-system/Icon";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -34,6 +35,7 @@ export function EmojiPicker({ disabled, onPick }: Props) {
   const [active, setActive] = useState(0);
   const container = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const results = useMemo(() => searchEmoji(query), [query]);
   // Where each group starts in the flat list the arrow keys walk, so the
@@ -61,6 +63,8 @@ export function EmojiPicker({ disabled, onPick }: Props) {
     setActive(0);
   };
 
+  useOverlayLayer(open, () => { close(); triggerRef.current?.focus(); });
+
   const pick = (entry: EmojiEntry) => {
     onPick(entry.char);
     // The composer puts the caret back into the message after inserting, a
@@ -71,11 +75,7 @@ export function EmojiPicker({ disabled, onPick }: Props) {
   };
 
   const onKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      close();
-      return;
-    }
+    if (event.nativeEvent.isComposing) return;
     if (results.length === 0) return;
 
     if (event.key.startsWith("Arrow")) {
@@ -96,6 +96,7 @@ export function EmojiPicker({ disabled, onPick }: Props) {
   return (
     <div className="emoji-picker" ref={container}>
       <button
+        ref={triggerRef}
         type="button"
         className="emoji-trigger"
         disabled={disabled}

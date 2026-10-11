@@ -87,6 +87,12 @@ export function reduceClientUpdate(
           },
         },
       };
+    // Only a download in progress is called off, and the offer comes back
+    // rather than a failure, as in `faf_domain::state::client_update`.
+    case "downloadCancelled":
+      return state.status.type === "downloading"
+        ? { ...state, status: state.release ? { type: "available" } : { type: "idle" } }
+        : state;
     case "downloaded":
       return { ...state, status: { type: "ready", payload: { path: event.payload.path } } };
     case "installing":

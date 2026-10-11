@@ -411,10 +411,9 @@ async fn a_replaced_replay_launch_leaves_its_replacement_starting() {
         ReplayStatus::Connecting,
         "the replaced launch idled the one that replaced it"
     );
-    assert_eq!(
-        replays.download_status,
-        ReplayDownloadStatus::Downloading { uid: REPLACEMENT }
-    );
+    // A watch's download is a step of its launch, narrated through
+    // `preparing`; it never marks the library download's status.
+    assert_eq!(replays.download_status, ReplayDownloadStatus::Idle);
 
     // The replacement's own preparation still reaches its dialog.
     h.gates.release("download");
@@ -436,6 +435,38 @@ async fn a_replaced_replay_launch_leaves_its_replacement_starting() {
     );
     assert_eq!(h.process.replay_launches.load(Ordering::SeqCst), 1);
     assert!(!notification_titles(&h.app).contains(&"Replay failed".to_string()));
+}
+
+/// Watch pressed twice on the same replay while it is starting: a double
+/// click, or the card's Watch and then the panel's. The second is the same
+/// request and is dropped. It used to replace the first launch with itself,
+/// throwing away the download in progress and starting it again.
+#[tokio::test]
+async fn watching_a_replay_that_is_already_starting_changes_nothing() {
+    let h = replay_harness();
+
+    let first = spawn_command(&h.app, ReplayCommand::WatchVault { uid: REPLAY }.into());
+    h.gates.wait_entered("download").await;
+
+    // Returns at once rather than waiting at the download gate itself.
+    run_promptly(
+        &h.app,
+        ReplayCommand::WatchVault { uid: REPLAY }.into(),
+        "the repeated WatchVault",
+    )
+    .await;
+    let replays = h.app.snapshot().replays;
+    assert_eq!(replays.status, ReplayStatus::Connecting);
+    assert_eq!(replays.download_status, ReplayDownloadStatus::Idle);
+
+    h.gates.release("download");
+    h.gates.release("prepare");
+    finished(first, "the first WatchVault").await;
+    assert_eq!(
+        h.app.snapshot().replays.status,
+        ReplayStatus::Playing { uid: Some(REPLAY) }
+    );
+    assert_eq!(h.process.replay_launches.load(Ordering::SeqCst), 1);
 }
 
 /// A live replay refused before it became a launch, here a game whose start
@@ -481,6 +512,61 @@ async fn a_refused_live_replay_leaves_a_starting_replay_alone() {
     );
 }
 
+/// The `reason` parameter of every "Replay failed" notification raised so far,
+/// with the body it went out with.
+fn replay_failure_reasons(app: &App) -> Vec<(Option<String>, String)> {
+    app.snapshot()
+        .notifications
+        .items
+        .into_iter()
+        .filter(|notification| notification.title == "Replay failed")
+        .map(|notification| {
+            let text = notification
+                .text
+                .expect("the failure names its catalogue entry");
+            assert_eq!(text.key, "notifications.msg.replayFailed");
+            (text.params.get("reason").cloned(), notification.body)
+        })
+        .collect()
+}
+
+/// A replay that did not start hands its reason to the notification view as
+/// the entry's `reason`, both when it owns the launch and when another replay
+/// is starting. The parameter is what tells the view the body is the client's
+/// own reason, to be said plainly; without it the raw English was the body.
+#[tokio::test]
+async fn a_replay_that_did_not_start_hands_its_reason_to_the_notification_view() {
+    let h = replay_harness();
+    let unknown_game = || -> AppCommand {
+        ReplayCommand::TrackLive {
+            target: LiveReplayTarget {
+                uid: 999_999,
+                mod_name: "faf".into(),
+                map: "scmp_009".into(),
+            },
+            action: LiveReplayTrackingAction::Watch,
+        }
+        .into()
+    };
+
+    // Nothing else starting: the refusal is the replay's failure.
+    run_promptly(&h.app, unknown_game(), "the refused TrackLive").await;
+    // Another replay starting: the refusal is only reported.
+    let starting = spawn_command(&h.app, ReplayCommand::WatchVault { uid: REPLAY }.into());
+    h.gates.wait_entered("download").await;
+    run_promptly(&h.app, unknown_game(), "the refused TrackLive").await;
+
+    let reasons = replay_failure_reasons(&h.app);
+    assert_eq!(reasons.len(), 2, "{reasons:?}");
+    for (reason, body) in reasons {
+        assert_eq!(reason.as_deref(), Some(body.as_str()));
+    }
+
+    h.gates.release("download");
+    h.gates.release("prepare");
+    finished(starting, "the starting WatchVault").await;
+}
+
 // ── Cancelling a map generation ─────────────────────────────────────────────
 
 /// A generator that behaves like `NeroxisMapGenerator` where cancellation is
@@ -497,6 +583,9 @@ struct GatedGenerator {
     /// The preflight refuses the options, as a failed generator download or
     /// a Java that cannot start would.
     refuse_preflight: AtomicBool,
+    /// The preflight answers with no name, as a release older than `--parse`
+    /// does.
+    nameless_preflight: AtomicBool,
     cancel: watch::Sender<bool>,
     cancels: AtomicUsize,
     runs: AtomicUsize,
@@ -509,6 +598,7 @@ impl GatedGenerator {
             gates,
             hold_preflight,
             refuse_preflight: AtomicBool::new(false),
+            nameless_preflight: AtomicBool::new(false),
             cancel: watch::channel(false).0,
             cancels: AtomicUsize::new(0),
             runs: AtomicUsize::new(0),
@@ -570,6 +660,9 @@ impl MapGeneratorPort for GatedGenerator {
         }
         if self.refuse_preflight.load(Ordering::SeqCst) {
             return Err("could not download the map generator".into());
+        }
+        if self.nameless_preflight.load(Ordering::SeqCst) {
+            return Ok(String::new());
         }
         Ok(GENERATED_MAP.into())
     }
@@ -818,6 +911,79 @@ async fn a_preflight_failing_after_a_cancel_stays_cancelled() {
     assert!(notification_titles(&app)
         .iter()
         .any(|title| title == "Those options will not generate"));
+}
+
+/// A refused run's notification names its catalogue entry and hands over the
+/// generator's reason as that entry's `reason`. The parameter is what tells
+/// the notification view the body is the client's own failure reason, to be
+/// said plainly with the original on hover; without it the view showed the
+/// raw reason as the whole body, in English, under an English title.
+#[tokio::test]
+async fn a_refused_run_hands_its_reason_to_the_notification_view() {
+    let (app, _gates, generator) = generator_harness(false).await;
+    generator.refuse_preflight.store(true, Ordering::SeqCst);
+
+    tokio::time::timeout(PROMPTLY, app.dispatch_and_wait(generate()))
+        .await
+        .expect("the refused Generate finishes")
+        .unwrap();
+
+    let refusal = app
+        .snapshot()
+        .notifications
+        .items
+        .into_iter()
+        .find(|notification| notification.title == "Those options will not generate")
+        .expect("the refusal is reported");
+    let text = refusal.text.expect("the refusal names its catalogue entry");
+    assert_eq!(text.key, "notifications.msg.mapOptionsRejected");
+    assert_eq!(
+        text.params.get("reason").map(String::as_str),
+        Some("could not download the map generator")
+    );
+    // The English body stays the reason as it was, for the OS notification
+    // and for anything that reads it raw.
+    assert_eq!(refusal.body, "could not download the map generator");
+}
+
+/// A release too old to work a name out says so under a catalogue entry,
+/// with the release it needs as a parameter, so the notice reads in the
+/// user's language. It had no entry, and stayed English.
+#[tokio::test]
+async fn a_generator_that_cannot_resolve_a_name_names_the_release_that_can() {
+    let (app, _gates, generator) = generator_harness(false).await;
+    generator.nameless_preflight.store(true, Ordering::SeqCst);
+
+    tokio::time::timeout(
+        PROMPTLY,
+        app.dispatch_and_wait(
+            MapGeneratorCommand::Preflight {
+                options: GeneratorOptions::default(),
+            }
+            .into(),
+        ),
+    )
+    .await
+    .expect("the preflight finishes")
+    .unwrap();
+
+    let notice = app
+        .snapshot()
+        .notifications
+        .items
+        .into_iter()
+        .find(|notification| notification.title == "This generator cannot resolve a name")
+        .expect("the notice is raised");
+    let text = notice.text.expect("the notice names its catalogue entry");
+    assert_eq!(text.key, "notifications.msg.generatorCannotParse");
+    let version = text.params.get("version").expect("the release it needs");
+    assert!(
+        notice
+            .body
+            .contains(&format!("generator {version} or newer")),
+        "{}",
+        notice.body
+    );
 }
 
 // ── Partial failures: replay maps ───────────────────────────────────────────

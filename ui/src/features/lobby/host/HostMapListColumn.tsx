@@ -2,6 +2,7 @@
 // the list itself and the random and generate actions. State and behaviour
 // come from `useHostMapPicker`; this only draws them.
 
+import { SectionTabs, sectionPanelProps } from "../../../design-system/SectionTabs";
 import { memo } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
@@ -48,26 +49,17 @@ export const HostMapListColumn = memo(function HostMapListColumn({
           started from wanting generated maps grouped, and landed on
           favourites instead: nobody browses every mapgen map, but everybody
           has five maps they host on. */}
-      <div className="host-map-tabs section-tabs" role="tablist" aria-label={t("lobby.host.map")}>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mapTab === "all"}
-          className={mapTab === "all" ? "active" : ""}
-          onClick={() => filter({ mapTab: "all" })}
-        >
-          {t("lobby.host.mapTab.all", { count: availableMaps.length })}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mapTab === "favorites"}
-          className={mapTab === "favorites" ? "active" : ""}
-          onClick={() => filter({ mapTab: "favorites" })}
-        >
-          {t("lobby.host.mapTab.favorites", { count: favoriteFolders.size })}
-        </button>
-      </div>
+      <SectionTabs
+        className="host-map-tabs"
+        ariaLabel={t("lobby.host.map")}
+        active={mapTab}
+        onChange={(mapTab) => filter({ mapTab })}
+        idPrefix="host-map-kind"
+        items={[
+          { id: "all", label: t("lobby.host.mapTab.all", { count: availableMaps.length }) },
+          { id: "favorites", label: t("lobby.host.mapTab.favorites", { count: favoriteFolders.size }) },
+        ]}
+      />
 
       <div className="host-map-search-row">
         <div className="search-field host-column-search host-map-search-field">
@@ -169,10 +161,10 @@ export const HostMapListColumn = memo(function HostMapListColumn({
       <div
         ref={mapListRef}
         className="host-column-body host-map-list"
-        role="listbox"
-        aria-label={t("lobby.host.availableMaps")}
+        {...sectionPanelProps("host-map-kind", mapTab)}
         onKeyDown={onMapListKeyDown}
       >
+        <div role="listbox" aria-label={t("lobby.host.availableMaps")}>
         {visibleMaps.length === 0 ? (
           <p className="play-empty">
             {t(mapTab === "favorites" ? "lobby.host.noFavoriteMaps" : "lobby.host.noMaps")}
@@ -214,6 +206,7 @@ export const HostMapListColumn = memo(function HostMapListColumn({
             );
           })
         )}
+        </div>
       </div>
 
       <div className="host-column-footer host-map-actions">

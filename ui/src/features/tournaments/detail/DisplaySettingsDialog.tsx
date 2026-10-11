@@ -5,6 +5,8 @@
 // own settings. A key is chosen by pressing it, a single letter or digit with
 // no modifier, and a key already in use moves from its old action.
 
+import { overlayStack } from "../../../design-system/overlayStack";
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { useEffect, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
@@ -21,18 +23,16 @@ export function DisplaySettingsDialog({ keys, onChange, onClose }: DisplaySettin
   const { t } = useTranslation();
   const [arming, setArming] = useState<HotkeyAction | null>(null);
   const [refused, setRefused] = useState(false);
+  const armingLayer = useOverlayLayer(arming !== null, () => setArming(null));
 
-  // Listening in the capture phase, so the press that picks a key is not also
-  // taken as that key's action, nor as the dialog's Escape.
+  // Capture a chosen key before its ordinary action. Escape belongs to the
+  // overlay stack, so it cancels arming before it can close this dialog.
   useEffect(() => {
     if (arming === null) return;
     const listen = (pressed: KeyboardEvent) => {
+      if (pressed.isComposing || pressed.key === "Escape" || overlayStack.top() !== armingLayer) return;
       pressed.preventDefault();
       pressed.stopPropagation();
-      if (pressed.key === "Escape") {
-        setArming(null);
-        return;
-      }
       const key = pressed.key.toLowerCase();
       if (pressed.ctrlKey || pressed.metaKey || pressed.altKey || !/^[a-z0-9]$/.test(key)) {
         setRefused(true);
@@ -44,7 +44,7 @@ export function DisplaySettingsDialog({ keys, onChange, onClose }: DisplaySettin
     };
     window.addEventListener("keydown", listen, true);
     return () => window.removeEventListener("keydown", listen, true);
-  }, [arming, keys, onChange]);
+  }, [arming, armingLayer, keys, onChange]);
 
   return (
     <Modal onClose={onClose} className="tournament-display-dialog" ariaLabel={t("tournaments.display.title")}>

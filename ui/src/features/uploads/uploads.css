@@ -44,7 +44,7 @@
 }
 
 .upload-badge.is-new {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   border-color: color-mix(in srgb, var(--color-ok) 45%, transparent);
   background: color-mix(in srgb, var(--color-ok) 14%, transparent);
 }
@@ -223,11 +223,11 @@
 }
 
 .upload-status.is-ok {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .upload-status.is-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .upload-actions {

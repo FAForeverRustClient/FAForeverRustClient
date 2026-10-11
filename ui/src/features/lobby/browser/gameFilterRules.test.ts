@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { cleanFilterValue, rulesWithPending } from "./gameFilterRules";
+import { activeFilterCount, cleanFilterValue, rulesWithPending } from "./gameFilterRules";
 import type { GameFilterRule } from "./GameFiltersModal";
+
+describe("activeFilterCount", () => {
+  it("counts the rules only while they are applied", () => {
+    // A rule that is not applied hides nothing.
+    expect(activeFilterCount(true, 3)).toBe(3);
+    expect(activeFilterCount(false, 3)).toBe(0);
+    expect(activeFilterCount(true, 0)).toBe(0);
+  });
+});
 
 const rule = (value: string): GameFilterRule => ({
   field: "map",

@@ -12,19 +12,21 @@
 //! and closed. It serves exactly the three routes the updater calls:
 //!
 //! - `GET /data/featuredMod?filter=technicalName=="<mod>"`: the mod's id;
-//! - `GET /featuredMods/<id>/files/<version>`: the release's file list;
-//! - `GET /content/<file>`: a file, which must carry the list's HMAC header.
+//! - `GET /featuredMods/<id>/files/<version>`: the release's file list, and
+//!   `latest` for the highest release served;
+//! - `GET /content/<id>/<version>/<file>`: a file, which must carry the
+//!   list's HMAC header.
 //!
 //! Nothing reaches the network. The retail install `fa_path.lua` points at is
-//! a directory of the test's own (`FAF_GAME_INSTALL_DIR`), so the result does
+//! a directory of the tests' own (`FAF_GAME_INSTALL_DIR`), so the result does
 //! not depend on whether the machine running it has the game installed.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use faf_app::infra::game_updater::{
-    read_exe_version, resolve_and_stage_replay_version, ReplayVersionInfo,
+    clear_file_list_cache, read_exe_version, resolve_and_stage_replay_version, ReplayVersionInfo,
 };
 use faf_app::ports::PreparationStep;
 use serde_json::{json, Value};
@@ -74,16 +76,18 @@ impl FakeApi {
         let base = format!("http://127.0.0.1:{}", listener.local_addr().unwrap().port());
         let seen = Arc::new(Mutex::new(Vec::new()));
 
-        // Everything the routes answer with, computed once up front.
+        // Everything the routes answer with, computed once up front. A mod
+        // may be served in several releases; `latest` is the highest of them.
         let mut mod_ids = HashMap::new();
         let mut file_lists = HashMap::new();
         let mut contents = HashMap::new();
+        let mut latest: HashMap<String, i32> = HashMap::new();
         for (technical_name, id, version, files) in releases {
             mod_ids.insert(technical_name.to_string(), id.to_string());
             let data: Vec<Value> = files
                 .iter()
                 .map(|file| {
-                    let url = format!("{base}/content/{}", file.name);
+                    let url = format!("{base}/content/{id}/{version}/{}", file.name);
                     json!({
                         "type": "featuredModFile",
                         "id": file.name,
@@ -99,12 +103,14 @@ impl FakeApi {
                     })
                 })
                 .collect();
-            file_lists.insert(
-                format!("/featuredMods/{id}/files/{version}"),
-                json!({ "data": data }).to_string().into_bytes(),
-            );
+            let list = json!({ "data": data }).to_string().into_bytes();
+            if latest.get(id).is_none_or(|&highest| version > highest) {
+                latest.insert(id.to_string(), version);
+                file_lists.insert(format!("/featuredMods/{id}/files/latest"), list.clone());
+            }
+            file_lists.insert(format!("/featuredMods/{id}/files/{version}"), list);
             for file in files {
-                contents.insert(format!("/content/{}", file.name), file.bytes);
+                contents.insert(format!("/content/{id}/{version}/{}", file.name), file.bytes);
             }
         }
         let routes = Arc::new((mod_ids, file_lists, contents));
@@ -204,11 +210,22 @@ async fn read_request(stream: &mut tokio::net::TcpStream) -> Option<Seen> {
 
 /// A stand-in for the retail game: the probe file `fa_path.lua`'s resolution
 /// looks for, and nothing else.
-fn retail_install(root: &Path) -> PathBuf {
-    let retail = root.join("retail");
-    std::fs::create_dir_all(retail.join("gamedata")).unwrap();
-    std::fs::write(retail.join("gamedata").join("lua.scd"), b"retail").unwrap();
-    retail
+///
+/// One for the whole test binary, named to every install through
+/// `FAF_GAME_INSTALL_DIR`. The environment belongs to the process, which the
+/// tests in this file share, so each setting it to a directory of its own
+/// would have them read each other's.
+fn retail_install() -> PathBuf {
+    static RETAIL: OnceLock<PathBuf> = OnceLock::new();
+    RETAIL
+        .get_or_init(|| {
+            let retail = Path::new(env!("CARGO_TARGET_TMPDIR")).join("replay_install_retail");
+            std::fs::create_dir_all(retail.join("gamedata")).unwrap();
+            std::fs::write(retail.join("gamedata").join("lua.scd"), b"retail").unwrap();
+            std::env::set_var("FAF_GAME_INSTALL_DIR", &retail);
+            retail
+        })
+        .clone()
 }
 
 fn manifest_entries(cache: &Path) -> Vec<Value> {
@@ -226,10 +243,7 @@ async fn an_overlay_replay_installs_its_base_build_and_overlay_revision_from_the
     let root = tempfile::tempdir().unwrap();
     let cache = root.path().join("game_files");
     let target = root.path().join("replaydata");
-    let retail = retail_install(root.path());
-    // Read when `fa_path.lua` is written, and only by this test binary: it is
-    // a process of its own, and this is its only test.
-    std::env::set_var("FAF_GAME_INSTALL_DIR", &retail);
+    let retail = retail_install();
 
     let exe = vec![0_u8; EXE_BYTES];
     let base_units = b"faf units for build 3800".to_vec();
@@ -389,6 +403,170 @@ async fn an_overlay_replay_installs_its_base_build_and_overlay_revision_from_the
         api.requests().is_empty(),
         "a cached build must not touch the API: {:?}",
         api.requests()
+    );
+    let fa_path = std::fs::read_to_string(target.join("fa_path.lua")).unwrap();
+    assert!(fa_path.contains("GameType = \"nomads\""), "{fa_path}");
+    assert!(
+        fa_path.contains(&format!("GameVersion = \"{ENGINE_BUILD}\"")),
+        "{fa_path}"
+    );
+    assert_eq!(
+        read_exe_version(&target.join("bin").join("ForgedAlliance.exe")),
+        Some(ENGINE_BUILD)
+    );
+}
+
+/// A replay that names no overlay revision (a bare `.scfareplay`, or a header
+/// without `featured_mod_versions`) is played on the latest overlay, which
+/// only the API can name. The latest is installed when it is not cached, and
+/// staged from the cache once it is, the API then being asked only which
+/// release is the latest. This used to install from the API every time,
+/// asking for the base's file list as well.
+#[tokio::test]
+async fn a_replay_naming_no_overlay_revision_installs_the_latest_overlay_once() {
+    const OLDER_REVISION: i32 = 51;
+    const LATEST_REVISION: i32 = 53;
+    let root = tempfile::tempdir().unwrap();
+    let cache = root.path().join("game_files");
+    let target = root.path().join("replaydata");
+    retail_install();
+
+    let older_overlay = b"nomads units, revision 51".to_vec();
+    let latest_overlay = b"nomads units, revision 53".to_vec();
+    // Ids the other test does not serve: listed releases are remembered
+    // process-wide by id, and would otherwise come from its server.
+    let api = FakeApi::start(vec![
+        (
+            "faf",
+            "11",
+            ENGINE_BUILD,
+            vec![
+                ServedFile {
+                    group: "bin",
+                    name: "ForgedAlliance.exe",
+                    bytes: vec![0_u8; EXE_BYTES],
+                },
+                ServedFile {
+                    group: "gamedata",
+                    name: "units.nx2",
+                    bytes: b"faf units for build 3800".to_vec(),
+                },
+            ],
+        ),
+        (
+            "nomads",
+            "17",
+            OLDER_REVISION,
+            vec![ServedFile {
+                group: "gamedata",
+                name: "nomads.nx2",
+                bytes: older_overlay,
+            }],
+        ),
+        (
+            "nomads",
+            "17",
+            LATEST_REVISION,
+            vec![ServedFile {
+                group: "gamedata",
+                name: "nomads.nx2",
+                bytes: latest_overlay.clone(),
+            }],
+        ),
+    ])
+    .await;
+    let http = reqwest::Client::builder().no_proxy().build().unwrap();
+    let prepare = |replay: ReplayVersionInfo| {
+        let (http, base, cache, target) = (
+            http.clone(),
+            api.base.clone(),
+            cache.clone(),
+            target.clone(),
+        );
+        async move {
+            resolve_and_stage_replay_version(
+                &http,
+                TOKEN,
+                &base,
+                &cache,
+                &target,
+                &replay,
+                "ForgedAlliance.exe",
+                &|_| {},
+            )
+            .await
+        }
+    };
+    let list_requests = |requests: &[Seen]| -> Vec<String> {
+        requests
+            .iter()
+            .map(|request| request.path.clone())
+            .filter(|path| path.starts_with("/featuredMods/"))
+            .collect()
+    };
+
+    // A replay of the older revision puts that one in the cache, over the
+    // replay's engine build.
+    let named = ReplayVersionInfo {
+        mod_name: "nomads".into(),
+        game_version: Some(ENGINE_BUILD),
+        featured_mod_version: Some(OLDER_REVISION),
+        ..ReplayVersionInfo::default()
+    };
+    prepare(named.clone())
+        .await
+        .expect("the named revision installs");
+
+    // The same game as a bare replay. The latest is not the cached revision,
+    // so it is installed: the one case that still downloads.
+    let bare = ReplayVersionInfo {
+        featured_mod_version: None,
+        ..named
+    };
+    api.clear();
+    assert_eq!(prepare(bare.clone()).await, Ok(None));
+    let latest_file = format!("/content/17/{LATEST_REVISION}/nomads.nx2");
+    assert!(
+        api.requests()
+            .iter()
+            .any(|request| request.path == latest_file),
+        "the latest overlay was not cached and has to be fetched: {:?}",
+        api.requests()
+    );
+    assert_eq!(
+        std::fs::read(target.join("gamedata").join("nomads.nx2")).unwrap(),
+        latest_overlay
+    );
+    let entries = manifest_entries(&cache);
+    assert!(
+        entries.iter().any(|entry| entry["featuredMod"] == "nomads"
+            && entry["resolvedVersion"] == LATEST_REVISION
+            && entry["baseVersion"] == ENGINE_BUILD),
+        "{entries:?}"
+    );
+
+    // And again, now that the latest is cached. Forgetting the remembered
+    // lists first shows everything this pass asks: which release is the
+    // latest, and nothing else. Not the base's list, and not a single file.
+    clear_file_list_cache();
+    api.clear();
+    std::fs::remove_file(target.join("fa_path.lua")).unwrap();
+    assert_eq!(prepare(bare).await, Ok(None));
+    let requests = api.requests();
+    assert_eq!(
+        list_requests(&requests),
+        ["/featuredMods/17/files/latest"],
+        "a cached latest overlay must not be installed again: {requests:?}"
+    );
+    assert!(
+        !requests
+            .iter()
+            .any(|request| request.path.starts_with("/content/")),
+        "{requests:?}"
+    );
+    assert_eq!(
+        std::fs::read(target.join("gamedata").join("nomads.nx2")).unwrap(),
+        latest_overlay
     );
     let fa_path = std::fs::read_to_string(target.join("fa_path.lua")).unwrap();
     assert!(fa_path.contains("GameType = \"nomads\""), "{fa_path}");

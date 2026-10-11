@@ -3,6 +3,14 @@ import { describe, expect, it } from "vitest";
 import { RangeSlider, rangeReadout } from "./RangeSlider";
 
 describe("RangeSlider", () => {
+  it("announces formatted values instead of internal density bins", () => {
+    const markup = renderToStaticMarkup(<RangeSlider label="Density" min={0} max={127}
+      low={64} high={null} closedScale format={(value) => `${Math.round(value / 127 * 100)}%`}
+      onChange={() => {}} />);
+    expect(markup).toContain('aria-valuetext="50%"');
+    expect(markup).toContain('aria-valuetext="100%"');
+  });
+
   it("uses a plain-language separator for bounded values", () => {
     const markup = renderToStaticMarkup(
       <RangeSlider
@@ -32,6 +40,7 @@ describe("RangeSlider", () => {
 
     expect(markup).toContain("Any");
     expect(markup).toContain("is-unbounded");
+    expect(markup.match(/aria-valuetext="Any"/g)).toHaveLength(2);
   });
 
   describe("readout (#459)", () => {

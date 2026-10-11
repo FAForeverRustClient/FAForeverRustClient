@@ -12,6 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { PlayerProfile } from "../../ipc/bindings";
 import { failOnConsoleError } from "../../testing/consoleGuard";
 import { applyEvent, clearSentCommands, seedStore, sentCommands } from "../../testing/mounted";
+import { Modal } from "../../design-system/Modal";
 import { usePlayerMenu } from "../hooks/usePlayerMenu";
 
 vi.mock("../../ipc/client");
@@ -55,6 +56,26 @@ const lookedUp = (login: string, id: number | null) =>
   applyEvent({ kind: "Social", event: { type: "loginLookedUp", payload: { login, id } } });
 
 describe("player menu", () => {
+  it("closes the colour picker, player menu and surrounding dialog one Escape at a time", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<Modal onClose={onClose} ariaLabel="Replay"><Harness name="Alice" /></Modal>);
+    fireEvent.contextMenu(screen.getByText("Alice"));
+    const trigger = screen.getByRole("button", { name: "Choose a name color for Alice" });
+    await user.click(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    await user.keyboard("{Escape}");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByRole("menu")).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog").contains(document.activeElement)).toBe(true);
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("offers an offline player every account entry, greyed out until the account is found", async () => {
     const user = userEvent.setup();
     openMenu("Bob");

@@ -5,6 +5,7 @@
 // of the list: what is written on this replay, and does it match a search.
 
 import type { ReplayNote } from "../../ipc/bindings";
+import { normalizeReplayPath } from "./replayReadKey";
 
 export const REPLAY_NOTE_CHARACTER_LIMIT = 500;
 export const REPLAY_TAG_CHARACTER_LIMIT = 32;
@@ -18,11 +19,52 @@ function tidyTag(tag: string): string {
     .trim();
 }
 
+/**
+ * What a note is filed under, twin of `ReplayNoteKey` in the Rust settings
+ * slice: its game, or for a replay without a game id, its file as
+ * `normalizeReplayPath` spells it, with `replayId` 0.
+ */
+interface NoteTarget {
+  replayId: number;
+  path: string | null;
+}
+
+/** `null` for a replay with neither, which a note could never be found on again. */
+function noteTarget(replayId: number | null, path: string | null | undefined): NoteTarget | null {
+  if (replayId !== null && replayId > 0) return { replayId, path: null };
+  return path ? { replayId: 0, path: normalizeReplayPath(path) } : null;
+}
+
+/**
+ * Order by Unicode code point, which is how Rust orders strings. JavaScript's
+ * own comparison goes by UTF-16 unit, and the two disagree past the Basic
+ * Multilingual Plane.
+ */
+function compareCodePoints(left: string, right: string): number {
+  const a = Array.from(left);
+  const b = Array.from(right);
+  for (let index = 0; index < Math.min(a.length, b.length); index += 1) {
+    const difference = (a[index].codePointAt(0) ?? 0) - (b[index].codePointAt(0) ?? 0);
+    if (difference !== 0) return difference;
+  }
+  return a.length - b.length;
+}
+
+/** Games first, by id, as notes have always been kept; then files, by path. */
+function compareTargets(left: NoteTarget, right: NoteTarget): number {
+  if (left.path !== null && right.path !== null) return compareCodePoints(left.path, right.path);
+  if (left.path !== null) return 1;
+  if (right.path !== null) return -1;
+  return left.replayId - right.replayId;
+}
+
 /** Mirror the Rust normalization applied when a social-settings event lands. */
 export function normalizeReplayNotes(notes: readonly ReplayNote[]): ReplayNote[] {
-  const byId = new Map<number, ReplayNote>();
+  const byTarget = new Map<string, { target: NoteTarget; note: ReplayNote }>();
   for (const entry of notes) {
-    if (entry.replayId <= 0) continue;
+    const target = noteTarget(entry.replayId, entry.path);
+    if (!target) continue;
+    const key = target.path === null ? `game:${target.replayId}` : `file:${target.path}`;
     const comment = Array.from(entry.comment.trim()).slice(0, REPLAY_NOTE_CHARACTER_LIMIT).join("");
     const tags: string[] = [];
     for (const raw of entry.tags) {
@@ -32,19 +74,36 @@ export function normalizeReplayNotes(notes: readonly ReplayNote[]): ReplayNote[]
       if (tags.length === REPLAY_TAGS_PER_REPLAY) break;
     }
     if (!comment && tags.length === 0) {
-      byId.delete(entry.replayId);
+      byTarget.delete(key);
       continue;
     }
-    byId.set(entry.replayId, { replayId: entry.replayId, comment, tags });
+    byTarget.set(key, { target, note: { replayId: target.replayId, path: target.path, comment, tags } });
   }
-  return [...byId.values()]
-    .sort((left, right) => left.replayId - right.replayId)
-    .slice(0, REPLAY_NOTE_LIMIT);
+  return [...byTarget.values()]
+    .sort((left, right) => compareTargets(left.target, right.target))
+    .slice(0, REPLAY_NOTE_LIMIT)
+    .map(({ note }) => note);
 }
 
-export function noteForReplay(notes: readonly ReplayNote[], replayId: number | null): ReplayNote | null {
-  if (replayId === null || replayId <= 0) return null;
-  return notes.find((entry) => entry.replayId === replayId) ?? null;
+/**
+ * The note on one replay: on its game when it has an id, otherwise on its
+ * file, however that file's path is spelt. Twin of
+ * `SocialPreferences::replay_note_for`.
+ *
+ * Only the path asked about is normalised: the notes in the store already are
+ * (see `normalizeReplayNotes`), and the local list asks this once per file it
+ * filters, which is thousands of times per keystroke.
+ */
+export function noteForReplay(
+  notes: readonly ReplayNote[],
+  replayId: number | null,
+  localPath?: string | null,
+): ReplayNote | null {
+  const wanted = noteTarget(replayId, localPath);
+  if (!wanted) return null;
+  return notes.find((entry) => wanted.path === null
+    ? entry.replayId === wanted.replayId
+    : entry.replayId <= 0 && entry.path === wanted.path) ?? null;
 }
 
 /** Tags typed as one comma-separated line. */
@@ -85,12 +144,23 @@ export function hasAnyTag(note: ReplayNote | null, tags: readonly string[]): boo
 }
 
 /**
+ * The notes on games, leaving out those on files without a game id: the
+ * vault has none of those files, so the Online tab has nothing to find by
+ * them.
+ */
+export function gameReplayNotes(notes: readonly ReplayNote[]): ReplayNote[] {
+  return notes.filter((note) => note.replayId > 0);
+}
+
+/**
  * The game ids carrying any of these tags, as the vault search takes them.
  *
  * This is how the Online tab filters by tag: the vault knows nothing of the
- * reader's tags, but it can be asked for exactly these games.
+ * reader's tags, but it can be asked for exactly these games. A note on a file
+ * without a game id names no game, so it adds nothing here; asking the vault
+ * for game 0 would find nothing anyway.
  */
 export function replayIdsTagged(notes: readonly ReplayNote[], tags: readonly string[]): string[] {
   if (tags.length === 0) return [];
-  return notes.filter((note) => hasAnyTag(note, tags)).map((note) => String(note.replayId));
+  return gameReplayNotes(notes).filter((note) => hasAnyTag(note, tags)).map((note) => String(note.replayId));
 }

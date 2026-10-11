@@ -1,3 +1,4 @@
+import { SectionTabs, sectionPanelProps } from "../../../design-system/SectionTabs";
 import { useMemo, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
@@ -194,20 +195,14 @@ export function MatchmakerMapPoolModal({
       </div>
 
       {sortedPools.length > 1 && (
-        <div className="map-pool-tabs" role="tablist" aria-label={t("lobby.mapPool.brackets")}>
-          {sortedPools.map((pool) => (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={pool.id === activePool?.id}
-              key={pool.id}
-              className={pool.id === activePool?.id ? "active" : ""}
-              onClick={() => setActivePoolId(pool.id)}
-            >
-              {bracketTitle(pool)}
-            </button>
-          ))}
-        </div>
+        <SectionTabs
+          className="map-pool-tabs"
+          ariaLabel={t("lobby.mapPool.brackets")}
+          active={activePool?.id ?? null}
+          onChange={setActivePoolId}
+          idPrefix="matchmaker-pool"
+          items={sortedPools.map((pool) => ({ id: pool.id, label: bracketTitle(pool) }))}
+        />
       )}
 
       <div className="matchmaker-veto-toolbar">
@@ -242,7 +237,7 @@ export function MatchmakerMapPoolModal({
         )}
       </div>
 
-      <div className="map-pool-grid">
+      <div className="map-pool-grid" {...(sortedPools.length > 1 && activePool ? sectionPanelProps("matchmaker-pool", activePool.id) : {})}>
         {status.type === "loading" && pools.length === 0 ? (
           <p className="play-empty">{t("lobby.mapPool.loading")}</p>
         ) : status.type === "failed" ? (

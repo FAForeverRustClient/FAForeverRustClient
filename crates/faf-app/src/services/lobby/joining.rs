@@ -3,7 +3,7 @@
 
 use faf_domain::state::{
     with_go_adapter_tag, HostGameConfig, HostGamePreferences, IceAdapter, JoinState, LobbyEvent,
-    NotificationKind, SettingsEvent,
+    SettingsEvent,
 };
 
 use crate::ports::ModPrepFailure;
@@ -164,7 +164,6 @@ pub(super) async fn host(config: HostGameConfig, ctx: &ServiceCtx, out: &EventSi
             // Co-op owns a separate launch surface in both references, so
             // it remembers into its own slot: one mission must not replace
             // the custom-game form somebody set up for skirmishes.
-            let mut browsing = out.with_state(|state| state.settings.browsing.clone());
             let remembered = HostGamePreferences {
                 title: config.title.clone(),
                 featured_mod: config.mod_name.clone(),
@@ -177,13 +176,24 @@ pub(super) async fn host(config: HostGameConfig, ctx: &ServiceCtx, out: &EventSi
                 rating_min: config.rating_min,
                 rating_max: config.rating_max,
             };
-            if config.mod_name == "coop" {
-                browsing.host_coop = remembered;
-            } else {
-                browsing.host_game = remembered;
-            }
-            out.emit(SettingsEvent::BrowsingChanged {
-                preferences: Box::new(browsing),
+            // The browsing group is the one the UI patches most (filters,
+            // columns, views), so it is read and written back under the
+            // settings merge lock: a patch landing in between used to be put
+            // back to its old value by this write.
+            let coop = config.mod_name == "coop";
+            ctx.settings.merge_and_emit(out, |settings| {
+                let mut browsing = settings.browsing.clone();
+                if coop {
+                    browsing.host_coop = remembered;
+                } else {
+                    browsing.host_game = remembered;
+                }
+                (
+                    SettingsEvent::BrowsingChanged {
+                        preferences: Box::new(browsing),
+                    },
+                    (),
+                )
             });
             // Hosted on Go, the title says so, for everybody on Dynamic to
             // join on Go as well; see `GO_ADAPTER_TITLE_TAG`. After the
@@ -202,12 +212,11 @@ pub(super) async fn host(config: HostGameConfig, ctx: &ServiceCtx, out: &EventSi
         }
         Err(reason) => {
             tracing::warn!(reason, "invalid host-game request rejected");
-            notifications::add(
+            notifications::add_failure(
                 out,
-                NotificationKind::Error,
+                notifications::Text::new("notifications.msg.hostFailed"),
                 "Could not host game",
                 reason,
-                None,
             );
         }
     }
@@ -229,13 +238,15 @@ pub(super) fn cancel_join(ctx: &ServiceCtx, out: &EventSink) {
         return;
     }
     // Before that, calling the operation off is what stops the work:
-    // preparation checks its own operation at its next step boundary,
-    // and the join request is not sent. The slot is freed now, so the
-    // user can pick another game while the cancelled preparation
-    // finishes the file it is on; that preparation can no longer
-    // touch the new join, because it is checking a different id. A
-    // join whose request already went out is remembered, so the
-    // launch order the server still sends for it is turned away.
+    // its token reaches the updater, which stops at its next safe point
+    // (between two files, or mid-download), preparation checks its own
+    // operation at its next step boundary, and the join request is not
+    // sent. The slot is freed now, so the user can pick another game
+    // while the cancelled preparation finishes the file it is on; that
+    // preparation can no longer touch the new join, because it is
+    // checking a different id. A join whose request already went out is
+    // remembered, so the launch order the server still sends for it is
+    // turned away.
     ctx.lobby.operations.cancel();
     ctx.lobby.operations.call_off_join();
     out.emit(LobbyEvent::JoinCancelled);

@@ -3,13 +3,12 @@ import { match, player, team, tourney } from "./fixtures";
 import { hotkeyAction, isMasked, playersLabel, rebind } from "./display";
 
 describe("streamer mode", () => {
-  it("hides a finished result until it is revealed, and nothing else", () => {
+  it("hides every finished result while it is on, and nothing else", () => {
     const done = match({ id: "m1", status: "done" });
     const ready = match({ id: "m2", status: "ready" });
-    expect(isMasked(true, new Set(), done)).toBe(true);
-    expect(isMasked(true, new Set(["m1"]), done)).toBe(false);
-    expect(isMasked(true, new Set(), ready)).toBe(false);
-    expect(isMasked(false, new Set(), done)).toBe(false);
+    expect(isMasked(true, done)).toBe(true);
+    expect(isMasked(true, ready)).toBe(false);
+    expect(isMasked(false, done)).toBe(false);
   });
 });
 

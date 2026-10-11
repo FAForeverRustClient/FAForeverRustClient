@@ -24,7 +24,7 @@
 
 /* Containers that already space their children with a gap: there a margin
    would add to it rather than collapse into it. */
-:is(.events-view, .events-main, .game-detail-footer) > .status-notice {
+:is(.events-view, .events-main, .game-detail-footer, .tournament-chat-room-body) > .status-notice {
   margin: 0;
 }
 
@@ -60,7 +60,7 @@
 }
 
 .status-notice.is-error > svg {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 /* The arrows turn while something is on its way, which is seconds at most;

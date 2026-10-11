@@ -19,6 +19,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { EmojiPicker } from "./EmojiPicker";
 import { partyChannelLabel } from "../../../shared/partyChat";
@@ -75,9 +76,19 @@ export function Composer({
   };
   const inputRef = useRef<HTMLInputElement>(null);
   const completion = useRef<Completion | null>(null);
+  const completionCaret = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (completionCaret.current === null) return;
+    inputRef.current?.setSelectionRange(completionCaret.current, completionCaret.current);
+    completionCaret.current = null;
+  }, [draft]);
   const history = useRef<string[]>([]);
   // `null` means "editing a fresh line", not browsing history.
   const historyIndex = useRef<number | null>(null);
+
+  // Drop the answer anchor, keeping the draft. Menus opened above it take
+  // Escape first, even when the caret stays in this input after a right-click.
+  useOverlayLayer(replyTo !== null, () => onCancelReply?.());
 
   const edit = (value: string) => {
     setDraft(value);
@@ -141,25 +152,27 @@ export function Composer({
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.nativeEvent.isComposing) return;
     if (e.key === "Tab" && !e.ctrlKey && !e.altKey && !e.metaKey) {
-      const outcome = tabCompletion(draft, nicknames, completion.current, e.shiftKey);
+      const start = e.currentTarget.selectionStart ?? draft.length;
+      const outcome = tabCompletion(draft, nicknames, completion.current, e.shiftKey, {
+        start, end: e.currentTarget.selectionEnd ?? start,
+      });
       // Not ours: leave the event alone so focus moves on (or back).
-      if (!outcome) return;
+      if (!outcome) {
+        completion.current = null;
+        return;
+      }
       e.preventDefault();
       completion.current = outcome.completion;
+      if (outcome.text === draft) e.currentTarget.setSelectionRange(outcome.caret, outcome.caret);
+      else completionCaret.current = outcome.caret;
       setDraft(outcome.text);
       return;
     }
     if (e.key === "ArrowUp" || e.key === "ArrowDown") {
       e.preventDefault();
       recall(e.key === "ArrowUp" ? -1 : 1);
-      return;
-    }
-    // Escape drops the answer rather than the draft: the text is the
-    // expensive part, the anchor is one click to restore.
-    if (e.key === "Escape" && replyTo) {
-      e.preventDefault();
-      onCancelReply?.();
       return;
     }
     // Any other key ends the completion run, so the next Tab starts fresh.
@@ -243,6 +256,7 @@ export function Composer({
         disabled={disabled}
         onChange={(e) => edit(e.target.value)}
         onKeyDown={onKeyDown}
+        onBlur={() => { completion.current = null; }}
       />
       <EmojiPicker disabled={disabled} onPick={insert} />
       <Button type="submit" variant="primary" disabled={disabled || !draft.trim()}>
