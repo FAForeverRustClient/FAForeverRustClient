@@ -326,6 +326,11 @@ async fn prepare_map_and_mod(
 
     let cache_rolling_branches = out.with_state(|state| state.settings.game.cache_rolling_branches);
     ensure_generated_map(map, ctx, out).await?;
+    // Called off while its map was being generated: the updater is not
+    // started for a join nobody wants any more.
+    if ctx.lobby.launch_called_off().is_cancelled() {
+        return Ok(());
+    }
     prepare_request(
         GamePreparation {
             featured_mod: featured_mod.to_string(),
@@ -366,7 +371,16 @@ async fn ensure_generated_map(
         ));
     }
 
+    // The join's own token. Called off, the run is let go: dropping its stream
+    // stops this generator run alone (the adapter watches the receiver), where
+    // the port's `cancel` would stop every run, a Maps-tab one included. The
+    // join used to wait for the generator to finish before it noticed.
+    let called_off = ctx.lobby.launch_called_off();
+    if called_off.is_cancelled() {
+        return Ok(());
+    }
     tracing::info!(map_name, "generating map required by launch");
+    let generation = ctx.map_generator.begin();
     let mut updates = ctx
         .ports
         .map_generator
@@ -377,7 +391,22 @@ async fn ensure_generated_map(
     // routinely takes tens of seconds.
     let mut outcome = Err("the map generator produced no result".to_string());
     let mut generated: Vec<String> = Vec::new();
-    while let Some(crate::ports::GeneratorUpdate::Status(status)) = updates.recv().await {
+    loop {
+        let update = tokio::select! {
+            biased;
+            () = called_off.cancelled() => {
+                if ctx.map_generator.is_current(generation) {
+                    out.emit(MapGeneratorEvent::StatusChanged {
+                        status: GeneratorStatus::Cancelled,
+                    });
+                }
+                return Ok(());
+            }
+            update = updates.recv() => update,
+        };
+        let Some(crate::ports::GeneratorUpdate::Status(status)) = update else {
+            break;
+        };
         match &status {
             GeneratorStatus::Generated { maps } => {
                 generated = maps.clone();
@@ -388,7 +417,10 @@ async fn ensure_generated_map(
             }
             _ => {}
         }
-        out.emit(MapGeneratorEvent::StatusChanged { status });
+        // A newer run (one from the Maps tab) owns the status line now.
+        if ctx.map_generator.is_current(generation) {
+            out.emit(MapGeneratorEvent::StatusChanged { status });
+        }
     }
     // The same bookkeeping a deliberate run gets. Joining a lobby whose map
     // had to be built used to skip all of it, which is why the client went on
