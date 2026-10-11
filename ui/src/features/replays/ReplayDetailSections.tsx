@@ -133,10 +133,10 @@ export const ReplayDetailFacts = memo(function ReplayDetailFacts({
                 aria-label={`${t("replays.detail.rateReplay")}: ${starsLabel}`}
                 onClick={() => openReviews("game", replay.uid, cardTitle)}
               >
-                {t("replays.detail.unrated")}
+                {t("replays.detail.notReviewed")}
               </button>
             ) : (
-              <span className="replay-detail-rating-value">{t("replays.detail.unrated")}</span>
+              <span className="replay-detail-rating-value">{t("replays.detail.notReviewed")}</span>
             )
           ) : (
             <>

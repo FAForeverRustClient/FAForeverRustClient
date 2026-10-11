@@ -2066,6 +2066,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.detail.gameVersion": "Spielversion",
   "replays.detail.unknown": "Unbekannt",
   "replays.detail.unrated": "Ohne Rating",
+  "replays.detail.notReviewed": "Nicht bewertet",
   "replays.detail.lineup": "Aufstellung",
   "replays.detail.hideResults": "Ergebnisse verbergen",
   "replays.detail.noLineup": "Für dieses Replay wurde keine Aufstellung erfasst.",
@@ -2789,7 +2790,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "leaderboard.rating.formulaWhy":
     "Sie zeigt absichtlich das untere Ende der Kurve statt ihrer Mitte. Das ist die vorsichtige Lesart: wer mit 1200 gelistet ist, spielt wahrscheinlich besser als 1200 und kaum schlechter. Sicherheit zählt damit genauso viel wie Stärke, und ein neuer Account steht bei 1500 minus dreimal 500, also bei null.",
   "leaderboard.rating.formulaExample":
-    "Ein Spieler mit Mittelwert 2260 und Abweichung 139 steht mit 1842 in der Liste.",
+    "Ein Spieler mit Mittelwert 2260 und Abweichung 139,3 steht mit 1842 in der Liste.",
   "leaderboard.rating.thirtyGames":
     "Weil die Abweichung dreifach abgezogen wird, steigt die angezeigte Zahl anfangs schnell, auch wenn sich der Mittelwert kaum bewegt, und sie springt dabei. Unter etwa dreißig Spielen sagt sie wenig. Nach dreißig bis vierzig hat das System dich erfasst, und sie fängt an, etwas zu sagen.",
 

@@ -2432,6 +2432,7 @@ export const en = {
   "replays.detail.gameVersion": "Game version",
   "replays.detail.unknown": "Unknown",
   "replays.detail.unrated": "Unrated",
+  "replays.detail.notReviewed": "Unrated",
   "replays.detail.lineup": "Lineup",
   "replays.detail.hideResults": "Hide results",
   "replays.detail.noLineup": "No lineup was recorded for this replay.",
@@ -3199,7 +3200,7 @@ export const en = {
   "leaderboard.rating.formulaWhy":
     "It shows the bottom of the curve rather than its middle, on purpose. It is a cautious reading: a player listed at 1200 will probably play better than 1200, and is unlikely to play worse. Being certain of a level therefore counts for as much as reaching it, and a new account, at 1500 minus three times 500, is listed at zero.",
   "leaderboard.rating.formulaExample":
-    "A player with a mean of 2260 and a deviation of 139 is listed at 1842.",
+    "A player with a mean of 2260 and a deviation of 139.3 is listed at 1842.",
   "leaderboard.rating.thirtyGames":
     "Because the deviation is subtracted three times over, the listed number climbs quickly at first even when the mean barely moves, and it is jumpy while it does. Under about thirty games it does not mean much. After thirty to forty the system has learned you, and it starts to.",
 
