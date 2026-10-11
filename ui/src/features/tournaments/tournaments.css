@@ -8369,6 +8369,19 @@ button.tournament-chat-author:hover {
   }
 }
 
+/* -- Discord as its own column in the players table -- */
+
+.tournament-entrants-discord {
+  white-space: nowrap;
+}
+
+.tournament-entrants-discord .tournament-discord {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-muted);
+}
+
 /* -- The tab's own text question (renaming, a typed rating) -- */
 
 .tournament-ask .tournament-field {
@@ -8377,4 +8390,13 @@ button.tournament-chat-author:hover {
 
 .tournament-ask .tournament-field input {
   font-size: 14px;
+}
+
+/* A name drawn as a player chip starts after the chip's 40 px avatar slot
+   (`.player-chip-avatar`) and its gap, so the Discord line under it starts
+   there too: under the name, not under the avatar. */
+.tournament-roster-who:has(.player-chip) > .tournament-discord,
+.tournament-free-agent-who:has(.player-chip) > .tournament-discord,
+.tournament-admin-who:has(.player-chip) > .tournament-admin-facts {
+  padding-left: calc(40px + var(--space-2));
 }
