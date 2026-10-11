@@ -217,6 +217,12 @@
   padding: 0;
 }
 
+/* A short page's empty places (`GridPageFiller`): a card's size, and nothing
+   else. Hidden rather than transparent, so the pointer passes through. */
+.grid-page-filler {
+  visibility: hidden;
+}
+
 /* Current position when the total page count is unknown. */
 .pagination-position {
   min-width: 76px;

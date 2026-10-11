@@ -36,7 +36,8 @@ import { MapCard, MapDetailPanel, MapHideDialog, MapRating, MapUninstallDialog }
 import { MapPreviewDialog } from "../../shared/components/MapPreviewZoom";
 import { GeneratorProgress, stillRunning } from "./GeneratorProgress";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
-import { useGridPageSize } from "../../shared/hooks/useGridPageSize";
+import { pageFillerCount, useGridPageSize } from "../../shared/hooks/useGridPageSize";
+import { GridPageFiller } from "../../shared/components/GridPageFiller";
 import "./maps.css";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -758,8 +759,7 @@ function InstalledView({ busy }: { busy: boolean }) {
   // has picked a number in Settings. Nothing is fetched here -- the whole list
   // is already on disk -- so the only thing a fixed count decided was how much
   // empty panel there was under the pager.
-  const installedGrid = useRef<HTMLDivElement>(null);
-  const fittedPageSize = useGridPageSize(installedGrid, INSTALLED_MAP_CARD_PX, DEFAULT_VAULT_PAGE_SIZE);
+  const [fittedPageSize, installedGrid] = useGridPageSize(INSTALLED_MAP_CARD_PX, DEFAULT_VAULT_PAGE_SIZE);
   const pageSize = browsing.vaultPageSize || fittedPageSize;
 
   // The vault record of an installed folder, matched on the folder's base name
@@ -880,6 +880,8 @@ function InstalledView({ busy }: { busy: boolean }) {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageMaps = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  // The last page keeps a full page's height, so the pager stays put.
+  const fillers = pageFillerCount({ shown: pageMaps.length, pageSize, fitted: fittedPageSize, totalPages });
 
   return (
     <>
@@ -1081,6 +1083,7 @@ function InstalledView({ busy }: { busy: boolean }) {
                 </article>
               );
             })}
+            <GridPageFiller count={fillers} cardClassName="installed-map-card surface-panel" />
           </div>
           {totalPages > 1 && (
             <div className="vault-pagination">

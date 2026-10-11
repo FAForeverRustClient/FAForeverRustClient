@@ -744,6 +744,13 @@ html.is-resizing-chat-roster * {
   gap: var(--space-1);
 }
 
+/* Under the typing line, which already stands between the conversation and
+   the composer. A full gap on top of the line it reserves put the composer
+   31 px below the messages; this is 23, with the typing text centred in it. */
+.chat-typing + .chat-compose-shell {
+  margin-top: var(--space-1);
+}
+
 .chat-reply-banner {
   display: flex;
   align-items: center;
