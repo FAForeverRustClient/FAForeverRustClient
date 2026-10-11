@@ -147,6 +147,15 @@ for (const path of await sourceFiles(resolve(root, "crates/faf-app/src/services"
   if (handleMatch) {
     report(path, `line ${lineNumber(source, handleMatch.index)} calls another service's handler directly; use crate::runtime::run_command so the command policy applies`);
   }
+  // A settings group written from outside the settings service goes through
+  // `ctx.settings.merge_and_emit`, which reads, changes and emits it under the
+  // lock the settings commands merge under. Event reminders and chat read
+  // markers emitted straight from their own earlier read, and a settings patch
+  // to the same group landing in between was put back to its old value.
+  const settingsEmit = /\bemit\s*\(\s*SettingsEvent::/.exec(rustCode(source));
+  if (settingsEmit && !path.endsWith(`${sep}services${sep}settings.rs`)) {
+    report(path, `line ${lineNumber(source, settingsEmit.index)} emits a settings event directly; go through ctx.settings.merge_and_emit so it cannot undo a concurrent settings patch`);
+  }
 }
 
 // The domain crate is pure: the same state and input give the same result.

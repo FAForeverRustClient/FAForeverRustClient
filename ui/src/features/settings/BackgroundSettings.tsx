@@ -6,12 +6,14 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "../../design-system/Button";
+import { StatusNotice } from "../../design-system/StatusNotice";
 import type { AppearancePreferencesPatch } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import { BACKGROUND_EXTENSIONS } from "../../shared/appBackground";
+import { plainError } from "../../shared/plainError";
 import { SettingRow } from "./SettingControls";
 
 const save = (patch: AppearancePreferencesPatch) =>
@@ -24,8 +26,22 @@ export function BackgroundSettings() {
   // The slider moves locally and is saved when it is let go: every step of a
   // drag would otherwise be a settings write.
   const [draftDim, setDraftDim] = useState(dim);
-  const [error, setError] = useState("");
+  // The copy that failed: the shell's reason, and the picked file, so Retry
+  // copies the same picture again instead of opening the picker a second time.
+  const [failure, setFailure] = useState<{ reason: string; path: string } | null>(null);
   useEffect(() => setDraftDim(dim), [dim]);
+
+  const importPicked = (path: string) => {
+    ipc.run((async () => {
+      try {
+        const stored = await native.importBackgroundImage(path);
+        setFailure(null);
+        save({ backgroundImage: stored });
+      } catch (reason) {
+        setFailure({ reason: String(reason), path });
+      }
+    })());
+  };
 
   const pick = () => {
     ipc.run((async () => {
@@ -33,14 +49,7 @@ export function BackgroundSettings() {
         title: t("settings.appearance.backgroundPickTitle"),
         filters: [{ name: t("settings.appearance.backgroundPickFilter"), extensions: [...BACKGROUND_EXTENSIONS] }],
       });
-      if (picked === null) return;
-      try {
-        const stored = await native.importBackgroundImage(picked);
-        setError("");
-        save({ backgroundImage: stored });
-      } catch (failure) {
-        setError(String(failure));
-      }
+      if (picked !== null) importPicked(picked);
     })());
   };
 
@@ -56,7 +65,18 @@ export function BackgroundSettings() {
           {image && <Button onClick={() => save({ backgroundImage: "" })}>{t("settings.appearance.backgroundRemove")}</Button>}
         </div>
       </SettingRow>
-      {error && <p className="surface-error">{error}</p>}
+      {/* Plainly, with the shell's own words ("could not copy C:\...: ...")
+          on hover for a bug report. */}
+      {failure && (
+        <StatusNotice
+          tone="error"
+          className="settings-inline-notice"
+          action={{ label: t("common.retry"), onClick: () => importPicked(failure.path) }}
+          detail={failure.reason}
+        >
+          {plainError(failure.reason)}
+        </StatusNotice>
+      )}
       {image && (
         <SettingRow label={t("settings.appearance.backgroundDim")} hint={t("settings.appearance.backgroundDimHint")}>
           <div className="settings-background-dim">

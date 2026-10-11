@@ -15,13 +15,17 @@
 // sits directly after the last tab, where the channel it adds will appear,
 // rather than parked at the far right of the bar.
 
+import { useOverlayLayer } from "../../design-system/useOverlayLayer";
 import { useEffect, useRef, useState } from "react";
 import type { ChatChannel } from "../../ipc/bindings";
 import { isPrivateChannel } from "../../store/reducer";
 import { partyChannelLabel } from "../../shared/partyChat";
 import { Icon } from "../../design-system/Icon";
+import { InactiveSectionPanels, nextTabIndex, sectionPanelId, sectionTabId } from "../../design-system/SectionTabs";
 import "../../design-system/section-tabs.css";
 import { useTranslation } from "../../i18n/useTranslation";
+
+export const CHAT_TABS_ID = "chat-channel";
 
 interface Props {
   channels: ChatChannel[];
@@ -72,6 +76,22 @@ export function ChannelTabs({
   const [joining, setJoining] = useState(false);
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const tabRefs = useRef(new Map<string, HTMLButtonElement>());
+  const addRef = useRef<HTMLButtonElement>(null);
+  const tabStop = channels.some((channel) => channel.name === active) ? active : channels[0]?.name;
+
+  const leave = (name: string) => {
+    const tab = tabRefs.current.get(name);
+    if (tab?.parentElement?.contains(document.activeElement)) {
+      const index = channels.findIndex((channel) => channel.name === name);
+      const next = channels[index + 1] ?? channels[index - 1];
+      if (next) {
+        tabRefs.current.get(next.name)?.focus();
+        onSelect(next.name);
+      } else addRef.current?.focus();
+    }
+    onLeave(name);
+  };
 
   useEffect(() => {
     if (joining) inputRef.current?.focus();
@@ -81,6 +101,8 @@ export function ChannelTabs({
     setJoining(false);
     setDraft("");
   };
+
+  useOverlayLayer(joining, () => { close(); addRef.current?.focus(); });
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,36 +115,18 @@ export function ChannelTabs({
   };
 
   return (
-    <nav className="section-tabs chat-tabs" role="tablist" aria-label={t("chat.channels.aria")}>
-      {channels.map((channel) => {
-        const isActive = channel.name === active;
-        const closable = !isPinnedChannel(channel.name, defaultChannel, partyChannel);
-        return (
-          // The wrapper only exists to anchor the close button, so it is
-          // hidden from assistive tech and the tab stays owned by the list.
-          <div
-            key={channel.name}
-            role="presentation"
-            className={`chat-tab${closable ? " is-closable" : ""}`}
-            onMouseDown={(e) => {
-              if (closable && e.button === 1) {
-                e.preventDefault();
-              }
-            }}
-            onAuxClick={(e) => {
-              if (closable && e.button === 1) {
-                e.preventDefault();
-                onLeave(channel.name);
-              }
-            }}
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              className={`chat-tab-button${isActive ? " active" : ""}`}
-              title={channel.name}
-              onClick={() => onSelect(channel.name)}
+    <>
+      <nav className="section-tabs chat-tabs" role="tablist" aria-label={t("chat.channels.aria")}>
+        {channels.map((channel) => {
+          const isActive = channel.name === active;
+          const closable = !isPinnedChannel(channel.name, defaultChannel, partyChannel);
+          return (
+            // The wrapper only exists to anchor the close button, so it is
+            // hidden from assistive tech and the tab stays owned by the list.
+            <div
+              key={channel.name}
+              role="presentation"
+              className={`chat-tab${closable ? " is-closable" : ""}`}
               onMouseDown={(e) => {
                 if (closable && e.button === 1) {
                   e.preventDefault();
@@ -131,71 +135,115 @@ export function ChannelTabs({
               onAuxClick={(e) => {
                 if (closable && e.button === 1) {
                   e.preventDefault();
-                  e.stopPropagation();
-                  onLeave(channel.name);
+                  leave(channel.name);
                 }
               }}
             >
-              <Icon name={isPrivateChannel(channel.name) ? "users" : "chat"} size={15} />
-              {/* The label reads as words; the tooltip above is the name every
-                  command is sent with. They differ for one room only: IRC
-                  forbids the space in "#Somebody's Party". */}
-              <span className="section-tab-label chat-tab-name">
-                {partyChannelLabel(channel.name)}
-              </span>
-              {channel.unread > 0 && (
-                <span
-                  className={`section-tab-count${channel.unreadMentions > 0 ? " is-mention" : ""}`}
-                  aria-label={t("chat.channels.unread", { count: channel.unread })}
-                >
-                  {channel.unread > 99 ? "99+" : channel.unread}
-                </span>
-              )}
-            </button>
-            {closable && (
               <button
                 type="button"
-                className="chat-tab-close"
-                aria-label={t("chat.channels.leave", { channel: partyChannelLabel(channel.name) })}
-                title={t("chat.channels.leave", { channel: partyChannelLabel(channel.name) })}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onLeave(channel.name);
+                role="tab"
+                id={sectionTabId(CHAT_TABS_ID, channel.name)}
+                aria-controls={sectionPanelId(CHAT_TABS_ID, channel.name)}
+                ref={(node) => {
+                  if (node) tabRefs.current.set(channel.name, node);
+                  else tabRefs.current.delete(channel.name);
+                }}
+                tabIndex={channel.name === tabStop ? 0 : -1}
+                aria-selected={isActive}
+                className={`chat-tab-button${isActive ? " active" : ""}`}
+                title={channel.name}
+                onClick={() => onSelect(channel.name)}
+                onKeyDown={(event) => {
+                  if (event.nativeEvent.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
+                  if (event.key === "Delete" && closable) {
+                    event.preventDefault();
+                    leave(channel.name);
+                    return;
+                  }
+                  const index = channels.findIndex((item) => item.name === channel.name);
+                  const next = nextTabIndex(event.key, index, channels.length);
+                  if (next === null) return;
+                  event.preventDefault();
+                  const name = channels[next].name;
+                  tabRefs.current.get(name)?.focus();
+                  onSelect(name);
+                }}
+                onMouseDown={(e) => {
+                  if (closable && e.button === 1) {
+                    e.preventDefault();
+                  }
+                }}
+                onAuxClick={(e) => {
+                  if (closable && e.button === 1) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    leave(channel.name);
+                  }
                 }}
               >
-                <Icon name="close" size={11} />
+                <Icon name={isPrivateChannel(channel.name) ? "users" : "chat"} size={15} />
+                {/* The label reads as words; the tooltip above is the name every
+                    command is sent with. They differ for one room only: IRC
+                    forbids the space in "#Somebody's Party". */}
+                <span className="section-tab-label chat-tab-name">
+                  {partyChannelLabel(channel.name)}
+                </span>
+                {channel.unread > 0 && (
+                  <span
+                    className={`section-tab-count${channel.unreadMentions > 0 ? " is-mention" : ""}`}
+                    aria-label={t("chat.channels.unread", { count: channel.unread })}
+                  >
+                    {channel.unread > 99 ? "99+" : channel.unread}
+                  </span>
+                )}
               </button>
-            )}
-          </div>
-        );
-      })}
+              {closable && (
+                <button
+                  type="button"
+                  className="chat-tab-close"
+                  tabIndex={channel.name === tabStop ? 0 : -1}
+                  aria-label={t("chat.channels.leave", { channel: partyChannelLabel(channel.name) })}
+                  title={t("chat.channels.leave", { channel: partyChannelLabel(channel.name) })}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    leave(channel.name);
+                  }}
+                >
+                  <Icon name="close" size={11} />
+                </button>
+              )}
+            </div>
+          );
+        })}
 
-      {/* This stays mounted while the field is open so it can close it again. */}
-      <button
-        type="button"
-        className={`chat-tab-add${joining ? " is-active" : ""}`}
-        aria-label={joining ? t("chat.channels.closeJoinField") : t("chat.channels.join")}
-        aria-expanded={joining}
-        title={joining ? t("chat.channels.close") : t("chat.channels.join")}
-        onClick={() => (joining ? close() : setJoining(true))}
-      >
-        <Icon name={joining ? "close" : "plus"} size={16} />
-      </button>
+        {/* This stays mounted while the field is open so it can close it again. */}
+        <button
+          type="button"
+          ref={addRef}
+          className={`chat-tab-add${joining ? " is-active" : ""}`}
+          aria-label={joining ? t("chat.channels.closeJoinField") : t("chat.channels.join")}
+          aria-expanded={joining}
+          title={joining ? t("chat.channels.close") : t("chat.channels.join")}
+          onClick={() => (joining ? close() : setJoining(true))}
+        >
+          <Icon name={joining ? "close" : "plus"} size={16} />
+        </button>
 
-      {joining && (
-        <form className="chat-tab-join" onSubmit={submit}>
-          <input
-            ref={inputRef}
-            className="chat-input"
-            type="text"
-            value={draft}
-            placeholder={t("chat.channels.placeholder")}
-            aria-label={t("chat.channels.inputAria")}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => e.key === "Escape" && close()}
-          />
-        </form>
-      )}
-    </nav>
+        {joining && (
+          <form className="chat-tab-join" onSubmit={submit}>
+            <input
+              ref={inputRef}
+              className="chat-input"
+              type="text"
+              value={draft}
+              placeholder={t("chat.channels.placeholder")}
+              aria-label={t("chat.channels.inputAria")}
+              onChange={(e) => setDraft(e.target.value)}
+            />
+          </form>
+        )}
+      </nav>
+      <InactiveSectionPanels prefix={CHAT_TABS_ID} active={active} items={channels.map((channel) => ({ id: channel.name }))} />
+    </>
   );
 }

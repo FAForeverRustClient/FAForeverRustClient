@@ -174,14 +174,17 @@ export function TournamentsView() {
       {/* The server's own sentence, kept until it is dismissed. It is the one
           line that says which rating gate was missed or how many replay ids are
           still wanted, and a banner that vanished on the next render would
-          never be read. */}
+          never be read. It passes through `plainError` as written; what that
+          rewords is a transport failure, which used to arrive here as the
+          HTTP client's English, and the original stays on hover. */}
       {actionError !== null && (
-        <div className="surface-error tournaments-error">
-          <span>{actionError.reason}</span>
-          <Button onClick={() => send({ type: "dismissActionError" })}>
-            <Icon name="close" size={16} /> {t("common.close")}
-          </Button>
-        </div>
+        <StatusNotice
+          tone="error"
+          secondary={{ label: t("common.close"), onClick: () => send({ type: "dismissActionError" }) }}
+          detail={actionError.reason}
+        >
+          {plainError(actionError.reason)}
+        </StatusNotice>
       )}
 
       {page.kind === "events" && status.type === "ready" && events.length === 0 && (

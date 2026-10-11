@@ -1,3 +1,5 @@
+import { StatusNotice } from "../../../design-system/StatusNotice";
+import { plainError } from "../../../shared/plainError";
 // Everything a replay file says that the detail panel has no room for, in one
 // overlay with tabs across the top.
 //
@@ -16,17 +18,11 @@
 
 import { useId, useMemo, useState } from "react";
 import { Icon } from "../../../design-system/Icon";
-import { MultiSelect } from "../../../design-system/MultiSelect";
 import { SectionTabs, sectionPanelProps } from "../../../design-system/SectionTabs";
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
-import { useAppStore } from "../../../store/store";
 import type {
-  BrowsingPreferences,
   ReplayAnalysis,
-  ReplayChatMessage,
-  ReplayChatTransfers,
   ReplayDetails,
-  ReplayPlayer,
   ReplayTeam,
 } from "../../../ipc/bindings";
 import { ReplayActivityChart } from "./ReplayActivityChart";
@@ -34,12 +30,13 @@ import { ReplayEventsPanel, ReplayPlayersPanel } from "./ReplayAnalysisPanels";
 import { ReplayGameStats } from "./ReplayGameStats";
 import { gameOptionLabel } from "./gameOptionLabels";
 import { ReplayHeatmap, type HeatmapMapAction } from "./ReplayHeatmap";
-import { FactionIcon } from "../../../shared/components/FactionIcon";
-import { PlayerName } from "../../../shared/components/nameColors";
-import { formatDecimal, type MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { isObserverTeam } from "../ReplayRoster";
 import { ipc } from "../../../ipc/client";
+import { ReplayChatPane, useReplayChat } from "./ReplayChatPane";
+import { ReplayActivityPane } from "./ReplayActivityPane";
+import { ReplayOptionsPane } from "./ReplayOptionsPane";
+import { activityRows } from "./replayInsightRows";
+export { activityRows, chatSenders, formatChatTime, isTransferMessage } from "./replayInsightRows";
 import { requestModVaultFocus } from "../../../shared/modVaultFocus";
 
 function openModInVault(mod: string) {
@@ -65,129 +62,6 @@ const ANALYSIS_TABS: ReadonlySet<InsightTab> = new Set<InsightTab>([
   "stats",
 ]);
 
-/**
- * What to call the channel a line was typed into.
- *
- * `all` and `allies` are the two the game names; anything else is the army
- * number a whisper went to, which is a number the reader has no way to resolve
- * and so reads as "whisper".
- */
-function channelLabel(channel: string, t: (key: MessageKey) => string): string {
-  if (channel === "all") return t("replays.insights.channelAll");
-  if (channel === "allies") return t("replays.insights.channelAllies");
-  if (!channel) return "";
-  return t("replays.insights.channelWhisper");
-}
-
-/** `1:23:45`, the way the Java client stamps a line of replay chat. */
-export function formatChatTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-/**
- * The lines the game writes on a player's behalf when they share: "Sent 1.2k
- * energy to Rewer", "sent 1 unit to Nory", and the request button's "Can you
- * give me some energy, Sainse?". Matched on the game's English wording, which
- * is the only wording these replays have shown.
- */
-const TRANSFER_PATTERNS: readonly RegExp[] = [
-  /^sent\s+[\d.,]+\s*[km]?\s+(?:energy|mass)\s+to\s/i,
-  /^sent\s+[\d.,]+\s+units?\s+to\s/i,
-  /^can you give me some (?:energy|mass)\b/i,
-];
-
-/** Whether a chat line is a resource or unit transfer, or a request for one. */
-export function isTransferMessage(message: string): boolean {
-  const text = message.trim();
-  return TRANSFER_PATTERNS.some((pattern) => pattern.test(text));
-}
-
-/** Somebody who wrote in a replay's chat, and how many lines. */
-export interface ChatSender {
-  name: string;
-  lines: number;
-}
-
-/**
- * Everyone who wrote in the chat, alphabetically, for the "From" filter, with
- * how many of their lines are in `counted`.
- *
- * Everyone in `messages` is listed, a count of nought included: a name that
- * vanished from the list whenever another filter left it nothing could not be
- * unticked. Alphabetical rather than busiest first: the reader comes looking
- * for a name, and a list that reorders itself by volume makes them read it all
- * to find it.
- */
-export function chatSenders(
-  messages: ReplayChatMessage[],
-  counted: ReplayChatMessage[] = messages,
-): ChatSender[] {
-  const lines = new Map<string, number>();
-  for (const message of messages) {
-    if (!lines.has(message.sender)) lines.set(message.sender, 0);
-  }
-  for (const message of counted) {
-    lines.set(message.sender, (lines.get(message.sender) ?? 0) + 1);
-  }
-  return [...lines]
-    .map(([name, count]) => ({ name, lines: count }))
-    .sort((left, right) => left.name.localeCompare(right.name, undefined, { sensitivity: "base" }));
-}
-
-/**
- * One row of the activity tab: what the stream counted, and who the lineup says
- * that was.
- */
-interface ActivityRow {
-  player: string;
-  commands: number;
-  /** Commands per minute of game time, or `null` for a game with no length. */
-  perMinute: number | null;
-  faction: number | null;
-  rating: number | null;
-  team: number | null;
-}
-
-/**
- * Join the command counts to the lineup.
- *
- * The two come from different places and agree on nothing but the login: the
- * counts are from the replay file's own client table, the lineup is the API's
- * record of the match (or the file's army table, for a local replay). Matching
- * is case-insensitive because the two do not always agree on capitals, and a
- * player the lineup does not know is still listed: an observer is in the file
- * and not in the lineup, and "who was watching" is worth seeing.
- */
-export function activityRows(
-  stats: NonNullable<ReplayDetails["commandStats"]>,
-  teams: ReplayTeam[],
-  simSeconds: number,
-): ActivityRow[] {
-  const byLogin = new Map<string, { player: ReplayPlayer; team: number }>();
-  for (const team of teams) {
-    for (const player of team.players) {
-      byLogin.set(player.name.toLocaleLowerCase(), { player, team: team.team });
-    }
-  }
-  const minutes = simSeconds / 60;
-  return stats
-    .map((entry) => {
-      const found = byLogin.get(entry.player.toLocaleLowerCase());
-      return {
-        player: entry.player,
-        commands: entry.commands,
-        perMinute: minutes > 0 ? entry.commands / minutes : null,
-        faction: found?.player.faction ?? null,
-        rating: found?.player.rating ?? null,
-        team: found?.team ?? null,
-      };
-    })
-    .sort((left, right) => right.commands - left.commands);
-}
-
 export function ReplayInsights({
   details,
   analysis,
@@ -200,6 +74,7 @@ export function ReplayInsights({
   loading,
   error,
   onClose,
+  onRetry,
 }: {
   /**
    * `null` until the replay file has been read.
@@ -232,33 +107,11 @@ export function ReplayInsights({
   loading: boolean;
   error: string;
   onClose: () => void;
+  onRetry?: () => void;
 }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<InsightTab>("options");
   const [optionFilter, setOptionFilter] = useState("");
-  const [chatSearch, setChatSearch] = useState("");
-  // Channel and transfers are a way of reading chat rather than a fact about
-  // one game, so they are remembered in the settings and every replay opens
-  // with them. Held here as well so a change shows at once rather than after
-  // the round trip.
-  const savedChannel = useAppStore((s) => s.state.settings.browsing.replayChatChannel);
-  const savedTransfers = useAppStore((s) => s.state.settings.browsing.replayChatTransfers);
-  const [chatChannel, setChatChannel] = useState(savedChannel);
-  // The people whose lines to show; empty shows everyone. A list rather than
-  // one name: following a conversation means following both sides of it. Not
-  // remembered: the names belong to this game.
-  const [chatFrom, setChatFrom] = useState<string[]>([]);
-  // In a team game the energy and unit lines can be half the chat: hidden to
-  // read what people said, or alone to see who fed whom.
-  const [chatTransfers, setChatTransfers] = useState<ReplayChatTransfers>(savedTransfers);
-
-  const rememberChat = (patch: Pick<BrowsingPreferences, "replayChatChannel"> | Pick<BrowsingPreferences, "replayChatTransfers">) => {
-    void ipc.send({
-      kind: "Settings",
-      command: { type: "patchBrowsing", payload: { patch } },
-    });
-  };
-
   useOverlayLayer(true, onClose);
   const tabsId = useId();
 
@@ -269,50 +122,11 @@ export function ReplayInsights({
   // Memoised rather than defaulted inline: an empty array literal is a new
   // value on every render, and two of the filters below are keyed on it.
   const chatMessages = useMemo(() => details?.chatMessages ?? [], [details?.chatMessages]);
+  const chat = useReplayChat(chatMessages);
   const rows = useMemo(
     () => activityRows(details?.commandStats ?? [], teams, details?.simSeconds ?? 0),
     [details?.commandStats, details?.simSeconds, teams],
   );
-
-  // The channels this game's chat actually used, so the filter offers what is
-  // there. The Python client's tab has the same one, as four checkboxes.
-  const chatChannels = useMemo(
-    () => [...new Set(chatMessages.map((message) => message.to ?? "").filter(Boolean))].sort(),
-    [chatMessages],
-  );
-  const hasTransfers = useMemo(
-    () => chatMessages.some((message) => isTransferMessage(message.message)),
-    [chatMessages],
-  );
-  // A remembered choice this game cannot honour is set aside rather than
-  // obeyed: "allies only" on a game nobody wrote to allies in, or "only
-  // transfers" on one with none, would be an empty log with the control that
-  // emptied it not even on screen.
-  const activeChannel = chatChannels.includes(chatChannel) ? chatChannel : "";
-  const activeTransfers: ReplayChatTransfers = hasTransfers ? chatTransfers : "show";
-
-  // Every filter but "From", which is what the counts in the From list are
-  // taken over: a name's number is how many of its lines the other filters
-  // leave, so it says what ticking that name would show.
-  const chatBeforeFrom = useMemo(() => {
-    const needle = chatSearch.trim().toLowerCase();
-    return chatMessages.filter((message) => {
-      if (activeChannel && (message.to ?? "") !== activeChannel) return false;
-      if (activeTransfers !== "show") {
-        const transfer = isTransferMessage(message.message);
-        if (activeTransfers === "hide" ? transfer : !transfer) return false;
-      }
-      if (!needle) return true;
-      return message.message.toLowerCase().includes(needle)
-        || message.sender.toLowerCase().includes(needle);
-    });
-  }, [activeChannel, activeTransfers, chatMessages, chatSearch]);
-  const senders = useMemo(() => chatSenders(chatMessages, chatBeforeFrom), [chatMessages, chatBeforeFrom]);
-  const filteredChat = useMemo(() => {
-    if (chatFrom.length === 0) return chatBeforeFrom;
-    const from = new Set(chatFrom);
-    return chatBeforeFrom.filter((message) => from.has(message.sender));
-  }, [chatBeforeFrom, chatFrom]);
 
   const filteredOptions = useMemo(() => {
     const options = details?.gameOptions ?? [];
@@ -325,10 +139,6 @@ export function ReplayInsights({
         option.value.toLowerCase().includes(query),
     );
   }, [details?.gameOptions, optionFilter]);
-
-  // The busiest row, so the bars underneath the numbers are relative to the
-  // game rather than to a scale nothing in it reaches.
-  const busiest = rows.reduce((most, row) => Math.max(most, row.commands), 0);
 
   // Counts only once there is something to count: a tab reading "Chat 0"
   // while the file is still being read says the game had no chat.
@@ -349,10 +159,16 @@ export function ReplayInsights({
   // A tab that needs the stream says so itself rather than leaving the reader
   // in front of an empty panel.
   const waitingForAnalysis = ANALYSIS_TABS.has(tab) && !analysis;
+  const failure = (reason: string) => (
+    <StatusNotice tone="error" detail={reason}
+      action={onRetry ? { label: t("common.retry"), onClick: onRetry } : undefined}>
+      {plainError(reason)}
+    </StatusNotice>
+  );
   const analysisNotice = waitingForAnalysis
     ? (
       analysisError
-        ? <p className="replay-download-error surface-error">{analysisError}</p>
+        ? failure(analysisError)
         : (
           <p className="replay-insights-loading muted">
             <Icon name="refresh" size={15} className="spin" />
@@ -402,7 +218,7 @@ export function ReplayInsights({
               in each of them would say four different things are loading. */}
           {!details && (
             error
-              ? <p className="replay-download-error surface-error">{error}</p>
+              ? failure(error)
               : (
                 <p className="replay-insights-loading muted">
                   <Icon name="refresh" size={15} className="spin" />
@@ -426,206 +242,12 @@ export function ReplayInsights({
               knows the names and the counts. */}
           {analysis && tab === "players" && <ReplayPlayersPanel analysis={analysis} />}
 
-          {!analysis && details && tab === "players" && (
-            rows.length === 0 ? (
-              <p className="replay-detail-empty muted">{t("replays.insights.noActivity")}</p>
-            ) : (
-              <>
-                {/* Said once, above the table, rather than implied by a column
-                    heading nobody can interrogate. The number is honest about
-                    what it counts and the reader can decide what it is worth:
-                    a hotkey that reissues an order counts twice, and one click
-                    onto forty units counts once. */}
-                <p className="replay-insights-note muted">
-                  <Icon name="info" size={13} />
-                  <span>{t("replays.insights.explainer")}</span>
-                </p>
-                <div className="replay-table-scroll">
-                  <table className="replay-data-table replay-activity-table">
-                    <thead>
-                      <tr>
-                        <th>{t("replays.insights.player")}</th>
-                        <th>{t("replays.detail.avgRating")}</th>
-                        <th>{t("replays.insights.commands")}</th>
-                        <th>{t("replays.insights.perMinute")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((row) => (
-                        <tr key={row.player}>
-                          <td>
-                            <span className="replay-activity-player">
-                              {row.team !== null && !isObserverTeam(row.team) && row.faction ? (
-                                <FactionIcon className="replay-player-faction" faction={row.faction} size={14} />
-                              ) : (
-                                <span className="replay-player-faction replay-player-faction-empty" aria-hidden />
-                              )}
-                              <PlayerName name={row.player} />
-                            </span>
-                          </td>
-                          <td>{row.rating === null ? t("common.notAvailable") : row.rating}</td>
-                          <td className="replay-activity-count">{row.commands}</td>
-                          <td>
-                            <span className="replay-activity-rate">
-                              <span className="replay-activity-rate-value">
-                                {row.perMinute === null ? t("common.notAvailable") : formatDecimal(row.perMinute)}
-                              </span>
-                              {/* The bar is the comparison the table is for:
-                                  the numbers alone need reading twice to see
-                                  who was twice as busy as whom. */}
-                              <span
-                                className="replay-activity-bar"
-                                aria-hidden
-                                style={{ width: busiest > 0 ? `${(row.commands / busiest) * 100}%` : "0%" }}
-                              />
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )
-          )}
+          {!analysis && details && tab === "players" && <ReplayActivityPane rows={rows} />}
 
-          {details && tab === "chat" && (
-            <>
-              <div className="replay-insights-toolbar">
-                {/* Whose lines to read: tick one or several, nothing ticked
-                    is everyone. Each name carries how many lines it wrote. */}
-                {senders.length > 1 && (
-                  <MultiSelect
-                    layout="inline"
-                    label={t("replays.insights.from")}
-                    anyLabel={t("replays.insights.everyone")}
-                    options={senders.map((sender) => ({
-                      value: sender.name,
-                      label: sender.name,
-                      detail: String(sender.lines),
-                    }))}
-                    selected={chatFrom}
-                    onChange={setChatFrom}
-                  />
-                )}
-                {chatChannels.length > 1 && (
-                  <label className="replay-insights-filter">
-                    <span className="muted">{t("replays.insights.channel")}</span>
-                    <select
-                      className="vault-input"
-                      value={activeChannel}
-                      onChange={(event) => {
-                        setChatChannel(event.target.value);
-                        rememberChat({ replayChatChannel: event.target.value });
-                      }}
-                    >
-                      <option value="">{t("replays.insights.everyChannel")}</option>
-                      {chatChannels.map((channel) => (
-                        <option key={channel} value={channel}>{channelLabel(channel, t)}</option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                {/* Offered only where there is something to hide or keep. */}
-                {hasTransfers && (
-                  <label className="replay-insights-filter" title={t("replays.insights.transfersHint")}>
-                    <span className="muted">{t("replays.insights.transfers")}</span>
-                    <select
-                      className="vault-input"
-                      value={activeTransfers}
-                      onChange={(event) => {
-                        const value = event.target.value as ReplayChatTransfers;
-                        setChatTransfers(value);
-                        rememberChat({ replayChatTransfers: value });
-                      }}
-                    >
-                      <option value="show">{t("replays.insights.transfersShow")}</option>
-                      <option value="hide">{t("replays.insights.transfersHide")}</option>
-                      <option value="only">{t("replays.insights.transfersOnly")}</option>
-                    </select>
-                  </label>
-                )}
-                <input
-                  type="search"
-                  className="vault-input replay-options-filter"
-                  placeholder={t("replays.insights.searchChat")}
-                  value={chatSearch}
-                  onChange={(event) => setChatSearch(event.target.value)}
-                />
-              </div>
-              <div className="replay-table-scroll">
-                <table className="replay-data-table">
-                  <thead>
-                    <tr>
-                      <th>{t("replays.detail.chatTime")}</th>
-                      <th>{t("replays.detail.chatSender")}</th>
-                      <th>{t("replays.insights.channel")}</th>
-                      <th>{t("replays.detail.chatMessage")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredChat.length > 0 ? (
-                      filteredChat.map((message, index) => (
-                        <tr key={`${message.timeSeconds}-${message.sender}-${index}`}>
-                          <td className="replay-chat-time">{formatChatTime(message.timeSeconds)}</td>
-                          <td className="replay-chat-sender" title={message.sender}>{message.sender}</td>
-                          <td className="muted">{channelLabel(message.to ?? "", t)}</td>
-                          <td className="replay-chat-message">{message.message}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={4} className="replay-table-empty muted">
-                          {t(chatMessages.length > 0
-                            ? "replays.insights.noChatMatch"
-                            : "replays.detail.noChat")}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
+          {details && tab === "chat" && <ReplayChatPane chat={chat} />}
 
           {details && tab === "options" && (
-            <>
-              <div className="replay-insights-toolbar">
-                <input
-                  type="search"
-                  className="vault-input replay-options-filter"
-                  placeholder={t("replays.detail.filterOptions")}
-                  value={optionFilter}
-                  onChange={(event) => setOptionFilter(event.target.value)}
-                />
-              </div>
-              <div className="replay-table-scroll">
-                <table className="replay-data-table replay-options-table">
-                  <thead>
-                    <tr>
-                      <th>{t("replays.detail.optionName")}</th>
-                      <th>{t("replays.detail.optionValue")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredOptions.length > 0 ? (
-                      filteredOptions.map((option) => (
-                        <tr key={option.key}>
-                          <td title={option.key}><strong>{gameOptionLabel(option.key)}</strong></td>
-                          <td>{option.value}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={2} className="replay-table-empty muted">
-                          {t("replays.detail.noOptionsMatch")}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </>
+            <ReplayOptionsPane filteredOptions={filteredOptions} optionFilter={optionFilter} setOptionFilter={setOptionFilter} />
           )}
 
           {details && tab === "mods" && (

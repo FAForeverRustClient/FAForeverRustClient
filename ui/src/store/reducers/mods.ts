@@ -4,8 +4,14 @@ export function reduceMods(state: ModsState, event: ModsEvent): ModsState {
   switch (event.type) {
     case "vaultProgress":
       return { ...state, vaultProgress: event.payload.progress };
+    // A reload called off keeps the catalogue it would have replaced: see the
+    // Rust twin.
     case "vaultCancelled":
-      return { ...state, vaultStatus: { type: "cancelled" }, vaultProgress: null };
+      return {
+        ...state,
+        vaultStatus: state.vault.length === 0 ? { type: "cancelled" } : { type: "ready" },
+        vaultProgress: null,
+      };
     case "vaultLoading":
       return { ...state, vaultStatus: { type: "loading" }, vaultProgress: null };
     case "vaultLoaded":
@@ -40,8 +46,25 @@ export function reduceMods(state: ModsState, event: ModsEvent): ModsState {
     case "installing":
       return {
         ...state,
-        installStatus: { type: "installing", payload: { uid: event.payload.uid } },
+        installStatus: { type: "installing", payload: { uid: event.payload.uid, progress: null } },
       };
+    // Both only for the install they name, as in `faf_domain::state::mods`.
+    case "installProgressed":
+      return state.installStatus.type === "installing"
+        && state.installStatus.payload.uid === event.payload.uid
+        ? {
+          ...state,
+          installStatus: {
+            type: "installing",
+            payload: { uid: event.payload.uid, progress: event.payload.progress },
+          },
+        }
+        : state;
+    case "installCancelled":
+      return state.installStatus.type === "installing"
+        && state.installStatus.payload.uid === event.payload.uid
+        ? { ...state, installStatus: { type: "idle" } }
+        : state;
     case "installed":
       return {
         ...state,

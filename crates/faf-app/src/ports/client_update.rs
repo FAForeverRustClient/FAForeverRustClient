@@ -7,6 +7,7 @@
 use async_trait::async_trait;
 use faf_domain::state::{ClientRelease, ReleaseChannel};
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 /// Progress of an installer download.
 ///
@@ -35,7 +36,16 @@ pub trait ClientUpdatePort: Send + Sync {
     async fn latest(&self, channel: ReleaseChannel) -> Result<Option<ClientRelease>, String>;
 
     /// Fetch the release's installer for this platform.
-    async fn download(&self, release: ClientRelease) -> mpsc::Receiver<DownloadProgress>;
+    ///
+    /// `called_off` stops the download at its next await. The implementation
+    /// then removes what it had written, and only after that drops its sender:
+    /// the receiver running dry is how the caller knows the work is over, and
+    /// it waits for that before another download may write the same file.
+    async fn download(
+        &self,
+        release: ClientRelease,
+        called_off: CancellationToken,
+    ) -> mpsc::Receiver<DownloadProgress>;
 
     /// Start the downloaded installer.
     ///

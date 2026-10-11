@@ -78,6 +78,17 @@ function started() {
 }
 
 describe("VetoesPanel map ban, mounted", () => {
+  it("Escape disarms a map without confirming it", async () => {
+    const user = mountVetoes();
+    await openVetoes(user);
+    const arctic = screen.getByRole("button", { name: "Arctic Refuge" });
+    await user.click(arctic);
+    expect(arctic.classList.contains("is-armed")).toBe(true);
+    await user.keyboard("{Escape}");
+    expect(arctic.classList.contains("is-armed")).toBe(false);
+    expect(vetoes()).toHaveLength(0);
+  });
+
   it("takes a double click as one ban, then follows the reload to the other side's turn", async () => {
     const user = mountVetoes();
     await openVetoes(user);
@@ -139,7 +150,7 @@ describe("VetoesPanel map ban, mounted", () => {
         payload: { failure: { action, reason: "It is not your turn to ban", kind: "rejected" } },
       },
     });
-    expect(screen.getByText("It is not your turn to ban")).toBeDefined();
+    expect(screen.getByText("It is not your turn to ban.")).toBeDefined();
     expect(screen.getByText("Your turn.")).toBeDefined();
     expect(screen.getByRole("button", { name: "Arctic Refuge" }).hasAttribute("disabled")).toBe(false);
     expect(screen.getByRole("button", { name: "Canis River" }).hasAttribute("disabled")).toBe(false);

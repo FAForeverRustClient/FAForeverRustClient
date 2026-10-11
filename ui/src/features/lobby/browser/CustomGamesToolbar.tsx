@@ -17,25 +17,17 @@ interface Props {
   search: string;
   sort: SortMode;
   viewMode: GameViewMode;
-  hidePrivate: boolean;
-  hideModded: boolean;
   /**
-   * Omitted by the co-op browser, together with its handler: every mission is
-   * unranked, so the checkbox there was a way to empty the list.
+   * How many filters are hiding games: the hide switches that are on and the
+   * rules while they are applied (`activeFilterCount`). The switches live in
+   * the filters dialog, so this number on its button is what keeps a filter
+   * that is on from going unnoticed.
    */
-  hideUnranked?: boolean;
-  hideFoes?: boolean;
-  applyFilters: boolean;
   filterCount: number;
   connected: boolean;
   onSearch: (value: string) => void;
   onSort: (value: SortMode) => void;
   onViewMode: (value: GameViewMode) => void;
-  onHidePrivate: (value: boolean) => void;
-  onHideModded: (value: boolean) => void;
-  onHideUnranked?: (value: boolean) => void;
-  onHideFoes?: (value: boolean) => void;
-  onApplyFilters: (value: boolean) => void;
   onOpenFilters: () => void;
   onHost: () => void;
   onRefresh?: () => void;
@@ -61,52 +53,10 @@ export function CustomGamesToolbar(props: Props) {
           aria-label={t("lobby.toolbar.searchAria")}
         />
       </label>
-      <label className="toolbar-check">
-        <input
-          type="checkbox"
-          checked={props.hidePrivate}
-          onChange={(event) => props.onHidePrivate(event.target.checked)}
-        />
-        {t("lobby.toolbar.hidePrivate")}
-      </label>
-      <label className="toolbar-check">
-        <input
-          type="checkbox"
-          checked={props.hideModded}
-          onChange={(event) => props.onHideModded(event.target.checked)}
-        />
-        {t("lobby.toolbar.hideModded")}
-      </label>
-      {props.onHideUnranked && (
-        <label className="toolbar-check">
-          <input
-            type="checkbox"
-            checked={props.hideUnranked ?? false}
-            onChange={(event) => props.onHideUnranked?.(event.target.checked)}
-          />
-          {t("lobby.toolbar.hideUnranked")}
-        </label>
-      )}
-      {props.onHideFoes && (
-        <label className="toolbar-check">
-          <input
-            type="checkbox"
-            checked={props.hideFoes ?? false}
-            onChange={(event) => props.onHideFoes?.(event.target.checked)}
-          />
-          {t("lobby.toolbar.hideFoes")}
-        </label>
-      )}
-      {/* The tooltip says which way the rules go. Both reports of this filter
-          were somebody expecting a match to show a lobby rather than hide it. */}
-      <label className="toolbar-check" title={t("lobby.toolbar.applyFiltersHint")}>
-        <input
-          type="checkbox"
-          checked={props.applyFilters}
-          onChange={(event) => props.onApplyFilters(event.target.checked)}
-        />
-        {t("lobby.toolbar.applyFilters")}
-      </label>
+      {/* The hide switches and "Apply filters" are in the dialog this opens.
+          Five checkboxes beside the search took the toolbar to two rows at
+          the default 1100 pixel window, pushing every game down a row's
+          height; the count on the button is what still shows they are on. */}
       <Button onClick={props.onOpenFilters}>
         <Icon name="filter" size={15} />
         {t("lobby.toolbar.filters")}

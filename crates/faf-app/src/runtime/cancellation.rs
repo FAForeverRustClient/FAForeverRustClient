@@ -1,28 +1,18 @@
-//! Service-owned cancellation. A later run never clears an older run's token.
+//! A single-current-operation view of the shared cancellation registry.
 
 #[derive(Default)]
-pub struct CancellationSlot(std::sync::Mutex<Option<tokio_util::sync::CancellationToken>>);
+pub struct CancellationSlot(super::Cancellable<()>);
 
 impl CancellationSlot {
     pub fn begin(&self) -> tokio_util::sync::CancellationToken {
-        let token = tokio_util::sync::CancellationToken::new();
-        if let Some(previous) = self.0.lock().unwrap().replace(token.clone()) {
-            previous.cancel();
-        }
-        token
+        self.0.replace(()).called_off
     }
 
     pub fn cancel(&self) {
-        if let Some(token) = self.0.lock().unwrap().as_ref() {
-            token.cancel();
-        }
+        self.0.cancel(|_| true);
     }
 
     pub fn is_cancelled(&self) -> bool {
-        self.0
-            .lock()
-            .unwrap()
-            .as_ref()
-            .is_some_and(|token| token.is_cancelled())
+        self.0.last_is_cancelled()
     }
 }

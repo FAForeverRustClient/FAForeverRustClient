@@ -10,6 +10,7 @@
 // the store and writes both back itself, so a dialog embedding it passes
 // nothing and cannot get the wiring subtly wrong.
 
+import { SectionTabs, sectionPanelProps } from "../../../design-system/SectionTabs";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
@@ -162,26 +163,17 @@ export const HostModsColumn = memo(function HostModsColumn() {
       {/* The same switch the map column uses, rather than a second one that
           looks nearly like it. Two controls doing the same job in one dialog
           should not be distinguishable by their styling. */}
-      <div className="host-mod-tabs section-tabs" role="tablist" aria-label={t("lobby.host.mods")}>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={modTab === "ui"}
-          className={modTab === "ui" ? "active" : ""}
-          onClick={() => setModTab("ui")}
-        >
-          {t("lobby.host.uiMods")} ({uiMods.length})
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={modTab === "sim"}
-          className={modTab === "sim" ? "active" : ""}
-          onClick={() => setModTab("sim")}
-        >
-          {t("lobby.host.simMods")} ({simMods.length})
-        </button>
-      </div>
+      <SectionTabs
+        className="host-mod-tabs"
+        ariaLabel={t("lobby.host.mods")}
+        active={modTab}
+        onChange={setModTab}
+        idPrefix="host-mod-kind"
+        items={[
+          { id: "ui", label: `${t("lobby.host.uiMods")} (${uiMods.length})` },
+          { id: "sim", label: `${t("lobby.host.simMods")} (${simMods.length})` },
+        ]}
+      />
       <div className="host-map-search-row">
         <div className="search-field host-column-search host-map-search-field">
           <Icon name="search" size={13} />
@@ -260,7 +252,7 @@ export const HostModsColumn = memo(function HostModsColumn() {
       </div>
 
 
-      <div className="host-column-body host-mod-list">
+      <div className="host-column-body host-mod-list" {...sectionPanelProps("host-mod-kind", modTab)}>
         {filteredMods.length === 0 ? (
           <p className="play-empty">
             {t(installedMods.length === 0 ? "lobby.host.noInstalledMods" : "lobby.host.noModsMatch")}

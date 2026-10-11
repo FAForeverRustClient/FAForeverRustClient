@@ -37,6 +37,9 @@ pub(crate) fn log_directory(
 ) -> Result<std::path::PathBuf, String> {
     match kind {
         "game" => faf_app::infra::game_logs::directory(),
+        // The ICE adapters' own logs, opened from the connectivity check:
+        // the same folder the adapters are told to write to.
+        "ice" => Ok(faf_app::infra::ice_java::log_directory()),
         "client" => app
             .path()
             .app_log_dir()

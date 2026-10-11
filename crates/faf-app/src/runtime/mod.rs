@@ -1,6 +1,6 @@
-//! The runtime loop: command in → service → event out → reduce → broadcast.
+//! The runtime loop: command in, service, event out, reduce, broadcast.
 //!
-//! This is the closed unidirectional loop from ARCHITECTURE.md §1/§3.5. It owns the
+//! This is the closed unidirectional loop from ARCHITECTURE.md Ã‚Â§1/Ã‚Â§3.5. It owns the
 //! authoritative [`AppState`] and is the only thing that calls [`faf_domain::reduce`].
 //!
 //! [`App::new`] returns a handle plus an [`AppLoop`]; the caller decides how to drive
@@ -25,8 +25,8 @@ pub use cancellation::CancellationSlot;
 pub(crate) use command_policy::{end_turn, expect_admitted, Key};
 use command_policy::{CommandAdmission, Lane};
 pub use policies::{
-    AutoReconnect, LatestRequest, LoadedFromDisk, LobbyOperation, LobbyOperations, RunningGame,
-    SerialMutation, SingleFlight,
+    AutoReconnect, CancelTicket, Cancellable, LatestRequest, LoadedFromDisk, LobbyOperation,
+    LobbyOperations, NewestAnswer, RunningGame, SerialMutation, SingleFlight,
 };
 
 /// Context handed to every service: shared dependencies plus one operational
@@ -65,6 +65,7 @@ pub struct ServiceCtx {
     pub tutorials: services::tutorials::TutorialsContext,
     pub galactic_war: services::galactic_war::GalacticWarContext,
     pub map_generator: services::map_generator::MapGeneratorContext,
+    pub client_update: services::client_update::ClientUpdateContext,
 }
 
 /// The sink a service emits events into.
@@ -249,7 +250,8 @@ enum PairHalf {
 /// names what both halves act on, so only a release of the same thing counts.
 fn pair_of(command: &AppCommand) -> Option<PairHalf> {
     use faf_domain::state::{
-        AuthCommand, ChatCommand, GuidesCommand, LobbyCommand, MapGeneratorCommand, ReplayCommand,
+        AuthCommand, ChatCommand, ClientUpdateCommand, GuidesCommand, LobbyCommand,
+        MapGeneratorCommand, MapsCommand, ModsCommand, ReplayCommand, UploadsCommand,
     };
     let start = |key: &str| Some(PairHalf::Start(key.to_owned()));
     let release = |key: &str| Some(PairHalf::Release(key.to_owned()));
@@ -290,6 +292,30 @@ fn pair_of(command: &AppCommand) -> Option<PairHalf> {
         AppCommand::Replays(ReplayCommand::CancelWatch) => release("replay-watch"),
         AppCommand::Replays(ReplayCommand::TrackLive { .. }) => start("live-tracking"),
         AppCommand::Replays(ReplayCommand::CancelLiveTracking) => release("live-tracking"),
+        // The background work the status bar can stop. Each key names the one
+        // item, so calling off one map's install never drops another's.
+        AppCommand::Replays(ReplayCommand::DownloadVault { uid }) => {
+            start(&format!("replay-download:{uid}"))
+        }
+        AppCommand::Replays(ReplayCommand::CancelDownload { uid }) => {
+            release(&format!("replay-download:{uid}"))
+        }
+        AppCommand::Maps(MapsCommand::InstallMap { folder_name, .. }) => {
+            start(&format!("map-install:{}", folder_name.to_ascii_lowercase()))
+        }
+        AppCommand::Maps(MapsCommand::CancelInstall { folder_name }) => {
+            release(&format!("map-install:{}", folder_name.to_ascii_lowercase()))
+        }
+        AppCommand::Mods(
+            ModsCommand::InstallMod { uid, .. } | ModsCommand::UpdateMod { uid, .. },
+        ) => start(&format!("mod-install:{uid}")),
+        AppCommand::Mods(ModsCommand::CancelInstall { uid }) => {
+            release(&format!("mod-install:{uid}"))
+        }
+        AppCommand::Uploads(UploadsCommand::Start) => start("upload"),
+        AppCommand::Uploads(UploadsCommand::Cancel) => release("upload"),
+        AppCommand::ClientUpdate(ClientUpdateCommand::Download) => start("client-download"),
+        AppCommand::ClientUpdate(ClientUpdateCommand::CancelDownload) => release("client-download"),
         _ => None,
     }
 }
@@ -304,11 +330,77 @@ fn pair_of(command: &AppCommand) -> Option<PairHalf> {
 struct ReleaseOrder {
     next: AtomicU64,
     released: std::sync::Mutex<std::collections::HashMap<String, u64>>,
+    analysis: std::sync::Mutex<Option<QueuedRead>>,
+    details: std::sync::Mutex<Option<QueuedRead>>,
+}
+
+#[derive(Debug)]
+struct QueuedRead {
+    seq: u64,
+    uid: i32,
+    path: Option<String>,
+    request_id: Option<u32>,
+    cancelled: bool,
 }
 
 impl ReleaseOrder {
     fn stamp(&self, command: &AppCommand) -> u64 {
         let seq = self.next.fetch_add(1, std::sync::atomic::Ordering::AcqRel) + 1;
+        {
+            use faf_domain::state::ReplayCommand;
+            let read = match command {
+                AppCommand::Replays(ReplayCommand::LoadAnalysis {
+                    uid,
+                    local_path,
+                    request_id,
+                }) => Some((&self.analysis, *uid, local_path, *request_id, false)),
+                AppCommand::Replays(ReplayCommand::LoadDetails {
+                    uid,
+                    local_path,
+                    request_id,
+                }) => Some((&self.details, *uid, local_path, *request_id, false)),
+                AppCommand::Replays(ReplayCommand::CancelReads {
+                    uid,
+                    local_path,
+                    request_id,
+                }) => {
+                    for slot in [&self.analysis, &self.details] {
+                        let mut read = slot
+                            .lock()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner);
+                        if let Some(current) = read.as_mut().filter(|current| {
+                            current.seq < seq
+                                && faf_domain::state::replay_read_key(
+                                    current.uid,
+                                    current.path.as_deref(),
+                                ) == faf_domain::state::replay_read_key(
+                                    *uid,
+                                    local_path.as_deref(),
+                                )
+                                && (request_id.is_none() || current.request_id == *request_id)
+                        }) {
+                            current.cancelled = true;
+                        }
+                    }
+                    None
+                }
+                _ => None,
+            };
+            if let Some((slot, uid, path, request_id, cancelled)) = read {
+                let mut current = slot
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                if current.as_ref().is_none_or(|current| current.seq < seq) {
+                    *current = Some(QueuedRead {
+                        seq,
+                        uid,
+                        path: path.clone(),
+                        request_id,
+                        cancelled,
+                    });
+                }
+            }
+        }
         if let Some(PairHalf::Release(key)) = pair_of(command) {
             self.released
                 .lock()
@@ -319,6 +411,22 @@ impl ReleaseOrder {
     }
 
     fn superseded(&self, command: &AppCommand, seq: u64) -> bool {
+        let read_slot = match command {
+            AppCommand::Replays(faf_domain::state::ReplayCommand::LoadAnalysis { .. }) => {
+                Some(&self.analysis)
+            }
+            AppCommand::Replays(faf_domain::state::ReplayCommand::LoadDetails { .. }) => {
+                Some(&self.details)
+            }
+            _ => None,
+        };
+        if let Some(slot) = read_slot {
+            return slot
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .as_ref()
+                .is_none_or(|current| current.seq != seq || current.cancelled);
+        }
         let Some(PairHalf::Start(key)) = pair_of(command) else {
             return false;
         };
@@ -379,6 +487,7 @@ impl App {
             tutorials: services::tutorials::TutorialsContext::default(),
             galactic_war: services::galactic_war::GalacticWarContext::default(),
             map_generator: services::map_generator::MapGeneratorContext::default(),
+            client_update: services::client_update::ClientUpdateContext::default(),
         };
 
         let app = Self {
@@ -579,13 +688,55 @@ impl AppLoop {
             let sink = sink.clone();
             let admission = command_policy::policy(&command).admission;
             let turn = ctx.admission.admit(admission);
+            // Claim analysis before spawning: a close or replacement can run
+            // before the executor ever polls this task.
+            let analysis = match &command {
+                AppCommand::Replays(faf_domain::state::ReplayCommand::LoadAnalysis {
+                    uid,
+                    local_path,
+                    request_id,
+                }) => services::replays::begin_analysis(
+                    *uid,
+                    local_path.clone(),
+                    *request_id,
+                    &ctx,
+                    &sink,
+                ),
+                _ => None,
+            };
+            let details = match &command {
+                AppCommand::Replays(faf_domain::state::ReplayCommand::LoadDetails {
+                    uid,
+                    local_path,
+                    request_id,
+                }) => Some(services::replays::begin_details(
+                    *uid,
+                    local_path.clone(),
+                    *request_id,
+                    &ctx,
+                    &sink,
+                )),
+                _ => None,
+            };
             async move {
                 let Some(mut turn) = turn else {
                     tracing::debug!("dropped a command whose kind is already running");
                     return;
                 };
                 turn.ready().await;
-                command_policy::run_admitted(admission, turn, dispatch(command, &ctx, &sink)).await;
+                command_policy::run_admitted(admission, turn, async {
+                    if let Some(work) = analysis {
+                        services::replays::run_analysis(work, &ctx, &sink).await;
+                    } else if let Some(work) = details {
+                        services::replays::run_details(work, &ctx, &sink).await;
+                    } else if !matches!(
+                        command,
+                        AppCommand::Replays(faf_domain::state::ReplayCommand::LoadAnalysis { .. })
+                    ) {
+                        dispatch(command, &ctx, &sink).await;
+                    }
+                })
+                .await;
             }
         };
         drive(
@@ -847,7 +998,7 @@ pub(crate) fn run_command<'a>(
     })
 }
 
-/// Route a command to the owning service. One arm per slice (ARCHITECTURE.md §8).
+/// Route a command to the owning service. One arm per slice (ARCHITECTURE.md Ã‚Â§8).
 async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
     match cmd {
         AppCommand::Session(c) => services::session::handle(c, ctx, sink).await,
@@ -878,6 +1029,7 @@ async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
         AppCommand::Social(c) => services::social::handle(c, ctx, sink).await,
         AppCommand::Streams(c) => services::streams::handle(c, ctx, sink).await,
         AppCommand::Settings(c) => services::settings::handle(c, ctx, sink).await,
+        AppCommand::Connectivity(c) => services::connectivity::handle(c, ctx, sink).await,
     }
 }
 
@@ -1201,6 +1353,130 @@ mod tests {
             !order.superseded(&SessionCommand::Hello.into(), 0),
             "unpaired commands always run"
         );
+    }
+
+    #[tokio::test]
+    async fn details_cancelled_before_their_first_poll_never_read_or_settle() {
+        use faf_domain::state::ReplayCommand;
+        let (_, app_loop) = App::new("test", crate::infra::fake_ports());
+        let ctx = &app_loop.ctx;
+        let sink = &app_loop.sink;
+        let first = services::replays::begin_details(7, None, Some(1), ctx, sink);
+        let second = services::replays::begin_details(7, None, Some(2), ctx, sink);
+        services::replays::run_details(first, ctx, sink).await;
+        assert_eq!(
+            sink.snapshot().replays.details_loading,
+            Some("uid:7".into())
+        );
+        assert!(sink.snapshot().replays.replay_details.is_empty());
+        services::replays::handle(
+            ReplayCommand::CancelReads {
+                uid: 7,
+                local_path: None,
+                request_id: Some(2),
+            },
+            ctx,
+            sink,
+        )
+        .await;
+        services::replays::run_details(second, ctx, sink).await;
+        assert_eq!(sink.snapshot().replays.details_loading, None);
+        assert!(sink.snapshot().replays.replay_details.is_empty());
+        assert!(sink.snapshot().replays.details_error.is_none());
+    }
+
+    #[tokio::test]
+    async fn analysis_cancelled_before_its_first_poll_never_reads_or_settles() {
+        use faf_domain::state::ReplayCommand;
+        let (_, app_loop) = App::new("test", crate::infra::fake_ports());
+        let ctx = &app_loop.ctx;
+        let sink = &app_loop.sink;
+        let first = services::replays::begin_analysis(7, None, Some(1), ctx, sink).unwrap();
+        let second = services::replays::begin_analysis(7, None, Some(2), ctx, sink).unwrap();
+        services::replays::run_analysis(first, ctx, sink).await;
+        assert_eq!(
+            sink.snapshot().replays.analysis_loading,
+            Some("uid:7".into())
+        );
+        assert!(sink.snapshot().replays.analysis_error.is_none());
+        services::replays::handle(
+            ReplayCommand::CancelReads {
+                uid: 7,
+                local_path: None,
+                request_id: Some(2),
+            },
+            ctx,
+            sink,
+        )
+        .await;
+        services::replays::run_analysis(second, ctx, sink).await;
+        assert_eq!(sink.snapshot().replays.analysis_loading, None);
+        assert!(sink.snapshot().replays.analysis.is_none());
+        assert!(sink.snapshot().replays.analysis_error.is_none());
+    }
+
+    #[tokio::test]
+    async fn queued_analysis_respects_its_own_close_and_newer_request() {
+        use faf_domain::state::ReplayCommand;
+        for analysis in [true, false] {
+            let order = ReleaseOrder::default();
+            let load = |id| {
+                AppCommand::Replays(if analysis {
+                    ReplayCommand::LoadAnalysis {
+                        uid: 7,
+                        local_path: None,
+                        request_id: Some(id),
+                    }
+                } else {
+                    ReplayCommand::LoadDetails {
+                        uid: 7,
+                        local_path: None,
+                        request_id: Some(id),
+                    }
+                })
+            };
+            let cancel = |id| {
+                AppCommand::Replays(ReplayCommand::CancelReads {
+                    uid: 7,
+                    local_path: None,
+                    request_id: Some(id),
+                })
+            };
+            let first = load(1);
+            let seq = order.stamp(&first);
+            order.stamp(&cancel(1));
+            assert!(
+                order.superseded(&first, seq),
+                "closing before admission prevents a start"
+            );
+            let second = load(2);
+            let second_seq = order.stamp(&second);
+            order.stamp(&cancel(1));
+            assert!(
+                !order.superseded(&second, second_seq),
+                "an older panel cannot close its replacement"
+            );
+            order.stamp(&load(3));
+            assert!(
+                order.superseded(&second, second_seq),
+                "a newer request supersedes queued work too"
+            );
+            let fourth = load(4);
+            let fourth_seq = order.stamp(&fourth);
+            order.stamp(&AppCommand::Replays(ReplayCommand::CancelReads {
+                uid: 7,
+                local_path: None,
+                request_id: None,
+            }));
+            assert!(
+                order.superseded(&fourth, fourth_seq),
+                "unscoped cancellation remains compatible"
+            );
+            assert!(
+                order.released.lock().unwrap().is_empty(),
+                "read owners do not grow the release map"
+            );
+        }
     }
 
     #[tokio::test]

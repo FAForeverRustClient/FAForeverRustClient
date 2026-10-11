@@ -13,13 +13,25 @@ use faf_domain::state::{
 };
 
 use crate::ports::DownloadProgress;
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{Cancellable, EventSink, ServiceCtx};
 use crate::services;
+
+/// The installer download in flight, so `CancelDownload` can reach it. Owned
+/// by this service.
+#[derive(Default)]
+pub struct ClientUpdateContext {
+    /// One at most: a download holds `Key::ClientUpdate`. Keyed by nothing,
+    /// since there is only the one.
+    downloads: Cancellable<()>,
+}
 
 pub async fn handle(cmd: ClientUpdateCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         ClientUpdateCommand::Check => check(ctx, out).await,
         ClientUpdateCommand::Download => download(ctx, out).await,
+        ClientUpdateCommand::CancelDownload => {
+            ctx.client_update.downloads.cancel(|()| true);
+        }
         ClientUpdateCommand::Install => install(ctx, out).await,
         ClientUpdateCommand::Dismiss => dismiss(out),
     }
@@ -195,14 +207,35 @@ async fn download(ctx: &ServiceCtx, out: &EventSink) {
         return;
     }
 
-    let mut updates = ctx.ports.client_update.download(release).await;
+    // Reachable before anything is on screen, and on screen at once: the
+    // first report only comes with the first chunk, and until then the offer
+    // read as if Download had not been pressed.
+    let ticket = ctx.client_update.downloads.begin(());
+    out.emit(ClientUpdateEvent::DownloadProgressed {
+        received_bytes: 0,
+        total_bytes: 0,
+    });
+    // The call-off goes to the port as a token, and the stream is read to its
+    // end either way: the adapter stops at its next await, deletes its
+    // partial file, and only then lets the stream end (see
+    // `ClientUpdatePort::download`). The update key is held until then. It
+    // used to go at the cancel, with the worker still running, and a download
+    // pressed straight after wrote the same partial file the old worker was
+    // about to truncate or delete.
+    let called_off = ticket.called_off.clone();
+    let mut updates = ctx
+        .ports
+        .client_update
+        .download(release, called_off.clone())
+        .await;
 
-    // The port always ends with `Finished`. Treating a stream that closes
-    // without one as a failure keeps a panicked task from leaving the UI stuck
-    // on a progress bar that will never move again.
-    let mut settled = false;
+    // The outcome is said once the stream has ended, so the offer is not back
+    // on screen while the worker is still finishing.
+    let mut finished = None;
     while let Some(progress) = updates.recv().await {
         match progress {
+            // Not drawn once called off: the bar is on its way out.
+            DownloadProgress::Received { .. } if called_off.is_cancelled() => {}
             DownloadProgress::Received {
                 received_bytes,
                 total_bytes,
@@ -210,21 +243,24 @@ async fn download(ctx: &ServiceCtx, out: &EventSink) {
                 received_bytes,
                 total_bytes,
             }),
-            DownloadProgress::Finished(Ok(path)) => {
-                settled = true;
-                out.emit(ClientUpdateEvent::Downloaded { path });
-            }
-            DownloadProgress::Finished(Err(reason)) => {
-                settled = true;
-                out.emit(ClientUpdateEvent::Failed { reason });
-            }
+            DownloadProgress::Finished(outcome) => finished = Some(outcome),
         }
     }
-    if !settled {
-        out.emit(ClientUpdateEvent::Failed {
+    ctx.client_update.downloads.end(&ticket);
+    out.emit(match finished {
+        // Complete before the call-off reached it: the installer is in
+        // place, and saying so is the truth.
+        Some(Ok(path)) => ClientUpdateEvent::Downloaded { path },
+        // Not a failure: the user stopped it. The offer stays.
+        Some(Err(_)) | None if called_off.is_cancelled() => ClientUpdateEvent::DownloadCancelled,
+        Some(Err(reason)) => ClientUpdateEvent::Failed { reason },
+        // The port always ends with `Finished`. A stream that closes without
+        // one is a failure, so a panicked task cannot leave the UI stuck on
+        // a progress bar that will never move again.
+        None => ClientUpdateEvent::Failed {
             reason: "the download stopped without finishing".into(),
-        });
-    }
+        },
+    });
 }
 
 async fn install(ctx: &ServiceCtx, out: &EventSink) {

@@ -1,3 +1,4 @@
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../../design-system/Button";
@@ -184,6 +185,8 @@ export function LiveWatchButton({
     if (open) place();
   }, [open, place]);
 
+  useOverlayLayer(open, () => { setMenuOpen(false); triggerRef.current?.focus(); });
+
   useEffect(() => {
     if (!open) return;
     const close = () => setMenuOpen(false);
@@ -192,18 +195,13 @@ export function LiveWatchButton({
       if (menuRef.current?.contains(node) || triggerRef.current?.contains(node)) return;
       close();
     };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-    };
     // A menu anchored to a row that scrolled away would float over nothing, so
     // it follows the trigger and gives up when the window itself changes size.
     window.addEventListener("pointerdown", handlePointerDown, true);
-    window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("scroll", place, true);
     window.addEventListener("resize", close);
     return () => {
       window.removeEventListener("pointerdown", handlePointerDown, true);
-      window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("scroll", place, true);
       window.removeEventListener("resize", close);
     };

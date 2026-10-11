@@ -19,6 +19,7 @@ use faf_domain::state::{
 };
 use serde_json::Value;
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 use crate::ports::{
     GameLaunchParams, GamePreparation, IceParams, ModPrepFailure, PreparationPhase, RelayMsg,
@@ -258,11 +259,20 @@ pub(crate) async fn prepare_custom_join(
         .await
         .map_err(ModPrepFailure::Failed)?;
 
+    // A join called off while its featured mod and map came down stops here,
+    // before a single simulation mod is fetched for it; it went on to them
+    // before. Nothing to report: the join checks its operation next, and goes
+    // no further.
+    let called_off = ctx.lobby.launch_called_off();
+    if called_off.is_cancelled() {
+        return Ok(());
+    }
+
     // Conflicts travel out untouched: the caller turns them into the prompt
     // that decides whether an installed mod version is allowed to be replaced.
     ctx.ports
         .mods
-        .ensure_game_mods(&game.sim_mods, replace_mods)
+        .ensure_game_mods_cancellable(&game.sim_mods, replace_mods, called_off)
         .await
         .map_err(|error| match error {
             ModPrepFailure::Conflicts(conflicts) => ModPrepFailure::Conflicts(conflicts),
@@ -316,9 +326,6 @@ async fn prepare_map_and_mod(
 
     let cache_rolling_branches = out.with_state(|state| state.settings.game.cache_rolling_branches);
     ensure_generated_map(map, ctx, out).await?;
-    if ctx.lobby.launch_cancelled() {
-        return Ok(());
-    }
     prepare_request(
         GamePreparation {
             featured_mod: featured_mod.to_string(),
@@ -360,10 +367,6 @@ async fn ensure_generated_map(
     }
 
     tracing::info!(map_name, "generating map required by launch");
-    if ctx.lobby.launch_cancelled() {
-        return Ok(());
-    }
-    let generation = ctx.map_generator.begin();
     let mut updates = ctx
         .ports
         .map_generator
@@ -374,30 +377,7 @@ async fn ensure_generated_map(
     // routinely takes tens of seconds.
     let mut outcome = Err("the map generator produced no result".to_string());
     let mut generated: Vec<String> = Vec::new();
-    loop {
-        let update = tokio::select! {
-            update = updates.recv() => update,
-            () = tokio::time::sleep(CANCEL_POLL) => {
-                if ctx.lobby.launch_cancelled() {
-                    if ctx.map_generator.is_current(generation) {
-                        out.emit(MapGeneratorEvent::StatusChanged { status: GeneratorStatus::Cancelled });
-                    }
-                    return Ok(());
-                }
-                continue;
-            }
-        };
-        if ctx.lobby.launch_cancelled() {
-            if ctx.map_generator.is_current(generation) {
-                out.emit(MapGeneratorEvent::StatusChanged {
-                    status: GeneratorStatus::Cancelled,
-                });
-            }
-            return Ok(());
-        }
-        let Some(crate::ports::GeneratorUpdate::Status(status)) = update else {
-            break;
-        };
+    while let Some(crate::ports::GeneratorUpdate::Status(status)) = updates.recv().await {
         match &status {
             GeneratorStatus::Generated { maps } => {
                 generated = maps.clone();
@@ -408,9 +388,7 @@ async fn ensure_generated_map(
             }
             _ => {}
         }
-        if ctx.map_generator.is_current(generation) {
-            out.emit(MapGeneratorEvent::StatusChanged { status });
-        }
+        out.emit(MapGeneratorEvent::StatusChanged { status });
     }
     // The same bookkeeping a deliberate run gets. Joining a lobby whose map
     // had to be built used to skip all of it, which is why the client went on
@@ -465,59 +443,101 @@ async fn prepare_install(
 /// files matching by MD5 are skipped.
 static PREPARATION: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
-/// How often a preparation that holds [`PREPARATION`] looks whether it was
-/// called off while its updater is quiet.
-const CANCEL_POLL: std::time::Duration = std::time::Duration::from_millis(100);
+/// What a preparation called off ends with, where an outcome is needed at
+/// all. Never shown: the caller called the work off and goes quietly.
+const CALLED_OFF: &str = "the preparation was called off";
+
+/// Wait for [`PREPARATION`], unless the work it is wanted for is called off
+/// first. A join cancelled while it waits behind another preparation used to
+/// wait out that whole preparation before it noticed.
+async fn lock_preparation(
+    called_off: &CancellationToken,
+) -> Option<tokio::sync::MutexGuard<'static, ()>> {
+    tokio::select! {
+        guard = PREPARATION.lock() => Some(guard),
+        () = called_off.cancelled() => None,
+    }
+}
+
+/// Drain an updater run, holding [`PREPARATION`] while it is wanted, and
+/// answer its outcome; `narrate` is handed each step that is still wanted.
+///
+/// The lock is let go the moment the run is called off, and the run itself
+/// was handed the same token, so it stops at its next safe point: between
+/// two files, or in the middle of a download (see
+/// `GameUpdaterPort::prepare_cancellable`). It used to be told nothing and go
+/// on to the end of the featured mod, the map and the simulation mods, with
+/// the install's lease held, so the next join's updater waited behind all of
+/// it with nothing on screen. Now the next preparation waits for one file at
+/// most, on the install's lease, and narrates from there.
+///
+/// The stream is still drained rather than dropped, so this returns when the
+/// run has stopped. A step that arrives after the call-off is not narrated:
+/// each one would put the join back into `Preparing`, which reopened the
+/// progress dialog over and over after Cancel.
+async fn drain_preparation(
+    guard: tokio::sync::MutexGuard<'static, ()>,
+    mut updates: mpsc::Receiver<UpdateProgress>,
+    called_off: &CancellationToken,
+    narrate: impl Fn(crate::ports::PreparationStep),
+) -> Result<(), String> {
+    let mut one_at_a_time = Some(guard);
+    // The port always ends with `Finished`; treating a stream that closes
+    // without one as a failure keeps a panicked adapter task from looking like
+    // a successful update.
+    let mut outcome = Err("the game updater stopped without finishing".to_string());
+    loop {
+        let update = tokio::select! {
+            update = updates.recv() => update,
+            () = called_off.cancelled(), if one_at_a_time.is_some() => {
+                one_at_a_time = None;
+                continue;
+            }
+        };
+        let Some(update) = update else {
+            break;
+        };
+        if called_off.is_cancelled() {
+            one_at_a_time = None;
+            continue;
+        }
+        match update {
+            UpdateProgress::Step(step) => narrate(step),
+            UpdateProgress::Finished(result) => outcome = result,
+        }
+    }
+    outcome
+}
 
 async fn prepare_request(
     request: GamePreparation,
     ctx: &ServiceCtx,
     out: &EventSink,
 ) -> Result<(), String> {
-    let _one_at_a_time = loop {
-        tokio::select! {
-            lease = PREPARATION.lock() => break lease,
-            () = tokio::time::sleep(CANCEL_POLL) => {
-                if ctx.lobby.launch_cancelled() { return Ok(()); }
-            }
-        }
-    };
-    if ctx.lobby.launch_cancelled() {
+    // The token of the operation this preparation is for: raised by its
+    // cancel, and by a newer join, host or launch order superseding it.
+    let called_off = ctx.lobby.launch_called_off();
+    // A cancelled preparation has no outcome worth reporting: the caller checks
+    // its operation and returns without touching the join state, and an error
+    // here would be shown to somebody who asked for this.
+    let Some(guard) = lock_preparation(&called_off).await else {
         return Ok(());
-    }
-    let cancel = tokio_util::sync::CancellationToken::new();
-    let mut updates = ctx
+    };
+    let updates = ctx
         .ports
         .updater
-        .prepare_cancellable(request, cancel.clone())
+        .prepare_cancellable(request, called_off.clone())
         .await;
-    let mut outcome = Err("the game updater stopped without finishing".to_string());
-    loop {
-        let update = tokio::select! {
-            update = updates.recv() => update,
-            () = tokio::time::sleep(CANCEL_POLL) => {
-                if ctx.lobby.launch_cancelled() {
-                    cancel.cancel();
-                    return Ok(());
-                }
-                continue;
-            }
-        };
-        if ctx.lobby.launch_cancelled() {
-            cancel.cancel();
-            return Ok(());
-        }
-        let Some(update) = update else {
-            break;
-        };
-        match update {
-            UpdateProgress::Step(step) => out.emit(LobbyEvent::Preparing {
-                phase: preparation_phase(step.phase),
-                detail: step.detail,
-                progress: step.progress,
-            }),
-            UpdateProgress::Finished(result) => outcome = result,
-        }
+    let outcome = drain_preparation(guard, updates, &called_off, |step| {
+        out.emit(LobbyEvent::Preparing {
+            phase: preparation_phase(step.phase),
+            detail: step.detail,
+            progress: step.progress,
+        })
+    })
+    .await;
+    if called_off.is_cancelled() {
+        return Ok(());
     }
     outcome
 }
@@ -541,10 +561,15 @@ async fn prepare_request(
 /// queue, as in Java, which only reports it: the match may well be on another
 /// map, and if not, the launch tries again. A featured mod that cannot be
 /// updated is, since every match in the queue needs it.
+///
+/// Stopping the search raises `called_off`, which stops the updater at its
+/// next safe point and lets [`PREPARATION`] go at once; a search stopped
+/// answers `Err`, which the caller does not report.
 pub(crate) async fn prepare_search(
     queue_names: &[String],
     ctx: &ServiceCtx,
     out: &EventSink,
+    called_off: &CancellationToken,
 ) -> Result<(), String> {
     use faf_domain::protocol::map_generator::is_generated_map;
 
@@ -554,7 +579,10 @@ pub(crate) async fn prepare_search(
         );
     }
 
-    prepare_featured_mod(MATCHMAKER_FEATURED_MOD, ctx, out).await?;
+    prepare_featured_mod(MATCHMAKER_FEATURED_MOD, ctx, out, called_off).await?;
+    if called_off.is_cancelled() {
+        return Err(CALLED_OFF.to_string());
+    }
 
     let mut folders: Vec<String> = Vec::new();
     for queue_name in queue_names {
@@ -583,9 +611,16 @@ pub(crate) async fn prepare_search(
     }
 
     let failures = {
-        let _one_at_a_time = PREPARATION.lock().await;
-        ctx.ports.updater.ensure_maps(&folders).await
+        let Some(_one_at_a_time) = lock_preparation(called_off).await else {
+            return Err(CALLED_OFF.to_string());
+        };
+        ctx.ports.updater.ensure_maps(&folders, called_off).await
     };
+    // A map that did not arrive for a search nobody wants any more is not
+    // worth a notification.
+    if called_off.is_cancelled() {
+        return Err(CALLED_OFF.to_string());
+    }
     for (folder, reason) in failures {
         tracing::warn!(%folder, %reason, "a pool map could not be downloaded before the search");
         notifications::add_text(
@@ -607,27 +642,35 @@ pub(crate) async fn prepare_search(
 /// Also what a party member's client does when its leader starts a search:
 /// Java's `GameRunner.startSearchMatchmaker` runs on every client whose queue
 /// state turns to searching, not only on the one that pressed the button.
+///
+/// Stops once `called_off` is raised, the way a join's preparation does (see
+/// [`drain_preparation`]), and then answers `Err`.
 pub(crate) async fn prepare_featured_mod(
     featured_mod: &str,
     ctx: &ServiceCtx,
     out: &EventSink,
+    called_off: &CancellationToken,
 ) -> Result<(), String> {
     let cache_rolling_branches = out.with_state(|state| state.settings.game.cache_rolling_branches);
-    let _one_at_a_time = PREPARATION.lock().await;
-    let mut updates = ctx
+    let Some(guard) = lock_preparation(called_off).await else {
+        return Err(CALLED_OFF.to_string());
+    };
+    let updates = ctx
         .ports
         .updater
-        .prepare(GamePreparation {
-            featured_mod: featured_mod.to_string(),
-            map_folder: None,
-            cache_rolling_branches,
-        })
+        .prepare_cancellable(
+            GamePreparation {
+                featured_mod: featured_mod.to_string(),
+                map_folder: None,
+                cache_rolling_branches,
+            },
+            called_off.clone(),
+        )
         .await;
-    let mut outcome = Err("the game updater stopped without finishing".to_string());
-    while let Some(update) = updates.recv().await {
-        if let UpdateProgress::Finished(result) = update {
-            outcome = result;
-        }
+    // Not narrated: nothing is being joined yet.
+    let outcome = drain_preparation(guard, updates, called_off, |_| {}).await;
+    if called_off.is_cancelled() {
+        return Err(CALLED_OFF.to_string());
     }
     outcome
 }
@@ -659,9 +702,10 @@ pub(crate) fn report_failure(ctx: &ServiceCtx, out: &EventSink, reason: String) 
     // nothing private.
     tracing::warn!(%reason, "game launch failed");
     ctx.ports.ice.stop();
-    notifications::add_required_text(
+    // Marked as the client's own failure reason, which the UI words plainly
+    // with the original on hover (see `notifications::add_failure`).
+    notifications::add_required_failure(
         out,
-        NotificationKind::Error,
         notifications::Text::new("notifications.msg.gameLaunchFailed"),
         "Game launch failed",
         reason.clone(),

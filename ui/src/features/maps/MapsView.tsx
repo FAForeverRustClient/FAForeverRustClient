@@ -1,8 +1,10 @@
+import { type MapFilterState, type VaultSort, type VaultPreset, presetSort, storedVaultSort, mapVaultQuery, mapFilterFromQuery } from "./mapVaultFilters";
+import { useVaultFilters, useVaultSearch } from "../../shared/hooks/useVaultFilters";
 // Maps tab: vault discovery and installed-map management. The backend owns
 // the map catalogue and installation state; this component only derives the
 // current search, filters, sorting and selection for presentation.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { type MapFilterDraft, type RankedFilter, useMapFilterDraft } from "./mapFilterDraft";
 import { type InstallFilter, mapsByDownload, mapsMatchingQuery, visibleVaultMaps } from "./mapVaultResults";
 import { StatusNotice } from "../../design-system/StatusNotice";
@@ -22,21 +24,25 @@ import {
 // modal on this branch, so `openUpload` is no longer called from here.
 import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { Pagination } from "../../design-system/Pagination";
-import type { InstalledMap, MapsSection, MapVaultQuery, VaultMap } from "../../ipc/bindings";
+import type { GeneratorStatus, InstalledMap, MapsSection, MapVaultQuery, VaultMap } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
+import { GeneratorFailure } from "../../shared/components/GeneratorFailure";
 import { FailureNotice, LoadStatusNotice } from "../../shared/components/LoadNotices";
+import { plainError } from "../../shared/plainError";
 import { toggleFavoriteMap } from "../../shared/favoriteMaps";
 import { isWithinNumberRange } from "../../shared/filterRanges";
 import { installNote, kilometres, kilometresLabel } from "../../shared/mapPresentation";
-import { EMPTY_MAP_QUERY, sameVaultSearch } from "../../shared/vaultQuery";
+import { sameVaultSearch } from "../../shared/vaultQuery";
 import { useAppStore } from "../../store/store";
 import { MapPreview } from "../../shared/components/MapPreview";
 import { findVaultMapByFolder, isOfficialMap, mapInstalled, sizeLabel } from "../../shared/mapPresentation";
 import { MapCard, MapDetailPanel, MapHideDialog, MapRating, MapUninstallDialog } from "./MapVaultComponents";
 import { MapPreviewDialog } from "../../shared/components/MapPreviewZoom";
 import { GeneratorProgress, stillRunning } from "./GeneratorProgress";
+import { commandOfCurrentRun, startRun } from "./generatorCommands";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
-import { useGridPageSize } from "../../shared/hooks/useGridPageSize";
+import { pageFillerCount, useGridPageSize } from "../../shared/hooks/useGridPageSize";
+import { GridPageFiller } from "../../shared/components/GridPageFiller";
 import "./maps.css";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -50,28 +56,10 @@ import {
 } from "../../shared/filterMemory";
 
 type SubView = MapsSection;
-type VaultSort = "rating" | "newest" | "played" | "name" | "size" | "downloaded";
-type VaultPreset = "recommended" | "favorites" | "mine" | "rating" | "newest" | "played" | "all";
-
 const MAP_SIZES = [64, 128, 256, 512, 1024, 2048, 4096];
-
-/** `.installed-map-card`'s designed height, which is what a page is measured in. */
 const INSTALLED_MAP_CARD_PX = 76;
 
-const VAULT_SORTS: readonly VaultSort[] = ["rating", "newest", "played", "name", "size", "downloaded"];
-
-/** The sort a preset brings with it when nothing else has been chosen. */
-function presetSort(preset: VaultPreset): VaultSort {
-  if (preset === "newest" || preset === "mine") return "newest";
-  if (preset === "played") return "played";
-  if (preset === "all") return "name";
-  return "rating";
-}
-
-function storedVaultSort(value: string): VaultSort | null {
-  return (VAULT_SORTS as readonly string[]).includes(value) ? (value as VaultSort) : null;
-}
-
+const searchVault = (query: MapVaultQuery) => ipc.send({ kind: "Maps", command: { type: "searchVault", payload: { query } } });
 const loadVault = () => ipc.send({ kind: "Maps", command: { type: "loadVault" } });
 const loadInstalled = () => ipc.send({ kind: "Maps", command: { type: "loadInstalled" } });
 
@@ -96,102 +84,6 @@ const setMapVersionHidden = (versionId: number, hidden: boolean) =>
 /** Where the vault's and the library's filters are remembered (#447). */
 const MAP_VAULT_FILTERS = "maps.vault";
 const INSTALLED_MAP_FILTERS = "maps.installed";
-
-interface MapFilterState {
-  search: string;
-  author: string;
-  sort: VaultSort;
-  ranked: RankedFilter;
-  installFilter: InstallFilter;
-  createdAfter: string;
-  createdBefore: string;
-  /** Show versions the author withdrew from the vault. Off by default. */
-  showHidden: boolean;
-  minimumRating: number | null;
-  maximumRating: number | null;
-  minimumPlayers: number | null;
-  maximumPlayers: number | null;
-  width: number;
-  height: number;
-}
-
-/**
- * The tab's filter state as the API query it stands for.
- *
- * The presets are sorts plus two flags the API models elsewhere: `recommended`
- * on the map itself, and `mine`, which narrows to one author (mirrors Java's
- * `SearchType.OWN`, which filters `map.author.id`) and always asks for hidden
- * versions, because an author is the one person who needs to see what they
- * withdrew. Everywhere else the "Withdrawn versions" filter decides.
- * `favorites` has no server equivalent and is handled by the caller.
- */
-function mapVaultQuery(
-  applied: MapFilterState,
-  preset: VaultPreset,
-  page: number,
-  playerId: number | null,
-  pageSize: number,
-): MapVaultQuery {
-  const sortBy: MapVaultQuery["sortBy"] = applied.sort === "size" ? "size"
-    : applied.sort === "name" ? "name"
-      : applied.sort === "played" ? "played"
-        : applied.sort === "newest" ? "newest"
-          : "rating";
-  const mine = preset === "mine" && playerId !== null;
-  return {
-    ...EMPTY_MAP_QUERY,
-    search: applied.search.trim(),
-    author: applied.author.trim(),
-    authorId: mine ? playerId : null,
-    includeHidden: mine || applied.showHidden,
-    ranked: applied.ranked === "all" ? null : applied.ranked === "ranked",
-    recommended: preset === "recommended",
-    // The domain carries review scores in tenths so the whole state stays
-    // comparable; the sliders are in stars.
-    minRatingTenths: applied.minimumRating === null ? null : Math.round(applied.minimumRating * 10),
-    maxRatingTenths: applied.maximumRating === null ? null : Math.round(applied.maximumRating * 10),
-    minPlayers: applied.minimumPlayers,
-    maxPlayers: applied.maximumPlayers,
-    width: applied.width,
-    height: applied.height,
-    after: applied.createdAfter,
-    before: applied.createdBefore,
-    sortBy,
-    // Name ascending, everything else best/newest/most first.
-    sortDescending: sortBy !== "name",
-    page,
-    pageSize: pageSize,
-  };
-}
-
-/**
- * The filter form a query was built from, read back from the query, so the
- * vault comes back from another tab with its search where it was left. The
- * twin of `modFilterFromQuery` in ModsView, which explains why. `null` when
- * nothing has been searched this session. The install filter is applied in
- * the client and not carried by the query, so it starts at "all" again.
- */
-function mapFilterFromQuery(query: MapVaultQuery, preset: VaultPreset): MapFilterState | null {
-  if (sameVaultSearch(query, EMPTY_MAP_QUERY) && query.page === EMPTY_MAP_QUERY.page) return null;
-  return {
-    search: query.search,
-    author: query.author,
-    sort: query.sortBy,
-    ranked: query.ranked === null ? "all" : query.ranked ? "ranked" : "unranked",
-    installFilter: "all",
-    createdAfter: query.after,
-    createdBefore: query.before,
-    // "My maps" always asks for withdrawn versions; that is the preset's, not
-    // the "Withdrawn versions" box's.
-    showHidden: preset !== "mine" && query.includeHidden,
-    minimumRating: query.minRatingTenths === null ? null : query.minRatingTenths / 10,
-    maximumRating: query.maxRatingTenths === null ? null : query.maxRatingTenths / 10,
-    minimumPlayers: query.minPlayers,
-    maximumPlayers: query.maxPlayers,
-    width: query.width,
-    height: query.height,
-  };
-}
 
 function VaultView({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
@@ -232,37 +124,37 @@ function VaultView({ busy }: { busy: boolean }) {
       ? null
       : rememberedFilter<MapFilterState | null>(MAP_VAULT_FILTERS, null, isFilterRecord)
         ?? mapFilterFromQuery(browseQuery, preset));
-  const { draft, setFilter, resetFilters } = useMapFilterDraft(restored ?? undefined);
-  const { search, author, ranked, minimumRating, maximumRating, minimumPlayers, maximumPlayers, width, height } = draft;
-  const [sort, setSort] = useState<VaultSort>(restored?.sort ?? initialSort);
-  const [installFilter, setInstallFilter] = useState<InstallFilter>(restored?.installFilter ?? "all");
-  const [createdAfter, setCreatedAfter] = useState(restored?.createdAfter ?? "");
-  const [createdBefore, setCreatedBefore] = useState(restored?.createdBefore ?? "");
-  const [showHidden, setShowHidden] = useState(restored?.showHidden ?? false);
+  const { draft, patchDraft: setFilter, setFilter: setField, applied, page, setPage, applySearch, applySort, reset } = useVaultFilters<MapFilterState, VaultPreset>({
+    initial: restored ?? {
+      search: "",
+      author: "",
+      sort: initialSort,
+      ranked: "all",
+      installFilter: "all",
+      createdAfter: "",
+      createdBefore: "",
+      showHidden: false,
+      minimumRating: null,
+      maximumRating: null,
+      minimumPlayers: null,
+      maximumPlayers: null,
+      width: 0,
+      height: 0,
+    },
+    initialPage: restored ? browseQuery.page : 1,
+    memoryKey: MAP_VAULT_FILTERS, preset, presetSort,
+  });
+  const { search, author, sort, ranked, installFilter, createdAfter, createdBefore, showHidden, minimumRating, maximumRating, minimumPlayers, maximumPlayers, width, height } = draft;
+  const setInstallFilter = (value: MapFilterState["installFilter"]) => setField("installFilter", value);
+  const setCreatedAfter = (value: MapFilterState["createdAfter"]) => setField("createdAfter", value);
+  const setCreatedBefore = (value: MapFilterState["createdBefore"]) => setField("createdBefore", value);
+  const setShowHidden = (value: MapFilterState["showHidden"]) => setField("showHidden", value);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [page, setPage] = useState(restored ? browseQuery.page : 1);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [pendingUninstall, setPendingUninstall] = useState<VaultMap | null>(null);
   const [pendingHide, setPendingHide] = useState<VaultMap | null>(null);
   const [previewMap, setPreviewMap] = useState<VaultMap | null>(null);
 
-  const [applied, setApplied] = useState<MapFilterState>(restored ?? {
-    search: "",
-    author: "",
-    sort: initialSort,
-    ranked: "all",
-    installFilter: "all",
-    createdAfter: "",
-    createdBefore: "",
-    showHidden: false,
-    minimumRating: null,
-    maximumRating: null,
-    minimumPlayers: null,
-    maximumPlayers: null,
-    width: 0,
-    height: 0,
-  });
-  useRememberFilter(MAP_VAULT_FILTERS, applied);
   // With filters never remembered (#447), the next visit starts from the
   // default preset. The sort the preset brought is not a filter and stays.
   useForgetFiltersOnLeave(() => {
@@ -293,27 +185,6 @@ function VaultView({ busy }: { busy: boolean }) {
     loadInstalled();
   }, []);
 
-  // Only on a *change* of preset, never on mount. Running this on mount is
-  // what overwrote the remembered sort with the preset's own the moment the
-  // tab came back.
-  //
-  // "My maps" has no natural ranking of its own (Java's own-maps query sends
-  // no sort at all), and newest-first is what an author wants: the upload they
-  // just made is the one they came to look at.
-  const lastPreset = useRef(preset);
-  useEffect(() => {
-    if (lastPreset.current === preset) return;
-    lastPreset.current = preset;
-    const next = presetSort(preset);
-    setSort(next);
-    setApplied((prev) => ({ ...prev, sort: next }));
-  }, [preset]);
-
-  const applySearch = () => {
-    setApplied({ ...draft, sort, installFilter, createdAfter, createdBefore, showHidden });
-    setPage(1);
-  };
-
   // Sorting is not a preset, and used to be routed through one: the select
   // called `choosePreset("all")`, which forced the sort back to "name" and
   // dropped whatever the preset was filtering on, so every choice but "Name"
@@ -322,9 +193,7 @@ function VaultView({ busy }: { busy: boolean }) {
   // It also read `sort` for the new value, which React has not applied yet at
   // that point, so the state it saved was the previous selection.
   const chooseSort = (nextSort: VaultSort) => {
-    setSort(nextSort);
-    setApplied((prev) => ({ ...prev, sort: nextSort }));
-    setPage(1);
+    applySort(nextSort);
     if (browsing.mapVaultSort !== nextSort) {
       ipc.send({
         kind: "Settings",
@@ -337,14 +206,8 @@ function VaultView({ busy }: { busy: boolean }) {
   };
 
   const choosePreset = (next: VaultPreset) => {
-    let nextSort: VaultSort = sort;
-    if (next === "rating" || next === "recommended" || next === "favorites") nextSort = "rating";
-    if (next === "newest" || next === "mine") nextSort = "newest";
-    if (next === "played") nextSort = "played";
-    if (next === "all") nextSort = "name";
-    setSort(nextSort);
-    setApplied((prev) => ({ ...prev, sort: nextSort }));
-    setPage(1);
+    const nextSort = presetSort(next);
+    applySort(nextSort);
     if (browsing.mapVaultPreset !== next || browsing.mapVaultSort !== "") {
       ipc.send({
         kind: "Settings",
@@ -359,12 +222,7 @@ function VaultView({ busy }: { busy: boolean }) {
   };
 
   const clearSearch = () => {
-    resetFilters();
-    setInstallFilter("all");
-    setCreatedAfter("");
-    setCreatedBefore("");
-    setShowHidden(false);
-    setApplied({
+    reset({
       search: "",
       author: "",
       sort: "rating",
@@ -380,7 +238,6 @@ function VaultView({ busy }: { busy: boolean }) {
       width: 0,
       height: 0,
     });
-    setPage(1);
     choosePreset("recommended");
   };
 
@@ -402,10 +259,7 @@ function VaultView({ busy }: { busy: boolean }) {
   const localDownloaded = applied.sort === "downloaded";
   const localList = localFavorites || localDownloaded;
 
-  useEffect(() => {
-    if (localList) return;
-    ipc.send({ kind: "Maps", command: { type: "searchVault", payload: { query } } });
-  }, [localList, query]);
+  useVaultSearch(query, localList, searchVault);
 
   // The same query the server would have been sent, answered locally: the
   // search, author, ratings, slots, sizes, dates and sort all apply here too,
@@ -560,7 +414,7 @@ function VaultView({ busy }: { busy: boolean }) {
           step={0.5}
           low={minimumRating}
           high={maximumRating}
-          format={(value) => `${value}★`}
+          format={(value) => `${value}â˜…`}
           onChange={(low, high) => { setFilter({ minimumRating: low, maximumRating: high }); }}
         />
         <RangeSlider
@@ -600,8 +454,15 @@ function VaultView({ busy }: { busy: boolean }) {
       <FailureNotice status={installStatus} message={installNote(installStatus)} />
       {installedStatus.type === "failed" && <p className="vault-note muted">{t("maps.view.detectionUnavailable")}</p>}
       {/* The refusal an author meets when they try to undo a hide: FAF allows
-          only a map administrator to do that, so the reason has to be read. */}
-      {visibilityStatus.type === "failed" && <p className="vault-note is-warn">{visibilityStatus.payload.reason}</p>}
+          only a map administrator to do that, so the reason has to be read.
+          That one is the client's own sentence and passes through as it is;
+          what `plainError` rewords is a transport failure, with the original
+          on hover. No Retry: the refusal would only be repeated, and Hide or
+          Unhide is still on the map's panel for any other cause. */}
+      <FailureNotice
+        status={visibilityStatus}
+        message={visibilityStatus.type === "failed" ? plainError(visibilityStatus.payload.reason) : null}
+      />
       {outcome.kind === "noMatch" ? (
         // An empty "my maps" is the ordinary state for most players rather
         // than a failed search, so it says so instead of suggesting the
@@ -703,10 +564,10 @@ function VaultView({ busy }: { busy: boolean }) {
           map={previewMap}
           onClose={() => setPreviewMap(null)}
           meta={<>
-            {sizeLabel(previewMap)} · {t("maps.view.playerCount", { count: previewMap.maxPlayers })}
+            {sizeLabel(previewMap)} Â· {t("maps.view.playerCount", { count: previewMap.maxPlayers })}
             {typeof previewMap.ranked === "boolean" && (
               <>
-                {" · "}
+                {" Â· "}
                 <span className={previewMap.ranked ? "map-vault-type ranked" : "map-vault-type unranked"}>
                   {t(previewMap.ranked ? "maps.vault.ranked" : "maps.vault.unranked")}
                 </span>
@@ -758,8 +619,7 @@ function InstalledView({ busy }: { busy: boolean }) {
   // has picked a number in Settings. Nothing is fetched here -- the whole list
   // is already on disk -- so the only thing a fixed count decided was how much
   // empty panel there was under the pager.
-  const installedGrid = useRef<HTMLDivElement>(null);
-  const fittedPageSize = useGridPageSize(installedGrid, INSTALLED_MAP_CARD_PX, DEFAULT_VAULT_PAGE_SIZE);
+  const [fittedPageSize, installedGrid] = useGridPageSize(INSTALLED_MAP_CARD_PX, DEFAULT_VAULT_PAGE_SIZE);
   const pageSize = browsing.vaultPageSize || fittedPageSize;
 
   // The vault record of an installed folder, matched on the folder's base name
@@ -880,6 +740,8 @@ function InstalledView({ busy }: { busy: boolean }) {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageMaps = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  // The last page keeps a full page's height, so the pager stays put.
+  const fillers = pageFillerCount({ shown: pageMaps.length, pageSize, fitted: fittedPageSize, totalPages });
 
   return (
     <>
@@ -971,7 +833,7 @@ function InstalledView({ busy }: { busy: boolean }) {
           step={0.5}
           low={minimumRating}
           high={maximumRating}
-          format={(value) => `${value}★`}
+          format={(value) => `${value}â˜…`}
           onChange={(low, high) => { setFilter({ minimumRating: low, maximumRating: high }); setPage(1); }}
         />
         <RangeSlider
@@ -1052,7 +914,7 @@ function InstalledView({ busy }: { busy: boolean }) {
                     <small>{map.folderName}</small>
                     <small>
                       {sizeLabel(metadata ?? { width: map.width ?? 512, height: map.height ?? 512 })}
-                      {" · "}
+                      {" Â· "}
                       {t("maps.view.playerCount", { count: map.maxPlayers ?? metadata?.maxPlayers ?? 2 })}
                     </small>
                   </span>
@@ -1081,6 +943,7 @@ function InstalledView({ busy }: { busy: boolean }) {
                 </article>
               );
             })}
+            <GridPageFiller count={fillers} cardClassName="installed-map-card surface-panel" />
           </div>
           {totalPages > 1 && (
             <div className="vault-pagination">
@@ -1097,7 +960,7 @@ function InstalledView({ busy }: { busy: boolean }) {
         <MapPreviewDialog
           map={previewMap}
           onClose={() => setPreviewMap(null)}
-          meta={<>{sizeLabel(previewMap)} · {t("maps.view.playerCount", { count: previewMap.maxPlayers ?? 2 })}</>}
+          meta={<>{sizeLabel(previewMap)} Â· {t("maps.view.playerCount", { count: previewMap.maxPlayers ?? 2 })}</>}
         />
       )}
       {pendingUninstall && (
@@ -1134,7 +997,6 @@ export function MapsView() {
   const { t } = useTranslation();
   const subView = useAppStore((state) => state.state.nav.mapsSection);
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
-  const generatorStatus = useAppStore((state) => state.state.mapGenerator.status);
   const busy = installStatus.type === "installing";
   const { Component } = SUB_VIEWS[subView];
 
@@ -1160,12 +1022,37 @@ export function MapsView() {
       <div {...sectionPanelProps("maps-section", subView)}>
         <Component busy={busy} />
       </div>
-      {/* The generator is started from the host dialog now, but this is still
-          where its output lands, and a run is slow enough that the user will
-          have walked away from the dialog long before it finishes. */}
-      {stillRunning(generatorStatus) && (
-        <div className="maps-generator-status surface"><GeneratorProgress /></div>
-      )}
+      <GeneratorStatusLine />
     </div>
+  );
+}
+
+/**
+ * The generator's run, below the lists.
+ *
+ * The generator is started from the host dialog now, but this is still where
+ * its output lands, and a run is slow enough that the user will have walked
+ * away from the dialog long before it finishes. A run that failed after the
+ * dialog was closed used to leave nothing here at all, because the line was
+ * only drawn while a run was busy; the failure stays now until it is
+ * dismissed or the next run begins, with Retry when the run was sent from
+ * this client and nothing has begun since (see `commandOfCurrentRun`).
+ */
+function GeneratorStatusLine() {
+  const status = useAppStore((state) => state.state.mapGenerator.status);
+  // The failure the reader dismissed, by identity: the status keeps the same
+  // object until the next run, and that run's failure is a new one.
+  const [dismissed, setDismissed] = useState<GeneratorStatus | null>(null);
+  if (stillRunning(status)) {
+    return <div className="maps-generator-status surface"><GeneratorProgress /></div>;
+  }
+  if (status.type !== "failed" || status === dismissed) return null;
+  const command = commandOfCurrentRun();
+  return (
+    <GeneratorFailure
+      reason={status.payload.reason}
+      onRetry={command ? () => startRun(command) : undefined}
+      onDismiss={() => setDismissed(status)}
+    />
   );
 }

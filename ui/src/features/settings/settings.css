@@ -374,7 +374,7 @@
 }
 
 .settings-sound-remove:hover {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .setting-row-update-status {
@@ -737,11 +737,11 @@
 }
 
 .settings-path-status.is-ok {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .settings-path-status.is-missing {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .settings-path-status.is-unset {
@@ -751,7 +751,7 @@
 /* Not an error: the file is not there because nothing has downloaded it yet,
    which is the state every machine starts in. */
 .settings-path-status.is-pending {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .theme-card {
@@ -795,7 +795,12 @@
 
 .settings-inline-error {
   margin: var(--space-2) var(--space-4);
-  color: var(--color-error);
+  color: var(--color-error-text);
+}
+
+/* A failed action under its row, indented like the rows it belongs to. */
+.status-notice.settings-inline-notice {
+  margin: var(--space-2) var(--space-4);
 }
 
 .diagnostic-log-modal { max-width: 900px; }
@@ -979,7 +984,7 @@
   padding: 2px 6px;
   margin-left: 8px;
   border-radius: var(--radius-sm);
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   background: color-mix(in srgb, var(--color-warn) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-warn) 30%, transparent);
   letter-spacing: 0.04em;

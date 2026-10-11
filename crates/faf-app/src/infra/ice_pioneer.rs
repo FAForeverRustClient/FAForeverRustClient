@@ -26,6 +26,7 @@ use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
 use tokio::time::{sleep, Duration};
 
+use crate::infra::connectivity::IceSessionMemory;
 use crate::infra::free_port;
 use crate::infra::relay::GpgRelayServer;
 use crate::infra::session::TokenStore;
@@ -47,7 +48,9 @@ impl IceConfig {
         Self {
             adapter_path: env_or("FAF_ICE_ADAPTER_PATH", default_adapter_path()),
             api_base: env_or("FAF_API_BASE", "https://api.faforever.com"),
-            log_path: default_log_path(),
+            log_path: super::ice_java::log_directory()
+                .to_string_lossy()
+                .into_owned(),
         }
     }
 }
@@ -101,20 +104,14 @@ fn resolve_adapter_path(file_name: &str, executable: Option<&Path>) -> Option<Pa
         .find(|candidate| candidate.is_file())
 }
 
-fn default_log_path() -> String {
-    // Temp only; see the note on the Java adapter's log dir.
-    std::env::temp_dir()
-        .join(crate::infra::APP_SLUG)
-        .join("iceAdapterLogs")
-        .to_string_lossy()
-        .into_owned()
-}
-
 pub struct PioneerAdapter {
     config: IceConfig,
     tokens: TokenStore,
     child: Arc<Mutex<Option<Child>>>,
     relay: GpgRelayServer,
+    /// Pioneer fetches its relay session itself, so all it can leave the
+    /// connectivity check is the game the session was for.
+    memory: IceSessionMemory,
 }
 
 impl PioneerAdapter {
@@ -124,11 +121,18 @@ impl PioneerAdapter {
             tokens,
             child: Arc::new(Mutex::new(None)),
             relay: GpgRelayServer::default(),
+            memory: IceSessionMemory::default(),
         }
     }
 
     pub fn faf(tokens: TokenStore) -> Self {
         Self::new(IceConfig::faf(), tokens)
+    }
+
+    /// Share the session memory the connectivity check reads.
+    pub fn remembering(mut self, memory: IceSessionMemory) -> Self {
+        self.memory = memory;
+        self
     }
 }
 
@@ -139,6 +143,7 @@ impl IcePort for PioneerAdapter {
             return Err("no access token (not logged in?)".into());
         };
         let _ = std::fs::create_dir_all(&self.config.log_path);
+        self.memory.remember_game(params.game_id);
 
         // GPGNet relay server (the adapter's --gpgnet-client-port) + a free port
         // the adapter opens for the game (--gpgnet-port).

@@ -5,17 +5,26 @@
 //! parsing, to be defensive). We:
 //! - **call** adapter methods fire-and-forget (`{jsonrpc,method,params}\n`), and
 //! - receive the adapter's **notifications/requests** (objects with a `method`),
-//!   surfaced on a channel; if one carries an `id` we reply with a null result.
+//!   surfaced on a channel; if one carries an `id` we reply with a null result;
+//! - **request** the odd method whose answer matters (`status`, for the live
+//!   relay view) with an `id`, and match the response to it.
 //!
-//! Responses to our own calls (objects with `result`/`error`) are not needed for
-//! connectivity, so they are ignored.
+//! Responses to the fire-and-forget calls carry no id of ours and are ignored.
 
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use serde_json::{json, Value};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
+
+/// Requests sent and not yet answered, by id. The reader pump resolves them;
+/// when the connection ends it drops them all, which fails every waiter at
+/// once rather than leaving each to its timeout.
+type Pending = Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>>;
 
 /// An inbound method call from the adapter (e.g. `onGpgNetMessageReceived`).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,6 +38,8 @@ pub struct RpcNotification {
 #[derive(Clone)]
 pub struct JsonRpcClient {
     out: mpsc::UnboundedSender<String>,
+    pending: Pending,
+    next_id: Arc<AtomicU64>,
 }
 
 impl JsonRpcClient {
@@ -72,8 +83,11 @@ impl JsonRpcClient {
             }
         });
 
-        // Reader pump: parse objects, route notifications, answer id'd requests.
+        // Reader pump: parse objects, route notifications, answer id'd requests,
+        // and hand responses to whoever asked.
         let reply_tx = out_tx.clone();
+        let pending: Pending = Arc::default();
+        let answers = pending.clone();
         tokio::spawn(async move {
             let mut buffer: Vec<u8> = Vec::new();
             let mut chunk = [0u8; 4096];
@@ -83,16 +97,28 @@ impl JsonRpcClient {
                     Ok(n) => buffer.extend_from_slice(&chunk[..n]),
                 }
                 for value in parse_objects(&mut buffer) {
+                    if answer(&value, &answers) {
+                        continue;
+                    }
                     if let Some(note) = route(&value, &reply_tx) {
                         if note_tx.send(note).await.is_err() {
+                            answers.lock().unwrap().clear();
                             return; // consumer gone
                         }
                     }
                 }
             }
+            answers.lock().unwrap().clear();
         });
 
-        Ok((Self { out: out_tx }, note_rx))
+        Ok((
+            Self {
+                out: out_tx,
+                pending,
+                next_id: Arc::new(AtomicU64::new(1)),
+            },
+            note_rx,
+        ))
     }
 
     /// Call an adapter method, fire-and-forget (no response awaited).
@@ -100,6 +126,54 @@ impl JsonRpcClient {
         let frame = json!({ "jsonrpc": "2.0", "method": method, "params": params });
         let _ = self.out.send(format!("{frame}\n"));
     }
+
+    /// Call an adapter method and wait up to `timeout` for its result.
+    pub async fn request(
+        &self,
+        method: &str,
+        params: Vec<Value>,
+        timeout: Duration,
+    ) -> Result<Value, String> {
+        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        let (answered, answer) = oneshot::channel();
+        self.pending.lock().unwrap().insert(id, answered);
+        let frame = json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params });
+        if self.out.send(format!("{frame}\n")).is_err() {
+            self.pending.lock().unwrap().remove(&id);
+            return Err("the adapter's control connection is closed".into());
+        }
+        match tokio::time::timeout(timeout, answer).await {
+            Ok(Ok(result)) => result,
+            Ok(Err(_)) => Err("the adapter's control connection closed".into()),
+            Err(_) => {
+                self.pending.lock().unwrap().remove(&id);
+                Err(format!(
+                    "the adapter did not answer `{method}` within {} seconds",
+                    timeout.as_secs()
+                ))
+            }
+        }
+    }
+}
+
+/// Hand a response to the request it answers. True when `value` was one, so
+/// it is not also read as a notification.
+fn answer(value: &Value, pending: &Pending) -> bool {
+    if value.get("method").is_some() {
+        return false;
+    }
+    let Some(id) = value.get("id").and_then(Value::as_u64) else {
+        return false;
+    };
+    let Some(waiter) = pending.lock().unwrap().remove(&id) else {
+        return false;
+    };
+    let result = match value.get("error") {
+        Some(error) if !error.is_null() => Err(format!("the adapter refused: {error}")),
+        _ => Ok(value.get("result").cloned().unwrap_or(Value::Null)),
+    };
+    let _ = waiter.send(result);
+    true
 }
 
 /// Classify one inbound object: a `method` object is a notification/request (and,
@@ -214,12 +288,89 @@ mod tests {
     #[test]
     fn outbound_candidate_bursts_are_not_dropped_at_an_arbitrary_queue_limit() {
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
-        let client = JsonRpcClient { out: tx };
+        let client = JsonRpcClient {
+            out: tx,
+            pending: Arc::default(),
+            next_id: Arc::new(AtomicU64::new(1)),
+        };
         for candidate in 0..256 {
             client.call("iceMsg", vec![json!(candidate)]);
         }
 
         let frames = std::iter::from_fn(|| rx.try_recv().ok()).count();
         assert_eq!(frames, 256);
+    }
+
+    /// A loopback stand-in for the adapter: answers each request it reads with
+    /// whatever `respond` makes of it, after a notification of its own, so the
+    /// reader has to tell the two apart.
+    async fn adapter(respond: fn(&Value) -> Option<Value>) -> u16 {
+        use tokio::io::{AsyncBufReadExt, BufReader};
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .unwrap();
+        let port = listener.local_addr().unwrap().port();
+        tokio::spawn(async move {
+            let (socket, _) = listener.accept().await.unwrap();
+            let (read, mut write) = socket.into_split();
+            let mut lines = BufReader::new(read).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let request: Value = serde_json::from_str(&line).unwrap();
+                let note = json!({"jsonrpc":"2.0","method":"onConnectionStateChanged","params":["Connected"]});
+                let _ = write.write_all(format!("{note}\n").as_bytes()).await;
+                if let Some(reply) = respond(&request) {
+                    let _ = write.write_all(format!("{reply}\n").as_bytes()).await;
+                }
+            }
+        });
+        port
+    }
+
+    #[tokio::test]
+    async fn a_request_receives_the_response_carrying_its_id() {
+        let port = adapter(|request| {
+            Some(json!({"jsonrpc":"2.0","id":request["id"],"result":"{\"version\":\"3.3.9\"}"}))
+        })
+        .await;
+        let (client, mut notes) = JsonRpcClient::connect("127.0.0.1", port, Duration::from_secs(5))
+            .await
+            .unwrap();
+
+        let result = client
+            .request("status", vec![], Duration::from_secs(5))
+            .await
+            .unwrap();
+        assert_eq!(result, json!("{\"version\":\"3.3.9\"}"));
+        // The notification sent beside it still reaches the notification stream.
+        let note = notes.recv().await.unwrap();
+        assert_eq!(note.method, "onConnectionStateChanged");
+    }
+
+    #[tokio::test]
+    async fn an_error_response_and_a_silent_adapter_both_fail_the_request() {
+        let port = adapter(|request| {
+            (request["method"] == "refuse").then(
+                || json!({"jsonrpc":"2.0","id":request["id"],"error":{"code":-32601,"message":"no"}}),
+            )
+        })
+        .await;
+        let (client, _notes) = JsonRpcClient::connect("127.0.0.1", port, Duration::from_secs(5))
+            .await
+            .unwrap();
+
+        let refused = client
+            .request("refuse", vec![], Duration::from_secs(5))
+            .await
+            .unwrap_err();
+        assert!(refused.contains("refused"), "{refused}");
+        let silent = client
+            .request("status", vec![], Duration::from_millis(100))
+            .await
+            .unwrap_err();
+        assert!(silent.contains("did not answer"), "{silent}");
+        assert!(
+            client.pending.lock().unwrap().is_empty(),
+            "nothing left waiting"
+        );
     }
 }

@@ -24,13 +24,16 @@
   max-width: none;
 }
 
-.play-toolbar > .toolbar-check,
 .play-toolbar > .play-sort,
 .play-toolbar > .btn-primary,
 .play-toolbar > .btn-ghost {
   min-height: 34px;
 }
 
+/* A checkbox with its caption, as the live replays' toolbar and the filters
+   dialog's "Apply filters" draw it. The Play toolbar no longer has any: its
+   hide switches moved into that dialog, so it fits one row at the default
+   window. */
 .toolbar-check {
   display: inline-flex;
   align-items: center;

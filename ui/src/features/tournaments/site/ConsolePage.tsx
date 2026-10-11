@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
+import { StatusNotice } from "../../../design-system/StatusNotice";
 import type {
   AccessKind,
   AccessRequest,
@@ -20,6 +21,7 @@ import type {
 } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { plainError } from "../../../shared/plainError";
 import { RichText } from "../detail/RichText";
 import { formatMoment, STATUS_LABELS } from "../tourneyPresentation";
 import { AccountAdder, BanList } from "./BanList";
@@ -55,6 +57,8 @@ interface ConsoleProps {
   busy: boolean;
   onSearchAccounts: (query: string) => void;
   onWrite: (write: SiteWrite) => void;
+  /** Read the console again, after a read that failed. */
+  onRetry: () => void;
 }
 
 export function ConsolePage(props: ConsoleProps) {
@@ -74,7 +78,17 @@ export function ConsolePage(props: ConsoleProps) {
       </div>
     );
   }
-  if (props.status.type === "failed") return <p className="surface-error">{props.status.payload.reason}</p>;
+  if (props.status.type === "failed") {
+    return (
+      <StatusNotice
+        tone="error"
+        action={{ label: t("common.retry"), onClick: props.onRetry }}
+        detail={props.status.payload.reason}
+      >
+        {plainError(props.status.payload.reason)}
+      </StatusNotice>
+    );
+  }
   if (data === null) return <p className="muted">{t("tournaments.loading")}</p>;
   const tabs = consoleTabs(data.role);
   const shown = tab !== null && tabs.includes(tab) ? tab : tabs[0];

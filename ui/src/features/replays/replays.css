@@ -10,7 +10,7 @@
 .replay-warning {
   background: var(--color-surface);
   border: 1px solid var(--color-warn);
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
   font-size: 13px;
@@ -58,6 +58,29 @@
   --replay-list-columns: 48px minmax(190px, 1.35fr) 110px 90px 70px 82px 126px 190px;
   min-width: 0;
   overflow-x: hidden;
+}
+
+/* Down to the columns' floors and still too narrow, at a 560 pixel window:
+   the list scrolls sideways rather than clip the replay actions off its far
+   edge. The header and the day headings are as wide as the rows, so they
+   scroll with them and keep their backgrounds under them. The footer holds
+   the count and the pager, which must not scroll out of reach, so it stays
+   the width of the visible list instead. */
+.replay-list-wrap.has-column-overflow {
+  overflow-x: auto;
+}
+
+.replay-list-wrap.has-column-overflow :is(
+  .replay-list-header,
+  .replay-list-row,
+  .replay-list-group-header
+) {
+  min-width: var(--replay-list-min-width);
+}
+
+.replay-list-wrap.has-column-overflow .replay-list-footer {
+  position: sticky;
+  left: 0;
 }
 
 /* Where each column is drawn, from the order the list sets: the markup keeps
@@ -334,9 +357,9 @@
   white-space: nowrap;
 }
 
-.replay-list-status-ok { color: var(--color-ok); }
-.replay-list-status-warn { color: var(--color-warn); }
-.replay-list-status-error { color: var(--color-error); }
+.replay-list-status-ok { color: var(--color-ok-text); }
+.replay-list-status-warn { color: var(--color-warn-text); }
+.replay-list-status-error { color: var(--color-error-text); }
 
 /* At the start of the last column, for the same reason the figures are: the
    column no longer takes the leftover width, so its buttons would otherwise
@@ -421,11 +444,20 @@
   border-radius: 999px;
 }
 
+/* Measured: full width and scaled to the share done, so a step animates a
+   transform rather than relaying the dialog out. The sweep below drives
+   `transform` through its keyframes and is not given a scale. */
 .replay-starting-bar > span {
   display: block;
-  width: 35%;
+  width: 100%;
   height: 100%;
   background: var(--color-accent);
+  transform-origin: left center;
+  transition: transform 200ms ease;
+}
+
+.replay-starting-bar[data-indeterminate="true"] > span {
+  width: 35%;
   animation: replay-starting-sweep 1.4s ease-in-out infinite;
 }
 
@@ -435,7 +467,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .replay-starting-bar > span {
+  .replay-starting-bar[data-indeterminate="true"] > span {
     width: 100%;
     opacity: 0.4;
     animation: none;

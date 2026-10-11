@@ -42,20 +42,22 @@ pub async fn handle(cmd: EventsCommand, ctx: &ServiceCtx, out: &EventSink) {
             starts_at,
             lead_minutes,
         } => {
-            let mut preferences = out.with_state(|state| state.settings.events.clone());
-            preferences.set_reminder(EventReminder {
-                occurrence_id,
-                title,
-                starts_at,
-                lead_minutes,
-                notified: false,
-            });
-            write(ctx, out, preferences).await;
+            write(ctx, out, |preferences| {
+                preferences.set_reminder(EventReminder {
+                    occurrence_id,
+                    title,
+                    starts_at,
+                    lead_minutes,
+                    notified: false,
+                });
+            })
+            .await;
         }
         EventsCommand::Forget { occurrence_id } => {
-            let mut preferences = out.with_state(|state| state.settings.events.clone());
-            preferences.clear_reminder(&occurrence_id);
-            write(ctx, out, preferences).await;
+            write(ctx, out, |preferences| {
+                preferences.clear_reminder(&occurrence_id)
+            })
+            .await;
         }
     }
 }
@@ -87,13 +89,22 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
     }
 }
 
-/// Record changed reminders and write them to disk.
+/// Change the reminders and write them to disk.
 ///
 /// Through the reducer rather than straight to the port, so the switch on the
-/// entry and the file always say the same thing.
-async fn write(ctx: &ServiceCtx, out: &EventSink, preferences: EventsPreferences) {
-    out.emit(SettingsEvent::EventsChanged {
-        preferences: Box::new(preferences),
+/// entry and the file always say the same thing. The group is read, changed
+/// and emitted under the settings merge lock, so a settings patch to the same
+/// group landing in between cannot be carried back to its old value.
+async fn write(ctx: &ServiceCtx, out: &EventSink, change: impl FnOnce(&mut EventsPreferences)) {
+    ctx.settings.merge_and_emit(out, |settings| {
+        let mut preferences = settings.events.clone();
+        change(&mut preferences);
+        (
+            SettingsEvent::EventsChanged {
+                preferences: Box::new(preferences),
+            },
+            (),
+        )
     });
     services::settings::persist(ctx, out).await;
 }
@@ -138,17 +149,19 @@ async fn run(ctx: Arc<ServiceCtx>, sink: EventSink) {
                 }),
             );
         }
-        let mut preferences = sink.with_state(|state| state.settings.events.clone());
-        for reminder in &due {
-            if let Some(stored) = preferences
-                .reminders
-                .iter_mut()
-                .find(|stored| stored.occurrence_id == reminder.occurrence_id)
-            {
-                stored.notified = true;
+        write(&ctx, &sink, |preferences| {
+            for reminder in &due {
+                if let Some(stored) = preferences
+                    .reminders
+                    .iter_mut()
+                    .find(|stored| stored.occurrence_id == reminder.occurrence_id)
+                {
+                    stored.notified = true;
+                }
             }
-        }
-        write(&ctx, &sink, preferences.pruned(now)).await;
+            *preferences = preferences.clone().pruned(now);
+        })
+        .await;
     }
 }
 

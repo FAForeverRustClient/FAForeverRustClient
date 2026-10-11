@@ -266,7 +266,7 @@ export function ModDetailPanel({
               {t(mod.modType === "ui" ? "mods.vault.uiMod" : "mods.vault.simMod")}
             </span>
             {mod.modType === "sim" && (
-              <span className={`vault-badge is-${mod.ranked ? "ok" : "warn"} ${mod.ranked ? "ranked" : "unranked"}`}>
+              <span className={`vault-badge is-${mod.ranked ? "ok" : "neutral"} ${mod.ranked ? "ranked" : "unranked"}`}>
                 {t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}
               </span>
             )}

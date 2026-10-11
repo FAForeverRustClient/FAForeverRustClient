@@ -83,7 +83,7 @@ impl ReplayPreparation {
 
     /// Pass one preparation step on to whoever is listening. See
     /// `ReplayPlaybackPort::set_preparation_progress`.
-    fn report(&self, step: PreparationStep) {
+    pub(super) fn report(&self, step: PreparationStep) {
         let sink = self.sink.lock().unwrap().clone();
         if let Some(sink) = sink {
             sink(step);
@@ -131,6 +131,9 @@ impl ReplayPreparation {
             &self.exe_name,
             false,
             &|_| {},
+            // A replay's preparation is called off by dropping it, so it is
+            // handed no token of its own.
+            &tokio_util::sync::CancellationToken::new(),
         )
         .await
     }

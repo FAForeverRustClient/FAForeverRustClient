@@ -12,6 +12,8 @@
 export interface Completion {
   /** Text before the word being completed. */
   prefix: string;
+  /** Text after the caret, kept intact while candidates cycle. */
+  suffix: string;
   matches: string[];
   index: number;
 }
@@ -20,6 +22,8 @@ export interface TabCompletion {
   completion: Completion;
   /** The whole line after the completion is applied. */
   text: string;
+  /** Restore the caret just after the completed nickname. */
+  caret: number;
 }
 
 /**
@@ -34,7 +38,7 @@ export interface TabCompletion {
  *  * A run with a single candidate has nothing left to cycle, so the next Tab
  *    moves on, the same as it would after typing the name out in full.
  *  * Shift+Tab never starts a completion: it is how the keyboard goes back.
- *  * Tab starts one only when the last word of the line is the start of a
+ *  * Tab starts one only when the word before the caret is the start of a
  *    nickname here, and is not already exactly the only one it could be.
  */
 export function tabCompletion(
@@ -42,18 +46,25 @@ export function tabCompletion(
   nicknames: readonly string[],
   active: Completion | null,
   backwards: boolean,
+  selection = { start: draft.length, end: draft.length },
 ): TabCompletion | null {
-  if (active) {
+  // A selection is an explicit edit range, not an unfinished nickname.
+  if (selection.start !== selection.end) return null;
+  const caret = Math.max(0, Math.min(selection.start, draft.length));
+  const current = active?.matches[active.index];
+  if (active && draft === active.prefix + current + active.suffix
+    && caret === active.prefix.length + (current?.length ?? 0)) {
     if (active.matches.length < 2) return null;
     const step = backwards ? -1 : 1;
     const count = active.matches.length;
     const index = (active.index + step + count) % count;
-    return { completion: { ...active, index }, text: active.prefix + active.matches[index] };
+    const name = active.matches[index];
+    return { completion: { ...active, index }, text: active.prefix + name + active.suffix, caret: active.prefix.length + name.length };
   }
   if (backwards) return null;
 
-  const separator = draft.lastIndexOf(" ");
-  const partial = draft.slice(separator + 1);
+  const before = draft.slice(0, caret);
+  const partial = before.match(/\S+$/)?.[0] ?? "";
   if (!partial) return null;
   const lower = partial.toLowerCase();
   const matches = nicknames
@@ -64,6 +75,7 @@ export function tabCompletion(
   // swallowing the key for that would trap focus all over again.
   if (matches.length === 1 && matches[0] === partial) return null;
 
-  const prefix = draft.slice(0, separator + 1);
-  return { completion: { prefix, matches, index: 0 }, text: prefix + matches[0] };
+  const prefix = before.slice(0, before.length - partial.length);
+  const suffix = draft.slice(caret);
+  return { completion: { prefix, suffix, matches, index: 0 }, text: prefix + matches[0] + suffix, caret: prefix.length + matches[0].length };
 }

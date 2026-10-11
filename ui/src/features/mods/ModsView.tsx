@@ -1,8 +1,10 @@
+import { type ModFilterState, type ModSort, type ModPreset, type ModTypeFilter, type RankedFilter, type InstallFilter, type DateField, type ModSearchScope, MOD_PRESETS, presetSort, storedModSort, modVaultQuery, modFilterFromQuery } from "./modVaultFilters";
+import { useVaultFilters, useVaultSearch } from "../../shared/hooks/useVaultFilters";
 // Mods tab: vault discovery plus installed/active-mod management. Rust owns
 // the catalogue and filesystem/game.prefs state; this view derives only the
 // current search, filters, sorting and selection.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { SectionTabs, sectionPanelProps } from "../../design-system/SectionTabs";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
@@ -18,7 +20,7 @@ import {
 import { Pagination } from "../../design-system/Pagination";
 import type { InstalledMod, ModsSection, ModVaultQuery, VaultMod } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
-import { EMPTY_MOD_QUERY, sameVaultSearch } from "../../shared/vaultQuery";
+import { sameVaultSearch } from "../../shared/vaultQuery";
 import { FailureNotice, LoadStatusNotice } from "../../shared/components/LoadNotices";
 import { useAppStore } from "../../store/store";
 import {
@@ -35,7 +37,7 @@ import { InstalledModsView } from "./InstalledModsView";
 import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { ModRenameDialog } from "./ModRenameDialog";
 import { hasModVaultFocus, requestModVaultFocus, takeModVaultFocus } from "../../shared/modVaultFocus";
-import { type ModInstallFilter, modsMatchingQuery, modsPassingInstallFilter } from "./modVaultResults";
+import { modsMatchingQuery, modsPassingInstallFilter } from "./modVaultResults";
 import { modCounterparts } from "./modIdentity";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { localPage, vaultPageOutcome } from "../../shared/vaultResults";
@@ -49,40 +51,10 @@ import {
   isFilterRecord,
   rememberedFilter,
   useForgetFiltersOnLeave,
-  useRememberFilter,
 } from "../../shared/filterMemory";
 
 type SubView = ModsSection;
-type ModSort = "rating" | "newest" | "updated" | "name";
-type ModTypeFilter = "all" | "ui" | "sim";
-type RankedFilter = "all" | "ranked" | "unranked";
-type InstallFilter = ModInstallFilter;
-type ModPreset = "recommended" | "favorites" | "mine" | "rating" | "ui" | "newest" | "all";
-type DateField = "updated" | "uploaded";
-
-const MOD_SORTS: readonly ModSort[] = ["rating", "newest", "updated", "name"];
-
-/** The sort a preset brings with it when nothing else has been chosen. */
-function presetSort(preset: ModPreset): ModSort {
-  if (preset === "newest" || preset === "mine") return "newest";
-  if (preset === "all") return "name";
-  return "rating";
-}
-
-function storedModSort(value: string): ModSort | null {
-  return (MOD_SORTS as readonly string[]).includes(value) ? (value as ModSort) : null;
-}
-const MOD_PRESETS: Array<[ModPreset, MessageKey]> = [
-  ["recommended", "mods.view.preset.recommended"],
-  ["favorites", "mods.view.preset.favorites"],
-  // Only once there is an id to filter on: see `modVaultQuery`.
-  ["mine", "mods.view.preset.mine"],
-  ["rating", "mods.view.preset.rating"],
-  ["ui", "mods.view.preset.ui"],
-  ["newest", "mods.view.preset.newest"],
-  ["all", "mods.view.preset.all"],
-];
-
+const searchVault = (query: ModVaultQuery) => ipc.send({ kind: "Mods", command: { type: "searchVault", payload: { query } } });
 const loadVault = () => ipc.send({ kind: "Mods", command: { type: "loadVault" } });
 const loadInstalled = () => ipc.send({ kind: "Mods", command: { type: "loadInstalled" } });
 const installMod = (uid: string, downloadUrl: string) => ipc.send({ kind: "Mods", command: { type: "installMod", payload: { uid, downloadUrl } } });
@@ -90,106 +62,7 @@ const updateMod = (uid: string, folderName: string, downloadUrl: string) => ipc.
 const uninstallMod = (folderName: string, uid: string) => ipc.send({ kind: "Mods", command: { type: "uninstallMod", payload: { folderName, uid } } });
 const toggleMod = (uid: string, enabled: boolean) => ipc.send({ kind: "Mods", command: { type: "toggleMod", payload: { uid, enabled } } });
 
-/**
- * Where the search box is allowed to match.
- *
- * "name" is the floor, and the reported bug: searching "reui" against the
- * description returned every mod that mentions ReUI in prose, with the mods
- * actually called ReUI somewhere in the middle of them. Prose is still worth
- * searching, so it is a choice in the search panel rather than a default.
- */
-type ModSearchScope = "name" | "description" | "exact";
-
-/** Where the vault's filters are remembered (#447). */
 const MOD_VAULT_FILTERS = "mods.vault";
-
-interface ModFilterState {
-  search: string;
-  searchScope: ModSearchScope;
-  creator: string;
-  sort: ModSort;
-  modType: ModTypeFilter;
-  ranked: RankedFilter;
-  installFilter: InstallFilter;
-  dateField: DateField;
-  dateAfter: string;
-  dateBefore: string;
-  minimumRating: number | null;
-  maximumRating: number | null;
-}
-
-/**
- * The tab.s filter state as the API query it stands for. See `MapsView`.
- */
-function modVaultQuery(
-  applied: ModFilterState,
-  preset: ModPreset,
-  page: number,
-  playerId: number | null,
-  pageSize: number,
-): ModVaultQuery {
-  const sortBy: ModVaultQuery["sortBy"] = applied.sort === "newest" ? "newest"
-    : applied.sort === "updated" ? "updated"
-      : applied.sort === "name" ? "name"
-        : "rating";
-  // The `ui` preset is a type filter, not a sort.
-  const modType = preset === "ui" ? "ui" : applied.modType === "all" ? "" : applied.modType;
-  return {
-    ...EMPTY_MOD_QUERY,
-    search: applied.search.trim(),
-    exactName: applied.searchScope === "exact",
-    searchDescriptions: applied.searchScope === "description",
-    author: applied.creator.trim(),
-    // The uploader, not the declared author: see `ModVaultQuery::uploader_id`.
-    // Unlike the map vault this asks for no hidden versions, because nothing
-    // here could put one back (`ModVersion.hidden` is an administrator's field
-    // alone), so listing them would only be a dead end.
-    uploaderId: preset === "mine" && playerId !== null ? playerId : null,
-    modType,
-    ranked: applied.ranked === "all" ? null : applied.ranked === "ranked",
-    recommended: preset === "recommended",
-    minRatingTenths: applied.minimumRating === null ? null : Math.round(applied.minimumRating * 10),
-    maxRatingTenths: applied.maximumRating === null ? null : Math.round(applied.maximumRating * 10),
-    dateFieldUpdated: applied.dateField === "updated",
-    after: applied.dateAfter,
-    before: applied.dateBefore,
-    sortBy,
-    sortDescending: sortBy !== "name",
-    page,
-    pageSize,
-  };
-}
-
-/**
- * The filter form a query was built from, read back from the query.
- *
- * Tabs are unmounted when they lose focus, so a form kept only in this view
- * was empty again every time the reader came back. The last query the backend
- * ran (`state.mods.browseQuery`) outlives the view, as the replay tab's
- * `vaultQuery` does, so the form is seeded from it. `null` when nothing has
- * been searched this session, which leaves the defaults in place.
- *
- * The install filter is not part of the query (it is applied to the page in
- * the client), so it starts at "all" again.
- */
-function modFilterFromQuery(query: ModVaultQuery, preset: ModPreset): ModFilterState | null {
-  if (sameVaultSearch(query, EMPTY_MOD_QUERY) && query.page === EMPTY_MOD_QUERY.page) return null;
-  return {
-    search: query.search,
-    searchScope: query.exactName ? "exact" : query.searchDescriptions ? "description" : "name",
-    creator: query.author,
-    sort: query.sortBy,
-    // The `ui` preset is sent as a type filter; it is the preset's, not the form's.
-    modType: preset === "ui" || (query.modType !== "ui" && query.modType !== "sim") ? "all" : query.modType,
-    ranked: query.ranked === null ? "all" : query.ranked ? "ranked" : "unranked",
-    installFilter: "all",
-    dateField: query.dateFieldUpdated ? "updated" : "uploaded",
-    dateAfter: query.after,
-    dateBefore: query.before,
-    minimumRating: query.minRatingTenths === null ? null : query.minRatingTenths / 10,
-    maximumRating: query.maxRatingTenths === null ? null : query.maxRatingTenths / 10,
-  };
-}
 
 function VaultView({ busy }: { busy: boolean }) {
   // The Upload button opens this first. Pressing it used to put an OS
@@ -229,39 +102,41 @@ function VaultView({ busy }: { busy: boolean }) {
       ? null
       : rememberedFilter<ModFilterState | null>(MOD_VAULT_FILTERS, null, isFilterRecord)
         ?? modFilterFromQuery(browseQuery, preset));
-  const [search, setSearch] = useState(restored?.search ?? "");
-  const [searchScope, setSearchScope] = useState<ModSearchScope>(restored?.searchScope ?? "name");
-  const [sort, setSort] = useState<ModSort>(restored?.sort ?? initialSort);
-  const [modType, setModType] = useState<ModTypeFilter>(restored?.modType ?? "all");
-  const [ranked, setRanked] = useState<RankedFilter>(restored?.ranked ?? "all");
-  const [installFilter, setInstallFilter] = useState<InstallFilter>(restored?.installFilter ?? "all");
-  const [creator, setCreator] = useState(restored?.creator ?? "");
-  const [dateField, setDateField] = useState<DateField>(restored?.dateField ?? "updated");
-  const [dateAfter, setDateAfter] = useState(restored?.dateAfter ?? "");
-  const [dateBefore, setDateBefore] = useState(restored?.dateBefore ?? "");
-  const [minimumRating, setMinimumRating] = useState<number | null>(restored?.minimumRating ?? null);
-  const [maximumRating, setMaximumRating] = useState<number | null>(restored?.maximumRating ?? null);
+  const { draft, setFilter, applied, setApplied, page, setPage, applySearch, applySort, reset } = useVaultFilters<ModFilterState, ModPreset>({
+    initial: restored ?? {
+      search: "",
+      searchScope: "name",
+      creator: "",
+      sort: initialSort,
+      modType: "all",
+      ranked: "all",
+      installFilter: "all",
+      dateField: "updated",
+      dateAfter: "",
+      dateBefore: "",
+      minimumRating: null,
+      maximumRating: null,
+    },
+    initialPage: restored ? browseQuery.page : 1,
+    memoryKey: MOD_VAULT_FILTERS, preset, presetSort,
+  });
+  const { search, searchScope, creator, sort, modType, ranked, installFilter, dateField, dateAfter, dateBefore, minimumRating, maximumRating } = draft;
+  const setSearch = (value: ModFilterState["search"]) => setFilter("search", value);
+  const setSearchScope = (value: ModFilterState["searchScope"]) => setFilter("searchScope", value);
+  const setCreator = (value: ModFilterState["creator"]) => setFilter("creator", value);
+  const setModType = (value: ModFilterState["modType"]) => setFilter("modType", value);
+  const setRanked = (value: ModFilterState["ranked"]) => setFilter("ranked", value);
+  const setInstallFilter = (value: ModFilterState["installFilter"]) => setFilter("installFilter", value);
+  const setDateField = (value: ModFilterState["dateField"]) => setFilter("dateField", value);
+  const setDateAfter = (value: ModFilterState["dateAfter"]) => setFilter("dateAfter", value);
+  const setDateBefore = (value: ModFilterState["dateBefore"]) => setFilter("dateBefore", value);
+  const setMinimumRating = (value: ModFilterState["minimumRating"]) => setFilter("minimumRating", value);
+  const setMaximumRating = (value: ModFilterState["maximumRating"]) => setFilter("maximumRating", value);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [page, setPage] = useState(restored ? browseQuery.page : 1);
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledMod | null>(null);
   const [renaming, setRenaming] = useState<VaultMod | null>(null);
 
-  const [applied, setApplied] = useState<ModFilterState>(restored ?? {
-    search: "",
-    searchScope: "name",
-    creator: "",
-    sort: initialSort,
-    modType: "all",
-    ranked: "all",
-    installFilter: "all",
-    dateField: "updated",
-    dateAfter: "",
-    dateBefore: "",
-    minimumRating: null,
-    maximumRating: null,
-  });
-  useRememberFilter(MOD_VAULT_FILTERS, applied);
   // With filters never remembered (#447), the next visit starts from the
   // default preset. The sort the preset brought is not a filter and stays.
   useForgetFiltersOnLeave(() => {
@@ -303,45 +178,11 @@ function VaultView({ busy }: { busy: boolean }) {
     loadInstalled();
   }, []);
 
-  // Only on a change of preset, never on mount, so the remembered sort is not
-  // overwritten the moment the tab comes back.
-  //
-  // "My mods" has no ranking of its own worth defaulting to, and newest first
-  // is what an uploader wants: the release they just pushed.
-  const lastPreset = useRef(preset);
-  useEffect(() => {
-    if (lastPreset.current === preset) return;
-    lastPreset.current = preset;
-    const next = presetSort(preset);
-    setSort(next);
-    setApplied((prev) => ({ ...prev, sort: next }));
-  }, [preset]);
-
-  const applySearch = () => {
-    setApplied({
-      search,
-      searchScope,
-      creator,
-      sort,
-      modType,
-      ranked,
-      installFilter,
-      dateField,
-      dateAfter,
-      dateBefore,
-      minimumRating,
-      maximumRating,
-    });
-    setPage(1);
-  };
-
   // Sorting is not a preset. Routed through `choosePreset("all")` it forced the
   // sort back to "name" and dropped the preset's own filter, so every choice
   // but "Name" looked like it did nothing. See the twin in MapsView.
   const chooseSort = (nextSort: ModSort) => {
-    setSort(nextSort);
-    setApplied((prev) => ({ ...prev, sort: nextSort }));
-    setPage(1);
+    applySort(nextSort);
     if (browsing.modVaultSort !== nextSort) {
       ipc.send({
         kind: "Settings",
@@ -354,13 +195,8 @@ function VaultView({ busy }: { busy: boolean }) {
   };
 
   const choosePreset = (next: ModPreset) => {
-    let nextSort: ModSort = sort;
-    if (next === "recommended" || next === "rating" || next === "ui" || next === "favorites") nextSort = "rating";
-    if (next === "newest" || next === "mine") nextSort = "newest";
-    if (next === "all") nextSort = "name";
-    setSort(nextSort);
-    setApplied((prev) => ({ ...prev, sort: nextSort }));
-    setPage(1);
+    const nextSort = presetSort(next);
+    applySort(nextSort);
     if (browsing.modVaultPreset !== next || browsing.modVaultSort !== "") {
       ipc.send({
         kind: "Settings",
@@ -375,18 +211,7 @@ function VaultView({ busy }: { busy: boolean }) {
   };
 
   const clearSearch = () => {
-    setSearch("");
-    setSearchScope("name");
-    setCreator("");
-    setModType("all");
-    setRanked("all");
-    setInstallFilter("all");
-    setDateField("updated");
-    setDateAfter("");
-    setDateBefore("");
-    setMinimumRating(null);
-    setMaximumRating(null);
-    setApplied({
+    reset({
       search: "",
       searchScope: "name",
       creator: "",
@@ -400,7 +225,6 @@ function VaultView({ busy }: { busy: boolean }) {
       minimumRating: null,
       maximumRating: null,
     });
-    setPage(1);
     choosePreset("recommended");
   };
 
@@ -415,10 +239,7 @@ function VaultView({ busy }: { busy: boolean }) {
     [applied, preset, page, playerId, pageSize],
   );
 
-  useEffect(() => {
-    if (localFavorites) return;
-    ipc.send({ kind: "Mods", command: { type: "searchVault", payload: { query } } });
-  }, [localFavorites, query]);
+  useVaultSearch(query, localFavorites, searchVault);
 
   // The query the server would have been sent, answered from the index: the
   // search, creator, type, ranking, ratings, dates and sort apply here too,

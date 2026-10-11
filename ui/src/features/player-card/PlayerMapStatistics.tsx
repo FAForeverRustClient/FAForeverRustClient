@@ -8,6 +8,7 @@
 import { useMemo, useState } from "react";
 import { Icon } from "../../design-system/Icon";
 import { usePlayerHistory } from "./usePlayerHistory";
+import { HistoryFailure } from "./HistoryFailure";
 import { HistoryScopeNote } from "./HistoryScopeNote";
 import { useAppStore } from "../../store/store";
 import { leaderboardTotalGames, rankedRecord } from "./rankedRecord";
@@ -61,7 +62,7 @@ const FIRST_DIRECTION: Record<SortColumn, "asc" | "desc"> = {
 
 export function PlayerMapStatistics({ playerId }: Props) {
   const { t } = useTranslation();
-  const { stats, status, error, full, loadFull } = usePlayerHistory(playerId);
+  const { stats, status, error, full, loadFull, retry } = usePlayerHistory(playerId);
   // The leaderboards' own games-played totals, which is what faftracker prints
   // as "ranked games" rather than what its scan read. See `rankedRecord`.
   const ratings = useAppStore((state) => state.state.playerCard.profile?.ratings);
@@ -154,7 +155,9 @@ export function PlayerMapStatistics({ playerId }: Props) {
     return <div className="player-card-empty muted">{t("playerCard.maps.loading")}</div>;
   }
   if (status === "failed") {
-    return <div className="player-card-empty muted">{error || t("playerCard.maps.failed")}</div>;
+    // As on the Results tab, which reads the same scan: the way out beside the
+    // reason, rather than leaving reopening the tab to be discovered.
+    return <HistoryFailure error={error} onRetry={retry} />;
   }
   if (!stats || stats.totalGames === 0) {
     return <div className="player-card-empty muted">{t("playerCard.maps.empty")}</div>;

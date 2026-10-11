@@ -1,3 +1,4 @@
+import { useOverlayLayer } from "../../design-system/useOverlayLayer";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../../design-system/Icon";
@@ -68,23 +69,18 @@ function SeasonPicker({
     });
   }, []);
 
+  useOverlayLayer(open, () => { setOpen(false); triggerRef.current?.focus(); });
+
   useEffect(() => {
     if (!open) return;
     const closeOnOutsidePointer = (event: PointerEvent) => {
       const target = event.target as Node;
       if (!triggerRef.current?.contains(target) && !popoverRef.current?.contains(target)) setOpen(false);
     };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-    };
     document.addEventListener("pointerdown", closeOnOutsidePointer, true);
-    document.addEventListener("keydown", closeOnEscape);
+
     return () => {
       document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
-      document.removeEventListener("keydown", closeOnEscape);
     };
   }, [open]);
 

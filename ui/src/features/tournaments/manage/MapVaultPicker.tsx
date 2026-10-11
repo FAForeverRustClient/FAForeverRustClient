@@ -17,11 +17,17 @@
 import { useMemo, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
+import { StatusNotice } from "../../../design-system/StatusNotice";
 import type { MapListStatus, VaultMap } from "../../../ipc/bindings";
+import { ipc } from "../../../ipc/client";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { MapPreview } from "../../../shared/components/MapPreview";
 import { sizeLabel } from "../../../shared/mapPresentation";
+import { plainError } from "../../../shared/plainError";
 import { mapKey } from "../../../shared/rules/tourneyRules";
+
+/** The vault's own load, the one the Maps tab sends: this list is that list. */
+const loadVault = () => ipc.send({ kind: "Maps", command: { type: "loadVault" } });
 
 /**
  * How many results the grid shows at once.
@@ -87,7 +93,13 @@ export function MapVaultPicker(props: MapVaultPickerProps) {
           and "not yet". */}
       {vaultStatus.type === "loading" && <p className="muted">{t("tournaments.maps.vaultLoading")}</p>}
       {vaultStatus.type === "failed" && (
-        <p className="tournament-refusal">{vaultStatus.payload.reason}</p>
+        <StatusNotice
+          tone="error"
+          action={{ label: t("common.retry"), onClick: loadVault }}
+          detail={vaultStatus.payload.reason}
+        >
+          {plainError(vaultStatus.payload.reason)}
+        </StatusNotice>
       )}
       {vaultStatus.type === "ready" && query.trim() !== "" && results.length === 0 && (
         <p className="muted">{t("tournaments.maps.searchEmpty")}</p>

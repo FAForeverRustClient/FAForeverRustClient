@@ -205,7 +205,7 @@ export function MapDetailPanel({
         <div className="vault-detail-header">
           <div className="vault-detail-kicker map-vault-detail-kicker">
             <span className="vault-badge">{map.mapType || t("maps.vault.mapType")}</span>
-            <span className={`vault-badge is-${map.ranked ? "ok" : "warn"} ${map.ranked ? "ranked" : "unranked"}`}>
+            <span className={`vault-badge is-${map.ranked ? "ok" : "neutral"} ${map.ranked ? "ranked" : "unranked"}`}>
               {t(map.ranked ? "maps.vault.ranked" : "maps.vault.unranked")}
             </span>
             {map.recommended && <span className="vault-badge is-accent">{t("maps.vault.featured")}</span>}

@@ -36,7 +36,8 @@ mod updates;
 use faf_domain::state::{HostGameConfig, JoinState, LobbyCommand, LobbyEvent};
 
 use crate::runtime::{
-    AutoReconnect, EventSink, LatestRequest, LobbyOperations, RunningGame, ServiceCtx, SingleFlight,
+    AutoReconnect, Cancellable, EventSink, LatestRequest, LobbyOperations, RunningGame, ServiceCtx,
+    SingleFlight,
 };
 
 pub use connection::reconnect;
@@ -81,6 +82,10 @@ pub struct LobbyContext {
     /// ones last seen (#406). Once per run: pools change between releases,
     /// not between reconnects.
     map_pools_checked: std::sync::atomic::AtomicBool,
+    /// The search being prepared before the server is asked for it, so that
+    /// Stop, or the end of the connection, reaches the updater behind it. See
+    /// `matchmaking::start_search`.
+    search_preparation: Cancellable<()>,
 }
 
 impl LobbyContext {
@@ -89,6 +94,13 @@ impl LobbyContext {
     /// narrated or started; see [`LobbyOperations::is_cancelled`].
     pub fn launch_cancelled(&self) -> bool {
         self.operations.is_cancelled()
+    }
+
+    /// The token that is raised when the lobby work running here is called
+    /// off or superseded, for the preparation to hand to the updater; see
+    /// [`LobbyOperations::called_off`].
+    pub fn launch_called_off(&self) -> tokio_util::sync::CancellationToken {
+        self.operations.called_off()
     }
 
     /// A launch order is new work and starts uncancelled, whatever an earlier

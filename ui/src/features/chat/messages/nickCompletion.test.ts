@@ -20,11 +20,11 @@ describe("Tab in the composer", () => {
   it("completes the word being typed, case-insensitively, sorted", () => {
     const outcome = tabCompletion("hi ser", NICKS, null, false);
     expect(outcome?.text).toBe("hi Sera");
-    expect(outcome?.completion).toEqual({ prefix: "hi ", matches: ["Sera", "Seraphim"], index: 0 });
+    expect(outcome?.completion).toEqual({ prefix: "hi ", suffix: "", matches: ["Sera", "Seraphim"], index: 0 });
   });
 
   it("cycles an active run both ways", () => {
-    const active = { prefix: "hi ", matches: ["Sera", "Seraphim"], index: 0 };
+    const active = { prefix: "hi ", suffix: "", matches: ["Sera", "Seraphim"], index: 0 };
     expect(tabCompletion("hi Sera", NICKS, active, false)?.text).toBe("hi Seraphim");
     expect(tabCompletion("hi Sera", NICKS, active, true)?.text).toBe("hi Seraphim");
     const second = { ...active, index: 1 };
@@ -37,9 +37,40 @@ describe("Tab in the composer", () => {
   });
 
   it("moves on once the only candidate is in place", () => {
-    const active = { prefix: "", matches: ["Aeon"], index: 0 };
+    const active = { prefix: "", suffix: "", matches: ["Aeon"], index: 0 };
     expect(tabCompletion("Aeon", NICKS, active, false)).toBeNull();
     // Typed out in full by hand: nothing to complete either.
     expect(tabCompletion("Aeon", NICKS, null, false)).toBeNull();
+  });
+});
+
+
+describe("nickname completion at the caret", () => {
+  it("preserves the suffix while cycling in the middle of a line", () => {
+    const first = tabCompletion("hi ser, welcome", NICKS, null, false, { start: 6, end: 6 })!;
+    expect(first.text).toBe("hi Sera, welcome");
+    expect(first.caret).toBe(7);
+    const next = tabCompletion(first.text, NICKS, first.completion, false, { start: first.caret, end: first.caret })!;
+    expect(next.text).toBe("hi Seraphim, welcome");
+    expect(next.caret).toBe(11);
+    const back = tabCompletion(next.text, NICKS, next.completion, true, { start: next.caret, end: next.caret })!;
+    expect(back.text).toBe(first.text);
+  });
+
+  it("starts a new run at the new caret rather than cycling the previous word", () => {
+    const first = tabCompletion("Ae ser", NICKS, null, false)!;
+    expect(tabCompletion(first.text, NICKS, first.completion, false, { start: 2, end: 2 })?.text).toBe("Aeon Sera");
+  });
+
+  it("leaves selected text and an empty word alone", () => {
+    expect(tabCompletion("Ae ser", NICKS, null, false, { start: 3, end: 6 })).toBeNull();
+    expect(tabCompletion("Ae ser", NICKS, null, false, { start: 3, end: 3 })).toBeNull();
+    expect(tabCompletion("ser", NICKS, null, false, { start: 0, end: 0 })).toBeNull();
+  });
+
+  it("recognises whitespace and uses the input's UTF-16 caret offsets", () => {
+    const first = tabCompletion("😀\tser afterwards", NICKS, null, false, { start: 6, end: 6 })!;
+    expect(first.text).toBe("😀\tSera afterwards");
+    expect(first.caret).toBe(7);
   });
 });

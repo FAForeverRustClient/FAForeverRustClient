@@ -1,22 +1,31 @@
-use faf_domain::state::{NotificationKind, ReportingCommand, ReportingEvent};
+use faf_domain::protocol::report_log::{
+    compose_description, MAX_DESCRIPTION_BYTES, MAX_LOG_BLOCK_CHARS, MAX_REPORT_TEXT_CHARS,
+};
+use faf_domain::state::{NotificationKind, ReportLogAttachment, ReportingCommand, ReportingEvent};
 
 use crate::ports::{GameParticipation, ReportPlayerRequest};
 use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
 use crate::services::notifications;
 
-/// The reporting service's request generation. Owned by this service.
+/// The reporting service's request generations. Owned by this service.
 #[derive(Default)]
 pub struct ReportingContext {
     /// Only the newest open, history load or submission may land. Closing the
     /// dialog or opening it for another player must not let a slower answer
     /// about the previous one fill it.
     generation: LatestRequest,
+    /// Only the newest log excerpt may land. Kept apart from `generation` so
+    /// ticking the box while the history loads does not drop the history,
+    /// and taken by every open and close too, so an excerpt read for one
+    /// report never appears in the next.
+    log_generation: LatestRequest,
 }
 
 pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         ReportingCommand::Open { player_id, login } => {
             let generation = next_generation(ctx);
+            ctx.reporting.log_generation.invalidate();
             out.emit(ReportingEvent::Opened { player_id, login });
             load_history(ctx, out, generation).await;
         }
@@ -47,6 +56,7 @@ pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
                     .find(|player| player.login.eq_ignore_ascii_case(&wanted))
                 {
                     Some(player) => {
+                        ctx.reporting.log_generation.invalidate();
                         out.emit(ReportingEvent::Opened {
                             player_id: player.id,
                             login: player.login,
@@ -77,11 +87,19 @@ pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         ReportingCommand::Close => {
             next_generation(ctx);
+            ctx.reporting.log_generation.invalidate();
             out.emit(ReportingEvent::Closed);
         }
         ReportingCommand::LoadHistory => {
             let generation = next_generation(ctx);
             load_history(ctx, out, generation).await;
+        }
+        ReportingCommand::AttachLog { game_id } => attach_log(ctx, out, game_id).await,
+        ReportingCommand::DetachLog => {
+            // A read still running for the box just unticked must not tick
+            // it again when it answers.
+            ctx.reporting.log_generation.invalidate();
+            out.emit(ReportingEvent::LogDetached);
         }
         ReportingCommand::Submit {
             player_id,
@@ -89,6 +107,7 @@ pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
             description,
             game_id,
             incident_time,
+            attach_log,
         } => {
             let generation = next_generation(ctx);
             let description = description.trim().to_owned();
@@ -99,11 +118,15 @@ pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
                 });
                 return;
             };
+            // Characters, not bytes: the dialog counts characters, and a
+            // report in Russian or Polish used to be refused here at about
+            // half the length the dialog allowed.
+            let length = description.chars().count();
             let validation = if reporter.id == player_id {
                 Some("You cannot report yourself.")
-            } else if description.len() < 10 {
+            } else if length < 10 {
                 Some("Describe the incident in at least 10 characters.")
-            } else if description.len() > 4_000 {
+            } else if length > MAX_REPORT_TEXT_CHARS {
                 Some("The report description is limited to 4,000 characters.")
             } else if game_id.is_some() && incident_time.is_empty() {
                 Some("Add the approximate in-game time when reporting a game incident.")
@@ -113,6 +136,29 @@ pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
             if let Some(reason) = validation {
                 out.emit(ReportingEvent::Failed {
                     reason: reason.into(),
+                });
+                return;
+            }
+            let block = if attach_log {
+                match attached_block(out, game_id) {
+                    Ok(block) => Some(block),
+                    Err(reason) => {
+                        out.emit(ReportingEvent::Failed {
+                            reason: reason.into(),
+                        });
+                        return;
+                    }
+                }
+            } else {
+                None
+            };
+            let description = compose_description(&description, block.as_deref());
+            if description.len() > MAX_DESCRIPTION_BYTES {
+                // The limits are chosen so this cannot happen (see
+                // `report_log`); refusing beats letting the API cut the
+                // report or reject it with a database error.
+                out.emit(ReportingEvent::Failed {
+                    reason: "The report is too long to send.".into(),
                 });
                 return;
             }
@@ -187,6 +233,49 @@ pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(ReportingEvent::Failed { reason }),
             }
         }
+    }
+}
+
+/// Read the game log for the report and show the excerpt it would carry.
+///
+/// Nothing is sent here: this only prepares what the dialog shows, so the
+/// user decides with the excerpt in front of them.
+async fn attach_log(ctx: &ServiceCtx, out: &EventSink, game_id: Option<i32>) {
+    let generation = ctx.reporting.log_generation.begin();
+    // A tick that arrives after the dialog closed has no report to go with.
+    if !out.with_state(|state| state.reporting.open) {
+        return;
+    }
+    out.emit(ReportingEvent::LogPreparing { game_id });
+    let read = ctx.ports.game_logs.report_excerpt(game_id).await;
+    if !ctx.reporting.log_generation.is_current(generation) {
+        return;
+    }
+    match read {
+        Ok(Some(excerpt)) => out.emit(ReportingEvent::LogPrepared { excerpt }),
+        Ok(None) => out.emit(ReportingEvent::LogUnavailable { game_id }),
+        Err(reason) => out.emit(ReportingEvent::LogFailed { game_id, reason }),
+    }
+}
+
+/// The block the user was shown, if it may go with a report about `game_id`.
+///
+/// Taken from the state rather than read again: a fresh read could hold lines
+/// written since the preview, and the user agreed to what they saw.
+fn attached_block(out: &EventSink, game_id: Option<i32>) -> Result<String, &'static str> {
+    match out.with_state(|state| state.reporting.log_attachment.clone()) {
+        ReportLogAttachment::Ready { excerpt } if excerpt.requested_game_id != game_id => {
+            Err("The attached game log was prepared for a different game ID. Check it again before sending.")
+        }
+        // The adapter builds the block within the limit; one that is not is
+        // refused rather than cut, since a cut block is not what was shown.
+        ReportLogAttachment::Ready { excerpt }
+            if excerpt.block.chars().count() > MAX_LOG_BLOCK_CHARS =>
+        {
+            Err("The attached game log is too long to send.")
+        }
+        ReportLogAttachment::Ready { excerpt } => Ok(excerpt.block),
+        _ => Err("The game log is not ready to attach. Wait for its preview, or untick it."),
     }
 }
 

@@ -147,6 +147,7 @@ export function Modal({
       overlayStack.handleKey({
         key: event.key,
         isComposing: event.nativeEvent.isComposing,
+        defaultPrevented: event.defaultPrevented,
         preventDefault: () => event.preventDefault(),
         stopPropagation: () => event.stopPropagation(),
       });

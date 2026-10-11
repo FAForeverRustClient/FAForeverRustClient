@@ -204,7 +204,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
   };
 
   return (
-    <Modal className="host-game-modal" onClose={close}>
+    <Modal className="host-game-modal" onClose={close} ariaLabel={t("lobby.host.titleCustom")}>
       <div className="play-dialog-head">
         <div>
           <h2>{t("lobby.host.titleCustom")}</h2>
@@ -338,7 +338,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
                   className={`host-gametype-row${active ? " active" : ""}`}
                   onClick={() => setFeaturedMod(mod.id)}
                 >
-                  <FeaturedModIcon modId={mod.id} className="host-gametype-icon" />
+                  <FeaturedModIcon modId={mod.id} className="host-gametype-icon" tint />
                   <div className="host-gametype-info">
                     <div className="host-gametype-title-row">
                       <span className="host-gametype-name">{t(mod.nameKey)}</span>

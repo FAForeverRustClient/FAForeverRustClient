@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
 import { Icon } from "../../../design-system/Icon";
@@ -37,16 +37,52 @@ export interface GameFilterRule {
   value: string;
 }
 
+/**
+ * The hide switches, as the browsing settings store them. They sat in the
+ * toolbar until it ran to two rows at the default window; here they are one
+ * click further away, and the count on the Filters button says they are on.
+ */
+export interface FilterSwitches {
+  hidePrivate: boolean;
+  hideModded: boolean;
+  /**
+   * Left out by the co-op browser: every mission is unranked, so the switch
+   * there was a way to empty the list.
+   */
+  hideUnranked?: boolean;
+  hideFoes: boolean;
+}
+
+/** A switch's caption, in the order the dialog lists them. */
+const SWITCH_LABELS = [
+  ["hidePrivate", "lobby.toolbar.hidePrivate"],
+  ["hideModded", "lobby.toolbar.hideModded"],
+  ["hideUnranked", "lobby.toolbar.hideUnranked"],
+  ["hideFoes", "lobby.toolbar.hideFoes"],
+] as const satisfies readonly (readonly [keyof FilterSwitches, MessageKey])[];
+
 interface Props {
   rules: GameFilterRule[];
   applyFilters: boolean;
   onApplyFiltersChange: (apply: boolean) => void;
+  switches: FilterSwitches;
+  /** One switch flipped, as the patch the settings take. */
+  onSwitchesChange: (changes: Partial<FilterSwitches>) => void;
   onChange: (rules: GameFilterRule[]) => void;
   onClose: () => void;
 }
 
-export function GameFiltersModal({ rules, applyFilters, onApplyFiltersChange, onChange, onClose }: Props) {
+export function GameFiltersModal({
+  rules,
+  applyFilters,
+  onApplyFiltersChange,
+  switches,
+  onSwitchesChange,
+  onChange,
+  onClose,
+}: Props) {
   const { t } = useTranslation();
+  const sectionId = useId();
   const [field, setField] = useState<FilterField>("map");
   const [constraint, setConstraint] = useState<FilterConstraint>("contains");
   const [value, setValue] = useState("");
@@ -118,166 +154,196 @@ export function GameFiltersModal({ rules, applyFilters, onApplyFiltersChange, on
           <h2>{t("lobby.filters.title")}</h2>
           <p>{t("lobby.filters.subtitle")}</p>
         </div>
-        <label
-          className="toolbar-check filter-dialog-toggle"
-          title={t("lobby.toolbar.applyFiltersHint")}
-        >
-          <input
-            type="checkbox"
-            checked={applyFilters}
-            onChange={(event) => onApplyFiltersChange(event.target.checked)}
-          />
-          {t("lobby.toolbar.applyFilters")}
-        </label>
       </div>
 
-      <div className="filter-grid-row filter-rule-builder">
-        <select
-          value={field}
-          onChange={(event) => setField(event.target.value as FilterField)}
-          aria-label={t("lobby.filters.fieldAria")}
-        >
-          <option value="map">{t("lobby.filters.field.map")}</option>
-          <option value="title">{t("lobby.filters.field.title")}</option>
-          <option value="titleOrMap">{t("lobby.filters.field.titleOrMap")}</option>
-          <option value="host">{t("lobby.filters.field.host")}</option>
-          <option value="mod">{t("lobby.filters.field.mod")}</option>
-          <option value="rating">{t("lobby.filters.field.rating")}</option>
-        </select>
-        <select
-          value={constraint}
-          onChange={(event) => setConstraint(event.target.value as FilterConstraint)}
-          aria-label={t("lobby.filters.constraintAria")}
-        >
-          <option value="contains">{t("lobby.filters.constraint.contains")}</option>
-          <option value="starts">{t("lobby.filters.constraint.starts")}</option>
-          <option value="ends">{t("lobby.filters.constraint.ends")}</option>
-          <option value="equals">{t("lobby.filters.constraint.equals")}</option>
-          <option value="notEquals">{t("lobby.filters.constraint.notEquals")}</option>
-          <option value="above">{t("lobby.filters.constraint.above")}</option>
-          <option value="below">{t("lobby.filters.constraint.below")}</option>
-        </select>
-        <input
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          onKeyDown={(event) => event.key === "Enter" && add()}
-          placeholder={t("lobby.filters.valuePlaceholder")}
-          aria-label={t("lobby.filters.valueAria")}
-        />
-        <Button variant="primary" onClick={add} className="filter-add-btn">
-          <Icon name="plus" size={15} /> {t("lobby.filters.addRule")}
-        </Button>
-      </div>
-
-      <div className="filter-rule-list surface">
-        {rules.length === 0 ? (
-          <p className="play-empty">{t("lobby.filters.empty")}</p>
-        ) : (
-          rules.map((rule, index) =>
-            editingIndex === index ? (
-              <div className="filter-grid-row filter-rule is-editing" key={index}>
-                <select
-                  value={editField}
-                  onChange={(e) => setEditField(e.target.value as FilterField)}
-                  aria-label={t("lobby.filters.fieldAria")}
-                >
-                  <option value="map">{t("lobby.filters.field.map")}</option>
-                  <option value="title">{t("lobby.filters.field.title")}</option>
-                  <option value="titleOrMap">{t("lobby.filters.field.titleOrMap")}</option>
-                  <option value="host">{t("lobby.filters.field.host")}</option>
-                  <option value="mod">{t("lobby.filters.field.mod")}</option>
-                  <option value="rating">{t("lobby.filters.field.rating")}</option>
-                </select>
-                <select
-                  value={editConstraint}
-                  onChange={(e) => setEditConstraint(e.target.value as FilterConstraint)}
-                  aria-label={t("lobby.filters.constraintAria")}
-                >
-                  <option value="contains">{t("lobby.filters.constraint.contains")}</option>
-                  <option value="starts">{t("lobby.filters.constraint.starts")}</option>
-                  <option value="ends">{t("lobby.filters.constraint.ends")}</option>
-                  <option value="equals">{t("lobby.filters.constraint.equals")}</option>
-                  <option value="notEquals">{t("lobby.filters.constraint.notEquals")}</option>
-                  <option value="above">{t("lobby.filters.constraint.above")}</option>
-                  <option value="below">{t("lobby.filters.constraint.below")}</option>
-                </select>
+      {/* The switches take effect as they are ticked, rules or no rules:
+          "Apply filters" below is about the rules alone, which is why it
+          heads their section rather than the dialog. */}
+      <section className="filter-section" aria-labelledby={`${sectionId}-quick`}>
+        <h3 className="filter-section-title" id={`${sectionId}-quick`}>{t("lobby.filters.quickTitle")}</h3>
+        <div className="filter-switches">
+          {SWITCH_LABELS.map(([field, label]) =>
+            switches[field] === undefined ? null : (
+              <label className="check-field" key={field}>
                 <input
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveEdit();
-                    if (e.key === "Escape") {
-                      // Abandons the edit only; the dialog stays open.
-                      e.stopPropagation();
-                      cancelEdit();
-                    }
-                  }}
-                  placeholder={t("lobby.filters.valuePlaceholder")}
-                  aria-label={t("lobby.filters.valueAria")}
-                  autoFocus
+                  type="checkbox"
+                  checked={switches[field]}
+                  onChange={(event) => onSwitchesChange({ [field]: event.target.checked })}
                 />
-                <div className="filter-rule-actions">
-                  <button
-                    type="button"
-                    onClick={saveEdit}
-                    aria-label={t("lobby.filters.saveRule")}
-                    title={t("lobby.filters.saveRule")}
-                    className="filter-rule-save"
-                  >
-                    <Icon name="check" size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={cancelEdit}
-                    aria-label={t("lobby.filters.cancelEdit")}
-                    title={t("lobby.filters.cancelEdit")}
-                  >
-                    <Icon name="close" size={15} />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div
-                className="filter-grid-row filter-rule"
-                key={`${rule.field}-${rule.constraint}-${rule.value}-${index}`}
-                onDoubleClick={() => startEdit(index, rule)}
-              >
-                {/* The rule's direction, on the rule itself. It is in the
-                    dialog's subtitle too, and a subtitle is not where somebody
-                    reads it: both reports of this filter were somebody
-                    expecting a match to *show* a lobby. Four columns, so it
-                    rides along with the field rather than taking a fifth. */}
-                <span className="filter-rule-cell">
-                  <span className="filter-rule-verb">{t("lobby.filters.hide")}</span>{" "}
-                  {t(FIELD_LABELS[rule.field])}
-                </span>
-                <span className="filter-rule-cell muted">{t(CONSTRAINT_LABELS[rule.constraint])}</span>
-                <span className="filter-rule-cell filter-rule-val">
-                  <strong>{rule.value}</strong>
-                </span>
-                <div className="filter-rule-actions">
-                  <button
-                    type="button"
-                    onClick={() => startEdit(index, rule)}
-                    aria-label={t("lobby.filters.editRule")}
-                    title={t("lobby.filters.editRule")}
-                  >
-                    <Icon name="edit" size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onChange(rules.filter((_, ruleIndex) => ruleIndex !== index))}
-                    aria-label={t("lobby.filters.removeRuleAria", { value: rule.value })}
-                    title={t("lobby.filters.removeRule")}
-                  >
-                    <Icon name="close" size={15} />
-                  </button>
-                </div>
-              </div>
+                {t(label)}
+              </label>
             ),
-          )
-        )}
-      </div>
+          )}
+        </div>
+      </section>
+
+      <section className="filter-section" aria-labelledby={`${sectionId}-rules`}>
+        <div className="filter-section-head">
+          <h3 className="filter-section-title" id={`${sectionId}-rules`}>{t("lobby.filters.rulesTitle")}</h3>
+          {/* The tooltip says which way the rules go. Both reports of this
+              filter were somebody expecting a match to show a lobby rather
+              than hide it. */}
+          <label
+            className="toolbar-check filter-dialog-toggle"
+            title={t("lobby.toolbar.applyFiltersHint")}
+          >
+            <input
+              type="checkbox"
+              checked={applyFilters}
+              onChange={(event) => onApplyFiltersChange(event.target.checked)}
+            />
+            {t("lobby.toolbar.applyFilters")}
+          </label>
+        </div>
+
+        <div className="filter-grid-row filter-rule-builder">
+          <select
+            value={field}
+            onChange={(event) => setField(event.target.value as FilterField)}
+            aria-label={t("lobby.filters.fieldAria")}
+          >
+            <option value="map">{t("lobby.filters.field.map")}</option>
+            <option value="title">{t("lobby.filters.field.title")}</option>
+            <option value="titleOrMap">{t("lobby.filters.field.titleOrMap")}</option>
+            <option value="host">{t("lobby.filters.field.host")}</option>
+            <option value="mod">{t("lobby.filters.field.mod")}</option>
+            <option value="rating">{t("lobby.filters.field.rating")}</option>
+          </select>
+          <select
+            value={constraint}
+            onChange={(event) => setConstraint(event.target.value as FilterConstraint)}
+            aria-label={t("lobby.filters.constraintAria")}
+          >
+            <option value="contains">{t("lobby.filters.constraint.contains")}</option>
+            <option value="starts">{t("lobby.filters.constraint.starts")}</option>
+            <option value="ends">{t("lobby.filters.constraint.ends")}</option>
+            <option value="equals">{t("lobby.filters.constraint.equals")}</option>
+            <option value="notEquals">{t("lobby.filters.constraint.notEquals")}</option>
+            <option value="above">{t("lobby.filters.constraint.above")}</option>
+            <option value="below">{t("lobby.filters.constraint.below")}</option>
+          </select>
+          <input
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            onKeyDown={(event) => event.key === "Enter" && add()}
+            placeholder={t("lobby.filters.valuePlaceholder")}
+            aria-label={t("lobby.filters.valueAria")}
+          />
+          <Button variant="primary" onClick={add} className="filter-add-btn">
+            <Icon name="plus" size={15} /> {t("lobby.filters.addRule")}
+          </Button>
+        </div>
+
+        <div className="filter-rule-list surface">
+          {rules.length === 0 ? (
+            <p className="play-empty">{t("lobby.filters.empty")}</p>
+          ) : (
+            rules.map((rule, index) =>
+              editingIndex === index ? (
+                <div className="filter-grid-row filter-rule is-editing" key={index}>
+                  <select
+                    value={editField}
+                    onChange={(e) => setEditField(e.target.value as FilterField)}
+                    aria-label={t("lobby.filters.fieldAria")}
+                  >
+                    <option value="map">{t("lobby.filters.field.map")}</option>
+                    <option value="title">{t("lobby.filters.field.title")}</option>
+                    <option value="titleOrMap">{t("lobby.filters.field.titleOrMap")}</option>
+                    <option value="host">{t("lobby.filters.field.host")}</option>
+                    <option value="mod">{t("lobby.filters.field.mod")}</option>
+                    <option value="rating">{t("lobby.filters.field.rating")}</option>
+                  </select>
+                  <select
+                    value={editConstraint}
+                    onChange={(e) => setEditConstraint(e.target.value as FilterConstraint)}
+                    aria-label={t("lobby.filters.constraintAria")}
+                  >
+                    <option value="contains">{t("lobby.filters.constraint.contains")}</option>
+                    <option value="starts">{t("lobby.filters.constraint.starts")}</option>
+                    <option value="ends">{t("lobby.filters.constraint.ends")}</option>
+                    <option value="equals">{t("lobby.filters.constraint.equals")}</option>
+                    <option value="notEquals">{t("lobby.filters.constraint.notEquals")}</option>
+                    <option value="above">{t("lobby.filters.constraint.above")}</option>
+                    <option value="below">{t("lobby.filters.constraint.below")}</option>
+                  </select>
+                  <input
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveEdit();
+                      if (e.key === "Escape") {
+                        // Abandons the edit only; the dialog stays open.
+                        e.stopPropagation();
+                        cancelEdit();
+                      }
+                    }}
+                    placeholder={t("lobby.filters.valuePlaceholder")}
+                    aria-label={t("lobby.filters.valueAria")}
+                    autoFocus
+                  />
+                  <div className="filter-rule-actions">
+                    <button
+                      type="button"
+                      onClick={saveEdit}
+                      aria-label={t("lobby.filters.saveRule")}
+                      title={t("lobby.filters.saveRule")}
+                      className="filter-rule-save"
+                    >
+                      <Icon name="check" size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      aria-label={t("lobby.filters.cancelEdit")}
+                      title={t("lobby.filters.cancelEdit")}
+                    >
+                      <Icon name="close" size={15} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="filter-grid-row filter-rule"
+                  key={`${rule.field}-${rule.constraint}-${rule.value}-${index}`}
+                  onDoubleClick={() => startEdit(index, rule)}
+                >
+                  {/* The rule's direction, on the rule itself. It is in the
+                      dialog's subtitle too, and a subtitle is not where somebody
+                      reads it: both reports of this filter were somebody
+                      expecting a match to *show* a lobby. Four columns, so it
+                      rides along with the field rather than taking a fifth. */}
+                  <span className="filter-rule-cell">
+                    <span className="filter-rule-verb">{t("lobby.filters.hide")}</span>{" "}
+                    {t(FIELD_LABELS[rule.field])}
+                  </span>
+                  <span className="filter-rule-cell muted">{t(CONSTRAINT_LABELS[rule.constraint])}</span>
+                  <span className="filter-rule-cell filter-rule-val">
+                    <strong>{rule.value}</strong>
+                  </span>
+                  <div className="filter-rule-actions">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(index, rule)}
+                      aria-label={t("lobby.filters.editRule")}
+                      title={t("lobby.filters.editRule")}
+                    >
+                      <Icon name="edit" size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onChange(rules.filter((_, ruleIndex) => ruleIndex !== index))}
+                      aria-label={t("lobby.filters.removeRuleAria", { value: rule.value })}
+                      title={t("lobby.filters.removeRule")}
+                    >
+                      <Icon name="close" size={15} />
+                    </button>
+                  </div>
+                </div>
+              ),
+            )
+          )}
+        </div>
+      </section>
     </Modal>
   );
 }

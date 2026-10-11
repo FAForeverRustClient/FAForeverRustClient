@@ -11,7 +11,7 @@
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use faf_domain::state::IceAdapter;
+use faf_domain::state::{IceAdapter, RelayStatus};
 
 use crate::infra::env_or;
 use crate::ports::{ConnectivitySession, IceDebugWindows, IceParams, IcePort};
@@ -137,6 +137,19 @@ impl IcePort for SelectableIce {
     fn set_debug_windows(&self, windows: IceDebugWindows) {
         self.java.set_debug_windows(windows);
         self.go.set_debug_windows(windows);
+    }
+
+    /// Asked of whichever backend is running. Pioneer has no status call, and
+    /// saying so is more use than an empty table that looks like no peers.
+    async fn relay_status(&self) -> RelayStatus {
+        let running = *self.running.lock().unwrap();
+        match running {
+            Some(IceAdapter::Go) => RelayStatus::Unsupported {
+                adapter: IceAdapter::Go,
+            },
+            Some(adapter) => self.backend(adapter).relay_status().await,
+            None => RelayStatus::Idle,
+        }
     }
 }
 
@@ -319,6 +332,29 @@ mod tests {
         assert_eq!(java.stopped.load(Ordering::SeqCst), 1);
         assert_eq!(go.stopped.load(Ordering::SeqCst), 1);
         assert!(error.contains("never selected as an automatic fallback"));
+    }
+
+    #[tokio::test]
+    async fn the_relay_status_comes_from_the_running_backend() {
+        let (_java, _go, ice) = pair();
+        assert_eq!(
+            ice.relay_status().await,
+            RelayStatus::Idle,
+            "nothing running"
+        );
+        if adapter_override().is_some() {
+            return;
+        }
+        ice.set_backend(IceAdapter::Go);
+        ice.start(params()).await.unwrap();
+        assert_eq!(
+            ice.relay_status().await,
+            RelayStatus::Unsupported {
+                adapter: IceAdapter::Go
+            }
+        );
+        ice.stop();
+        assert_eq!(ice.relay_status().await, RelayStatus::Idle, "stopped");
     }
 
     #[test]

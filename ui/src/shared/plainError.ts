@@ -48,14 +48,33 @@ function statusCause(status: number): MessageKey | null {
 }
 
 /**
+ * A web address, as a split pattern: the capture keeps the addresses in the
+ * pieces `split` returns, at the odd positions.
+ */
+const WEB_ADDRESS = /(\b[a-z][a-z\d+.-]*:\/\/[^\s"'<>]+)/i;
+
+/** Absolute paths cut to their last part, `snake_case` codes spelled out. */
+function tidyWords(text: string): string {
+  return text
+    .replace(/(?:[A-Za-z]:)?[\\/](?:[^\\/:*?"<>|\r\n]+[\\/])+([^\\/:*?"<>|\r\n]+)/g, "$1")
+    .replace(/\b([a-z]+(?:_[a-z]+)+)\b/g, (code) => code.replace(/_/g, " "));
+}
+
+/**
  * A reason the client did not recognise, made presentable: absolute paths cut
  * to their last part, `snake_case` codes spelled out, a capital at the start
  * and a full stop at the end.
+ *
+ * Web addresses are left whole. Some reasons name one on purpose ("could not
+ * reach the tournament service at https://..."), and cut like a file path the
+ * address lost its host and kept everything after its last slash, which was
+ * the rest of the sentence.
  */
 function tidy(reason: string): string {
   const text = reason
-    .replace(/(?:[A-Za-z]:)?[\\/](?:[^\\/:*?"<>|\r\n]+[\\/])+([^\\/:*?"<>|\r\n]+)/g, "$1")
-    .replace(/\b([a-z]+(?:_[a-z]+)+)\b/g, (code) => code.replace(/_/g, " "))
+    .split(WEB_ADDRESS)
+    .map((piece, index) => (index % 2 === 1 ? piece : tidyWords(piece)))
+    .join("")
     .trim();
   if (!text) return text;
   const sentence = text.charAt(0).toLocaleUpperCase() + text.slice(1);

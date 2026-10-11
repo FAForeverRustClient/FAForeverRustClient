@@ -10,6 +10,7 @@ import { Button } from "../../../design-system/Button";
 import type { RatingCheck, Tourney, TourneyLoadStatus } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { plainError } from "../../../shared/plainError";
 import { mayCheckRating, mayDeclineInvite } from "../../../shared/rules/tourneyRules";
 import { formatDay, RATING_KIND_LABELS } from "../tourneyPresentation";
 import { RATING_CHECK_ID } from "../overviewPresentation";
@@ -73,8 +74,12 @@ export function EntryNotices({ event, check, checkStatus, busy, entry }: EntryNo
             </Button>
             <span className="muted">{t("tournaments.entry.checkHint")}</span>
           </div>
+          {/* Plainly, with the service's own words on hover; the check
+              button above is the way to ask again. */}
           {checkStatus.type === "failed" && (
-            <p className="tournament-rating-verdict is-bad">{checkStatus.payload.reason}</p>
+            <p className="tournament-rating-verdict is-bad" title={checkStatus.payload.reason}>
+              {plainError(checkStatus.payload.reason)}
+            </p>
           )}
           {check !== null && <RatingVerdict check={check} />}
         </section>

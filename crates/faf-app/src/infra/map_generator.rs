@@ -171,6 +171,32 @@ async fn cancelled(signal: Option<&CancelSignal>) {
     }
 }
 
+/// How long a stopped generator is given to exit. A killed process is gone at
+/// once; the bound is for one that is not, whose folders are then left alone.
+const STOP_GRACE: Duration = Duration::from_secs(5);
+
+/// How long the output still in the pipe is read after a stop, for map names
+/// the run loop had not reached yet. A killed generator's pipe closes with it,
+/// so this is only waited out when something else still holds the pipe.
+const DRAIN_GRACE: Duration = Duration::from_millis(500);
+
+/// One generation run in flight: its process, the output not read yet, the
+/// map names read so far.
+struct GeneratorRun {
+    child: tokio::process::Child,
+    lines: tokio::io::Split<BufReader<tokio::process::ChildStdout>>,
+    names: Vec<String>,
+}
+
+/// Add the map names in one line of generator output to `names`, once each.
+fn note_map_names(names: &mut Vec<String>, line: &str) {
+    for name in map_generator::scrape_map_names(line) {
+        if !names.contains(&name) {
+            names.push(name);
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct MapGeneratorConfig {
     /// GitHub releases API for the generator repository.
@@ -553,25 +579,41 @@ impl NeroxisMapGenerator {
     }
 
     /// Give up on a run that has exceeded its deadline, and return the error.
-    ///
-    /// Kills *and reaps*: `start_kill` only signals, so without the follow-up
-    /// wait the JVM would linger as a zombie for the rest of the session: and
-    /// a user retrying after a timeout would accumulate one per attempt.
-    async fn abandon(
-        &self,
-        child: &mut tokio::process::Child,
-        untimed: bool,
-        limit_seconds: u64,
-    ) -> String {
+    async fn abandon(&self, run: &mut GeneratorRun, untimed: bool, limit_seconds: u64) -> String {
         debug_assert!(!untimed, "an untimed run should never reach the deadline");
-        let _ = child.start_kill();
-        // Bounded: if the JVM ignores the signal, don't trade one hang for
-        // another. The OS cleans up on client exit either way.
-        let _ = tokio::time::timeout(Duration::from_secs(5), child.wait()).await;
+        self.stop_run(run).await;
         format!("map generation timed out after {limit_seconds}s")
     }
 
+    /// Stop and reap a run before its private staging directory is cleared.
+    ///
+    /// Kills *and reaps*: `start_kill` only signals, so without the follow-up
+    /// wait the JVM would linger as a zombie for the rest of the session, and a
+    /// user retrying would accumulate one per attempt. The wait is bounded: if
+    /// the JVM ignores the signal, this does not trade one hang for another,
+    /// and its private staging directory is never published.
+    async fn stop_run(&self, run: &mut GeneratorRun) {
+        let _ = run.child.start_kill();
+        let exited = matches!(
+            tokio::time::timeout(STOP_GRACE, run.child.wait()).await,
+            Ok(Ok(_))
+        );
+        // A name the generator printed just before it was stopped can still be
+        // in the pipe, unread: the run loop races each line against the stop.
+        // Drain bounded output still held by the stopped process.
+        let _ = tokio::time::timeout(DRAIN_GRACE, async {
+            while let Ok(Some(line)) = next_output_line(&mut run.lines).await {
+                note_map_names(&mut run.names, &line);
+            }
+        })
+        .await;
+        if !exited {
+            tracing::warn!("the map generator did not exit within the stop deadline");
+        }
+    }
+
     /// Run the generator and collect the map names it reports.
+    ///
     async fn run_generator(
         &self,
         version: GeneratorVersion,
@@ -630,8 +672,11 @@ impl NeroxisMapGenerator {
             return RunOutcome::Failed("the map generator produced no output streams".into());
         };
 
-        let mut names: Vec<String> = Vec::new();
-        let mut lines = BufReader::new(stdout).split(b'\n');
+        let mut run = GeneratorRun {
+            child,
+            lines: BufReader::new(stdout).split(b'\n'),
+            names: Vec::new(),
+        };
 
         // Drain stderr concurrently. The generator prints usage help there on a
         // bad option combination, and a full pipe would deadlock the child.
@@ -662,12 +707,14 @@ impl NeroxisMapGenerator {
         loop {
             let wait_for = remaining();
             if wait_for.is_some_and(|d| d.is_zero()) {
-                return RunOutcome::Failed(self.abandon(&mut child, untimed, limit_seconds).await);
+                return RunOutcome::Failed(self.abandon(&mut run, untimed, limit_seconds).await);
             }
             let read_line = async {
                 match wait_for {
-                    Some(limit) => tokio::time::timeout(limit, next_output_line(&mut lines)).await,
-                    None => Ok(next_output_line(&mut lines).await),
+                    Some(limit) => {
+                        tokio::time::timeout(limit, next_output_line(&mut run.lines)).await
+                    }
+                    None => Ok(next_output_line(&mut run.lines).await),
                 }
             };
             // A generation run is the one long operation in this client that a
@@ -675,8 +722,7 @@ impl NeroxisMapGenerator {
             // to be possible mid-flight rather than only between stages.
             let next = tokio::select! {
                 _ = self.cancel.raised() => {
-                    let _ = child.start_kill();
-                    let _ = tokio::time::timeout(Duration::from_secs(5), child.wait()).await;
+                    self.stop_run(&mut run).await;
                     self.log_line("--- cancelled by the user").await;
                     return RunOutcome::Cancelled;
                 }
@@ -685,7 +731,7 @@ impl NeroxisMapGenerator {
             match next {
                 Err(_) => {
                     return RunOutcome::Failed(
-                        self.abandon(&mut child, untimed, limit_seconds).await,
+                        self.abandon(&mut run, untimed, limit_seconds).await,
                     );
                 }
                 Ok(Ok(Some(line))) => {
@@ -693,11 +739,7 @@ impl NeroxisMapGenerator {
                         window.write_line(&line).await;
                     }
                     self.log_line(&line).await;
-                    for name in map_generator::scrape_map_names(&line) {
-                        if !names.contains(&name) {
-                            names.push(name);
-                        }
-                    }
+                    note_map_names(&mut run.names, &line);
                     // The generator's own output is the only progress signal.
                     let _ = progress
                         .send(GeneratorUpdate::Status(GeneratorStatus::Generating {
@@ -707,8 +749,11 @@ impl NeroxisMapGenerator {
                         .await;
                 }
                 Ok(Ok(None)) => break,
+                // The run has failed, but the generator would go on writing
+                // a map nobody records; it is stopped, and its folder cleared.
                 Ok(Err(e)) => {
-                    return RunOutcome::Failed(format!("could not read generator output: {e}"))
+                    self.stop_run(&mut run).await;
+                    return RunOutcome::Failed(format!("could not read generator output: {e}"));
                 }
             }
         }
@@ -717,25 +762,25 @@ impl NeroxisMapGenerator {
         // its pipes but never terminates would hang here forever without the
         // same deadline the read loop uses.
         let waited = tokio::select! {
+            biased;
             () = self.cancel.raised() => {
-                let _ = child.start_kill();
-                let _ = tokio::time::timeout(Duration::from_secs(5), child.wait()).await;
+                self.stop_run(&mut run).await;
                 return RunOutcome::Cancelled;
             }
-            status = async {
+            waited = async {
                 match remaining() {
-                    Some(limit) => tokio::time::timeout(limit, child.wait()).await.ok(),
-                    None => Some(child.wait().await),
+                    Some(limit) => tokio::time::timeout(limit, run.child.wait()).await.ok(),
+                    None => Some(run.child.wait().await),
                 }
-            } => status,
+            } => waited,
         };
         let status = match waited {
             Some(Ok(status)) => status,
-            Some(Err(error)) => {
-                return RunOutcome::Failed(format!("map generator did not exit cleanly: {error}"))
+            Some(Err(e)) => {
+                return RunOutcome::Failed(format!("map generator did not exit cleanly: {e}"))
             }
             None => {
-                return RunOutcome::Failed(self.abandon(&mut child, untimed, limit_seconds).await)
+                return RunOutcome::Failed(self.abandon(&mut run, untimed, limit_seconds).await)
             }
         };
         let errors = tokio::select! {
@@ -746,6 +791,8 @@ impl NeroxisMapGenerator {
             self.log_line(line).await;
         }
 
+        // From here the generator has exited, so what it left of a failed run
+        // can be cleared straight away.
         if !status.success() {
             // The generator's first stderr line is its actual complaint
             // ("Spawn Count `5` not a multiple of Num Teams `2`"); everything
@@ -753,7 +800,7 @@ impl NeroxisMapGenerator {
             let detail = errors.lines().next().unwrap_or("no detail").to_string();
             return RunOutcome::Failed(format!("the map generator failed: {detail}"));
         }
-        if names.is_empty() {
+        if run.names.is_empty() {
             return RunOutcome::Failed(
                 "the map generator produced no map: the option combination may be invalid".into(),
             );
@@ -761,14 +808,17 @@ impl NeroxisMapGenerator {
 
         // Trust the folder, not the log: a name in the output that didn't
         // result in a directory means the run half-failed.
-        for name in &names {
-            if !self.config.maps_dir().join(name).is_dir() {
-                return RunOutcome::Failed(format!(
-                    "the generator reported {name} but wrote no folder"
-                ));
-            }
+        let missing = run
+            .names
+            .iter()
+            .find(|name| !self.config.maps_dir().join(name).is_dir())
+            .cloned();
+        if let Some(name) = missing {
+            return RunOutcome::Failed(format!(
+                "the generator reported {name} but wrote no folder"
+            ));
         }
-        RunOutcome::Generated(names)
+        RunOutcome::Generated(run.names)
     }
 
     /// Run the JAR for a short, non-generating query and return its stdout.
@@ -1916,6 +1966,168 @@ mod tests {
         let new = generator.jar_path(GeneratorVersion::parse("1.8.0").unwrap());
         assert_ne!(old, new);
         assert!(old.ends_with("MapGenerator_1.7.7.jar"));
+    }
+
+    /// The map a fake run reproduces, and part-writes.
+    const PARTIAL: &str = "neroxis_map_generator_1.22.1_partial";
+    /// A map the user already had, which the fake run names as well.
+    const ALREADY_THERE: &str = "neroxis_map_generator_1.22.1_already";
+
+    /// How a fake generator run ends.
+    #[derive(Clone, Copy)]
+    enum FakeEnding {
+        /// It exits with an error, as a generator that hit a bad option does.
+        Fails,
+        /// It waits until it is stopped.
+        Waits,
+    }
+
+    /// A stand-in for `java`: a script that writes part of [`PARTIAL`],
+    /// announces it and [`ALREADY_THERE`] the way the generator announces a
+    /// map, and then ends as `ending` says. It ignores the arguments it is
+    /// started with (`-jar`, the JAR, the options).
+    ///
+    /// A waiting script waits from another folder, so the waiter the shell
+    /// leaves behind when it is killed never holds the maps folder.
+    fn fake_java(dir: &Path, ending: FakeEnding) -> PathBuf {
+        #[cfg(windows)]
+        {
+            let script = dir.join("fake_java.cmd");
+            let end = match ending {
+                FakeEnding::Fails => "exit /b 1",
+                FakeEnding::Waits => "cd /d \"%TEMP%\"\r\nping -n 20 127.0.0.1 > nul",
+            };
+            std::fs::write(
+                &script,
+                format!(
+                    "@echo off\r\nmkdir {PARTIAL}\r\necho partial> {PARTIAL}\\{PARTIAL}.scmap\r\n\
+                     echo Saving map {PARTIAL}\r\necho Saving map {ALREADY_THERE}\r\n{end}\r\n"
+                ),
+            )
+            .unwrap();
+            script
+        }
+        #[cfg(not(windows))]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            let script = dir.join("fake_java.sh");
+            let end = match ending {
+                FakeEnding::Fails => "exit 1",
+                FakeEnding::Waits => "cd /tmp\nsleep 20",
+            };
+            std::fs::write(
+                &script,
+                format!(
+                    "#!/bin/sh\nmkdir {PARTIAL}\necho partial > {PARTIAL}/{PARTIAL}.scmap\n\
+                     echo \"Saving map {PARTIAL}\"\necho \"Saving map {ALREADY_THERE}\"\n{end}\n"
+                ),
+            )
+            .unwrap();
+            std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+            script
+        }
+    }
+
+    /// A generator driving the fake `java`, with its release already in place
+    /// so nothing is downloaded, and a maps folder that already holds
+    /// [`ALREADY_THERE`].
+    fn fake_generator(dir: &Path, ending: FakeEnding) -> NeroxisMapGenerator {
+        std::fs::create_dir_all(dir.join("maps").join(ALREADY_THERE)).unwrap();
+        let generator = NeroxisMapGenerator::new(MapGeneratorConfig {
+            java_path: Some(fake_java(dir, ending).to_string_lossy().into_owned()),
+            ..config(dir)
+        });
+        let jar = generator.jar_path(GeneratorVersion::parse("1.22.1").unwrap());
+        std::fs::create_dir_all(jar.parent().unwrap()).unwrap();
+        std::fs::write(&jar, b"not a real jar").unwrap();
+        generator
+    }
+
+    /// The next status of a run that `wanted` accepts. The timeout is a
+    /// safety net for a run that never gets there, not an ordering.
+    async fn next_status(
+        updates: &mut mpsc::Receiver<GeneratorUpdate>,
+        wanted: impl Fn(&GeneratorStatus) -> bool,
+    ) -> GeneratorStatus {
+        tokio::time::timeout(Duration::from_secs(20), async {
+            loop {
+                let GeneratorUpdate::Status(status) = updates
+                    .recv()
+                    .await
+                    .expect("the run ended without a final status");
+                if wanted(&status) {
+                    return status;
+                }
+            }
+        })
+        .await
+        .expect("the run never got there")
+    }
+
+    /// Cancel pressed while the generator is still writing the map. The
+    /// folder it had started used to stay, and `is_installed` took it for the
+    /// finished map, so every later launch on it skipped the generation.
+    #[tokio::test]
+    async fn a_run_called_off_takes_its_unfinished_map_folder_with_it() {
+        let temp = tempfile::tempdir().unwrap();
+        let maps = temp.path().join("maps");
+        let generator = fake_generator(temp.path(), FakeEnding::Waits);
+
+        let mut updates = generator.generate_named(PARTIAL.into()).await;
+        // By the time the fake names the map, part of it is on disk.
+        next_status(&mut updates, |status| {
+            matches!(status, GeneratorStatus::Generating { .. })
+        })
+        .await;
+        assert!(
+            !maps.join(PARTIAL).exists(),
+            "unfinished maps stay in private staging"
+        );
+        assert!(
+            std::fs::read_dir(&maps)
+                .unwrap()
+                .flatten()
+                .any(|entry| entry.path().join(PARTIAL).is_dir()),
+            "the fake generator wrote its staged map"
+        );
+
+        generator.cancel();
+        let end = next_status(&mut updates, |status| {
+            !matches!(status, GeneratorStatus::Generating { .. })
+        })
+        .await;
+
+        assert_eq!(end, GeneratorStatus::Cancelled);
+        assert!(
+            !maps.join(PARTIAL).exists(),
+            "the half-written map of a run called off was left for is_installed to find"
+        );
+        assert!(!generator.is_installed(PARTIAL));
+        assert!(
+            maps.join(ALREADY_THERE).is_dir(),
+            "a map that was there before the run is not the run's to remove"
+        );
+    }
+
+    /// A run whose generator fails part-way leaves nothing behind either.
+    #[tokio::test]
+    async fn a_failed_run_takes_its_unfinished_map_folder_with_it() {
+        let temp = tempfile::tempdir().unwrap();
+        let maps = temp.path().join("maps");
+        let generator = fake_generator(temp.path(), FakeEnding::Fails);
+
+        let mut updates = generator.generate_named(PARTIAL.into()).await;
+        let end = next_status(&mut updates, |status| {
+            !matches!(status, GeneratorStatus::Generating { .. })
+        })
+        .await;
+
+        assert!(matches!(end, GeneratorStatus::Failed { .. }), "{end:?}");
+        assert!(
+            !maps.join(PARTIAL).exists(),
+            "the half-written map of a failed run was left for is_installed to find"
+        );
+        assert!(maps.join(ALREADY_THERE).is_dir());
     }
 
     #[test]
