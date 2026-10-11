@@ -43,7 +43,7 @@ import {
   loadHotkeys,
   saveHotkeys,
   TourneyDisplayContext,
-  useRevealed,
+  useShownMatchups,
   useStoredFlag,
   type TourneyDisplay,
 } from "../display";
@@ -194,7 +194,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
   const [playerView, setPlayerView] = useStoredFlag("faf_player_view");
   const [showPlayers, setShowPlayers] = useStoredFlag("faf_show_players");
   const [streamer, setStreamer] = useStoredFlag("faf_streamer_mode");
-  const [revealed, toggleReveal] = useRevealed(props.event.id);
+  const [shownMatchups, toggleMatchup] = useShownMatchups(props.event.id);
   const [hotkeys, setHotkeys] = useState(loadHotkeys);
   const [displaySettings, setDisplaySettings] = useState(false);
   const toolsSlot = useContext(EventToolsSlot);
@@ -215,10 +215,11 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
     () => ({
       showPlayers,
       streamer,
-      masked: (entry) => isMasked(streamer, revealed, entry),
-      toggleReveal,
+      masked: (entry) => isMasked(streamer, entry),
+      matchupShown: (entry) => streamer && shownMatchups.has(entry.id),
+      toggleMatchup,
     }),
-    [showPlayers, streamer, revealed, toggleReveal],
+    [showPlayers, streamer, shownMatchups, toggleMatchup],
   );
   const root = useRef<HTMLDivElement>(null);
 

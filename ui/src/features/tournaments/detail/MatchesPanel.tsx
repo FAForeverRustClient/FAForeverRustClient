@@ -10,6 +10,7 @@
 
 import { memo, useState } from "react";
 import { Button } from "../../../design-system/Button";
+import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
 import type {
   PlayerSummary,
@@ -106,8 +107,8 @@ export const MatchesPanel = memo(function MatchesPanel(props: MatchesPanelProps)
   const slot = (entry: TourneyMatch, teamId: string | null, number: 1 | 2) => {
     const feeder: Feeder | undefined = feeders.get(`${entry.id}:${number}`);
     // Streamer mode: a slot filled by a hidden result names its feeder, not
-    // who came through it.
-    const hiddenFeed = feeder !== undefined && display.masked(feeder.from);
+    // who came through it, until the match's eye shows the matchup.
+    const hiddenFeed = feeder !== undefined && display.masked(feeder.from) && !display.matchupShown(entry);
     if (teamId !== null && !hiddenFeed) {
       const winner = !display.masked(entry) && entry.winner === teamId;
       return (
@@ -171,10 +172,8 @@ export const MatchesPanel = memo(function MatchesPanel(props: MatchesPanelProps)
                 {masked ? <span className="muted">{t("tournaments.display.hidden")}</span> : <MatchScore entry={entry} />}
               </td>
               <td className="tournament-mt-actions tournament-mt-fixed">
-                {display.streamer && entry.status === "done" && (
-                  <Button onClick={() => display.toggleReveal(entry.id)}>
-                    {t(masked ? "tournaments.display.revealShort" : "tournaments.display.hideShort")}
-                  </Button>
+                {display.streamer && matchupHidden(feeders, display, entry) && (
+                  <MatchupToggle entry={entry} />
                 )}
                 {owed > 0 && (
                   <Button variant="primary" onClick={() => setDetails(entry.id)}>
@@ -241,8 +240,23 @@ function MatchDetails({
   const masked = display.masked(entry);
   const state = matchState(event, entry);
   const winner = (teamId: string | null) => !masked && entry.winner !== null && entry.winner === teamId;
+  const feeders = feedersOf(event.matches);
 
-  const roster = (teamId: string | null) => {
+  const roster = (teamId: string | null, slot: 1 | 2) => {
+    // A team a hidden result put here is named by where it comes from, as in
+    // the list, or opening the details would give the result away.
+    const feeder = feeders.get(`${entry.id}:${slot}`);
+    if (teamId !== null && feeder !== undefined && display.masked(feeder.from) && !display.matchupShown(entry)) {
+      return (
+        <div className="tournament-md-team">
+          <strong className="tournament-md-name muted">
+            {t(feeder.kind === "winner" ? "tournaments.matches.winnerOf" : "tournaments.matches.loserOf", {
+              match: matchLabel(event, feeder.from, t),
+            })}
+          </strong>
+        </div>
+      );
+    }
     const team = event.teams.find((held) => held.id === teamId);
     const players = (team?.playerIds ?? [])
       .map((id) => event.players.find((player) => player.id === id))
@@ -332,16 +346,12 @@ function MatchDetails({
         <span className={`tournament-mt-state is-${state}`}>{t(STATE_LABELS[state])}</span>
       </header>
       <div className="tournament-md-grid">
-        {roster(entry.team1)}
+        {roster(entry.team1, 1)}
         <div className="tournament-md-score mono">
           {masked ? <span className="muted">{t("tournaments.display.hidden")}</span> : <MatchScore entry={entry} />}
-          {display.streamer && entry.status === "done" && (
-            <Button onClick={() => display.toggleReveal(entry.id)}>
-              {t(masked ? "tournaments.display.reveal" : "tournaments.display.hide")}
-            </Button>
-          )}
+          {display.streamer && matchupHidden(feeders, display, entry) && <MatchupToggle entry={entry} />}
         </div>
-        {roster(entry.team2)}
+        {roster(entry.team2, 2)}
       </div>
       {props.onAssignPool !== undefined && (
         <MatchPoolPicker event={event} entry={entry} onAssign={props.onAssignPool} />
@@ -496,5 +506,34 @@ function MatchSlotEditor({
         {slot(2, entry.team2)}
       </div>
     </details>
+  );
+}
+
+/**
+ * Whether streamer mode hides who plays in this match: a team in it came
+ * through a result that is hidden. Asked regardless of whether the matchup is
+ * shown right now, since that is when its toggle is offered.
+ */
+function matchupHidden(
+  feeders: Map<string, Feeder>,
+  display: ReturnType<typeof useTourneyDisplay>,
+  entry: TourneyMatch,
+): boolean {
+  return ([1, 2] as const).some((slot) => {
+    const team = slot === 1 ? entry.team1 : entry.team2;
+    const feeder = feeders.get(`${entry.id}:${slot}`);
+    return team !== null && feeder !== undefined && display.masked(feeder.from);
+  });
+}
+
+/** The eye: who plays whom in this match, shown or hidden again. Never the result. */
+function MatchupToggle({ entry }: { entry: TourneyMatch }) {
+  const { t } = useTranslation();
+  const display = useTourneyDisplay();
+  const shown = display.matchupShown(entry);
+  return (
+    <Button aria-pressed={shown} onClick={() => display.toggleMatchup(entry.id)}>
+      <Icon name="eye" size={14} /> {t(shown ? "tournaments.display.hideMatchup" : "tournaments.display.showMatchup")}
+    </Button>
   );
 }

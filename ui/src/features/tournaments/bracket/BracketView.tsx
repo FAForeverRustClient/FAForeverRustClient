@@ -739,14 +739,18 @@ function MatchCard({
    * scores down the right, so a column of matches can be scanned without
    * reading any of it. Two of these, flush against each other, are a match.
    */
-  // Streamer mode: a finished match draws as not yet played until revealed,
-  // and a slot filled by a hidden result says where it comes from instead of
-  // who, or the next round would give the result away.
+  // Streamer mode: a finished match draws as not yet played, and a slot
+  // filled by a hidden result says where it comes from instead of who, or the
+  // next round would give the result away. The eye on such a match shows who
+  // plays whom; the result stays hidden.
   const masked = display.masked(entry);
-  const hiddenFeed = (slot: 1 | 2) => {
+  const feederOf = (slot: 1 | 2) => {
     const feeder = feedersOf(event.matches).get(`${entry.id}:${slot}`);
     return feeder !== undefined && display.masked(feeder.from) ? feeder : null;
   };
+  const matchupHidden =
+    (entry.team1 !== null && feederOf(1) !== null) || (entry.team2 !== null && feederOf(2) !== null);
+  const hiddenFeed = (slot: 1 | 2) => (display.matchupShown(entry) ? null : feederOf(slot));
   const side = (teamId: string | null, score: number | null, slot: 1 | 2) => {
     const seed = seedOf(teamId);
     const classes = ["tournament-match-side"];
@@ -846,13 +850,16 @@ function MatchCard({
           {!masked && onWatchReplay !== undefined && replays.length > 0 && (
             <ReplayMenu ids={replays} onWatch={onWatchReplay} />
           )}
-          {display.streamer && entry.status === "done" && (
+          {display.streamer && matchupHidden && (
             <button
               type="button"
-              className="tournament-match-replay"
-              title={t(masked ? "tournaments.display.reveal" : "tournaments.display.hide")}
-              aria-label={t(masked ? "tournaments.display.reveal" : "tournaments.display.hide")}
-              onClick={() => display.toggleReveal(entry.id)}
+              className={display.matchupShown(entry) ? "tournament-match-replay is-on" : "tournament-match-replay"}
+              title={t(display.matchupShown(entry) ? "tournaments.display.hideMatchup" : "tournaments.display.showMatchup")}
+              aria-label={t(
+                display.matchupShown(entry) ? "tournaments.display.hideMatchup" : "tournaments.display.showMatchup",
+              )}
+              aria-pressed={display.matchupShown(entry)}
+              onClick={() => display.toggleMatchup(entry.id)}
             >
               <Icon name="eye" size={12} />
             </button>
