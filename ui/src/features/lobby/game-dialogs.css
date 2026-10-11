@@ -1805,7 +1805,7 @@
 }
 
 .join-preparing-adapter[data-mismatch="true"] {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .join-preparing-bar {

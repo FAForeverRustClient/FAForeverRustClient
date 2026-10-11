@@ -212,19 +212,13 @@ export const HostModsColumn = memo(function HostModsColumn() {
         items={[
           {
             id: "ui",
-            label: (
-              <span title={t("lobby.host.modCount", { active: activeUiCount, installed: uiMods.length })}>
-                {t("lobby.host.uiMods")} ({activeUiCount}/{uiMods.length})
-              </span>
-            ),
+            label: `${t("lobby.host.uiMods")} (${activeUiCount}/${uiMods.length})`,
+            title: t("lobby.host.modCount", { active: activeUiCount, installed: uiMods.length }),
           },
           {
             id: "sim",
-            label: (
-              <span title={t("lobby.host.modCount", { active: activeSimCount, installed: simMods.length })}>
-                {t("lobby.host.simMods")} ({activeSimCount}/{simMods.length})
-              </span>
-            ),
+            label: `${t("lobby.host.simMods")} (${activeSimCount}/${simMods.length})`,
+            title: t("lobby.host.modCount", { active: activeSimCount, installed: simMods.length }),
           },
         ]}
       />
