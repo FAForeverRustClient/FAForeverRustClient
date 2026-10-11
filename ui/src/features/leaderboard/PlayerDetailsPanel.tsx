@@ -117,19 +117,23 @@ export function PlayerDetailsPanel({ entry, heading, boards, rankedBoard, crossR
         <div className="leaderboard-player-standing">
           <span className="leaderboard-player-rank">#{entry.rank}</span>
           {rankedBoard && <span className="muted">{leaderboardLabel(rankedBoard)}</span>}
+          {entry.division !== null && (
+            <span className="leaderboard-player-division">
+              {divisionImage && (
+                <img
+                  src={divisionImage}
+                  alt=""
+                  width={36}
+                  height={18}
+                  loading="lazy"
+                  decoding="async"
+                  draggable={false}
+                />
+              )}
+              {tierLabel(entry.division, entry.subdivision)}
+            </span>
+          )}
         </div>
-        {divisionImage && (
-          <img
-            className="leaderboard-player-division"
-            src={divisionImage}
-            alt={entry.division === null ? "" : tierLabel(entry.division, entry.subdivision)}
-            width={64}
-            height={32}
-            loading="lazy"
-            decoding="async"
-            draggable={false}
-          />
-        )}
       </header>
 
       {/* The training overview's facts strip: a label over each value and

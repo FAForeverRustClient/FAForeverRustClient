@@ -12,7 +12,6 @@ import { leaderboardLabel } from "../../shared/playerRatings";
 export type LeaderboardColumn =
   | "rank"
   | "player"
-  | "league"
   | "division"
   | "score"
   | "rating"
@@ -46,7 +45,6 @@ function boardOf(column: BoardColumn): string {
 const LABELS: Record<LeaderboardColumn, MessageKey> = {
   rank: "leaderboard.column.rank",
   player: "leaderboard.column.player",
-  league: "leaderboard.column.league",
   division: "leaderboard.column.division",
   score: "leaderboard.column.score",
   rating: "leaderboard.column.rating",
@@ -80,7 +78,6 @@ function value(entry: LeaderboardEntry, column: LeaderboardColumn): number | str
     case "player": return entry.playerName;
     // A tier sorts by its place in the season, Bronze below Silver, which is
     // also what keeps the order the same in every language.
-    case "league": return entry.divisionOrder;
     case "division": return entry.divisionOrder;
     case "score": return entry.score;
     case "rating": return entry.rating;
@@ -114,7 +111,7 @@ function format(
   const raw = cellValue(entry, column, activeBoard, cross);
   if (column === "player") return entry.playerName || translate("common.unknown");
   if (raw === null || raw === "") return translate("common.notAvailable");
-  if (column === "division" || column === "league") return tierLabel(entry.division, entry.subdivision);
+  if (column === "division") return tierLabel(entry.division, entry.subdivision);
   if (column === "mean" || column === "deviation") return Number(raw).toFixed(1);
   if (column === "updated") {
     const date = new Date(String(raw));
@@ -146,22 +143,34 @@ function playerCell(entry: LeaderboardEntry) {
   );
 }
 
-function leagueCell(entry: LeaderboardEntry) {
+/**
+ * A tier as its badge and its name, in one cell.
+ *
+ * They were two columns, a badge alone and the name alone, sorted by the same
+ * value, and the badge column was as wide as its header: the room it took was
+ * the player names'. The badge is drawn at the name's height and the slot
+ * is kept when a tier has none, so the names in the column line up.
+ */
+function divisionCell(entry: LeaderboardEntry, label: string) {
   const imageUrl = entry.divisionMediumImageUrl || entry.divisionImageUrl;
-  return imageUrl ? (
-    <img
-      className="leaderboard-division-icon"
-      src={imageUrl}
-      alt=""
-      title={entry.division === null ? undefined : tierLabel(entry.division, entry.subdivision)}
-      width={48}
-      height={24}
-      loading="lazy"
-      decoding="async"
-      draggable={false}
-    />
-  ) : (
-    <span className="leaderboard-division-icon-slot" aria-hidden="true" />
+  return (
+    <span className="leaderboard-division-cell">
+      {imageUrl ? (
+        <img
+          className="leaderboard-division-icon"
+          src={imageUrl}
+          alt=""
+          width={36}
+          height={18}
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+        />
+      ) : (
+        <span className="leaderboard-division-icon-slot" aria-hidden="true" />
+      )}
+      <span>{label}</span>
+    </span>
   );
 }
 
@@ -362,8 +371,8 @@ export function LeaderboardTable({
                 >
                   {column === "player"
                     ? playerCell(entry)
-                    : column === "league"
-                      ? leagueCell(entry)
+                    : column === "division" && entry.division !== null
+                      ? divisionCell(entry, format(entry, column, activeBoard, crossRatings))
                       : format(entry, column, activeBoard, crossRatings)}
                 </td>
               ))}

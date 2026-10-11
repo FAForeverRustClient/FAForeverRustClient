@@ -3079,7 +3079,6 @@ export const en = {
 
   "leaderboard.column.rank": "Rank",
   "leaderboard.column.player": "Player",
-  "leaderboard.column.league": "League",
   "leaderboard.name.league": "{board} League",
   "leaderboard.name.noShare": "{board} No Share",
   "leagues.division.bronze": "Bronze",

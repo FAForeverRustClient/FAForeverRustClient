@@ -2676,7 +2676,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "chat.sword.playing": "Играет",
   "chat.sword.playingDelayed": "Играет (трансляция реплея с задержкой)",
   "changelog.contents": "На этой странице",
-  "leaderboard.column.league": "Лига",
   "leaderboard.name.league": "{board} Лига",
   "leagues.division.bronze": "Бронза",
   "leagues.division.silver": "Серебро",

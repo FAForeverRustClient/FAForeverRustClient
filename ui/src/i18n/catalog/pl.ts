@@ -2931,7 +2931,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "maps.generate.issue.outOfRange": "{field} {value} jest poza zakresem {min}-{max}.",
   "maps.generate.issue.styleOutsideRange": "{style} pomyślano dla map od {from} do {to}. Wygeneruje się mimo to, ale nie będzie wyglądać zgodnie ze swoją nazwą.",
   "maps.generate.issue.seedNotInteger": "Ziarno musi być liczbą całkowitą. „{seed}” nią nie jest.",
-  "leaderboard.column.league": "Liga",
   "leaderboard.name.league": "{board} Liga",
   "leagues.division.bronze": "Bronz",
   "leagues.division.silver": "Srebro",

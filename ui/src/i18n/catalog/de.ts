@@ -4755,7 +4755,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "training.contribute.ratingProblem.order": "Die Mindestwertung ist höher als die Höchstwertung.",
   "links.thanks.note.feedback": "Rückmeldungen",
   "links.thanks.note.communityHub": "Community-Hub",
-  "leaderboard.column.league": "Liga",
   "leaderboard.name.league": "{board} Liga",
   "leaderboard.name.noShare": "{board} No Share",
   "leagues.division.bronze": "Bronze",

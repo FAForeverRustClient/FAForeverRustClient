@@ -524,7 +524,7 @@ export function LeagueLeaderboardPanel() {
                   <LeaderboardTable
                     entries={filtered}
                     rowBatch={LEAGUE_ROW_BATCH}
-                    columns={["rank", "player", "league", "division", "score", "games"]}
+                    columns={["rank", "player", "division", "score", "games"]}
                     selectedPlayerId={selected?.playerId ?? null}
                     onSelect={setSelected}
                     emptyMessage={t("leaderboard.leagues.empty")}
