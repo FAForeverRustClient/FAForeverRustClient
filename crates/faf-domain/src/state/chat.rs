@@ -269,6 +269,34 @@ impl ChatChannel {
             .collect()
     }
 
+    /// Is `incoming` a line this channel already shows, delivered again?
+    ///
+    /// The history backfill is asked for on every join, a channel is joined
+    /// again after every reconnect and every leave and rejoin, and the
+    /// scrollback deliberately survives both. Each replay therefore overlaps
+    /// what is on screen, and appending it repeated every line (#471).
+    ///
+    /// `id` cannot tell: the port mints a new one on every receipt. The
+    /// server's `msgid` can, when both lines carry one. Without it, a line is
+    /// who said what, of which kind, at which `server-time`, an instant every
+    /// replay repeats. Our own local echo is the one line the server tags and
+    /// we do not, stamped by our clock rather than the server's, so a tagged
+    /// line matches an untagged one on who said what alone.
+    ///
+    /// The TypeScript twin is `holds` in `ui/src/store/reducers/chat.ts`.
+    pub fn holds(&self, incoming: &ChatMessage) -> bool {
+        self.messages.iter().any(|held| {
+            if !held.msgid.is_empty() && !incoming.msgid.is_empty() {
+                return held.msgid == incoming.msgid;
+            }
+            held.sender == incoming.sender
+                && held.content == incoming.content
+                && held.kind == incoming.kind
+                && (held.timestamp == incoming.timestamp
+                    || (held.msgid.is_empty() && !incoming.msgid.is_empty()))
+        })
+    }
+
     /// The reactions on one message, or an empty slice when it has none.
     pub fn reactions_for(&self, msgid: &str) -> &[Reaction] {
         self.reactions
@@ -926,6 +954,11 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
             let c = state.ensure_channel(channel);
             let is_private = c.is_private();
 
+            // A line already on screen is not news: no second copy, no
+            // second unread.
+            if c.holds(message) {
+                return;
+            }
             c.messages.push(message.clone());
             cap_messages(&mut c.messages);
 
@@ -1224,6 +1257,195 @@ mod tests {
         assert_eq!(channel.messages, vec![message("history")]);
         assert_eq!(channel.unread, 0);
         assert_eq!(channel.unread_mentions, 0);
+    }
+
+    /// The same line as the server replays it: a fresh local `id`, because
+    /// the port mints one on every receipt, and everything else unchanged.
+    fn replayed(original: &ChatMessage) -> ChatMessage {
+        ChatMessage {
+            id: format!("replayed-{}", original.id),
+            ..original.clone()
+        }
+    }
+
+    #[test]
+    fn a_history_replayed_after_a_reconnect_is_not_appended_again() {
+        // #471: every reconnect joins the channel again, every join asks for
+        // the history, and the scrollback survives the reconnect. Each line
+        // the channel already showed came back as a second copy below it.
+        let mut s = connected("Aurora");
+        for id in ["1", "2"] {
+            reduce(
+                &mut s,
+                &ChatEvent::MessageReceived {
+                    channel: DEFAULT_CHANNEL.into(),
+                    message: message(id),
+                },
+            );
+        }
+        reduce(&mut s, &ChatEvent::Disconnected);
+        reduce(&mut s, &ChatEvent::Connecting);
+        reduce(
+            &mut s,
+            &ChatEvent::Connected {
+                username: "Aurora".into(),
+            },
+        );
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: DEFAULT_CHANNEL.into(),
+            },
+        );
+        // The backfill: both old lines again, then one said while we were away.
+        for replay in [
+            replayed(&message("1")),
+            replayed(&message("2")),
+            message("3"),
+        ] {
+            reduce(
+                &mut s,
+                &ChatEvent::MessageReceived {
+                    channel: DEFAULT_CHANNEL.into(),
+                    message: replay,
+                },
+            );
+        }
+
+        let c = s.channel(DEFAULT_CHANNEL).unwrap();
+        assert_eq!(c.messages, vec![message("1"), message("2"), message("3")]);
+        // A line already counted is not news a second time.
+        assert_eq!(c.unread, 3);
+    }
+
+    #[test]
+    fn our_own_line_is_not_repeated_by_its_replayed_copy() {
+        // Our own line is a local echo: no msgid, and our clock's time. The
+        // server's copy in the backfill has both, so neither can match it;
+        // who said what, of which kind, is what does.
+        let mut s = connected("Aurora");
+        let echo = ChatMessage {
+            id: "7".into(),
+            sender: "Aurora".into(),
+            content: "anyone up for a 2v2?".into(),
+            timestamp: "2026-01-01T17:37:12.123456789+00:00".into(),
+            kind: ChatMessageKind::Message,
+            msgid: String::new(),
+            reply_to: String::new(),
+        };
+        let copy = ChatMessage {
+            id: "8".into(),
+            timestamp: "2026-01-01T17:37:12.180Z".into(),
+            msgid: "srv-ours".into(),
+            ..echo.clone()
+        };
+        for m in [echo.clone(), copy] {
+            reduce(
+                &mut s,
+                &ChatEvent::MessageReceived {
+                    channel: DEFAULT_CHANNEL.into(),
+                    message: m,
+                },
+            );
+        }
+        assert_eq!(s.channel(DEFAULT_CHANNEL).unwrap().messages, vec![echo]);
+    }
+
+    #[test]
+    fn a_line_without_a_server_id_is_known_by_its_time_sender_and_text() {
+        // A server that does not tag lines still stamps them with
+        // `server-time`, and that instant is the same on every replay.
+        let mut s = connected("Aurora");
+        let untagged = ChatMessage {
+            msgid: String::new(),
+            timestamp: "2026-01-01T17:38:00.000Z".into(),
+            ..message("1")
+        };
+        let said_again_later = ChatMessage {
+            id: "2".into(),
+            timestamp: "2026-01-01T17:39:00.000Z".into(),
+            ..untagged.clone()
+        };
+        for m in [
+            untagged.clone(),
+            replayed(&untagged),
+            said_again_later.clone(),
+        ] {
+            reduce(
+                &mut s,
+                &ChatEvent::MessageReceived {
+                    channel: DEFAULT_CHANNEL.into(),
+                    message: m,
+                },
+            );
+        }
+        assert_eq!(
+            s.channel(DEFAULT_CHANNEL).unwrap().messages,
+            vec![untagged, said_again_later]
+        );
+    }
+
+    #[test]
+    fn saying_the_same_words_twice_is_still_two_lines() {
+        // Only a repeat of the same *line* is dropped. "gg" at the end of
+        // every game is a new line each time, and the server gives each its
+        // own id.
+        let mut s = connected("Aurora");
+        let first = ChatMessage {
+            content: "gg".into(),
+            ..message("1")
+        };
+        let second = ChatMessage {
+            content: "gg".into(),
+            ..message("2")
+        };
+        for m in [first.clone(), second.clone()] {
+            reduce(
+                &mut s,
+                &ChatEvent::MessageReceived {
+                    channel: DEFAULT_CHANNEL.into(),
+                    message: m,
+                },
+            );
+        }
+        assert_eq!(
+            s.channel(DEFAULT_CHANNEL).unwrap().messages,
+            vec![first, second]
+        );
+    }
+
+    #[test]
+    fn rejoining_a_left_channel_does_not_repeat_its_restored_history() {
+        // Leaving keeps the scrollback for a later rejoin, and the rejoin asks
+        // for the history again: the same overlap as a reconnect.
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::MessageReceived {
+                channel: "#newbie".into(),
+                message: message("1"),
+            },
+        );
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelLeft {
+                channel: "#newbie".into(),
+            },
+        );
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#newbie".into(),
+            },
+        );
+        reduce(
+            &mut s,
+            &ChatEvent::MessageReceivedQuietly {
+                channel: "#newbie".into(),
+                message: replayed(&message("1")),
+            },
+        );
+        assert_eq!(s.channel("#newbie").unwrap().messages, vec![message("1")]);
     }
 
     #[test]

@@ -74,6 +74,32 @@ function answers(messages: readonly ChatMessage[], replyTo: string, username: st
 }
 
 /**
+ * Is `incoming` a line `messages` already shows, delivered again? Twin of
+ * `ChatChannel::holds`.
+ *
+ * Every join asks for the history, a reconnect or a rejoin joins again, and
+ * the scrollback survives both, so the replay overlaps what is on screen and
+ * used to repeat every line (#471). The local `id` is new on every receipt;
+ * the server's `msgid` decides when both lines carry one, otherwise who said
+ * what, of which kind, at which `server-time`. Our own local echo is the one
+ * untagged line the server tags on replay, stamped by our clock rather than
+ * the server's, so a tagged line matches an untagged one without the time.
+ */
+function holds(messages: readonly ChatMessage[], incoming: ChatMessage): boolean {
+  const incomingId = incoming.msgid ?? "";
+  return messages.some((held) => {
+    const heldId = held.msgid ?? "";
+    if (heldId !== "" && incomingId !== "") return heldId === incomingId;
+    return (
+      held.sender === incoming.sender &&
+      held.content === incoming.content &&
+      held.kind === incoming.kind &&
+      (held.timestamp === incoming.timestamp || (heldId === "" && incomingId !== ""))
+    );
+  });
+}
+
+/**
  * ASCII-only case folding, matching Rust's `eq_ignore_ascii_case`.
  *
  * `toLowerCase()` would fold non-ASCII too, and language channel names are
@@ -289,6 +315,8 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
     case "messageReceived": {
       const { channel, message } = event.payload;
       return mapChannel(state, channel, (current) => {
+        // A line already on screen is not news: no second copy, no second unread.
+        if (holds(current.messages, message)) return current;
         const messages = capMessages([...current.messages, message]);
         // Sending is the loudest possible "done typing". Waiting for the
         // sender's own `done` would leave the indicator up for every client
@@ -317,10 +345,11 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
     }
     case "messageReceivedQuietly": {
       const { channel, message } = event.payload;
-      return mapChannel(state, channel, (current) => ({
-        ...current,
-        messages: capMessages([...current.messages, message]),
-      }));
+      return mapChannel(state, channel, (current) =>
+        holds(current.messages, message)
+          ? current
+          : { ...current, messages: capMessages([...current.messages, message]) },
+      );
     }
     case "usersUpdated":
       return mapChannel(state, event.payload.channel, (channel) => ({

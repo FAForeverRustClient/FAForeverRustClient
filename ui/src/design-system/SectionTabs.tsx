@@ -5,6 +5,8 @@ export interface SectionTab<T extends string | number> {
   id: T;
   label: ReactNode;
   count?: number;
+  /** A tooltip for the whole tab, for what its label only abbreviates. */
+  title?: string;
 }
 
 interface Props<T extends string | number> {
@@ -135,6 +137,7 @@ export function SectionTabs<T extends string | number>({
             aria-controls={idPrefix ? sectionPanelId(prefix, item.id) : undefined}
             tabIndex={index === tabStop ? 0 : -1}
             className={active === item.id ? "active" : undefined}
+            title={item.title}
             onClick={() => onChange(item.id)}
           >
             <span className="section-tab-label">{item.label}</span>

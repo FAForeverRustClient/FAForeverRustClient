@@ -24,6 +24,7 @@ import type {
   ContributionDraft,
   FfaReport,
   GalacticWarState,
+  IceAdapter,
   PlayerSummary,
   FormatDraft,
   PoolDraft,
@@ -52,6 +53,7 @@ import type {
 import type { BracketKind, FactionVetoConfig, MatchPlan, SwissCuts } from "../ipc/bindings";
 import fixture from "./__fixtures__/reducer-conformance.json";
 import { canLaunch, installTarget, updateAvailable } from "../shared/rules/galacticWarActions";
+import { adapterForGame } from "../shared/rules/iceAdapter";
 import { noteForPlayer } from "../shared/rules/playerNotes";
 import { noteForReplay } from "../shared/rules/replayNotes";
 import { replayReadKey } from "../shared/rules/replayReadKey";
@@ -189,6 +191,11 @@ interface HelperFixture {
     installTarget: string;
     updateAvailable: boolean;
     canLaunch: boolean;
+  }>;
+  iceAdapterChoices: Array<{
+    adapter: IceAdapter;
+    title: string;
+    expected: IceAdapter;
   }>;
   tourneyRules: Array<{
     mayPublish: boolean;
@@ -539,6 +546,15 @@ describe("derived helper twins match Rust", () => {
         updateAvailable: updateAvailable(state),
         canLaunch: canLaunch(state),
       }).toEqual(expected);
+    },
+  );
+
+  // The join dialog names the adapter from this, so a twin that resolved
+  // `dynamic` differently would name one the backend did not start.
+  it.each(helpers.iceAdapterChoices)(
+    "starts a $adapter join of $title on $expected",
+    ({ adapter, title, expected }) => {
+      expect(adapterForGame(adapter, title)).toBe(expected);
     },
   );
 });

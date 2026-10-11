@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { GameLaunch, JoinState } from "../../../ipc/bindings";
-import { joinProgressOf, nextStep } from "./joinProgress";
+import type { GameLaunch, IceAdapter, JoinState } from "../../../ipc/bindings";
+import { adapterNoteOf, joinProgressOf, nextStep } from "./joinProgress";
 
 const launch: GameLaunch = {
   uid: 7,
@@ -79,5 +79,20 @@ describe("the step log", () => {
 
   it("takes the first line into an empty log", () => {
     expect(nextStep([], "units.nx2")).toBe("units.nx2");
+  });
+});
+
+describe("the adapter line", () => {
+  // Every joining setting against a game hosted on Go and one that is not.
+  // Java on an unmarked game is nearly every game, and says nothing.
+  it.each<[IceAdapter, string, ReturnType<typeof adapterNoteOf>]>([
+    ["dynamic", "Friday 4v4 [go-adapter]", "hostOnGo"],
+    ["go", "Friday 4v4 [GO-ADAPTER]", "hostOnGo"],
+    ["java", "Friday 4v4 [go-adapter]", "javaAgainstHost"],
+    ["go", "Friday 4v4", "goAgainstHost"],
+    ["dynamic", "Friday 4v4", null],
+    ["java", "Friday 4v4", null],
+  ])("%s joining \"%s\" is %s", (adapter, title, note) => {
+    expect(adapterNoteOf(adapter, title)).toBe(note);
   });
 });

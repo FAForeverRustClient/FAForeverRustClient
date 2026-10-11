@@ -16,6 +16,7 @@ const FIELDS = [
   "mapGeneratorDir",
   "javaPath",
   "winePrefix",
+  "originalGameDir",
 ] as const;
 
 export function normalizePathPreferences(preferences: PathPreferences): PathPreferences {

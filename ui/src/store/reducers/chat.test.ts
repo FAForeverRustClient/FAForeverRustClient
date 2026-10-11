@@ -371,6 +371,54 @@ describe("unread counting", () => {
   });
 });
 
+describe("history replayed on a rejoin (#471)", () => {
+  // Rust: `ChatChannel::holds`. A reconnect or a rejoin asks for the history
+  // again while the scrollback survives, so the replay overlaps it.
+  const replayOf = (original: ChatMessage): ChatMessage => ({
+    ...original,
+    id: `replayed-${original.id}`,
+  });
+  const receive = (initial: ChatState, ...messages: ChatMessage[]) =>
+    apply(
+      initial,
+      ...messages.map(
+        (msg): ChatEvent => ({ type: "messageReceived", payload: { channel: "#uef", message: msg } }),
+      ),
+    );
+  const inactive = () => state({ channels: [channel("#uef")], activeChannel: "#other" });
+
+  it("does not repeat or recount a line the channel already shows", () => {
+    const seen = message({ msgid: "srv-1", content: "how long until my rating shows?" });
+    const missed = message({ msgid: "srv-2", content: "said while you were away" });
+    const next = receive(inactive(), seen, replayOf(seen), missed);
+    expect(next.channels[0].messages).toEqual([seen, missed]);
+    expect(next.channels[0].unread).toBe(2);
+  });
+
+  it("matches our own untagged echo to the server's tagged copy", () => {
+    const echo = message({
+      sender: "Ada",
+      msgid: "",
+      timestamp: "2026-01-01T17:37:12.123456789+00:00",
+    });
+    const copy = { ...echo, id: "copy", msgid: "srv-ours", timestamp: "2026-01-01T17:37:12.180Z" };
+    expect(receive(inactive(), echo, copy).channels[0].messages).toEqual([echo]);
+  });
+
+  it("knows an untagged line by its time, sender and text, and nothing less", () => {
+    const untagged = message({ msgid: "", timestamp: "2026-01-01T17:38:00.000Z" });
+    const later = { ...untagged, id: "later", timestamp: "2026-01-01T17:39:00.000Z" };
+    const next = receive(inactive(), untagged, replayOf(untagged), later);
+    expect(next.channels[0].messages).toEqual([untagged, later]);
+  });
+
+  it("still shows the same words said twice", () => {
+    const first = message({ msgid: "srv-1", content: "gg" });
+    const second = message({ msgid: "srv-2", content: "gg" });
+    expect(receive(inactive(), first, second).channels[0].messages).toEqual([first, second]);
+  });
+});
+
 describe("server auto-join list", () => {
   // Twin of `normalize_channels`. The conformance fixture replays one case
   // through both reducers; these cover the edges it does not carry.

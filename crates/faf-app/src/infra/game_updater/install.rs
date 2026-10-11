@@ -31,14 +31,15 @@ const VERSION_ADDRESSES: [u64; 3] = [0xd3d40, 0x47612d, 0x476666];
 /// with no loading-screen movie, no audio, and broken menu fonts.
 /// Confirmed live as the cause of exactly that symptom.
 ///
-/// Resolution order: explicit `FAF_GAME_INSTALL_DIR` override → the path the
-/// Java or Python client already has configured
+/// Resolution order: explicit `FAF_GAME_INSTALL_DIR` override → the original
+/// game the player picked in Settings (`PathPreferences::original_game_dir`)
+/// → the path the Java or Python client already has configured
 /// ([`crate::infra::game::reference_retail_install_paths`]) → auto-detect
-/// among the usual retail/Steam locations → `target_dir` as a last resort
-/// (preserves the old behaviour rather than writing a knowingly bogus path
-/// when nothing is found). Every candidate but the explicit override is
-/// validated by `gamedata/lua.scd`, the same probe file Python's
-/// `validate_game_path` uses.
+/// among the usual retail/Steam locations, then in every Steam library →
+/// `target_dir` as a last resort (preserves the old behaviour rather than
+/// writing a knowingly bogus path when nothing is found). Every candidate but
+/// the explicit override is validated by `gamedata/lua.scd`, the same probe
+/// file Python's `validate_game_path` uses.
 ///
 /// The reference-client configs come before the guessed locations because
 /// guessing only ever covers installs under `%ProgramFiles%`: a retail install
@@ -46,15 +47,30 @@ const VERSION_ADDRESSES: [u64; 3] = [0xd3d40, 0x47612d, 0x476666];
 /// Alliance` fell through to the fallback and produced exactly the broken
 /// game described above, silently. Hence the log lines: this decision is
 /// otherwise invisible until someone reads a game log.
+///
+/// The player's own pick comes before both, because it is the only candidate
+/// a player whose first FAF client is this one has (#474): neither reference
+/// config exists on their machine, and a Steam library outside Program Files
+/// is invisible to the guesses. That machine used to end up with nothing to
+/// copy the engine's libraries from, and a game that stopped at "BugSplat.dll
+/// is missing".
 fn retail_install_dir(target_dir: &Path) -> PathBuf {
+    retail_install_dir_with(crate::infra::paths::original_game_dir(), target_dir)
+}
+
+/// [`retail_install_dir`] with the player's pick handed in rather than read
+/// from the configured paths, which are one value for the whole process.
+fn retail_install_dir_with(picked: Option<PathBuf>, target_dir: &Path) -> PathBuf {
     if let Ok(dir) = std::env::var("FAF_GAME_INSTALL_DIR") {
         if !dir.is_empty() {
             return PathBuf::from(dir);
         }
     }
-    let candidates = crate::infra::game::reference_retail_install_paths()
+    let candidates = picked
         .into_iter()
-        .chain(typical_retail_install_paths());
+        .chain(crate::infra::game::reference_retail_install_paths())
+        .chain(typical_retail_install_paths())
+        .chain(steam_retail_install_paths());
     resolve_retail_install_dir(candidates, target_dir)
 }
 
@@ -68,9 +84,11 @@ fn resolve_retail_install_dir(
     }
     tracing::warn!(
         fallback = %target_dir.display(),
-        "no retail FA install found: fa_path falls back to the FAF patch dir, so the game \
-         will start without base textures, sounds, movies or unit animations. Set \
-         FAF_GAME_INSTALL_DIR to the install root holding gamedata/lua.scd."
+        "no retail FA install found: nothing to copy the engine's libraries from, and \
+         fa_path falls back to the FAF patch dir, so the game will start without base \
+         textures, sounds, movies or unit animations, if it starts at all. Pick the \
+         original game's executable in Settings, Paths, or set FAF_GAME_INSTALL_DIR to \
+         the install root holding gamedata/lua.scd."
     );
     target_dir.to_path_buf()
 }
@@ -78,8 +96,45 @@ fn resolve_retail_install_dir(
 /// The probe the reference clients use to tell a real FA root from any other
 /// directory: `gamedata/lua.scd` ships only with the base game, never with
 /// FAF's `.nx2` overlay.
+///
+/// The original Supreme Commander passes that probe as well, so it is told
+/// apart by its executable, the way the Java client's
+/// `isGamePathValidWithErrorMessage` does: it is not the game FAF runs on,
+/// and its libraries and `gamedata` are not Forged Alliance's.
 fn is_retail_install(dir: &Path) -> bool {
     dir.join("gamedata").join("lua.scd").is_file()
+        && !is_vanilla_install_with(dir, &VANILLA_GAME_HASHES)
+}
+
+/// SHA-256 of the original Supreme Commander's executable. The Java client's
+/// `faf-client.vanillaGameHashes`, verbatim.
+const VANILLA_GAME_HASHES: [&str; 1] =
+    ["1AFBCD0CA85546470660FA8AC09B230E870EC65C8D1B33FEB6731BB5D4C366C5"];
+
+/// Whether `dir/bin`'s executable is one of `hashes`. Java's choice of file:
+/// `ForgedAlliance.exe` when there is one, `SupremeCommander.exe` otherwise.
+/// An executable that cannot be read is not taken for the original game.
+fn is_vanilla_install_with(dir: &Path, hashes: &[&str]) -> bool {
+    use sha2::{Digest as _, Sha256};
+    let bin = dir.join("bin");
+    let forged_alliance = bin.join("ForgedAlliance.exe");
+    let exe = if forged_alliance.is_file() {
+        forged_alliance
+    } else {
+        bin.join("SupremeCommander.exe")
+    };
+    let Ok(bytes) = std::fs::read(&exe) else {
+        return false;
+    };
+    let hash = format!("{:x}", Sha256::digest(&bytes));
+    let vanilla = hashes.iter().any(|known| known.eq_ignore_ascii_case(&hash));
+    if vanilla {
+        tracing::warn!(
+            path = %dir.display(),
+            "passed over the original Supreme Commander: FAF needs Forged Alliance"
+        );
+    }
+    vanilla
 }
 
 /// Candidate retail install locations, mirroring the Python client's
@@ -88,23 +143,153 @@ fn is_retail_install(dir: &Path) -> bool {
 /// 32-bit game usually sits under the x86 tree).
 fn typical_retail_install_paths() -> Vec<PathBuf> {
     let mut out = Vec::new();
-    let program_files_vars = ["ProgramFiles(x86)", "ProgramFiles"];
     let suffixes = [
         r"THQ\Gas Powered Games\Supreme Commander - Forged Alliance",
         r"Supreme Commander - Forged Alliance",
         r"Steam\steamapps\common\Supreme Commander Forged Alliance",
     ];
-    for var in program_files_vars {
-        if let Ok(base) = std::env::var(var) {
-            if base.is_empty() {
-                continue;
-            }
-            for suffix in suffixes {
-                out.push(PathBuf::from(&base).join(suffix));
-            }
+    for base in program_files_dirs() {
+        for suffix in suffixes {
+            out.push(base.join(suffix));
         }
     }
     out
+}
+
+/// `%ProgramFiles(x86)%` and `%ProgramFiles%`, the roots every guessed
+/// location hangs off. Neither is set outside Windows, so nothing is guessed
+/// there.
+fn program_files_dirs() -> Vec<PathBuf> {
+    ["ProgramFiles(x86)", "ProgramFiles"]
+        .into_iter()
+        .filter_map(|var| std::env::var(var).ok())
+        .filter(|base| !base.is_empty())
+        .map(PathBuf::from)
+        .collect()
+}
+
+/// Forged Alliance in every library Steam knows about.
+///
+/// The guessed locations above only find the game in Steam's own folder. A
+/// game this size is just as often in a second library on another drive
+/// (`D:\SteamLibrary`), which no guess covers, and Steam lists every library
+/// it has in `steamapps/libraryfolders.vdf` under its own folder. So that is
+/// read rather than guessed at.
+///
+/// Steam's own folder is looked for under Program Files, where its installer
+/// puts it, and on Linux under the home directory. A Steam installed anywhere
+/// else on Windows is named only in the registry
+/// (`HKCU\Software\Valve\Steam\SteamPath`), which nothing in this crate reads;
+/// that player's way in is picking the game in Settings, which is remembered.
+fn steam_retail_install_paths() -> Vec<PathBuf> {
+    let roots = steam_roots();
+    // The game in Steam's own folder, also when there is no library list:
+    // the Java client's guess `~/.steam/steam/steamapps/common/...`.
+    let mut out: Vec<PathBuf> = roots
+        .iter()
+        .map(|root| {
+            root.join("steamapps")
+                .join("common")
+                .join("Supreme Commander Forged Alliance")
+        })
+        .collect();
+    out.extend(steam_retail_install_paths_in(roots));
+    out
+}
+
+/// Where Steam itself is installed: under Program Files on Windows; outside
+/// it, `~/.steam/steam` (the Java client's guess), its usual target
+/// `~/.local/share/Steam`, and the Flatpak's.
+fn steam_roots() -> Vec<PathBuf> {
+    let mut roots: Vec<PathBuf> = program_files_dirs()
+        .into_iter()
+        .map(|base| base.join("Steam"))
+        .collect();
+    if !cfg!(windows) {
+        if let Some(dirs) = directories::BaseDirs::new() {
+            let home = dirs.home_dir();
+            roots.push(home.join(".steam").join("steam"));
+            roots.push(home.join(".local").join("share").join("Steam"));
+            roots.push(home.join(".var/app/com.valvesoftware.Steam/.local/share/Steam"));
+        }
+    }
+    roots
+}
+
+fn steam_retail_install_paths_in(steam_roots: impl IntoIterator<Item = PathBuf>) -> Vec<PathBuf> {
+    steam_roots
+        .into_iter()
+        .filter_map(|root| {
+            crate::infra::game::read_small_text_file(
+                &root.join("steamapps").join("libraryfolders.vdf"),
+            )
+        })
+        .flat_map(|vdf| steam_library_paths(&vdf))
+        .map(|library| {
+            library
+                .join("steamapps")
+                .join("common")
+                .join("Supreme Commander Forged Alliance")
+        })
+        .collect()
+}
+
+/// The `"path"` of every library in a `libraryfolders.vdf`.
+///
+/// The file is Valve's KeyValues text: quoted keys and values in pairs,
+/// braces around a nested block, `//` comments, and a backslash inside a
+/// string doubled. Only the library paths matter here, so this reads the
+/// pairs at any depth and keeps those, and stops short of being a parser:
+/// anything it cannot make sense of is skipped rather than an error, since a
+/// damaged or half-written file should cost a candidate, not the install.
+fn steam_library_paths(vdf: &str) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    // The key of the pair being read, once its value is all that is missing.
+    let mut key: Option<String> = None;
+    let mut chars = vdf.chars().peekable();
+    while let Some(character) = chars.next() {
+        match character {
+            // A key followed by a block rather than a value: no pair here.
+            '{' | '}' => key = None,
+            '/' if chars.peek() == Some(&'/') => {
+                chars.by_ref().find(|&c| c == '\n');
+            }
+            '"' => {
+                let mut text = String::new();
+                let mut closed = false;
+                while let Some(c) = chars.next() {
+                    match c {
+                        '"' => {
+                            closed = true;
+                            break;
+                        }
+                        // Steam writes `\\` and `\"`. Anything else after a
+                        // backslash was never escaped, so it stays as written.
+                        '\\' => match chars.peek() {
+                            Some(&next @ ('\\' | '"')) => {
+                                text.push(next);
+                                chars.next();
+                            }
+                            _ => text.push('\\'),
+                        },
+                        c => text.push(c),
+                    }
+                }
+                if !closed {
+                    break;
+                }
+                match key.take() {
+                    None => key = Some(text),
+                    Some(name) if name.eq_ignore_ascii_case("path") && !text.trim().is_empty() => {
+                        paths.push(PathBuf::from(text));
+                    }
+                    Some(_) => {}
+                }
+            }
+            _ => {}
+        }
+    }
+    paths
 }
 
 /// Stamp `version` (little-endian, 4 bytes) into the three fixed offsets in
@@ -233,16 +418,19 @@ fn copy_retail_binaries(retail_dir: &Path, target_dir: &Path) -> Result<(), Stri
         let wanted = RETAIL_BINARIES
             .iter()
             .any(|binary| binary.eq_ignore_ascii_case(name));
-        if !wanted || present.contains(&name.to_ascii_lowercase()) {
+        if !wanted {
             continue;
         }
         let destination = target_bin.join(name);
-        std::fs::copy(source.path(), &destination)
-            .map_err(|error| format!("could not copy {name} from the game install: {error}"))?;
-        tracing::info!(file = name, "copied a game library into the FAF install");
+        if !present.contains(&name.to_ascii_lowercase()) {
+            std::fs::copy(source.path(), &destination)
+                .map_err(|error| format!("could not copy {name} from the game install: {error}"))?;
+            tracing::info!(file = name, "copied a game library into the FAF install");
+        }
         // A retail install copied off a disc keeps the read-only flag, and a
         // read-only file in the FAF install is one the next update cannot
-        // replace. The Java client clears it for the same reason. Windows
+        // replace. The Java client clears it for the same reason, on a file
+        // copied in an earlier pass as much as on one copied now. Windows
         // only, where read-only is one attribute and not the Unix mode bits
         // the lint below is about: there is nothing to make world-writable.
         #[cfg(windows)]
@@ -256,6 +444,45 @@ fn copy_retail_binaries(retail_dir: &Path, target_dir: &Path) -> Result<(), Stri
         }
     }
     Ok(())
+}
+
+/// Refuse a FAF install the game cannot start from, saying what to do.
+///
+/// `ForgedAlliance.exe` needs `BugSplat.dll` before it runs a line of its
+/// own, so without it the launch ends in a Windows error box naming a file
+/// the player has never heard of (#474). That is the state an install is
+/// left in when [`copy_retail_binaries`] had nothing to copy from: no
+/// original game was found, or the one found lacks the file. Only
+/// `BugSplat.dll` is looked for, as the one every report names: the rest of
+/// [`RETAIL_BINARIES`] come from the same folder in the same pass.
+///
+/// Asked by the launch rather than made part of [`finish_install`]: a
+/// staging that fails there is taken as "fetch the build instead" (see
+/// `replay_version`), and fetching it again would not bring this file.
+pub fn require_game_libraries(target_dir: &Path) -> Result<(), String> {
+    let bin = target_dir.join("bin");
+    let present = std::fs::read_dir(&bin).is_ok_and(|mut entries| {
+        entries.any(|entry| {
+            entry.is_ok_and(|entry| {
+                entry
+                    .file_name()
+                    .to_str()
+                    .is_some_and(|name| name.eq_ignore_ascii_case("BugSplat.dll"))
+            })
+        })
+    });
+    if present {
+        return Ok(());
+    }
+    Err(format!(
+        "Forged Alliance cannot start without BugSplat.dll, and {} has none. FAF copies it, \
+         with the game's other libraries, from your own Supreme Commander: Forged Alliance, \
+         and no install of it was found that has them. In Settings → Paths, choose the \
+         original game's executable as the game install (on Steam: \
+         steamapps\\common\\Supreme Commander Forged Alliance\\bin\\SupremeCommander.exe). \
+         The client remembers where it is and still plays from FAF's own copy.",
+        bin.display()
+    ))
 }
 
 /// Mirrors `fa/path.py:writeFAPathLua`. Written into `target_dir` (the FAF
@@ -448,6 +675,200 @@ mod tests {
         );
         let names = std::fs::read_dir(faf.join("bin")).unwrap().count();
         assert_eq!(names, 3, "no second spelling of a file already there");
+    }
+
+    /// Issue #474: a new player picks Steam's Forged Alliance, the client
+    /// redirects the setting to its own copy and remembers the original. That
+    /// remembered install is where the libraries must come from, wherever it
+    /// is: before, it was "found again" only if it happened to sit in one of
+    /// the guessed locations, and the first game stopped at "BugSplat.dll is
+    /// missing".
+    #[test]
+    fn the_original_game_the_player_picked_is_where_the_libraries_come_from() {
+        let temp = tempfile::tempdir().unwrap();
+        let picked = temp
+            .path()
+            .join("E/Games/steamapps/common/Supreme Commander Forged Alliance");
+        std::fs::create_dir_all(picked.join("gamedata")).unwrap();
+        std::fs::create_dir_all(picked.join("bin")).unwrap();
+        std::fs::write(picked.join("gamedata").join("lua.scd"), b"base game").unwrap();
+        std::fs::write(picked.join("bin").join("BugSplat.dll"), b"retail bugsplat").unwrap();
+        let faf = temp.path().join("ProgramData/FAForever");
+        std::fs::create_dir_all(faf.join("bin")).unwrap();
+
+        let retail = retail_install_dir_with(Some(picked.clone()), &faf);
+        assert_eq!(retail, picked);
+        copy_retail_binaries(&retail, &faf).unwrap();
+        assert!(faf.join("bin").join("BugSplat.dll").is_file());
+
+        // A remembered install that has since gone is passed over, not used.
+        let uninstalled = temp.path().join("uninstalled");
+        assert_ne!(
+            retail_install_dir_with(Some(uninstalled.clone()), &faf),
+            uninstalled
+        );
+    }
+
+    /// The shape `steamapps/libraryfolders.vdf` has had since 2021, trimmed
+    /// from a real one: Steam's own folder, then a second library on another
+    /// drive, each with the apps it holds (9420 is Forged Alliance).
+    const LIBRARY_FOLDERS: &str = r#""libraryfolders"
+{
+	"0"
+	{
+		"path"		"C:\\Program Files (x86)\\Steam"
+		"label"		""
+		"contentid"		"5170145960380766423"
+		"totalsize"		"0"
+		"update_clean_bytes_tally"		"104950392"
+		"time_last_update_verified"		"1727000000"
+		"apps"
+		{
+			"228980"		"411823519"
+		}
+	}
+	"1"
+	{
+		"path"		"D:\\SteamLibrary"
+		"label"		""
+		"contentid"		"8723412347812340912"
+		"totalsize"		"1000203087872"
+		"update_clean_bytes_tally"		"5426358291"
+		"time_last_update_verified"		"1727000000"
+		"apps"
+		{
+			"9420"		"5426358291"
+		}
+	}
+}
+"#;
+
+    #[test]
+    fn every_library_steam_lists_is_read() {
+        assert_eq!(
+            steam_library_paths(LIBRARY_FOLDERS),
+            vec![
+                PathBuf::from(r"C:\Program Files (x86)\Steam"),
+                PathBuf::from(r"D:\SteamLibrary"),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_damaged_library_list_costs_candidates_not_the_install() {
+        assert!(steam_library_paths("").is_empty());
+        // Cut off mid-write.
+        assert!(
+            steam_library_paths("\"libraryfolders\"\n{\n\t\"0\"\n\t{\n\t\t\"path\"").is_empty()
+        );
+        // A value that happens to read "path" is a value, not a key.
+        assert!(steam_library_paths(r#""label" "path" "contentid" "1""#).is_empty());
+        // A comment, and a backslash nobody escaped, are both survivable.
+        assert_eq!(
+            steam_library_paths("// edited by hand\n\"path\" \"F:\\Steam\""),
+            vec![PathBuf::from(r"F:\Steam")]
+        );
+    }
+
+    /// The common case none of the guessed locations covers: Steam itself
+    /// under Program Files, the game in a second library on another drive.
+    #[test]
+    fn a_steam_library_on_another_drive_is_found() {
+        let temp = tempfile::tempdir().unwrap();
+        let steam = temp.path().join("Program Files (x86)/Steam");
+        let library = temp.path().join("D/SteamLibrary");
+        let game = library.join("steamapps/common/Supreme Commander Forged Alliance");
+        std::fs::create_dir_all(game.join("gamedata")).unwrap();
+        std::fs::write(game.join("gamedata").join("lua.scd"), b"base game").unwrap();
+        std::fs::create_dir_all(steam.join("steamapps")).unwrap();
+        // Written the way Steam writes it, every backslash doubled.
+        let quoted =
+            |path: &Path| format!("\"{}\"", path.display().to_string().replace('\\', r"\\"));
+        std::fs::write(
+            steam.join("steamapps").join("libraryfolders.vdf"),
+            format!(
+                "\"libraryfolders\"\n{{\n\t\"0\"\n\t{{\n\t\t\"path\"\t\t{}\n\t}}\n\t\"1\"\n\t{{\n\t\t\"path\"\t\t{}\n\t}}\n}}\n",
+                quoted(&steam),
+                quoted(&library),
+            ),
+        )
+        .unwrap();
+        let patch_dir = temp.path().join("FAForever");
+
+        assert_eq!(
+            resolve_retail_install_dir(steam_retail_install_paths_in([steam]), &patch_dir),
+            game
+        );
+    }
+
+    /// When nothing could be copied, the game cannot start, and the player
+    /// should hear why from the client rather than from a Windows error box.
+    #[test]
+    fn a_faf_install_without_the_games_libraries_says_what_to_do() {
+        let temp = tempfile::tempdir().unwrap();
+        let faf = temp.path().join("FAForever");
+        std::fs::create_dir_all(faf.join("bin")).unwrap();
+        std::fs::write(faf.join("bin").join("ForgedAlliance.exe"), b"patched").unwrap();
+
+        let error = require_game_libraries(&faf).expect_err("BugSplat.dll is missing");
+        assert!(error.contains("BugSplat.dll"), "{error}");
+        assert!(
+            error.contains("Settings"),
+            "the fix belongs in the message: {error}"
+        );
+
+        // Whatever its spelling, once it is there the install can start.
+        std::fs::write(faf.join("bin").join("bugsplat.dll"), b"copied").unwrap();
+        require_game_libraries(&faf).unwrap();
+    }
+
+    /// The original Supreme Commander has a `gamedata/lua.scd` too. The Java
+    /// client tells it apart by its executable's hash, and so does this, so a
+    /// player who owns both and picks the wrong one is not handed its files.
+    #[test]
+    fn the_original_supreme_commander_is_not_taken_for_forged_alliance() {
+        use sha2::{Digest as _, Sha256};
+        let temp = tempfile::tempdir().unwrap();
+        let vanilla = temp.path().join("Supreme Commander");
+        std::fs::create_dir_all(vanilla.join("gamedata")).unwrap();
+        std::fs::create_dir_all(vanilla.join("bin")).unwrap();
+        std::fs::write(vanilla.join("gamedata").join("lua.scd"), b"base game").unwrap();
+        std::fs::write(vanilla.join("bin").join("SupremeCommander.exe"), b"vanilla").unwrap();
+        let hash = format!("{:x}", Sha256::digest(b"vanilla"));
+
+        assert!(is_vanilla_install_with(&vanilla, &[hash.as_str()]));
+        assert!(!is_vanilla_install_with(&vanilla, &VANILLA_GAME_HASHES));
+        // As in Java, a ForgedAlliance.exe beside it is the file looked at.
+        std::fs::write(vanilla.join("bin").join("ForgedAlliance.exe"), b"patched").unwrap();
+        assert!(!is_vanilla_install_with(&vanilla, &[hash.as_str()]));
+    }
+
+    /// The Java client clears the read-only flag on every library it handles,
+    /// not only on the ones it has just copied: a file left read-only by an
+    /// earlier copy would otherwise stay that way for good.
+    #[cfg(windows)]
+    #[test]
+    #[allow(clippy::permissions_set_readonly_false)]
+    fn a_library_copied_earlier_loses_its_read_only_flag_too() {
+        let temp = tempfile::tempdir().unwrap();
+        let retail = temp.path().join("retail");
+        std::fs::create_dir_all(retail.join("bin")).unwrap();
+        std::fs::write(retail.join("bin").join("BugSplat.dll"), b"retail").unwrap();
+        let faf = temp.path().join("faf");
+        std::fs::create_dir_all(faf.join("bin")).unwrap();
+        let earlier = faf.join("bin").join("BugSplat.dll");
+        std::fs::write(&earlier, b"copied before").unwrap();
+        let mut permissions = std::fs::metadata(&earlier).unwrap().permissions();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(&earlier, permissions).unwrap();
+
+        copy_retail_binaries(&retail, &faf).unwrap();
+
+        assert!(!std::fs::metadata(&earlier)
+            .unwrap()
+            .permissions()
+            .readonly());
+        assert_eq!(std::fs::read(&earlier).unwrap(), b"copied before");
     }
 
     #[test]

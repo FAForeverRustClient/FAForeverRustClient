@@ -185,6 +185,7 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
         if let ChatUpdate::Message { channel, message } = &update {
             let (
                 is_quiet_history,
+                held,
                 muted,
                 username,
                 hide_foe_messages,
@@ -202,6 +203,10 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
                 (
                     quiet_history,
                     state
+                        .chat
+                        .channel(channel)
+                        .is_some_and(|c| c.holds(message)),
+                    state
                         .settings
                         .chat
                         .muted_players
@@ -215,7 +220,12 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
                 )
             });
             quiet_history = is_quiet_history;
-            if muted {
+            // A line the channel already shows is the history backfill
+            // overlapping the scrollback after a reconnect or a rejoin (#471).
+            // The reducer would drop it; skipping it here also keeps its
+            // mention from notifying a second time, and spares the frontend
+            // an event per replayed line that changes nothing.
+            if muted || held {
                 continue;
             }
             let incoming = !message.sender.is_empty()

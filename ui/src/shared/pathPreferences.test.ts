@@ -16,6 +16,7 @@ describe("path preferences", () => {
       mapGeneratorDir: "",
       javaPath: "",
       winePrefix: "",
+      originalGameDir: "",
     });
   });
 });

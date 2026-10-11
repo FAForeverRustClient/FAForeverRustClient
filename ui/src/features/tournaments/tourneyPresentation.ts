@@ -23,7 +23,7 @@ import type {
   TourneyStatus,
 } from "../../ipc/bindings";
 import { thirdPlaceOn } from "../../shared/rules/tourneyRules";
-import { hourCycleOptions } from "../../shared/format/clock";
+import { clientIntlTag, formatDate, formatDateTime } from "../../shared/format/dates";
 
 export const STATUS_LABELS: Record<TourneyStatus, MessageKey> = {
   draft: "tournaments.status.draft",
@@ -56,20 +56,21 @@ export const BRACKET_LABELS: Record<BracketSide, MessageKey> = {
   freeForAll: "tournaments.bracket.freeForAll",
 };
 
-/** A Unix-seconds timestamp as a readable local date and time, or a fallback. */
+/**
+ * A Unix-seconds timestamp as a readable local date and time, or a fallback.
+ *
+ * In the client's language, like every other date in the app: this was
+ * `en-US` whatever the player had picked (issue 473).
+ */
 export function formatMoment(seconds: number | null, fallback: string): string {
   if (seconds === null) return fallback;
-  return new Date(seconds * 1000).toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    ...hourCycleOptions(),
-  });
+  return formatDateTime(seconds * 1000, fallback);
 }
 
 /** Just the day, for a signup deadline where the hour is noise. */
 export function formatDay(seconds: number | null, fallback: string): string {
   if (seconds === null) return fallback;
-  return new Date(seconds * 1000).toLocaleDateString("en-US", { dateStyle: "medium" });
+  return formatDate(seconds * 1000, fallback, { dateStyle: "medium" });
 }
 
 /**
@@ -181,11 +182,13 @@ export function groupedEvents(events: Tourney[]): Record<ListGroup, Tourney[]> {
 }
 
 /**
- * How long until an instant, as `2 days, 3 h, 40 min`, or null once it passes.
+ * How long until an instant, as `2d 3h 40m`, or null once it passes.
  *
  * The website's own shape, down to dropping the hours when there is no day and
  * always keeping the minutes: a countdown that says "in 2 days" tells nobody
- * whether to wait for it.
+ * whether to wait for it. The units are the client's duration messages, one per
+ * shape, so a Russian list reads `3 ч 40 мин` rather than English letters
+ * (issue 473).
  */
 export function countdownTo(seconds: number | null, now: number): string | null {
   if (seconds === null) return null;
@@ -194,11 +197,9 @@ export function countdownTo(seconds: number | null, now: number): string | null 
   const days = Math.floor(left / 86_400);
   const hours = Math.floor((left % 86_400) / 3_600);
   const minutes = Math.floor((left % 3_600) / 60);
-  const parts: string[] = [];
-  if (days > 0) parts.push(`${days} d`);
-  if (days > 0 || hours > 0) parts.push(`${hours} h`);
-  parts.push(`${minutes} min`);
-  return parts.join(", ");
+  if (days > 0) return t("duration.daysHoursMinutes", { days, hours, minutes });
+  if (hours > 0) return t("duration.hoursMinutes", { hours, minutes });
+  return t("duration.minutes", { minutes });
 }
 
 /**
@@ -206,12 +207,13 @@ export function countdownTo(seconds: number | null, now: number): string | null 
  *
  * Twin of its `formatPrize`, down to where the symbol sits: rubles put it
  * after the number, the other two before. Held in cents, so a round amount
- * prints without decimals and an odd one keeps both.
+ * prints without decimals and an odd one keeps both. The number itself is
+ * grouped in the client's language, so `1,500` is `1.500` in German.
  */
 export function formatPrize(prize: Prize | null): string {
   if (prize === null) return "";
   const units = prize.amountCents / 100;
-  const number = units.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  const number = units.toLocaleString(clientIntlTag(), { maximumFractionDigits: 2 });
   const symbol = { usd: "$", eur: "\u20ac", rub: "\u20bd" }[prize.currency];
   return prize.currency === "rub" ? `${number} ${symbol}` : `${symbol}${number}`;
 }

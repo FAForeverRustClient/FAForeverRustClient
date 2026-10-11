@@ -31,6 +31,11 @@ pub struct FakeChat {
     updates: Arc<Mutex<Option<mpsc::Sender<ChatUpdate>>>>,
     username: Arc<Mutex<String>>,
     next_id: Arc<AtomicU64>,
+    /// When the seeded scrollback was "said". Fixed at the first connect and
+    /// reused on every later one, the way the real server's history replay
+    /// repeats each line's `server-time`: fresh stamps would make every
+    /// reconnect look like the scrollback had been said again (#471).
+    seeded_at: Arc<Mutex<Option<String>>>,
 }
 
 impl FakeChat {
@@ -92,8 +97,17 @@ impl ChatPort for FakeChat {
             channel: DEFAULT_CHANNEL.into(),
             users: seed_users(&username),
         });
+        let seeded_at = self
+            .seeded_at
+            .lock()
+            .unwrap()
+            .get_or_insert_with(|| chrono::Utc::now().to_rfc3339())
+            .clone();
         for (sender, content) in seed_messages() {
-            let message = self.message(sender, content, ChatMessageKind::Message);
+            let message = ChatMessage {
+                timestamp: seeded_at.clone(),
+                ..self.message(sender, content, ChatMessageKind::Message)
+            };
             self.push(ChatUpdate::Message {
                 channel: DEFAULT_CHANNEL.into(),
                 message,
