@@ -1722,7 +1722,6 @@
   flex: none;
 }
 
-.tournament-team-list,
 .tournament-entrant-list {
   margin: 0;
   padding: 0;
@@ -1730,29 +1729,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-}
-
-.tournament-team {
-  padding: var(--space-3);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.tournament-team.is-mine {
-  border-color: var(--color-accent);
-}
-
-.tournament-team.is-eliminated .tournament-team-name {
-  text-decoration: line-through;
-  color: var(--color-muted);
-}
-
-.tournament-team-header {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  flex-wrap: wrap;
 }
 
 .tournament-team-name {
@@ -2711,14 +2687,6 @@
 
 .tournament-standings tr.rank-3 td:first-child {
   box-shadow: inset 2px 0 0 var(--color-league-bronze);
-}
-
-/* The per-team division picker sits in the team header, beside the roster
-   count, because it belongs to the team rather than to any of its players. */
-.tournament-division-pick {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 /* An event nobody but its organiser can see. The lifecycle tile wears this
@@ -8477,6 +8445,174 @@ button.tournament-chat-author:hover {
   text-transform: uppercase;
 }
 
+/* -- Arranging teams under Manage ------------------------------------------
+   The Teams tab's cards; a member is a line with the name and its facts
+   under it, the rating, and the organiser's tools as icons at the end. */
+
+.tournament-admin-teams {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tournament-admin-grid {
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+}
+
+.tournament-admin-team-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tournament-admin-team-head .tournament-team-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-admin-division {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.tournament-admin-division select,
+.tournament-admin-move {
+  height: 28px;
+  padding: 0 8px;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 12px;
+}
+
+.tournament-admin-move {
+  max-width: 132px;
+}
+
+.tournament-admin-rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tournament-admin-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 40px;
+  padding: 5px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.tournament-admin-rows > :first-child {
+  border-top: 0;
+}
+
+.tournament-admin-who {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tournament-admin-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.tournament-admin-name > :first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-admin-facts {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+.tournament-admin-facts .tournament-discord {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.tournament-admin-noted {
+  padding: 0 5px;
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+  border-radius: calc(var(--radius-sm) - 2px);
+}
+
+.tournament-admin-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
+.tournament-admin-tools .tournaments-icon-button {
+  width: 28px;
+  height: 28px;
+}
+
+.tournament-admin-tools .tournament-admin-move {
+  margin-left: 4px;
+}
+
+/* The note being written takes the whole line. */
+.tournament-admin-row.is-editing {
+  padding: 8px 0;
+}
+
+.tournament-admin-note {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tournament-admin-note-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.tournament-admin-parked {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 14px;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
 /* -- The tab's own text question (renaming, a typed rating) -- */
 
 .tournament-ask .tournament-field {
@@ -8485,6 +8621,13 @@ button.tournament-chat-author:hover {
 
 .tournament-ask .tournament-field input {
   font-size: 14px;
+}
+
+/* An absent tool's place, so the tools line up from row to row. */
+.tournament-admin-gap {
+  flex: none;
+  width: 28px;
+  height: 28px;
 }
 
 /* A name drawn as a player chip starts after the chip's 40 px avatar slot
