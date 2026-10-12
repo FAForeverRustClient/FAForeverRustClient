@@ -22,15 +22,18 @@ export function presetSort(preset: ModPreset): ModSort {
 export function storedModSort(value: string): ModSort | null {
   return (MOD_SORTS as readonly string[]).includes(value) ? (value as ModSort) : null;
 }
+// The order of the preset buttons: the narrowing ones first (the team's
+// selection, your stars, your uploads), then everything, then the ways of
+// ordering everything.
 export const MOD_PRESETS: Array<[ModPreset, MessageKey]> = [
   ["recommended", "mods.view.preset.recommended"],
   ["favorites", "mods.view.preset.favorites"],
   // Only once there is an id to filter on: see `modVaultQuery`.
   ["mine", "mods.view.preset.mine"],
+  ["all", "mods.view.preset.all"],
   ["rating", "mods.view.preset.rating"],
   ["ui", "mods.view.preset.ui"],
   ["newest", "mods.view.preset.newest"],
-  ["all", "mods.view.preset.all"],
 ];
 
 /**

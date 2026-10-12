@@ -17,7 +17,7 @@ import { formatShortDate } from "../../shared/format/dates";
 import { VaultDescription } from "../../shared/components/VaultDescription";
 import { useAppStore } from "../../store/store";
 import { Modal } from "../../design-system/Modal";
-import { ModPreview, UninstallDialog, bestDescription, installNote, toggleNote } from "./ModVaultComponents";
+import { ModIcon, ModPreview, UninstallDialog, bestDescription, installNote, toggleNote } from "./ModVaultComponents";
 import { favoriteModKeys, isFavoriteMod, toggleFavoriteMod } from "./favoriteMods";
 import { modUpdateAvailable } from "./modVersions";
 import { modCounterparts } from "./modIdentity";
@@ -105,13 +105,7 @@ function InstalledModCard({
         onClick={onOpen}
         title={t("mods.installed.openDetails")}
       >
-        {metadata ? (
-          <ModPreview mod={metadata} />
-        ) : (
-          <span className="mod-vault-thumb mod-vault-preview-empty" aria-hidden="true">
-            <Icon name="mods" size={25} />
-          </span>
-        )}
+        <ModIcon url={metadata?.thumbnailUrl} />
         <span className="installed-mod-copy">
           <span className="installed-mod-name" title={mod.uid}>
             <strong>{mod.displayName}</strong>
@@ -218,13 +212,7 @@ function InstalledModDetail({
     <Modal className="installed-mod-modal" onClose={onClose} ariaLabel={mod.displayName}>
       <div className="installed-mod-detail">
         <div className="installed-mod-detail-preview">
-          {metadata ? (
-            <ModPreview mod={metadata} large />
-          ) : (
-            <span className="mod-vault-thumb mod-vault-preview-empty" aria-hidden="true">
-              <Icon name="mods" size={40} />
-            </span>
-          )}
+          {metadata ? <ModPreview mod={metadata} large /> : <ModIcon large />}
         </div>
         <div className="installed-mod-detail-body">
           {/* The vault panel's reading order: the name, who made it, what

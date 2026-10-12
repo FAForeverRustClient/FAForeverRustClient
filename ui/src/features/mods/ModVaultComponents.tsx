@@ -70,10 +70,59 @@ function ratingLabel(mod: VaultMod): string {
 export function ModPreview({ mod, large = false }: { mod: VaultMod; large?: boolean }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [mod.thumbnailUrl]);
-  if (!mod.thumbnailUrl || failed) {
-    return <span className={large ? "mod-vault-preview mod-vault-preview-empty" : "mod-vault-thumb mod-vault-preview-empty"} aria-hidden="true"><Icon name="mods" size={large ? 34 : 25} /></span>;
-  }
+  if (!mod.thumbnailUrl || failed) return <ModIcon large={large} />;
   return <img className={large ? "mod-vault-preview" : "mod-vault-thumb"} src={mod.thumbnailUrl} alt={t("mods.vault.preview", { name: mod.displayName })} loading="lazy" decoding="async" onError={() => setFailed(true)} />;
+}
+
+/**
+ * A mod's icon: its art in a square frame, or the mods placeholder for the
+ * half of the vault that ships none.
+ */
+const ICON_CLASS = {
+  small: "mod-icon",
+  large: "mod-icon is-large",
+  cover: "mod-icon is-cover",
+} as const;
+
+const PLACEHOLDER_CLASS = {
+  small: "mod-icon is-placeholder",
+  large: "mod-icon is-large is-placeholder",
+  cover: "mod-icon is-cover is-placeholder",
+} as const;
+
+const PLACEHOLDER_SIZE = { small: 25, large: 34, cover: 40 } as const;
+
+export function ModIcon({
+  url,
+  large = false,
+  cover = false,
+}: {
+  url?: string | null;
+  large?: boolean;
+  /** Fill a card's picture rather than sit in a frame of its own. */
+  cover?: boolean;
+}) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [url]);
+  const kind = cover ? "cover" : large ? "large" : "small";
+  if (url && !failed) {
+    return (
+      <>
+        {/* On a card, the sides of the band are a blurred, dimmed copy of
+            the logo, as the training tab frames a square map preview: the
+            mod's own colours rather than an empty border. */}
+        {cover && <img className="mod-vault-cover-backdrop" src={url} alt="" aria-hidden="true" loading="lazy" decoding="async" />}
+        <span className={ICON_CLASS[kind]}>
+          <img src={url} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
+        </span>
+      </>
+    );
+  }
+  return (
+    <span className={PLACEHOLDER_CLASS[kind]} aria-hidden="true">
+      <Icon name="mods" size={PLACEHOLDER_SIZE[kind]} />
+    </span>
+  );
 }
 
 export function ModCard({
@@ -120,42 +169,45 @@ export function ModCard({
       ].filter(Boolean).join(" ")}
     >
       <button className="mod-vault-card-main" onClick={onSelect} aria-label={t("mods.vault.view", { name: mod.displayName })}>
-        <span className="mod-vault-image-wrap">
-          <ModPreview mod={mod} />
-          {/* Only the endorsement rides on the art now. The mod type moved down
-              to the facts line, where it sits beside the other things you
-              compare between cards rather than covering the logo. */}
+        {/* The logo whole and square, in the middle of a band of the picture
+            backdrop. */}
+        <span className="mod-vault-cover">
+          <ModIcon url={mod.thumbnailUrl} cover />
           {mod.recommended && <VaultFeaturedBadge />}
         </span>
 
-        <span className="mod-vault-card-copy">
-          <strong title={mod.displayName}>{mod.displayName}</strong>
-          <small>{mod.author ? t("mods.vault.byAuthor", { author: mod.author }) : t("mods.vault.unknownAuthor")}{mod.version ? ` · ${t("common.version", { version: mod.version })}` : ""}</small>
-        </span>
-
-        {/* One line instead of a three-column ruled table: the values are a
-            number, a count and a date, and the rules cost more attention than
-            the facts did. */}
-        <span className="mod-vault-card-facts">
-          <span className="mod-vault-facts-row">
-            <span className={`mod-vault-type ${mod.modType}`}>{t(mod.modType === "ui" ? "mods.vault.typeBadge.ui" : "mods.vault.typeBadge.sim")}</span>
-            {mod.modType === "sim" && (
-              <span className={`mod-vault-type ${mod.ranked ? "ranked" : "unranked"}`}>
-                {t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}
-              </span>
-            )}
-            {/* Installed says only that the folder is there. Enabled is the
-                one that answers "am I playing with this right now", which
-                nothing in the vault used to say. */}
-            {installed?.enabled && (
-              <span className="mod-vault-type in-use" title={t("mods.vault.inUseHint")}>
-                {t("mods.vault.inUse")}
-              </span>
-            )}
+        {/* Lines that each have a left and a right end, so the cards of a grid
+            line up into columns: the name and its version, who made it and
+            when it was last published, then what kind of mod it is and how it
+            is rated. */}
+        <span className="mod-vault-card-body">
+          <span className="mod-vault-name-row">
+            <strong className="mod-vault-name" title={mod.displayName}>{mod.displayName}</strong>
+            {mod.version && <span className="mod-vault-version">{t("common.version", { version: mod.version })}</span>}
           </span>
-          <span className="mod-vault-facts-row mod-vault-facts-sub">
+          <span className="mod-vault-card-row mod-vault-byline">
+            <span className="mod-vault-author">
+              {mod.author ? t("mods.vault.byAuthor", { author: mod.author }) : t("mods.vault.unknownAuthor")}
+            </span>
             <span className="mod-vault-fact is-date" title={t("mods.vault.lastUpdated")}>
               {formatShortDate(mod.updatedAt || mod.createdAt)}
+            </span>
+          </span>
+          <span className="mod-vault-card-row">
+            <span className="mod-vault-card-tags">
+              <span className={`mod-vault-type ${mod.modType}`}>{t(mod.modType === "ui" ? "mods.vault.typeBadge.ui" : "mods.vault.typeBadge.sim")}</span>
+              {mod.modType === "sim" && (
+                <span className={`mod-vault-type ${mod.ranked ? "ranked" : "unranked"}`}>
+                  {t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}
+                </span>
+              )}
+              {/* Installed says only that the folder is there. Enabled is the
+                  one that answers "am I playing with this right now". */}
+              {installed?.enabled && (
+                <span className="mod-vault-type in-use" title={t("mods.vault.inUseHint")}>
+                  {t("mods.vault.inUse")}
+                </span>
+              )}
             </span>
             <span
               className="mod-vault-fact is-rating"
@@ -271,8 +323,10 @@ export function ModDetailPanel({
           onClose={() => setReporting(false)}
         />
       )}
-      <div className="mod-detail-preview">
-        <ModPreview mod={mod} large />
+      {/* The card's picture, larger: the logo square and whole at the full
+          height of a band across the panel, its blurred copy at the sides. */}
+      <div className="mod-vault-cover mod-detail-preview">
+        <ModIcon url={mod.thumbnailUrl} cover />
       </div>
       <div className="mod-detail-body">
         {/* The name large, the way the leaderboard's player panel opens, with

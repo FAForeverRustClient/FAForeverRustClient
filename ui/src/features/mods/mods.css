@@ -1,6 +1,6 @@
 .mods-workspace {
   min-width: 0;
-  --mods-detail-width: 320px;
+  --mods-detail-width: 380px;
 }
 
 /* The two lists as tabs, with the upload at the end of the same line: the
@@ -128,41 +128,76 @@
 
 .mod-vault-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--space-3);
 }
 
+/* A mod card, built from the theme's tokens alone: the surface and its
+   hairline at rest, the raised surface, the strong edge and the floating
+   shadow under the pointer. */
 .mod-vault-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
   min-width: 0;
   overflow: hidden;
-  transition: background-color 120ms ease, border-color 120ms ease;
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
-.mod-vault-card:hover,
-.mod-vault-card.active {
+.mod-vault-card:hover {
   background: var(--color-surface-raised);
   border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-md);
 }
 
 /* A mod that is switched on right now, in the vault as well as in the
    installed list: the same green border and tint both places, so the state
-   looks the same wherever a mod is drawn. The selected card still wins,
-   because the selection is what the next click acts on. */
+   looks the same wherever a mod is drawn. */
 .mod-vault-card.is-in-use {
   background: color-mix(in srgb, var(--color-ok) 7%, var(--color-surface));
   border-color: color-mix(in srgb, var(--color-ok) 55%, transparent);
 }
 
 .mod-vault-card.is-in-use:hover {
-  background: color-mix(in srgb, var(--color-ok) 13%, var(--color-surface));
+  background: color-mix(in srgb, var(--color-ok) 12%, var(--color-surface));
   border-color: color-mix(in srgb, var(--color-ok) 75%, transparent);
 }
 
+/* The selected card wins over every other state, because the selection is
+   what the side panel shows: a stronger edge, doubled inside. */
 .mod-vault-card.active {
-  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+  --mod-card-edge: color-mix(in srgb, var(--color-border-strong) 45%, var(--color-text));
+  background: var(--color-surface-raised);
+  border-color: var(--mod-card-edge);
+}
+
+/* The inner pixel of the doubled edge, on a layer of its own over the whole
+   card. As an inset shadow on the card it was painted over by the picture
+   band and the action bar, which have grounds of their own, so the edge was
+   doubled only down the middle of the card. */
+.mod-vault-card.active::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  /* Inside the card's 1px border, so its radius less that pixel. */
+  border-radius: calc(var(--radius-lg) - 1px);
+  box-shadow: inset 0 0 0 1px var(--mod-card-edge);
+  pointer-events: none;
+}
+
+/* Selected and switched on: still green, so switching a mod on from the
+   panel shows on the card it belongs to. The selection is the doubled edge,
+   drawn in the green. */
+.mod-vault-card.is-in-use.active {
+  --mod-card-edge: color-mix(in srgb, var(--color-ok) 85%, transparent);
+  background: color-mix(in srgb, var(--color-ok) 12%, var(--color-surface));
 }
 
 .mod-vault-card-main {
@@ -170,8 +205,8 @@
   flex: 1 1 auto;
   width: 100%;
   min-width: 0;
-  padding: 0;
   flex-direction: column;
+  padding: 0;
   color: inherit;
   font: inherit;
   text-align: left;
@@ -185,18 +220,86 @@
   outline-offset: -2px;
 }
 
-/* Wider than tall: mod art is a square logo on transparency, and a 4:3 frame
-   spent a third of every card on empty ground above and below it. */
-.mod-vault-image-wrap {
+/* The picture: a band of the theme's darkest neutral grey, with the logo
+   square and whole in its middle at the band's full height. Not the picture
+   backdrop token, whose green-black is chosen for map previews and tinted
+   every logo frame green. */
+.mod-vault-cover {
   position: relative;
-  display: block;
+  isolation: isolate;
+  display: grid;
   width: 100%;
   aspect-ratio: 16 / 10;
+  place-items: center;
   overflow: hidden;
-  background: var(--color-bg);
+  background: var(--color-sidebar);
   border-bottom: 1px solid var(--color-border);
 }
 
+/* Behind the logo, filling the band: a blurred copy of it, the way the
+   training tab frames a square map preview (`.training-art-backdrop`), kept
+   darker than there so the logo stays the brightest thing on the card. */
+.mod-vault-cover-backdrop {
+  position: absolute;
+  inset: -12px;
+  z-index: -1;
+  width: calc(100% + 24px);
+  height: calc(100% + 24px);
+  object-fit: cover;
+  filter: blur(14px) saturate(1.1) brightness(0.55);
+  opacity: 0.45;
+}
+
+/* The icon frame, on installed rows and in panels, on the same neutral grey
+   as the cards' picture band. */
+.mod-icon {
+  display: grid;
+  flex: none;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  overflow: hidden;
+  background: var(--color-sidebar);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.mod-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: var(--space-1);
+  object-fit: contain;
+}
+
+/* No art: the mods placeholder, quiet on the same backdrop. */
+.mod-icon.is-placeholder {
+  color: var(--color-subtle);
+}
+
+/* The card's version: a square the band's height, the logo filling it. */
+.mod-icon.is-cover {
+  width: auto;
+  height: 100%;
+  aspect-ratio: 1;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.mod-icon.is-cover img {
+  padding: 0;
+}
+
+/* The panel's version: a larger square in the middle of the preview band. */
+.mod-icon.is-large {
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-lg);
+}
+
+/* A large mod picture (the installed-mod dialog): the art whole inside its
+   box, whatever size the file is. */
 .mod-vault-thumb,
 .mod-vault-preview {
   display: block;
@@ -205,22 +308,8 @@
   object-fit: contain;
 }
 
-/* Mod art is a logo on transparency, so `contain` already leaves margin of its
-   own. 18px on top of that shrank the one thing identifying the mod. */
-.mod-vault-thumb {
-  padding: 8px;
-}
-
-.mod-vault-preview-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-subtle);
-  background: var(--color-bg);
-}
-
-/* The type moved off the art and into the facts line. It stays colour-coded:
-   a simulation mod is the kind that changes what happens in a match. */
+/* The type sits among the card's tags. It stays colour-coded: a simulation
+   mod is the kind that changes what happens in a match. */
 .mod-vault-type {
   display: inline-flex;
   align-items: center;
@@ -266,31 +355,62 @@
   color: var(--color-ok-text);
 }
 
-.mod-vault-card-copy {
+.mod-vault-card-body {
   display: flex;
   min-width: 0;
-  padding: 12px 12px 8px;
+  flex: 1 1 auto;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-2);
+  padding: var(--space-3);
 }
 
-/* Two lines, with the height reserved either way so a one-line name does not
-   make its card shorter than its neighbours in the grid. Mod names are long
-   ("BrewLAN: Additional unit mods") and a single ellipsised line hid the part
-   that distinguishes one release from another. */
-.mod-vault-card-copy strong {
+/* Tags and rating at the foot of the body, so a one-line name leaves its
+   spare room above them rather than between the name and its author, and
+   the tag rows of a grid stay level. */
+.mod-vault-card-body > .mod-vault-card-row:last-child {
+  margin-top: auto;
+}
+
+/* Two lines at most: mod names are long ("BrewLAN: Additional unit mods")
+   and one ellipsised line hid the part that tells one release from another. */
+.mod-vault-name {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
-  min-height: 2.6em;
   overflow: hidden;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 650;
-  line-height: 1.3;
+  line-height: 1.25;
 }
 
-.mod-vault-card-copy small {
+/* The name and its version on one line, the version at the right end, level
+   with the name's first line. */
+.mod-vault-name-row {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* The author belongs to the name: closer to it than the lines below are to
+   each other. */
+.mod-vault-name-row + .mod-vault-byline {
+  margin-top: calc(-1 * var(--space-1));
+}
+
+/* Each line has a left and a right end. */
+.mod-vault-card-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.mod-vault-author {
+  min-width: 0;
   overflow: hidden;
   color: var(--color-muted);
   font-size: 12px;
@@ -298,72 +418,65 @@
   white-space: nowrap;
 }
 
-/* Type, rating and date on one wrapping line. The previous three-column table
-   spent a vertical rule and an uppercase caption on each of three short
-   values, which read as a spec sheet rather than a card. */
-.mod-vault-card-facts {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  width: 100%;
-  margin-top: auto;
-  padding: 0 12px 12px;
-  color: var(--color-muted);
+.mod-vault-version {
+  flex: none;
+  color: var(--color-subtle);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
-.mod-vault-facts-row {
+.mod-vault-card-tags {
   display: flex;
-  align-items: center;
+  min-width: 0;
   flex-wrap: wrap;
-  gap: 4px 8px;
-  width: 100%;
-}
-
-.mod-vault-facts-sub {
-  justify-content: space-between;
-}
-
-.mod-vault-facts-sub .is-rating {
-  margin-left: auto;
+  gap: var(--space-1);
 }
 
 .mod-vault-fact {
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.mod-vault-fact.is-rating svg {
-  flex: 0 0 auto;
-  color: var(--color-text);
+.mod-vault-fact.is-date {
+  flex: none;
+  overflow: hidden;
+  color: var(--color-subtle);
+  font-size: 12px;
+  text-overflow: ellipsis;
 }
 
-.mod-vault-fact.is-date {
-  color: var(--color-muted);
+.mod-vault-fact.is-rating {
+  flex: none;
+  color: var(--color-text);
   font-size: 12px;
 }
 
-/* One row of controls, all 30px tall, as on an installed card. */
+.mod-vault-fact.is-rating svg {
+  flex: none;
+  color: var(--color-rating);
+}
+
+/* One row of controls, all 30px tall, as on an installed card, on the facts
+   strip's tinted ground so the card's actions read as its foot. */
 .mod-vault-card-action {
   display: flex;
-  margin-top: auto;
-  min-height: 44px;
-  padding: 7px 8px;
+  min-height: 46px;
+  padding: var(--space-2);
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: var(--space-2);
+  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
   border-top: 1px solid var(--color-border);
 }
 
 .mod-vault-card-buttons {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   margin-left: auto;
 }
 
@@ -444,19 +557,10 @@
   overscroll-behavior: contain;
 }
 
+/* The panel's picture is the card's (`.mod-vault-cover`) at the panel's
+   width; it only must not shrink in the panel's column. */
 .mod-detail-preview {
-  display: flex;
   flex: none;
-  width: 100%;
-  height: 168px;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.mod-detail-preview .mod-vault-preview {
-  padding: 18px;
 }
 
 .mod-detail-body {
@@ -601,11 +705,14 @@
 .installed-mod-card {
   display: grid;
   min-width: 0;
-  min-height: 96px;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-4);
-  padding: 10px 12px 10px 10px;
+  padding: var(--space-3);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 /* The card body opens the mod's details. A button rather than a click handler
@@ -615,9 +722,9 @@
 .installed-mod-open {
   display: grid;
   min-width: 0;
-  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
   padding: 0;
   border: 0;
   background: none;
@@ -636,6 +743,7 @@
 .installed-mod-card:hover {
   background: var(--color-surface-raised);
   border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-md);
 }
 
 /* Enabled versus disabled, at a glance.
@@ -673,13 +781,6 @@
    on that fill would be the one unreadable combination on the row. */
 .installed-mod-search-panel .installed-mod-preset-enabled:not(.active) {
   color: var(--color-ok-text);
-}
-
-.installed-mod-card .mod-vault-thumb {
-  width: 76px;
-  height: 76px;
-  padding: 8px;
-  border-radius: var(--radius-md);
 }
 
 .installed-mod-copy {
@@ -738,7 +839,7 @@
 
 @media (max-width: 1100px) {
   .mods-workspace {
-    --mods-detail-width: 280px;
+    --mods-detail-width: 320px;
   }
 }
 
@@ -768,14 +869,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .installed-mod-open {
-    grid-template-columns: 60px minmax(0, 1fr);
-  }
-
-  .installed-mod-card .mod-vault-thumb {
-    width: 60px;
-    height: 60px;
-  }
 
   .installed-mod-actions {
     grid-column: 1 / -1;
@@ -801,7 +894,8 @@
    gets the large one, so with no picture the square collapsed to the height
    of its icon and the dialog opened on a thin dark strip. */
 .installed-mod-detail-preview > .mod-vault-thumb,
-.installed-mod-detail-preview > .mod-vault-preview {
+.installed-mod-detail-preview > .mod-vault-preview,
+.installed-mod-detail-preview > .mod-icon {
   width: 100%;
   height: auto;
   aspect-ratio: 1;
