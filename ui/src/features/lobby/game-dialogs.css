@@ -1727,9 +1727,13 @@
 /* The selected map in the host dialog is a control now: it opens the same
    enlarged, zoomable preview the Maps tab and the game preview have. Bare,
    because the column already places the square. */
+/* The whole picture's frame is the button, whatever the art inside it: a
+   co-op mission whose art has not loaded shows a fallback with no height of
+   its own, and the button was then a 40px strip at the top of the frame. */
 .host-preview-button {
   display: block;
   width: 100%;
+  height: 100%;
   padding: 0;
   background: transparent;
   border: 0;

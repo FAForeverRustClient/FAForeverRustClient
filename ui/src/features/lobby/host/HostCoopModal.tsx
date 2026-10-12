@@ -10,6 +10,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
+import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
 import { ipc } from "../../../ipc/client";
 import type { CoopMission } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -69,6 +70,9 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
     (value) => typeof value === "string",
   );
   const [campaignId, setCampaignId] = useState<number | null>(null);
+  // The chosen mission's picture enlarged, as the custom Host dialog and the
+  // Maps tab open theirs.
+  const [previewOpen, setPreviewOpen] = useState(false);
   // Where the mission comes from, in order: an explicit "host this one" from
   // the leaderboard, then the mission this dialog was last on, then whatever
   // the campaign lists first. The middle one is what survives leaving the tab:
@@ -404,12 +408,20 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
           <div className="host-column-body host-preview-body">
             <div className="host-preview-thumb-wrap">
               {selected ? (
-                <CoopMissionArt
-                  mission={selected}
-                  scenario={scenario}
-                  vault={vault}
-                  className="host-preview-img"
-                />
+                <button
+                  type="button"
+                  className="host-preview-button"
+                  onClick={() => setPreviewOpen(true)}
+                  title={t("maps.preview.enlarge", { name: translateCoopMissionName(selected.mapFolderName, selected.name) })}
+                  aria-label={t("maps.preview.enlarge", { name: translateCoopMissionName(selected.mapFolderName, selected.name) })}
+                >
+                  <CoopMissionArt
+                    mission={selected}
+                    scenario={scenario}
+                    vault={vault}
+                    className="host-preview-img"
+                  />
+                </button>
               ) : (
                 <div className="host-preview-placeholder">
                   <Icon name="maps" size={32} />
@@ -448,6 +460,28 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
 
         <HostModsColumn />
       </div>
+
+      {/* The enlarged mission, with the same zoom dialog the custom Host
+          dialog and the Maps tab use. The mission's own art rather than the
+          vault's, because a campaign map's picture is found through its
+          mission (see `CoopMissionArt`). */}
+      {previewOpen && selected && (
+        <MapPreviewDialog
+          map={{
+            folderName: selected.mapFolderName,
+            displayName: translateCoopMissionName(selected.mapFolderName, selected.name),
+          }}
+          meta={activeCampaign?.name ?? t("lobby.coop.withoutCampaign")}
+          onClose={() => setPreviewOpen(false)}
+        >
+          <CoopMissionArt
+            mission={selected}
+            scenario={scenario}
+            vault={vault}
+            className="host-preview-zoom-img"
+          />
+        </MapPreviewDialog>
+      )}
 
       <div className="play-dialog-actions">
         {formError && <span className="host-form-global-error">{formError}</span>}
