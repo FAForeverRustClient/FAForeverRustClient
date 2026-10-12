@@ -1583,9 +1583,15 @@
 /* Same four-column shape as the custom dialog, with campaigns where that one
    asks which featured mod to run: in co-op the answer is always `coop`, so the
    question was three disabled rows. The mission list is narrower than a map
-   list because it holds one campaign, not the vault. */
+   list because it holds one campaign, not the vault. It takes the width that
+   is left over; the chosen mission's column is fixed and wider than the
+   custom dialog's, and its picture fills it from side to side. */
 .host-coop-grid {
-  grid-template-columns: 220px minmax(260px, 1fr) 320px 360px;
+  grid-template-columns: 220px minmax(260px, 1fr) 390px 360px;
+}
+
+.host-coop-modal .host-preview-thumb-wrap {
+  max-width: none;
 }
 
 .host-coop-faction-badge {
@@ -1606,11 +1612,14 @@
   white-space: normal;
 }
 
-/* A campaign name too long to share its line with the badge puts the badge on
-   the next line, in any language: the row wraps instead of squeezing both.
-   A name that fits keeps the badge beside it, as before. */
+/* The campaign's name, then its badge under it, in every row: beside the name
+   the badge squeezed long names into three lines, and badges of different
+   widths left the names' right edges ragged. */
 .host-coop-modal .host-gametype-title-row {
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--space-1);
 }
 
 .host-coop-modal .host-gametype-name {
@@ -1718,9 +1727,13 @@
 /* The selected map in the host dialog is a control now: it opens the same
    enlarged, zoomable preview the Maps tab and the game preview have. Bare,
    because the column already places the square. */
+/* The whole picture's frame is the button, whatever the art inside it: a
+   co-op mission whose art has not loaded shows a fallback with no height of
+   its own, and the button was then a 40px strip at the top of the frame. */
 .host-preview-button {
   display: block;
   width: 100%;
+  height: 100%;
   padding: 0;
   background: transparent;
   border: 0;
