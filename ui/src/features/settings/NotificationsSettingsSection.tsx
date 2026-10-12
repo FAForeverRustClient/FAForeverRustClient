@@ -8,6 +8,7 @@ import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { recordEntries } from "../../shared/records";
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { native } from "../../ipc/native";
 import type { SampleSound, ToneSound } from "../notifications/notificationSound";
@@ -297,41 +298,45 @@ export function NotificationsSettingsSection() {
             update({ repeatCooldownSeconds: Math.min(600, Math.max(0, Math.round(seconds))) })}
         />
       </SettingRow>
-      {/* The added files, once there are any. Adding one is a row in every
-          dropdown, but removing one cannot be: a dropdown sets a value and
-          this deletes a file twelve of them may be pointing at. So it lives
-          here, once, and says which rows it would silence. */}
-      {customSounds.length > 0 && (
-        <SettingRow
-          label={t("settings.notifications.sound.yours")}
-          hint={t("settings.notifications.sound.yoursHint")}
-        >
-          <ul className="settings-sound-list">
-            {customSounds.map((name) => (
-              <li key={name} className="settings-sound-list-item">
-                <button
-                  type="button"
-                  className="btn-ghost settings-sound-play"
-                  onClick={() => playNotificationSound({ custom: name }, volume)}
-                  title={t("settings.notifications.sound.preview", { name })}
-                >
-                  {name}
-                </button>
-                <button
-                  type="button"
-                  className="btn-ghost settings-sound-remove"
-                  disabled={removing !== null}
-                  onClick={() => removeSound(name)}
-                  title={t("settings.notifications.sound.remove", { name })}
-                  aria-label={t("settings.notifications.sound.remove", { name })}
-                >
-                  <Icon name="close" size={13} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </SettingRow>
-      )}
+      {/* The added files. Adding one is also a row in every dropdown, but
+          removing one cannot be: a dropdown sets a value and this deletes a
+          file twelve of them may be pointing at. So it lives here, once, and
+          says which rows it would silence. Always shown, with its own add
+          button: hidden while the list was empty, removing the last file took
+          the whole feature off the page, and the dropdown entry was the only
+          way back to it. */}
+      <SettingRow
+        label={t("settings.notifications.sound.yours")}
+        hint={t("settings.notifications.sound.yoursHint")}
+      >
+        <ul className="settings-sound-list">
+          {customSounds.map((name) => (
+            <li key={name} className="settings-sound-list-item">
+              <button
+                type="button"
+                className="btn-ghost settings-sound-play"
+                onClick={() => playNotificationSound({ custom: name }, volume)}
+                title={t("settings.notifications.sound.preview", { name })}
+              >
+                {name}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost settings-sound-remove"
+                disabled={removing !== null}
+                onClick={() => removeSound(name)}
+                title={t("settings.notifications.sound.remove", { name })}
+                aria-label={t("settings.notifications.sound.remove", { name })}
+              >
+                <Icon name="close" size={13} />
+              </button>
+            </li>
+          ))}
+          <li>
+            <Button onClick={addSound}>{t("settings.notifications.sound.add")}</Button>
+          </li>
+        </ul>
+      </SettingRow>
       <SettingRow label={t("settings.notifications.toastPositionLabel")}>
         <select
           className="settings-select"
