@@ -27,7 +27,7 @@ export function FoldersSettingsSection() {
 
   return (
     <>
-      <SettingRow label={t("settings.folders.label")} hint={t("settings.folders.hint")}>
+      <SettingRow label={t("settings.folders.label")}>
         <div className="settings-diagnostic-actions">
           {clientFolders.map((entry) => (
             <Button key={entry.id} onClick={() => open(entry)}>

@@ -48,17 +48,6 @@ const LABEL = {
   winePrefix: "settings.paths.winePrefix",
 } as const satisfies Record<DirectoryField | FileField | WrapperField, MessageKey>;
 
-const HINT = {
-  vaultDir: "settings.paths.vaultHint",
-  mapsDir: "settings.paths.mapsHint",
-  modsDir: "settings.paths.modsHint",
-  replaysDir: "settings.paths.replaysHint",
-  mapGeneratorDir: "settings.paths.mapGeneratorHint",
-  gamePrefsPath: "settings.paths.gamePrefsHint",
-  javaPath: "settings.paths.javaHint",
-  winePrefix: "settings.paths.winePrefixHint",
-} as const satisfies Record<DirectoryField | FileField | WrapperField, MessageKey>;
-
 const setPaths = (patch: PathPreferencesPatch) =>
   ipc.send({ kind: "Settings", command: { type: "patchPaths", payload: { patch } } });
 
@@ -87,7 +76,6 @@ function ContentPathRow({
     <div className="settings-path-row">
       <div className="settings-path-info">
         <span className="settings-path-label">{t(LABEL[field])}</span>
-        <span className="muted">{t(HINT[field])}</span>
         {/* The resolved location, always. When it was set here it is the same
             string; when it was not, it is the only way to see where the
             fallback landed. */}
@@ -111,7 +99,6 @@ function ContentPathRow({
 }
 
 export function PathsSettingsSection() {
-  const { t } = useTranslation();
   const paths = useAppStore((s) => s.state.settings.paths);
   const resolved = useAppStore((s) => s.state.install.resolved);
 
@@ -154,7 +141,6 @@ export function PathsSettingsSection() {
           pick={() => native.selectDirectory(paths.winePrefix || resolved.winePrefix || undefined)}
         />
       )}
-      <p className="muted">{t("settings.paths.overrideNote")}</p>
     </div>
   );
 }

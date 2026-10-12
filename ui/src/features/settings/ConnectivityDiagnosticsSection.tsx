@@ -468,7 +468,7 @@ export function ConnectivityDiagnosticsSection() {
 
   return (
     <>
-      <SettingRow label={t("settings.connectivityCheck.label")} hint={t("settings.connectivityCheck.hint")}>
+      <SettingRow label={t("settings.connectivityCheck.label")}>
         <Button
           onClick={() => ipc.send({ kind: "Connectivity", command: { type: "runCheck" } })}
           disabled={running}

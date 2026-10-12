@@ -59,7 +59,7 @@ export function BackgroundSettings() {
 
   return (
     <>
-      <SettingRow label={t("settings.appearance.background")} hint={t("settings.appearance.backgroundHint")}>
+      <SettingRow label={t("settings.appearance.background")}>
         <div className="settings-background-actions">
           <Button onClick={pick}>{t(image ? "settings.appearance.backgroundChange" : "settings.appearance.backgroundPick")}</Button>
           {image && <Button onClick={() => save({ backgroundImage: "" })}>{t("settings.appearance.backgroundRemove")}</Button>}
