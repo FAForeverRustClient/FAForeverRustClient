@@ -46,7 +46,13 @@
   outline-offset: -3px;
 }
 
+/* A flex row, so an icon beside the words is centred on them. In the line of
+   text it was, an icon sat on the text's baseline and the words looked low
+   beside it. */
 .section-tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   white-space: nowrap;
 }
 

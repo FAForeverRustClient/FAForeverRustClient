@@ -270,6 +270,39 @@ html.is-resizing-chat-roster * {
   white-space: nowrap;
 }
 
+/* The head count, drawn as the leaderboard's player count is
+   (`.leaderboard-summary-count`): the people icon muted, the count in the
+   text colour and weight. */
+.chat-online-count {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.chat-online-count svg {
+  flex: none;
+  color: var(--color-muted);
+}
+
+.chat-online-count strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+}
+
+/* The search, at the head's height so the row keeps its rhythm. */
+.chat-search-button {
+  flex: none;
+  min-height: 30px;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
 .chat-toggle {
   flex: none;
   display: inline-flex;
