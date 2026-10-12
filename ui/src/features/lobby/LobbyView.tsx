@@ -9,6 +9,7 @@ import type { CoopMission, Game, VaultMap } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { GameFiltersModal, type GameFilterRule } from "./browser/GameFiltersModal";
 import { activeFilterCount } from "./browser/gameFilterRules";
+import { hostWhitelist, shownDespiteFilters } from "./browser/hostWhitelist";
 import { HostGameModal } from "./host/HostGameModal";
 import { HostCoopModal } from "./host/HostCoopModal";
 import { MatchmakingPanel } from "./matchmaker/MatchmakingPanel";
@@ -433,6 +434,7 @@ export function LobbyView() {
   const applyFilters = gameBrowser.applyFilters;
   const rules: GameFilterRule[] = gameBrowser.rules;
   const foeSet = useMemo(() => new Set(social.foes.map((f) => f.toLowerCase())), [social.foes]);
+  const whitelist = useMemo(() => hostWhitelist(browsing.whitelistedHosts), [browsing.whitelistedHosts]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   // A join that fails opens that game in the panel, where the reason and the
   // way to try again are. It is the game the player just asked to join, from
@@ -494,13 +496,14 @@ export function LobbyView() {
             game.modName,
           ].some((value) => value.toLocaleLowerCase().includes(query)),
       )
-      .filter((game) => !hidePrivate || !game.passwordProtected)
-      .filter((game) => !hideModded || Object.keys(game.simMods).length === 0)
-      .filter((game) => !hideUnranked || isCustomGameRanked(game, maps.vault, mods.vault))
-      .filter((game) => !hideFoes || !foeSet.has(game.host.toLowerCase()))
-      .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))
+      .filter((game) => shownDespiteFilters(game.host, whitelist, () =>
+        (!hidePrivate || !game.passwordProtected)
+        && (!hideModded || Object.keys(game.simMods).length === 0)
+        && (!hideUnranked || isCustomGameRanked(game, maps.vault, mods.vault))
+        && (!hideFoes || !foeSet.has(game.host.toLowerCase()))
+        && (!applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))))
       .sort((left, right) => compareGames(sort, sortReversed, left, right));
-  }, [applyFilters, customGames, foeSet, hideFoes, hideModded, hidePrivate, hideUnranked, maps.vault, mods.vault, rules, search, sort, sortReversed]);
+  }, [applyFilters, customGames, foeSet, hideFoes, hideModded, hidePrivate, hideUnranked, maps.vault, mods.vault, rules, search, sort, sortReversed, whitelist]);
 
   const filteredCoopGames = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -517,14 +520,15 @@ export function LobbyView() {
             game.modName,
           ].some((value) => value.toLocaleLowerCase().includes(query)),
       )
-      .filter((game) => !hidePrivate || !game.passwordProtected)
-      .filter((game) => !hideModded || Object.keys(game.simMods).length === 0)
-      .filter((game) => !hideFoes || !foeSet.has(game.host.toLowerCase()))
-      .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))
+      .filter((game) => shownDespiteFilters(game.host, whitelist, () =>
+        (!hidePrivate || !game.passwordProtected)
+        && (!hideModded || Object.keys(game.simMods).length === 0)
+        && (!hideFoes || !foeSet.has(game.host.toLowerCase()))
+        && (!applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))))
       .sort((left, right) => compareGames(sort, sortReversed, left, right));
     // No ranked filter here, and no checkbox for one in the co-op toolbar: a
     // mission is never rated, so hiding the unranked games hid all of them.
-  }, [applyFilters, coopGames, foeSet, hideFoes, hideModded, hidePrivate, maps.vault, rules, search, sort, sortReversed]);
+  }, [applyFilters, coopGames, foeSet, hideFoes, hideModded, hidePrivate, maps.vault, rules, search, sort, sortReversed, whitelist]);
 
   // Only ever the game the player picked. Falling back to the first row put a
   // different game under the Join button whenever the picked one closed,
@@ -942,6 +946,11 @@ export function LobbyView() {
               applyFilters: nextRules.length > 0 ? true : applyFilters,
             })
           }
+          whitelistedHosts={browsing.whitelistedHosts}
+          onWhitelistHost={(host, member) => ipc.send({
+            kind: "Settings",
+            command: { type: "setListMember", payload: { list: "whitelistedHosts", value: host, member } },
+          })}
           onClose={() => setFiltersOpen(false)}
         />
       )}

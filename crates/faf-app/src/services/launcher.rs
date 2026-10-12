@@ -112,7 +112,7 @@ pub async fn start(
         // wrong explanation for something the user did on purpose.
         if ctx.lobby.launch_cancelled() {
             tracing::info!("launcher: the join was cancelled during preparation; not starting");
-            return abandon(ctx, out);
+            return abandon(ctx, out, launch.uid);
         }
     }
 
@@ -147,7 +147,7 @@ pub async fn start(
         tracing::info!(
             "launcher: the launch was cancelled while the adapter started; not starting"
         );
-        return abandon(ctx, out);
+        return abandon(ctx, out, launch.uid);
     }
 
     // 3. Launch the game pointed at the adapter's GPGNet port.
@@ -773,12 +773,13 @@ fn fail(ctx: &ServiceCtx, out: &EventSink, reason: String) -> Option<LaunchSessi
 /// A launch called off on purpose: by the player, or by the server's
 /// `match_cancelled`. No failure to report, but the seat is released all the
 /// same, and the join is closed, which for a matchmaker launch also frees the
-/// search panel (see `LobbyEvent::JoinCancelled`). A cancel from the player
-/// closed it already; one from the server did not.
-fn abandon(ctx: &ServiceCtx, out: &EventSink) -> Option<LaunchSession> {
+/// search panel. A cancel from the player closed it already; one from the
+/// server did not, and its join is `Launched` rather than in preparation,
+/// which `JoinCancelled` leaves alone (#487): see `LobbyEvent::LaunchAbandoned`.
+fn abandon(ctx: &ServiceCtx, out: &EventSink, game_id: i32) -> Option<LaunchSession> {
     ctx.ports.ice.stop();
     release_seat(ctx);
-    out.emit(LobbyEvent::JoinCancelled);
+    out.emit(LobbyEvent::LaunchAbandoned { id: game_id });
     None
 }
 

@@ -440,6 +440,11 @@
   border-radius: var(--radius-md);
   font-size: 11px;
   font-weight: 600;
+  /* The countdown changes every second, and in the font's own figures a "1"
+     is narrower than a "0": the card view's button, which is as wide as its
+     label, grew and shrank with each tick (issue 494). Figures of one width
+     hold it still; it changes size only when the count loses a digit. */
+  font-variant-numeric: tabular-nums;
   text-align: center;
   white-space: nowrap;
   cursor: pointer;

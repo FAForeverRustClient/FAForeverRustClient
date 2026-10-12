@@ -294,7 +294,19 @@ export type AuthEvent = { type: "loginStarted" } | { type: "loggedIn"; payload: 
 	player: Player,
 } } |
 /**  The shell opened without an account. See [`AuthMode::Offline`]. */
-{ type: "wentOffline" } | { type: "loginFailed"; payload: {
+{ type: "wentOffline" } |
+/**
+ *  The lobby server refused this account because it is banned (#488).
+ *
+ *  The session carries on as an offline one, which is what
+ *  [`AuthMode::Offline`] was made for: the local replay archive stays, and
+ *  everything that asks FAF a question (the lobby, chat, the vaults,
+ *  reviews) goes away, as it does in the Java client once it reads the
+ *  ban. `message` is the server's reason, kept as the session's error.
+ */
+{ type: "banned"; payload: {
+	message: string,
+} } | { type: "loginFailed"; payload: {
 	message: string,
 } } | { type: "loggedOut" };
 
@@ -483,6 +495,16 @@ export type BrowsingPreferences = {
 	favoriteMaps: string[],
 	/**  Stable mod UIDs starred by the user. */
 	favoriteMods: string[],
+	/**
+	 *  Hosts whose games the game browser always shows, by login (#492).
+	 *
+	 *  The exception to every hide switch and filter rule rather than one
+	 *  more of them: somebody who hides modded and unranked games still wants
+	 *  to see what a particular host has opened. Not a filter in
+	 *  `FilterMemory`'s sense either, because it narrows nothing, so
+	 *  [`BrowsingPreferences::without_filters`] leaves it as it is.
+	 */
+	whitelistedHosts: string[],
 	/**  Active preset filter in the map vault ("recommended", "favorites", "rating", "newest", "played", "all"). */
 	mapVaultPreset: string,
 	/**  Active preset filter in the mod vault ("recommended", "favorites", "rating", "ui", "newest", "all"). */
@@ -611,6 +633,7 @@ export type BrowsingPreferencesPatch = {
 	matchmakerChatWidth?: number,
 	favoriteMaps?: string[],
 	favoriteMods?: string[],
+	whitelistedHosts?: string[],
 	mapVaultPreset?: string,
 	modVaultPreset?: string,
 	mapVaultSort?: string,
@@ -4401,7 +4424,22 @@ export type LobbyEvent = { type: "connecting" } | { type: "connected" } |
  *  finished disconnecting. This clears any prepared-install marker
  *  immediately, preventing a racing launch frame from starting the game.
  */
-{ type: "joinCancelled" } | { type: "inGame" } | { type: "launchFailed"; payload: {
+{ type: "joinCancelled" } |
+/**
+ *  A launch the launcher called off before any game process existed:
+ *  the server's `match_cancelled` arrived while the install was prepared
+ *  or the adapter came up (#487).
+ *
+ *  Unlike [`Self::JoinCancelled`] it also closes a join that is already
+ *  [`JoinState::Launched`], which is where a matchmaker launch stands from
+ *  its first frame. No process was started, so no exit would ever end that
+ *  join, and the starting dialog stayed on "Forged Alliance is opening"
+ *  until the client was restarted. `id` is the launch's game, so an event
+ *  that arrives late cannot close the next one.
+ */
+{ type: "launchAbandoned"; payload: {
+	id: number,
+} } | { type: "inGame" } | { type: "launchFailed"; payload: {
 	reason: string,
 } } |
 /**  The local FA process was explicitly terminated by the user. */
@@ -7168,6 +7206,8 @@ export type PreferenceList =
 "favoriteMaps" |
 /**  `browsing.favorite_mods`, by mod uid. */
 "favoriteMods" |
+/**  `browsing.whitelisted_hosts`, by login. */
+"whitelistedHosts" |
 /**  `browsing.leaderboard_rating_columns`. */
 "leaderboardRatingColumns" |
 /**  `chat.muted_players`, by login. */

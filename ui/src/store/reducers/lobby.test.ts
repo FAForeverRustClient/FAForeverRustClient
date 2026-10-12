@@ -132,6 +132,32 @@ describe("the join state machine", () => {
     const running = state({ join: { type: "inGame" } });
     expect(apply(running, { type: "joinCancelled" })).toBe(running);
   });
+
+  it("ends a launch the launcher abandoned before its game started (#487)", () => {
+    const launched = state({
+      join: { type: "launched", payload: { launch } },
+      matchmaking: { type: "cancelled", payload: { queueName: "tmm2v2" } },
+    });
+    const next = apply(launched, { type: "launchAbandoned", payload: { id: launch.uid } });
+    expect(next.join).toEqual({ type: "idle" });
+    // The server's word on the match stays.
+    expect(next.matchmaking).toEqual({ type: "cancelled", payload: { queueName: "tmm2v2" } });
+
+    const stillLaunching = state({
+      join: { type: "launched", payload: { launch } },
+      matchmaking: { type: "launching", payload: { queueName: "tmm2v2" } },
+    });
+    expect(apply(stillLaunching, { type: "launchAbandoned", payload: { id: launch.uid } }).matchmaking)
+      .toEqual({ type: "idle" });
+  });
+
+  it("leaves a newer launch and a running game alone when an abandon arrives late", () => {
+    const newer = state({ join: { type: "launched", payload: { launch } } });
+    expect(apply(newer, { type: "launchAbandoned", payload: { id: launch.uid + 1 } })).toBe(newer);
+
+    const running = state({ join: { type: "inGame" } });
+    expect(apply(running, { type: "launchAbandoned", payload: { id: launch.uid } })).toBe(running);
+  });
 });
 
 describe("disconnect", () => {

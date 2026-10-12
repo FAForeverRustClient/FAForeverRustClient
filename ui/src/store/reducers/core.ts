@@ -171,6 +171,10 @@ export function reduceAuth(state: AuthState, event: AuthEvent): AuthState {
       return { ...state, status: "loggedIn", player: event.payload.player, error: null, mode: "test" };
     case "wentOffline":
       return { ...state, status: "loggedIn", player: null, error: null, mode: "offline" };
+    case "banned":
+      // The lobby refused a banned account (#488): what is left is an offline
+      // session, with the server's reason kept.
+      return { ...state, status: "loggedIn", player: null, error: event.payload.message, mode: "offline" };
     case "loginFailed":
       return { ...state, status: "failed", player: null, error: event.payload.message };
     case "loggedOut":

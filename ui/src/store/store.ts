@@ -661,6 +661,7 @@ const INITIAL: AppState = {
       },
       favoriteMaps: [],
       favoriteMods: [],
+      whitelistedHosts: [],
       mapVaultPreset: "recommended",
       modVaultPreset: "recommended",
       mapVaultSort: "",

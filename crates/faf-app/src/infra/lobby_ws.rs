@@ -815,6 +815,19 @@ async fn run_session(
                             // Logged above, shown nowhere: see the function.
                             continue;
                         }
+                        if is_ban_notice(style, &text) {
+                            // The server closes the socket next, and every
+                            // reconnect would be refused the same way: the
+                            // session ends here, for good.
+                            tracing::error!("lobby: this account is banned; not reconnecting");
+                            let _ = tx
+                                .send(LobbyUpdate::Banned {
+                                    text: plain_notice_text(&text),
+                                })
+                                .await;
+                            ending = SessionEnd::Hopeless;
+                            break 'connection;
+                        }
                         if tx.send(LobbyUpdate::Notice { style, text }).await.is_err() {
                             break 'connection;
                         }
@@ -1112,6 +1125,56 @@ fn is_unofficial_client_notice(style: ServerNoticeStyle, text: &str) -> bool {
             .trim_start()
             .to_ascii_lowercase()
             .starts_with("you are using an unofficial client")
+}
+
+/// The server's answer to a banned account (#488): `BanError` in
+/// `server/exceptions.py`, sent as an `error` notice by `lobbyconnection.py`
+/// just before it aborts the connection, at sign-in and again on a join or a
+/// host. Matched by its text, because an `error` notice on its own is also
+/// how the server reports a request it merely refused, with the connection
+/// left open.
+fn is_ban_notice(style: ServerNoticeStyle, text: &str) -> bool {
+    style == ServerNoticeStyle::Error
+        && text
+            .trim_start()
+            .to_ascii_lowercase()
+            .starts_with("you are banned from faf")
+}
+
+/// A notice's text without the markup the server writes into it: `<br>` as a
+/// line break, any other tag dropped, and no more than one empty line in a row.
+fn plain_notice_text(text: &str) -> String {
+    let mut plain = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(start) = rest.find('<') {
+        plain.push_str(&rest[..start]);
+        let Some(end) = rest[start..].find('>') else {
+            plain.push_str(&rest[start..]);
+            rest = "";
+            break;
+        };
+        let tag = rest[start + 1..start + end]
+            .trim()
+            .trim_end_matches('/')
+            .trim()
+            .to_ascii_lowercase();
+        if tag == "br" {
+            plain.push('\n');
+        }
+        rest = &rest[start + end + 1..];
+    }
+    plain.push_str(rest);
+    let mut lines: Vec<&str> = Vec::new();
+    for line in plain.lines().map(str::trim) {
+        if line.is_empty() && lines.last().is_none_or(|last| last.is_empty()) {
+            continue;
+        }
+        lines.push(line);
+    }
+    while lines.last().is_some_and(|last| last.is_empty()) {
+        lines.pop();
+    }
+    lines.join("\n")
 }
 
 /// How long to wait before the next attempt, given how many in a row have
@@ -2391,6 +2454,42 @@ mod tests {
             ServerNoticeStyle::Info,
             "The server restarts in 10 minutes."
         ));
+    }
+
+    /// `BanError.message()` in the lobby server, as it reaches the client.
+    const BAN_TEXT: &str = "You are banned from FAF forever. <br>Reason: <br>Asked for it<br><br>\
+        <i>If you would like to appeal this ban, please send an email to: \
+        moderation@faforever.com</i>";
+
+    #[test]
+    fn a_ban_is_told_apart_from_a_refused_request() {
+        assert!(is_ban_notice(ServerNoticeStyle::Error, BAN_TEXT));
+        assert!(is_ban_notice(
+            ServerNoticeStyle::Error,
+            "  You are banned from FAF for 3 days. <br>Reason: <br>smurfing"
+        ));
+        // The same server sends `error` notices it means as a refusal, with
+        // the connection left open; those are not a ban.
+        assert!(!is_ban_notice(
+            ServerNoticeStyle::Error,
+            "You are already in a game"
+        ));
+        assert!(!is_ban_notice(ServerNoticeStyle::Info, BAN_TEXT));
+    }
+
+    #[test]
+    fn a_ban_reads_as_plain_text() {
+        assert_eq!(
+            plain_notice_text(BAN_TEXT),
+            "You are banned from FAF forever.\nReason:\nAsked for it\n\n\
+             If you would like to appeal this ban, please send an email to: \
+             moderation@faforever.com"
+        );
+        assert_eq!(plain_notice_text("a < b"), "a < b");
+        assert_eq!(
+            plain_notice_text("one<br/>two<BR >three"),
+            "one\ntwo\nthree"
+        );
     }
 
     #[test]

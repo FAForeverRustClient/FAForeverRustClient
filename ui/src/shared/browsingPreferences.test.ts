@@ -84,6 +84,7 @@ describe("browsing preferences", () => {
       },
       favoriteMaps: [" Adaptive_Tabula.v0006 ", "adaptive_tabula.v0006", ""],
       favoriteMods: [" Eco_Graph ", "eco_graph", ""],
+      whitelistedHosts: [" Nuggets ", "nuggets", "", "aurora"],
       mapVaultPreset: "  NEWEST  ",
       mapVaultSort: "  newest  ",
       modVaultSort: "",
@@ -120,6 +121,9 @@ describe("browsing preferences", () => {
     });
 
     expect(normalized.favoriteMods).toEqual(["eco_graph"]);
+    // Logins keep their spelling, lose their duplicates and are sorted, as
+    // `normalize_logins` keeps them.
+    expect(normalized.whitelistedHosts).toEqual(["aurora", "Nuggets"]);
 
     expect(normalized.replayListColumns).toEqual([10, 200, 0, 0, 9999]);
     expect(normalized.modPresets).toEqual([

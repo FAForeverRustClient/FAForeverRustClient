@@ -34,6 +34,7 @@
 
 .filter-rule-builder select,
 .filter-rule-builder input,
+.filter-whitelist-builder input,
 .host-form-top select,
 .host-form-top input,
 .host-options input,
@@ -1891,4 +1892,82 @@
 .join-preparing-note {
   margin: var(--space-2) 0 0;
   font-size: 12px;
+}
+
+/* The hosts always shown (issue 492), under the rules: a heading of its own,
+   then a name field and the hosts as square tags with their remove button. */
+.filter-whitelist {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-border);
+}
+
+.filter-whitelist-head h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.filter-whitelist-head p {
+  margin: 3px 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.filter-whitelist-builder {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.filter-whitelist-builder .btn-ghost {
+  height: 34px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.filter-whitelist-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.filter-whitelist-host {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 4px 0 8px;
+  font-size: 12px;
+  font-weight: 550;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.filter-whitelist-host > svg {
+  color: var(--color-muted);
+}
+
+.filter-whitelist-host button {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.filter-whitelist-host button:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
 }
