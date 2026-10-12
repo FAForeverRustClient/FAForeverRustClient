@@ -19,6 +19,7 @@ import { t } from "../../../i18n";
 import { displayedRating, gameLeaderboard, ratingGateBlocks } from "../../../shared/playerRatings";
 import { toggleFavoriteMap, useIsFavoriteMap } from "../../../shared/favoriteMaps";
 import { SaveGeneratorPresetForm } from "../../../shared/components/SaveGeneratorPresetForm";
+import { MarkedMapImage } from "../../../shared/components/MarkedMapImage";
 
 export const GamePreviewDialog = memo(function GamePreviewDialog({
   game,
@@ -231,12 +232,23 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
             </>
           )}
         >
-          <GameMapImage
-            mapName={game.map}
-            vault={vault}
+          {/* A generated map on disk is drawn with FAF's mass, hydro and
+              spawn icons in place of the generator's green and yellow dots;
+              its own preview stands in until that is ready, and for a map
+              that is not on disk. */}
+          <MarkedMapImage
+            folderName={installedMap && isGenerated ? installedMap.folderName : null}
+            alt={t("common.mapPreview", { name: presentation.displayName })}
             className="game-preview-dialog-image"
-            placeholderClassName="game-preview-dialog-placeholder"
-            large
+            fallback={(
+              <GameMapImage
+                mapName={game.map}
+                vault={vault}
+                className="game-preview-dialog-image"
+                placeholderClassName="game-preview-dialog-placeholder"
+                large
+              />
+            )}
           />
         </ZoomableImage>
         {game.passwordProtected && (

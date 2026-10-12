@@ -4,6 +4,7 @@ import { Modal } from "../../design-system/Modal";
 import { ipc } from "../../ipc/client";
 import { useTranslation } from "../../i18n/useTranslation";
 import { MapPreview, type PreviewableMap } from "./MapPreview";
+import { MarkedMapImage } from "./MarkedMapImage";
 import { toggleFavoriteMap, useIsFavoriteMap } from "../favoriteMaps";
 import { requestMapVaultFocus } from "../mapVaultFocus";
 import { isGeneratedMap } from "../mapPresentation";
@@ -527,6 +528,7 @@ export function MapPreviewDialog({ map, meta, onClose, children, downloadUrl, va
   downloadUrl?: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const label = map.displayName || map.folderName;
   const favorite = useIsFavoriteMap(map.folderName);
   return (
@@ -556,7 +558,16 @@ export function MapPreviewDialog({ map, meta, onClose, children, downloadUrl, va
             </>
           ) : undefined}
         >
-          {children ?? <MapPreview map={map} large />}
+          {children ?? (
+            // A generated map on disk with FAF's icons on it rather than the
+            // generator's dots, as the Play tab's preview has it.
+            <MarkedMapImage
+              folderName={isGeneratedMap(map.folderName) ? map.folderName : null}
+              alt={t("common.mapPreview", { name: label })}
+              className="map-vault-preview"
+              fallback={<MapPreview map={map} large />}
+            />
+          )}
         </ZoomableImage>
       </div>
     </Modal>

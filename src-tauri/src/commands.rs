@@ -138,6 +138,23 @@ pub(crate) fn read_background_image(name: String) -> Result<Vec<u8>, String> {
     std::fs::read(&path).map_err(|error| format!("could not read {}: {error}", path.display()))
 }
 
+/// An installed map's clean picture and where its mass, hydros and spawns are,
+/// for the large map preview to draw FAF's icons on (see `infra::map_markers`).
+///
+/// Asked for by one open dialog at a time, so a plain request rather than a
+/// command and a cache in the shared state. Off the async workers, since it
+/// reads three files and encodes a PNG.
+#[tauri::command]
+pub(crate) async fn read_marked_map_preview(
+    folder_name: String,
+) -> Result<faf_app::infra::map_markers::MarkedMapPreview, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        faf_app::infra::map_markers::marked_map_preview(&folder_name)
+    })
+    .await
+    .map_err(|error| format!("could not read the map: {error}"))?
+}
+
 #[tauri::command]
 pub(crate) fn open_version_folder(name: String, app: tauri::AppHandle) -> Result<(), String> {
     let cache_root = faf_app::infra::cache_dir()?;
