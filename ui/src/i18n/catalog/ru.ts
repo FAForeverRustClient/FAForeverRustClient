@@ -1135,6 +1135,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
 
   "settings.general.startPage.label": "Начальный раздел",
   "settings.general.autoLogin.label": "Автоматический вход",
+  "settings.general.keepRunningDuringGame.label": "Не закрывать во время игры",
+  "settings.general.keepRunningDuringGame.hint": "Если во время игры закрыть окно или выбрать \"Quit\" в трее, клиент скроется в трей, и игра сохранит соединение. Он закроется сам после окончания игры, если вы не откроете его снова. Когда выключено, клиент спрашивает перед закрытием.",
   "settings.general.filterMemory.label": "Запоминать фильтры",
   "settings.general.filterMemory.never": "Никогда",
   "settings.general.filterMemory.session": "До закрытия клиента",

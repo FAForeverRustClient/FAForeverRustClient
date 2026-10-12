@@ -8754,6 +8754,7 @@ fn transition_cases() -> Vec<Case> {
                         auto_login: false,
                         remember_typed_entries: true,
                         filter_memory: FilterMemory::Restart,
+                        keep_running_during_game: false,
                     },
                 }
                 .into(),
