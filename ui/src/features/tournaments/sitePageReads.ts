@@ -9,9 +9,6 @@ export function sitePageReads(page: SitePage): TourneyCommand[] {
   if (page.kind === "hall") reads.push({ type: "loadSite", payload: { read: "hallOfFame" } });
   if (page.kind === "console") reads.push({ type: "loadSite", payload: { read: "console" } });
   if (page.kind === "faq") reads.push({ type: "loadArticles" });
-  if (page.kind === "access") {
-    reads.push({ type: "loadSite", payload: { read: { access: { kind: page.access } } } });
-  }
   if (page.kind === "series") {
     reads.push({ type: "loadSeries" });
     if (page.seriesId !== null) reads.push({ type: "openSeries", payload: { seriesId: page.seriesId } });

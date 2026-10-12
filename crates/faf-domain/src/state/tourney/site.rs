@@ -97,6 +97,11 @@ pub struct HallPlayer {
     pub name: String,
     pub wins: i32,
     pub entered: i32,
+    /// The FAF account behind the row: its avatar, its current login and its
+    /// ratings. The tournament service knows none of these; the board is sent
+    /// once without them and again once FAF has answered, so `None` until
+    /// then, and for good where FAF had no such account.
+    pub profile: Option<PlayerSummary>,
 }
 
 /// One row of the Hall of Fame's teams, by name.

@@ -48,7 +48,10 @@ export const HostMapDetailsColumn = memo(function HostMapDetailsColumn({
   return (
     <section className="host-column host-column-preview surface-panel">
       <div className="host-column-header">
-        <h3>{t("lobby.host.selectedMap")}</h3>
+        <h3>
+          <Icon name="info" size={14} />
+          {t("lobby.host.selectedMap")}
+        </h3>
       </div>
 
       <div className="host-column-body host-preview-body">
@@ -105,13 +108,14 @@ export const HostMapDetailsColumn = memo(function HostMapDetailsColumn({
               <Icon name={copiedTitle ? "check" : "copy"} size={13} />
             </button>
           )}
-          {/* Whether a game on this map is rated, next to the map's name.
-              It is the one property of a map that changes what hosting it
-              means, and it was only readable by finding the same map again
-              in the list beside this panel. */}
+          {/* Whether a game on this map is rated, at the end of the map's
+              name: the one property of a map that changes what hosting it
+              means. A tag like every other tag in the client, quiet for the
+              usual case and in the error tint when the map is unranked, as
+              on a game's tile. It was a green capsule. */}
           {chosen && (
             <span
-              className={chosen.ranked ? "host-map-ranked is-ranked" : "host-map-ranked"}
+              className={chosen.ranked ? "host-map-ranked" : "host-map-ranked is-unranked"}
               title={t(chosen.ranked ? "maps.view.ranked" : "maps.view.unranked")}
             >
               {t(chosen.ranked ? "maps.view.ranked" : "maps.view.unranked")}
@@ -121,43 +125,28 @@ export const HostMapDetailsColumn = memo(function HostMapDetailsColumn({
 
         {chosen && (
           <div className="host-map-info-section">
-            <div className="host-map-info-row">
-              <div className="host-map-info-item" title={t("lobby.host.mapPlayerCapacity")}>
-                <Icon name="users" size={13} />
-                <span>
-                  {chosen.maxPlayers > 0
-                    ? t("lobby.host.mapPlayers", { count: chosen.maxPlayers })
-                    : t("lobby.host.mapPlayersUnknown")}
-                </span>
-              </div>
-              <div className="host-map-info-item" title={t("lobby.host.mapDimensions")}>
-                <Icon name="maps" size={13} />
-                <span>
-                  {chosen.width > 0
-                    ? formatMapDimensions(chosen.width, chosen.height)
-                    : t("lobby.host.mapSizeUnknown")}
-                </span>
-              </div>
-            </div>
-            {(chosen.version || chosen.author) && (
-              /* The same row shape as the capacity and the size above,
-                 rather than a definition list that sets its own type and
-                 its own spacing. Four facts about one map should look like
-                 four facts about one map. */
-              <div className="host-map-info-row">
-                <div className="host-map-info-item" title={t("lobby.host.mapAuthor")}>
-                  <Icon name="edit" size={13} />
-                  <span>{chosen.author || t("lobby.host.mapAuthorUnknown")}</span>
-                </div>
-                {/* A "V", not the changelog's document icon: this is a
-                    version number, and a sheet of paper next to it read as
-                    a link to something to open. */}
-                <div className="host-map-info-item" title={t("lobby.host.mapVersion")}>
-                  <span className="host-map-version-mark" aria-hidden>V</span>
-                  <span>{chosen.version || t("lobby.host.mapAuthorUnknown")}</span>
-                </div>
-              </div>
-            )}
+            {/* The four facts as one list of label and value, the shape a
+                generated map's settings take below. They were icons beside
+                values, and two had no icon to give: the author borrowed the
+                edit pencil and the version a bold letter "V". */}
+            <dl className="host-map-facts host-map-basic-facts">
+              <dt>{t("lobby.browser.players")}</dt>
+              <dd>{chosen.maxPlayers > 0 ? chosen.maxPlayers : t("common.notAvailable")}</dd>
+              <dt>{t("lobby.browser.mapSize")}</dt>
+              <dd>
+                {chosen.width > 0
+                  ? formatMapDimensions(chosen.width, chosen.height)
+                  : t("common.notAvailable")}
+              </dd>
+              {(chosen.version || chosen.author) && (
+                <>
+                  <dt>{t("lobby.host.mapAuthor")}</dt>
+                  <dd title={chosen.author || undefined}>{chosen.author || t("lobby.host.mapAuthorUnknown")}</dd>
+                  <dt>{t("lobby.host.mapVersion")}</dt>
+                  <dd>{chosen.version || t("lobby.host.mapAuthorUnknown")}</dd>
+                </>
+              )}
+            </dl>
             {/* A generated map's description is not prose: it is the
                 generator's parameter dump, one line, with its escapes
                 unexpanded and `null` wherever it had nothing to say.

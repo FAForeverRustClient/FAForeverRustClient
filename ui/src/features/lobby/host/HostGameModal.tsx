@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
+import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
 import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
@@ -318,11 +319,14 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
         {/* Column 1: Game Type (Featured Mods) */}
         <section className="host-column host-column-gametype surface-panel">
           <div className="host-column-header">
-            <h3>{t("lobby.host.gameType")}</h3>
+            <h3>
+              <Icon name="play" size={14} />
+              {t("lobby.host.gameType")}
+            </h3>
           </div>
           <div
             ref={modListRef}
-            className="host-column-body host-gametype-list"
+            className="host-column-body host-gametype-list host-featured-mods"
             role="listbox"
             aria-label={t("lobby.host.gameType")}
             onKeyDown={onModListKeyDown}

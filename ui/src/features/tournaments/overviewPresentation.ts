@@ -8,11 +8,17 @@
 import type { MessageKey, MessageValues } from "../../i18n";
 import type { Tourney, TourneyMatch } from "../../ipc/bindings";
 import { roundKeyOf } from "../../shared/rules/tourneyRules";
-import { BRACKET_KIND_LABELS, FORMATION_LABELS, planSummary, typeLine } from "./tourneyPresentation";
+import { FORMATION_LABELS, planSummary, typeLine } from "./tourneyPresentation";
 
 type Translate = (key: MessageKey, values?: MessageValues) => string;
 
-/** One fact of the Tournament format panel: a value over its label. */
+const BRACKET_KIND_NAMES: Record<Tourney["bracketKind"], MessageKey> = {
+  single: "tournaments.bracketKind.single",
+  double: "tournaments.bracketKind.double",
+  swiss: "tournaments.bracketKind.swiss",
+};
+
+/** One fact of the Tournament format panel: its label and its value. */
 export interface FormatCell {
   label: MessageKey;
   value: string;
@@ -49,7 +55,9 @@ export function formatCells(event: Tourney, t: Translate): FormatCell[] {
           ? "1v1"
           : `${event.teamSize}v${event.teamSize} · ${t(FORMATION_LABELS[event.formation])}`,
     });
-    cells.push({ label: "tournaments.section.bracket", value: t(BRACKET_KIND_LABELS[event.bracketKind]) });
+    // The bracket's name on its own, so as a name starts: the lower-case one
+    // is for the middle of a line, `1v1 · single elimination`.
+    cells.push({ label: "tournaments.section.bracket", value: t(BRACKET_KIND_NAMES[event.bracketKind]) });
   }
   if (plan !== "") cells.push({ label: "tournaments.overview.matchFormat", value: plan });
   return cells;

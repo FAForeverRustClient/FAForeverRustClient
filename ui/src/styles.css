@@ -304,6 +304,14 @@ html[data-reduced-motion="true"] *::after {
   color: var(--color-text);
 }
 
+/* The other half of a pair with a primary button, Cancel beside Host game.
+   Both are 32 px, but an outline at 8 % disappears against a dialog's
+   surface beside a solid block, and the pair read as two sizes. */
+.btn-ghost:has(+ .btn-primary) {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+}
+
 .btn-ghost:hover:not(:disabled) {
   background: var(--color-surface-hover);
 }

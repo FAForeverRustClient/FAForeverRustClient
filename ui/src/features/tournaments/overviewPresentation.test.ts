@@ -140,7 +140,7 @@ describe("formatCells", () => {
     const cells = formatCells(tourney({ teamSize: 1, bracketKind: "single" }), t);
     expect(cells.map((cell) => [cell.label, cell.value])).toEqual([
       ["tournaments.overview.format", "1v1"],
-      ["tournaments.section.bracket", "tournaments.overview.singleElim"],
+      ["tournaments.section.bracket", "tournaments.bracketKind.single"],
     ]);
   });
 });

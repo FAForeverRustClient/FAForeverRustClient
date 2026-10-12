@@ -478,13 +478,17 @@
 
 /* Surface treatment comes from `.surface-panel`. */
 .tournament-detail {
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). A variable,
+     because the hero bleeds over the padding and has to bleed this far on
+     the right, not the left's 16 px: past it, the hero ran 11 px into the
+     scrollbar's room and the whole pane scrolled sideways by that much. */
+  --detail-pad-right: max(0px, var(--space-4) - var(--scrollbar-size));
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-4);
-  /* The scrollbar's kept room counts as part of the right padding, so the
-     sides match whether it shows or not (`--scrollbar-size`). */
-  padding-right: max(0px, var(--space-4) - var(--scrollbar-size));
+  padding-right: var(--detail-pad-right);
   overflow-y: auto;
   scrollbar-gutter: stable;
   min-height: 0;
@@ -1379,11 +1383,17 @@
   isolation: isolate;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  /* Any height the minimum adds goes above the title, not between the
+     title and the stages under it. */
+  align-content: end;
   align-items: end;
   gap: var(--space-3) 24px;
   min-height: 132px;
-  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--detail-pad-right)) 0 calc(-1 * var(--space-4));
   padding: 28px 24px 20px;
+  /* Ends at the scrollbar's room rather than the pane's edge, so that much
+     less of its own: the title and the way in sit as far from either side. */
+  padding-right: max(0px, 24px - var(--scrollbar-size));
   overflow: hidden;
   background:
     radial-gradient(
@@ -1495,24 +1505,18 @@
   font-size: 13px;
 }
 
-/* Under the banner, the facts and the stages: the Training hub's basis strip,
-   on the darker band. The stages run the band's whole width under the facts,
-   so neither squeezes the other. */
+/* Under the banner, the facts: the Training hub's basis strip, on the darker
+   band, bleeding as far as the hero above it. */
 .tournament-hero-foot {
-  margin: 0 calc(-1 * var(--space-4));
-  padding: 14px 24px 16px;
+  margin: 0 calc(-1 * var(--detail-pad-right)) 0 calc(-1 * var(--space-4));
+  padding: 14px 24px;
+  padding-right: max(0px, 24px - var(--scrollbar-size));
   background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
   border-bottom: 1px solid var(--color-border);
 }
 
-/* The facts and the stages as wide as the facts are: the stages end where the
-   last fact does, however wide the pane. */
 .tournament-hero-foot-inner {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: fit-content;
-  max-width: 100%;
+  min-width: 0;
 }
 
 /* Label over value, a hairline between each, no padding at the strip's start:
@@ -1566,42 +1570,112 @@
   color: var(--color-warn-text);
 }
 
-/* The four stages as a bar: a segment each, filled up to the one the event is
-   in, with its name under it. As wide as the facts above it, by way of the
-   wrapper: stretched over a wide pane, the segments drift too far apart to
-   read as one bar. */
+/* The livestreams: a link each, wrapping inside the fact rather than running
+   out of the strip when an event has several. */
+.tournament-facts-strip .is-streams dd {
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  white-space: normal;
+}
+
+.tournament-facts-strip .is-streams .rich-text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  text-decoration-color: var(--color-border-strong);
+  text-underline-offset: 3px;
+}
+
+.tournament-facts-strip .is-streams .rich-text-link:hover,
+.tournament-facts-strip .is-streams .rich-text-link:focus-visible {
+  text-decoration-color: currentColor;
+}
+
+/* The four stages under the name: a dot and a name each, a line to the next,
+   in the case the names are written in. Capitals and a bar over each name
+   were what made them read as tabs. A stage behind the event is a filled dot
+   in the series' tint, the one it is in the accent with a soft halo, the
+   ones ahead an empty ring. */
 .tournament-stepper {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 4px;
-  /* Less the last fact's trailing gutter, so it ends with that fact's text. */
-  margin: 0 var(--space-4) 0 0;
+  --stepper-ahead: color-mix(in srgb, var(--color-text) 28%, transparent);
+  --stepper-behind: color-mix(in srgb, var(--tourney-series, var(--color-accent)) 60%, var(--color-muted));
+  /* One line: wrapped, the next line started with a line to nothing. In a
+     narrow pane the lines between the stages give up their length instead. */
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
   padding: 0;
   list-style: none;
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
 }
 
 .tournament-stepper li {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
-  padding-top: 8px;
-  overflow: hidden;
-  color: var(--color-subtle);
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.07em;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
   white-space: nowrap;
-  border-top: 3px solid var(--color-border);
+}
+
+/* The line from the stage before, as far from that stage's name as from this
+   stage's marker. A width rather than a flex basis, which an empty box does
+   not count towards its row's natural width: the lines came out short with
+   room to spare. They shrink first; a name only once they are at 8 px. */
+.tournament-stepper li + li::before {
+  content: "";
+  flex: 0 1 auto;
+  width: 28px;
+  min-width: 8px;
+  height: 1px;
+  margin-left: 8px;
+  background: var(--stepper-ahead);
+}
+
+.tournament-stepper-label {
+  flex: 0 0.001 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tournament-stepper-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--stepper-ahead);
+  border-radius: 50%;
+  box-sizing: border-box;
 }
 
 .tournament-stepper li.is-done {
   color: var(--color-muted);
-  border-top-color: color-mix(in srgb, var(--tourney-series, var(--color-accent)) 45%, var(--color-border));
+}
+
+.tournament-stepper li.is-done .tournament-stepper-dot {
+  background: var(--stepper-behind);
+  border-color: transparent;
+}
+
+.tournament-stepper li.is-done + li::before {
+  background: var(--stepper-behind);
 }
 
 .tournament-stepper li.is-now {
   color: var(--color-text);
-  border-top-color: var(--color-accent);
+  font-weight: 600;
+}
+
+.tournament-stepper li.is-now .tournament-stepper-dot {
+  background: var(--color-accent);
+  border-color: transparent;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent);
 }
 
 /* The sections: the shared section tabs (`section-tabs`), wrapping rather
@@ -1628,13 +1702,18 @@
 }
 
 /* A pane narrower than the hero's two columns: the way in takes a row of its
-   own under the title. */
+   own under the title, after the stages, which stay with the name. */
 @media (max-width: 1100px) {
   .tournament-detail > .tournament-hero {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .tournament-hero > .tournament-stepper {
+    grid-row: 2;
+  }
+
   .tournament-hero-actions {
+    grid-row: 3;
     justify-content: flex-start;
   }
 
@@ -2039,6 +2118,124 @@
   justify-content: flex-end;
   gap: var(--space-2);
   margin-top: var(--space-2);
+}
+
+/* The access dialog: the three kinds of access as cards to choose between,
+   each that is not there to ask for saying why at its end. */
+.tournament-access-dialog {
+  max-width: 560px;
+}
+
+.tournament-access-options {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.tournament-access-option {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 12px 14px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.tournament-access-option:hover:not(.is-settled) {
+  border-color: var(--color-border-strong);
+}
+
+.tournament-access-option.is-chosen {
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface-raised));
+  border-color: var(--color-accent);
+}
+
+.tournament-access-option:focus-within {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.tournament-access-option.is-settled {
+  background: transparent;
+  cursor: default;
+}
+
+/* A radio, not one of the form's text fields, whose rule it would take. Kept
+   in its column on a settled card, invisible, so every card lines up. */
+.tournament-form .tournament-access-option input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  accent-color: var(--color-accent);
+}
+
+.tournament-access-option.is-settled input {
+  visibility: hidden;
+}
+
+.tournament-access-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--color-muted);
+  background: var(--color-surface-hover);
+  border-radius: var(--radius-md);
+}
+
+.tournament-access-option.is-chosen .tournament-access-icon {
+  color: var(--color-text);
+}
+
+.tournament-access-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tournament-access-copy strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tournament-access-copy span {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.tournament-access-option.is-settled .tournament-access-copy strong {
+  color: var(--color-muted);
+}
+
+.tournament-access-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tournament-access-state.is-approved {
+  color: var(--color-ok-text);
+  background: color-mix(in srgb, var(--color-ok) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-ok) 35%, transparent);
+}
+
+.tournament-access-state.is-pending {
+  color: var(--color-warn-text);
+  background: color-mix(in srgb, var(--color-warn) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-warn) 35%, transparent);
 }
 
 .tournament-score-row {
@@ -3595,45 +3792,6 @@
   }
 }
 
-/* The format as large facts over their labels, a hairline between each. The
-   strip is pulled left by one gutter and one hairline and clipped there, so
-   whichever fact starts a row, after a wrap too, starts it flush. */
-.tournament-format-cells {
-  display: flex;
-  flex-wrap: wrap;
-  row-gap: var(--space-4);
-  margin-left: calc(-1 * 20px - 1px);
-  clip-path: inset(0 0 0 calc(20px + 1px));
-}
-
-.tournament-format-cell {
-  flex: 1 1 160px;
-  min-width: 0;
-  padding: 2px 20px;
-  border-left: 1px solid var(--color-border);
-}
-
-.tournament-format-value {
-  font-size: 18px;
-  font-weight: 650;
-  line-height: 1.3;
-  letter-spacing: -0.005em;
-}
-
-.tournament-format-label {
-  margin-top: 4px;
-  color: var(--color-subtle);
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.tournament-format-cell p {
-  margin: 6px 0 0;
-  font-size: 12px;
-}
-
 /* The rules a game is played under: a name, then what it is, one row each
    under a hairline. The names are the organiser's own where they come from
    the lobby options, so the column is sized to them rather than fixed. */
@@ -4047,7 +4205,6 @@
   font-size: 12px;
 }
 
-.tournament-streams,
 .tournament-qualifiers {
   margin: 0;
   padding: 0;
@@ -7588,6 +7745,105 @@ button.tournament-chat-author:hover {
 .tournament-site-panel h4,
 .tournament-site-panel p {
   margin: 0;
+}
+
+/* The Hall of Fame: the board's heading with its search beside it, and the
+   rows as the leaderboard draws a player. The rank and the numbers take what
+   they need; the name takes the rest, where it had a fifth of the row. */
+.tournament-hall-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.tournament-hall-search {
+  flex: 0 1 280px;
+}
+
+.tournament-hall-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.tournament-hall-table td {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
+.tournament-hall-table tbody tr:hover td {
+  background: var(--color-surface-hover);
+}
+
+.tournament-hall-table .tournament-hall-rank {
+  width: 48px;
+  color: var(--color-muted);
+  font-weight: 650;
+}
+
+.tournament-hall-table .is-number {
+  width: 88px;
+  text-align: right;
+}
+
+.tournament-hall-player {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* The avatar's room is kept without one, so the names stay in a column. */
+.tournament-hall-avatar {
+  display: inline-block;
+  flex: none;
+  width: 40px;
+  height: 20px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+}
+
+/* The leaderboard's name: its own colour, underlined on hover and while its
+   menu is open. */
+.tournament-hall-name {
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.tournament-hall-name:hover,
+.tournament-hall-name.is-menu-open {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.tournament-hall-name:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.tournament-hall-wins {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-muted);
+}
+
+.tournament-hall-wins.is-champion {
+  color: var(--color-text);
+  font-weight: 650;
+}
+
+.tournament-hall-wins svg {
+  color: var(--color-league-gold);
 }
 
 

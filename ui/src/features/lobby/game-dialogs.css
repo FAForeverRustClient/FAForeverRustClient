@@ -468,7 +468,13 @@
   min-height: 22px;
 }
 
+/* Each column's title carries the icon its subject has in the navigation, so
+   the mods and the maps beside them tell apart at a glance and not only by
+   the word over each. */
 .host-column-header h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   margin: 0;
   font-size: 12px;
   font-weight: 650;
@@ -519,6 +525,13 @@
   flex-direction: column;
   gap: 6px;
   padding: 6px;
+}
+
+.host-gametype-list.host-featured-mods {
+  /* No scrollbar gutter: FAF's four featured mods, a list that does not
+     grow and does not scroll. The reserved strip only made the rows' right
+     margin twice their left. The co-op dialog's campaigns keep theirs. */
+  scrollbar-gutter: auto;
 }
 
 .host-gametype-row {
@@ -899,52 +912,49 @@
   padding: 6px 6px 0;
 }
 
-.host-preview-name > span {
+/* The first span only: the ranked tag is a span on the same line, and a rule
+   for every span gave it the name's size and weight. */
+.host-preview-name > span:first-child {
   min-width: 0;
   overflow: hidden;
   color: var(--color-text);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Whether a game on this map counts, said beside the map's name. Muted at
-   rest and accented when it is ranked, because "unranked" is the answer that
-   changes a host's mind and "ranked" is the ordinary case. */
+/* Whether a game on this map counts, at the end of the name's line, drawn as
+   every tag in the client is: square corners, the raised surface, 11 px
+   capitals. Quiet for "ranked", the ordinary case, and in the error tint for
+   "unranked", the answer that changes a host's mind, as on a game's tile. It
+   was a capsule, and the ordinary case was the loud one. */
 .host-map-ranked {
   flex: none;
-  padding: 1px 7px;
+  margin-left: auto;
+  padding: 2px 6px;
   color: var(--color-muted);
-  background: color-mix(in srgb, var(--color-muted) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-muted) 30%, transparent);
-  border-radius: 999px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   font-size: 11px;
-  font-weight: 650;
-  letter-spacing: .04em;
+  font-weight: 600;
+  line-height: 14px;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
-.host-map-ranked.is-ranked {
-  color: var(--color-ok-text);
-  background: color-mix(in srgb, var(--color-ok) 14%, transparent);
-  border-color: color-mix(in srgb, var(--color-ok) 35%, transparent);
+.host-map-ranked.is-unranked {
+  color: var(--color-error-text);
+  background: color-mix(in srgb, var(--color-error) 12%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-error) 35%, transparent);
 }
 
-/* The version marker. A letter rather than an icon, in the same grey and at
-   the same width as the glyphs it shares a row with, so the row still reads as
-   one row rather than as a letter with icons after it. */
-.host-map-version-mark {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 13px;
-  color: var(--color-subtle);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
+/* The map's basic facts, first in the list and so without the rule the
+   generated map's settings draw over themselves below. */
+.host-map-facts.host-map-basic-facts {
+  padding-top: 0;
+  border-top: 0;
 }
 
 /* Far from the map list on purpose: this deletes a folder off the disk, and
@@ -1021,6 +1031,8 @@
   user-select: all;
 }
 
+/* Quiet until pointed at, as the map preview's copy button is: a bordered box
+   at rest was one more outline beside the name. */
 .host-map-fullname-copy {
   display: inline-flex;
   flex: 0 0 auto;
@@ -1029,7 +1041,7 @@
   padding: 3px;
   color: var(--color-muted);
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
@@ -1040,27 +1052,12 @@
   border-color: var(--color-border-strong);
 }
 
-.host-map-info-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.host-map-fullname-copy:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
-.host-map-info-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 550;
-  color: var(--color-text);
-}
-
-.host-map-info-item svg {
-  color: var(--color-subtle);
-  flex-shrink: 0;
-}
-
-/* Author and version: two columns, two rows, label left and value right. */
+/* A map's facts: two columns, label left and value right. */
 .host-map-facts {
   display: grid;
   grid-template-columns: auto 1fr;
