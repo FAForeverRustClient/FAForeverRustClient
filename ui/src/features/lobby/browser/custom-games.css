@@ -93,7 +93,7 @@
   /* The fallback for the moment before the saved widths arrive, in the shape
      the saved ones have: five columns at a fixed width and the game column
      taking the rest. */
-  grid-template-columns: var(--game-browser-columns, minmax(160px, 1fr) 96px 150px 72px 80px 52px);
+  grid-template-columns: var(--game-browser-columns, minmax(160px, 1fr) 96px 150px 74px 80px 80px);
   align-items: center;
   gap: 16px;
   /* Set only when every column is at its floor and the floors are wider than
@@ -272,6 +272,7 @@
 .game-browser-list {
   min-height: 0;
   overflow: auto;
+  scrollbar-gutter: stable;
 }
 
 /* 48 px, not 62: at the client's default 1100x720 window the list showed
@@ -604,6 +605,10 @@
   background: var(--color-surface-raised);
 }
 
+/* The details panel's lock: the tile's plate (`.game-tile-private`), a size
+   up for the bigger picture. It was a round badge with a strong border, so the
+   same lock read as a different mark in the two places, and its 13 px glyph
+   sat on half pixels in the 24 px inside. 16 px sits on whole ones. */
 .private-badge {
   position: absolute;
   top: 10px;
@@ -614,10 +619,15 @@
   width: 26px;
   height: 26px;
   color: var(--color-text);
-  background: var(--color-sidebar);
-  border: 1px solid var(--color-border-strong);
-  border-radius: 999px;
-  font-size: 11px;
+  background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+/* A pixel up by eye, for the reason given at `.game-tile-private svg`. */
+.private-badge svg {
+  position: relative;
+  top: -1px;
 }
 
 .game-detail-content {
@@ -628,7 +638,11 @@
   flex-direction: column;
   min-height: 0;
   padding: 16px 16px 8px;
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). */
+  padding-right: max(0px, 16px - var(--scrollbar-size));
   overflow: auto;
+  scrollbar-gutter: stable;
   background: var(--color-surface);
 }
 
@@ -876,11 +890,17 @@
 .game-tile-grid {
   display: grid;
   min-height: 0;
-  grid-template-columns: repeat(auto-fill, minmax(390px, 1fr));
+  /* A column from 360 px, down from 390: the tile lost its captions and
+     needs a little less room for the same lines. */
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   align-content: start;
   gap: var(--space-3);
   padding: var(--space-3);
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). */
+  padding-right: max(0px, var(--space-3) - var(--scrollbar-size));
   overflow: auto;
+  scrollbar-gutter: stable;
 }
 
 .game-tile-grid > .empty-state {
@@ -891,14 +911,17 @@
   position: relative;
   display: grid;
   min-width: 0;
-  height: 128px;
+  height: 112px;
   /* The browser renders every open game, and a busy evening is 100+ of them.
      The row height is fixed, so the engine can be told exactly how much space
      an off-screen tile needs and skip laying it out until it scrolls in,
      without the scrollbar moving. */
   content-visibility: auto;
-  contain-intrinsic-size: auto 128px;
-  grid-template-columns: 128px minmax(0, 1fr);
+  contain-intrinsic-size: auto 112px;
+  /* Its own width decides what a narrow tile does, not the window's: the
+     column count in the settings makes tiles narrow in a wide window. */
+  container: game-tile / inline-size;
+  grid-template-columns: 112px minmax(0, 1fr);
   color: var(--color-text);
   background: var(--color-surface);
   border: 1px solid var(--color-border-strong);
@@ -952,48 +975,50 @@
   background: var(--color-surface);
 }
 
-.game-tile-map-name {
-  position: absolute;
-  bottom: 5px;
-  left: 5px;
-  max-width: calc(100% - 10px);
-  padding: 2px 5px;
-  overflow: hidden;
-  color: var(--color-text);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  background: var(--color-sidebar);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-}
-
+/* Top right, the picture's inner corner beside the title, where the vault
+   cards keep their Featured badge. Top left put a square into the tile's
+   rounded outer corner. A light plate, as the vault badge's: a solid block
+   with a strong border round a small lock was the heaviest thing on the tile. */
 .game-tile-private {
   position: absolute;
   top: 6px;
-  left: 6px;
+  right: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   color: var(--color-text);
-  font-size: 11px;
-  background: var(--color-sidebar);
-  border: 1px solid var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
 }
 
+/* The lock is 14 px so it sits on whole pixels in the plate's 20 px inside: at
+   13 it was 3.5 px in from every edge, and its lines fell between pixels. A
+   pixel up, by eye: the solid body is the lower part of the glyph, so a
+   padlock centred by its outline reads low. `top` rather than a margin, which
+   flex centring would halve back onto a half pixel. */
+.game-tile-private svg {
+  position: relative;
+  top: -1px;
+}
+
+/* Four lines: the title, the map and the host, the tags, and at the bottom
+   who can still get in and how long the lobby has been open. The tags line is
+   left out when a game has none, and the bottom line stays at the bottom
+   either way. */
 .game-tile-body {
   display: flex;
   flex-direction: column;
-  padding: 10px 12px 9px;
+  gap: 4px;
+  padding: 9px 12px;
 }
 
+/* A line of its own: the age that shared it now ends the bottom row. */
 .game-tile-title {
-  display: block;
+  flex: none;
+  min-width: 0;
   overflow: hidden;
   color: var(--color-text);
   font-size: 15px;
@@ -1003,82 +1028,59 @@
   white-space: nowrap;
 }
 
-/* Four facts now, the featured mod among them, evenly spaced.
-
-   Equal shares, so the four sit at an even pitch across the tile rather than
-   three of them huddling on the left while one track soaks up the slack: that
-   is what the version column did when it was the only `1fr`, and the gap in
-   front of the age was several times the others.
-
-   The floor is what keeps the even pitch from costing anything. `max-content`
-   as the minimum means a track never drops below the wider of its value and its
-   label, so "AVG. RATING" -- and "Puntuacion", "Classement", the longest of
-   them in whichever language -- is never shortened to make the arithmetic work.
-   When one track does need more than its share the other three simply divide
-   what is left, still equally, so the row stays even and stays legible at the
-   grid's 390px minimum.
-
-   The version is the exception: its value is words rather than a number, and
-   the longest of them ("FAF Beta Balance") is wider than the other three
-   columns put together, so it cannot have its value's `max-content` as a floor
-   the way the others do. It gets a flat one instead, wide enough for the word
-   "Version" in every language the client speaks. Without it the track went to
-   zero, and in the languages that spell the rating label as a whole word --
-   Spanish "Puntuacion", French "Classement" -- the squeeze landed on this
-   label rather than on the mod name it is supposed to fall on. Past the floor
-   the value ellipsizes, with the full name on its title. */
-.game-tile-primary-stats {
-  display: grid;
-  grid-template-columns:
-    minmax(max-content, 1fr)
-    minmax(max-content, 1fr)
-    minmax(3.5rem, 1fr)
-    minmax(max-content, 1fr);
-  gap: var(--space-2);
-  margin-top: 7px;
+/* The quietest fact, at the far end of the bottom row: how long the lobby
+   has been open, beside who is in it. */
+.game-tile-age {
+  flex: none;
+  margin-left: auto;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
-.game-tile-primary-stats > span {
+/* The map gives way first; the host keeps up to half the line. */
+.game-tile-where {
   display: flex;
   min-width: 0;
-  flex-direction: column;
-}
-
-.game-tile-primary-stats b {
-  overflow: hidden;
-  color: var(--color-text);
-  font-size: 13px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.game-tile-primary-stats small,
-.game-tile-host small {
+  align-items: baseline;
+  gap: 5px;
   color: var(--color-muted);
-  font-size: 11px;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-}
-
-/* The labels clip like the values above them. With three columns every label
-   fitted its track and nothing needed saying; at four, "AVG. RATING" is wider
-   than the number under it, and a label with no overflow rule does not shrink
-   its column, it simply paints over the next one. */
-.game-tile-primary-stats small {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 12px;
   white-space: nowrap;
 }
 
+.game-tile-where-map,
+.game-tile-where-host {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-tile-where-separator {
+  flex: none;
+}
+
+.game-tile-where-host {
+  flex: none;
+  max-width: 50%;
+}
+
+/* One line of whole tags: one that does not fit wraps to a second line,
+   which the height leaves out, rather than being cut off mid-word. The
+   first tags are the ones that matter most for that reason. */
 .game-tile-flags {
   display: flex;
+  flex-wrap: wrap;
   min-width: 0;
+  height: 20px;
   align-items: center;
-  gap: 4px;
-  margin-top: 7px;
+  gap: 8px 4px;
   overflow: hidden;
+  line-height: 14px;
+}
+
+.game-tile-flags:empty {
+  display: none;
 }
 
 .game-tile-flags i {
@@ -1118,21 +1120,71 @@
   background: color-mix(in srgb, var(--color-error) 12%, var(--color-surface));
 }
 
-.game-tile-host {
+.game-tile-stats {
   display: flex;
   min-width: 0;
-  align-items: baseline;
-  gap: 5px;
+  align-items: center;
+  gap: 10px;
   margin-top: auto;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
-.game-tile-host b {
-  overflow: hidden;
+/* Regular weight: the full text colour and a size above the muted line around
+   them are enough to make these the line's values. At 600, and still at 500,
+   they outweighed the title they sit under. */
+.game-tile-stats b {
+  flex: none;
   color: var(--color-text);
-  font-size: 11px;
-  font-weight: 550;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-tile-players {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+
+.game-tile-slots {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.game-tile-slots i {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--color-subtle);
+  border-radius: 50%;
+}
+
+.game-tile-slots i.is-taken {
+  background: var(--color-text);
+  border-color: var(--color-text);
+}
+
+.game-tile-slots.is-dense {
+  gap: 2px;
+}
+
+.game-tile-slots.is-dense i {
+  width: 6px;
+  height: 6px;
+}
+
+/* A big lobby on a narrow tile: the dots in two rows, eight over eight for
+   sixteen, at half the width and still inside the bottom line's height. In
+   one row they took 126 px of that line and pushed the rating out of it. */
+@container game-tile (max-width: 420px) {
+  .game-tile-slots.is-dense {
+    display: inline-grid;
+    grid-template-columns: repeat(var(--slot-columns), 6px);
+    gap: 2px;
+  }
 }
 
 .game-friends-popover {
@@ -1141,6 +1193,7 @@
   width: min(300px, calc(100vw - 32px));
   max-height: min(360px, calc(100vh - 32px));
   overflow-y: auto;
+  /* No scrollbar gutter: a pop-up as wide as what opened it, where a reserved strip would narrow every entry for a scrollbar most lists never show. */
   padding: 8px 10px;
   color: var(--color-text);
   background: var(--color-surface-raised);
@@ -1271,6 +1324,7 @@
   padding: var(--space-3);
   transform: translateX(-50%);
   overflow: auto;
+  /* No scrollbar gutter: a pop-up as wide as what opened it, where a reserved strip would narrow every entry for a scrollbar most lists never show. */
   color: var(--color-text);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
@@ -1565,13 +1619,12 @@
   min-width: 0;
 }
 
+/* Labelled as the facts under it are ("Map size"), as in the shared preview
+   (`.map-preview-dialog-name`). */
 .game-preview-dialog-name > span {
   flex: 0 0 auto;
-  color: var(--color-subtle);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .06em;
-  text-transform: uppercase;
+  color: var(--color-muted);
+  font-size: 12px;
 }
 
 .game-preview-dialog-name > code {
@@ -1591,9 +1644,14 @@
   padding: 3px;
   color: var(--color-muted);
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   cursor: pointer;
+}
+
+.game-preview-dialog-copy:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
 .game-preview-dialog-copy:hover {
@@ -1625,6 +1683,42 @@
   color: var(--color-text);
 }
 
+/* A generated map's settings, as a sheet: even columns, each label over its
+   value, on a quiet panel that holds them together under the name row. */
+.game-preview-dialog-facts.is-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-3);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.game-preview-dialog-facts.is-grid > div {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+}
+
+.game-preview-dialog-facts.is-grid > .is-wide {
+  grid-column: span 2;
+}
+
+.game-preview-dialog-facts.is-grid dt {
+  font-size: 11px;
+}
+
+.game-preview-dialog-facts.is-grid dd {
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* The tile's and the details panel's plate (`.game-tile-private`), with the
+   word beside the lock at this size. */
 .game-preview-dialog-private {
   position: absolute;
   top: var(--space-3);
@@ -1632,13 +1726,20 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 7px;
+  padding: 4px 8px;
   color: var(--color-text);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  background: var(--color-sidebar);
-  border: 1px solid var(--color-border-strong);
+  line-height: 16px;
+  background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
+}
+
+/* A pixel up by eye, as on the tile (`.game-tile-private svg`). */
+.game-preview-dialog-private svg {
+  position: relative;
+  top: -1px;
 }
 
 .game-preview-dialog-image,
@@ -1896,7 +1997,7 @@
 }
 
 /* The rating range tag.
-   A compact 3px gap cleanly separates the lock icon, numbers, and range separator. */
+   A compact 3px gap cleanly separates the shield, numbers, and range separator. */
 .game-rating-range {
   display: inline-flex;
   align-items: center;
@@ -1907,7 +2008,7 @@
   color: var(--color-subtle);
 }
 
-/* An enforced range is a rule, so it is drawn like one: the padlock and the
+/* An enforced range is a rule, so it is drawn like one: the shield and the
    warning colour separate it from the advisory range beside it in the list. */
 .game-rating-range.is-enforced {
   gap: 3px;

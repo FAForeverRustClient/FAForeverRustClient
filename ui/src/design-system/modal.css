@@ -15,6 +15,7 @@
   max-width: 900px;
   max-height: 85vh;
   overflow-y: auto;
+  /* No scrollbar gutter: a dialog is sized to its content and scrolls only in a short window, and a reserved strip would set its right edge, footer buttons and all, 11 px further in than its left. The lists inside a dialog reserve their own. */
   padding: 24px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);

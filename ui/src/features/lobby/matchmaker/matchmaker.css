@@ -340,6 +340,7 @@
   max-height: 56vh;
   margin-top: 18px;
   overflow: auto;
+  scrollbar-gutter: stable;
 }
 
 /* The bracket tabs are the shared `SectionTabs` strip, drawn as every other
@@ -452,6 +453,7 @@
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 /* `overflow: visible`, against `.matchmaker-card`'s hidden, and it is what
@@ -1359,6 +1361,7 @@
        chat that followed. */
     grid-auto-rows: max-content;
     overflow: auto;
+    scrollbar-gutter: stable;
   }
 
   .matchmaker-chat-divider {
@@ -1516,7 +1519,11 @@
   display: grid;
   gap: 20px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   padding: var(--space-4);
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). */
+  padding-right: max(0px, var(--space-4) - var(--scrollbar-size));
 }
 
 .matchmaker-explainer-section h3 {
@@ -1851,6 +1858,7 @@
   min-width: 0;
   margin-top: var(--space-3);
   overflow-y: auto;
+  scrollbar-gutter: stable;
   overflow-x: hidden;
 }
 

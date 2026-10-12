@@ -39,7 +39,10 @@ export const HostMapListColumn = memo(function HostMapListColumn({
   return (
     <section className="host-column host-column-maps surface-panel">
       <div className="host-column-header">
-        <h3>{t("lobby.host.map")}</h3>
+        <h3>
+          <Icon name="maps" size={14} />
+          {t("lobby.host.map")}
+        </h3>
         <span className="host-count-badge">
           {t("lobby.host.mapCount", { count: visibleMaps.length })}
         </span>

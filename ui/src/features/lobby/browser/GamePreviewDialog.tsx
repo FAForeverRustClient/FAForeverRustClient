@@ -233,7 +233,7 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
         </ZoomableImage>
         {game.passwordProtected && (
           <span className="game-preview-dialog-private" role="img" aria-label={t("lobby.browser.privateGame")} title={t("lobby.browser.privateGame")}>
-            <Icon name="lock" size={13} />
+            <Icon name="lock" size={14} />
             {t("lobby.browser.private")}
           </span>
         )}
@@ -281,9 +281,14 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
 
           For a generated map the facts are the generator settings, read out of
           the name. Its own size row supersedes the catalogue's, because a
-          generated map has no catalogue entry to take one from. */}
+          generated map has no catalogue entry to take one from.
+
+          A dozen settings run together as one wrapped line of label and value
+          pairs, which nobody could scan, so a generated map's facts are a grid:
+          each label over its value, in even columns. The seed is twenty digits
+          and takes two. A single size fact stays a plain line. */}
       {(generatorRows.length > 0 || size) && (
-        <dl className="game-preview-dialog-facts">
+        <dl className={`game-preview-dialog-facts${generatorRows.length > 0 ? " is-grid" : ""}`}>
           {generatorRows.length === 0 && size && (
             <div>
               <dt>{t("lobby.browser.mapSize")}</dt>
@@ -291,7 +296,7 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
             </div>
           )}
           {generatorRows.map((row) => (
-            <div key={row.key}>
+            <div key={row.key} className={row.key === "seed" ? "is-wide" : undefined}>
               <dt>{row.label}</dt>
               <dd>{row.value}</dd>
             </div>

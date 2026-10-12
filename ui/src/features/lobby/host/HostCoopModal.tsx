@@ -282,7 +282,10 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
         {/* Column 1: campaigns, where the custom dialog asks for a featured mod. */}
         <section className="host-column host-column-gametype surface-panel">
           <div className="host-column-header">
-            <h3>{t("lobby.coop.campaigns")}</h3>
+            <h3>
+              <Icon name="book" size={14} />
+              {t("lobby.coop.campaigns")}
+            </h3>
           </div>
           <div
             ref={campaignListRef}
@@ -327,7 +330,10 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
         {/* Column 2: the missions of that campaign, not the whole map vault. */}
         <section className="host-column host-column-maps surface-panel">
           <div className="host-column-header">
-            <h3>{t("lobby.coop.mission")}</h3>
+            <h3>
+              <Icon name="flag" size={14} />
+              {t("lobby.coop.mission")}
+            </h3>
             <span className="host-count-badge">
               {t("lobby.coop.missionCount", { count: missionsInCampaign.length })}
             </span>
@@ -389,7 +395,10 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
         {/* Column 3: the mission's art and briefing. */}
         <section className="host-column host-column-preview surface-panel">
           <div className="host-column-header">
-            <h3>{t("lobby.coop.selectedMission")}</h3>
+            <h3>
+              <Icon name="info" size={14} />
+              {t("lobby.coop.selectedMission")}
+            </h3>
           </div>
 
           <div className="host-column-body host-preview-body">

@@ -174,7 +174,10 @@ export const HostModsColumn = memo(function HostModsColumn() {
   return (
     <section className="host-column host-column-mods surface-panel">
       <div className="host-column-header">
-        <h3>{t("lobby.host.mods")}</h3>
+        <h3>
+          <Icon name="mods" size={14} />
+          {t("lobby.host.mods")}
+        </h3>
         <div className="host-header-actions">
           <span className="host-count-badge">
             {t("lobby.host.modCount", {

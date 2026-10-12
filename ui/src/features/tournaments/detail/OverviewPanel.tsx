@@ -1,9 +1,9 @@
 // The tournament's front page.
 //
 // Built in the website's own order, because that order is an argument and it is
-// a good one: the date, then anything live (streams, the latest announcement),
-// then what is at stake, then how the thing is actually run, and only then the
-// organiser's prose. A reader who stops after two panels has still learned when
+// a good one: anything live (the latest announcement), then what is at stake,
+// then how the thing is actually run, and only then the organiser's prose. The
+// date and the livestreams are facts in the hero's strip, over every section. A reader who stops after two panels has still learned when
 // it is and what they would win.
 //
 // What differs from the website is the paint, not the shape: our tokens, our
@@ -153,62 +153,53 @@ export function OverviewPanel({
           </Panel>
         )}
 
-        {event.streams.length > 0 && (
-          <Panel title={t("tournaments.overview.streams")}>
-            <ul className="tournament-streams">
-              {event.streams.map((stream) => (
-                <li key={stream.url}>
-                  <button type="button" className="rich-text-link" onClick={() => onOpenUrl(stream.url)}>
-                    <Icon name="play" size={14} /> {stream.url.replace(/^https?:\/\//, "")}
-                  </button>
-                  {stream.info !== "" && <span className="muted"> {stream.info}</span>}
-                </li>
-              ))}
-            </ul>
-          </Panel>
-        )}
-
-        {/* The format as a few large facts, each over its label. The schedule
-            and an early stop sit beside them: both change what the event
-            *is*, a two-weekend event and a qualifier that never plays its
-            final. */}
+        {/* The format as a label and a value a row, the shape of the game
+            setup under it. It was three large values over their labels side
+            by side, which put the match format's three lines beside two
+            words. The schedule and an early stop are rows of it: both change
+            what the event *is*, a two-weekend event and a qualifier that
+            never plays its final. */}
         <Panel title={t("tournaments.overview.tournamentFormat")}>
-          <div className="tournament-format-cells">
+          <dl className="tournament-rule-table">
             {formatCells(event, t).map((cell) => (
-              <div className="tournament-format-cell" key={cell.label}>
-                <div className="tournament-format-value">{cell.value}</div>
-                <div className="tournament-format-label">{t(cell.label)}</div>
+              <div key={cell.label}>
+                <dt>{t(cell.label)}</dt>
+                <dd>{cell.value}</dd>
               </div>
             ))}
             {days !== "" && (
-              <div className="tournament-format-cell">
-                <div className="tournament-format-value">{days}</div>
-                <div className="tournament-format-label">{t("tournaments.overview.schedule")}</div>
-                <p className="muted">
-                  {t("tournaments.overview.scheduleDays", { count: eventDayCount(event.eventDays) })}
-                  {event.eventDate !== null &&
-                    ` · ${t("tournaments.overview.scheduleStarts", { when: formatMoment(event.eventDate, "") })}`}
-                </p>
+              <div>
+                <dt>{t("tournaments.overview.schedule")}</dt>
+                <dd>
+                  <span>{days}</span>
+                  <span className="muted">
+                    {t("tournaments.overview.scheduleDays", { count: eventDayCount(event.eventDays) })}
+                    {event.eventDate !== null &&
+                      ` · ${t("tournaments.overview.scheduleStarts", { when: formatMoment(event.eventDate, "") })}`}
+                  </span>
+                </dd>
               </div>
             )}
             {event.stopAtAlive > 0 && (
-              <div className="tournament-format-cell">
-                <div className="tournament-format-value">{t("tournaments.overview.stopAtLine", { count: event.stopAtAlive })}</div>
-                <div className="tournament-format-label">{t("tournaments.overview.endsEarly")}</div>
-                {event.earlyFinish !== null ? (
-                  <p className="muted">{t("tournaments.overview.stopAtReached")}</p>
-                ) : (
-                  stopLeft !== null && (
-                    <p className="muted">
-                      {stopLeft === 0
-                        ? t("tournaments.overview.stopAtLast")
-                        : t("tournaments.overview.stopAtToGo", { count: stopLeft })}
-                    </p>
-                  )
-                )}
+              <div>
+                <dt>{t("tournaments.overview.endsEarly")}</dt>
+                <dd>
+                  <span>{t("tournaments.overview.stopAtLine", { count: event.stopAtAlive })}</span>
+                  {event.earlyFinish !== null ? (
+                    <span className="muted">{t("tournaments.overview.stopAtReached")}</span>
+                  ) : (
+                    stopLeft !== null && (
+                      <span className="muted">
+                        {stopLeft === 0
+                          ? t("tournaments.overview.stopAtLast")
+                          : t("tournaments.overview.stopAtToGo", { count: stopLeft })}
+                      </span>
+                    )
+                  )}
+                </dd>
               </div>
             )}
-          </div>
+          </dl>
         </Panel>
 
         {/* The rules a game is played under, as a table: the organiser's

@@ -3172,7 +3172,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -3539,6 +3540,81 @@
           },
           "expected": {
             "error": null,
+            "mode": "offline",
+            "player": null,
+            "status": "loggedIn"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "loggedOut"
+            },
+            "kind": "Auth"
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": null,
+            "status": "loggedOut"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a ban turns a signed-in session into an offline one that keeps the reason (#488)",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "type": "loginStarted"
+            },
+            "kind": "Auth"
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": null,
+            "status": "loggingIn"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "player": {
+                  "id": 7,
+                  "name": "Ada",
+                  "roles": []
+                }
+              },
+              "type": "loggedIn"
+            },
+            "kind": "Auth"
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": {
+              "id": 7,
+              "name": "Ada",
+              "roles": []
+            },
+            "status": "loggedIn"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "message": "You are banned from FAF forever."
+              },
+              "type": "banned"
+            },
+            "kind": "Auth"
+          },
+          "expected": {
+            "error": "You are banned from FAF forever.",
             "mode": "offline",
             "player": null,
             "status": "loggedIn"
@@ -7852,6 +7928,439 @@
           "event": {
             "event": {
               "type": "gameTerminated"
+            },
+            "kind": "Lobby"
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "a matchmaker launch the server calls off before the game starts is over (#487)",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "type": "connected"
+            },
+            "kind": "Lobby"
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "state": {
+                  "payload": {
+                    "queueName": "tmm2v2"
+                  },
+                  "type": "launching"
+                }
+              },
+              "type": "matchmakingUpdated"
+            },
+            "kind": "Lobby"
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "tmm2v2"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "launch": {
+                  "args": [
+                    "/numgames",
+                    "12"
+                  ],
+                  "expectedPlayers": null,
+                  "faction": null,
+                  "gameOptions": {},
+                  "gameType": "custom",
+                  "mapPosition": null,
+                  "mapname": "scmp_009",
+                  "mod": "faf",
+                  "name": "Friday game",
+                  "ratingType": "global",
+                  "team": null,
+                  "uid": 8
+                }
+              },
+              "type": "launching"
+            },
+            "kind": "Lobby"
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "payload": {
+                "launch": {
+                  "args": [
+                    "/numgames",
+                    "12"
+                  ],
+                  "expectedPlayers": null,
+                  "faction": null,
+                  "gameOptions": {},
+                  "gameType": "custom",
+                  "mapPosition": null,
+                  "mapname": "scmp_009",
+                  "mod": "faf",
+                  "name": "Friday game",
+                  "ratingType": "global",
+                  "team": null,
+                  "uid": 8
+                }
+              },
+              "type": "launched"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "tmm2v2"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "id": 7
+              },
+              "type": "launchAbandoned"
+            },
+            "kind": "Lobby"
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "payload": {
+                "launch": {
+                  "args": [
+                    "/numgames",
+                    "12"
+                  ],
+                  "expectedPlayers": null,
+                  "faction": null,
+                  "gameOptions": {},
+                  "gameType": "custom",
+                  "mapPosition": null,
+                  "mapname": "scmp_009",
+                  "mod": "faf",
+                  "name": "Friday game",
+                  "ratingType": "global",
+                  "team": null,
+                  "uid": 8
+                }
+              },
+              "type": "launched"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "tmm2v2"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "state": {
+                  "payload": {
+                    "queueName": "tmm2v2"
+                  },
+                  "type": "cancelled"
+                }
+              },
+              "type": "matchmakingUpdated"
+            },
+            "kind": "Lobby"
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "payload": {
+                "launch": {
+                  "args": [
+                    "/numgames",
+                    "12"
+                  ],
+                  "expectedPlayers": null,
+                  "faction": null,
+                  "gameOptions": {},
+                  "gameType": "custom",
+                  "mapPosition": null,
+                  "mapname": "scmp_009",
+                  "mod": "faf",
+                  "name": "Friday game",
+                  "ratingType": "global",
+                  "team": null,
+                  "uid": 8
+                }
+              },
+              "type": "launched"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "tmm2v2"
+              },
+              "type": "cancelled"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "id": 8
+              },
+              "type": "launchAbandoned"
+            },
+            "kind": "Lobby"
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "tmm2v2"
+              },
+              "type": "cancelled"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "state": {
+                  "payload": {
+                    "queueName": "tmm2v2"
+                  },
+                  "type": "launching"
+                }
+              },
+              "type": "matchmakingUpdated"
+            },
+            "kind": "Lobby"
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "tmm2v2"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "detail": "Generating map",
+                "phase": "map",
+                "progress": null
+              },
+              "type": "preparing"
+            },
+            "kind": "Lobby"
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "payload": {
+                "detail": "Generating map",
+                "phase": "map",
+                "progress": null
+              },
+              "type": "preparing"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "tmm2v2"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "id": 9
+              },
+              "type": "launchAbandoned"
             },
             "kind": "Lobby"
           },
@@ -22526,6 +23035,7 @@
                         "entered": 4,
                         "fafId": 5,
                         "name": "Ada",
+                        "profile": null,
                         "wins": 2
                       }
                     ],
@@ -22630,6 +23140,7 @@
                     "entered": 4,
                     "fafId": 5,
                     "name": "Ada",
+                    "profile": null,
                     "wins": 2
                   }
                 ],
@@ -22770,6 +23281,7 @@
                     "entered": 4,
                     "fafId": 5,
                     "name": "Ada",
+                    "profile": null,
                     "wins": 2
                   }
                 ],
@@ -22916,6 +23428,7 @@
                     "entered": 4,
                     "fafId": 5,
                     "name": "Ada",
+                    "profile": null,
                     "wins": 2
                   }
                 ],
@@ -23091,6 +23604,7 @@
                     "entered": 4,
                     "fafId": 5,
                     "name": "Ada",
+                    "profile": null,
                     "wins": 2
                   }
                 ],
@@ -23258,6 +23772,7 @@
                     "entered": 4,
                     "fafId": 5,
                     "name": "Ada",
+                    "profile": null,
                     "wins": 2
                   }
                 ],
@@ -23425,6 +23940,7 @@
                     "entered": 4,
                     "fafId": 5,
                     "name": "Ada",
+                    "profile": null,
                     "wins": 2
                   }
                 ],
@@ -23581,6 +24097,7 @@
                     "entered": 4,
                     "fafId": 5,
                     "name": "Ada",
+                    "profile": null,
                     "wins": 2
                   }
                 ],
@@ -23741,6 +24258,7 @@
                     "entered": 4,
                     "fafId": 5,
                     "name": "Ada",
+                    "profile": null,
                     "wins": 2
                   }
                 ],
@@ -23900,6 +24418,7 @@
                     "entered": 4,
                     "fafId": 5,
                     "name": "Ada",
+                    "profile": null,
                     "wins": 2
                   }
                 ],
@@ -57581,7 +58100,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -57864,7 +58384,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -58157,7 +58678,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -58444,7 +58966,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -58731,7 +59254,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -59028,7 +59552,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -59331,7 +59856,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -59631,7 +60157,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -59939,7 +60466,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -60330,7 +60858,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -60683,7 +61212,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -61038,7 +61568,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -61394,7 +61925,8 @@
                   "replayListOrder": [],
                   "replayVaultPlayer": "",
                   "replaysView": "list",
-                  "vaultPageSize": 48
+                  "vaultPageSize": 48,
+                  "whitelistedHosts": []
                 }
               },
               "type": "browsingChanged"
@@ -61529,7 +62061,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "list",
-              "vaultPageSize": 48
+              "vaultPageSize": 48,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -75617,7 +76150,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -75910,7 +76444,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -76233,7 +76768,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -76542,7 +77078,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -76838,7 +77375,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -77125,7 +77663,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -77411,7 +77950,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -77725,7 +78265,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -78008,7 +78549,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -78303,7 +78845,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 3,
@@ -78596,7 +79139,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 3,
@@ -78883,7 +79427,8 @@
                     "replayListOrder": [],
                     "replayVaultPlayer": "",
                     "replaysView": "tiles",
-                    "vaultPageSize": 0
+                    "vaultPageSize": 0,
+                    "whitelistedHosts": []
                   },
                   "cacheInfo": {
                     "totalFiles": 0,
@@ -79160,7 +79705,8 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -120314,7 +120860,8 @@
         "replayListOrder": [],
         "replayVaultPlayer": "",
         "replaysView": "tiles",
-        "vaultPageSize": 0
+        "vaultPageSize": 0,
+        "whitelistedHosts": []
       },
       "cacheInfo": {
         "totalFiles": 0,

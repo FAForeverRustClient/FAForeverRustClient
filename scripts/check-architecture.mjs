@@ -252,6 +252,28 @@ for (const path of await sourceFiles(featuresRoot, new Set([".ts", ".tsx"]))) {
   }
 }
 
+// A box that scrolls up and down keeps its scrollbar's room, or says why not.
+// Without the room, the scrollbar takes 11 px from the content the moment the
+// content overflows, and everything in the box moves left; a grid can lose a
+// column. A pop-up, a sidebar or a dialog can have a reason not to, and the
+// reason is written in the rule as a comment starting "No scrollbar gutter:".
+// A box whose scrollbar is hidden (`scrollbar-width: none`) takes no room to
+// begin with.
+for (const path of await sourceFiles(resolve(root, "ui/src"), new Set([".css"]))) {
+  const source = await readFile(path, "utf8");
+  for (const match of source.matchAll(/[^{}]*\{([^{}]*)\}/g)) {
+    const body = match[1];
+    const declarations = body.replace(/\/\*[\s\S]*?\*\//g, "");
+    const scrollsDown = /(^|[;\s])overflow-y\s*:\s*(auto|scroll)/.test(declarations)
+      || (/(^|[;\s])overflow\s*:\s*(auto|scroll)/.test(declarations)
+        && !/(^|[;\s])overflow-y\s*:\s*(hidden|visible|clip)/.test(declarations));
+    if (!scrollsDown) continue;
+    if (/scrollbar-gutter\s*:/.test(declarations) || /scrollbar-width\s*:\s*none/.test(declarations)) continue;
+    if (/No scrollbar gutter:/.test(body)) continue;
+    report(path, `line ${lineNumber(source, match.index + match[0].indexOf("{"))} scrolls without scrollbar-gutter; keep the room (scrollbar-gutter: stable) or say why not in a "No scrollbar gutter:" comment`);
+  }
+}
+
 // Compact metadata still has to remain readable on an ordinary desktop
 // display. This was previously documented but unenforced, which allowed more
 // than forty sub-floor declarations to accumulate again.

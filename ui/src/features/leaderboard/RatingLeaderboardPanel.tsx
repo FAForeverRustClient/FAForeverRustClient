@@ -283,17 +283,41 @@ export function RatingLeaderboardPanel() {
       {/* No tabs for the boards. There is one table with every board in it,
           and the board the ladder is ranked by is chosen by pressing that
           board's column header, which marks itself as the ranked one. */}
+      {/* The question on one line: the name, the search, how the name is
+          looked up; which players on a line of its own under it, with More
+          filters and Clear at its right end. What it
+          found and how the table shows it is a second, quieter line over the
+          table itself (`leaderboard-summary`), so the two settings that shape
+          the table sit at its top right rather than over the player panel. */}
       <SearchPanel
         className="leaderboard-search-panel"
         onSubmit={(event) => { event.preventDefault(); submit(); }}
+        // Which players, on a line of its own under the question: it picks
+        // the board's population, where the line above looks somebody up.
+        // One choice, so one control: the toolbar's own buttons joined into a
+        // pair, the chosen one filled as a chosen toggle is elsewhere in the
+        // client. Apart, they read as two actions.
+        //
+        // More filters and Clear at that line's other end: they change what
+        // the search covers rather than asking it.
         secondary={(
           <>
-            <Button className={activeOnly ? "active" : ""} onClick={() => changeActivityFilter(true)}>{t("leaderboard.ratings.activeThisMonth")}</Button>
-            <Button className={!activeOnly ? "active" : ""} onClick={() => changeActivityFilter(false)}>{t("leaderboard.ratings.allPlayers")}</Button>
-            <span className="spacer" />
-            <SearchPanelToggle expanded={filtersOpen} count={dateFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
-            <Button onClick={clearFilters}>{t("leaderboard.ratings.clear")}</Button>
-            <Button aria-label={t("leaderboard.ratings.refreshRankings")} onClick={() => void load(state.ratingQuery)}><Icon name="refresh" size={15} /> {t("leaderboard.ratings.refresh")}</Button>
+            <div className="leaderboard-activity" role="group" aria-label={t("leaderboard.ratings.whichPlayers")}>
+              {[true, false].map((only) => (
+                <Button
+                  key={String(only)}
+                  className={activeOnly === only ? "active" : ""}
+                  aria-pressed={activeOnly === only}
+                  onClick={() => changeActivityFilter(only)}
+                >
+                  {t(only ? "leaderboard.ratings.activeThisMonth" : "leaderboard.ratings.allPlayers")}
+                </Button>
+              ))}
+            </div>
+            <span className="leaderboard-search-end">
+              <SearchPanelToggle expanded={filtersOpen} count={dateFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
+              <Button onClick={clearFilters}>{t("leaderboard.ratings.clear")}</Button>
+            </span>
           </>
         )}
         // The dates narrow "All players" to who played in a window. They used
@@ -313,47 +337,45 @@ export function RatingLeaderboardPanel() {
           </div>
         ) : undefined}
       >
-        {/* The name and the one thing that changes how it is looked up, on
-            the field's own label line, then the search: the row reads as one
-            question. A field label cannot hold the box, a label inside a
-            label being no label at all, so the field is spelled out here. */}
+        {/* The name, the search, and the one thing that changes how the name
+            is looked up: the row reads as one question. The field has no
+            caption over it any more, which was a line of its own; how the
+            name is matched is in its placeholder and its accessible name, and
+            the box beside it shows the same while somebody types. */}
         <div className="search-panel-field search-panel-field-grow leaderboard-search-player">
-          <div className="leaderboard-search-label-row">
-            <label className="search-panel-label" htmlFor={`${playerFieldId}-name`}>
-              {t(includeFormerNames ? "leaderboard.ratings.anyPlayerName" : "leaderboard.ratings.exactPlayer")}
-            </label>
-            {/* Off by default, because it turns a lookup into a list of
-                candidates: part of any name, current or former, and a released
-                name can have been worn by several accounts (#299). Once ticked
-                it stays ticked, across restarts too (#424). */}
-            <label className="option-check leaderboard-search-former" title={t("leaderboard.ratings.includeFormerNamesHint")}>
-              <input
-                type="checkbox"
-                checked={includeFormerNames}
-                onChange={(event) => {
-                  setIncludeFormerNames(event.target.checked);
-                  rememberIncludeFormerNames(event.target.checked);
-                }}
-              />
-              {t("leaderboard.ratings.includeFormerNames")}
-            </label>
-          </div>
           <input
             id={`${playerFieldId}-name`}
             className="search-panel-control"
             value={player}
-            placeholder={t("leaderboard.ratings.playerName")}
+            aria-label={t(includeFormerNames ? "leaderboard.ratings.anyPlayerName" : "leaderboard.ratings.exactPlayer")}
+            placeholder={t(includeFormerNames ? "leaderboard.ratings.anyPlayerName" : "leaderboard.ratings.playerName")}
             onChange={(event) => setPlayer(event.target.value)}
           />
         </div>
         <SearchPanelSubmit disabled={state.ratingsStatus.type === "loading"} />
+        {/* Off by default, because it turns a lookup into a list of
+            candidates: part of any name, current or former, and a released
+            name can have been worn by several accounts (#299). Once ticked it
+            stays ticked, across restarts too (#424). */}
+        <label className="option-check leaderboard-search-former" title={t("leaderboard.ratings.includeFormerNamesHint")}>
+          <input
+            type="checkbox"
+            checked={includeFormerNames}
+            onChange={(event) => {
+              setIncludeFormerNames(event.target.checked);
+              rememberIncludeFormerNames(event.target.checked);
+            }}
+          />
+          {t("leaderboard.ratings.includeFormerNames")}
+        </label>
       </SearchPanel>
 
       <div className="leaderboard-main-grid has-summary">
-        {/* What the search found and how it is laid out, over the table it
-            describes: the count on the left, and at the table's top right the
-            two settings that shape it, its page length and its columns, rather
-            than among the filters or over the player details. */}
+        {/* What the search found and how the table shows it, on a line of its
+            own over the table and only over the table: the page length and
+            the columns belong to the table, not to the player panel beside
+            it. Refresh is here rather than with the search: it runs the shown
+            results again, where Search asks a new question. */}
         <div className="leaderboard-summary">
           <div className="leaderboard-summary-count">
             <Icon name="users" size={16} />
@@ -365,47 +387,51 @@ export function RatingLeaderboardPanel() {
                   formatted: formatNumber(state.ratingPage.totalResults),
                 })}
             </strong>
-            <span className="muted">
-              {t(state.ratingQuery.activeOnly ? "leaderboard.ratings.activeThisMonth" : "leaderboard.ratings.allPlayers")}
-            </span>
           </div>
-          <span className="spacer" />
-          <label className="leaderboard-summary-rows">
-            <span className="muted">{t("leaderboard.ratings.rows")}</span>
-            <select className="search-panel-control" value={pageSize} onChange={(event) => changePageSize(Number(event.target.value))}>
-              {[25, 50, 75, 100].map((size) => <option key={size} value={size}>{size}</option>)}
-            </select>
-          </label>
-          <div className="leaderboard-columns" ref={columnsRef}>
+          <span className="leaderboard-summary-tools">
+            <label className="leaderboard-summary-rows">
+              <span className="muted">{t("leaderboard.ratings.rows")}</span>
+              <select className="search-panel-control" value={pageSize} onChange={(event) => changePageSize(Number(event.target.value))}>
+                {[25, 50, 75, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+              </select>
+            </label>
+            <div className="leaderboard-columns" ref={columnsRef}>
+              <Button
+                className={`leaderboard-columns-trigger${columnsOpen ? " active" : ""}`}
+                aria-expanded={columnsOpen}
+                aria-haspopup="dialog"
+                onClick={() => setColumnsOpen((open) => !open)}
+              >
+                <Icon name="filter" size={15} /> {t("leaderboard.ratings.columns")}
+              </Button>
+              {columnsOpen && <div className="leaderboard-columns-menu" role="dialog" aria-label={t("leaderboard.ratings.visibleLeaderboardColumns")}>
+                <div className="leaderboard-columns-menu-header">
+                  <strong>{t("leaderboard.ratings.visibleColumns")}</strong>
+                  <button type="button" className="leaderboard-columns-close" aria-label={t("leaderboard.ratings.closeColumnsMenu")} onClick={() => setColumnsOpen(false)}>
+                    <Icon name="close" size={14} />
+                  </button>
+                </div>
+                {OPTIONAL_COLUMNS.map((column) => (
+                  <label key={column.key} className="option-check">
+                    <input
+                      type="checkbox"
+                      checked={visibleColumns.includes(column.key)}
+                      onChange={() => toggleColumn(column.key)}
+                    />
+                    {t(column.label)}
+                  </label>
+                ))}
+              </div>}
+            </div>
             <Button
-              className={`leaderboard-columns-trigger${columnsOpen ? " active" : ""}`}
-              aria-expanded={columnsOpen}
-              aria-haspopup="dialog"
-              onClick={() => setColumnsOpen((open) => !open)}
+              aria-label={t("leaderboard.ratings.refreshRankings")}
+              title={t("leaderboard.ratings.refreshRankings")}
+              onClick={() => void load(state.ratingQuery)}
             >
-              <Icon name="filter" size={15} /> {t("leaderboard.ratings.columns")}
+              <Icon name="refresh" size={15} />
             </Button>
-            {columnsOpen && <div className="leaderboard-columns-menu" role="dialog" aria-label={t("leaderboard.ratings.visibleLeaderboardColumns")}>
-              <div className="leaderboard-columns-menu-header">
-                <strong>{t("leaderboard.ratings.visibleColumns")}</strong>
-                <button type="button" className="leaderboard-columns-close" aria-label={t("leaderboard.ratings.closeColumnsMenu")} onClick={() => setColumnsOpen(false)}>
-                  <Icon name="close" size={14} />
-                </button>
-              </div>
-              {OPTIONAL_COLUMNS.map((column) => (
-                <label key={column.key} className="option-check">
-                  <input
-                    type="checkbox"
-                    checked={visibleColumns.includes(column.key)}
-                    onChange={() => toggleColumn(column.key)}
-                  />
-                  {t(column.label)}
-                </label>
-              ))}
-            </div>}
-          </div>
+          </span>
         </div>
-
         <div className={`leaderboard-results surface-panel${state.ratingsStatus.type === "loading" ? " is-loading" : ""}`}>
           {state.ratingsStatus.type === "failed" ? (
             <div className="leaderboard-state leaderboard-error" title={state.ratingsStatus.payload.reason}>

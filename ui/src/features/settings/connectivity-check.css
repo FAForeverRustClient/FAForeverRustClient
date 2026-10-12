@@ -186,6 +186,7 @@
   margin: 0;
   padding: var(--space-3);
   overflow: auto;
+  /* No scrollbar gutter: the text does not change while it is on screen, so its scrollbar never appears under the reader. */
   color: var(--color-text);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);

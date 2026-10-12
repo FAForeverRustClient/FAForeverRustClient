@@ -127,6 +127,16 @@ pub enum AuthEvent {
     },
     /// The shell opened without an account. See [`AuthMode::Offline`].
     WentOffline,
+    /// The lobby server refused this account because it is banned (#488).
+    ///
+    /// The session carries on as an offline one, which is what
+    /// [`AuthMode::Offline`] was made for: the local replay archive stays, and
+    /// everything that asks FAF a question (the lobby, chat, the vaults,
+    /// reviews) goes away, as it does in the Java client once it reads the
+    /// ban. `message` is the server's reason, kept as the session's error.
+    Banned {
+        message: String,
+    },
     LoginFailed {
         message: String,
     },
@@ -185,6 +195,12 @@ pub fn reduce(state: &mut AuthState, event: &AuthEvent) {
             state.status = AuthStatus::LoggedIn;
             state.player = None;
             state.error = None;
+            state.mode = AuthMode::Offline;
+        }
+        AuthEvent::Banned { message } => {
+            state.status = AuthStatus::LoggedIn;
+            state.player = None;
+            state.error = Some(message.clone());
             state.mode = AuthMode::Offline;
         }
         AuthEvent::LoginFailed { message } => {
@@ -317,6 +333,31 @@ mod tests {
         assert_eq!(s.mode, AuthMode::Offline);
         assert_eq!(s.player, None);
         assert_eq!(s.error, None);
+    }
+
+    #[test]
+    fn a_ban_turns_the_session_into_an_offline_one_that_says_why() {
+        let mut s = AuthState::default();
+        reduce(
+            &mut s,
+            &AuthEvent::LoggedIn {
+                player: Player::new(1, "speed2"),
+            },
+        );
+        reduce(
+            &mut s,
+            &AuthEvent::Banned {
+                message: "You are banned from FAF forever.".into(),
+            },
+        );
+        assert_eq!(s.status, AuthStatus::LoggedIn);
+        assert_eq!(s.mode, AuthMode::Offline);
+        assert_eq!(s.player, None);
+        assert_eq!(s.error.as_deref(), Some("You are banned from FAF forever."));
+
+        // Signing out from there is an ordinary sign-out.
+        reduce(&mut s, &AuthEvent::LoggedOut);
+        assert_eq!(s, AuthState::default());
     }
 
     #[test]

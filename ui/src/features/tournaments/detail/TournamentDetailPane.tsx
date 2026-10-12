@@ -445,6 +445,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
         event={event}
         pill={pill}
         assetBase={props.assetBase}
+        onOpenUrl={props.onOpenUrl}
         actions={
           <>
             {mayEnter && (

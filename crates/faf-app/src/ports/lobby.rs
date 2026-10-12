@@ -110,6 +110,13 @@ pub enum LobbyUpdate {
         style: ServerNoticeStyle,
         text: String,
     },
+    /// The server refused this account because it is banned (#488), with
+    /// its reason as plain text. The transport has stopped for good: another
+    /// attempt would be refused the same way, and each refusal used to arrive
+    /// as one more notification.
+    Banned {
+        text: String,
+    },
     /// Authentication/protocol rejection with the server's authoritative
     /// reason. The transport closes immediately after sending this update.
     ConnectionRejected {

@@ -279,6 +279,11 @@ impl IcePort for JavaAdapter {
             return Err("the optional Java ICE adapter is not installed".into());
         }
 
+        // How long each of the two steps below takes, in the log: whether
+        // starting the adapter while the session is fetched would save any
+        // time is a question for these numbers (#493), not for a guess.
+        let asked = std::time::Instant::now();
+
         // ICE servers (the Java adapter doesn't fetch these itself). Said in
         // so many words when they are missing: the bare status read as if the
         // adapter on the player's machine had failed, when it was never run.
@@ -289,6 +294,12 @@ impl IcePort for JavaAdapter {
                     format!("the FAF server did not hand out this game's relay servers ({reason})")
                 })?;
         self.memory.remember_servers(params.game_id, &ice.servers);
+        tracing::info!(
+            game_id = params.game_id,
+            milliseconds = asked.elapsed().as_millis() as u64,
+            "the ICE session arrived"
+        );
+        let spawning = std::time::Instant::now();
 
         // Reserving a port means binding it and letting it go, so the numbers
         // are free when they are chosen and not necessarily when the adapter
@@ -306,7 +317,15 @@ impl IcePort for JavaAdapter {
                 .spawn_and_connect(&params, &ice, rpc_port, gpg_port)
                 .await
             {
-                Ok((rpc, notifications)) => break (gpg_port, rpc, notifications),
+                Ok((rpc, notifications)) => {
+                    tracing::info!(
+                        game_id = params.game_id,
+                        attempt,
+                        milliseconds = spawning.elapsed().as_millis() as u64,
+                        "the ICE adapter answered"
+                    );
+                    break (gpg_port, rpc, notifications);
+                }
                 Err(reason) if attempt < PORT_ATTEMPTS => tracing::warn!(
                     attempt,
                     rpc_port,

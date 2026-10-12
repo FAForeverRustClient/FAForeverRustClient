@@ -2334,7 +2334,9 @@ impl Default for HostGamePreferences {
 
 impl HostGamePreferences {
     fn normalized(mut self) -> Self {
-        self.title = truncate_trimmed(self.title, 128);
+        // The host dialog's own limit, so a remembered title never seeds the
+        // form with one the backend would refuse to host.
+        self.title = truncate_trimmed(self.title, super::lobby::HostGameConfig::MAX_TITLE_CHARS);
         self.featured_mod = truncate_trimmed(self.featured_mod, 128);
         if self.featured_mod.is_empty() {
             self.featured_mod = "faf".into();
@@ -2402,6 +2404,14 @@ pub struct BrowsingPreferences {
     pub favorite_maps: Vec<String>,
     /// Stable mod UIDs starred by the user.
     pub favorite_mods: Vec<String>,
+    /// Hosts whose games the game browser always shows, by login (#492).
+    ///
+    /// The exception to every hide switch and filter rule rather than one
+    /// more of them: somebody who hides modded and unranked games still wants
+    /// to see what a particular host has opened. Not a filter in
+    /// `FilterMemory`'s sense either, because it narrows nothing, so
+    /// [`BrowsingPreferences::without_filters`] leaves it as it is.
+    pub whitelisted_hosts: Vec<String>,
     /// Active preset filter in the map vault ("recommended", "favorites", "rating", "newest", "played", "all").
     pub map_vault_preset: String,
     /// Active preset filter in the mod vault ("recommended", "favorites", "rating", "ui", "newest", "all").
@@ -2529,6 +2539,7 @@ impl Default for BrowsingPreferences {
             host_coop: HostGamePreferences::default(),
             favorite_maps: Vec::new(),
             favorite_mods: Vec::new(),
+            whitelisted_hosts: Vec::new(),
             map_vault_preset: "recommended".into(),
             mod_vault_preset: "recommended".into(),
             map_vault_sort: String::new(),
@@ -2580,6 +2591,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             host_coop: HostGamePreferences,
             favorite_maps: Vec<String>,
             favorite_mods: Vec<String>,
+            whitelisted_hosts: Vec<String>,
             map_vault_preset: String,
             mod_vault_preset: String,
             map_vault_sort: String,
@@ -2631,6 +2643,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     host_coop: defaults.host_coop,
                     favorite_maps: defaults.favorite_maps,
                     favorite_mods: defaults.favorite_mods,
+                    whitelisted_hosts: defaults.whitelisted_hosts,
                     map_vault_preset: defaults.map_vault_preset,
                     mod_vault_preset: defaults.mod_vault_preset,
                     map_vault_sort: defaults.map_vault_sort,
@@ -2671,6 +2684,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             host_coop: wire.host_coop,
             favorite_maps: wire.favorite_maps,
             favorite_mods: wire.favorite_mods,
+            whitelisted_hosts: wire.whitelisted_hosts,
             map_vault_preset: wire.map_vault_preset,
             mod_vault_preset: wire.mod_vault_preset,
             map_vault_sort: wire.map_vault_sort,
@@ -2759,6 +2773,7 @@ impl BrowsingPreferences {
             .into_iter()
             .map(|uid| uid.to_ascii_lowercase())
             .collect();
+        self.whitelisted_hosts = normalize_logins(self.whitelisted_hosts, 256);
         self.map_vault_preset = match self.map_vault_preset.trim().to_ascii_lowercase().as_str() {
             "favorites" => "favorites".into(),
             // Kept even when signed out: the preset outlives the session it was
@@ -3486,6 +3501,7 @@ preference_patch! {
         matchmaker_chat_width: u32,
         favorite_maps: Vec<String>,
         favorite_mods: Vec<String>,
+        whitelisted_hosts: Vec<String>,
         map_vault_preset: String,
         mod_vault_preset: String,
         map_vault_sort: String,
@@ -3607,6 +3623,8 @@ pub enum PreferenceList {
     FavoriteMaps,
     /// `browsing.favorite_mods`, by mod uid.
     FavoriteMods,
+    /// `browsing.whitelisted_hosts`, by login.
+    WhitelistedHosts,
     /// `browsing.leaderboard_rating_columns`.
     LeaderboardRatingColumns,
     /// `chat.muted_players`, by login.
@@ -3660,6 +3678,10 @@ pub fn list_member_changed(
         PreferenceList::FavoriteMods => {
             next.browsing.favorite_mods = with_member(next.browsing.favorite_mods, value, member)
         }
+        PreferenceList::WhitelistedHosts => {
+            next.browsing.whitelisted_hosts =
+                with_member(next.browsing.whitelisted_hosts, value, member)
+        }
         PreferenceList::LeaderboardRatingColumns => {
             next.browsing.leaderboard_rating_columns =
                 with_member(next.browsing.leaderboard_rating_columns, value, member)
@@ -3679,6 +3701,7 @@ pub fn list_member_changed(
     match list {
         PreferenceList::FavoriteMaps
         | PreferenceList::FavoriteMods
+        | PreferenceList::WhitelistedHosts
         | PreferenceList::LeaderboardRatingColumns => SettingsEvent::BrowsingChanged {
             preferences: Box::new(next.browsing),
         },
@@ -4659,6 +4682,7 @@ mod tests {
                     String::new(),
                 ],
                 favorite_mods: vec!["  Eco_Graph  ".into(), "eco_graph".into(), String::new()],
+                whitelisted_hosts: Vec::new(),
                 map_vault_preset: "  NEWEST  ".into(),
                 map_vault_sort: "  newest  ".into(),
                 mod_vault_sort: String::new(),
@@ -4845,6 +4869,7 @@ mod tests {
         browsing.map_vault_sort = "rating".into();
         browsing.replay_vault_player = "Dog".into();
         browsing.favorite_maps = vec!["setons_clutch".into()];
+        browsing.whitelisted_hosts = vec!["Nuggets".into()];
         browsing
             .remembered_filters
             .insert("installedMods".into(), r#"{"search":"ui"}"#.into());
@@ -4862,6 +4887,8 @@ mod tests {
         assert!(cleared.custom_games_browser.sort_reversed);
         assert_eq!(cleared.custom_games_browser.column_widths, vec![200]);
         assert_eq!(cleared.map_vault_sort, "rating");
+        // Nor are the hosts always shown: they narrow nothing.
+        assert_eq!(cleared.whitelisted_hosts, ["Nuggets"]);
         assert_eq!(cleared.favorite_maps, vec!["setons_clutch".to_owned()]);
     }
 
@@ -5500,6 +5527,44 @@ mod tests {
             ),
         );
         assert_eq!(removed.browsing.favorite_maps, ["dawn.v0003"]);
+    }
+
+    #[test]
+    fn whitelisted_hosts_keep_their_spelling_and_take_members_one_at_a_time() {
+        let settings = SettingsState::default();
+        let settings = applied(
+            settings.clone(),
+            list_member_changed(
+                &settings,
+                PreferenceList::WhitelistedHosts,
+                " Nuggets ",
+                true,
+            ),
+        );
+        let settings = applied(
+            settings.clone(),
+            list_member_changed(&settings, PreferenceList::WhitelistedHosts, "aurora", true),
+        );
+        // A login keeps its case, unlike a map folder, and the list is sorted.
+        assert_eq!(settings.browsing.whitelisted_hosts, ["aurora", "Nuggets"]);
+
+        // The same host in another case is not added twice.
+        let again = applied(
+            settings.clone(),
+            list_member_changed(&settings, PreferenceList::WhitelistedHosts, "NUGGETS", true),
+        );
+        assert_eq!(again.browsing.whitelisted_hosts, ["aurora", "Nuggets"]);
+
+        let removed = applied(
+            settings.clone(),
+            list_member_changed(
+                &settings,
+                PreferenceList::WhitelistedHosts,
+                "nuggets",
+                false,
+            ),
+        );
+        assert_eq!(removed.browsing.whitelisted_hosts, ["aurora"]);
     }
 
     #[test]

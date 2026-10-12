@@ -12,8 +12,7 @@ export type SitePage =
   | { kind: "hall" }
   | { kind: "series"; seriesId: string | null }
   | { kind: "faq"; articleId: string | null }
-  | { kind: "console" }
-  | { kind: "access"; access: "editor" | "importer" };
+  | { kind: "console" };
 
 /** The client section a website tab opens, for the pending bar's "Go". */
 export function sectionForTab(item: PendingItem): string {

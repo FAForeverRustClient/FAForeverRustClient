@@ -121,7 +121,10 @@ describe("Rating leaderboard re-runs", () => {
       includeFormerNames: false,
     };
     mount(executed, [entry(1, "Alpha", 1, 2400, 900), entry(2, "Bravo", 2, 2300, 800)]);
-    await user.click(screen.getByText("Bravo"));
+    // The row, not the name: the name opens the player menu.
+    const row = screen.getByText("Bravo").closest("tr");
+    if (!row) throw new Error("no row for Bravo");
+    await user.click(within(row).getAllByRole("cell")[0]);
     const details = () => screen.getByRole("complementary");
     expect(within(details()).getByText("#2")).toBeTruthy();
 
@@ -130,5 +133,26 @@ describe("Rating leaderboard re-runs", () => {
     expect(within(details()).getByText("#1")).toBeTruthy();
     expect(within(details()).getByText("2450")).toBeTruthy();
     expect(within(details()).getByText("812")).toBeTruthy();
+  });
+
+  it("opens the player menu from a name, as the chat tab does, without selecting the row", async () => {
+    const user = userEvent.setup();
+    const executed: RatingQuery = {
+      leaderboard: "global",
+      page: 1,
+      pageSize: 50,
+      activeOnly: true,
+      updatedAfter: null,
+      updatedBefore: null,
+      player: "",
+      includeFormerNames: false,
+    };
+    mount(executed, [entry(1, "Alpha", 1, 2400, 900), entry(2, "Bravo", 2, 2300, 800)]);
+    const name = screen.getByRole("button", { name: "Bravo" });
+    await user.click(name);
+
+    expect(screen.getByRole("menu")).toBeTruthy();
+    expect(name.getAttribute("aria-expanded")).toBe("true");
+    expect(name.closest("tr")?.classList.contains("is-selected")).toBe(false);
   });
 });

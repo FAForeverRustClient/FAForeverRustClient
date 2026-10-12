@@ -140,6 +140,7 @@
   margin: var(--space-3) 0 0;
   max-height: 6.5em;
   overflow-y: auto;
+  /* No scrollbar gutter: the text does not change while it is on screen, so its scrollbar never appears under the reader. */
   font-size: 12px;
   line-height: 1.5;
 }

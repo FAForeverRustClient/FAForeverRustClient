@@ -11,9 +11,6 @@ describe("sitePageReads", () => {
     expect(sitePageReads({ kind: "hall" })).toEqual([{ type: "loadSite", payload: { read: "hallOfFame" } }]);
     expect(sitePageReads({ kind: "console" })).toEqual([{ type: "loadSite", payload: { read: "console" } }]);
     expect(sitePageReads({ kind: "faq", articleId: null })).toEqual([{ type: "loadArticles" }]);
-    expect(sitePageReads({ kind: "access", access: "importer" })).toEqual([
-      { type: "loadSite", payload: { read: { access: { kind: "importer" } } } },
-    ]);
   });
 
   it("loads the series list, then opens or closes one series", () => {

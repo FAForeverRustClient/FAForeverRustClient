@@ -315,6 +315,52 @@ async fn server_kill_notice_is_retained_and_terminates_the_game() {
 }
 
 #[tokio::test]
+async fn a_ban_is_said_once_and_leaves_an_offline_session() {
+    // #488: the server refuses a banned account at every sign-in, and the
+    // client used to reconnect into the refusal and notify each time.
+    let lobby = FakeLobby::default();
+    let ports = Ports {
+        lobby: Arc::new(lobby.clone()),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    let mut events = app.subscribe();
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    wait_for_initial_games(&mut events).await;
+
+    assert!(lobby.push_update(LobbyUpdate::Banned {
+        text: "You are banned from FAF forever.
+Reason:
+Asked for it"
+            .into(),
+    }));
+
+    let mut saw_notice = false;
+    let mut saw_ban = false;
+    while !saw_notice || !saw_ban {
+        match events.recv().await.unwrap() {
+            AppEvent::Notifications(NotificationEvent::Added { notification }) => {
+                if notification.title == "Banned from FAF" {
+                    assert_eq!(notification.kind, NotificationKind::Error);
+                    assert!(notification.body.contains("Asked for it"));
+                    saw_notice = true;
+                }
+            }
+            AppEvent::Auth(faf_domain::state::AuthEvent::Banned { message }) => {
+                assert!(message.starts_with("You are banned from FAF"));
+                saw_ban = true;
+            }
+            _ => {}
+        }
+    }
+
+    let snap = app.snapshot();
+    assert_eq!(snap.auth.mode, faf_domain::state::AuthMode::Offline);
+    assert_eq!(snap.auth.player, None);
+}
+
+#[tokio::test]
 async fn connection_rejection_keeps_the_authoritative_reason() {
     let lobby = FakeLobby::default();
     let ports = Ports {
