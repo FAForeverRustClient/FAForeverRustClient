@@ -45,6 +45,7 @@ import {
 import { MapThumbnail } from "../../shared/components/MapThumbnail";
 import { MapCard, MapDetailPanel, MapHideDialog, MapRating, MapUninstallDialog } from "./MapVaultComponents";
 import { MapPreviewDialog } from "../../shared/components/MapPreviewZoom";
+import { hasMapVaultFocus, takeMapVaultFocus } from "../../shared/mapVaultFocus";
 import { GeneratorProgress, stillRunning } from "./GeneratorProgress";
 import { commandOfCurrentRun, startRun } from "./generatorCommands";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
@@ -131,7 +132,7 @@ function VaultView({ busy }: { busy: boolean }) {
       ? null
       : rememberedFilter<MapFilterState | null>(MAP_VAULT_FILTERS, null, isFilterRecord)
         ?? mapFilterFromQuery(browseQuery, preset));
-  const { draft, patchDraft: setFilter, setFilter: setField, applied, page, setPage, applySearch, applySort, reset } = useVaultFilters<MapFilterState, VaultPreset>({
+  const { draft, patchDraft: setFilter, setFilter: setField, applied, setApplied, page, setPage, applySearch, applySort, reset } = useVaultFilters<MapFilterState, VaultPreset>({
     initial: restored ?? {
       search: "",
       author: "",
@@ -227,6 +228,25 @@ function VaultView({ busy }: { busy: boolean }) {
       });
     }
   };
+
+  // Someone opened a map's preview somewhere else and asked to see it in the
+  // vault. Only on mount: tabs are unmounted when they lose focus, so this
+  // runs once per visit, and the request is cleared as it is read. The vault
+  // is searched for the map's name and the version that was shown is
+  // selected, so its panel opens on it.
+  useEffect(() => {
+    const focused = takeMapVaultFocus();
+    if (!focused) return;
+    setField("search", focused.name);
+    setApplied((previous) => ({ ...previous, search: focused.name }));
+    setPage(1);
+    setSelectedFolder(focused.folderName || null);
+    // A preset that narrows the list (recommended, favourites, my uploads,
+    // played) could hide the very map that was asked for, so it gives way to
+    // the whole vault. The sorting presets keep their order.
+    if (preset !== "all" && preset !== "rating" && preset !== "newest") choosePreset("all");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const clearSearch = () => {
     reset({
@@ -568,6 +588,7 @@ function VaultView({ busy }: { busy: boolean }) {
       {pendingHide && <MapHideDialog mapName={pendingHide.displayName} onCancel={() => setPendingHide(null)} onConfirm={() => { setMapVersionHidden(pendingHide.versionId, true); setPendingHide(null); }} />}
       {previewMap && (
         <MapPreviewDialog
+          vaultLink={false}
           map={previewMap}
           onClose={() => setPreviewMap(null)}
           meta={<>
@@ -979,6 +1000,7 @@ function InstalledView({ busy }: { busy: boolean }) {
       )}
       {previewMap && (
         <MapPreviewDialog
+          vaultLink={false}
           map={previewMap}
           onClose={() => setPreviewMap(null)}
           meta={<>{sizeLabel(previewMap)} · {t("maps.view.playerCount", { count: previewMap.maxPlayers ?? 2 })}</>}
@@ -1020,6 +1042,13 @@ export function MapsView() {
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
   const busy = installStatus.type === "installing";
   const { Component } = SUB_VIEWS[subView];
+
+  // A jump to a map from another tab lands on the vault, where the vault view
+  // then takes the request as it mounts.
+  useEffect(() => {
+    if (useAppStore.getState().state.nav.mapsSection === "vault") return;
+    if (hasMapVaultFocus()) selectSubView("vault");
+  }, []);
 
   return (
     <div className="maps-workspace">

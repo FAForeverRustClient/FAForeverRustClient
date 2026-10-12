@@ -16,8 +16,8 @@ import {
 } from "../../shared/mapPresentation";
 import { useAppStore } from "../../store/store";
 import { replayMapPresentation } from "./coopReplayMap";
+import { useGeneratedMapArt } from "../../shared/markedMapPreview";
 import {
-  generatedPreviewFor,
   generatorProgress as describeGeneratorProgress,
   heatmapPreviewUrl as heatmapBackdrop,
   isGeneratorRunning,
@@ -47,9 +47,8 @@ export function useReplayMapPreparation({ replay, localMatch }: Options) {
   const isGenerated = isGeneratedMap(effectiveMap);
   const seed = extractGeneratedMapSeed(effectiveMap);
   // The picture of a generated map, once the generator has built one.
-  const generatedPreview = useAppStore((state) => isGenerated
-    ? generatedPreviewFor(state.state.mapGenerator.previews, effectiveMap)
-    : undefined);
+  // With FAF's icons on it once drawn, as every other view shows it.
+  const generatedPreview = useGeneratedMapArt(isGenerated ? effectiveMap : null);
   // A generated map's size is in its name, and decoding the name is one
   // command for the one replay this panel shows, as the live panel does. Only
   // once the whole name is known: a bare generator placeholder has no size.

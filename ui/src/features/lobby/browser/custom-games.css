@@ -1569,21 +1569,14 @@
   padding-right: var(--space-4);
 }
 
-.game-preview-dialog-kicker {
-  color: var(--color-subtle);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
 .game-preview-dialog h2,
 .game-preview-dialog p {
   margin: 0;
 }
 
+/* No top margin: the title shares a row with its copy button and the map
+   size, centred on each other, and a margin pushed the name below them. */
 .game-preview-dialog h2 {
-  margin-top: 2px;
   font-size: 20px;
   font-weight: 650;
   letter-spacing: -.025em;
@@ -1606,57 +1599,6 @@
 }
 
 .game-preview-dialog-map .map-preview-viewport {
-  border-color: var(--color-border-strong);
-}
-
-/* The name row. It wraps rather than truncating: a generator name is 50-odd
-   characters and the half that gets cut off is the half that identifies the
-   map. */
-.game-preview-dialog-name {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-/* Labelled as the facts under it are ("Map size"), as in the shared preview
-   (`.map-preview-dialog-name`). */
-.game-preview-dialog-name > span {
-  flex: 0 0 auto;
-  color: var(--color-muted);
-  font-size: 12px;
-}
-
-.game-preview-dialog-name > code {
-  min-width: 0;
-  color: var(--color-text);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-  user-select: all;
-}
-
-.game-preview-dialog-copy {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-self: center;
-  align-items: center;
-  padding: 3px;
-  color: var(--color-muted);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.game-preview-dialog-copy:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
-}
-
-.game-preview-dialog-copy:hover {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
   border-color: var(--color-border-strong);
 }
 

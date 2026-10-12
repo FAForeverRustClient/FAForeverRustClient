@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import type { LocalReplay } from "../../ipc/bindings";
 import { GENERATED_MAP_PLACEHOLDER_URL } from "../../shared/mapPresentation";
 import {
-  generatedPreviewFor,
   generatorProgress,
   heatmapPreviewUrl,
   isGeneratorRunning,
@@ -67,14 +66,6 @@ describe("localReplayToVaultReplay", () => {
       outcome: "",
       score: null,
     });
-  });
-});
-
-describe("generatedPreviewFor", () => {
-  it("finds a preview stored under the name as given or lower-cased", () => {
-    expect(generatedPreviewFor({ Foo_Map: "a" }, "Foo_Map")).toBe("a");
-    expect(generatedPreviewFor({ foo_map: "b" }, "FOO_MAP")).toBe("b");
-    expect(generatedPreviewFor(undefined, "foo")).toBeUndefined();
   });
 });
 

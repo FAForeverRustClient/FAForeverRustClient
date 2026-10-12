@@ -90,6 +90,7 @@ pub(crate) mod league_keys;
 pub mod lobby_fake;
 pub mod lobby_ws;
 pub mod map_generator;
+pub mod map_markers;
 pub mod maps;
 pub mod mods;
 pub mod notification_sounds;

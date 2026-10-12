@@ -3271,6 +3271,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "maps.preview.zoomOut": "Отдалить",
   "maps.preview.zoomHint": "Колесо - масштаб, перетаскивание - сдвиг, двойной щелчок - приблизить или отдалить.",
   "maps.preview.copyImage": "Скопировать изображение",
+  "maps.preview.openInVault": "Открыть в хранилище карт",
   "maps.preview.imageCopied": "Изображение скопировано",
   "maps.preview.linkCopied": "Ссылка скопирована",
   "maps.preview.copyFailed": "Не удалось скопировать",
