@@ -25,7 +25,6 @@ import { CustomGamesToolbar, type SortMode } from "./browser/CustomGamesToolbar"
 import { compareGames } from "./browser/gameSortOrder";
 import { columnWidths, detailWidth, emptyDetailGivesWay, withDetailResized } from "./browser/browserLayout";
 import { GameMapImage } from "./GameMapImage";
-import { MarkedMapImage } from "../../shared/components/MarkedMapImage";
 import { requestModVaultFocus } from "../../shared/modVaultFocus";
 import { PlayModeTabs, playModePanelProps } from "./PlayModeTabs";
 import { queuedPlayerCount } from "./queuedPlayers";
@@ -143,12 +142,11 @@ function GameDetails({
     });
   }, [isGenerated, decoded, game.map]);
   const size = mapSize(maps.vault, game.map, decoded?.mapSize);
-  const installedMap = maps.installed.find(
+  const mapInstalled = maps.installed.some(
     (map) =>
       map.folderName.toLowerCase() === game.map.toLowerCase() ||
       map.folderName.toLowerCase().startsWith(`${game.map.toLowerCase()}.`),
   );
-  const mapInstalled = installedMap !== undefined;
   const isGeneratingThisMap =
     mapGenStatus.type === "generating" ||
     mapGenStatus.type === "downloading" ||
@@ -237,22 +235,12 @@ function GameDetails({
           title={t("lobby.browser.previewMap")}
           aria-label={t("lobby.browser.previewMap")}
         >
-          {/* The same picture the preview dialog opens on: a generated map on
-              disk with FAF's mass, hydro and spawn icons rather than the
-              generator's dots. */}
-          <MarkedMapImage
-            folderName={installedMap && isGenerated ? installedMap.folderName : null}
-            alt={t("common.mapPreview", { name: presentation.displayName })}
+          <GameMapImage
+            mapName={game.map}
+            vault={maps.vault}
             className="game-detail-map-image"
-            fallback={(
-              <GameMapImage
-                mapName={game.map}
-                vault={maps.vault}
-                className="game-detail-map-image"
-                placeholderClassName="map-preview-placeholder"
-                large
-              />
-            )}
+            placeholderClassName="map-preview-placeholder"
+            large
           />
           {game.passwordProtected && (
             <span className="private-badge" role="img" aria-label={t("lobby.details.privateGame")} title={t("lobby.details.privateGame")}>

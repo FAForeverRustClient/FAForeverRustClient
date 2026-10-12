@@ -11,6 +11,7 @@ import { GENERATION_TYPES, decodeNames, generate, generateNamed, loadOptions, lo
 import { stillRunning } from "./GeneratorProgress";
 import { generatorDraftReducer } from "./generatorDraft";
 import { useGeneratorPresets } from "./useGeneratorPresets";
+import { useGeneratedMapArt } from "../../shared/markedMapPreview";
 
 export function useGeneratorDialog(onClose: () => void, onGenerated?: (maps: string[]) => void) {
   const { t } = useTranslation();
@@ -264,7 +265,9 @@ export function useGeneratorDialog(onClose: () => void, onGenerated?: (maps: str
   }, [results, zoomed]);
 
   const currentMap = results && results.length > 0 ? results[selectedMapIndex] ?? results[0] : null;
-  const currentPreviewUrl = currentMap ? previews[currentMap] : undefined;
+  // FAF's icons on the terrain once drawn, the generator's own picture
+  // until then, as every other view shows a generated map.
+  const currentPreviewUrl = useGeneratedMapArt(currentMap);
   const currentFacts = currentMap ? state.decoded?.[currentMap] : undefined;
   const pickable = Boolean(onGenerated);
 

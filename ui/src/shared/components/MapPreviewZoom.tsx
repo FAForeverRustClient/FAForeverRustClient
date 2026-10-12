@@ -2,9 +2,10 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
 import { ipc } from "../../ipc/client";
+import type { VaultMap } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { MapPreview, type PreviewableMap } from "./MapPreview";
-import { MarkedMapImage } from "./MarkedMapImage";
+import { MapThumbnail } from "./MapThumbnail";
 import { toggleFavoriteMap, useIsFavoriteMap } from "../favoriteMaps";
 import { requestMapVaultFocus } from "../mapVaultFocus";
 import { isGeneratedMap } from "../mapPresentation";
@@ -29,6 +30,10 @@ const KEY_PAN = 60;
 /// Where a double click lands. Two and a half times is a quarter of the map
 /// filling the dialog, which is the "let me look at that spawn" step.
 const DOUBLE_CLICK_SCALE = 2.5;
+
+/// A generated map has no vault record, so its thumbnail is asked for without
+/// one. A constant so the thumbnail's memo does not see a new list each render.
+const NO_VAULT: VaultMap[] = [];
 
 /**
  * Put the preview PNG on the clipboard.
@@ -528,7 +533,6 @@ export function MapPreviewDialog({ map, meta, onClose, children, downloadUrl, va
   downloadUrl?: string;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
   const label = map.displayName || map.folderName;
   const favorite = useIsFavoriteMap(map.folderName);
   return (
@@ -558,16 +562,19 @@ export function MapPreviewDialog({ map, meta, onClose, children, downloadUrl, va
             </>
           ) : undefined}
         >
-          {children ?? (
-            // A generated map on disk with FAF's icons on it rather than the
-            // generator's dots, as the Play tab's preview has it.
-            <MarkedMapImage
-              folderName={isGeneratedMap(map.folderName) ? map.folderName : null}
-              alt={t("common.mapPreview", { name: label })}
-              className="map-vault-preview"
-              fallback={<MapPreview map={map} large />}
-            />
-          )}
+          {children ?? (isGeneratedMap(map.folderName)
+            // A generated map's picture comes from where every other view
+            // gets it, FAF's icons included; the vault has none for it.
+            ? (
+              <MapThumbnail
+                mapName={map.folderName}
+                vault={NO_VAULT}
+                className="map-vault-preview"
+                placeholderClassName="map-vault-preview map-vault-preview-empty"
+                large
+              />
+            )
+            : <MapPreview map={map} large />)}
         </ZoomableImage>
       </div>
     </Modal>

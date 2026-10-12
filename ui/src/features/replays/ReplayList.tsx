@@ -3,7 +3,6 @@ import { Icon, type IconName } from "../../design-system/Icon";
 import {
   isGeneratedMap,
   mapThumbnailCandidates,
-  normalizeMapName,
 } from "../../shared/mapPresentation";
 import { hourCycleOptions } from "../../shared/format/clock";
 import { clientIntlTag, formatAgeOrDate } from "../../shared/format/dates";
@@ -12,6 +11,7 @@ import { t, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ResizeHandle } from "../../design-system/ResizeHandle";
 import { useGeneratedMapPreview } from "../../shared/hooks/useGeneratedMapPreview";
+import { useGeneratedMapArt } from "../../shared/markedMapPreview";
 import { useListColumns } from "../../shared/hooks/useListColumns";
 import { columnTemplate } from "../../shared/tableColumns";
 
@@ -157,14 +157,7 @@ function ReplayListThumbnail({ url, mapName }: { url: string; mapName: string })
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
   const isGenerated = isGeneratedMap(mapName);
-  const normalized = normalizeMapName(mapName);
-  const generatedPreview = useAppStore((state) =>
-    isGenerated
-      ? state.state.mapGenerator.previews?.[mapName] ||
-        state.state.mapGenerator.previews?.[normalized] ||
-        state.state.mapGenerator.previews?.[mapName.toLowerCase()]
-      : undefined,
-  );
+  const generatedPreview = useGeneratedMapArt(isGenerated ? mapName : null);
   useGeneratedMapPreview(mapName, isGenerated, Boolean(generatedPreview));
   const candidates = useMemo(
     () => mapThumbnailCandidates(vault, mapName, false, undefined, generatedPreview, url || undefined),
