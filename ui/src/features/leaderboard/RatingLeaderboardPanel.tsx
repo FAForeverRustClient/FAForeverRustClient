@@ -283,14 +283,43 @@ export function RatingLeaderboardPanel() {
       {/* No tabs for the boards. There is one table with every board in it,
           and the board the ladder is ranked by is chosen by pressing that
           board's column header, which marks itself as the ranked one. */}
-      {/* One toolbar for the table: the question on the left, and on the
-          right what it found and how the table shows it. They were a search
-          panel of two half-empty lines and a third line under it, with most
-          of a wide window empty on the right of all three. On a narrow window
-          the right-hand group wraps to a line of its own and keeps right. */}
+      {/* The question on one line: the name, the search, how the name is
+          looked up; which players on a line of its own under it, with More
+          filters and Clear at its right end. What it
+          found and how the table shows it is a second, quieter line over the
+          table itself (`leaderboard-summary`), so the two settings that shape
+          the table sit at its top right rather than over the player panel. */}
       <SearchPanel
         className="leaderboard-search-panel"
         onSubmit={(event) => { event.preventDefault(); submit(); }}
+        // Which players, on a line of its own under the question: it picks
+        // the board's population, where the line above looks somebody up.
+        // One choice, so one control: the toolbar's own buttons joined into a
+        // pair, the chosen one filled as a chosen toggle is elsewhere in the
+        // client. Apart, they read as two actions.
+        //
+        // More filters and Clear at that line's other end: they change what
+        // the search covers rather than asking it.
+        secondary={(
+          <>
+            <div className="leaderboard-activity" role="group" aria-label={t("leaderboard.ratings.whichPlayers")}>
+              {[true, false].map((only) => (
+                <Button
+                  key={String(only)}
+                  className={activeOnly === only ? "active" : ""}
+                  aria-pressed={activeOnly === only}
+                  onClick={() => changeActivityFilter(only)}
+                >
+                  {t(only ? "leaderboard.ratings.activeThisMonth" : "leaderboard.ratings.allPlayers")}
+                </Button>
+              ))}
+            </div>
+            <span className="leaderboard-search-end">
+              <SearchPanelToggle expanded={filtersOpen} count={dateFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
+              <Button onClick={clearFilters}>{t("leaderboard.ratings.clear")}</Button>
+            </span>
+          </>
+        )}
         // The dates narrow "All players" to who played in a window. They used
         // to sit in the main row, greyed out, for the board's default of this
         // month's players, where they could not do anything; a date picked
@@ -339,29 +368,15 @@ export function RatingLeaderboardPanel() {
           />
           {t("leaderboard.ratings.includeFormerNames")}
         </label>
-        {/* One choice, so one control: the toolbar's own buttons joined into
-            a pair, the chosen one filled as a chosen toggle is elsewhere in
-            the client. Apart, they read as two actions; as the settings tab's
-            inset tray, they matched nothing else on the row. */}
-        <div className="leaderboard-activity" role="group" aria-label={t("leaderboard.ratings.whichPlayers")}>
-          {[true, false].map((only) => (
-            <Button
-              key={String(only)}
-              className={activeOnly === only ? "active" : ""}
-              aria-pressed={activeOnly === only}
-              onClick={() => changeActivityFilter(only)}
-            >
-              {t(only ? "leaderboard.ratings.activeThisMonth" : "leaderboard.ratings.allPlayers")}
-            </Button>
-          ))}
-        </div>
-        <SearchPanelToggle expanded={filtersOpen} count={dateFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
-        <Button onClick={clearFilters}>{t("leaderboard.ratings.clear")}</Button>
+      </SearchPanel>
 
-        {/* What the search found and how the table shows it. Refresh is here
-            rather than with the search: it runs the shown results again,
-            where Search asks a new question. */}
-        <div className="leaderboard-toolbar-results">
+      <div className="leaderboard-main-grid has-summary">
+        {/* What the search found and how the table shows it, on a line of its
+            own over the table and only over the table: the page length and
+            the columns belong to the table, not to the player panel beside
+            it. Refresh is here rather than with the search: it runs the shown
+            results again, where Search asks a new question. */}
+        <div className="leaderboard-summary">
           <div className="leaderboard-summary-count">
             <Icon name="users" size={16} />
             <strong>
@@ -373,51 +388,50 @@ export function RatingLeaderboardPanel() {
                 })}
             </strong>
           </div>
-          <label className="leaderboard-summary-rows">
-            <span className="muted">{t("leaderboard.ratings.rows")}</span>
-            <select className="search-panel-control" value={pageSize} onChange={(event) => changePageSize(Number(event.target.value))}>
-              {[25, 50, 75, 100].map((size) => <option key={size} value={size}>{size}</option>)}
-            </select>
-          </label>
-          <div className="leaderboard-columns" ref={columnsRef}>
+          <span className="leaderboard-summary-tools">
+            <label className="leaderboard-summary-rows">
+              <span className="muted">{t("leaderboard.ratings.rows")}</span>
+              <select className="search-panel-control" value={pageSize} onChange={(event) => changePageSize(Number(event.target.value))}>
+                {[25, 50, 75, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+              </select>
+            </label>
+            <div className="leaderboard-columns" ref={columnsRef}>
+              <Button
+                className={`leaderboard-columns-trigger${columnsOpen ? " active" : ""}`}
+                aria-expanded={columnsOpen}
+                aria-haspopup="dialog"
+                onClick={() => setColumnsOpen((open) => !open)}
+              >
+                <Icon name="filter" size={15} /> {t("leaderboard.ratings.columns")}
+              </Button>
+              {columnsOpen && <div className="leaderboard-columns-menu" role="dialog" aria-label={t("leaderboard.ratings.visibleLeaderboardColumns")}>
+                <div className="leaderboard-columns-menu-header">
+                  <strong>{t("leaderboard.ratings.visibleColumns")}</strong>
+                  <button type="button" className="leaderboard-columns-close" aria-label={t("leaderboard.ratings.closeColumnsMenu")} onClick={() => setColumnsOpen(false)}>
+                    <Icon name="close" size={14} />
+                  </button>
+                </div>
+                {OPTIONAL_COLUMNS.map((column) => (
+                  <label key={column.key} className="option-check">
+                    <input
+                      type="checkbox"
+                      checked={visibleColumns.includes(column.key)}
+                      onChange={() => toggleColumn(column.key)}
+                    />
+                    {t(column.label)}
+                  </label>
+                ))}
+              </div>}
+            </div>
             <Button
-              className={`leaderboard-columns-trigger${columnsOpen ? " active" : ""}`}
-              aria-expanded={columnsOpen}
-              aria-haspopup="dialog"
-              onClick={() => setColumnsOpen((open) => !open)}
+              aria-label={t("leaderboard.ratings.refreshRankings")}
+              title={t("leaderboard.ratings.refreshRankings")}
+              onClick={() => void load(state.ratingQuery)}
             >
-              <Icon name="filter" size={15} /> {t("leaderboard.ratings.columns")}
+              <Icon name="refresh" size={15} />
             </Button>
-            {columnsOpen && <div className="leaderboard-columns-menu" role="dialog" aria-label={t("leaderboard.ratings.visibleLeaderboardColumns")}>
-              <div className="leaderboard-columns-menu-header">
-                <strong>{t("leaderboard.ratings.visibleColumns")}</strong>
-                <button type="button" className="leaderboard-columns-close" aria-label={t("leaderboard.ratings.closeColumnsMenu")} onClick={() => setColumnsOpen(false)}>
-                  <Icon name="close" size={14} />
-                </button>
-              </div>
-              {OPTIONAL_COLUMNS.map((column) => (
-                <label key={column.key} className="option-check">
-                  <input
-                    type="checkbox"
-                    checked={visibleColumns.includes(column.key)}
-                    onChange={() => toggleColumn(column.key)}
-                  />
-                  {t(column.label)}
-                </label>
-              ))}
-            </div>}
-          </div>
-          <Button
-            aria-label={t("leaderboard.ratings.refreshRankings")}
-            title={t("leaderboard.ratings.refreshRankings")}
-            onClick={() => void load(state.ratingQuery)}
-          >
-            <Icon name="refresh" size={15} />
-          </Button>
+          </span>
         </div>
-      </SearchPanel>
-
-      <div className="leaderboard-main-grid">
         <div className={`leaderboard-results surface-panel${state.ratingsStatus.type === "loading" ? " is-loading" : ""}`}>
           {state.ratingsStatus.type === "failed" ? (
             <div className="leaderboard-state leaderboard-error" title={state.ratingsStatus.payload.reason}>
