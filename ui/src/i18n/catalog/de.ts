@@ -1326,6 +1326,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.appearance.interfaceScale": "Oberflächenskalierung",
   "settings.appearance.tileColumns": "Spalten für benutzerdefinierte Spiele",
   "settings.appearance.tileColumnsHint": "Kacheln pro Zeile im Spiele-Raster. Auto passt sich dem Fenster an.",
+  "settings.appearance.tileColumnsSqueezed": "Bei dieser Fenstergröße ist jede Kachel etwa {width} px breit, zu schmal für Titel und untere Zeile. Bequem passen bis zu {fits}.",
   "settings.appearance.tileColumnsAuto": "Auto",
   "settings.appearance.sidebarWidth": "Breite der Seitenleiste",
   "settings.appearance.sidebarIcons": "Nur Symbole",

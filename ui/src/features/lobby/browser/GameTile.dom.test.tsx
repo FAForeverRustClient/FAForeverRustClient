@@ -66,6 +66,9 @@ describe("GameTile", () => {
     expect(part(".game-tile-where-host")?.textContent).toBe("Sui");
     expect(part(".game-tile-stats")?.textContent).toContain("1/4");
     expect(part(".game-tile-stats")?.textContent).toContain("Ø 1829");
+    // The title has its line to itself; the age ends the bottom row.
+    expect(part(".game-tile-stats > .game-tile-age")).not.toBeNull();
+    expect(part(".game-tile-title")?.parentElement?.classList.contains("game-tile-body")).toBe(true);
     for (const caption of ["Host:", "Version", "Ø Rating", "player"]) {
       expect(container.textContent).not.toContain(caption);
     }
@@ -80,6 +83,9 @@ describe("GameTile", () => {
     const big = mountTile({ id: 2, maxPlayers: 16 });
     expect(big.container.querySelectorAll(".game-tile-slots i")).toHaveLength(16);
     expect(big.part(".game-tile-slots")?.classList.contains("is-dense")).toBe(true);
+    // Half the lobby to a row, for a narrow tile that draws them in two.
+    expect(big.part(".game-tile-slots")?.style.getPropertyValue("--slot-columns")).toBe("8");
+    expect(mountTile({ id: 5, maxPlayers: 12 }).part(".game-tile-slots")?.style.getPropertyValue("--slot-columns")).toBe("6");
   });
 
   it("tags the featured mod only when it is not the tab's own", () => {

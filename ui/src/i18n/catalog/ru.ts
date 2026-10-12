@@ -1292,6 +1292,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.appearance.interfaceScale": "Масштаб интерфейса",
   "settings.appearance.tileColumns": "Колонки пользовательских игр",
   "settings.appearance.tileColumnsHint": "Авто подстраивается под ширину окна.",
+  "settings.appearance.tileColumnsSqueezed": "При таком размере окна ширина каждой плитки около {width} px: слишком узко для названия и нижней строки. Удобно помещается до {fits}.",
   "settings.appearance.tileColumnsAuto": "Авто",
   "settings.appearance.hoverPanels": "Панели при наведении",
   "settings.appearance.hoverPanelsHint": "Карточки с подробностями об игре, игроке или карте.",

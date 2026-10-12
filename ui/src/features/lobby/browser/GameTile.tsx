@@ -1,6 +1,6 @@
 // One game as a tile in the grid view.
 
-import { memo } from "react";
+import { memo, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../../../design-system/Icon";
 import type { Game, VaultMap, VaultMod } from "../../../ipc/bindings";
@@ -23,12 +23,19 @@ const MAX_SLOT_DOTS = 16;
 
 /**
  * One dot per slot, filled for each player in it. Smaller from nine slots on,
- * so a 16-player lobby still leaves room for the rating beside it.
+ * so a 16-player lobby still leaves room for the rating beside it, and on a
+ * narrow tile in two rows (`--slot-columns` dots to a row, the first row the
+ * first half of the lobby).
  */
 function SlotDots({ taken, slots }: { taken: number; slots: number }) {
   if (slots < 1 || slots > MAX_SLOT_DOTS) return null;
+  const dense = slots > 8;
   return (
-    <span className={`game-tile-slots${slots > 8 ? " is-dense" : ""}`} aria-hidden="true">
+    <span
+      className={`game-tile-slots${dense ? " is-dense" : ""}`}
+      style={dense ? ({ "--slot-columns": Math.ceil(slots / 2) } as CSSProperties) : undefined}
+      aria-hidden="true"
+    >
       {Array.from({ length: slots }, (_, index) => (
         <i key={index} className={index < taken ? "is-taken" : undefined} />
       ))}
@@ -140,10 +147,9 @@ export const GameTile = memo(function GameTile({
         {/* Facts without a caption over each. "PLAYER", "Ø RATING", "VERSION",
             "AGE" and "HOST:" on every tile made it read as a form; the values
             say what they are, and the words are on hover. */}
-        <span className="game-tile-head">
-          <span className="game-tile-title" title={shownTitle}>{shownTitle}</span>
-          <span className="game-tile-age" title={game.hostedAt ? t("lobby.browser.tileAge", { age }) : undefined}>{age}</span>
-        </span>
+        {/* The title has its line to itself: the age beside it took about
+            55 px of a line that is the first thing to run out of room. */}
+        <span className="game-tile-title" title={shownTitle}>{shownTitle}</span>
         <span className="game-tile-where">
           <span className="game-tile-where-map" title={presentation.displayName}>{presentation.displayName}</span>
           <span className="game-tile-where-separator" aria-hidden="true">·</span>
@@ -235,7 +241,8 @@ export const GameTile = memo(function GameTile({
         </span>
         {/* Who can still get in, at the bottom: whether there is room reads
             from the dots before the numbers are read, and the rating beside
-            them says who is in. */}
+            them says who is in. How long the lobby has been open closes the
+            row, at its far end. */}
         <span className="game-tile-stats">
           <span className="game-tile-players" title={t("lobby.browser.tilePlayers", { players, max: game.maxPlayers })}>
             <SlotDots taken={players} slots={game.maxPlayers} />
@@ -244,6 +251,7 @@ export const GameTile = memo(function GameTile({
           <b title={t("lobby.browser.tileRatingTitle")}>
             {game.averageRating ? t("lobby.browser.tileRating", { rating: game.averageRating }) : t("common.notAvailable")}
           </b>
+          <span className="game-tile-age" title={game.hostedAt ? t("lobby.browser.tileAge", { age }) : undefined}>{age}</span>
         </span>
       </button>
       {tooltipPosition && !socialPosition && createPortal(

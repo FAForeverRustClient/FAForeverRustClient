@@ -110,8 +110,8 @@ export const HostMapDetailsColumn = memo(function HostMapDetailsColumn({
           )}
           {/* Whether a game on this map is rated, at the end of the map's
               name: the one property of a map that changes what hosting it
-              means. A tag like every other tag in the client, quiet for the
-              usual case and in the error tint when the map is unranked, as
+              means. A square tag like every other tag in the client, green
+              for ranked and in the error tint when the map is unranked, as
               on a game's tile. It was a green capsule. */}
           {chosen && (
             <span

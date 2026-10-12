@@ -1185,6 +1185,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.appearance.interfaceScale": "Skala interfejsu",
   "settings.appearance.tileColumns": "Kolumny gier niestandardowych",
   "settings.appearance.tileColumnsHint": "Kafelki w rzędzie w siatce gier. Auto dopasowuje do okna.",
+  "settings.appearance.tileColumnsSqueezed": "Przy tym rozmiarze okna każdy kafelek ma około {width} px, za mało na tytuł i dolny wiersz. Wygodnie mieści się do {fits}.",
   "settings.appearance.tileColumnsAuto": "Auto",
   "settings.appearance.hoverPanels": "Panele po najechaniu",
   "settings.appearance.hoverPanelsHint": "Szczegóły po zatrzymaniu kursora na grze, nazwie lub mapie.",

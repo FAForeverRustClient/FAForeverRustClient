@@ -323,6 +323,20 @@
   font-weight: 600;
 }
 
+/* What the current choice costs, under the hint: the warning colour and its
+   mark, on the row's own 20 px lines. */
+.setting-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--color-warn-text);
+}
+
+.setting-warning svg {
+  flex: none;
+  margin-top: 3px;
+}
+
 .setting-control {
   display: flex;
   align-items: center;

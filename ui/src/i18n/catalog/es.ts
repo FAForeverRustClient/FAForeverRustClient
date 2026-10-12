@@ -1219,6 +1219,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.appearance.interfaceScale": "Escala de la interfaz",
   "settings.appearance.tileColumns": "Columnas de partidas personalizadas",
   "settings.appearance.tileColumnsHint": "Mosaicos por fila en la cuadrícula de partidas. Auto se ajusta a la ventana.",
+  "settings.appearance.tileColumnsSqueezed": "Con este tamaño de ventana cada mosaico mide unos {width} px, demasiado estrecho para el título y la línea inferior. Caben cómodamente hasta {fits}.",
   "settings.appearance.tileColumnsAuto": "Auto",
   "settings.appearance.hoverPanels": "Paneles al pasar el cursor",
   "settings.appearance.hoverPanelsHint": "Detalles al dejar el puntero sobre una partida, un nombre o un mapa.",

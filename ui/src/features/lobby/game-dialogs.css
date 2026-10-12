@@ -925,17 +925,16 @@
 }
 
 /* Whether a game on this map counts, at the end of the name's line, drawn as
-   every tag in the client is: square corners, the raised surface, 11 px
-   capitals. Quiet for "ranked", the ordinary case, and in the error tint for
-   "unranked", the answer that changes a host's mind, as on a game's tile. It
-   was a capsule, and the ordinary case was the loud one. */
+   every tag in the client is: square corners, 11 px capitals. Green for
+   "ranked", as it always was, and in the error tint for "unranked", as on a
+   game's tile. It was a capsule; the shape is what changed, not the colour. */
 .host-map-ranked {
   flex: none;
   margin-left: auto;
   padding: 2px 6px;
-  color: var(--color-muted);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
+  color: var(--color-ok-text);
+  background: color-mix(in srgb, var(--color-ok) 12%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-ok) 35%, transparent);
   border-radius: var(--radius-sm);
   font-size: 11px;
   font-weight: 600;

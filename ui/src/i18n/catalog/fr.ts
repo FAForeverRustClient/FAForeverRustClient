@@ -1220,6 +1220,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.appearance.interfaceScale": "Échelle de l’interface",
   "settings.appearance.tileColumns": "Colonnes des parties personnalisées",
   "settings.appearance.tileColumnsHint": "Tuiles par ligne dans la grille des parties. Auto s'adapte à la fenêtre.",
+  "settings.appearance.tileColumnsSqueezed": "À cette taille de fenêtre, chaque tuile fait environ {width} px, trop étroite pour le titre et la ligne du bas. Jusqu'à {fits} tiennent confortablement.",
   "settings.appearance.tileColumnsAuto": "Auto",
   "settings.appearance.hoverPanels": "Panneaux au survol",
   "settings.appearance.hoverPanelsHint": "Des détails quand le pointeur s'arrête sur une partie, un nom ou une carte.",

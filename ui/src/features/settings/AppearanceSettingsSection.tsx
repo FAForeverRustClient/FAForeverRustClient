@@ -7,6 +7,12 @@ import { ThemePicker } from "./ThemePicker";
 import { BackgroundSettings } from "./BackgroundSettings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
+import {
+  COMFORTABLE_TILE_PX,
+  comfortableTileColumns,
+  tileWidthFor,
+  useTileGridWidth,
+} from "../../shared/tileGridWidth";
 
 // Patches, not whole groups: a group copied out of this render's snapshot
 // would carry the old value of anything changed since, and revert it.
@@ -87,6 +93,12 @@ export function AppearanceSettingsSection() {
   const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.appearance);
   const browsing = useAppStore((state) => state.state.settings.browsing);
+  // A chosen count is drawn exactly, however narrow that makes the tiles; this
+  // says so when it does, from the grid's width the last time it was shown.
+  const tileGridWidth = useTileGridWidth();
+  const tileColumns = preferences.gameTileColumns ?? 0;
+  const tileWidth = tileColumns > 0 && tileGridWidth > 0 ? tileWidthFor(tileGridWidth, tileColumns) : null;
+  const tilesSqueezed = tileWidth !== null && tileWidth < COMFORTABLE_TILE_PX;
 
   const saveVaultPageSize = (size: number) =>
     ipc.send({
@@ -143,6 +155,14 @@ export function AppearanceSettingsSection() {
       <SettingRow
         label={t("settings.appearance.tileColumns")}
         hint={t("settings.appearance.tileColumnsHint")}
+        warning={
+          tilesSqueezed && tileWidth !== null
+            ? t("settings.appearance.tileColumnsSqueezed", {
+                width: Math.floor(tileWidth),
+                fits: comfortableTileColumns(tileGridWidth),
+              })
+            : undefined
+        }
       >
         <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.tileColumns")}>
           {TILE_COLUMN_OPTIONS.map((option) => {

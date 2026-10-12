@@ -1624,6 +1624,7 @@ export const en = {
   "settings.appearance.interfaceScale": "Interface scale",
   "settings.appearance.tileColumns": "Custom games columns",
   "settings.appearance.tileColumnsHint": "Tiles per row in the custom games grid. Auto fits the window.",
+  "settings.appearance.tileColumnsSqueezed": "At this window size each tile is about {width} px wide, too narrow for its title and bottom line. Up to {fits} fit comfortably.",
   "settings.appearance.tileColumnsAuto": "Auto",
   "settings.appearance.vaultPageSize": "Entries per page",
   "settings.appearance.vaultPageSizeHint": "Maps or mods per page.",
