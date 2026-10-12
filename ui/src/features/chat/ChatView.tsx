@@ -17,6 +17,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { CSSProperties } from "react";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
+import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type { ChatChannel, ChatStatus, Game, Reaction } from "../../ipc/bindings";
 import { isPrivateChannel } from "../../store/reducer";
@@ -65,12 +66,16 @@ function topicRepeatsTheName(name: string, topic: string): boolean {
   return bare(topic) === bare(name);
 }
 
-function channelContext(channel: ChatChannel | undefined, status: ChatStatus): string {
+/**
+ * What the row above a conversation says: the topic, who a private chat is
+ * with, or, for a channel with nothing better, how many are in it (a number,
+ * so the header can draw it the way the leaderboard draws its player count).
+ */
+function channelContext(channel: ChatChannel | undefined, status: ChatStatus): string | number {
   if (!channel) return t(STATUS_LABEL[status]);
   if (channel.topic && !topicRepeatsTheName(channel.name, channel.topic)) return channel.topic;
   if (isPrivateChannel(channel.name)) return t("chat.header.privateWith", { name: channel.name });
-  const count = channel.users.length;
-  return t("chat.header.online", { count });
+  return channel.users.length;
 }
 
 const connect = (username: string) =>
@@ -314,14 +319,28 @@ export function ChatView() {
             what it does not: the topic, and the controls that act on the
             conversation. */}
         <header className="chat-head">
-          <p className="chat-topic" title={active?.topic || undefined}>
-            {channelContext(active, chatStatus)}
-          </p>
+          {(() => {
+            const context = channelContext(active, chatStatus);
+            // The head count as the leaderboard shows its players: the people
+            // icon and the count in the text colour, not a grey line of text.
+            return typeof context === "number" ? (
+              <span className="chat-online-count">
+                <Icon name="users" size={16} />
+                <strong>{t("chat.header.online", { count: context })}</strong>
+              </span>
+            ) : (
+              <p className="chat-topic" title={active?.topic || undefined}>
+                {context}
+              </p>
+            );
+          })()}
           <span className="spacer" />
           {gameLinkNotice && <span className="chat-link-notice" role="status">{gameLinkNotice}</span>}
-          <button type="button" className="chat-head-action" onClick={() => setSearchRequest((request) => request + 1)}>
+          {/* A button that looks like one, as "More filters" does elsewhere:
+              as bare text with an icon it read as a label. */}
+          <Button className="chat-search-button" onClick={() => setSearchRequest((request) => request + 1)}>
             <Icon name="search" size={14} /> {t("chat.search.open")}
-          </button>
+          </Button>
           <label className="chat-toggle">
             <input
               type="checkbox"
