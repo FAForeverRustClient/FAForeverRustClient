@@ -2830,6 +2830,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "maps.preview.resetZoom": "Réinitialiser le zoom",
   "maps.preview.zoomHint": "Molette pour zoomer, glisser pour déplacer, double-clic pour entrer ou sortir.",
   "maps.preview.copyImage": "Copier l'image",
+  "maps.preview.openInVault": "Ouvrir dans la bibliothèque de cartes",
   "maps.preview.imageCopied": "Image copiée",
   "maps.preview.linkCopied": "Lien copié",
   "maps.preview.copyFailed": "Copie impossible",

@@ -2864,6 +2864,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "maps.preview.resetZoom": "Wyzeruj przybliżenie",
   "maps.preview.zoomHint": "Kółkiem przybliżasz, przeciąganiem przesuwasz, dwuklikiem wskakujesz i wyskakujesz.",
   "maps.preview.copyImage": "Kopiuj obraz",
+  "maps.preview.openInVault": "Otwórz w skarbcu map",
   "maps.preview.imageCopied": "Skopiowano obraz",
   "maps.preview.linkCopied": "Skopiowano odnośnik",
   "maps.preview.copyFailed": "Nie udało się skopiować",

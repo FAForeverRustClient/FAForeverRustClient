@@ -2875,6 +2875,7 @@ export const en = {
   "maps.preview.resetZoom": "Reset zoom",
   "maps.preview.zoomHint": "Scroll to zoom, drag to pan, double-click to jump in or out.",
   "maps.preview.copyImage": "Copy image",
+  "maps.preview.openInVault": "Open in the map vault",
   "maps.preview.imageCopied": "Image copied",
   "maps.preview.linkCopied": "Link copied",
   "maps.preview.copyFailed": "Could not copy",
