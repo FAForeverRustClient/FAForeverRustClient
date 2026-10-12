@@ -25,6 +25,12 @@ export interface FactGroup {
  * `bleed` is the panel's own horizontal padding, so the band reaches both of
  * its edges while the values stay in line with the text above and below.
  */
+/** The grid's class for each column count. */
+const GRID_CLASS = {
+  2: "facts-grid has-2-columns",
+  3: "facts-grid has-3-columns",
+} as const;
+
 export function FactsStrip({
   groups,
   columns = 3,
@@ -37,7 +43,7 @@ export function FactsStrip({
   return (
     <section className={`facts-strip ${className}`.trim()}>
       {groups.map((group, groupIndex) => (
-        <dl key={groupIndex} className={`facts-grid has-${columns}-columns`} aria-label={group.ariaLabel}>
+        <dl key={groupIndex} className={GRID_CLASS[columns]} aria-label={group.ariaLabel}>
           {group.facts.map((fact, factIndex) => (
             <div
               key={fact.id ?? (typeof fact.label === "string" ? fact.label : factIndex)}
