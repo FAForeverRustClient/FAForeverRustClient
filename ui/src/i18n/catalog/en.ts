@@ -2753,7 +2753,6 @@ export const en = {
   "maps.vault.reportVersion": "Version",
   "maps.vault.reportFolder": "Folder",
   "mods.vault.version": "Version",
-  "mods.vault.communityRating": "Community rating",
   "mods.vault.published": "Published",
   "mods.vault.updated": "Updated",
   "mods.vault.modId": "Mod ID",

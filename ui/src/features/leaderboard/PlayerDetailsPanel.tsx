@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "../../design-system/Button";
+import { FactsStrip } from "../../design-system/FactsStrip";
 import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import type { LeaderboardEntry } from "../../ipc/bindings";
@@ -136,34 +137,38 @@ export function PlayerDetailsPanel({ entry, heading, boards, rankedBoard, crossR
         </div>
       </header>
 
-      {/* The training overview's facts strip: a label over each value and
-          hairlines between them, on the same tinted ground. The boards
-          first, the ranked one marked, then what the ranked number is made of. */}
-      <section className="leaderboard-player-facts">
-        {boards && boards.length > 0 ? (
-          <>
-            <dl className="leaderboard-facts" aria-label={t("leaderboard.view.ratings")}>
-              {boards.map((board) => (
-                <div key={board} className={board === rankedBoard ? "is-ranked" : undefined}>
-                  <dt>{leaderboardLabel(board)}</dt>
-                  <dd className={boardRating(board) === null ? "is-unknown" : undefined}>{numbers(boardRating(board))}</dd>
-                </div>
-              ))}
-            </dl>
-            <dl className="leaderboard-facts">
-              <div><dt>{t("leaderboard.column.games")}</dt><dd>{entry.gamesPlayed}</dd></div>
-              <div><dt>{t("leaderboard.column.mean")}</dt><dd>{numbers(entry.mean)}</dd></div>
-              <div><dt>{t("leaderboard.column.deviation")}</dt><dd>{numbers(entry.deviation)}</dd></div>
-            </dl>
-          </>
-        ) : (
-          <dl className="leaderboard-facts">
-            {entry.score !== null && <div><dt>{t("leaderboard.column.score")}</dt><dd>{entry.score}</dd></div>}
-            {entry.rating !== null && <div><dt>{t("leaderboard.column.rating")}</dt><dd>{numbers(entry.rating)}</dd></div>}
-            <div><dt>{t("leaderboard.column.games")}</dt><dd>{entry.gamesPlayed}</dd></div>
-          </dl>
-        )}
-      </section>
+      {/* The boards first, the ranked one marked, then what the ranked
+          number is made of. */}
+      <FactsStrip
+        className="leaderboard-player-facts"
+        groups={boards && boards.length > 0
+          ? [
+            {
+              ariaLabel: t("leaderboard.view.ratings"),
+              facts: boards.map((board) => ({
+                id: board,
+                label: leaderboardLabel(board),
+                value: numbers(boardRating(board)),
+                unknown: boardRating(board) === null,
+                emphasis: board === rankedBoard,
+              })),
+            },
+            {
+              facts: [
+                { label: t("leaderboard.column.games"), value: entry.gamesPlayed },
+                { label: t("leaderboard.column.mean"), value: numbers(entry.mean) },
+                { label: t("leaderboard.column.deviation"), value: numbers(entry.deviation) },
+              ],
+            },
+          ]
+          : [{
+            facts: [
+              ...(entry.score !== null ? [{ label: t("leaderboard.column.score"), value: entry.score }] : []),
+              ...(entry.rating !== null ? [{ label: t("leaderboard.column.rating"), value: numbers(entry.rating) }] : []),
+              { label: t("leaderboard.column.games"), value: entry.gamesPlayed },
+            ],
+          }]}
+      />
 
       <div className="leaderboard-player-actions">
         <div className="leaderboard-player-action-list">

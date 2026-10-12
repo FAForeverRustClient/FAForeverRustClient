@@ -2376,7 +2376,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "maps.vault.reportVersion": "Version",
   "maps.vault.reportFolder": "Ordner",
   "mods.vault.version": "Version",
-  "mods.vault.communityRating": "Community-Bewertung",
   "mods.vault.published": "Veröffentlicht",
   "mods.vault.updated": "Aktualisiert",
   "mods.vault.modId": "Mod-ID",

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { EmptyState } from "../../design-system/EmptyState";
+import { FactsStrip } from "../../design-system/FactsStrip";
 import { RangeSlider } from "../../design-system/RangeSlider";
 import {
   SearchField,
@@ -226,39 +227,71 @@ function InstalledModDetail({
           )}
         </div>
         <div className="installed-mod-detail-body">
-          <div className="vault-detail-kicker mod-vault-detail-kicker">
-            <span className={`vault-badge mod-badge mod-badge-${mod.modType}`}>
-              {t(mod.modType === "ui" ? "mods.vault.uiMod" : "mods.vault.simMod")}
-            </span>
-            <span className={`vault-badge is-${mod.enabled ? "ok" : "neutral"}`}>
-              {t(mod.enabled ? "mods.installed.enabled" : "mods.installed.disabled")}
-            </span>
-            {updateAvailable && (
-              <span className="vault-badge is-accent">{t("mods.view.updatesAvailable")}</span>
-            )}
-          </div>
-          <h2 className="vault-detail-title">{mod.displayName}</h2>
-          <p className="vault-detail-byline mod-vault-byline">
-            {mod.author ? t("mods.vault.authoredBy", { author: mod.author }) : t("mods.vault.unknownAuthor")}
-          </p>
-
-          <div className="vault-detail-props">
-            <div className="vault-prop-row">
-              <span className="vault-prop-label">{t("mods.vault.version")}</span>
-              <span className="vault-prop-value">
-                {mod.version ? t("common.version", { version: mod.version }) : t("common.notAvailable")}
-                {updateAvailable && metadata ? ` → ${t("common.version", { version: metadata.version })}` : ""}
+          {/* The vault panel's reading order: the name, who made it, what
+              kind of mod it is, then its facts on the tinted strip. */}
+          <header className="mod-detail-head">
+            <h2 className="mod-detail-name">{mod.displayName}</h2>
+            <p className="mod-detail-byline">
+              {mod.author ? t("mods.vault.authoredBy", { author: mod.author }) : t("mods.vault.unknownAuthor")}
+            </p>
+            <div className="mod-detail-tags">
+              <span className={`mod-vault-type ${mod.modType}`}>
+                {t(mod.modType === "ui" ? "mods.vault.uiMod" : "mods.vault.simMod")}
               </span>
+              {mod.enabled && (
+                <span className="mod-vault-type in-use" title={t("mods.vault.inUseHint")}>
+                  {t("mods.vault.inUse")}
+                </span>
+              )}
+              {updateAvailable && (
+                <span className="mod-vault-type featured">{t("mods.view.updatesAvailable")}</span>
+              )}
             </div>
-            <div className="vault-prop-row">
-              <span className="vault-prop-label">{t("mods.installed.folder")}</span>
-              <span className="vault-prop-value">{mod.folderName}</span>
+          </header>
+
+          <FactsStrip
+            columns={2}
+            groups={[{
+              facts: [
+                {
+                  label: t("mods.vault.version"),
+                  value: mod.version
+                    ? `${t("common.version", { version: mod.version })}${updateAvailable && metadata ? ` → ${t("common.version", { version: metadata.version })}` : ""}`
+                    : t("common.notAvailable"),
+                  unknown: !mod.version,
+                },
+                {
+                  label: t("mods.installed.stateLabel"),
+                  value: t(mod.enabled ? "mods.installed.enabled" : "mods.installed.disabled"),
+                },
+                ...(metadata
+                  ? [
+                    {
+                      label: t("mods.vault.reviews"),
+                      value: metadata.reviews > 0
+                        ? t("mods.vault.ratingSummary", { rating: (metadata.ratingTenths / 10).toFixed(1), reviews: metadata.reviews })
+                        : t("mods.vault.notRated"),
+                      unknown: metadata.reviews === 0,
+                    },
+                    { label: t("mods.vault.updated"), value: formatShortDate(metadata.updatedAt || metadata.createdAt) },
+                  ]
+                  : []),
+              ],
+            }]}
+          />
+
+          {/* Where it is on disk, for whoever has to find it there: long
+              values, so a line each rather than a cell of the strip. */}
+          <dl className="installed-mod-location">
+            <div>
+              <dt>{t("mods.installed.folder")}</dt>
+              <dd>{mod.folderName}</dd>
             </div>
-            <div className="vault-prop-row">
-              <span className="vault-prop-label">{t("mods.installed.uid")}</span>
-              <span className="vault-prop-value installed-mod-uid">{mod.uid}</span>
+            <div>
+              <dt>{t("mods.installed.uid")}</dt>
+              <dd className="installed-mod-uid">{mod.uid}</dd>
             </div>
-          </div>
+          </dl>
 
           <VaultDescription
             className="mod-vault-description"
@@ -267,25 +300,38 @@ function InstalledModDetail({
             empty={t("mods.vault.noDescription")}
           />
 
-          <div className="vault-detail-actions mod-vault-detail-actions">
-            <div className="vault-detail-actions-left">
-              {updateAvailable && onUpdate && (
-                <Button variant="primary" disabled={busy || !metadata?.downloadUrl} onClick={onUpdate}>
-                  {t("mods.vault.installUpdate")}
+          {/* As in the vault panel: one action to a line, and the one the
+              dialog is for last. */}
+          <div className="mod-detail-actions">
+            <div className="mod-detail-action-list">
+              {metadata && (
+                <Button variant="ghost" onClick={onOpenInVault}>
+                  <Icon name="globe" size={15} />
+                  {t("mods.installed.viewInVault")}
                 </Button>
               )}
-              <Button disabled={busy} onClick={onToggle}>
-                {t(toggling ? "mods.vault.toggling" : mod.enabled ? "mods.vault.disable" : "mods.vault.enable")}
-              </Button>
-              {metadata && (
-                <Button onClick={onOpenInVault}>{t("mods.installed.viewInVault")}</Button>
+              {updateAvailable && onUpdate && (
+                <Button variant="ghost" disabled={busy} onClick={onToggle}>
+                  <Icon name={mod.enabled ? "close" : "check"} size={15} />
+                  {t(toggling ? "mods.vault.toggling" : mod.enabled ? "mods.vault.disable" : "mods.vault.enable")}
+                </Button>
               )}
-            </div>
-            <div className="vault-detail-actions-right">
-              <Button className="mod-vault-uninstall" disabled={busy} onClick={onUninstall}>
+              <Button variant="ghost" className="mod-detail-uninstall" disabled={busy} onClick={onUninstall}>
+                <Icon name="trash" size={15} />
                 {t("mods.vault.uninstall")}
               </Button>
             </div>
+            {updateAvailable && onUpdate ? (
+              <Button variant="primary" disabled={busy || !metadata?.downloadUrl} onClick={onUpdate}>
+                <Icon name="download" size={15} />
+                {t("mods.vault.installUpdate")}
+              </Button>
+            ) : (
+              <Button variant={mod.enabled ? "ghost" : "primary"} disabled={busy} onClick={onToggle}>
+                <Icon name={mod.enabled ? "close" : "check"} size={15} />
+                {t(toggling ? "mods.vault.toggling" : mod.enabled ? "mods.vault.disable" : "mods.vault.enable")}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -466,7 +512,15 @@ export function InstalledModsView({
   );
   const updatesCount = updatableFolders.size;
 
-  const hiddenFilterCount = Number(ranked !== "all")
+  // What "More filters" holds that is not at its default. The type and the
+  // state count only where they differ from what the chosen preset set them
+  // to: the UI preset is a type filter already, and saying so twice would
+  // send the reader looking for a filter they did not set.
+  const presetType: ModTypeFilter = preset === "ui" || preset === "sim" ? preset : "all";
+  const presetEnabled: EnabledFilter = preset === "enabled" || preset === "disabled" ? preset : "all";
+  const hiddenFilterCount = Number(modType !== presetType)
+    + Number(enabled !== presetEnabled)
+    + Number(ranked !== "all")
     + Number(minimumRating !== null || maximumRating !== null);
 
   const filtered = useMemo(() => {
@@ -589,45 +643,63 @@ export function InstalledModsView({
               onClick={() => setFiltersOpen((open) => !open)}
             />
             <Button onClick={clearSearch}>{t("mods.view.clear")}</Button>
-            {favoriteCount > 0 && (
-              <Button
-                variant="primary"
-                disabled={busy || favoritesToEnable.length === 0}
-                title={t(favoritesToEnable.length === 0
-                  ? "mods.installed.favoritesAllOn"
-                  : "mods.installed.enableFavoritesHint")}
-                onClick={enableFavorites}
-              >
-                <Icon name="star" size={15} fill="currentColor" />{" "}
-                {t("mods.installed.enableFavorites")}
-                {favoritesToEnable.length > 0 ? ` (${favoritesToEnable.length})` : ""}
-              </Button>
-            )}
-            <Button onClick={loadInstalled} disabled={installedStatus.type === "loading"}>
-              <Icon name="refresh" size={15} /> {t("mods.installed.rescan")}
-            </Button>
-            <Button
-              disabled={checking || vaultStatus.type === "loading"}
-              onClick={() => {
-                setCheckResult("");
-                setChecking(true);
-                vaultAtCheck.current = vault;
-                // A real fetch: `loadVault` is refused once the catalogue is
-                // loaded, which made this report on a stale one.
-                ipc.send({ kind: "Mods", command: { type: "reloadVault" } });
-              }}
-            >
-              <Icon name="download" size={15} />{" "}
-              {t(checking ? "mods.installed.checking" : "mods.installed.checkUpdates")}
-            </Button>
-            {checkResult && (
-              <span className="installed-mod-check-result muted" role="status">
-                {checkResult}
-              </span>
-            )}
           </>
         )}
+        advanced={filtersOpen ? (
+          <div className="search-panel-advanced">
+            <div className="search-panel-advanced-grid mods-advanced-grid">
+              <SearchField label={t("mods.view.type")}>
+                <select
+                  className="search-panel-control"
+                  value={modType}
+                  onChange={(event) => setModType(event.target.value as ModTypeFilter)}
+                >
+                  <option value="all">{t("mods.installed.allTypes")}</option>
+                  <option value="ui">{t("mods.installed.uiMods")}</option>
+                  <option value="sim">{t("mods.installed.simMods")}</option>
+                </select>
+              </SearchField>
+              <SearchField label={t("mods.installed.stateLabel")}>
+                <select
+                  className="search-panel-control"
+                  value={enabled}
+                  onChange={(event) => setEnabled(event.target.value as EnabledFilter)}
+                >
+                  <option value="all">{t("mods.installed.anyState")}</option>
+                  <option value="enabled">{t("mods.installed.enabled")}</option>
+                  <option value="disabled">{t("mods.installed.disabled")}</option>
+                </select>
+              </SearchField>
+              <SearchField label={t("mods.view.ranking")}>
+                <select
+                  className="search-panel-control"
+                  value={ranked}
+                  onChange={(event) => setRanked(event.target.value as RankedFilter)}
+                >
+                  <option value="all">{t("mods.view.any")}</option>
+                  <option value="ranked">{t("mods.view.rankedSafe")}</option>
+                  <option value="unranked">{t("mods.view.unranked")}</option>
+                </select>
+              </SearchField>
+              <RangeSlider
+                label={t("mods.view.reviewScore")}
+                min={0}
+                max={5}
+                step={0.5}
+                low={minimumRating}
+                high={maximumRating}
+                format={(value) => `${value}★`}
+                onChange={(low, high) => {
+                  setMinimumRating(low);
+                  setMaximumRating(high);
+                }}
+              />
+            </div>
+          </div>
+        ) : undefined}
       >
+        {/* The search row is the name and the creator; the list narrows as
+            they are typed, so there is no button to press. */}
         <SearchField label={t("mods.view.mod")} className="search-panel-field-grow">
           <input
             className="search-panel-control"
@@ -644,65 +716,6 @@ export function InstalledModsView({
             placeholder={t("mods.view.anyCreatorUploader")}
           />
         </SearchField>
-        <RangeSlider
-          label={t("mods.view.reviewScore")}
-          min={0}
-          max={5}
-          step={0.5}
-          low={minimumRating}
-          high={maximumRating}
-          format={(value) => `${value}★`}
-          onChange={(low, high) => {
-            setMinimumRating(low);
-            setMaximumRating(high);
-          }}
-        />
-        <SearchField label={t("mods.view.type")} className="search-panel-field-compact">
-          <select
-            className="search-panel-control"
-            value={modType}
-            onChange={(event) => setModType(event.target.value as ModTypeFilter)}
-          >
-            <option value="all">{t("mods.installed.allTypes")}</option>
-            <option value="ui">{t("mods.installed.uiMods")}</option>
-            <option value="sim">{t("mods.installed.simMods")}</option>
-          </select>
-        </SearchField>
-        <SearchField label={t("mods.installed.stateLabel")} className="search-panel-field-compact">
-          <select
-            className="search-panel-control"
-            value={enabled}
-            onChange={(event) => setEnabled(event.target.value as EnabledFilter)}
-          >
-            <option value="all">{t("mods.installed.anyState")}</option>
-            <option value="enabled">{t("mods.installed.enabled")}</option>
-            <option value="disabled">{t("mods.installed.disabled")}</option>
-          </select>
-        </SearchField>
-        <SearchField label={t("mods.view.ranking")} className="search-panel-field-compact">
-          <select
-            className="search-panel-control"
-            value={ranked}
-            onChange={(event) => setRanked(event.target.value as RankedFilter)}
-          >
-            <option value="all">{t("mods.view.any")}</option>
-            <option value="ranked">{t("mods.view.rankedSafe")}</option>
-            <option value="unranked">{t("mods.view.unranked")}</option>
-          </select>
-        </SearchField>
-        <SearchField label={t("maps.view.sortBy")} className="search-panel-field-compact">
-          <select
-            className="search-panel-control"
-            value={sort}
-            onChange={(event) => setSort(event.target.value as InstalledModSort)}
-          >
-            <option value="state">{t("mods.installed.sort.state")}</option>
-            <option value="name">{t("maps.view.sort.name")}</option>
-            <option value="rating">{t("mods.view.preset.rating")}</option>
-            <option value="newest">{t("mods.view.preset.newest")}</option>
-            <option value="author">{t("mods.view.creator")}</option>
-          </select>
-        </SearchField>
       </SearchPanel>
 
       <LoadStatusNotice
@@ -714,6 +727,78 @@ export function InstalledModsView({
           reason, the screen only had a button that went back to normal. */}
       <FailureNotice status={installStatus} message={installNote(installStatus)} />
       <FailureNotice status={toggleStatus} message={toggleNote(toggleStatus)} />
+      {/* What the filters left and how many of them the next game loads, then
+          at the list's top right what is done to the library as a whole: look
+          for updates, read the folder again, the order, and switching the
+          starred mods on, last because it is the one that changes a game. */}
+      <div className="mods-summary installed-mod-summary">
+        <div className="mods-summary-count">
+          <Icon name="folder" size={16} />
+          <strong>{t("mods.installed.installedCount", { count: filtered.length })}</strong>
+          <span className="muted">
+            {t("mods.installed.activeCount", { count: installed.filter((mod) => mod.enabled).length })}
+          </span>
+        </div>
+        <span className="spacer" />
+        {checkResult && (
+          <span className="installed-mod-check-result muted" role="status">
+            {checkResult}
+          </span>
+        )}
+        <Button
+          variant="ghost"
+          className="mods-summary-tool"
+          disabled={checking || vaultStatus.type === "loading"}
+          onClick={() => {
+            setCheckResult("");
+            setChecking(true);
+            vaultAtCheck.current = vault;
+            // A real fetch: `loadVault` is refused once the catalogue is
+            // loaded, which made this report on a stale one.
+            ipc.send({ kind: "Mods", command: { type: "reloadVault" } });
+          }}
+        >
+          <Icon name="download" size={15} />
+          {t(checking ? "mods.installed.checking" : "mods.installed.checkUpdates")}
+        </Button>
+        <Button
+          variant="ghost"
+          className="mods-summary-tool"
+          onClick={loadInstalled}
+          disabled={installedStatus.type === "loading"}
+        >
+          <Icon name="refresh" size={15} />
+          {t("mods.installed.rescan")}
+        </Button>
+        <label className="mods-summary-sort">
+          <span className="muted">{t("mods.view.sortBy")}</span>
+          <select
+            className="search-panel-control"
+            value={sort}
+            onChange={(event) => setSort(event.target.value as InstalledModSort)}
+          >
+            <option value="state">{t("mods.installed.sort.state")}</option>
+            <option value="name">{t("maps.view.sort.name")}</option>
+            <option value="rating">{t("mods.view.preset.rating")}</option>
+            <option value="newest">{t("mods.view.preset.newest")}</option>
+            <option value="author">{t("mods.view.creator")}</option>
+          </select>
+        </label>
+        {favoriteCount > 0 && (
+          <Button
+            variant="primary"
+            disabled={busy || favoritesToEnable.length === 0}
+            title={t(favoritesToEnable.length === 0
+              ? "mods.installed.favoritesAllOn"
+              : "mods.installed.enableFavoritesHint")}
+            onClick={enableFavorites}
+          >
+            <Icon name="star" size={15} fill="currentColor" />
+            {t("mods.installed.enableFavorites")}
+            {favoritesToEnable.length > 0 ? ` (${favoritesToEnable.length})` : ""}
+          </Button>
+        )}
+      </div>
       {installedStatus.type === "ready" && filtered.length === 0 ? (
         <EmptyState
           bordered
@@ -725,10 +810,6 @@ export function InstalledModsView({
         </EmptyState>
       ) : filtered.length > 0 ? (
         <section className="installed-mod-library">
-          <div className="vault-results-head">
-            <span>{t("mods.installed.installedCount", { count: filtered.length })}</span>
-            <span>{t("mods.installed.activeCount", { count: installed.filter((mod) => mod.enabled).length })}</span>
-          </div>
           <div className="installed-mod-grid">
             {filtered.map((mod) => (
               <InstalledModCard
