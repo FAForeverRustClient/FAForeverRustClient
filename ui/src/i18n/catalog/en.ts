@@ -3424,6 +3424,7 @@ export const en = {
   "notifications.msg.serverError.title": "Error from server",
   "notifications.msg.serverKill.title": "Game stopped by server",
   "notifications.msg.serverKick.title": "Disconnected by server",
+  "notifications.msg.serverBanned.title": "Banned from FAF",
   "notifications.msg.connectionRejected.title": "Lobby connection rejected",
   "notifications.msg.matchCancelled.title": "Match cancelled",
   "notifications.msg.matchCancelled.body": "The server cancelled the match after launch, so Forged Alliance was stopped.",

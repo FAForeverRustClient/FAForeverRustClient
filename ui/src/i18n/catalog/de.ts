@@ -3000,6 +3000,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "notifications.msg.serverError.title": "Fehler vom Server",
   "notifications.msg.serverKill.title": "Spiel vom Server beendet",
   "notifications.msg.serverKick.title": "Vom Server getrennt",
+  "notifications.msg.serverBanned.title": "Von FAF gesperrt",
   "notifications.msg.connectionRejected.title": "Lobby-Verbindung abgelehnt",
   "notifications.msg.matchCancelled.title": "Match abgebrochen",
   "notifications.msg.matchCancelled.body": "Der Server hat das Match nach dem Start abgebrochen, deshalb wurde Forged Alliance beendet.",

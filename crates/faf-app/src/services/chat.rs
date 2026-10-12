@@ -53,6 +53,12 @@ pub struct ChatContext {
 }
 
 impl ChatContext {
+    /// Keep chat down: the watchdog will not bring it back after the next
+    /// drop. For an account the lobby server has refused for good (#488).
+    pub(crate) fn disarm_reconnect(&self) {
+        self.auto_reconnect.disarm();
+    }
+
     /// Whether an explicit `Connect` armed the chat connection to come back
     /// after an unexpected drop. Read by
     /// [`reconnect`](crate::services::reconnect).

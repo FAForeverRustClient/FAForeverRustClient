@@ -183,6 +183,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "notifications.msg.serverError.title": "Ошибка сервера",
   "notifications.msg.serverKill.title": "Игра остановлена сервером",
   "notifications.msg.serverKick.title": "Отключено сервером",
+  "notifications.msg.serverBanned.title": "Заблокирован на FAF",
   "notifications.msg.connectionRejected.title": "Подключение к лобби отклонено",
   "notifications.msg.matchCancelled.title": "Матч отменён",
   "notifications.msg.matchCancelled.body": "Сервер отменил матч после запуска, поэтому Forged Alliance был остановлен.",

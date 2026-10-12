@@ -176,6 +176,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "notifications.msg.serverError.title": "Erreur du serveur",
   "notifications.msg.serverKill.title": "Partie arrêtée par le serveur",
   "notifications.msg.serverKick.title": "Déconnecté par le serveur",
+  "notifications.msg.serverBanned.title": "Banni de FAF",
   "notifications.msg.connectionRejected.title": "Connexion au lobby refusée",
   "notifications.msg.matchCancelled.title": "Match annulé",
   "notifications.msg.matchCancelled.body": "Le serveur a annulé le match après son lancement, Forged Alliance a donc été arrêté.",

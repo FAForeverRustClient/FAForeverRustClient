@@ -499,9 +499,9 @@ async fn watch(
             Some(AppEvent::Auth(AuthEvent::LoggedIn { .. } | AuthEvent::TestLoggedIn { .. })) => {
                 Reaction::SignedIn
             }
-            Some(AppEvent::Auth(AuthEvent::LoggedOut | AuthEvent::WentOffline)) => {
-                Reaction::SignedOut
-            }
+            Some(AppEvent::Auth(
+                AuthEvent::LoggedOut | AuthEvent::WentOffline | AuthEvent::Banned { .. },
+            )) => Reaction::SignedOut,
             Some(AppEvent::Replays(
                 ReplayEvent::LocalLoaded { .. } | ReplayEvent::LocalDeleted { .. },
             ))
