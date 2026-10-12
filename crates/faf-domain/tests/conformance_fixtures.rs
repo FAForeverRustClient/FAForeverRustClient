@@ -4256,6 +4256,18 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a ban turns a signed-in session into an offline one that keeps the reason (#488)",
+            vec![
+                AuthEvent::LoginStarted.into(),
+                AuthEvent::LoggedIn { player: player() }.into(),
+                AuthEvent::Banned {
+                    message: "You are banned from FAF forever.".into(),
+                }
+                .into(),
+                AuthEvent::LoggedOut.into(),
+            ],
+        ),
+        case(
             "auth failure keeps the error",
             vec![
                 AuthEvent::LoginStarted.into(),
@@ -4851,6 +4863,47 @@ fn cases() -> Vec<Case> {
                 LobbyEvent::InGame.into(),
                 LobbyEvent::JoinCancelled.into(),
                 LobbyEvent::GameTerminated.into(),
+            ],
+        ),
+        case(
+            "a matchmaker launch the server calls off before the game starts is over (#487)",
+            vec![
+                LobbyEvent::Connected.into(),
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Launching {
+                        queue_name: "tmm2v2".into(),
+                    },
+                }
+                .into(),
+                LobbyEvent::Launching {
+                    launch: game_launch(8),
+                }
+                .into(),
+                // A late abandon of an older launch leaves this one alone.
+                LobbyEvent::LaunchAbandoned { id: 7 }.into(),
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Cancelled {
+                        queue_name: Some("tmm2v2".into()),
+                    },
+                }
+                .into(),
+                // The cancel the launcher saw: the join is closed and the
+                // panel keeps saying the match was cancelled.
+                LobbyEvent::LaunchAbandoned { id: 8 }.into(),
+                // The next match launches from an idle join.
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Launching {
+                        queue_name: "tmm2v2".into(),
+                    },
+                }
+                .into(),
+                LobbyEvent::Preparing {
+                    phase: PreparationPhase::Map,
+                    detail: "Generating map".into(),
+                    progress: None,
+                }
+                .into(),
+                LobbyEvent::LaunchAbandoned { id: 9 }.into(),
             ],
         ),
         case(
