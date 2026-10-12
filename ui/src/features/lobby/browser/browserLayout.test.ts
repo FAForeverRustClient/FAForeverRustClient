@@ -136,8 +136,8 @@ describe("the game list's column widths", () => {
   });
 
   it("has room for every heading in every language in the default window", () => {
-    // Every catalogue heading is measured with its sort arrow and fits the
-    // designed columns. The full name is also available in the heading tooltip.
+    // Measurements include each label, its sort arrow and the gap beside it.
+    // Check every catalogue against the fitted widths to catch clipped labels.
     const fit = fitColumns(DEFAULT_COLUMN_WIDTHS, COLUMN_FLOORS, LAYOUT_AT_1100 - LIST_CHROME);
     for (const [language, catalogue] of Object.entries(CATALOGUES)) {
       HEADING_KEYS.forEach((key, column) => {
