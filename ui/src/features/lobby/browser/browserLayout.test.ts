@@ -48,7 +48,7 @@ const MEASURED_HEADINGS: readonly Readonly<Record<string, number>>[] = [
   { Map: 41, Karte: 51, Mapa: 49, Carte: 51, "Карта": 52 },
   { Players: 64, Spieler: 60, Plazas: 59, Joueurs: 67, Gracze: 60, "Игроков": 70 },
   { "Ø Rating": 71, "Ø-Rating": 73, "Ø Puntos": 75, "Ø Niveau": 72, Ranking: 69, "Рейтинг": 69 },
-  { Age: 38, Alter: 50, Edad: 47, "Âge": 38, Wiek: 44, "Возр.": 47 },
+  { Age: 38, Alter: 50, Edad: 47, "Âge": 38, Wiek: 44, "Возр.": 47, "Создано": 73 },
 ];
 
 /** The list and the panel beside it together, in the default 1100 by 720 window. */
@@ -136,10 +136,8 @@ describe("the game list's column widths", () => {
   });
 
   it("has room for every heading in every language in the default window", () => {
-    // "Antigüedad", "Ouverte depuis" and "Создано" were each about 40 pixels
-    // wider than the 52 pixel age column, and three rating headings and the
-    // Spanish players heading were cut as well. Those languages now use a
-    // shorter word there, and the whole name is in the heading's tooltip.
+    // Every catalogue heading is measured with its sort arrow and fits the
+    // designed columns. The full name is also available in the heading tooltip.
     const fit = fitColumns(DEFAULT_COLUMN_WIDTHS, COLUMN_FLOORS, LAYOUT_AT_1100 - LIST_CHROME);
     for (const [language, catalogue] of Object.entries(CATALOGUES)) {
       HEADING_KEYS.forEach((key, column) => {

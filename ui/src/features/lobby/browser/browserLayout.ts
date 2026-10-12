@@ -30,7 +30,7 @@ import {
  * this replaced added up to 935 pixels, so at that size every column was drawn
  * at three quarters and titles, map names and three headings were cut off.
  */
-export const DEFAULT_COLUMN_WIDTHS: readonly number[] = [254, 96, 150, 72, 80, 52];
+export const DEFAULT_COLUMN_WIDTHS: readonly number[] = [254, 68, 150, 72, 80, 80];
 
 /**
  * The narrowest each column is drawn, in the same order: a thumbnail and the
