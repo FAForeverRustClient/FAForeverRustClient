@@ -181,10 +181,7 @@ export function AppearanceSettingsSection() {
           })}
         </div>
       </SettingRow>
-      <SettingRow
-        label={t("settings.appearance.vaultPageSize")}
-        hint={t("settings.appearance.vaultPageSizeHint")}
-      >
+      <SettingRow label={t("settings.appearance.vaultPageSize")}>
         <div
           className="settings-segmented surface"
           role="group"
@@ -221,10 +218,7 @@ export function AppearanceSettingsSection() {
           })}
         </div>
       </SettingRow>
-      <SettingRow
-        label={t("settings.appearance.replayFlags")}
-        hint={t("settings.appearance.replayFlagsHint")}
-      >
+      <SettingRow label={t("settings.appearance.replayFlags")}>
         <SettingsSwitch
           checked={preferences.replayFlags}
           onChange={(replayFlags) => void save({ replayFlags })}
@@ -243,10 +237,7 @@ export function AppearanceSettingsSection() {
       </SettingRow>
       {preferences.hoverPanels && (
         <>
-          <SettingRow
-            label={t("settings.appearance.hoverOpenDelay")}
-            hint={t("settings.appearance.hoverOpenDelayHint")}
-          >
+          <SettingRow label={t("settings.appearance.hoverOpenDelay")}>
             <div
               className="settings-segmented surface"
               role="group"
@@ -268,10 +259,7 @@ export function AppearanceSettingsSection() {
               })}
             </div>
           </SettingRow>
-          <SettingRow
-            label={t("settings.appearance.hoverCloseDelay")}
-            hint={t("settings.appearance.hoverCloseDelayHint")}
-          >
+          <SettingRow label={t("settings.appearance.hoverCloseDelay")}>
             <div
               className="settings-segmented surface"
               role="group"
@@ -295,7 +283,7 @@ export function AppearanceSettingsSection() {
           </SettingRow>
         </>
       )}
-      <SettingRow label={t("settings.appearance.reduceMotion")} hint={t("settings.appearance.reduceMotionHint")}>
+      <SettingRow label={t("settings.appearance.reduceMotion")}>
         <SettingsSwitch
           checked={preferences.reduceMotion}
           onChange={(reduceMotion) => void save({ reduceMotion })}
@@ -314,7 +302,7 @@ export function AppearanceSettingsSection() {
           behind: it decides the colour of everyone the rules below do not
           name, and splitting a rule from its fallback across two registers is
           the arrangement this rewrite exists to end. */}
-      <SettingRow label={t("settings.chat.colorEveryName")} hint={t("settings.chat.colorEveryNameHint")}>
+      <SettingRow label={t("settings.chat.colorEveryName")}>
         <SettingsSwitch
           checked={chat.coloredNames}
           onChange={(coloredNames) => void saveChat({ coloredNames })}

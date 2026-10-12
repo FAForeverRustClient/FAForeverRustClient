@@ -63,10 +63,7 @@ export function GameSettingsSection() {
         />
       </SettingRow>
 
-      <SettingRow
-        label={t("settings.game.autoGenerateMaps")}
-        hint={t("settings.game.autoGenerateMapsHint")}
-      >
+      <SettingRow label={t("settings.game.autoGenerateMaps")}>
         <SettingsSwitch
           checked={preferences.autoGenerateMaps ?? true}
           onChange={setAutoGenerate}
