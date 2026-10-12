@@ -2627,7 +2627,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "training.profile.maps": "Недавние карты",
   "training.recommended.title": "Рекомендовано для вас",
   "training.basics.title": "Изучите основы",
-  "lobby.browser.column.age": "Возр.",
+  "lobby.browser.column.age": "Создано",
   "lobby.browser.column.version": "Версия",
   "lobby.browser.columnFull.players": "Игроков",
   "lobby.browser.columnFull.rating": "Средний рейтинг",
