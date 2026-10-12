@@ -5163,6 +5163,7 @@ export const en = {
   "training.contribute.ratingProblem.order": "The minimum rating is higher than the maximum.",
   "links.thanks.note.feedback": "feedback",
   "links.thanks.note.communityHub": "community hub",
+  "links.thanks.note.ruLocalization": "RU localization",
   "lobby.host.defaultBadge": "Default",
   "settings.notifications.sound.add": "Add a sound file...",
   "settings.notifications.sound.missing": "{name} (missing)",

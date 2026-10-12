@@ -4585,6 +4585,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "training.contribute.ratingProblem.order": "Minimalny ranking jest wyższy niż maksymalny.",
   "links.thanks.note.feedback": "opinie",
   "links.thanks.note.communityHub": "centrum społeczności",
+  "links.thanks.note.ruLocalization": "lokalizacja rosyjska",
   "lobby.host.defaultBadge": "Domyślne",
   "settings.notifications.sound.add": "Dodaj plik dźwiękowy...",
   "settings.notifications.sound.missing": "{name} (brak pliku)",

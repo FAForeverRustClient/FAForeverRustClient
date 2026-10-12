@@ -93,7 +93,7 @@
   /* The fallback for the moment before the saved widths arrive, in the shape
      the saved ones have: five columns at a fixed width and the game column
      taking the rest. */
-  grid-template-columns: var(--game-browser-columns, minmax(160px, 1fr) 96px 150px 72px 80px 52px);
+  grid-template-columns: var(--game-browser-columns, minmax(160px, 1fr) 96px 150px 74px 80px 80px);
   align-items: center;
   gap: 16px;
   /* Set only when every column is at its floor and the floors are wider than
