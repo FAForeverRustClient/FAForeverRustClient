@@ -2,7 +2,11 @@
 //! documents and their reload after a site write, the hosting status, the
 //! profile and its Discord handle, and the rules pages.
 
-use faf_domain::state::{AccessKind, SiteRead, TourneyAction, TourneyEvent};
+use std::collections::HashMap;
+
+use faf_domain::state::{
+    AccessKind, HallOfFame, SiteDocument, SiteRead, TourneyAction, TourneyEvent,
+};
 
 use crate::runtime::{EventSink, ServiceCtx};
 
@@ -57,6 +61,12 @@ pub(super) async fn load_articles(ctx: &ServiceCtx, out: &EventSink) {
 pub(super) async fn load_site(read: SiteRead, ctx: &ServiceCtx, out: &EventSink) {
     out.emit(TourneyEvent::SiteLoading { read });
     match ctx.ports.tourney_site.site_read(read).await {
+        Ok(SiteDocument::HallOfFame(hall)) => {
+            out.emit(TourneyEvent::SiteLoaded {
+                document: SiteDocument::HallOfFame(hall.clone()),
+            });
+            load_hall_profiles(hall, ctx, out).await;
+        }
         Ok(document) => out.emit(TourneyEvent::SiteLoaded { document }),
         Err(error) => {
             tracing::warn!(%error, ?read, "could not read the tournament site");
@@ -67,6 +77,42 @@ pub(super) async fn load_site(read: SiteRead, ctx: &ServiceCtx, out: &EventSink)
             });
         }
     }
+}
+
+/// Ids per request for the Hall of Fame's FAF accounts: they go in the query
+/// string, and the board lists everyone who ever entered.
+const HALL_PROFILE_BATCH: usize = 100;
+
+/// The Hall of Fame again, with the FAF account behind each row: its avatar,
+/// its current login and its ratings, for the board to draw the way the
+/// leaderboard does.
+///
+/// After the board rather than before it, so a slow or failing FAF API never
+/// holds up a page the tournament service has already answered. A failure is
+/// silent, as the entrants' is: the board is complete without avatars.
+async fn load_hall_profiles(mut hall: HallOfFame, ctx: &ServiceCtx, out: &EventSink) {
+    let mut ids: Vec<i32> = hall.players.iter().map(|player| player.faf_id).collect();
+    ids.sort_unstable();
+    ids.dedup();
+    if ids.is_empty() {
+        return;
+    }
+    let mut profiles = HashMap::with_capacity(ids.len());
+    for batch in ids.chunks(HALL_PROFILE_BATCH) {
+        match ctx.ports.player_card.players_by_id(batch).await {
+            Ok(found) => profiles.extend(found.into_iter().map(|profile| (profile.id, profile))),
+            Err(error) => {
+                tracing::warn!(%error, "could not load the Hall of Fame's FAF profiles");
+                return;
+            }
+        }
+    }
+    for player in &mut hall.players {
+        player.profile = profiles.get(&player.faf_id).cloned();
+    }
+    out.emit(TourneyEvent::SiteLoaded {
+        document: SiteDocument::HallOfFame(hall),
+    });
 }
 
 /// After a site write: the account and the pending bar always, the hosting

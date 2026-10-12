@@ -2334,7 +2334,9 @@ impl Default for HostGamePreferences {
 
 impl HostGamePreferences {
     fn normalized(mut self) -> Self {
-        self.title = truncate_trimmed(self.title, 128);
+        // The host dialog's own limit, so a remembered title never seeds the
+        // form with one the backend would refuse to host.
+        self.title = truncate_trimmed(self.title, super::lobby::HostGameConfig::MAX_TITLE_CHARS);
         self.featured_mod = truncate_trimmed(self.featured_mod, 128);
         if self.featured_mod.is_empty() {
             self.featured_mod = "faf".into();

@@ -107,7 +107,12 @@ pub struct HostGameConfig {
 }
 
 impl HostGameConfig {
-    pub const MAX_TITLE_CHARS: usize = 128;
+    /// The longest title this client hosts with. 64, below the 128 the Python
+    /// client allows: enough to say what the game is and what it asks of its
+    /// players, not enough for a wall of text that every other screen cuts
+    /// short anyway. The host dialog holds the same number
+    /// (`MAX_HOST_TITLE`). Games hosted from other clients can be longer.
+    pub const MAX_TITLE_CHARS: usize = 64;
     pub const MAX_PASSWORD_CHARS: usize = 25;
     pub const MIN_RATING: i32 = -9_999;
     pub const MAX_RATING: i32 = 9_999;

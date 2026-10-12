@@ -1,19 +1,22 @@
-// The Hall of Fame, the FAQ / Rules pages and the access request screens:
-// the website's `renderHall`, `renderFaq`, `renderEditor` and
-// `renderImporter`, as pages of the Tournaments tab.
+// The Hall of Fame and the FAQ / Rules pages: the website's `renderHall` and
+// `renderFaq`, as pages of the Tournaments tab. Its `renderEditor` and
+// `renderImporter` screens are the access dialog behind the tab's Request
+// access button (`SiteChrome`).
 
-import { useState } from "react";
-import { Button } from "../../../design-system/Button";
+import { Icon } from "../../../design-system/Icon";
 import { StatusNotice } from "../../../design-system/StatusNotice";
-import type { AccessStatus, Article, HallOfFame, SiteWrite, TourneyLoadStatus } from "../../../ipc/bindings";
+import type { Article, HallOfFame, HallPlayer, TourneyLoadStatus } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { PlayerName } from "../../../shared/components/nameColors";
 import { useRememberedFilter } from "../../../shared/filterMemory";
+import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
 import { plainError } from "../../../shared/plainError";
+import { leaderboardLabel } from "../../../shared/playerRatings";
 import { RichText } from "../detail/RichText";
 
 /**
  * The Hall of Fame: players by championships, with a search over the names,
- * as on the website. There is no teams board (#444): a team is named and
+ * as on the website, each row drawn as the leaderboard draws a player. There is no teams board (#444): a team is named and
  * formed anew for every tournament, so no team ever won twice and the board
  * only listed every winner once. The rank stays the player's place on the
  * whole board when the search narrows it.
@@ -45,53 +48,123 @@ export function HallOfFamePage({
   if (hall === null) return <p className="muted">{t("tournaments.loading")}</p>;
   const needle = query.trim().toLocaleLowerCase();
   const ranked = hall.players.map((player, index) => ({ player, rank: index + 1 }));
-  const shown = needle === "" ? ranked : ranked.filter(({ player }) => player.name.toLocaleLowerCase().includes(needle));
+  // Either name finds the row: the one the board recorded, and the one the
+  // account goes by now.
+  const shown = needle === ""
+    ? ranked
+    : ranked.filter(({ player }) =>
+        [player.name, player.profile?.login ?? ""].some((name) => name.toLocaleLowerCase().includes(needle)));
   return (
     <div className="tournament-site-page">
       <h2>{t("tournaments.site.hall")}</h2>
       <section className="surface tournament-site-panel">
-        <h3>
-          {t("tournaments.hall.players")} <span className="muted">{t("tournaments.hall.byTitles")}</span>
-        </h3>
-        {hall.players.length > 0 && (
-          <label className="tournament-field">
-            <span>{t("tournaments.hall.search")}</span>
-            <input
-              type="search"
-              value={query}
-              placeholder={t("tournaments.hall.searchPlaceholder")}
-              onChange={(changed) => setQuery(changed.target.value)}
-            />
-          </label>
-        )}
+        <div className="tournament-hall-head">
+          <h3>
+            {t("tournaments.hall.players")} <span className="muted">{t("tournaments.hall.byTitles")}</span>
+          </h3>
+          {hall.players.length > 0 && (
+            <label className="search-field tournament-hall-search">
+              <Icon name="search" size={13} />
+              <input
+                type="search"
+                value={query}
+                placeholder={t("tournaments.hall.searchPlaceholder")}
+                aria-label={t("tournaments.hall.search")}
+                onChange={(changed) => setQuery(changed.target.value)}
+              />
+            </label>
+          )}
+        </div>
         {hall.players.length === 0 ? (
           <p className="muted">{t("tournaments.hall.noPlayers")}</p>
         ) : shown.length === 0 ? (
           <p className="muted">{t("tournaments.hall.noMatch")}</p>
         ) : (
-          <table className="tournament-standings">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>{t("tournaments.hall.player")}</th>
-                <th>{t("tournaments.hall.wins")}</th>
-                <th>{t("tournaments.hall.entered")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map(({ player, rank }) => (
-                <tr key={player.fafId}>
-                  <td className="mono">{rank}</td>
-                  <td>{player.name}</td>
-                  <td className="mono">{player.wins}</td>
-                  <td className="mono">{player.entered}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <HallTable rows={shown} />
         )}
       </section>
     </div>
+  );
+}
+
+/**
+ * The board's rows the way the leaderboard draws a player: the avatar, then
+ * the name, which opens the player menu the chat's names open. The account is
+ * FAF's and arrives a moment after the board, so a row draws without it first
+ * and keeps the avatar's room either way. The name is the account's current
+ * login, the one the menu and everybody else know; the name the board recorded
+ * is the tooltip where the two differ.
+ */
+function HallTable({ rows }: { rows: { player: HallPlayer; rank: number }[] }) {
+  const { t } = useTranslation();
+  const { openPlayerMenu, playerMenu, playerMenuTarget } = usePlayerMenu();
+  return (
+    <>
+      <table className="tournament-standings tournament-hall-table">
+        <thead>
+          <tr>
+            <th className="tournament-hall-rank">#</th>
+            <th>{t("tournaments.hall.player")}</th>
+            <th className="is-number">{leaderboardLabel("global")}</th>
+            <th className="is-number">{t("tournaments.hall.wins")}</th>
+            <th className="is-number">{t("tournaments.hall.entered")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ player, rank }) => {
+            const profile = player.profile;
+            const login = profile?.login || player.name;
+            const rating = profile === null ? "" : (profile.globalRating ?? t("common.notAvailable"));
+            const open = playerMenuTarget !== null && playerMenuTarget === login;
+            return (
+              // The podium's hairline, for the champions at the top only: a
+              // board searched down to one name keeps its rank, not its medal.
+              <tr key={player.fafId} className={player.wins > 0 && rank <= 3 ? `rank-${rank}` : undefined}>
+                <td className="tournament-hall-rank">{rank}</td>
+                <td>
+                  <span className="tournament-hall-player">
+                    {profile?.avatarUrl ? (
+                      <img
+                        className="tournament-hall-avatar"
+                        src={profile.avatarUrl}
+                        alt=""
+                        width={40}
+                        height={20}
+                        loading="lazy"
+                        decoding="async"
+                        draggable={false}
+                      />
+                    ) : (
+                      <span className="tournament-hall-avatar" aria-hidden />
+                    )}
+                    <button
+                      type="button"
+                      className={open ? "tournament-hall-name is-menu-open" : "tournament-hall-name"}
+                      aria-haspopup="menu"
+                      aria-expanded={open}
+                      title={login !== player.name ? t("tournaments.hall.playedAs", { name: player.name }) : undefined}
+                      onClick={(event) => openPlayerMenu(login, event)}
+                      onContextMenu={(event) => openPlayerMenu(login, event)}
+                    >
+                      <PlayerName name={login} />
+                    </button>
+                  </span>
+                </td>
+                <td className="is-number muted">{rating}</td>
+                <td className="is-number">
+                  <span className={player.wins > 0 ? "tournament-hall-wins is-champion" : "tournament-hall-wins"}>
+                    {player.wins > 0 && <Icon name="trophy" size={13} />}
+                    {player.wins}
+                  </span>
+                </td>
+                <td className="is-number">{player.entered}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {playerMenu}
+    </>
   );
 }
 
@@ -166,103 +239,6 @@ export function FaqPage({
           {subPages(article.id)}
         </section>
       ))}
-    </div>
-  );
-}
-
-/**
- * Asking for editor or importer access: the website's `/editor` and
- * `/importer` screens, for an account that does not have it yet.
- */
-export function AccessPage({
-  access,
-  status,
-  name,
-  busy,
-  onWrite,
-  onSwitch,
-}: {
-  access: "editor" | "importer";
-  status: AccessStatus;
-  name: string;
-  busy: boolean;
-  onWrite: (write: SiteWrite) => void;
-  /** Show the other kind of access. */
-  onSwitch: (access: "editor" | "importer") => void;
-}) {
-  const { t } = useTranslation();
-  const [message, setMessage] = useState("");
-  const editor = access === "editor";
-  const body = () => {
-    if (!status.oauth) return <p className="muted">{t(editor ? "tournaments.access.noOauthEditor" : "tournaments.access.noOauthImporter")}</p>;
-    if (!status.loggedIn) {
-      return (
-        <>
-          <h3>{t("tournaments.access.loginTitle")}</h3>
-          <p className="muted">{t(editor ? "tournaments.access.loginEditor" : "tournaments.access.loginImporter")}</p>
-        </>
-      );
-    }
-    if (status.allowed) {
-      return (
-        <>
-          <h3>{t(editor ? "tournaments.access.haveEditor" : "tournaments.access.haveImporter")}</h3>
-          <p className="muted">
-            {t(editor ? "tournaments.access.whereEditor" : "tournaments.access.whereImporter")}
-          </p>
-        </>
-      );
-    }
-    if (status.pending) {
-      return (
-        <>
-          <h3>{t("tournaments.access.sentTitle")}</h3>
-          <p className="muted">{t(editor ? "tournaments.access.sentEditor" : "tournaments.access.sentImporter")}</p>
-        </>
-      );
-    }
-    return (
-      <>
-        <h3>{t(editor ? "tournaments.access.askEditor" : "tournaments.access.askImporter")}</h3>
-        <p className="muted">
-          {t(editor ? "tournaments.access.askEditorHint" : "tournaments.access.askImporterHint", { name })}
-        </p>
-        <label className="tournament-field">
-          <span>{t("tournaments.access.message")}</span>
-          <textarea
-            rows={3}
-            maxLength={300}
-            value={message}
-            placeholder={t("tournaments.access.messagePlaceholder")}
-            onChange={(changed) => setMessage(changed.target.value)}
-          />
-        </label>
-        <Button
-          variant="primary"
-          disabled={busy}
-          onClick={() => onWrite({ type: "requestAccess", payload: { kind: access, message } })}
-        >
-          {t("tournaments.access.request")}
-        </Button>
-      </>
-    );
-  };
-  return (
-    <div className="tournament-site-page">
-      <nav className="tournament-sections" aria-label={t("tournaments.site.access")}>
-        {(["editor", "importer"] as const).map((kind) => (
-          <button
-            type="button"
-            key={kind}
-            className={kind === access ? "tournament-section is-active" : "tournament-section"}
-            aria-current={kind === access ? "page" : undefined}
-            onClick={() => onSwitch(kind)}
-          >
-            {t(kind === "editor" ? "tournaments.access.tabEditor" : "tournaments.access.tabImporter")}
-          </button>
-        ))}
-      </nav>
-      <section className="surface tournament-site-panel">{body()}</section>
     </div>
   );
 }

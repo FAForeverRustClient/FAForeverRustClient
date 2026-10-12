@@ -4,6 +4,7 @@ import type { LeaderboardEntry, PlayerRatings } from "../../ipc/bindings";
 import { t as translate, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/components/nameColors";
+import { usePlayerMenu, type PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { hourCycleOptions } from "../../shared/format/clock";
 import { clientIntlTag } from "../../shared/format/dates";
 import { tierLabel } from "../../shared/leagueNames";
@@ -120,7 +121,15 @@ function format(
   return String(raw);
 }
 
-function playerCell(entry: LeaderboardEntry) {
+/**
+ * The avatar and the name, the name a button that opens the player menu the
+ * chat tab's names open: profile, message, friend, replays. A click on the
+ * rest of the row still selects it for the panel beside the table, and the
+ * name keeps its keys to itself so Enter on it opens the menu rather than
+ * selecting the row.
+ */
+function playerCell(entry: LeaderboardEntry, openMenu: PlayerMenuOpener, menuOpen: boolean) {
+  const name = entry.playerName;
   return (
     <span className="leaderboard-player-cell">
       {entry.avatarUrl ? (
@@ -138,7 +147,27 @@ function playerCell(entry: LeaderboardEntry) {
       ) : (
         <span className="leaderboard-avatar-slot" aria-hidden="true" />
       )}
-      <PlayerName name={entry.playerName || translate("common.unknown")} />
+      {name ? (
+        <button
+          type="button"
+          className={menuOpen ? "leaderboard-name-button is-menu-open" : "leaderboard-name-button"}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={(event) => {
+            event.stopPropagation();
+            openMenu(name, event);
+          }}
+          onContextMenu={(event) => {
+            event.stopPropagation();
+            openMenu(name, event);
+          }}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          <PlayerName name={name} />
+        </button>
+      ) : (
+        <PlayerName name={translate("common.unknown")} />
+      )}
     </span>
   );
 }
@@ -285,6 +314,7 @@ export function LeaderboardTable({
   scrollResetKey,
 }: LeaderboardTableProps) {
   const { t } = useTranslation();
+  const { openPlayerMenu, playerMenu, playerMenuTarget } = usePlayerMenu();
   const [sort, setSort] = useState<{ column: TableColumn; descending: boolean }>({
     column: "rank",
     descending: false,
@@ -370,7 +400,7 @@ export function LeaderboardTable({
                       : isBoardColumn(column) ? "leaderboard-board-column" : undefined}
                 >
                   {column === "player"
-                    ? playerCell(entry)
+                    ? playerCell(entry, openPlayerMenu, playerMenuTarget !== null && playerMenuTarget === entry.playerName)
                     : column === "division" && entry.division !== null
                       ? divisionCell(entry, format(entry, column, activeBoard, crossRatings))
                       : format(entry, column, activeBoard, crossRatings)}
@@ -385,6 +415,7 @@ export function LeaderboardTable({
           {t("leaderboard.showMore", { count: Math.min(rowBatch, sorted.length - shown) })}
         </Button>
       )}
+      {playerMenu}
     </div>
   );
 }

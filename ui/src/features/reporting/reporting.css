@@ -48,6 +48,7 @@
   flex-direction: column;
   gap: var(--space-2);
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .report-history > .muted { margin: auto; }
@@ -212,6 +213,7 @@
   margin: 0;
   padding: var(--space-2) var(--space-3);
   overflow: auto;
+  /* No scrollbar gutter: the text does not change while it is on screen, so its scrollbar never appears under the reader. */
   color: var(--color-text);
   font-family: var(--font-mono);
   font-size: 12px;

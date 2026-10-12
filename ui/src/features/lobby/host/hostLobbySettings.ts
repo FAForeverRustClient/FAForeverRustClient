@@ -12,6 +12,16 @@ import { useAppStore } from "../../../store/store";
 export const MIN_HOST_RATING = -9999;
 export const MAX_HOST_RATING = 9999;
 
+/**
+ * The longest title this client hosts with (`HostGameConfig::MAX_TITLE_CHARS`).
+ *
+ * 64, down from the 128 the Python client allows: room for a title that says
+ * what the game is and what it asks of the players, and none for a wall of
+ * text, which a tile cut to its first twenty characters and a list row to its
+ * first fifty anyway. Games hosted elsewhere can still arrive longer.
+ */
+export const MAX_HOST_TITLE = 64;
+
 const PRINTABLE_ASCII = /^[\x20-\x7e]*$/;
 
 /** The part of a `Lobby::host` config this section decides. */
@@ -69,11 +79,17 @@ export function useHostLobbySettings(
   // in the first place.
   const remembered = useAppStore((state) => state.state.settings.browsing[slot]);
 
-  const [title, setTitle] = useState(
-    initialTitle ??
+  // Cut to the limit on the way in, as anything set from code is below: a
+  // title remembered from before the limit was lowered, or a co-op mission's
+  // long name in its default, would otherwise reach the backend and be
+  // refused there, after the form had been filled in.
+  const [title, setTitleState] = useState(
+    (initialTitle ??
       (remembered.title ||
-        t("lobby.host.defaultTitle", { player: player?.name ?? t("lobby.matchmaker.player") })),
+        t("lobby.host.defaultTitle", { player: player?.name ?? t("lobby.matchmaker.player") })))
+      .slice(0, MAX_HOST_TITLE),
   );
+  const setTitle = (value: string) => setTitleState(value.slice(0, MAX_HOST_TITLE));
   const [visibility, setVisibility] = useState(remembered.visibility);
   const [passwordEnabled, setPasswordEnabled] = useState(remembered.passwordEnabled);
   const [password, setPassword] = useState(remembered.password);

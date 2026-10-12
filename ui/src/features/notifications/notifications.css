@@ -95,6 +95,7 @@
 .notification-list {
   max-height: 510px;
   overflow-y: auto;
+  /* No scrollbar gutter: a pop-up as wide as what opened it, where a reserved strip would narrow every entry for a scrollbar most lists never show. */
 }
 
 .notification-item,

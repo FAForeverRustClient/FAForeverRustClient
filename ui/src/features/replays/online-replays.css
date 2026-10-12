@@ -642,7 +642,11 @@ button.vault-input {
   max-height: calc(100vh - 12px);
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   padding: var(--space-4);
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). */
+  padding-right: max(0px, var(--space-4) - var(--scrollbar-size));
   scrollbar-width: thin;
 }
 
@@ -1661,6 +1665,7 @@ button.vault-input {
   min-height: 0;
   padding-top: var(--space-3);
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 /* A filter and a search side by side used to touch, and were two heights. */
@@ -1784,6 +1789,7 @@ input.replay-options-filter {
 .replay-table-scroll {
   max-height: 240px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   overflow-x: hidden;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -1934,6 +1940,7 @@ input.replay-options-filter {
   min-width: min(320px, calc(100vw - 48px));
   max-height: 92vh;
   overflow-y: auto;
+  /* No scrollbar gutter: the scroll is a backstop for a very short window, and a reserved strip would push the picture off centre. */
   padding: var(--space-4);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
@@ -2149,6 +2156,7 @@ input.replay-options-filter {
   box-sizing: border-box;
   padding: var(--space-2) var(--space-3);
   overflow-y: auto;
+  /* No scrollbar gutter: a pop-up as wide as what opened it, where a reserved strip would narrow every entry for a scrollbar most lists never show. */
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -2428,6 +2436,7 @@ input.replay-options-filter {
   gap: var(--space-3);
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 /* The drawing takes the height the dialog has spare; the legend and the

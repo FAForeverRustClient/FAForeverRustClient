@@ -70,6 +70,7 @@
   min-width: 100%;
   max-height: 260px;
   overflow-y: auto;
+  /* No scrollbar gutter: a pop-up as wide as what opened it, where a reserved strip would narrow every entry for a scrollbar most lists never show. */
   padding: var(--space-1);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);

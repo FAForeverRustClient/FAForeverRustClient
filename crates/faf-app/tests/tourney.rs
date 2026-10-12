@@ -3488,3 +3488,115 @@ async fn a_plan_with_the_wrong_number_of_rounds_is_caught_here() {
     assert!(!short.is_submittable(teams), "one round for four teams");
     assert!(BracketConfig::of(&event).is_submittable(teams));
 }
+
+/// The offline site with a Hall of Fame on it: two players FAF knows (the
+/// offline player card's 101 and 102) and one it does not.
+struct HallSite(Arc<dyn faf_app::ports::TourneySitePort>);
+
+#[async_trait]
+impl faf_app::ports::TourneySitePort for HallSite {
+    async fn hosting(&self) -> Result<faf_domain::state::HostingStatus, RequestError> {
+        self.0.hosting().await
+    }
+
+    async fn profile(&self) -> Result<String, RequestError> {
+        self.0.profile().await
+    }
+
+    async fn set_discord(&self, handle: &str) -> Result<String, RequestError> {
+        self.0.set_discord(handle).await
+    }
+
+    async fn site_read(
+        &self,
+        read: faf_domain::state::SiteRead,
+    ) -> Result<faf_domain::state::SiteDocument, RequestError> {
+        if read != faf_domain::state::SiteRead::HallOfFame {
+            return self.0.site_read(read).await;
+        }
+        let player = |faf_id, name: &str, wins| faf_domain::state::HallPlayer {
+            faf_id,
+            name: name.into(),
+            wins,
+            entered: wins + 1,
+            profile: None,
+        };
+        Ok(faf_domain::state::SiteDocument::HallOfFame(
+            faf_domain::state::HallOfFame {
+                players: vec![
+                    player(102, "Ada", 2),
+                    player(999, "Gone", 1),
+                    player(101, "Nuggets", 0),
+                ],
+                teams: Vec::new(),
+            },
+        ))
+    }
+
+    async fn site_write(
+        &self,
+        write: &faf_domain::state::SiteWrite,
+    ) -> Result<(Option<String>, Option<String>), RequestError> {
+        self.0.site_write(write).await
+    }
+
+    async fn articles(&self) -> Result<Vec<faf_domain::state::Article>, RequestError> {
+        self.0.articles().await
+    }
+}
+
+#[tokio::test]
+async fn the_hall_of_fame_lands_first_and_then_with_each_players_faf_account() {
+    // The board is the tournament service's; the avatars are FAF's. The board
+    // must not wait on the second request, and a row FAF has no account for
+    // keeps its place without one.
+    let base = fake_ports();
+    let ports = Ports {
+        tourney_site: Arc::new(HallSite(base.tourney_site.clone())),
+        ..base
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    sign_in(&app).await;
+    let mut events = app.subscribe();
+
+    app.dispatch(
+        TourneyRead::LoadSite {
+            read: faf_domain::state::SiteRead::HallOfFame,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    let mut boards = Vec::new();
+    while boards.len() < 2 {
+        if let TourneyEvent::SiteLoaded {
+            document: faf_domain::state::SiteDocument::HallOfFame(hall),
+        } = next_event(&mut events).await
+        {
+            boards.push(hall);
+        }
+    }
+    assert!(
+        boards[0]
+            .players
+            .iter()
+            .all(|player| player.profile.is_none()),
+        "the board first, as the service sent it"
+    );
+    let logins: Vec<Option<String>> = boards[1]
+        .players
+        .iter()
+        .map(|player| player.profile.as_ref().map(|profile| profile.login.clone()))
+        .collect();
+    assert_eq!(
+        logins,
+        vec![
+            Some("Ada_Lovelace".to_string()),
+            None,
+            Some("Nuggets".to_string())
+        ],
+        "then each row with its account, in the board's order"
+    );
+}

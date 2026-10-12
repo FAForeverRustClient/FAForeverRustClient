@@ -2646,6 +2646,7 @@ pub fn parse_hall_of_fame(document: &Value) -> HallOfFame {
                     name: text(held, "name"),
                     wins: int(held, "wins").unwrap_or(0),
                     entered: int(held, "entered").unwrap_or(0),
+                    profile: None,
                 })
             })
             .collect(),

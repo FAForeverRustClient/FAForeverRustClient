@@ -50,14 +50,74 @@ verify what the library does or sends to Valve. See
 This project is not affiliated with or endorsed by Valve Corporation. Steam is
 a trademark of Valve Corporation.
 
-## FAF wiki rating figures
+## FAF wiki rating page
 
-The five diagrams in the leaderboard's "How rating works" tab
-(`ui/src/features/leaderboard/assets/`) are taken from the FAForever wiki's
+The leaderboard's "How rating works" dialog summarises the FAForever wiki's
 [rating system page](https://wiki.faforever.com/en/Infrastructure/Rating-System),
-which is that project's own documentation. The prose beside them is a summary
-of the same page written for this client. If the wiki states a licence for its
-media, name it here.
+which is that project's own documentation, and follows its order. Its figures
+are drawn by the client (`ui/src/features/leaderboard/RatingFigures.tsx`) from
+the numbers in the text; none of the wiki's images is shipped. The one figure
+with data of its own, the five teams' ratings over forty games, uses values
+read off the wiki's chart of the same name.
+
+## Lucide icons
+
+The drawings in `ui/src/design-system/Icon.tsx`, except the GitHub, Twitch and
+Discord marks, are taken from [Lucide](https://lucide.dev) (`lucide-static`
+1.55.0). Only the drawing data is copied; no Lucide package is installed. The
+same notice is kept at the top of that file, where the build carries it into
+the shipped code.
+
+```text
+ISC License
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+```
+
+Of the icons used, arrow-left, arrow-right, calendar, check, chevron-down,
+chevron-right, chevron-up, clock, download, external-link, info, lock, log-out,
+minus, plus, search, smile, trash-2, upload and x are derived from the
+[Feather](https://feathericons.com) project, under this licence:
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2013-present Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+The GitHub, Twitch and Discord marks in the same file are drawn by this
+project in the set's outline style. They are their owners' trademarks, used
+only to name the service a link leads to.
 
 ## Match-found notification sound
 

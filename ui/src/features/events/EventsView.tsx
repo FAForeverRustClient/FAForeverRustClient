@@ -165,26 +165,34 @@ export function EventsView() {
           onChange={setView}
           idPrefix="events-view"
         />
+        {/* Today and the two steps together, then the period's name: the
+            buttons stay put whichever month is shown. With the name between
+            the arrows, centred in a box wide enough for the longest month,
+            the arrows sat a long way apart and "Today" moved with the name. */}
         {events.view !== "upcoming" && (
           <div className="events-period" role="group" aria-label={t("events.period.aria")}>
-            <button
-              type="button"
-              className="events-period-step"
-              onClick={() => step(-1)}
-              aria-label={t("events.period.previous")}
-            >
-              <Icon name="arrowLeft" size={15} />
-            </button>
-            <strong>{title}</strong>
-            <button
-              type="button"
-              className="events-period-step"
-              onClick={() => step(1)}
-              aria-label={t("events.period.next")}
-            >
-              <Icon name="arrowRight" size={15} />
-            </button>
             <Button onClick={() => setAnchor("")}>{t("events.period.today")}</Button>
+            <div className="events-period-steps">
+              <button
+                type="button"
+                className="events-period-step"
+                onClick={() => step(-1)}
+                aria-label={t("events.period.previous")}
+                title={t("events.period.previous")}
+              >
+                <Icon name="arrowLeft" size={15} />
+              </button>
+              <button
+                type="button"
+                className="events-period-step"
+                onClick={() => step(1)}
+                aria-label={t("events.period.next")}
+                title={t("events.period.next")}
+              >
+                <Icon name="arrowRight" size={15} />
+              </button>
+            </div>
+            <strong>{title}</strong>
           </div>
         )}
       </div>

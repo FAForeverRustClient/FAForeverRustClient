@@ -5645,6 +5645,7 @@ fn cases() -> Vec<Case> {
                             name: "Ada".into(),
                             wins: 2,
                             entered: 4,
+                            profile: None,
                         }],
                         teams: Vec::new(),
                     }),

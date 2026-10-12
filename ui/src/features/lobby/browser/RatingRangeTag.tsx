@@ -31,10 +31,11 @@ export function RatingRangeTag(
           : t("lobby.browser.ratingRangeTooltip", { from, to })
       }
     >
-      {/* A closed padlock is the difference between a range that keeps people
-          out and one that only suggests. Without it both looked the same, and
-          only one of them was a rule. */}
-      {enforced && <Icon name="lock" size={9} />}
+      {/* A shield is the difference between a range that keeps people out and
+          one that only suggests. Without it both looked the same, and only one
+          of them was a rule. Not the padlock it was: that is a private game's
+          mark, and on a tile the two read as one. */}
+      {enforced && <Icon name="shield" size={12} />}
       <span>{from}</span>
       <span className="game-rating-range-separator" aria-hidden="true">-</span>
       <span>{to}</span>

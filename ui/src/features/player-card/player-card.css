@@ -142,6 +142,7 @@
   right: 0;
   max-height: 240px;
   overflow-y: auto;
+  /* No scrollbar gutter: a pop-up as wide as what opened it, where a reserved strip would narrow every entry for a scrollbar most lists never show. */
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
@@ -230,6 +231,9 @@
   flex: 1;
   min-height: 0;
   padding: var(--space-4);
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). */
+  padding-right: max(0px, var(--space-4) - var(--scrollbar-size));
   overflow: auto;
   scrollbar-gutter: stable;
 }

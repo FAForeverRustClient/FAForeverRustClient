@@ -29,8 +29,11 @@ import {
  * for it: what does not fit there folds into a "+N more" chip anyway. The set
  * this replaced added up to 935 pixels, so at that size every column was drawn
  * at three quarters and titles, map names and three headings were cut off.
+ * The age column is wide enough for the Russian heading, "Открыта", which
+ * reads better there than any shortening of it (#491); the players column grew
+ * by two pixels with it, so that "Игроков" stays whole at the default window.
  */
-export const DEFAULT_COLUMN_WIDTHS: readonly number[] = [254, 96, 150, 72, 80, 52];
+export const DEFAULT_COLUMN_WIDTHS: readonly number[] = [254, 96, 150, 74, 80, 80];
 
 /**
  * The narrowest each column is drawn, in the same order: a thumbnail and the

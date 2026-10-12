@@ -53,6 +53,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -127,6 +128,7 @@
 .settings-page-scroll {
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   overflow-x: hidden;
   padding-bottom: 32px;
   padding-right: 4px;
@@ -319,6 +321,20 @@
 .setting-label {
   color: var(--color-text);
   font-weight: 600;
+}
+
+/* What the current choice costs, under the hint: the warning colour and its
+   mark, on the row's own 20 px lines. */
+.setting-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--color-warn-text);
+}
+
+.setting-warning svg {
+  flex: none;
+  margin-top: 3px;
 }
 
 .setting-control {
