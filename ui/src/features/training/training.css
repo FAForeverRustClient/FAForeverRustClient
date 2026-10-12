@@ -10,6 +10,7 @@
   min-height: 0;
   height: 100%;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   /* Scrolling one way makes the other `auto` too, so the 6px the rail reaches
      past its edges for its focus rings put a horizontal scrollbar under the
      whole hub. Nothing here is meant to scroll sideways. */
@@ -2263,6 +2264,7 @@ html[data-background="custom"] .training-collection-head {
   flex: 0 1 320px;
   max-height: 315px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -3140,7 +3142,11 @@ div.training-detail-guide-problem p {
      scrolls around it. */
   max-height: calc(100vh - 150px);
   overflow-y: auto;
+  scrollbar-gutter: stable;
   padding: var(--space-4) clamp(16px, 2.5vw, 28px);
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). */
+  padding-right: max(0px, clamp(16px, 2.5vw, 28px) - var(--scrollbar-size));
 }
 
 .training-contribute-preview h4 {
@@ -3477,6 +3483,7 @@ div.training-detail-guide-problem p {
   gap: var(--space-3);
   max-height: min(78vh, 900px);
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .training-form h4 {
@@ -3859,7 +3866,11 @@ div.training-detail-guide-problem p {
   gap: var(--space-2);
   max-height: 280px;
   padding: var(--space-3);
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). */
+  padding-right: max(0px, var(--space-3) - var(--scrollbar-size));
   overflow-y: auto;
+  scrollbar-gutter: stable;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);

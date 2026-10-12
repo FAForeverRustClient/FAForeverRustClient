@@ -261,6 +261,12 @@ export function ZoomableImage({ label, children, actions }: {
         </div>
       </div>
       <div className="map-preview-controls">
+        {/* One control, not three. Reset was a full button beside the stepper,
+            and the percentage was a second reset: at 100 % both were greyed
+            out, and the left half of the row read as switched off. Reset is
+            the stepper's last segment now, and the percentage only says how
+            far in the picture is. The gestures are on the info mark beside
+            it rather than in a line of their own under the row. */}
         <div className="map-preview-zoom-buttons" role="group" aria-label={t("maps.preview.zoomGroup")}>
           <div className="map-preview-stepper">
             <button
@@ -273,16 +279,9 @@ export function ZoomableImage({ label, children, actions }: {
             >
               <Icon name="minus" size={14} />
             </button>
-            <button
-              type="button"
-              className="map-preview-stepper-value"
-              onClick={() => setTransform(NO_ZOOM)}
-              title={t("maps.preview.resetZoom")}
-              aria-label={t("maps.preview.resetZoom")}
-              disabled={!zoomed}
-            >
+            <output className="map-preview-stepper-value">
               {Math.round(transform.scale * 100)}%
-            </button>
+            </output>
             <button
               type="button"
               className="map-preview-stepper-btn"
@@ -293,15 +292,20 @@ export function ZoomableImage({ label, children, actions }: {
             >
               <Icon name="plus" size={14} />
             </button>
+            <button
+              type="button"
+              className="map-preview-stepper-btn map-preview-stepper-reset"
+              disabled={!zoomed}
+              onClick={() => setTransform(NO_ZOOM)}
+              title={t("maps.preview.resetZoom")}
+              aria-label={t("maps.preview.resetZoom")}
+            >
+              <Icon name="refresh" size={14} />
+            </button>
           </div>
-          <Button
-            disabled={!zoomed}
-            onClick={() => setTransform(NO_ZOOM)}
-            title={t("maps.preview.resetZoom")}
-          >
-            <Icon name="refresh" size={13} />
-            {t("maps.preview.resetZoom")}
-          </Button>
+          <span className="map-preview-help" role="img" aria-label={t("maps.preview.zoomHint")} title={t("maps.preview.zoomHint")}>
+            <Icon name="info" size={15} />
+          </span>
         </div>
         <div className="map-preview-actions">
           {actions}
@@ -317,7 +321,6 @@ export function ZoomableImage({ label, children, actions }: {
         </Button>
         </div>
       </div>
-      <p className="map-preview-hint muted">{t("maps.preview.zoomHint")}</p>
     </div>
   );
 }

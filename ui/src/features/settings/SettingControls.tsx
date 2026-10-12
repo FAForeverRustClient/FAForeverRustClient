@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 
+import { Icon } from "../../design-system/Icon";
 import { Switch } from "../../design-system/Switch";
 import { addSettingsIndexEntry, removeSettingsIndexEntry } from "./settingsSearch";
 
@@ -111,6 +112,7 @@ export function SettingsSection({
 export function SettingRow({
   label,
   hint,
+  warning,
   className,
   badge,
   children,
@@ -122,6 +124,12 @@ export function SettingRow({
    * the settings search then finds its row by the label alone.
    */
   hint?: ReactNode;
+  /**
+   * What the current choice costs, under the hint, in the warning colour:
+   * there only while it applies, and kept out of the settings search, which
+   * should not find a row by a sentence that comes and goes.
+   */
+  warning?: ReactNode;
   className?: string;
   badge?: ReactNode;
   children: ReactNode;
@@ -135,6 +143,12 @@ export function SettingRow({
           {badge}
         </span>
         {hint && <span className="muted">{hint}</span>}
+        {warning && (
+          <span className="setting-warning" role="status">
+            <Icon name="alert" size={14} />
+            <span>{warning}</span>
+          </span>
+        )}
       </div>
       <div className="setting-control">{children}</div>
     </div>

@@ -101,8 +101,12 @@
   scroll-margin-top: 16px;
 }
 
+/* The first heading starts at the top. Weighted to beat a section heading's
+   own margin below: at the weight of one class pair it lost to it, and the
+   first section of every page with contents opened 52 px further down than
+   the rule above it. */
 .reading .reading-copy > .reading-heading:first-child,
-.reading-jump + .reading-heading {
+.reading .reading-copy > .reading-jump + .reading-heading {
   margin-top: 0;
 }
 

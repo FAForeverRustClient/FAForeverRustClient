@@ -33,7 +33,7 @@ import { MatchReportDialog } from "./bracket/MatchReportDialog";
 import { ScoreSubmitDialog } from "./bracket/ScoreSubmitDialog";
 import { TournamentForm } from "./manage/TournamentForm";
 import { SignUpDialog } from "./SignUpDialog";
-import { HostRequest, PendingBar, SiteNav } from "./site/SiteChrome";
+import { AccessRequest, PendingBar, SiteNav } from "./site/SiteChrome";
 import { TournamentSitePages } from "./TournamentSitePages";
 import { TournamentEventList } from "./TournamentEventList";
 import { TournamentEventDetail } from "./TournamentEventDetail";
@@ -61,6 +61,8 @@ export function TournamentsView() {
   const assetBase = useAppStore((store) => store.state.tourney.assetBase);
   const actionError = useAppStore((store) => store.state.tourney.actionError);
   const account = useAppStore((store) => store.state.tourney.site.account);
+  const editorAccess = useAppStore((store) => store.state.tourney.site.editorAccess);
+  const importerAccess = useAppStore((store) => store.state.tourney.site.importerAccess);
   const sitePending = useAppStore((store) => store.state.tourney.site.pending);
   const series = useAppStore((store) => store.state.tourney.series);
   const presets = useAppStore((store) => store.state.tourney.presets);
@@ -118,7 +120,18 @@ export function TournamentsView() {
             )}
           </span>
         )}
-        <HostRequest hosting={hosting} busy={busy} onWrite={siteWrite} />
+        <AccessRequest
+          hosting={hosting}
+          account={account}
+          editorAccess={editorAccess}
+          importerAccess={importerAccess}
+          busy={busy}
+          onOpen={() => {
+            send({ type: "loadSite", payload: { read: { access: { kind: "editor" } } } });
+            send({ type: "loadSite", payload: { read: { access: { kind: "importer" } } } });
+          }}
+          onWrite={siteWrite}
+        />
         {hosting.allowed && (
           <Button
             variant="primary"

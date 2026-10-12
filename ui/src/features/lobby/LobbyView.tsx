@@ -243,7 +243,7 @@ function GameDetails({
           />
           {game.passwordProtected && (
             <span className="private-badge" role="img" aria-label={t("lobby.details.privateGame")} title={t("lobby.details.privateGame")}>
-              <Icon name="lock" size={13} />
+              <Icon name="lock" size={16} />
             </span>
           )}
         </button>

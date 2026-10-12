@@ -128,6 +128,8 @@
   cursor: default;
 }
 
+/* A readout, not a button: in the text colour, so 100 % does not look like
+   something switched off. */
 .map-preview-stepper-value {
   display: inline-flex;
   align-items: center;
@@ -138,33 +140,23 @@
   font-size: 12px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-  color: var(--color-muted);
-  background: transparent;
-  border: none;
+  color: var(--color-text);
   border-left: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
-  cursor: pointer;
-  transition: color 120ms ease, background-color 120ms ease;
 }
 
-.map-preview-stepper-value:hover:not(:disabled) {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
+.map-preview-stepper-reset {
+  border-left: 1px solid var(--color-border);
 }
 
-.map-preview-stepper-value:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: -2px;
-  z-index: 1;
+/* The gestures, on hover: scroll, drag and double-click. */
+.map-preview-help {
+  display: inline-flex;
+  color: var(--color-subtle);
+  cursor: help;
 }
 
-.map-preview-stepper-value:disabled {
-  cursor: default;
-}
-
-.map-preview-hint {
-  margin: 4px 0 0;
-  font-size: 11px;
+.map-preview-help:hover {
   color: var(--color-muted);
 }
 
@@ -309,13 +301,13 @@
   min-width: 0;
 }
 
+/* Labelled as the facts under it are ("Map size"): a capitalised caption in
+   one row and a sentence-case one in the next read as two different kinds of
+   thing. */
 .map-preview-dialog-name > span {
   flex: 0 0 auto;
-  color: var(--color-subtle);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .06em;
-  text-transform: uppercase;
+  color: var(--color-muted);
+  font-size: 12px;
 }
 
 .map-preview-dialog-name > code {
@@ -327,6 +319,8 @@
   user-select: all;
 }
 
+/* Quiet until pointed at: a bordered box at rest was a third outline in a
+   line of plain text. */
 .map-preview-dialog-copy {
   display: inline-flex;
   flex: 0 0 auto;
@@ -335,9 +329,14 @@
   padding: 3px;
   color: var(--color-muted);
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   cursor: pointer;
+}
+
+.map-preview-dialog-copy:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
 .map-preview-dialog-copy:hover {
