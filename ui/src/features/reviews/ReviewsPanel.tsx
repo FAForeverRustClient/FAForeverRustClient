@@ -76,55 +76,69 @@ export function ReviewsPanel() {
       ariaLabel={t("reviews.dialogAria", { kind: t(HEADING[target.kind]), name: target.name })}
       onClose={() => void close()}
     >
+      {/* The name alone: what kind of thing it is is plain from where the
+          panel was opened, and the dialog's accessible name still says it. */}
       <header className="reviews-head">
-        <div>
-          <span className="reviews-eyebrow">
-            {t(HEADING[target.kind])}
-          </span>
-          <h2>{target.name}</h2>
-        </div>
+        <h2>{target.name}</h2>
       </header>
 
-      {state.status.type === "loading" && <p className="muted">{t("reviews.loading")}</p>}
+      {state.status.type === "loading" && <p className="reviews-pad muted">{t("reviews.loading")}</p>}
       {/* A way out beside the failure, and the failure said plainly: the raw
           reason stays on hover for a bug report. */}
-      <LoadStatusNotice status={state.status} failed={t("reviews.loadFailed")} onRetry={retry} />
+      {state.status.type === "failed" && (
+        <div className="reviews-pad">
+          <LoadStatusNotice status={state.status} failed={t("reviews.loadFailed")} onRetry={retry} />
+        </div>
+      )}
 
       {state.status.type === "ready" && (
         <>
           <Distribution summary={state.summary} />
 
-          {player ? (
-            <OwnReview mine={mine} />
-          ) : (
-            <p className="muted">{t("reviews.signIn")}</p>
-          )}
+          <div className="reviews-body">
+            {player ? (
+              <OwnReview mine={mine} />
+            ) : (
+              <p className="reviews-sign-in muted">{t("reviews.signIn")}</p>
+            )}
 
-          <section className="reviews-list">
-            <h3>
-              {others.length === 0
-                ? t("reviews.noOthers")
-                : t("reviews.otherReviews", { count: others.length })}
-            </h3>
-            {others.map((review) => (
-              <article className="surface review-row" key={review.id}>
-                <header>
-                  <strong>{review.player || t("reviews.unknownPlayer")}</strong>
-                  <Stars score={review.score} />
-                  {review.version && (
-                    <small className="muted">{t("reviews.version", { version: review.version })}</small>
-                  )}
-                </header>
-                {review.text && <p>{review.text}</p>}
-              </article>
-            ))}
-          </section>
+            {/* Everyone else's, as one list with a hairline between them
+                rather than a box each: a page of boxes read as a page of
+                separate dialogs. */}
+            <section className="reviews-list">
+              <h3 className="reviews-section-title">
+                {others.length === 0
+                  ? t("reviews.noOthers")
+                  : t("reviews.otherReviews", { count: others.length })}
+              </h3>
+              {others.length > 0 && (
+                <div className="reviews-list-items surface-panel">
+                  {others.map((review) => (
+                    <article className="review-row" key={review.id}>
+                      <header>
+                        <strong>{review.player || t("reviews.unknownPlayer")}</strong>
+                        {review.version && (
+                          <span className="reviews-version">{t("reviews.version", { version: review.version })}</span>
+                        )}
+                        <Stars score={review.score} />
+                      </header>
+                      {review.text && <p>{review.text}</p>}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
         </>
       )}
     </Modal>
   );
 }
 
+/**
+ * The verdict at a glance, on the facts strip's tinted band: the average
+ * large with its stars and count, and how the scores spread beside it.
+ */
 function Distribution({ summary }: { summary: ReviewSummary }) {
   const { t } = useTranslation();
   return (
@@ -142,7 +156,10 @@ function Distribution({ summary }: { summary: ReviewSummary }) {
           const percent = summary.total === 0 ? 0 : (count / summary.total) * 100;
           return (
             <div className="reviews-bar" key={score}>
-              <span className="reviews-bar-label">{score}★</span>
+              <span className="reviews-bar-label">
+                {score}
+                <span aria-hidden="true">★</span>
+              </span>
               <span className="reviews-bar-track">
                 <span className="reviews-bar-fill" style={{ width: `${percent}%` }} />
               </span>
@@ -159,6 +176,8 @@ function OwnReview({ mine }: { mine: Review | null }) {
   const { t } = useTranslation();
   const submitStatus = useAppStore((store) => store.state.reviews.submit);
   const [score, setScore] = useState(mine?.score ?? 5);
+  // The score under the pointer, shown before it is clicked.
+  const [hovered, setHovered] = useState<number | null>(null);
   const [text, setText] = useState(mine?.text ?? "");
 
   // Adopt the server's version of our review once a write settles, so the
@@ -172,22 +191,31 @@ function OwnReview({ mine }: { mine: Review | null }) {
   const saving = submitStatus.type === "saving";
 
   return (
-    <section className="surface reviews-own">
-      <h3>{t(mine ? "reviews.yours" : "reviews.write")}</h3>
-
-      <div className="reviews-score-picker" role="group" aria-label={t("reviews.yourScore")}>
-        {[1, 2, 3, 4, 5].map((value) => (
-          <button
-            type="button"
-            key={value}
-            className={value <= score ? "reviews-score is-on" : "reviews-score"}
-            aria-pressed={value === score}
-            aria-label={t("reviews.starsAria", { count: value })}
-            onClick={() => setScore(value)}
-          >
-            ★
-          </button>
-        ))}
+    <section className="reviews-own surface-panel">
+      {/* The title and the score on one line: the stars are the review's
+          headline, the text below them its body. */}
+      <div className="reviews-own-head">
+        <h3 className="reviews-section-title">{t(mine ? "reviews.yours" : "reviews.write")}</h3>
+        <div
+          className="reviews-score-picker"
+          role="group"
+          aria-label={t("reviews.yourScore")}
+          onMouseLeave={() => setHovered(null)}
+        >
+          {[1, 2, 3, 4, 5].map((value) => (
+            <button
+              type="button"
+              key={value}
+              className={value <= (hovered ?? score) ? "reviews-score is-on" : "reviews-score"}
+              aria-pressed={value === score}
+              aria-label={t("reviews.starsAria", { count: value })}
+              onMouseEnter={() => setHovered(value)}
+              onClick={() => setScore(value)}
+            >
+              ★
+            </button>
+          ))}
+        </div>
       </div>
 
       <textarea
@@ -199,15 +227,17 @@ function OwnReview({ mine }: { mine: Review | null }) {
         onChange={(event) => setText(event.target.value)}
       />
 
+      {/* At the right, the main action last, as in every panel. */}
       <div className="reviews-own-actions">
-        <Button variant="primary" disabled={saving} onClick={() => void submit(score, text)}>
-          {t(saving ? "reviews.saving" : mine ? "reviews.update" : "reviews.post")}
-        </Button>
+        {submitStatus.type === "saved" && <p className="reviews-submit is-ok">{t("reviews.saved")}</p>}
         {mine && (
           <Button disabled={saving} onClick={() => void remove()}>
             <Icon name="close" size={14} /> {t("reviews.withdraw")}
           </Button>
         )}
+        <Button variant="primary" disabled={saving} onClick={() => void submit(score, text)}>
+          {t(saving ? "reviews.saving" : mine ? "reviews.update" : "reviews.post")}
+        </Button>
       </div>
 
       {/* Retry sends what the editor holds now, which is what the reader
@@ -221,7 +251,6 @@ function OwnReview({ mine }: { mine: Review | null }) {
           {t("reviews.saveFailed")}: {plainError(submitStatus.payload.reason)}
         </StatusNotice>
       )}
-      {submitStatus.type === "saved" && <p className="reviews-submit is-ok">{t("reviews.saved")}</p>}
     </section>
   );
 }
