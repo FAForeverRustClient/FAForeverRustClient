@@ -176,38 +176,39 @@ export function ModCard({
           {mod.recommended && <VaultFeaturedBadge />}
         </span>
 
-        {/* Lines that each have a left and a right end, so the cards of a grid
-            line up into columns: the name and its version, who made it and
-            when it was last published, then what kind of mod it is and how it
-            is rated. */}
-        <span className="mod-vault-card-body">
+        {/* The name with its version at the line's end, and who made it under
+            them. */}
+        <span className="mod-vault-card-copy">
           <span className="mod-vault-name-row">
             <strong className="mod-vault-name" title={mod.displayName}>{mod.displayName}</strong>
             {mod.version && <span className="mod-vault-version">{t("common.version", { version: mod.version })}</span>}
           </span>
-          <span className="mod-vault-card-row mod-vault-byline">
-            <span className="mod-vault-author">
-              {mod.author ? t("mods.vault.byAuthor", { author: mod.author }) : t("mods.vault.unknownAuthor")}
-            </span>
+          <small className="mod-vault-author">
+            {mod.author ? t("mods.vault.byAuthor", { author: mod.author }) : t("mods.vault.unknownAuthor")}
+          </small>
+        </span>
+
+        {/* At the card's foot: what kind of mod it is, then when it was last
+            published and how it is rated. */}
+        <span className="mod-vault-card-facts">
+          <span className="mod-vault-facts-row">
+            <span className={`mod-vault-type ${mod.modType}`}>{t(mod.modType === "ui" ? "mods.vault.typeBadge.ui" : "mods.vault.typeBadge.sim")}</span>
+            {mod.modType === "sim" && (
+              <span className={`mod-vault-type ${mod.ranked ? "ranked" : "unranked"}`}>
+                {t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}
+              </span>
+            )}
+            {/* Installed says only that the folder is there. Enabled is the
+                one that answers "am I playing with this right now". */}
+            {installed?.enabled && (
+              <span className="mod-vault-type in-use" title={t("mods.vault.inUseHint")}>
+                {t("mods.vault.inUse")}
+              </span>
+            )}
+          </span>
+          <span className="mod-vault-facts-row mod-vault-facts-sub">
             <span className="mod-vault-fact is-date" title={t("mods.vault.lastUpdated")}>
               {formatShortDate(mod.updatedAt || mod.createdAt)}
-            </span>
-          </span>
-          <span className="mod-vault-card-row">
-            <span className="mod-vault-card-tags">
-              <span className={`mod-vault-type ${mod.modType}`}>{t(mod.modType === "ui" ? "mods.vault.typeBadge.ui" : "mods.vault.typeBadge.sim")}</span>
-              {mod.modType === "sim" && (
-                <span className={`mod-vault-type ${mod.ranked ? "ranked" : "unranked"}`}>
-                  {t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}
-                </span>
-              )}
-              {/* Installed says only that the folder is there. Enabled is the
-                  one that answers "am I playing with this right now". */}
-              {installed?.enabled && (
-                <span className="mod-vault-type in-use" title={t("mods.vault.inUseHint")}>
-                  {t("mods.vault.inUse")}
-                </span>
-              )}
             </span>
             <span
               className="mod-vault-fact is-rating"

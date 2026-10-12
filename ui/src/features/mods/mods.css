@@ -355,33 +355,21 @@
   color: var(--color-ok-text);
 }
 
-.mod-vault-card-body {
+/* Grows to the card's height, which a grid row sets by its tallest card, and
+   keeps the author at its foot over the tags: in a row where one name takes
+   two lines, every author stands at the same height rather than straight
+   under a one-line name. */
+.mod-vault-card-copy {
   display: flex;
   min-width: 0;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
+  gap: 6px;
+  padding: var(--space-3) var(--space-3) var(--space-2);
 }
 
-/* Tags and rating at the foot of the body, so a one-line name leaves its
-   spare room above them rather than between the name and its author, and
-   the tag rows of a grid stay level. */
-.mod-vault-card-body > .mod-vault-card-row:last-child {
+.mod-vault-card-copy > .mod-vault-author {
   margin-top: auto;
-}
-
-/* Two lines at most: mod names are long ("BrewLAN: Additional unit mods")
-   and one ellipsised line hid the part that tells one release from another. */
-.mod-vault-name {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
-  font-size: 16px;
-  font-weight: 650;
-  line-height: 1.25;
 }
 
 /* The name and its version on one line, the version at the right end, level
@@ -394,28 +382,17 @@
   gap: var(--space-2);
 }
 
-/* The author belongs to the name: closer to it than the lines below are to
-   each other. */
-.mod-vault-name-row + .mod-vault-byline {
-  margin-top: calc(-1 * var(--space-1));
-}
-
-/* Each line has a left and a right end. */
-.mod-vault-card-row {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.mod-vault-author {
-  min-width: 0;
+/* Two lines at most: mod names are long ("BrewLAN: Additional unit mods")
+   and one ellipsised line hid the part that tells one release from another. */
+.mod-vault-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  color: var(--color-muted);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.3;
 }
 
 .mod-vault-version {
@@ -425,11 +402,41 @@
   font-variant-numeric: tabular-nums;
 }
 
-.mod-vault-card-tags {
+.mod-vault-author {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* At the card's foot, under the author: the type tags, then the date and
+   the rating. */
+.mod-vault-card-facts {
   display: flex;
-  min-width: 0;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
   gap: var(--space-1);
+  width: 100%;
+  padding: 0 var(--space-3) var(--space-3);
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.mod-vault-facts-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  width: 100%;
+}
+
+.mod-vault-facts-sub {
+  justify-content: space-between;
+}
+
+.mod-vault-facts-sub .is-rating {
+  margin-left: auto;
 }
 
 .mod-vault-fact {
