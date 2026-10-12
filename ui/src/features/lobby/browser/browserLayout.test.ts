@@ -48,7 +48,7 @@ const MEASURED_HEADINGS: readonly Readonly<Record<string, number>>[] = [
   { Map: 41, Karte: 51, Mapa: 49, Carte: 51, "Карта": 52 },
   { Players: 64, Spieler: 60, Plazas: 59, Joueurs: 67, Gracze: 60, "Игроков": 70 },
   { "Ø Rating": 71, "Ø-Rating": 73, "Ø Puntos": 75, "Ø Niveau": 72, Ranking: 69, "Рейтинг": 69 },
-  { Age: 38, Alter: 50, Edad: 47, "Âge": 38, Wiek: 44, "Возр.": 47, "Создано": 73 },
+  { Age: 38, Alter: 50, Edad: 47, "Âge": 38, Wiek: 44, "Создано": 73 },
 ];
 
 /** The list and the panel beside it together, in the default 1100 by 720 window. */
