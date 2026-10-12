@@ -7607,6 +7607,7 @@ fn cases() -> Vec<Case> {
                         },
                         favorite_maps: vec!["adaptive_tabula.v0006".into()],
                         favorite_mods: vec!["eco_graph".into()],
+                        whitelisted_hosts: Vec::new(),
                         map_vault_preset: "recommended".into(),
                         map_vault_sort: "newest".into(),
                         mod_vault_sort: "rating".into(),

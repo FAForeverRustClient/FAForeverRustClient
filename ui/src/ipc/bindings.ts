@@ -483,6 +483,16 @@ export type BrowsingPreferences = {
 	favoriteMaps: string[],
 	/**  Stable mod UIDs starred by the user. */
 	favoriteMods: string[],
+	/**
+	 *  Hosts whose games the game browser always shows, by login (#492).
+	 *
+	 *  The exception to every hide switch and filter rule rather than one
+	 *  more of them: somebody who hides modded and unranked games still wants
+	 *  to see what a particular host has opened. Not a filter in
+	 *  `FilterMemory`'s sense either, because it narrows nothing, so
+	 *  [`BrowsingPreferences::without_filters`] leaves it as it is.
+	 */
+	whitelistedHosts: string[],
 	/**  Active preset filter in the map vault ("recommended", "favorites", "rating", "newest", "played", "all"). */
 	mapVaultPreset: string,
 	/**  Active preset filter in the mod vault ("recommended", "favorites", "rating", "ui", "newest", "all"). */
@@ -611,6 +621,7 @@ export type BrowsingPreferencesPatch = {
 	matchmakerChatWidth?: number,
 	favoriteMaps?: string[],
 	favoriteMods?: string[],
+	whitelistedHosts?: string[],
 	mapVaultPreset?: string,
 	modVaultPreset?: string,
 	mapVaultSort?: string,
@@ -7161,6 +7172,8 @@ export type PreferenceList =
 "favoriteMaps" |
 /**  `browsing.favorite_mods`, by mod uid. */
 "favoriteMods" |
+/**  `browsing.whitelisted_hosts`, by login. */
+"whitelistedHosts" |
 /**  `browsing.leaderboard_rating_columns`. */
 "leaderboardRatingColumns" |
 /**  `chat.muted_players`, by login. */

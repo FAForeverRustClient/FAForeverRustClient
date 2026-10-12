@@ -871,6 +871,14 @@ export const en = {
   "lobby.filters.cancelEdit": "Cancel",
   "lobby.filters.removeRule": "Remove filter",
   "lobby.filters.removeRuleAria": "Remove {value} filter",
+  "lobby.filters.whitelist.title": "Always show games hosted by",
+  "lobby.filters.whitelist.hint": "Their games stay in the list even when a hide switch or a rule above would hide them.",
+  "lobby.filters.whitelist.placeholder": "Player name",
+  "lobby.filters.whitelist.aria": "Host to always show",
+  "lobby.filters.whitelist.add": "Add host",
+  "lobby.filters.whitelist.empty": "No hosts yet.",
+  "lobby.filters.whitelist.remove": "Remove host",
+  "lobby.filters.whitelist.removeAria": "Stop always showing games hosted by {name}",
 
   // Custom-games browser: tiles, list and the map-preview dialog.
   "lobby.browser.observers": "Observers",
