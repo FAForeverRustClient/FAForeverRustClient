@@ -118,7 +118,7 @@ jobs:
           # Drop the blank lines around the section, keep the ones inside it.
           sed -e '/./,$!d' notes.raw | tac | sed -e '/./,$!d' | tac > release-notes.md
           if [ ! -s release-notes.md ]; then
-            echo "::error::CHANGELOG.md has no '## $VERSION' section, or it is empty. Write what changed before releasing."
+            echo "::error::CHANGELOG.md has no '## $VERSION' section, or it is empty. Rename '## Unreleased' to '## $VERSION' in the version bump."
             exit 1
           fi
           # No length limit here: the bridge posts the notes as the Discord

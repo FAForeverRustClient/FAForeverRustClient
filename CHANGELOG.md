@@ -12,3 +12,10 @@ and links work there, tables do not.
 A section starts with `## <version>` (`## 0.9.0`, `## v0.9.0` and
 `## [0.9.0] - 2026-10-20` all work) and runs to the next `## `. Use `###` for
 anything inside it.
+
+Between releases, every change players will notice gets one short line under
+`## Unreleased`, written for players rather than developers, in the same pull
+request as the change. The version bump renames that heading to the version
+and opens a new empty `## Unreleased` above it.
+
+## Unreleased
