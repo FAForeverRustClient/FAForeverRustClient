@@ -67,6 +67,14 @@ describe("overlay stack", () => {
     expect(only.onEscape).not.toHaveBeenCalled();
   });
 
+  it("respects a key already taken by an inline edit", () => {
+    const stack = createOverlayStack();
+    const dialog = layer();
+    stack.push(dialog);
+    expect(stack.handleKey({ ...escape(), defaultPrevented: true })).toBe(false);
+    expect(dialog.onEscape).not.toHaveBeenCalled();
+  });
+
   it("orders a parent below a child that registered first", () => {
     // Effects run child first, so a dialog that mounts with a list already
     // open inside it registers after the list.

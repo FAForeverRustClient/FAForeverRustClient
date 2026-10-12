@@ -42,11 +42,23 @@ interface Props {
   applyFilters: boolean;
   onApplyFiltersChange: (apply: boolean) => void;
   onChange: (rules: GameFilterRule[]) => void;
+  /** Hosts whose games are shown whatever the rules and switches say (#492). */
+  whitelistedHosts: string[];
+  onWhitelistHost: (host: string, member: boolean) => void;
   onClose: () => void;
 }
 
-export function GameFiltersModal({ rules, applyFilters, onApplyFiltersChange, onChange, onClose }: Props) {
+export function GameFiltersModal({
+  rules,
+  applyFilters,
+  onApplyFiltersChange,
+  onChange,
+  whitelistedHosts,
+  onWhitelistHost,
+  onClose,
+}: Props) {
   const { t } = useTranslation();
+  const [host, setHost] = useState("");
   const [field, setField] = useState<FilterField>("map");
   const [constraint, setConstraint] = useState<FilterConstraint>("contains");
   const [value, setValue] = useState("");
@@ -55,6 +67,13 @@ export function GameFiltersModal({ rules, applyFilters, onApplyFiltersChange, on
   const [editField, setEditField] = useState<FilterField>("map");
   const [editConstraint, setEditConstraint] = useState<FilterConstraint>("contains");
   const [editValue, setEditValue] = useState("");
+
+  const addHost = () => {
+    const cleaned = host.trim();
+    if (!cleaned) return;
+    onWhitelistHost(cleaned, true);
+    setHost("");
+  };
 
   const add = () => {
     const cleaned = cleanFilterValue(value);
@@ -76,6 +95,8 @@ export function GameFiltersModal({ rules, applyFilters, onApplyFiltersChange, on
    * would make the second overwrite the first.
    */
   const closeKeepingPending = () => {
+    // A host typed and not added is kept the same way.
+    if (host.trim()) onWhitelistHost(host.trim(), true);
     const next = rulesWithPending(
       rules,
       { field, constraint, value },
@@ -278,6 +299,48 @@ export function GameFiltersModal({ rules, applyFilters, onApplyFiltersChange, on
           )
         )}
       </div>
+
+      {/* The other direction from the rules above: not what to hide, but whose
+          games to keep whatever is hidden. Its own section, so a host here is
+          never read as one more thing being excluded. */}
+      <section className="filter-whitelist" aria-labelledby="filter-whitelist-title">
+        <div className="filter-whitelist-head">
+          <h3 id="filter-whitelist-title">{t("lobby.filters.whitelist.title")}</h3>
+          <p>{t("lobby.filters.whitelist.hint")}</p>
+        </div>
+        <div className="filter-whitelist-builder">
+          <input
+            value={host}
+            onChange={(event) => setHost(event.target.value)}
+            onKeyDown={(event) => event.key === "Enter" && addHost()}
+            placeholder={t("lobby.filters.whitelist.placeholder")}
+            aria-label={t("lobby.filters.whitelist.aria")}
+          />
+          <Button onClick={addHost} disabled={!host.trim()}>
+            <Icon name="plus" size={15} /> {t("lobby.filters.whitelist.add")}
+          </Button>
+        </div>
+        {whitelistedHosts.length === 0 ? (
+          <p className="play-empty">{t("lobby.filters.whitelist.empty")}</p>
+        ) : (
+          <ul className="filter-whitelist-list">
+            {whitelistedHosts.map((name) => (
+              <li key={name} className="filter-whitelist-host">
+                <Icon name="user" size={13} />
+                <span>{name}</span>
+                <button
+                  type="button"
+                  onClick={() => onWhitelistHost(name, false)}
+                  aria-label={t("lobby.filters.whitelist.removeAria", { name })}
+                  title={t("lobby.filters.whitelist.remove")}
+                >
+                  <Icon name="close" size={13} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </Modal>
   );
 }

@@ -12,7 +12,7 @@ import type {
   VaultReplay,
 } from "../../ipc/bindings";
 import type { MessageKey, MessageValues } from "../../i18n";
-import { isGeneratedMapPlaceholderUrl, mapPresentation, normalizeMapName } from "../../shared/mapPresentation";
+import { isGeneratedMapPlaceholderUrl, mapPresentation } from "../../shared/mapPresentation";
 import { localReplayTimestamp } from "./local/localReplayQuery";
 
 type Translate = (key: MessageKey, values?: MessageValues) => string;
@@ -51,20 +51,6 @@ export function localReplayToVaultReplay(
       })),
     })),
   };
-}
-
-/**
- * The picture of a generated map, once the generator has built one. Keyed
- * the three ways `ReplayMapThumb` keys it, because the store is written
- * from whichever spelling the caller had.
- */
-export function generatedPreviewFor(
-  previews: Partial<Record<string, string>> | undefined,
-  mapName: string,
-): string | undefined {
-  return previews?.[mapName]
-    || previews?.[normalizeMapName(mapName)]
-    || previews?.[mapName.toLowerCase()];
 }
 
 /** Whether a map folder on disk is this map, in any version. */

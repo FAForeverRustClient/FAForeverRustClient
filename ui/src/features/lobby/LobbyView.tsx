@@ -8,6 +8,8 @@ import { ipc } from "../../ipc/client";
 import type { CoopMission, Game, VaultMap } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { GameFiltersModal, type GameFilterRule } from "./browser/GameFiltersModal";
+import { activeFilterCount } from "./browser/gameFilterRules";
+import { hostWhitelist, shownDespiteFilters } from "./browser/hostWhitelist";
 import { HostGameModal } from "./host/HostGameModal";
 import { HostCoopModal } from "./host/HostCoopModal";
 import { MatchmakingPanel } from "./matchmaker/MatchmakingPanel";
@@ -21,10 +23,10 @@ import { displayTeamName } from "./browser/GameLineup";
 import { isCoopGame, isCustomGameRanked, type GameViewMode } from "../../shared/gameRules";
 import { CustomGamesToolbar, type SortMode } from "./browser/CustomGamesToolbar";
 import { compareGames } from "./browser/gameSortOrder";
-import { detailWidth, withDetailResized } from "./browser/browserLayout";
+import { columnWidths, detailWidth, emptyDetailGivesWay, withDetailResized } from "./browser/browserLayout";
 import { GameMapImage } from "./GameMapImage";
 import { requestModVaultFocus } from "../../shared/modVaultFocus";
-import { PlayModeTabs } from "./PlayModeTabs";
+import { PlayModeTabs, playModePanelProps } from "./PlayModeTabs";
 import { queuedPlayerCount } from "./queuedPlayers";
 import { PrivateGameDialog } from "./join/PrivateGameDialog";
 import { flagSrc } from "../../shared/countryFlags";
@@ -55,6 +57,12 @@ import { DEFAULT_BROWSING_PREFERENCES } from "../../shared/browsingPreferences";
 /// whether it is worth starting the other client, rare enough to be one small
 /// request to a gateway that is not FAF's.
 const GALACTIC_WAR_POLL_MS = 60_000;
+
+/**
+ * How long a click waits for a second one: Windows' default double-click
+ * time, which the webview follows. See `selectGame` in `LobbyView`.
+ */
+const DOUBLE_CLICK_MS = 500;
 
 const connect = () => ipc.send({ kind: "Lobby", command: { type: "connect" } });
 const join = (id: number, password: string | null = null) => joinGame(id, password);
@@ -236,7 +244,7 @@ function GameDetails({
           />
           {game.passwordProtected && (
             <span className="private-badge" role="img" aria-label={t("lobby.details.privateGame")} title={t("lobby.details.privateGame")}>
-              <Icon name="lock" size={13} />
+              <Icon name="lock" size={16} />
             </span>
           )}
         </button>
@@ -426,6 +434,7 @@ export function LobbyView() {
   const applyFilters = gameBrowser.applyFilters;
   const rules: GameFilterRule[] = gameBrowser.rules;
   const foeSet = useMemo(() => new Set(social.foes.map((f) => f.toLowerCase())), [social.foes]);
+  const whitelist = useMemo(() => hostWhitelist(browsing.whitelistedHosts), [browsing.whitelistedHosts]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   // A join that fails opens that game in the panel, where the reason and the
   // way to try again are. It is the game the player just asked to join, from
@@ -487,13 +496,14 @@ export function LobbyView() {
             game.modName,
           ].some((value) => value.toLocaleLowerCase().includes(query)),
       )
-      .filter((game) => !hidePrivate || !game.passwordProtected)
-      .filter((game) => !hideModded || Object.keys(game.simMods).length === 0)
-      .filter((game) => !hideUnranked || isCustomGameRanked(game, maps.vault, mods.vault))
-      .filter((game) => !hideFoes || !foeSet.has(game.host.toLowerCase()))
-      .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))
+      .filter((game) => shownDespiteFilters(game.host, whitelist, () =>
+        (!hidePrivate || !game.passwordProtected)
+        && (!hideModded || Object.keys(game.simMods).length === 0)
+        && (!hideUnranked || isCustomGameRanked(game, maps.vault, mods.vault))
+        && (!hideFoes || !foeSet.has(game.host.toLowerCase()))
+        && (!applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))))
       .sort((left, right) => compareGames(sort, sortReversed, left, right));
-  }, [applyFilters, customGames, foeSet, hideFoes, hideModded, hidePrivate, hideUnranked, maps.vault, mods.vault, rules, search, sort, sortReversed]);
+  }, [applyFilters, customGames, foeSet, hideFoes, hideModded, hidePrivate, hideUnranked, maps.vault, mods.vault, rules, search, sort, sortReversed, whitelist]);
 
   const filteredCoopGames = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -510,14 +520,15 @@ export function LobbyView() {
             game.modName,
           ].some((value) => value.toLocaleLowerCase().includes(query)),
       )
-      .filter((game) => !hidePrivate || !game.passwordProtected)
-      .filter((game) => !hideModded || Object.keys(game.simMods).length === 0)
-      .filter((game) => !hideFoes || !foeSet.has(game.host.toLowerCase()))
-      .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))
+      .filter((game) => shownDespiteFilters(game.host, whitelist, () =>
+        (!hidePrivate || !game.passwordProtected)
+        && (!hideModded || Object.keys(game.simMods).length === 0)
+        && (!hideFoes || !foeSet.has(game.host.toLowerCase()))
+        && (!applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))))
       .sort((left, right) => compareGames(sort, sortReversed, left, right));
     // No ranked filter here, and no checkbox for one in the co-op toolbar: a
     // mission is never rated, so hiding the unranked games hid all of them.
-  }, [applyFilters, coopGames, foeSet, hideFoes, hideModded, hidePrivate, maps.vault, rules, search, sort, sortReversed]);
+  }, [applyFilters, coopGames, foeSet, hideFoes, hideModded, hidePrivate, maps.vault, rules, search, sort, sortReversed, whitelist]);
 
   // Only ever the game the player picked. Falling back to the first row put a
   // different game under the Join button whenever the picked one closed,
@@ -535,6 +546,9 @@ export function LobbyView() {
   const inMatchmaker = lobby.playMode === "matchmaking";
   const inCoop = lobby.playMode === "coop";
   const inGalacticWar = lobby.playMode === "galacticWar";
+  // The rules the Filters button stands for, while they are applied. The hide
+  // switches sit beside it in the toolbar and show themselves.
+  const filterCount = activeFilterCount(applyFilters, rules.length);
 
   const requestJoin = (game: Game) => {
     if (game.passwordProtected) {
@@ -634,17 +648,76 @@ export function LobbyView() {
     (state) => state.state.settings.browsing.customGamesBrowser.detailHidden,
   );
   const currentDetailWidth = draggedDetailWidth ?? detailWidth(savedDetailWidth);
+  // How wide the list and the panel are together, for the empty panel below.
+  const [layoutElement, setLayoutElement] = useState<HTMLDivElement | null>(null);
+  const [layoutWidth, setLayoutWidth] = useState(0);
+  useEffect(() => {
+    if (!layoutElement || typeof ResizeObserver === "undefined") return;
+    const measure = () => setLayoutWidth(layoutElement.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(layoutElement);
+    return () => observer.disconnect();
+  }, [layoutElement]);
+  // With no game picked and nothing to report, the panel only says "select a
+  // game", and in list view it steps aside wherever the list would otherwise
+  // have to draw its columns narrower than they are (`emptyDetailGivesWay`).
+  // Never while its own divider is held: a panel that vanished under the
+  // pointer would be the strangest thing a drag could do.
+  const detailEmpty = !selected && lobby.join.type !== "failed";
+  // A click that picks a game while the empty panel has stepped aside brings
+  // the panel back, and the list narrows under the pointer. A double click is
+  // two clicks, so its second one landed on whatever had moved there (at
+  // 1100 by 720, the map preview) instead of joining the game. The panel
+  // waits out the double-click interval before it takes its room back.
+  const [revealHeld, setRevealHeld] = useState(false);
+  const revealTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(revealTimer.current), []);
+  // Asked for from the toolbar while it had stepped aside: the empty panel
+  // then stays until it is folded away. The toolbar's button shows what is on
+  // screen, so it read "Show the details panel" there, and a press that left
+  // the panel away would have been a button that does nothing.
+  const [emptyKept, setEmptyKept] = useState(false);
+  const detailGivesWay =
+    revealHeld ||
+    (detailEmpty &&
+      !emptyKept &&
+      gameView === "list" &&
+      draggedDetailWidth === null &&
+      emptyDetailGivesWay(layoutWidth, currentDetailWidth, columnWidths(gameBrowser.columnWidths)));
+  // Read by the click handler, which outlives the render it was made in.
+  const panelAway = useRef(detailGivesWay);
+  useEffect(() => {
+    panelAway.current = detailGivesWay;
+  });
+  const selectGame = useCallback((id: number | null) => {
+    if (id !== null && panelAway.current) {
+      setRevealHeld(true);
+      window.clearTimeout(revealTimer.current);
+      revealTimer.current = window.setTimeout(() => setRevealHeld(false), DOUBLE_CLICK_MS);
+    }
+    setSelectedId(id);
+  }, []);
+  const detailShown = !detailHidden && !detailGivesWay;
+  const toggleDetails = () => {
+    setEmptyKept(!detailShown);
+    // Folding a panel that only stepped aside was the old press here: it
+    // changed nothing on screen and saved the panel as folded, so the next
+    // game picked opened without it.
+    if (detailShown || detailHidden) updateGameBrowser({ detailHidden: detailShown });
+  };
   const detailStyle = useMemo(
     // The divider's track is the whole gap, as the chat roster's is, so the
-    // two tabs space their side panel the same. Folded away (#370, #377), the
-    // list takes the whole width: the toolbar holds the button that brings the
-    // panel back, so the gap has nothing left to hold.
+    // two tabs space their side panel the same. Folded away (#370, #377), or
+    // empty and stepped aside, the list takes the whole width: the toolbar
+    // holds the button that folds and unfolds the panel, so the gap has
+    // nothing left to hold.
     () => ({
-      gridTemplateColumns: detailHidden
-        ? "minmax(360px, 1fr)"
-        : `minmax(360px, 1fr) var(--space-3) ${currentDetailWidth}px`,
+      gridTemplateColumns: detailShown
+        ? `minmax(360px, 1fr) var(--space-3) ${currentDetailWidth}px`
+        : "minmax(360px, 1fr)",
     }),
-    [currentDetailWidth, detailHidden],
+    [currentDetailWidth, detailShown],
   );
   const onDetailDrag = (delta: number) => {
     detailDragOrigin.current ??= currentDetailWidth;
@@ -726,14 +799,18 @@ export function LobbyView() {
         }
       />
 
+      {/* Each mode's panel carries the id its tab points at. On the panel's
+          own outermost element, as `playModePanelProps` explains. */}
       {inMatchmaker ? (
         <MatchmakingPanel
           queues={lobby.matchmakerQueues}
           matchmaking={lobby.matchmaking}
           party={lobby.party}
+          panelProps={playModePanelProps("matchmaking")}
         />
       ) : inCoop ? (
         <CoopPanel
+          panelProps={playModePanelProps("coop")}
           games={filteredCoopGames}
           // The search box is this view's own state, which the panel cannot
           // reach: without this its Clear filters left the typed text in place.
@@ -752,7 +829,7 @@ export function LobbyView() {
               hideModded={hideModded}
               hideFoes={hideFoes}
               applyFilters={applyFilters}
-              filterCount={rules.length}
+              filterCount={filterCount}
               connected={connected}
               onSearch={setSearch}
               onSort={(value) => updateGameBrowser({ sort: value, sortReversed: false })}
@@ -770,9 +847,14 @@ export function LobbyView() {
           onHost={handleHostCoop}
         />
       ) : inGalacticWar ? (
-        <GalacticWarPanel />
+        <GalacticWarPanel panelProps={playModePanelProps("galacticWar")} />
       ) : (
-        <div className="custom-games-layout" style={detailStyle}>
+        <div
+          {...playModePanelProps("custom")}
+          className="custom-games-layout"
+          style={detailStyle}
+          ref={setLayoutElement}
+        >
           <CustomGamesToolbar
             search={search}
             sort={sort}
@@ -782,7 +864,7 @@ export function LobbyView() {
             hideUnranked={hideUnranked}
             hideFoes={hideFoes}
             applyFilters={applyFilters}
-            filterCount={rules.length}
+            filterCount={filterCount}
             connected={connected}
             onSearch={setSearch}
             onSort={(value) => updateGameBrowser({ sort: value, sortReversed: false })}
@@ -797,8 +879,8 @@ export function LobbyView() {
               setCoopMissionToHost(null);
               setHostOpen(true);
             }}
-            detailHidden={detailHidden}
-            onToggleDetails={() => updateGameBrowser({ detailHidden: !detailHidden })}
+            detailHidden={!detailShown}
+            onToggleDetails={toggleDetails}
           />
 
           <CustomGamesBrowser
@@ -807,7 +889,7 @@ export function LobbyView() {
             selectedId={selected?.id ?? null}
             vault={maps.vault}
             viewMode={gameView}
-            onSelect={setSelectedId}
+            onSelect={selectGame}
             onJoin={requestJoin}
             onPreview={setPreviewGame}
             empty={emptyGames}
@@ -816,7 +898,7 @@ export function LobbyView() {
               either, so dragging it reads as moving the boundary. The panel
               folds away and back from the toolbar (#370, #377); the choice is
               a setting, so it holds across restarts. */}
-          {!detailHidden && (
+          {detailShown && (
             <div className="custom-games-divider">
               <ResizeHandle
                 label={t("lobby.browser.resizeDetails")}
@@ -826,7 +908,7 @@ export function LobbyView() {
               />
             </div>
           )}
-          {detailHidden ? null : selected ? (
+          {!detailShown ? null : selected ? (
             <GameDetails
               game={selected}
               onJoin={() => requestJoin(selected)}
@@ -864,6 +946,11 @@ export function LobbyView() {
               applyFilters: nextRules.length > 0 ? true : applyFilters,
             })
           }
+          whitelistedHosts={browsing.whitelistedHosts}
+          onWhitelistHost={(host, member) => ipc.send({
+            kind: "Settings",
+            command: { type: "setListMember", payload: { list: "whitelistedHosts", value: host, member } },
+          })}
           onClose={() => setFiltersOpen(false)}
         />
       )}

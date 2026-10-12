@@ -12,15 +12,17 @@
 // account login, and the small fallback below covers a tab mounted before that
 // event arrived.
 
+import { sectionPanelProps } from "../../design-system/SectionTabs";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
+import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type { ChatChannel, ChatStatus, Game, Reaction } from "../../ipc/bindings";
 import { isPrivateChannel } from "../../store/reducer";
 import { typistsAt } from "../../store/reducers/chat";
-import { ChannelTabs } from "./ChannelTabs";
+import { CHAT_TABS_ID, ChannelTabs } from "./ChannelTabs";
 import type { ChatGameLink } from "./messages/chatFormat";
 import { Composer } from "./messages/Composer";
 import { ConversationAside } from "./ConversationAside";
@@ -64,12 +66,16 @@ function topicRepeatsTheName(name: string, topic: string): boolean {
   return bare(topic) === bare(name);
 }
 
-function channelContext(channel: ChatChannel | undefined, status: ChatStatus): string {
+/**
+ * What the row above a conversation says: the topic, who a private chat is
+ * with, or, for a channel with nothing better, how many are in it (a number,
+ * so the header can draw it the way the leaderboard draws its player count).
+ */
+function channelContext(channel: ChatChannel | undefined, status: ChatStatus): string | number {
   if (!channel) return t(STATUS_LABEL[status]);
   if (channel.topic && !topicRepeatsTheName(channel.name, channel.topic)) return channel.topic;
   if (isPrivateChannel(channel.name)) return t("chat.header.privateWith", { name: channel.name });
-  const count = channel.users.length;
-  return t("chat.header.online", { count });
+  return channel.users.length;
 }
 
 const connect = (username: string) =>
@@ -111,6 +117,7 @@ export function ChatView() {
   const player = useAppStore((s) => s.state.auth.player);
   const games = useAppStore((s) => s.state.lobby.games);
   const liveGames = useAppStore((s) => s.state.lobby.liveGames);
+  const lobbyStatus = useAppStore((s) => s.state.lobby.status);
   const mapVault = useAppStore((s) => s.state.maps.vault);
   const chatPreferences = useAppStore((s) => s.state.settings.chat);
   // The party's room, so the strip can refuse to close it: it belongs to the
@@ -307,18 +314,33 @@ export function ChatView() {
           onLeave={(c) => void leaveChannel(c)}
         />
 
+        <div className="chat-channel-panel" {...(active ? sectionPanelProps(CHAT_TABS_ID, active.name) : {})}>
         {/* The strip above already names the channel, so this row carries only
             what it does not: the topic, and the controls that act on the
             conversation. */}
         <header className="chat-head">
-          <p className="chat-topic" title={active?.topic || undefined}>
-            {channelContext(active, chatStatus)}
-          </p>
+          {(() => {
+            const context = channelContext(active, chatStatus);
+            // The head count as the leaderboard shows its players: the people
+            // icon and the count in the text colour, not a grey line of text.
+            return typeof context === "number" ? (
+              <span className="chat-online-count">
+                <Icon name="users" size={16} />
+                <strong>{t("chat.header.online", { count: context })}</strong>
+              </span>
+            ) : (
+              <p className="chat-topic" title={active?.topic || undefined}>
+                {context}
+              </p>
+            );
+          })()}
           <span className="spacer" />
           {gameLinkNotice && <span className="chat-link-notice" role="status">{gameLinkNotice}</span>}
-          <button type="button" className="chat-head-action" onClick={() => setSearchRequest((request) => request + 1)}>
+          {/* A button that looks like one, as "More filters" does elsewhere:
+              as bare text with an icon it read as a label. */}
+          <Button className="chat-search-button" onClick={() => setSearchRequest((request) => request + 1)}>
             <Icon name="search" size={14} /> {t("chat.search.open")}
-          </button>
+          </Button>
           <label className="chat-toggle">
             <input
               type="checkbox"
@@ -394,6 +416,7 @@ export function ChatView() {
           replyTo={replyTo}
           onCancelReply={() => setReplyTo(null)}
         />
+        </div>
       </section>
 
       {active && !isPrivateChannel(active.name) && (
@@ -430,7 +453,10 @@ export function ChatView() {
           />
           <ConversationAside
             peer={active.name}
+            self={player?.name ?? ""}
             social={social}
+            lobbyStatus={lobbyStatus}
+            channels={channels}
             openGames={games}
             liveGames={liveGames}
             mapVault={mapVault}

@@ -9,8 +9,17 @@ import { BrandMark } from "../../design-system/BrandMark";
 import "./auth.css";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { StatusNotice } from "../../design-system/StatusNotice";
 import { ACCOUNT_LINKS, openExternalUrl } from "../../shared/externalLinks";
+import { plainError } from "../../shared/plainError";
 import { useTranslation } from "../../i18n/useTranslation";
+
+/**
+ * The two things this screen starts that can come back as a failure. Both are
+ * reported as a failed login (see `AuthCommand::LaunchOfflineGame`), so which
+ * one failed is only known here, from which button was pressed.
+ */
+type Attempt = "login" | "offlineGame";
 
 function AccountLink({ href, children }: { href: string; children: string }) {
   return (
@@ -37,9 +46,14 @@ export function LoginView() {
   // `SessionState::offline_auth`.
   const offlineAuth = useAppStore((s) => s.state.session.offlineAuth);
   const [remember, setRemember] = useState(generalPreferences.autoLogin ?? true);
+  // What was pressed last, so Retry beside a failure does that again rather
+  // than always signing in: "Forged Alliance is already running" answered the
+  // offline game, and a retry that opened the browser would answer nothing.
+  const [attempt, setAttempt] = useState<Attempt | null>(null);
   const busy = auth.status === "loggingIn";
 
   const login = () => {
+    setAttempt("login");
     if (remember !== (generalPreferences.autoLogin ?? true)) {
       ipc.send({
         kind: "Settings",
@@ -55,7 +69,11 @@ export function LoginView() {
   const playOffline = () => ipc.send({ kind: "Auth", command: { type: "playOffline" } });
   // The game itself, into its own menu, as the Java client's button does
   // (#397). Opening this client offline is the archive button beside it.
-  const launchOfflineGame = () => ipc.send({ kind: "Auth", command: { type: "launchOfflineGame" } });
+  const launchOfflineGame = () => {
+    setAttempt("offlineGame");
+    ipc.send({ kind: "Auth", command: { type: "launchOfflineGame" } });
+  };
+  const retry = attempt === "login" ? login : attempt === "offlineGame" ? launchOfflineGame : null;
   // The archive is the reason the offline session exists, so it gets its own
   // way in rather than being a tab you find once you are inside. The tab is
   // chosen before the session opens, so the shell lands on the replays
@@ -127,11 +145,18 @@ export function LoginView() {
           <span>{t("auth.staySignedIn")}</span>
         </label>
 
+        {/* In a sentence a player can act on. The reason as it was sent
+            ("Token request failed: error sending request for url (...)") is
+            kept on hover, for whoever reads a bug report. */}
         {auth.status === "failed" && auth.error && (
-          <p className="login-error surface-error" role="alert">
-            <Icon name="bell" size={15} />
-            <span>{auth.error}</span>
-          </p>
+          <StatusNotice
+            tone="error"
+            className="login-error"
+            action={retry ? { label: t("common.retry"), onClick: retry } : undefined}
+            detail={auth.error}
+          >
+            {plainError(auth.error)}
+          </StatusNotice>
         )}
 
         <nav className="login-account-links" aria-label={t("auth.helpNav")}>

@@ -12,6 +12,7 @@ import { partyChannelLabel, partyChatChannel } from "../../../shared/partyChat";
 import "../../chat/chat.css";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { joinGame } from "../../../shared/joinGame";
+import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
 
 /**
  * Memoised: this renders a full message list, and the queue countdown clock in
@@ -26,6 +27,11 @@ export const MatchmakerPartyChat = memo(function MatchmakerPartyChat({ party }: 
   const games = useAppStore((state) => state.state.lobby.games);
   const liveGames = useAppStore((state) => state.state.lobby.liveGames);
   const [gameLinkNotice, setGameLinkNotice] = useState("");
+  // The player menu every other list of names opens on a right-click. This
+  // one opened the conversation instead, which the left click already does,
+  // so a party member's profile, invite and friend entries were out of reach
+  // from the one place their name is in front of you while you queue.
+  const { openPlayerMenu, playerMenu, playerMenuTarget } = usePlayerMenu();
   const roomName = partyChatChannel(party, social, player);
   const room = roomName
     ? chat.channels.find((channel) => channel.name.localeCompare(
@@ -126,10 +132,8 @@ export const MatchmakerPartyChat = memo(function MatchmakerPartyChat({ party }: 
         conversationLabel={partyChannelLabel(roomName)}
         emptyLabel={t(room ? "lobby.party.noMessages" : "lobby.party.joiningChannel")}
         onNickClick={openConversation}
-        onNickContextMenu={(nickname, event) => {
-          event.preventDefault();
-          openConversation(nickname);
-        }}
+        onNickContextMenu={openPlayerMenu}
+        menuTarget={playerMenuTarget}
         showTimestamps={preferences.showTimestamps}
         use24HourTime={preferences.use24HourTime}
         users={room?.users ?? []}
@@ -149,6 +153,7 @@ export const MatchmakerPartyChat = memo(function MatchmakerPartyChat({ party }: 
           ipc.send({ kind: "Chat", command: { type: "sendMessage", payload: { channel: roomName, content } } });
         }}
       />
+      {playerMenu}
     </aside>
   );
 });

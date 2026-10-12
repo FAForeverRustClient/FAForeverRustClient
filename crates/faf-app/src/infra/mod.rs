@@ -27,7 +27,8 @@
 //!   and the cheap half of the file format; `replay_analysis` reads the rest.
 //! * **Processes we start**: `game` (Forged Alliance), `ice_java`,
 //!   `ice_pioneer` and `ice_select` (the connectivity adapter and how one is
-//!   chosen), `java_runtime`, `map_generator`, `galactic_war`, and
+//!   chosen), `connectivity` (the connectivity check: relay probes, the
+//!   adapters on disk, the adapter log), `java_runtime`, `map_generator`, `galactic_war`, and
 //!   `client_update` (the installer), and `steam_presence`, which is this
 //!   client's own executable started again to show a game on Steam.
 //! * **Files on disk**: `settings_file`, `paths`, `vault_install` (archives),
@@ -63,6 +64,7 @@ pub mod changelog;
 pub mod chat_fake;
 pub mod clan;
 pub mod client_update;
+pub mod connectivity;
 pub mod coop;
 pub mod discord;
 pub mod events;
@@ -77,6 +79,7 @@ pub(crate) mod http;
 pub mod ice_java;
 pub mod ice_pioneer;
 pub mod ice_select;
+mod interrupted_work;
 pub mod irc;
 pub(crate) mod irc_session;
 pub(crate) mod java_runtime;
@@ -87,6 +90,7 @@ pub(crate) mod league_keys;
 pub mod lobby_fake;
 pub mod lobby_ws;
 pub mod map_generator;
+pub mod map_markers;
 pub mod maps;
 pub mod mods;
 pub mod notification_sounds;
@@ -114,12 +118,14 @@ pub mod tutorials;
 pub mod updater;
 pub mod uploads;
 pub(crate) mod vault_install;
+pub use interrupted_work::cleanup_interrupted_work;
 
 pub use auth::FakeAuth;
 pub use changelog::{ChangelogClient, ChangelogConfig, FakeChangelog};
 pub use chat_fake::FakeChat;
 pub use clan::{ClanClient, ClanConfig, FakeClan};
 pub use client_update::{ClientUpdateConfig, FakeClientUpdates, GitHubUpdates};
+pub use connectivity::{ConnectivityProbe, FakeConnectivity, IceSessionMemory};
 pub use coop::{CoopClient, CoopConfig, FakeCoop};
 pub use discord::{DiscordClient, DiscordConfig, FakeDiscord};
 pub use events::{EventsCatalogueClient, EventsConfig, FakeEvents};
@@ -574,6 +580,7 @@ pub fn fake_ports() -> Ports {
         lobby: Arc::new(FakeLobby::default()),
         settings: Arc::new(FakeSettings::default()),
         ice: Arc::new(FakeIce),
+        connectivity: Arc::new(FakeConnectivity),
         process: Arc::new(FakeGame),
         updater: Arc::new(FakeGameUpdater),
         replay_vault: Arc::new(FakeReplay),
@@ -607,6 +614,7 @@ pub fn fake_ports() -> Ports {
         galactic_war: Arc::new(FakeGalacticWar),
         game_cache: Arc::new(game_cache::NoGameCache),
         notification_sounds: Arc::new(notification_sounds::NoStoredSounds),
+        game_logs: Arc::new(game_logs::NoGameLogs),
         offline_auth: true,
         // Deliberately not read from the environment: a test must not depend on
         // the locale of the machine running it. The same applies to the roles
@@ -649,7 +657,12 @@ pub fn real_ports() -> Ports {
     // `game_launch`, then the client intentionally did nothing. Offline
     // development already selects `fake_ports` through `FAF_FAKE_AUTH`, so a
     // real account always gets the real launch chain.
-    let ice: Arc<dyn IcePort> = select_ice_adapter(&tokens);
+    // One memory between the adapters, which write the relay URLs of each
+    // game's session, and the connectivity check, which tests them.
+    let ice_sessions = IceSessionMemory::default();
+    let ice: Arc<dyn IcePort> = select_ice_adapter(&tokens, &ice_sessions);
+    let connectivity: Arc<dyn crate::ports::ConnectivityPort> =
+        Arc::new(ConnectivityProbe::faf(tokens.clone(), ice_sessions));
     // Uploading, not just recording: FAF builds a game's vault entry out of the
     // replay streams clients post while the game is played, so a launcher that
     // only wrote a local file left every game it ran stuck at "not uploaded
@@ -764,6 +777,7 @@ pub fn real_ports() -> Ports {
         lobby,
         settings: Arc::new(FileSettings::faf()),
         ice,
+        connectivity,
         process,
         updater,
         replay_vault: replays.vault,
@@ -797,6 +811,7 @@ pub fn real_ports() -> Ports {
         galactic_war,
         game_cache: Arc::new(game_cache::DiskGameCache),
         notification_sounds: Arc::new(notification_sounds::StoredSounds),
+        game_logs: Arc::new(game_logs::DiskGameLogs),
         offline_auth: false,
         os_language: os_language(),
         test_login_roles: oauth::roles_from_env(),
@@ -807,10 +822,10 @@ pub fn real_ports() -> Ports {
 ///
 /// Both adapters are constructed and handed to [`SelectableIce`], so the
 /// Settings toggle changes which one starts the next game without a restart.
-fn select_ice_adapter(tokens: &TokenStore) -> Arc<dyn IcePort> {
+fn select_ice_adapter(tokens: &TokenStore, sessions: &IceSessionMemory) -> Arc<dyn IcePort> {
     Arc::new(SelectableIce::new(
-        Arc::new(JavaAdapter::faf(tokens.clone())),
-        Arc::new(PioneerAdapter::faf(tokens.clone())),
+        Arc::new(JavaAdapter::faf(tokens.clone()).remembering(sessions.clone())),
+        Arc::new(PioneerAdapter::faf(tokens.clone()).remembering(sessions.clone())),
     ))
 }
 
@@ -833,9 +848,11 @@ pub fn ports_from_env() -> Ports {
         let mut ports = fake_ports();
         ports.settings = Arc::new(FileSettings::faf());
         ports.process = Arc::new(GameProcess::faf());
-        // The cache and the added sounds are local too, for the same reason.
+        // The cache, the added sounds and the game logs are local too, for the
+        // same reason: the launcher above writes real logs.
         ports.game_cache = Arc::new(game_cache::DiskGameCache);
         ports.notification_sounds = Arc::new(notification_sounds::StoredSounds);
+        ports.game_logs = Arc::new(game_logs::DiskGameLogs);
         // Same reason the real provider honours it: role-gated UI has to be
         // reachable offline, and the roles authorise nothing on their own.
         let roles = oauth::roles_from_env();

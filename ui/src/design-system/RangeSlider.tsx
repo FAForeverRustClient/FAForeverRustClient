@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import "./range-slider.css";
 import "./search-panel.css";
 import { useTranslation } from "../i18n/useTranslation";
@@ -22,6 +22,11 @@ interface Props {
   closedScale?: boolean;
 }
 
+export function collapsedHandleForDrag(delta: number): "low" | "high" | null {
+  if (Math.abs(delta) < 3) return null;
+  return delta < 0 ? "low" : "high";
+}
+
 export function RangeSlider({
   label,
   min,
@@ -36,6 +41,13 @@ export function RangeSlider({
   const { t } = useTranslation();
   const id = useId();
   const [activeHandle, setActiveHandle] = useState<"low" | "high" | null>(null);
+  const lowInputRef = useRef<HTMLInputElement>(null);
+  const highInputRef = useRef<HTMLInputElement>(null);
+  const collapsedDrag = useRef<{
+    pointerId: number;
+    startX: number;
+    handle: "low" | "high" | null;
+  } | null>(null);
 
   const lowValue = low ?? min;
   const highValue = high ?? max;
@@ -73,7 +85,15 @@ export function RangeSlider({
 
   // Handle clicking directly on the track to move the nearest thumb
   const handleTrackPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.target instanceof HTMLInputElement) return;
+    if (e.target instanceof HTMLInputElement) {
+      if (lowValue !== highValue) return;
+      e.preventDefault();
+      // Native range dragging grabs whichever overlapping input is on top,
+      // so wait for a deliberate movement before selecting a boundary.
+      collapsedDrag.current = { pointerId: e.pointerId, startX: e.clientX, handle: null };
+      e.currentTarget.setPointerCapture(e.pointerId);
+      return;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     if (rect.width <= 0) return;
     const clickPct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
@@ -88,6 +108,35 @@ export function RangeSlider({
     } else {
       setActiveHandle("high");
       setHigh(clickVal);
+    }
+  };
+
+  const handleTrackPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = collapsedDrag.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+
+    if (drag.handle === null) {
+      const handle = collapsedHandleForDrag(e.clientX - drag.startX);
+      if (handle === null) return;
+      drag.handle = handle;
+      setActiveHandle(drag.handle);
+      if (handle === "low") lowInputRef.current?.focus();
+      else highInputRef.current?.focus();
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const clickPct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const value = min + clickPct * (max - min);
+    if (drag.handle === "low") setLow(value);
+    else setHigh(value);
+  };
+
+  const finishCollapsedDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (collapsedDrag.current?.pointerId !== e.pointerId) return;
+    collapsedDrag.current = null;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
     }
   };
 
@@ -107,6 +156,9 @@ export function RangeSlider({
       <div
         className="range-slider-track"
         onPointerDown={handleTrackPointerDown}
+        onPointerMove={handleTrackPointerMove}
+        onPointerUp={finishCollapsedDrag}
+        onPointerCancel={finishCollapsedDrag}
         style={
           {
             "--range-low": `${pct(lowValue)}%`,
@@ -117,6 +169,7 @@ export function RangeSlider({
         <span className="range-slider-rail" aria-hidden="true" />
         <span className="range-slider-fill" aria-hidden="true" />
         <input
+          ref={lowInputRef}
           type="range"
           className={`range-slider-input range-slider-input-low${low === null ? " is-unbounded" : ""}`}
           style={{ zIndex: lowZIndex }}
@@ -125,14 +178,18 @@ export function RangeSlider({
           step={step}
           value={lowValue}
           aria-label={`${label} minimum`}
+          aria-valuetext={low === null && !closedScale ? t("common.any") : format(lowValue)}
           onFocus={() => setActiveHandle("low")}
-          onPointerDown={() => setActiveHandle("low")}
+          onPointerDown={() => {
+            if (lowValue !== highValue) setActiveHandle("low");
+          }}
           onChange={(e) => {
             setActiveHandle("low");
             setLow(Number(e.target.value));
           }}
         />
         <input
+          ref={highInputRef}
           type="range"
           className={`range-slider-input range-slider-input-high${high === null ? " is-unbounded" : ""}`}
           style={{ zIndex: highZIndex }}
@@ -141,8 +198,11 @@ export function RangeSlider({
           step={step}
           value={highValue}
           aria-label={`${label} maximum`}
+          aria-valuetext={high === null && !closedScale ? t("common.any") : format(highValue)}
           onFocus={() => setActiveHandle("high")}
-          onPointerDown={() => setActiveHandle("high")}
+          onPointerDown={() => {
+            if (lowValue !== highValue) setActiveHandle("high");
+          }}
           onChange={(e) => {
             setActiveHandle("high");
             setHigh(Number(e.target.value));

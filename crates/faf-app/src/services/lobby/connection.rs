@@ -82,9 +82,18 @@ async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
                 background.launch = None;
                 launch.started(session, ctx, out).await;
             }
-            Next::WarmedUp => background.warm_up = None,
+            Next::WarmedUp => {
+                background.warm_up = None;
+                background.warm_up_called_off = None;
+            }
         }
     }
+    // A party member's update is for a search the connection took with it.
+    // Called off and dropped before the launch below is awaited: unpolled, it
+    // would keep the launcher's preparation lock that launch may be waiting
+    // for.
+    background.warm_up_called_off = None;
+    background.warm_up = None;
     // A launch still under way when the connection ended is finished rather
     // than dropped halfway, which could leave an adapter running for a game
     // that never started. It is the order the old loop had too: the launch
@@ -100,6 +109,10 @@ async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
     ctx.lobby.operations.cancel();
     ctx.lobby.operations.release_any_join();
     out.emit(LobbyEvent::Disconnected);
+    // So is a search being prepared, whose updater stops at its next safe
+    // point. After `Disconnected`, which leaves the search idle, so the
+    // preparation that stops here finds it no longer wanted and goes quietly.
+    ctx.lobby.search_preparation.cancel(|_| true);
     out.emit(SocialEvent::Cleared);
 }
 

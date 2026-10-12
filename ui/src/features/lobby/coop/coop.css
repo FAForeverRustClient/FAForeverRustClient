@@ -103,6 +103,7 @@
   min-height: 0;
   padding: 2px;
   overflow: auto;
+  scrollbar-gutter: stable;
 }
 
 /* Shape and type come from `.empty-state` in design-system/patterns.css. All
@@ -189,6 +190,7 @@
 
 .coop-detail {
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .coop-campaign + .coop-campaign {

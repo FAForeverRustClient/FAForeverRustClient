@@ -861,7 +861,7 @@ fn ini_key_eq(left: &str, right: &str) -> bool {
         .eq_ignore_ascii_case(&right.replace('\\', "/"))
 }
 
-fn read_small_text_file(path: &Path) -> Option<String> {
+pub(crate) fn read_small_text_file(path: &Path) -> Option<String> {
     let file = File::open(path).ok()?;
     let mut bytes = Vec::new();
     file.take(MAX_REFERENCE_CONFIG_BYTES + 1)

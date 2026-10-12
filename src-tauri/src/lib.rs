@@ -153,6 +153,7 @@ pub fn run() {
             commands::read_notification_sound,
             commands::import_background_image,
             commands::read_background_image,
+            commands::read_marked_map_preview,
             commands::open_version_folder,
             commands::reveal_replay,
             commands::read_latest_log,
@@ -378,6 +379,10 @@ mod tests {
             "https://faforever.com/newshub",
             "https://www.faforever.com/dist/main.js",
             "https://faforever.github.io/spooky-db/",
+            // The Units tab's database. WebKitGTK asks about a frame's loads
+            // as well as the window's, so with the root missing here the
+            // frame's own page went to the browser (PR 463).
+            "https://faforever.github.io/etfreeman-db/#/",
         ] {
             assert!(crate::navigation::is_internal_navigation(&url(embedded)));
         }

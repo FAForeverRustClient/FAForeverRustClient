@@ -10,7 +10,7 @@
 // the context of the conversation you are already in, and it cannot be read at
 // all while you are typing.
 
-import type { Game, SocialState, VaultMap } from "../../ipc/bindings";
+import type { ChatChannel, Game, LobbyStatus, SocialState, VaultMap } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -20,11 +20,17 @@ import { useNamedMapGeneration } from "../../shared/hooks/useNamedMapGeneration"
 import { GameSummaryCard } from "./roster/GameSummaryCard";
 import { gamePresenceForPlayer } from "./roster/gameSummary";
 import type { RosterTier } from "./roster/RosterResizeHandle";
+import { peerPresence } from "./peerPresence";
 
 interface Props {
   /** The person on the other side; a private channel is named after them. */
   peer: string;
+  /** The signed-in login, to tell the lobby's whole list from our own entry. */
+  self: string;
   social: SocialState;
+  lobbyStatus: LobbyStatus;
+  /** Our channels, whose rosters say who is on chat right now. */
+  channels: ChatChannel[];
   openGames: Game[];
   liveGames: Game[];
   mapVault: VaultMap[];
@@ -46,7 +52,10 @@ interface Props {
 
 export function ConversationAside({
   peer,
+  self,
   social,
+  lobbyStatus,
+  channels,
   openGames,
   liveGames,
   mapVault,
@@ -60,15 +69,30 @@ export function ConversationAside({
   const mapGen = useNamedMapGeneration(presence?.game.map);
 
   if (!presence) {
+    // Whether they are connected at all, which is what the panel could not
+    // say (#479). Somebody in a game plainly is, so this is only asked when
+    // they are not; and somebody offline is not in a game either, so the
+    // line that says so is left out rather than said twice.
+    const online = peerPresence(peer, self, social, lobbyStatus, channels);
     return (
       <aside
         className="chat-conversation-aside"
         data-tier={tier}
         aria-label={t("chat.aside.title", { name: peer })}
       >
-        <p className="chat-conversation-aside-empty muted">
-          <Icon name="users" size={16} /> {t("chat.aside.notInGame", { name: peer })}
-        </p>
+        {online !== "unknown" && (
+          <p className="chat-conversation-aside-empty muted" data-presence={online}>
+            <Icon name="user" size={16} />{" "}
+            {online === "online"
+              ? t("chat.aside.online", { name: peer })
+              : t("chat.aside.offline", { name: peer })}
+          </p>
+        )}
+        {online !== "offline" && (
+          <p className="chat-conversation-aside-empty muted">
+            <Icon name="users" size={16} /> {t("chat.aside.notInGame", { name: peer })}
+          </p>
+        )}
       </aside>
     );
   }

@@ -1,9 +1,10 @@
-
-
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
+import { restoreFocus } from "../../../design-system/overlayStack";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { EmptyState } from "../../../design-system/EmptyState";
 import { Modal } from "../../../design-system/Modal";
 import type { Game, VaultMap } from "../../../ipc/bindings";
+import { rememberTileGridWidth } from "../../../shared/tileGridWidth";
 import { useGameBrowserColumns } from "./gameBrowserColumns";
 import { useAppStore } from "../../../store/store";
 import { friendKeys } from "./friendPresence";
@@ -54,6 +55,7 @@ export function CustomGamesBrowser({
     ? games.find((game) => game.id === previewSnapshot.id) ?? previewSnapshot
     : null;
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
+  const contextSource = useRef<HTMLElement | null>(null);
 
   // Widths and order, set on the list once and read by every row from there.
   const columns = useGameBrowserColumns(viewMode === "list");
@@ -74,22 +76,24 @@ export function CustomGamesBrowser({
     return () => window.clearInterval(timer);
   }, []);
 
+  useOverlayLayer(contextMenu !== null, () => {
+    setContextMenu(null);
+    restoreFocus(contextSource.current);
+  });
+
   useEffect(() => {
     if (!contextMenu) return;
     const close = () => setContextMenu(null);
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-    };
     window.addEventListener("pointerdown", close);
-    window.addEventListener("keydown", onKeyDown);
+
     return () => {
       window.removeEventListener("pointerdown", close);
-      window.removeEventListener("keydown", onKeyDown);
     };
   }, [contextMenu]);
 
   const openContextMenu = (event: React.MouseEvent, game: Game) => {
     event.preventDefault();
+    contextSource.current = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
     hideGlobalLineup();
     onSelect(game.id);
     setContextMenu({
@@ -100,13 +104,24 @@ export function CustomGamesBrowser({
   };
 
   const tileColumns = useAppStore((state) => state.state.settings.appearance.gameTileColumns) ?? 0;
+  // Obeyed exactly, however narrow it makes the tiles: Settings says when the
+  // chosen count squeezes them, from the width measured here.
   const tileGridStyle = viewMode === "tiles" && tileColumns > 0
     ? { gridTemplateColumns: `repeat(${tileColumns}, minmax(0, 1fr))` }
     : undefined;
+  const tileGridRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const grid = tileGridRef.current;
+    if (viewMode !== "tiles" || !grid || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => rememberTileGridWidth(entry.contentRect.width));
+    observer.observe(grid);
+    return () => observer.disconnect();
+  }, [viewMode]);
 
   return (
     <section className={`game-browser-panel surface-panel game-browser-${viewMode}`}>
       <div
+        ref={tileGridRef}
         className={viewMode === "tiles" ? "game-tile-grid" : "game-browser-list"}
         style={viewMode === "tiles" ? tileGridStyle : columns.style}
       >

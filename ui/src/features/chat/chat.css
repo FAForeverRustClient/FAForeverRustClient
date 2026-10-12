@@ -10,6 +10,7 @@
 }
 
 .chat-main,
+.chat-channel-panel,
 .chat-roster-shell,
 .chat-roster {
   display: flex;
@@ -20,6 +21,10 @@
 
 .chat-roster-shell {
   position: relative;
+}
+
+.chat-channel-panel {
+  flex: 1;
 }
 
 .chat-roster-shell > .chat-roster {
@@ -93,6 +98,9 @@ html.is-resizing-chat-roster * {
 
 .chat-input:disabled {
   color: var(--color-subtle);
+  /* Dimmed as well, as disabled controls are across the design system: in
+     the Java and Python themes the subtle colour is close to body text. */
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -262,6 +270,39 @@ html.is-resizing-chat-roster * {
   white-space: nowrap;
 }
 
+/* The head count, drawn as the leaderboard's player count is
+   (`.leaderboard-summary-count`): the people icon muted, the count in the
+   text colour and weight. */
+.chat-online-count {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.chat-online-count svg {
+  flex: none;
+  color: var(--color-muted);
+}
+
+.chat-online-count strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+}
+
+/* The search, at the head's height so the row keeps its rhythm. */
+.chat-search-button {
+  flex: none;
+  min-height: 30px;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
 .chat-toggle {
   flex: none;
   display: inline-flex;
@@ -318,7 +359,17 @@ html.is-resizing-chat-roster * {
      about 250 px after the avatar, name and time columns, and every pixel of
      padding is a character of the line people read for hours. */
   padding: 14px 12px;
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). */
+  padding-right: max(0px, 12px - var(--scrollbar-size));
   scrollbar-gutter: stable;
+}
+
+/* Focused from code when the search bar closes, so the keys that follow
+   scroll the log. It is the log, not a control, and draws no ring of its own,
+   as the page does after a sidebar click (`.content:focus`). */
+.chat-messages:focus {
+  outline: none;
 }
 
 .chat-older-messages {
@@ -529,11 +580,11 @@ html.is-resizing-chat-roster * {
 }
 
 .chat-message.is-notice {
-  color: var(--color-warn);
+  color: var(--color-text);
 }
 
 .chat-message.is-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .chat-message-actor {
@@ -617,7 +668,7 @@ html.is-resizing-chat-roster * {
    was never defined, which left this declaration invalid and the size inherited.) */
 .chat-link-notice {
   flex: none;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   font-size: 12px;
 }
 
@@ -636,11 +687,12 @@ html.is-resizing-chat-roster * {
 /* Reserves its line whether or not anyone is composing, so the composer does
    not jump up and down as people start and stop typing. */
 .chat-typing {
-  min-height: 15px;
-  margin: var(--space-1) 0 0;
+  min-height: 14px;
+  margin: 2px 0 0;
   padding: 0 var(--space-1);
   color: var(--color-subtle);
   font-size: 11px;
+  line-height: 14px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -742,6 +794,14 @@ html.is-resizing-chat-roster * {
   margin-top: var(--space-3);
   flex-direction: column;
   gap: var(--space-1);
+}
+
+/* Under the typing line, which already stands between the conversation and
+   the composer. A full gap on top of the line it reserves put the composer
+   31 px below the messages; this is 18, 2 above a 14 px line and 2 below it,
+   with the typing text centred in it. */
+.chat-typing + .chat-compose-shell {
+  margin-top: 2px;
 }
 
 .chat-reply-banner {
@@ -925,6 +985,7 @@ html.is-resizing-chat-roster * {
   flex-direction: column;
   gap: var(--space-3);
   overflow-y: auto;
+  /* No scrollbar gutter: the emoji grid always overflows, so its scrollbar is always there and nothing moves. */
 }
 
 .emoji-group-title {
@@ -1021,7 +1082,11 @@ html.is-resizing-chat-roster * {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   padding: var(--space-1);
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). */
+  padding-right: max(0px, var(--space-1) - var(--scrollbar-size));
   contain: strict;
 }
 
@@ -1326,6 +1391,7 @@ img.chat-game-map {
   width: min(410px, calc(100vw - 16px));
   max-height: calc(100vh - 16px);
   overflow: auto;
+  /* No scrollbar gutter: a pop-up as wide as what opened it, where a reserved strip would narrow every entry for a scrollbar most lists never show. */
   padding: 10px;
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
@@ -1424,19 +1490,19 @@ img.chat-game-map {
 }
 
 .chat-game-status.is-playing {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   background: color-mix(in srgb, var(--color-ok) 12%, transparent);
 }
 
 .chat-game-status.is-playingDelayed,
 .chat-game-status.is-playing-delayed {
-  color: var(--color-error);
+  color: var(--color-error-text);
   background: color-mix(in srgb, var(--color-error) 12%, transparent);
 }
 
 .chat-game-status.is-hosting {
-  color: var(--color-warn);
-  background: color-mix(in srgb, var(--color-warn) 12%, transparent);
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
 
 .chat-game-status.is-lobbying {
@@ -1715,7 +1781,7 @@ img.chat-game-map {
 }
 
 .chat-user-menu-item.is-danger {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 
@@ -1757,7 +1823,11 @@ img.chat-game-map {
   max-height: calc(100% - var(--chat-card-top, 0px));
   min-height: 0;
   overflow: auto;
+  scrollbar-gutter: stable;
   padding: 10px;
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). */
+  padding-right: max(0px, 10px - var(--scrollbar-size));
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -1792,6 +1862,12 @@ img.chat-game-map {
   gap: 6px;
   margin: 0;
   font-size: 12px;
+}
+
+/* Green only for online, as on the profile line in the sidebar: green means
+   online and nothing else. Offline keeps the muted icon; the words say which. */
+.chat-conversation-aside-empty[data-presence="online"] svg {
+  color: var(--color-ok-text);
 }
 
 /* The lineup, at the three widths the panel can be dragged to. See
@@ -1944,9 +2020,17 @@ img.chat-game-map {
 .chat-player-card {
   position: fixed;
   z-index: 100;
-  width: min(260px, calc(100vw - 16px));
+  /* As wide as the name and the table need, between a floor that keeps a
+     short name's card from looking like a chip and the old fixed width. At a
+     fixed 260 px the leaderboard names took all the slack, and a wide gap
+     opened between "Global" and its rating. Placed by its right edge, so the
+     width can follow the content. */
+  width: max-content;
+  min-width: 210px;
+  max-width: min(260px, calc(100vw - 16px));
   max-height: calc(100vh - 16px);
   overflow: auto;
+  /* No scrollbar gutter: a pop-up as wide as its content, where a reserved strip would only widen its right margin. */
   padding: 10px;
   pointer-events: none;
   color: var(--color-text);
@@ -2003,7 +2087,10 @@ img.chat-game-map {
   align-items: baseline;
 }
 
+/* At least this much between a label and its rating, whatever the card's
+   width leaves over. */
 .chat-player-card-ratings dt {
+  padding-right: 20px;
   overflow: hidden;
   color: var(--color-muted);
   font-size: 12px;

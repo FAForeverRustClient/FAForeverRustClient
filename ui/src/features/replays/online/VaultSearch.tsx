@@ -42,7 +42,7 @@ import { activeReplayPreset, SHORT_GAME_MINUTES } from "../replayPresets";
 import { FriendReplayPicker } from "./FriendReplayPicker";
 import { MultiSelect } from "../../../design-system/MultiSelect";
 import { useAppStore } from "../../../store/store";
-import { allReplayTags, replayIdsTagged } from "../../../shared/rules/replayNotes";
+import { allReplayTags, gameReplayNotes, replayIdsTagged } from "../../../shared/rules/replayNotes";
 import "../../../design-system/search-panel.css";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -95,7 +95,10 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
   // only carries what they stand for: the ids of the games tagged with them.
   const [pickedTags, setPickedTags] = useState<string[]>([]);
   const replayNotes = useAppStore((state) => state.state.settings.social.replayNotes);
-  const tagOptions = useMemo(() => allReplayTags(replayNotes), [replayNotes]);
+  // Only the tags on games: a tag that is only on files without a game id
+  // stands for no game the vault could be asked for, and picking it would
+  // search everything instead.
+  const tagOptions = useMemo(() => allReplayTags(gameReplayNotes(replayNotes)), [replayNotes]);
   // Shown only while the ids they produced are still in the form, so a
   // cleared or preset search does not keep claiming a tag filter.
   const selectedTags = (form.replayIds ?? []).length > 0 ? pickedTags : [];
@@ -510,19 +513,18 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
           {t("replays.search.hideShort")}
         </Button>
         <span className="spacer" />
-        <button
-          type="button"
-          className="vault-toggle-advanced search-panel-toggle"
+        <Button
+          className="search-panel-toggle"
           aria-expanded={advanced}
           onClick={() => setAdvanced((a) => !a)}
         >
-          <Icon name="filter" size={14} />
+          <Icon name="filter" size={15} />
           {advanced
             ? t("replays.search.fewerFilters")
             : hiddenFilterCount > 0
               ? t("replays.search.moreFiltersCount", { count: hiddenFilterCount })
               : t("replays.search.moreFilters")}
-        </button>
+        </Button>
         <Button type="button" onClick={reset}>
           {t("replays.search.clear")}
         </Button>

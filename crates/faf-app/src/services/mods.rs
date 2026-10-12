@@ -7,9 +7,10 @@
 
 use faf_domain::state::{ModListStatus, ModsCommand, ModsEvent};
 
-use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+use crate::runtime::{Cancellable, CancellationSlot, EventSink, LatestRequest, ServiceCtx};
 
-/// The mod vault's request generation. Owned by this service.
+/// The mod vault's request generation and the install in flight. Owned by
+/// this service.
 #[derive(Default)]
 pub struct ModsContext {
     /// Only the newest vault search may land, for the same reason as the map
@@ -17,10 +18,26 @@ pub struct ModsContext {
     /// otherwise replace its page with results for filters no longer on
     /// screen.
     search_generation: LatestRequest,
+    catalogue: CancellationSlot,
+    /// The install or update running, by uid, so `CancelInstall` can reach
+    /// it. One at most: they are serial on `Key::ModFiles`.
+    installs: Cancellable<String>,
+}
+
+/// Report a mod install's steps as `InstallProgressed` for `uid`.
+fn install_progress(out: &EventSink, uid: &str) -> crate::ports::VaultInstallProgress {
+    let (sink, uid) = (out.clone(), uid.to_string());
+    crate::services::vault_install_progress(move |progress| {
+        sink.emit(ModsEvent::InstallProgressed {
+            uid: uid.clone(),
+            progress,
+        })
+    })
 }
 
 pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
+        ModsCommand::CancelVaultLoad => ctx.mods.catalogue.cancel(),
         ModsCommand::LoadVault => {
             // Same guard, same reason, as `services::maps`: one crawl.
             if out.with_state(|state| {
@@ -85,9 +102,38 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         ModsCommand::InstallMod { uid, download_url } => {
             crate::runtime::expect_admitted(crate::runtime::Key::ModFiles);
+            // The same as a map's: a second press waits for the first and
+            // finds the mod installed, where it used to download it again
+            // and then fail with "already installed".
+            let installed = out.with_state(|state| {
+                state
+                    .mods
+                    .installed
+                    .iter()
+                    .any(|installed| installed.uid.eq_ignore_ascii_case(&uid))
+            });
+            if installed {
+                return;
+            }
+            // Reachable before it is on screen; see the map vault's install.
+            let ticket = ctx.mods.installs.begin(uid.clone());
             out.emit(ModsEvent::Installing { uid: uid.clone() });
-            match ctx.ports.mods.install_mod(uid, download_url).await {
-                Ok(installed) => out.emit(ModsEvent::Installed { installed }),
+            // The port takes the token and its answer is the truth, as for a
+            // map: see `ModsPort::install_mod_reporting`.
+            let result = ctx
+                .ports
+                .mods
+                .install_mod_reporting(
+                    uid.clone(),
+                    download_url,
+                    install_progress(out, &uid),
+                    ticket.called_off.clone(),
+                )
+                .await;
+            ctx.mods.installs.end(&ticket);
+            match result {
+                Ok(None) => out.emit(ModsEvent::InstallCancelled { uid }),
+                Ok(Some(installed)) => out.emit(ModsEvent::Installed { installed }),
                 Err(reason) => out.emit(ModsEvent::InstallFailed { reason }),
             }
         }
@@ -97,18 +143,34 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
             download_url,
         } => {
             crate::runtime::expect_admitted(crate::runtime::Key::ModFiles);
+            let ticket = ctx.mods.installs.begin(uid.clone());
             // The same status an install shows: from the user's side this *is*
             // an install, and the row it belongs to is named by the new uid.
             out.emit(ModsEvent::Installing { uid: uid.clone() });
-            match ctx
+            // The port takes the token, as for an install, because only the
+            // port knows when the old version starts going (see
+            // `ModsPort::update_mod_reporting`). Its answer is the truth
+            // either way, a call-off that came too late included.
+            let result = ctx
                 .ports
                 .mods
-                .update_mod(uid, folder_name, download_url)
-                .await
-            {
-                Ok(installed) => out.emit(ModsEvent::Installed { installed }),
+                .update_mod_reporting(
+                    uid.clone(),
+                    folder_name,
+                    download_url,
+                    install_progress(out, &uid),
+                    ticket.called_off.clone(),
+                )
+                .await;
+            ctx.mods.installs.end(&ticket);
+            match result {
+                Ok(None) => out.emit(ModsEvent::InstallCancelled { uid }),
+                Ok(Some(installed)) => out.emit(ModsEvent::Installed { installed }),
                 Err(reason) => out.emit(ModsEvent::InstallFailed { reason }),
             }
+        }
+        ModsCommand::CancelInstall { uid } => {
+            ctx.mods.installs.cancel(|running| *running == uid);
         }
         ModsCommand::UninstallMod { folder_name, uid } => {
             crate::runtime::expect_admitted(crate::runtime::Key::ModFiles);
@@ -142,12 +204,30 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
 /// is wanted; the data already loaded stays on screen until this replaces it.
 async fn crawl_vault(ctx: &ServiceCtx, out: &EventSink) {
     crate::runtime::expect_admitted(crate::runtime::Key::ModVault);
+    let cancel = ctx.mods.catalogue.begin();
     out.emit(ModsEvent::VaultLoading);
     // Logged both ways with its duration, as the map vault's is: the crawl is
     // many pages, and the Live and Play tabs start it as they open.
     let started = std::time::Instant::now();
     tracing::info!("mod vault: loading the catalogue");
-    match ctx.ports.mods.list_vault().await {
+    let (progress_tx, mut progress_rx) = tokio::sync::mpsc::channel(32);
+    let request = ctx.ports.mods.list_vault_with_progress(Some(progress_tx));
+    tokio::pin!(request);
+    let result = loop {
+        tokio::select! {
+            biased;
+            () = cancel.cancelled() => {
+                out.emit(ModsEvent::VaultCancelled);
+                return;
+            }
+            result = &mut request => break result,
+            Some(progress) = progress_rx.recv() => out.emit(ModsEvent::VaultProgress { progress }),
+        }
+    };
+    while let Ok(progress) = progress_rx.try_recv() {
+        out.emit(ModsEvent::VaultProgress { progress });
+    }
+    match result {
         Ok(mods) => {
             tracing::info!(
                 mods = mods.len(),

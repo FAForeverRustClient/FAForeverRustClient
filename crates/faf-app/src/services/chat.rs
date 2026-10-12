@@ -53,6 +53,12 @@ pub struct ChatContext {
 }
 
 impl ChatContext {
+    /// Keep chat down: the watchdog will not bring it back after the next
+    /// drop. For an account the lobby server has refused for good (#488).
+    pub(crate) fn disarm_reconnect(&self) {
+        self.auto_reconnect.disarm();
+    }
+
     /// Whether an explicit `Connect` armed the chat connection to come back
     /// after an unexpected drop. Read by
     /// [`reconnect`](crate::services::reconnect).
@@ -101,10 +107,19 @@ pub async fn handle(cmd: ChatCommand, ctx: &ServiceCtx, out: &EventSink) {
                 channel: channel.clone(),
             });
             if let Some((key, timestamp)) = marker {
-                let mut preferences = out.with_state(|state| state.settings.chat.clone());
-                preferences.read_markers.insert(key, timestamp);
-                out.emit(SettingsEvent::ChatChanged {
-                    preferences: Box::new(preferences),
+                // Under the settings merge lock: chat preferences are one
+                // group, and a settings patch to it (hide foe messages, the
+                // visible history) landing between this read and this emit
+                // used to be put back to its old value by the marker.
+                ctx.settings.merge_and_emit(out, |settings| {
+                    let mut preferences = settings.chat.clone();
+                    preferences.read_markers.insert(key, timestamp);
+                    (
+                        SettingsEvent::ChatChanged {
+                            preferences: Box::new(preferences),
+                        },
+                        (),
+                    )
                 });
                 persist_read_markers_after_quiet_period(ctx, out);
             }
@@ -176,6 +191,7 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
         if let ChatUpdate::Message { channel, message } = &update {
             let (
                 is_quiet_history,
+                held,
                 muted,
                 username,
                 hide_foe_messages,
@@ -193,6 +209,10 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
                 (
                     quiet_history,
                     state
+                        .chat
+                        .channel(channel)
+                        .is_some_and(|c| c.holds(message)),
+                    state
                         .settings
                         .chat
                         .muted_players
@@ -206,7 +226,12 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
                 )
             });
             quiet_history = is_quiet_history;
-            if muted {
+            // A line the channel already shows is the history backfill
+            // overlapping the scrollback after a reconnect or a rejoin (#471).
+            // The reducer would drop it; skipping it here also keeps its
+            // mention from notifying a second time, and spares the frontend
+            // an event per replayed line that changes nothing.
+            if muted || held {
                 continue;
             }
             let incoming = !message.sender.is_empty()

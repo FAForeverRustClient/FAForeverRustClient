@@ -19,6 +19,13 @@
 // patch runs is a client you cannot use, and the status bar keeps the same
 // narration once this is out of the way. Closing hides the dialog; it does not
 // stop the preparation, and the text says so.
+//
+// While the game starts it also names the ICE adapter, when that is not the
+// usual Java one or when the setting and the host disagree. A game hosted on Go
+// needs Go on every side, and `Dynamic` already follows the host there without
+// a word, so a join that suddenly behaves differently had nothing to explain
+// it. One line here rather than a notification of its own, which is where the
+// maintainers wanted it (issue #467).
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
@@ -26,7 +33,8 @@ import { Modal } from "../../../design-system/Modal";
 import { useAppStore } from "../../../store/store";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { ipc } from "../../../ipc/client";
-import { joinProgressOf, nextStep } from "./joinProgress";
+import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
+import { adapterNoteOf, joinProgressOf, nextStep } from "./joinProgress";
 import "../game-dialogs.css";
 
 /**
@@ -42,6 +50,7 @@ const cancelJoin = () => ipc.send({ kind: "Lobby", command: { type: "cancelJoin"
 export function JoinPreparationDialog() {
   const { t } = useTranslation();
   const join = useAppStore((state) => state.state.lobby.join);
+  const joinAdapter = useAppStore((state) => state.state.settings.connectivity.adapter);
   const progress = joinProgressOf(join);
   // The line the step log follows. While the game is starting there is no
   // detail to follow, so the log stops growing and keeps what it has.
@@ -80,6 +89,9 @@ export function JoinPreparationDialog() {
   // Starting the game has nothing to measure: the client has handed off to a
   // process and is waiting for a window, so the bar runs rather than fills.
   const percent = progress.kind === "preparing" ? progress.progress : null;
+  // Only once the launch order is in: its title is what the backend reads to
+  // pick the adapter, and before it the dialog has no title to read.
+  const adapterNote = progress.kind === "starting" ? adapterNoteOf(joinAdapter, progress.name) : null;
 
   return (
     <Modal className="confirm-modal join-preparing-modal" onClose={() => setHidden(true)}>
@@ -100,9 +112,19 @@ export function JoinPreparationDialog() {
         </p>
         <p className="join-preparing-detail">
           {progress.kind === "starting"
-            ? t("lobby.joinProgress.startingDetail", { name: progress.name })
+            ? t("lobby.joinProgress.startingDetail", { name: splitGoAdapterTitle(progress.name).title })
             : progress.detail}
         </p>
+        {/* Says in words what the title's mark said, which is why the mark is
+            gone from the name above, as it is in the game browser. */}
+        {adapterNote && (
+          <p
+            className="join-preparing-adapter"
+            data-mismatch={adapterNote === "hostOnGo" ? undefined : "true"}
+          >
+            {t(`lobby.joinProgress.adapter.${adapterNote}`)}
+          </p>
+        )}
         <div
           className="join-preparing-bar"
           data-indeterminate={percent === null ? "true" : undefined}

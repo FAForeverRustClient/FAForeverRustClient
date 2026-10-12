@@ -31,6 +31,7 @@
   width: 200px;
   max-height: calc(100vh - 16px);
   overflow-y: auto;
+  /* No scrollbar gutter: a pop-up as wide as what opened it, where a reserved strip would narrow every entry for a scrollbar most lists never show. */
   padding: var(--space-2);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
@@ -84,7 +85,7 @@
 .game-folders-error {
   margin: 0;
   padding: 4px 8px;
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: 11px;
   line-height: 1.4;
 }

@@ -107,7 +107,12 @@ pub struct HostGameConfig {
 }
 
 impl HostGameConfig {
-    pub const MAX_TITLE_CHARS: usize = 128;
+    /// The longest title this client hosts with. 64, below the 128 the Python
+    /// client allows: enough to say what the game is and what it asks of its
+    /// players, not enough for a wall of text that every other screen cuts
+    /// short anyway. The host dialog holds the same number
+    /// (`MAX_HOST_TITLE`). Games hosted from other clients can be longer.
+    pub const MAX_TITLE_CHARS: usize = 64;
     pub const MAX_PASSWORD_CHARS: usize = 25;
     pub const MIN_RATING: i32 = -9_999;
     pub const MAX_RATING: i32 = 9_999;
@@ -802,6 +807,19 @@ pub enum LobbyEvent {
     /// finished disconnecting. This clears any prepared-install marker
     /// immediately, preventing a racing launch frame from starting the game.
     JoinCancelled,
+    /// A launch the launcher called off before any game process existed:
+    /// the server's `match_cancelled` arrived while the install was prepared
+    /// or the adapter came up (#487).
+    ///
+    /// Unlike [`Self::JoinCancelled`] it also closes a join that is already
+    /// [`JoinState::Launched`], which is where a matchmaker launch stands from
+    /// its first frame. No process was started, so no exit would ever end that
+    /// join, and the starting dialog stayed on "Forged Alliance is opening"
+    /// until the client was restarted. `id` is the launch's game, so an event
+    /// that arrives late cannot close the next one.
+    LaunchAbandoned {
+        id: i32,
+    },
     InGame,
     LaunchFailed {
         reason: String,
@@ -1056,6 +1074,23 @@ pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
             // ever clear it, and the panel stayed on "Starting your match".
             if preparing && matches!(state.matchmaking, MatchmakingState::Launching { .. }) {
                 state.matchmaking = MatchmakingState::Idle;
+            }
+        }
+        LobbyEvent::LaunchAbandoned { id } => {
+            let abandoned = match &state.join {
+                JoinState::Launched { launch } => launch.uid == *id,
+                JoinState::Joining { id: joining, .. } => joining == id,
+                JoinState::Preparing { .. } => true,
+                _ => false,
+            };
+            if abandoned {
+                state.join = JoinState::Idle;
+                // The match is over too. A server cancel normally says so
+                // itself (`Cancelled`), which is left on screen; only the
+                // state the launch put there is cleared.
+                if matches!(state.matchmaking, MatchmakingState::Launching { .. }) {
+                    state.matchmaking = MatchmakingState::Idle;
+                }
             }
         }
         LobbyEvent::InGame => state.join = JoinState::InGame,
@@ -1772,6 +1807,79 @@ mod tests {
         );
 
         assert_eq!(state.matchmaking, MatchmakingState::Idle);
+    }
+
+    #[test]
+    fn a_launch_abandoned_before_its_game_started_is_over() {
+        // #487: the server cancelled the match while the launcher was still
+        // getting ready, and the join had already reached `Launched`.
+        let mut state = LobbyState {
+            join: JoinState::Launched { launch: launch(8) },
+            matchmaking: MatchmakingState::Cancelled {
+                queue_name: Some("tmm2v2".into()),
+            },
+            ..LobbyState::default()
+        };
+
+        reduce(&mut state, &LobbyEvent::LaunchAbandoned { id: 8 });
+
+        assert_eq!(state.join, JoinState::Idle);
+        // What the server said about the match stays on screen.
+        assert_eq!(
+            state.matchmaking,
+            MatchmakingState::Cancelled {
+                queue_name: Some("tmm2v2".into()),
+            }
+        );
+    }
+
+    #[test]
+    fn an_abandoned_launch_frees_a_panel_still_launching() {
+        let mut state = LobbyState {
+            join: JoinState::Launched { launch: launch(8) },
+            matchmaking: MatchmakingState::Launching {
+                queue_name: "tmm2v2".into(),
+            },
+            ..LobbyState::default()
+        };
+
+        reduce(&mut state, &LobbyEvent::LaunchAbandoned { id: 8 });
+
+        assert_eq!(state.join, JoinState::Idle);
+        assert_eq!(state.matchmaking, MatchmakingState::Idle);
+    }
+
+    #[test]
+    fn a_late_abandon_leaves_the_next_launch_alone() {
+        let mut state = LobbyState {
+            join: JoinState::Launched { launch: launch(9) },
+            matchmaking: MatchmakingState::Launching {
+                queue_name: "tmm2v2".into(),
+            },
+            ..LobbyState::default()
+        };
+
+        reduce(&mut state, &LobbyEvent::LaunchAbandoned { id: 8 });
+
+        assert_eq!(state.join, JoinState::Launched { launch: launch(9) });
+        assert_eq!(
+            state.matchmaking,
+            MatchmakingState::Launching {
+                queue_name: "tmm2v2".into(),
+            }
+        );
+    }
+
+    #[test]
+    fn an_abandon_does_not_end_a_game_that_is_running() {
+        let mut state = LobbyState {
+            join: JoinState::InGame,
+            ..LobbyState::default()
+        };
+
+        reduce(&mut state, &LobbyEvent::LaunchAbandoned { id: 8 });
+
+        assert_eq!(state.join, JoinState::InGame);
     }
 
     #[test]

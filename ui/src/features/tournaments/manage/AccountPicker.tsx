@@ -13,8 +13,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
+import { StatusNotice } from "../../../design-system/StatusNotice";
 import type { AccountSearch, PlayerSummary } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { plainError } from "../../../shared/plainError";
 import { PlayerChip } from "../PlayerChip";
 
 /**
@@ -104,10 +106,19 @@ export function AccountPicker(props: AccountPickerProps) {
 
       {loading && <p className="tournament-form-hint muted">{t("tournaments.admin.searching")}</p>}
 
-      {/* The server's own sentence: it distinguishes an expired session from a
-          name nobody has, and an empty list would send the organiser hunting
-          for a typo that is not there. */}
-      {failed !== null && <p className="tournament-form-hint is-error">{failed.reason}</p>}
+      {/* The server's own sentence, through `plainError`: it distinguishes an
+          expired session from a name nobody has, and an empty list would send
+          the organiser hunting for a typo that is not there. A transport
+          failure is what gets reworded, with the original on hover. */}
+      {failed !== null && (
+        <StatusNotice
+          tone="error"
+          action={{ label: t("common.retry"), onClick: () => props.onQueryChange(typed) }}
+          detail={failed.reason}
+        >
+          {plainError(failed.reason)}
+        </StatusNotice>
+      )}
 
       {found.length > 0 && (
         <ul className="tournament-account-matches">

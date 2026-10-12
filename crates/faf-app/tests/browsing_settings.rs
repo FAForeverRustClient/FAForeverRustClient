@@ -97,6 +97,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                     host_coop: HostGamePreferences::default(),
                     favorite_maps: vec!["adaptive_tabula.v0006".into()],
                     favorite_mods: vec!["eco_graph".into()],
+                    whitelisted_hosts: Vec::new(),
                     map_vault_preset: "newest".into(),
                     map_vault_sort: String::new(),
                     mod_vault_sort: String::new(),

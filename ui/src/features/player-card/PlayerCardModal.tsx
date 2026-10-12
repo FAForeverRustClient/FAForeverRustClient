@@ -1,8 +1,10 @@
+import { useOverlayLayer } from "../../design-system/useOverlayLayer";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
 import { Icon } from "../../design-system/Icon";
 import { SectionTabs, sectionPanelProps } from "../../design-system/SectionTabs";
+import { StatusNotice } from "../../design-system/StatusNotice";
 import { ipc } from "../../ipc/client";
 import type { PlayerCardProfile, PlayerProfile, PlayerRatingSummary, RatingHistoryPeriod } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
@@ -22,6 +24,7 @@ import { RatingHistoryChart } from "./RatingHistoryChart";
 import { closePlayerCard, openPlayerCard } from "../../shared/playerCardActions";
 import { takePlayerCardTab } from "../../shared/playerCardTabIntent";
 import { PlayerName } from "../../shared/components/nameColors";
+import { plainError } from "../../shared/plainError";
 import "./player-card.css";
 import { formatNumber, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -130,6 +133,8 @@ function PlayerLookupSearch({
     return [...online, ...fromApi].slice(0, 58);
   }, [lookup, trimmedQuery, players]);
 
+  useOverlayLayer(isOpen && suggestions.length > 0, () => setIsOpen(false));
+
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
@@ -147,6 +152,7 @@ function PlayerLookupSearch({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.nativeEvent.isComposing) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
       if (suggestions.length > 0) {
@@ -166,11 +172,6 @@ function PlayerLookupSearch({
       } else if (query.trim()) {
         handleSelect(null, query.trim());
       }
-    } else if (e.key === "Escape" && isOpen) {
-      // An open suggestion list is the first thing Escape closes; only a
-      // second press, with the list already gone, reaches the card itself.
-      e.stopPropagation();
-      setIsOpen(false);
     }
   };
 
@@ -354,11 +355,15 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
       {state.historyStatus === "failed" && (
         // Retry lives here rather than as a permanent toolbar button: a rating
         // history is a near-static record, so a refresh control only has a job
-        // when the load actually failed.
-        <div className="player-card-error">
-          <p>{state.historyError}</p>
-          <Button onClick={() => load()}><Icon name="refresh" size={15} /> {t("playerCard.history.tryAgain")}</Button>
-        </div>
+        // when the load actually failed. The reason is said plainly, with the
+        // HTTP client's own words on hover for a bug report.
+        <StatusNotice
+          tone="error"
+          action={{ label: t("common.retry"), onClick: load }}
+          detail={state.historyError || undefined}
+        >
+          {plainError(state.historyError)}
+        </StatusNotice>
       )}
 
       <div className="player-history-chart">
@@ -484,7 +489,19 @@ export function PlayerCardModal() {
       </div>
 
       {state.profileStatus === "loading" && <div className="player-card-loading muted">{t("playerCard.profileLoading")}</div>}
-      {state.profileStatus === "failed" && <div className="player-card-error"><p>{state.profileError}</p><Button onClick={() => void openPlayerCard(null, state.requestedLogin)}>{t("playerCard.retry")}</Button></div>}
+      {state.profileStatus === "failed" && (
+        // A plain sentence rather than the reason as it was sent ("error
+        // sending request for url (...)"), which stays on hover. Retry asks
+        // for the same name again, as opening it did.
+        <StatusNotice
+          tone="error"
+          className="player-card-failure"
+          action={{ label: t("common.retry"), onClick: () => void openPlayerCard(null, state.requestedLogin) }}
+          detail={state.profileError || undefined}
+        >
+          {plainError(state.profileError)}
+        </StatusNotice>
+      )}
       {profile && (
         <>
           {/* Same underline strip as the Play and Chat tabs, rather than a row

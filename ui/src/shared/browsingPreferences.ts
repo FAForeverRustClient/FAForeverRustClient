@@ -120,9 +120,10 @@ export const MAX_BROWSER_COLUMNS = 6;
  *
  * There is no ceiling, and this is as close to no floor as the stored format
  * allows: a column is dragged to whatever width somebody wants, including
- * none. One rather than zero because zero already means "no width stored, use
- * the designed one", so a column dragged shut has to stay distinguishable from
- * one nobody has touched.
+ * none, unless its list gives it a floor on screen (a column of buttons, say;
+ * see `fitColumns`). One rather than zero because zero already means "no
+ * width stored, use the designed one", so a column dragged shut has to stay
+ * distinguishable from one nobody has touched.
  *
  * No counterpart in `faf_domain` any more, unlike the bounds below. A `u32`
  * that is not zero is already at least one, so the backend has nothing left to
@@ -168,6 +169,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   hostCoop: { ...DEFAULT_HOST_GAME_PREFERENCES },
   favoriteMaps: [],
   favoriteMods: [],
+  whitelistedHosts: [],
   mapVaultPreset: "recommended",
   modVaultPreset: "recommended",
   mapVaultSort: "",
@@ -235,6 +237,7 @@ export function normalizeBrowsingPreferences(
     hostCoop: normalizeHostGamePreferences(preferences.hostCoop),
     favoriteMaps: normalizeLabels(preferences.favoriteMaps ?? [], 512, 256).map(asciiLower),
     favoriteMods: normalizeLabels(preferences.favoriteMods ?? [], 512, 256).map(asciiLower),
+    whitelistedHosts: normalizeLogins(preferences.whitelistedHosts ?? [], 256),
     mapVaultPreset: normalizeMapVaultPreset(preferences.mapVaultPreset),
     modVaultPreset: normalizeModVaultPreset(preferences.modVaultPreset),
     mapVaultSort: truncateTrimmed(preferences.mapVaultSort ?? "", 32),
@@ -552,6 +555,27 @@ function normalizeLabels(values: string[], limit: number, maxCharacters: number)
     if (normalized.length === limit) break;
   }
   return normalized;
+}
+
+/**
+ * Logins as `normalize_logins` keeps them: trimmed, in their own spelling,
+ * one per player whatever the case, at most 64 characters, sorted.
+ */
+function normalizeLogins(values: string[], limit: number): string[] {
+  const normalized: string[] = [];
+  for (const raw of values) {
+    const login = raw.trim();
+    if (!login || login.length > 64) continue;
+    if (!normalized.some((existing) => asciiLower(existing) === asciiLower(login))) {
+      normalized.push(login);
+    }
+    if (normalized.length === limit) break;
+  }
+  return normalized.sort((left, right) => {
+    const a = asciiLower(left);
+    const b = asciiLower(right);
+    return a < b ? -1 : a > b ? 1 : 0;
+  });
 }
 
 function asciiLower(value: string): string {

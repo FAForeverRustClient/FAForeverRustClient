@@ -9,11 +9,13 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use faf_app::infra::fake_ports;
 use faf_app::ports::{
-    DiscoveredInstallPaths, GameLaunchParams, InstallPresence, ProcessPort, ReplayPlaybackPort,
-    SettingsPort,
+    DiscoveredInstallPaths, GameLaunchParams, InstallPresence, PathsPort, ProcessPort,
+    ReplayPlaybackPort, SettingsPort,
 };
 use faf_app::{App, Ports};
-use faf_domain::state::{LiveReplayTarget, SettingsCommand, SettingsState};
+use faf_domain::state::{
+    LiveReplayTarget, PathPreferences, ResolvedPaths, SettingsCommand, SettingsState,
+};
 
 /// Records only what this file asserts on: which install the replay preparation
 /// steps were pointed at. Everything else is unreachable here.
@@ -75,6 +77,7 @@ impl SettingsPort for RecordingSettings {
 struct RecordingProcess {
     paths: Arc<Mutex<Vec<(String, String)>>>,
     discovered: DiscoveredInstallPaths,
+    defaults: DiscoveredInstallPaths,
 }
 
 #[async_trait]
@@ -129,6 +132,16 @@ impl ProcessPort for RecordingProcess {
         self.discovered.clone()
     }
 
+    fn default_install_paths(&self) -> DiscoveredInstallPaths {
+        self.defaults.clone()
+    }
+
+    /// The real port probes for `gamedata/lua.scd` beside the executable's
+    /// `bin`; a Steam library path stands in for that here.
+    fn is_original_game_install(&self, path: &str) -> bool {
+        path.contains("/steamapps/common/")
+    }
+
     /// Same derivation as the real process port: `replaydata/bin` beside the
     /// live install's `bin`.
     fn replay_path_beside_game(&self, game_path: &str) -> Option<String> {
@@ -160,6 +173,7 @@ async fn loading_settings_reconfigures_process_paths_before_settling() {
                 game: Some("other-client-game.exe".into()),
                 replay: Some("other-client-replay.exe".into()),
             },
+            ..RecordingProcess::default()
         }),
         ..fake_ports()
     };
@@ -198,7 +212,7 @@ async fn loading_settings_points_replay_preparation_at_the_configured_install() 
         })),
         process: Arc::new(RecordingProcess {
             paths: Arc::new(Mutex::new(Vec::new())),
-            discovered: DiscoveredInstallPaths::default(),
+            ..RecordingProcess::default()
         }),
         replay_playback: Arc::new(RecordingReplay {
             install_dirs: install_dirs.clone(),
@@ -269,6 +283,7 @@ async fn loading_imports_and_persists_discovered_reference_client_installs() {
                 game: Some("java-managed-game.exe".into()),
                 replay: Some("python-managed-replay.exe".into()),
             },
+            ..RecordingProcess::default()
         }),
         ..fake_ports()
     };
@@ -295,4 +310,87 @@ async fn loading_imports_and_persists_discovered_reference_client_installs() {
     let persisted = saved.lock().unwrap();
     assert_eq!(persisted.len(), 1);
     assert_eq!(persisted[0].game_path, "java-managed-game.exe");
+}
+
+/// Records the directory overrides handed to the path resolver, which is how
+/// the game updater hears of anything configured in Settings.
+struct RecordingPaths {
+    overrides: Arc<Mutex<Vec<PathPreferences>>>,
+}
+
+impl PathsPort for RecordingPaths {
+    fn set_overrides(&self, preferences: PathPreferences) {
+        self.overrides.lock().unwrap().push(preferences);
+    }
+
+    fn resolved(&self) -> ResolvedPaths {
+        ResolvedPaths::default()
+    }
+}
+
+/// Issue #474. A new player has Steam's Forged Alliance and nothing else, so
+/// its executable is the one they pick. The client answers with its own copy,
+/// since it never writes into Steam's, and used to forget the pick on the
+/// spot: the updater then had to find the original again by guessing, which
+/// misses every Steam library outside Program Files, and the first game
+/// stopped at "BugSplat.dll is missing".
+#[tokio::test]
+async fn picking_the_original_game_remembers_it_for_the_updater() {
+    const MANAGED: &str = "C:/ProgramData/FAForever/bin/ForgedAlliance.exe";
+    const ORIGINAL: &str = "D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance";
+    let saved = Arc::new(Mutex::new(Vec::new()));
+    let overrides = Arc::new(Mutex::new(Vec::new()));
+    let ports = Ports {
+        settings: Arc::new(RecordingSettings {
+            loaded: SettingsState::default(),
+            saved: saved.clone(),
+        }),
+        process: Arc::new(RecordingProcess {
+            defaults: DiscoveredInstallPaths {
+                game: Some(MANAGED.into()),
+                replay: None,
+            },
+            ..RecordingProcess::default()
+        }),
+        paths: Arc::new(RecordingPaths {
+            overrides: overrides.clone(),
+        }),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    app.dispatch_and_wait(SettingsCommand::Load.into())
+        .await
+        .unwrap();
+
+    app.dispatch_and_wait(
+        SettingsCommand::SetGamePath {
+            path: format!("{ORIGINAL}/bin/SupremeCommander.exe"),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    let settings = app.snapshot().settings;
+    assert_eq!(settings.game_path, MANAGED, "FAF still plays its own copy");
+    assert_eq!(settings.paths.original_game_dir, ORIGINAL);
+    assert_eq!(
+        saved
+            .lock()
+            .unwrap()
+            .last()
+            .map(|saved| saved.paths.original_game_dir.clone()),
+        Some(ORIGINAL.to_string()),
+        "remembered across a restart"
+    );
+    assert_eq!(
+        overrides
+            .lock()
+            .unwrap()
+            .last()
+            .map(|paths| paths.original_game_dir.clone()),
+        Some(ORIGINAL.to_string()),
+        "and handed to the updater now, not at the next start"
+    );
 }

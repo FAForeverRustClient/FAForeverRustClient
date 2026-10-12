@@ -86,6 +86,7 @@ pub(crate) fn is_internal_navigation(url: &tauri::Url) -> bool {
         || url_str == "https://faforever.com/newshub"
         || url_str.starts_with("https://www.faforever.com/dist/")
         || url_str.starts_with("https://faforever.github.io/spooky-db")
+        || url_str.starts_with("https://faforever.github.io/etfreeman-db")
 }
 
 /// The link to hand the operating system, or `None` for one it must never see.

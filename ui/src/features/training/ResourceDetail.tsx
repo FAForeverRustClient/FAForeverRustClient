@@ -5,7 +5,7 @@
 // graph: "here is the mistake" can point at "here is the lesson that fixes it",
 // which is the one thing a client can offer that a wiki page cannot.
 
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
@@ -16,13 +16,16 @@ import { factionLabelFromName } from "../../shared/factions";
 import { relatedResources } from "../../shared/rules/trainingRules";
 import { useAppStore } from "../../store/store";
 import { GuideReader, guideOutline, type GuideOutline } from "./GuideReader";
+import { GuideLinks } from "./markdown";
 import { RunAnalysis } from "./RunAnalysis";
 import { TrainingArt, TrainingCard } from "./TrainingCard";
 import { parseEnvelope } from "./recording";
-import { partTitle, seriesIndex } from "./trainingSeries";
+import { SeriesBar, SeriesParts, SeriesSteps } from "./SeriesNav";
+import { seriesIndex } from "./trainingSeries";
 import {
   actionLabel,
   bandKey,
+  entryForLink,
   isPlayableLesson,
   kindIcon,
   kindLabel,
@@ -121,6 +124,18 @@ export function ResourceDetail({
     resource.url !== "" && (isPlayableLesson(resource) || (!embed && !resource.readable));
   const openOutside = outside ? () => void openHttpsUrl(outside) : null;
 
+  // A guide that links another guide of the catalogue opens it here rather
+  // than sending the reader to the forum page it was copied from.
+  const openInside = useCallback(
+    (href: string) => {
+      const target = entryForLink(resources, href);
+      if (!target || target.id === resource.id) return false;
+      onSelect(target);
+      return true;
+    },
+    [resources, resource.id, onSelect],
+  );
+
   const facts: Array<[string, string]> = [];
   if (resource.level) facts.push([t("training.detail.level"), t(levelLabel(resource.level))]);
   if (band) facts.push([t("training.detail.rating"), t(band.key, band.values)]);
@@ -153,6 +168,7 @@ export function ResourceDetail({
     // says the opposite: that this is a detour to be dismissed before
     // anything else can happen. It also capped the three-pane run layout at
     // a dialog's width, which is the one place that layout needed room.
+    <GuideLinks.Provider value={openInside}>
     <section className="training-detail-page" aria-label={resource.title}>
       <button type="button" className="training-detail-back" onClick={onClose}>
         <Icon name="arrowLeft" size={15} />
@@ -236,33 +252,14 @@ export function ResourceDetail({
         </div>
       </div>
 
-      {/* The parts of a written series, in order, with this one marked. A
-          video series has its queue beside the player instead. */}
-      {partOf && !embed && (
-        <nav className="training-parts" aria-label={partOf.title}>
-          <span className="training-parts-title">{partOf.title}</span>
-          <ol>
-            {partOf.parts.map((part, index) => (
-              <li key={part.id}>
-                <button
-                  type="button"
-                  className={part.id === resource.id ? "is-current" : undefined}
-                  aria-current={part.id === resource.id ? "page" : undefined}
-                  onClick={() => onSelect(part)}
-                >
-                  {index === 0 ? (
-                    <span className="training-parts-number">
-                      <Icon name="list" size={12} />
-                    </span>
-                  ) : (
-                    <span className="training-parts-number">{index}</span>
-                  )}
-                  <span>{index === 0 ? t("training.series.overview") : partTitle(partOf, part)}</span>
-                </button>
-              </li>
-            ))}
-          </ol>
-        </nav>
+      {/* A written series: its overview lists the parts as chapters, and a
+          part says where it stands. A video series has its queue beside the
+          player instead. */}
+      {partOf && !embed && partOf.head.id === resource.id && (
+        <SeriesParts series={partOf} onSelect={onSelect} />
+      )}
+      {partOf && !embed && partOf.head.id !== resource.id && (
+        <SeriesBar series={partOf} resource={resource} onSelect={onSelect} />
       )}
 
       <div className="training-detail">
@@ -342,6 +339,10 @@ export function ResourceDetail({
           )
         )}
 
+        {partOf && !embed && partOf.head.id !== resource.id && (
+          <SeriesSteps series={partOf} resource={resource} onSelect={onSelect} />
+        )}
+
         {/* What to read next, as the cards the reader already knows from the
             library rather than a list of titles: the picture is what they
             recognise an entry by. */}
@@ -357,6 +358,7 @@ export function ResourceDetail({
         )}
       </div>
     </section>
+    </GuideLinks.Provider>
   );
 }
 
@@ -431,5 +433,7 @@ function GuideBody({
   }
   // Arrived and empty: nothing to show, and nothing still on its way either.
   if (outline.blocks.length === 0) return null;
-  return <GuideReader outline={outline} documentUrl={documentUrl} />;
+  // A fresh reader per guide, so nothing one guide was doing (a video
+  // playing, a tab chosen) is still going on in the next.
+  return <GuideReader key={documentUrl} outline={outline} documentUrl={documentUrl} />;
 }

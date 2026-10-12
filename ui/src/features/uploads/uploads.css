@@ -44,7 +44,7 @@
 }
 
 .upload-badge.is-new {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   border-color: color-mix(in srgb, var(--color-ok) 45%, transparent);
   background: color-mix(in srgb, var(--color-ok) 14%, transparent);
 }
@@ -140,6 +140,7 @@
   margin: var(--space-3) 0 0;
   max-height: 6.5em;
   overflow-y: auto;
+  /* No scrollbar gutter: the text does not change while it is on screen, so its scrollbar never appears under the reader. */
   font-size: 12px;
   line-height: 1.5;
 }
@@ -223,11 +224,11 @@
 }
 
 .upload-status.is-ok {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .upload-status.is-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .upload-actions {

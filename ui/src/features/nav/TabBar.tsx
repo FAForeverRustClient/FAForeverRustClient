@@ -57,7 +57,17 @@ export function tabBadge(
   return null;
 }
 
-export function TabBar() {
+export interface TabBarProps {
+  /**
+   * A tab was chosen with the pointer. The shell hands focus to the page that
+   * opens: a clicked entry kept the focus, and the first key pressed after
+   * it (an arrow to scroll, Escape, Alt+Tab back into the window) put the
+   * keyboard focus ring on the sidebar entry the reader had long left.
+   */
+  onPointerSelect?: () => void;
+}
+
+export function TabBar({ onPointerSelect }: TabBarProps) {
   const mode = useAppStore((s) => s.state.auth.mode);
   // The tab on screen, which is not the selected one when the selected one is
   // not open to this session. Same projection the shell renders from.
@@ -95,7 +105,13 @@ export function TabBar() {
       <button
         key={id}
         className={id === active ? "tab tab-active" : "tab"}
-        onClick={() => select(id)}
+        onClick={(event) => {
+          select(id);
+          // `detail` counts a pointer's clicks. A tab chosen from the
+          // keyboard reports none and keeps its focus, so the sidebar can
+          // still be walked entry by entry.
+          if (event.detail > 0) onPointerSelect?.();
+        }}
         aria-current={id === active ? "page" : undefined}
         aria-label={name}
         title={name}

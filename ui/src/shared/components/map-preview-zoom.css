@@ -6,14 +6,37 @@
 /* The viewport is a fixed square window and the image inside it is
    transformed, so nothing about the dialog's size changes as the reader zooms:
    the picture moves, the layout does not. */
+/* The picture's frame and whatever a caller lays over it, outside the
+   viewport so the zoom's clipping does not cut it off. */
+.map-preview-stage {
+  position: relative;
+}
+
+/* A button over the picture's bottom right corner, as the small preview in
+   the game details puts its generate button (`.game-map-preview-action`). */
+.map-preview-overlay-action {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  z-index: 1;
+  white-space: nowrap;
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.map-preview-overlay-action:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
 .map-preview-viewport {
   position: relative;
   width: 100%;
   aspect-ratio: 1;
   overflow: hidden;
-  background: var(--color-bg);
+  background: var(--color-sidebar);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   cursor: zoom-in;
   touch-action: none;
 }
@@ -68,12 +91,13 @@
   image-rendering: pixelated;
 }
 
+/* The row under the picture: the zoom at its start, the buttons at its end. */
 .map-preview-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  margin-top: var(--space-2);
+  margin-top: var(--space-3);
   flex-wrap: wrap;
 }
 
@@ -81,6 +105,43 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* Copy image and the favourite star: square icon buttons, quiet until
+   pointed at, the size of the zoom's stepper beside them. */
+.map-preview-icon-btn {
+  display: inline-grid;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.map-preview-icon-btn:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.map-preview-icon-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* A starred map: the star filled, in the rating colour the vault's stars use. */
+.map-preview-icon-btn.is-favorite {
+  color: var(--color-rating);
 }
 
 .map-preview-zoom-buttons {
@@ -110,7 +171,7 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: background-color 120ms ease, opacity 120ms ease;
+  transition: background-color var(--transition-fast), opacity var(--transition-fast);
 }
 
 .map-preview-stepper-btn:hover:not(:disabled) {
@@ -128,6 +189,8 @@
   cursor: default;
 }
 
+/* A readout, not a button: in the text colour, so 100 % does not look like
+   something switched off. */
 .map-preview-stepper-value {
   display: inline-flex;
   align-items: center;
@@ -138,34 +201,109 @@
   font-size: 12px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-  color: var(--color-muted);
-  background: transparent;
-  border: none;
+  color: var(--color-text);
   border-left: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
-  cursor: pointer;
-  transition: color 120ms ease, background-color 120ms ease;
 }
 
-.map-preview-stepper-value:hover:not(:disabled) {
+.map-preview-stepper-reset {
+  border-left: 1px solid var(--color-border);
+}
+
+/* The gestures (scroll, drag, double-click), opened by the info button in a
+   small bubble over it. */
+.map-preview-help-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.map-preview-help {
+  display: inline-grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  padding: 0;
+  color: var(--color-subtle);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.map-preview-help:hover,
+.map-preview-help.is-open {
   color: var(--color-text);
   background: var(--color-surface-hover);
 }
 
-.map-preview-stepper-value:focus-visible {
+.map-preview-help:focus-visible {
   outline: 2px solid var(--color-accent);
-  outline-offset: -2px;
-  z-index: 1;
+  outline-offset: 1px;
 }
 
-.map-preview-stepper-value:disabled {
-  cursor: default;
+.map-preview-help-popover {
+  position: absolute;
+  bottom: calc(100% + var(--space-2));
+  left: 0;
+  z-index: 2;
+  width: max-content;
+  max-width: 280px;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text);
+  font-size: 12px;
+  line-height: 1.45;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
 }
 
-.map-preview-hint {
-  margin: 4px 0 0;
-  font-size: 11px;
+/* The title with the button that copies the map's full name beside it. */
+.map-preview-title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.map-preview-title-row h2 {
+  min-width: 0;
+}
+
+/* The map's size in brackets after the title and its copy button. */
+.map-preview-title-size {
+  flex: none;
   color: var(--color-muted);
+  font-size: 14px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.map-preview-title-copy {
+  display: inline-grid;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.map-preview-title-copy:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.map-preview-title-copy:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
 
@@ -270,21 +408,12 @@
   padding-right: var(--space-4);
 }
 
-.map-preview-dialog-kicker {
-  color: var(--color-subtle);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
 .map-preview-dialog-header h2,
 .map-preview-dialog-header p {
   margin: 0;
 }
 
 .map-preview-dialog-header h2 {
-  margin-top: 2px;
   overflow: hidden;
   font-size: 20px;
   font-weight: 650;
@@ -294,63 +423,16 @@
 }
 
 .map-preview-dialog-header p {
-  margin-top: 2px;
+  margin-top: var(--space-1);
   color: var(--color-muted);
   font-size: 12px;
-}
-
-/* The name row wraps rather than truncating: a generator name is 50-odd
-   characters and the half that would be cut off is the half that identifies
-   the map. */
-.map-preview-dialog-name {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.map-preview-dialog-name > span {
-  flex: 0 0 auto;
-  color: var(--color-subtle);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-}
-
-.map-preview-dialog-name > code {
-  min-width: 0;
-  color: var(--color-text);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-  user-select: all;
-}
-
-.map-preview-dialog-copy {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-self: center;
-  align-items: center;
-  padding: 3px;
-  color: var(--color-muted);
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.map-preview-dialog-copy:hover {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
-  border-color: var(--color-border-strong);
 }
 
 .map-preview-dialog .map-vault-preview {
   width: 100%;
   aspect-ratio: 1;
   object-fit: contain;
-  background: var(--color-bg);
+  background: var(--color-sidebar);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
 }

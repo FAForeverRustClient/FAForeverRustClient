@@ -4,6 +4,7 @@ import type { LeaderboardEntry, PlayerRatings } from "../../ipc/bindings";
 import { t as translate, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/components/nameColors";
+import { usePlayerMenu, type PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { hourCycleOptions } from "../../shared/format/clock";
 import { clientIntlTag } from "../../shared/format/dates";
 import { tierLabel } from "../../shared/leagueNames";
@@ -12,7 +13,6 @@ import { leaderboardLabel } from "../../shared/playerRatings";
 export type LeaderboardColumn =
   | "rank"
   | "player"
-  | "league"
   | "division"
   | "score"
   | "rating"
@@ -46,7 +46,6 @@ function boardOf(column: BoardColumn): string {
 const LABELS: Record<LeaderboardColumn, MessageKey> = {
   rank: "leaderboard.column.rank",
   player: "leaderboard.column.player",
-  league: "leaderboard.column.league",
   division: "leaderboard.column.division",
   score: "leaderboard.column.score",
   rating: "leaderboard.column.rating",
@@ -80,7 +79,6 @@ function value(entry: LeaderboardEntry, column: LeaderboardColumn): number | str
     case "player": return entry.playerName;
     // A tier sorts by its place in the season, Bronze below Silver, which is
     // also what keeps the order the same in every language.
-    case "league": return entry.divisionOrder;
     case "division": return entry.divisionOrder;
     case "score": return entry.score;
     case "rating": return entry.rating;
@@ -114,7 +112,7 @@ function format(
   const raw = cellValue(entry, column, activeBoard, cross);
   if (column === "player") return entry.playerName || translate("common.unknown");
   if (raw === null || raw === "") return translate("common.notAvailable");
-  if (column === "division" || column === "league") return tierLabel(entry.division, entry.subdivision);
+  if (column === "division") return tierLabel(entry.division, entry.subdivision);
   if (column === "mean" || column === "deviation") return Number(raw).toFixed(1);
   if (column === "updated") {
     const date = new Date(String(raw));
@@ -123,7 +121,15 @@ function format(
   return String(raw);
 }
 
-function playerCell(entry: LeaderboardEntry) {
+/**
+ * The avatar and the name, the name a button that opens the player menu the
+ * chat tab's names open: profile, message, friend, replays. A click on the
+ * rest of the row still selects it for the panel beside the table, and the
+ * name keeps its keys to itself so Enter on it opens the menu rather than
+ * selecting the row.
+ */
+function playerCell(entry: LeaderboardEntry, openMenu: PlayerMenuOpener, menuOpen: boolean) {
+  const name = entry.playerName;
   return (
     <span className="leaderboard-player-cell">
       {entry.avatarUrl ? (
@@ -141,27 +147,59 @@ function playerCell(entry: LeaderboardEntry) {
       ) : (
         <span className="leaderboard-avatar-slot" aria-hidden="true" />
       )}
-      <PlayerName name={entry.playerName || translate("common.unknown")} />
+      {name ? (
+        <button
+          type="button"
+          className={menuOpen ? "leaderboard-name-button is-menu-open" : "leaderboard-name-button"}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={(event) => {
+            event.stopPropagation();
+            openMenu(name, event);
+          }}
+          onContextMenu={(event) => {
+            event.stopPropagation();
+            openMenu(name, event);
+          }}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          <PlayerName name={name} />
+        </button>
+      ) : (
+        <PlayerName name={translate("common.unknown")} />
+      )}
     </span>
   );
 }
 
-function leagueCell(entry: LeaderboardEntry) {
+/**
+ * A tier as its badge and its name, in one cell.
+ *
+ * They were two columns, a badge alone and the name alone, sorted by the same
+ * value, and the badge column was as wide as its header: the room it took was
+ * the player names'. The badge is drawn at the name's height and the slot
+ * is kept when a tier has none, so the names in the column line up.
+ */
+function divisionCell(entry: LeaderboardEntry, label: string) {
   const imageUrl = entry.divisionMediumImageUrl || entry.divisionImageUrl;
-  return imageUrl ? (
-    <img
-      className="leaderboard-division-icon"
-      src={imageUrl}
-      alt=""
-      title={entry.division === null ? undefined : tierLabel(entry.division, entry.subdivision)}
-      width={48}
-      height={24}
-      loading="lazy"
-      decoding="async"
-      draggable={false}
-    />
-  ) : (
-    <span className="leaderboard-division-icon-slot" aria-hidden="true" />
+  return (
+    <span className="leaderboard-division-cell">
+      {imageUrl ? (
+        <img
+          className="leaderboard-division-icon"
+          src={imageUrl}
+          alt=""
+          width={36}
+          height={18}
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+        />
+      ) : (
+        <span className="leaderboard-division-icon-slot" aria-hidden="true" />
+      )}
+      <span>{label}</span>
+    </span>
   );
 }
 
@@ -276,6 +314,7 @@ export function LeaderboardTable({
   scrollResetKey,
 }: LeaderboardTableProps) {
   const { t } = useTranslation();
+  const { openPlayerMenu, playerMenu, playerMenuTarget } = usePlayerMenu();
   const [sort, setSort] = useState<{ column: TableColumn; descending: boolean }>({
     column: "rank",
     descending: false,
@@ -361,9 +400,9 @@ export function LeaderboardTable({
                       : isBoardColumn(column) ? "leaderboard-board-column" : undefined}
                 >
                   {column === "player"
-                    ? playerCell(entry)
-                    : column === "league"
-                      ? leagueCell(entry)
+                    ? playerCell(entry, openPlayerMenu, playerMenuTarget !== null && playerMenuTarget === entry.playerName)
+                    : column === "division" && entry.division !== null
+                      ? divisionCell(entry, format(entry, column, activeBoard, crossRatings))
                       : format(entry, column, activeBoard, crossRatings)}
                 </td>
               ))}
@@ -376,6 +415,7 @@ export function LeaderboardTable({
           {t("leaderboard.showMore", { count: Math.min(rowBatch, sorted.length - shown) })}
         </Button>
       )}
+      {playerMenu}
     </div>
   );
 }

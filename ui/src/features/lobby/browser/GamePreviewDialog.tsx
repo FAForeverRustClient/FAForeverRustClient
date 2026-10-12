@@ -1,7 +1,6 @@
 // The game opened out of the list: map, settings, lineup, and the join button.
 
 import { memo, useCallback, useEffect, useState } from "react";
-import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type { Game, VaultMap } from "../../../ipc/bindings";
@@ -10,7 +9,7 @@ import { GameMapImage } from "../GameMapImage";
 import { findVaultMap, isGeneratedMap, mapPresentation, mapSize } from "../../../shared/mapPresentation";
 import { findPlayer } from "../../../store/reducer";
 import { useAppStore } from "../../../store/store";
-import { ZoomableImage } from "../../../shared/components/MapPreviewZoom";
+import { CopyMapNameButton, FavoriteMapStar, OpenMapInVaultButton, ZoomableImage } from "../../../shared/components/MapPreviewZoom";
 import { generatorParameters } from "../../../shared/generatorPresentation";
 import {
   generatedMapDescriptionRows,
@@ -50,12 +49,6 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
     mapGenStatus.type === "generating" ||
     mapGenStatus.type === "downloading" ||
     mapGenStatus.type === "resolvingVersion";
-  const [copiedName, setCopiedName] = useState(false);
-  useEffect(() => {
-    if (!copiedName) return;
-    const timer = window.setTimeout(() => setCopiedName(false), 2_000);
-    return () => window.clearTimeout(timer);
-  }, [copiedName]);
 
   // A generator name is the whole recipe, not a label, so the settings that
   // produced this map are already in the client's hands: decoding is pure
@@ -88,6 +81,9 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
   // which is 20 by 10 km for a map that is square -- and the game files are
   // what the catalogue above is read from, so they win for a map that has one.
   const size = mapSize(vault, game.map, decoded?.mapSize);
+  // The generator's settings under the picture, less the size, which the
+  // title carries.
+  const factRows = generatorRows.filter((row) => row.key !== "size");
   // The same name is also a preset waiting to be saved (#421), when it carries
   // the whole recipe. The backend decides that while decoding; a name that
   // does not (a seed only, or an ordinal newer than this client's tables)
@@ -153,11 +149,17 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
 
   return (
     <div className="game-preview-dialog">
+      {/* The map's name alone: the lobby is the tile this was opened from,
+          and "Map preview" over the name said what the picture already
+          shows. */}
       <header className="game-preview-dialog-header">
-        <div>
-          <span className="game-preview-dialog-kicker">{t("lobby.browser.mapPreview")}</span>
+        <div className="map-preview-title-row">
           <h2>{presentation.displayName}</h2>
-          <p>{splitGoAdapterTitle(game.title).title}</p>
+          <CopyMapNameButton name={isGenerated ? game.map : presentation.displayName || game.map} generated={isGenerated} />
+          {/* The size beside the name, in brackets, rather than as a fact
+              under the zoom: it is the first thing asked about a map. Always
+              both sides, "20 x 20 km", since a map can be 10 by 20 km. */}
+          {size && <span className="map-preview-title-size">({size.full})</span>}
         </div>
       </header>
       {/* The same zoom the Maps tab has. This is the dialog somebody opens
@@ -168,43 +170,41 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
       <div className="game-preview-dialog-map">
         <ZoomableImage
           label={presentation.displayName || game.map}
+          // A generated map not on disk yet: the generate button in the
+          // picture's bottom right corner, where the small preview in the
+          // game details has it.
+          overlay={!installed && isGenerated ? (
+            <Button
+              className="map-preview-overlay-action"
+              disabled={isGeneratingThisMap}
+              onClick={() =>
+                ipc.send({
+                  kind: "MapGenerator",
+                  command: {
+                    type: "generateNamed",
+                    payload: {
+                      mapName: game.map,
+                    },
+                  },
+                })
+              }
+            >
+              <Icon name="plus" size={13} />
+              {isGeneratingThisMap ? t("lobby.browser.generatingMap") : t("lobby.browser.generateMap")}
+            </Button>
+          ) : undefined}
+          // At the end of the row under the picture: the vault for a map that
+          // has a page there, the generator preset for one that was
+          // generated, then the star; Copy image closes the row.
           actions={(
             <>
-              {/* In the action row with the others. It used to float over the
-                  bottom-right corner of the whole block, which is where this
-                  row puts "Copy image". */}
-              {!installed && isGenerated && (
-                <Button
-                  disabled={isGeneratingThisMap}
-                  onClick={() =>
-                    ipc.send({
-                      kind: "MapGenerator",
-                      command: {
-                        type: "generateNamed",
-                        payload: {
-                          mapName: game.map,
-                        },
-                      },
-                    })
-                  }
-                >
-                  <Icon name="plus" size={13} />
-                  {isGeneratingThisMap ? t("lobby.browser.generatingMap") : t("lobby.browser.generateMap")}
-                </Button>
+              {!isGenerated && (
+                <OpenMapInVaultButton
+                  name={presentation.displayName || game.map}
+                  folderName={game.map}
+                  onNavigate={onClose}
+                />
               )}
-              {/* Starring from here is what makes a generated map worth keeping
-                  (#394): it has no vault page to star it on, and the name is all
-                  the host dialog needs to host it again. */}
-              <Button
-                aria-pressed={favorite}
-                onClick={() => toggleFavoriteMap(game.map, vaultMap?.downloadUrl)}
-                title={t(favorite ? "maps.vault.removeFavoriteAria" : "maps.vault.addFavoriteAria", {
-                  name: presentation.displayName || game.map,
-                })}
-              >
-                <Icon name="star" size={14} />
-                {t(favorite ? "lobby.browser.removeFavoriteMap" : "lobby.browser.addFavoriteMap")}
-              </Button>
               {isGenerated && (
                 <Button
                   aria-expanded={namingPreset}
@@ -220,6 +220,14 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
                   {t("maps.generate.presetFromMap")}
                 </Button>
               )}
+              {/* Starring from here is what makes a generated map worth
+                  keeping (#394): it has no vault page to star it on, and the
+                  name is all the host dialog needs to host it again. */}
+              <FavoriteMapStar
+                favorite={favorite}
+                label={presentation.displayName || game.map}
+                onToggle={() => toggleFavoriteMap(game.map, vaultMap?.downloadUrl)}
+              />
             </>
           )}
         >
@@ -233,42 +241,10 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
         </ZoomableImage>
         {game.passwordProtected && (
           <span className="game-preview-dialog-private" role="img" aria-label={t("lobby.browser.privateGame")} title={t("lobby.browser.privateGame")}>
-            <Icon name="lock" size={13} />
+            <Icon name="lock" size={14} />
             {t("lobby.browser.private")}
           </span>
         )}
-      </div>
-      {/* The full technical name. It is nowhere else in the client, and it is
-          the one thing map generator hosting needs: generate many, note the
-          names of the good ones, host them one after another. Untruncated,
-          because half a generator name identifies nothing, and copyable,
-          because nobody retypes forty characters of Base32.
-
-          What is copied is the value the Generate map dialog's map-name field
-          takes back, which is the only round trip that exists for a generated
-          map: it is not in the vault, so pasting its name into the map search
-          would find nothing. That is the trap the Python client's copy button
-          falls into. */}
-      <div className="game-preview-dialog-name">
-        <span>{t("lobby.browser.mapFullName")}</span>
-        <code>{game.map}</code>
-        <button
-          type="button"
-          className="game-preview-dialog-copy"
-          aria-label={t(copiedName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
-          title={t(
-            copiedName
-              ? "lobby.browser.mapNameCopied"
-              : isGenerated
-                ? "lobby.browser.copyMapNameGenerated"
-                : "lobby.browser.copyMapName",
-          )}
-          onClick={() =>
-            ipc.run(navigator.clipboard.writeText(game.map).then(() => setCopiedName(true)))
-          }
-        >
-          <Icon name={copiedName ? "check" : "copy"} size={13} />
-        </button>
       </div>
       {namingPreset && presetOptions && (
         <SaveGeneratorPresetForm options={presetOptions} onDone={closePresetForm} />
@@ -280,18 +256,16 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
           thumbnail the reader clicked.
 
           For a generated map the facts are the generator settings, read out of
-          the name. Its own size row supersedes the catalogue's, because a
-          generated map has no catalogue entry to take one from. */}
-      {(generatorRows.length > 0 || size) && (
-        <dl className="game-preview-dialog-facts">
-          {generatorRows.length === 0 && size && (
-            <div>
-              <dt>{t("lobby.browser.mapSize")}</dt>
-              <dd>{size.full}</dd>
-            </div>
-          )}
-          {generatorRows.map((row) => (
-            <div key={row.key}>
+          the name, less the size, which stands beside the title for every map.
+          Any other map has no facts left here.
+
+          A dozen settings run together as one wrapped line of label and value
+          pairs, which nobody could scan, so they are a grid: each label over
+          its value, in even columns. The seed is twenty digits and takes two. */}
+      {factRows.length > 0 && (
+        <dl className="game-preview-dialog-facts is-grid">
+          {factRows.map((row) => (
+            <div key={row.key} className={row.key === "seed" ? "is-wide" : undefined}>
               <dt>{row.label}</dt>
               <dd>{row.value}</dd>
             </div>

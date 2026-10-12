@@ -8,7 +8,11 @@
 .chat-user-menu {
   position: fixed;
   z-index: 130;
-  min-width: 190px;
+  min-width: min(190px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  /* No scrollbar gutter: a pop-up as wide as what opened it, where a reserved strip would narrow every entry for a scrollbar most lists never show. */
   padding: var(--space-1);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
@@ -102,13 +106,16 @@
 }
 
 .chat-user-menu-item.is-danger {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 /* An account entry while an offline player's account is being looked up:
    in its place, so the menu keeps its shape when the answer lands. */
 .chat-user-menu-item:disabled {
   color: var(--color-subtle);
+  /* Dimmed as well, as disabled controls are across the design system: in
+     the Java and Python themes the subtle colour is close to body text. */
+  opacity: 0.6;
   cursor: default;
 }
 

@@ -14,7 +14,8 @@ import {
 } from "@tauri-apps/plugin-notification";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
-export type LogKind = "game" | "client";
+/** Mirrors the arms of `log_directory` in the Tauri shell. `ice` is the adapters' own log folder. */
+export type LogKind = "game" | "client" | "ice";
 
 /** Mirrors the arms of `faf_app::infra::client_folder`. */
 export type ClientFolder = "maps" | "mods" | "replays" | "vault" | "gameCache" | "gamePrefs";
@@ -39,6 +40,19 @@ export interface WebviewEngine {
   platform: string;
   /** WebKitGTK `major.minor.micro`; only Linux has a version worth reporting. */
   webkitVersion: string | null;
+}
+
+/** Mirrors `faf_app::infra::map_markers::MarkedMapPreview`. */
+export interface MarkedMapPreview {
+  /** The `.scmap`'s own picture, with nothing drawn on it, as a data URL. */
+  image: string;
+  /** The map's extent in map units, which `image` covers whole. */
+  width: number;
+  height: number;
+  /** `[x, z]` of each marker in map units: across, then down the picture. */
+  mass: [number, number][];
+  hydro: [number, number][];
+  spawns: [number, number][];
 }
 
 export const native = {
@@ -75,6 +89,15 @@ export const native = {
   /** The stored background's bytes, for the page to show. */
   readBackgroundImage(name: string): Promise<number[]> {
     return invoke<number[]>("read_background_image", { name });
+  },
+
+  /**
+   * An installed map's clean picture and where its mass, hydros and spawns
+   * are. Rejects when the map is not installed or its files cannot be read,
+   * which callers treat as "show the picture they already had".
+   */
+  readMarkedMapPreview(folderName: string): Promise<MarkedMapPreview> {
+    return invoke<MarkedMapPreview>("read_marked_map_preview", { folderName });
   },
 
   /** One stored sound's bytes, for the page to decode. */

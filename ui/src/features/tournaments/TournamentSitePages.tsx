@@ -1,13 +1,14 @@
 // The tournament site's own pages, everything but the event list and detail:
-// hall of fame, rules, access requests, the admin console, and the series.
+// hall of fame, rules, the admin console, and the series.
 
 import type { SiteWrite } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { useAppStore } from "../../store/store";
-import { AccessPage, FaqPage, HallOfFamePage } from "./site/SitePageViews";
+import { FaqPage, HallOfFamePage } from "./site/SitePageViews";
 import { SeriesIndex, SeriesPage } from "./site/SeriesPages";
 import { ConsolePage } from "./site/ConsolePage";
 import type { SitePage } from "./site/sitePages";
+import { sitePageReads } from "./sitePageReads";
 import { send } from "./tourneyCommands";
 
 interface Props {
@@ -27,10 +28,14 @@ export function TournamentSitePages({ page, busy, setPage, openPage, openEventPa
   const accountSearch = useAppStore((store) => store.state.tourney.accountSearch);
   const openSeries = useAppStore((store) => store.state.tourney.openSeries);
   const series = useAppStore((store) => store.state.tourney.series);
+  // A page's Retry is the reads that opening it sent, sent again.
+  const reread = () => {
+    for (const read of sitePageReads(page)) send(read);
+  };
 
   return (
     <>
-      {page.kind === "hall" && <HallOfFamePage hall={site.hall} status={site.hallStatus} />}
+      {page.kind === "hall" && <HallOfFamePage hall={site.hall} status={site.hallStatus} onRetry={reread} />}
       {page.kind === "faq" && (
         <FaqPage
           articles={articles}
@@ -38,16 +43,6 @@ export function TournamentSitePages({ page, busy, setPage, openPage, openEventPa
           assetBase={assetBase}
           siteAdmin={site.account.siteAdmin}
           onOpen={(articleId) => setPage({ kind: "faq", articleId })}
-        />
-      )}
-      {page.kind === "access" && (
-        <AccessPage
-          access={page.access}
-          status={page.access === "editor" ? site.editorAccess : site.importerAccess}
-          name={site.account.fafName}
-          busy={busy}
-          onWrite={siteWrite}
-          onSwitch={(access) => openPage({ kind: "access", access })}
         />
       )}
       {page.kind === "console" && (
@@ -61,6 +56,7 @@ export function TournamentSitePages({ page, busy, setPage, openPage, openEventPa
           busy={busy}
           onSearchAccounts={(query) => send({ type: "searchAccounts", payload: { query } })}
           onWrite={siteWrite}
+          onRetry={reread}
         />
       )}
       {page.kind === "series" &&

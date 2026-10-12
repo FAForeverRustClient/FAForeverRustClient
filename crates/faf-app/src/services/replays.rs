@@ -16,7 +16,7 @@ use faf_domain::state::{
 use std::collections::HashMap;
 use std::{path::PathBuf, time::Duration};
 
-use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+use crate::runtime::{Cancellable, EventSink, LatestRequest, ServiceCtx};
 use crate::services::notifications;
 
 /// The replay service's operational context: which vault and local listings
@@ -35,6 +35,95 @@ pub struct ReplaysContext {
     /// thing that actually stops work that is several awaits deep inside a
     /// port. See [`LaunchSlot`] for which launch may settle it.
     launch: std::sync::Mutex<LaunchSlot>,
+    /// The analysis read in flight, so the next request can call it off. See
+    /// [`AnalysisSlot`].
+    analysis: std::sync::Mutex<AnalysisSlot>,
+    /// The details reads in flight, by read key, so closing the panel that
+    /// asked for one can call it off (`CancelReads`). Several at once: two
+    /// panels opened in turn can both have a read out.
+    details: Cancellable<(String, Option<u32>)>,
+    /// The downloads into the library in flight, by game id, so the status
+    /// bar can call one off (`CancelDownload`).
+    downloads: Cancellable<i32>,
+}
+
+/// The replay analysis being read, while it is.
+///
+/// The analysis is the expensive read: the whole command stream, fetched from
+/// the vault first when no copy is on disk. Only the answer to the request
+/// made last is kept (see `ReplayState::analysis`), so an older read still
+/// running when a newer one starts was walking a file for nobody, to the end,
+/// and the reducer then threw its answer away.
+#[derive(Default)]
+struct AnalysisSlot {
+    current: u64,
+    running: Option<AnalysisRequest>,
+}
+
+struct AnalysisRequest {
+    key: String,
+    request_id: Option<u32>,
+    called_off: tokio_util::sync::CancellationToken,
+}
+
+pub(crate) struct AnalysisWork {
+    id: u64,
+    uid: i32,
+    key: String,
+    local_path: Option<String>,
+    called_off: tokio_util::sync::CancellationToken,
+}
+
+pub(crate) struct DetailsWork {
+    uid: i32,
+    key: String,
+    local_path: Option<String>,
+    ticket: crate::runtime::CancelTicket,
+}
+
+pub(crate) fn begin_details(
+    uid: i32,
+    local_path: Option<String>,
+    request_id: Option<u32>,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+) -> DetailsWork {
+    let key = faf_domain::state::replay_read_key(uid, local_path.as_deref());
+    let _slot = ctx.replays.analysis_slot();
+    ctx.replays.details.cancel(|(running, _)| running == &key);
+    let ticket = ctx.replays.details.begin((key.clone(), request_id));
+    out.emit(ReplayEvent::DetailsLoading { key: key.clone() });
+    DetailsWork {
+        uid,
+        key,
+        local_path,
+        ticket,
+    }
+}
+
+pub(crate) async fn run_details(work: DetailsWork, ctx: &ServiceCtx, out: &EventSink) {
+    let DetailsWork {
+        uid,
+        key,
+        local_path,
+        ticket,
+    } = work;
+    let path = local_path.map(PathBuf::from);
+    let result = tokio::select! {
+        biased;
+        () = ticket.called_off.cancelled() => None,
+        result = ctx.ports.replay_details.load_details(uid, path) => Some(result),
+    };
+    let _slot = ctx.replays.analysis_slot();
+    ctx.replays.details.end(&ticket);
+    if ticket.called_off.is_cancelled() {
+        return;
+    }
+    match result {
+        None => {}
+        Some(Ok(details)) => out.emit(ReplayEvent::DetailsLoaded { key, details }),
+        Some(Err(reason)) => out.emit(ReplayEvent::DetailsFailed { key, reason }),
+    }
 }
 
 /// Which replay launch is the current one, and its cancellation while armed.
@@ -46,6 +135,17 @@ struct LaunchSlot {
     /// replacement.
     current: u64,
     cancellation: Option<tokio_util::sync::CancellationToken>,
+    /// What the current launch is starting, so a second request for the same
+    /// replay while it is still starting can be told apart from a new one.
+    target: Option<LaunchTarget>,
+}
+
+/// Which replay a launch starts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum LaunchTarget {
+    Vault(i32),
+    Live(i32),
+    File(String),
 }
 
 impl ReplaysContext {
@@ -53,6 +153,110 @@ impl ReplaysContext {
         self.launch
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    fn analysis_slot(&self) -> std::sync::MutexGuard<'_, AnalysisSlot> {
+        self.analysis
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+}
+
+/// Claim a read before its task is spawned. Repeated requests from the same
+/// owner reuse its running read; a replacement owner gets its own cancellation.
+pub(crate) fn begin_analysis(
+    uid: i32,
+    local_path: Option<String>,
+    request_id: Option<u32>,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+) -> Option<AnalysisWork> {
+    let key = faf_domain::state::replay_read_key(uid, local_path.as_deref());
+    let mut slot = ctx.replays.analysis_slot();
+    if slot
+        .running
+        .as_ref()
+        .is_some_and(|running| running.key == key && running.request_id == request_id)
+    {
+        return None;
+    }
+    let called_off = tokio_util::sync::CancellationToken::new();
+    if let Some(previous) = slot.running.replace(AnalysisRequest {
+        key: key.clone(),
+        request_id,
+        called_off: called_off.clone(),
+    }) {
+        previous.called_off.cancel();
+    }
+    slot.current = slot.current.wrapping_add(1);
+    out.emit(ReplayEvent::AnalysisLoading { key: key.clone() });
+    Some(AnalysisWork {
+        id: slot.current,
+        uid,
+        key,
+        local_path,
+        called_off,
+    })
+}
+
+pub(crate) async fn run_analysis(work: AnalysisWork, ctx: &ServiceCtx, out: &EventSink) {
+    let AnalysisWork {
+        id,
+        uid,
+        key,
+        local_path,
+        called_off,
+    } = work;
+    let path = local_path.map(PathBuf::from);
+    let read = tokio::select! {
+        biased;
+        () = called_off.cancelled() => return,
+        read = ctx.ports.replay_details.load_analysis_cancellable(uid, path, called_off.clone()) => read,
+    };
+    let mut slot = ctx.replays.analysis_slot();
+    if slot.current != id {
+        return;
+    }
+    slot.running = None;
+    match read {
+        Ok(analysis) => out.emit(ReplayEvent::AnalysisLoaded {
+            analysis: faf_domain::state::ReplayAnalysis { key, ..analysis },
+        }),
+        Err(reason) => out.emit(ReplayEvent::AnalysisFailed { key, reason }),
+    }
+}
+
+/// A close only owns its request. A late cleanup cannot clear the loading
+/// state or stop a replacement panel reading the same replay.
+fn cancel_reads(key: &str, request_id: Option<u32>, ctx: &ServiceCtx, out: &EventSink) {
+    let mut slot = ctx.replays.analysis_slot();
+    let owned = |owner: Option<u32>| request_id.is_none() || owner == request_id;
+    let details = ctx
+        .replays
+        .details
+        .cancel(|(running, owner)| running == key && owned(*owner));
+    let analysis = slot
+        .running
+        .as_ref()
+        .is_some_and(|running| running.key == key && owned(running.request_id));
+    if analysis {
+        if let Some(running) = slot.running.take() {
+            running.called_off.cancel();
+        }
+        slot.current = slot.current.wrapping_add(1);
+    }
+    let newer_analysis = slot
+        .running
+        .as_ref()
+        .is_some_and(|running| running.key == key);
+    let newer_details = ctx
+        .replays
+        .details
+        .any_running(|(running, _)| running == key);
+    if (details || analysis) && !newer_analysis && !newer_details {
+        out.emit(ReplayEvent::ReadsCancelled {
+            key: key.to_string(),
+        });
     }
 }
 
@@ -84,9 +288,18 @@ fn describe(seconds: u32) -> String {
 /// one does can land on top of this one's `Connecting`. Its cancellation
 /// branch used to clear this launch's progress sink and emit `Closed` after
 /// it, idling the dialog of the launch that was actually starting.
-fn begin_launch(ctx: &ServiceCtx, out: &EventSink) -> LaunchTicket {
+///
+/// `None` when the same replay is already starting: a double click on Watch,
+/// or Watch on the card and then in the panel. Replacing that launch with
+/// itself threw away whatever it had downloaded and began again from nothing,
+/// so the repeat is the same request and is dropped instead.
+fn begin_launch(ctx: &ServiceCtx, out: &EventSink, target: LaunchTarget) -> Option<LaunchTicket> {
     let cancelled = tokio_util::sync::CancellationToken::new();
     let mut slot = ctx.replays.launch_slot();
+    if slot.cancellation.is_some() && slot.target.as_ref() == Some(&target) {
+        return None;
+    }
+    slot.target = Some(target);
     slot.current = slot.current.wrapping_add(1);
     // Replacing an armed token cancels it: two launches cannot be in flight,
     // and the older one is the one nobody is waiting for.
@@ -106,10 +319,10 @@ fn begin_launch(ctx: &ServiceCtx, out: &EventSink) -> LaunchTicket {
                 },
             });
         })));
-    LaunchTicket {
+    Some(LaunchTicket {
         id: slot.current,
         cancelled,
-    }
+    })
 }
 
 /// Start a replay, and stop if the user calls it off.
@@ -174,10 +387,13 @@ async fn launch(
 /// `add_required`, not `add`: a launch that did not happen is not an event
 /// alert, and turning match and chat notifications off must not silence the one
 /// message explaining why nothing opened.
+///
+/// The reason is the client's own (a download, an install, the game's
+/// process), so it is marked for the UI to word plainly; see
+/// `notifications::add_failure`.
 fn fail(out: &EventSink, reason: String) {
-    notifications::add_required_text(
+    notifications::add_required_failure(
         out,
-        NotificationKind::Error,
         notifications::Text::new("notifications.msg.replayFailed"),
         "Replay failed",
         reason.clone(),
@@ -197,9 +413,8 @@ fn fail(out: &EventSink, reason: String) {
 fn refuse(ctx: &ServiceCtx, out: &EventSink, reason: String) {
     let slot = ctx.replays.launch_slot();
     if slot.cancellation.is_some() {
-        notifications::add_required_text(
+        notifications::add_required_failure(
             out,
-            NotificationKind::Error,
             notifications::Text::new("notifications.msg.replayFailed"),
             "Replay failed",
             reason,
@@ -249,7 +464,9 @@ async fn watch_live(target: LiveReplayTarget, ctx: &ServiceCtx, out: &EventSink)
         return;
     }
 
-    let ticket = begin_launch(ctx, out);
+    let Some(ticket) = begin_launch(ctx, out, LaunchTarget::Live(target.uid)) else {
+        return;
+    };
     out.emit(ReplayEvent::Connecting);
     let uid = target.uid;
     launch(
@@ -334,7 +551,9 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
         ReplayCommand::CancelLiveTracking => out.emit(ReplayEvent::LiveTrackingCleared),
         ReplayCommand::OpenFile { path } => {
             cancel_live_tracking(out);
-            let ticket = begin_launch(ctx, out);
+            let Some(ticket) = begin_launch(ctx, out, LaunchTarget::File(path.clone())) else {
+                return;
+            };
             out.emit(ReplayEvent::Connecting);
             launch(
                 ticket,
@@ -416,12 +635,17 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         ReplayCommand::WatchVault { uid } => {
             cancel_live_tracking(out);
-            let ticket = begin_launch(ctx, out);
+            let Some(ticket) = begin_launch(ctx, out, LaunchTarget::Vault(uid)) else {
+                return;
+            };
             out.emit(ReplayEvent::Connecting);
-            // Watching a vault replay downloads it before launching FA. Keep
-            // that work visible in the shared bottom status task, just like
-            // the map and mod preparation done for a lobby join.
-            out.emit(ReplayEvent::VaultDownloadStarted { uid });
+            // Watching a vault replay downloads it before launching FA. That
+            // download is the launch's first preparation step now, narrated
+            // with the others (and measured) on the starting dialog and the
+            // status bar, and stopped by `CancelWatch` with them. It used to
+            // set the library download's status, which a watch could not be
+            // told apart from, and whose end then cleared a real library
+            // download running beside it.
             launch(
                 ticket,
                 ctx.ports.replay_playback.watch_vault(uid),
@@ -432,11 +656,40 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
         ReplayCommand::DownloadVault { uid } => {
+            // Reachable before it is on screen, so the status bar's cancel
+            // never arrives before there is anything to stop.
+            let ticket = ctx.replays.downloads.begin(uid);
             out.emit(ReplayEvent::VaultDownloadStarted { uid });
-            match ctx.ports.replay_vault.download_vault(uid).await {
-                Ok(replay) => out.emit(ReplayEvent::VaultDownloaded { uid, replay }),
-                Err(reason) => out.emit(ReplayEvent::VaultDownloadFailed { uid, reason }),
+            let progress = {
+                let sink = out.clone();
+                let report = crate::services::whole_percent_reporter(move |progress| {
+                    sink.emit(ReplayEvent::VaultDownloadProgressed { uid, progress })
+                });
+                std::sync::Arc::new(move |received: u64, total: Option<u64>| {
+                    report(crate::services::percent_of(received, total))
+                })
+            };
+            // Dropping the port's future is the cancel: the transfer stops,
+            // and a file being written is not published (see
+            // `ReplayVaultPort::download_vault_reporting`).
+            let downloading = ctx
+                .ports
+                .replay_vault
+                .download_vault_reporting(uid, progress);
+            let result = tokio::select! {
+                result = downloading => Some(result),
+                () = ticket.called_off.cancelled() => None,
+            };
+            ctx.replays.downloads.end(&ticket);
+            match result {
+                // Not a failure, and nothing reached the library.
+                None => out.emit(ReplayEvent::VaultDownloadCancelled { uid }),
+                Some(Ok(replay)) => out.emit(ReplayEvent::VaultDownloaded { uid, replay }),
+                Some(Err(reason)) => out.emit(ReplayEvent::VaultDownloadFailed { uid, reason }),
             }
+        }
+        ReplayCommand::CancelDownload { uid } => {
+            ctx.replays.downloads.cancel(|running| *running == uid);
         }
         ReplayCommand::LoadLocal { limit } => {
             let generation = ctx.replays.local_generation.begin();
@@ -463,22 +716,40 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(ReplayEvent::LocalLoadFailed { reason }),
             }
         }
-        ReplayCommand::LoadDetails { uid, local_path } => {
-            out.emit(ReplayEvent::DetailsLoading { uid });
-            let path_buf = local_path.map(PathBuf::from);
-            match ctx.ports.replay_details.load_details(uid, path_buf).await {
-                Ok(details) => out.emit(ReplayEvent::DetailsLoaded { uid, details }),
-                Err(reason) => out.emit(ReplayEvent::DetailsFailed { uid, reason }),
+        // Both reads are named by `replay_read_key`, not by the game id
+        // alone: every file whose header carries no game id is uid 0, and
+        // keyed by that, two of them shared one answer.
+        ReplayCommand::LoadDetails {
+            uid,
+            local_path,
+            request_id,
+        } => {
+            run_details(
+                begin_details(uid, local_path, request_id, ctx, out),
+                ctx,
+                out,
+            )
+            .await;
+        }
+        ReplayCommand::LoadAnalysis {
+            uid,
+            local_path,
+            request_id,
+        } => {
+            if let Some(work) = begin_analysis(uid, local_path, request_id, ctx, out) {
+                run_analysis(work, ctx, out).await;
             }
         }
-        ReplayCommand::LoadAnalysis { uid, local_path } => {
-            out.emit(ReplayEvent::AnalysisLoading { uid });
-            let path_buf = local_path.map(PathBuf::from);
-            match ctx.ports.replay_details.load_analysis(uid, path_buf).await {
-                Ok(analysis) => out.emit(ReplayEvent::AnalysisLoaded { analysis }),
-                Err(reason) => out.emit(ReplayEvent::AnalysisFailed { uid, reason }),
-            }
-        }
+        ReplayCommand::CancelReads {
+            uid,
+            local_path,
+            request_id,
+        } => cancel_reads(
+            &faf_domain::state::replay_read_key(uid, local_path.as_deref()),
+            request_id,
+            ctx,
+            out,
+        ),
         ReplayCommand::ResolveMaps { uids } => {
             // One small ranged download per game, run a few at a time. In
             // sequence a page of them would still be arriving after the reader

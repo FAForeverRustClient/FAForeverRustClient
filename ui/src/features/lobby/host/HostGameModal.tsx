@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
+import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
 import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
@@ -10,7 +11,7 @@ import { isOfficialMap } from "../../../shared/mapPresentation";
 import { MapUninstallDialog } from "../../maps/MapVaultComponents";
 import { GenerateMapModal } from "../../maps/GenerateMapModal";
 import { HostModsColumn } from "./HostModsColumn";
-import { useHostLobbySettings } from "./hostLobbySettings";
+import { MAX_HOST_TITLE, useHostLobbySettings } from "./hostLobbySettings";
 import {
   buildHostCatalogue,
   buildVaultIndex,
@@ -204,7 +205,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
   };
 
   return (
-    <Modal className="host-game-modal" onClose={close}>
+    <Modal className="host-game-modal" onClose={close} ariaLabel={t("lobby.host.titleCustom")}>
       <div className="play-dialog-head">
         <div>
           <h2>{t("lobby.host.titleCustom")}</h2>
@@ -224,7 +225,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
             name="faf-game-title"
             autoComplete={rememberTypedEntries ? "on" : "off"}
             value={title}
-            maxLength={128}
+            maxLength={MAX_HOST_TITLE}
             aria-invalid={Boolean(titleError)}
             aria-describedby={titleError ? "host-title-error" : undefined}
             onChange={(event) => setTitle(event.target.value)}
@@ -318,11 +319,14 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
         {/* Column 1: Game Type (Featured Mods) */}
         <section className="host-column host-column-gametype surface-panel">
           <div className="host-column-header">
-            <h3>{t("lobby.host.gameType")}</h3>
+            <h3>
+              <Icon name="play" size={14} />
+              {t("lobby.host.gameType")}
+            </h3>
           </div>
           <div
             ref={modListRef}
-            className="host-column-body host-gametype-list"
+            className="host-column-body host-gametype-list host-featured-mods"
             role="listbox"
             aria-label={t("lobby.host.gameType")}
             onKeyDown={onModListKeyDown}
@@ -338,7 +342,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
                   className={`host-gametype-row${active ? " active" : ""}`}
                   onClick={() => setFeaturedMod(mod.id)}
                 >
-                  <FeaturedModIcon modId={mod.id} className="host-gametype-icon" />
+                  <FeaturedModIcon modId={mod.id} className="host-gametype-icon" tint />
                   <div className="host-gametype-info">
                     <div className="host-gametype-title-row">
                       <span className="host-gametype-name">{t(mod.nameKey)}</span>

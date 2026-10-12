@@ -75,14 +75,9 @@ export function SearchPanelToggle({
 }) {
   const { t } = useTranslation();
   return (
-    <button
-      type="button"
-      className="search-panel-toggle"
-      aria-expanded={expanded}
-      onClick={onClick}
-    >
-      <Icon name="filter" size={14} />
+    <Button className="search-panel-toggle" aria-expanded={expanded} onClick={onClick}>
+      <Icon name="filter" size={15} />
       {expanded ? t("designSystem.searchPanel.fewer") : count > 0 ? t("designSystem.searchPanel.moreCount", { count }) : t("designSystem.searchPanel.more")}
-    </button>
+    </Button>
   );
 }

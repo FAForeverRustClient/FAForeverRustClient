@@ -46,6 +46,7 @@ export interface OverlayLayer {
 export interface OverlayKeyEvent {
   key: string;
   isComposing?: boolean;
+  defaultPrevented?: boolean;
   preventDefault: () => void;
   stopPropagation: () => void;
 }
@@ -103,7 +104,7 @@ export function createOverlayStack() {
      * method is composing, where Escape cancels the composition.
      */
     handleKey(event: OverlayKeyEvent): boolean {
-      if (event.key !== "Escape" || event.isComposing) return false;
+      if (event.key !== "Escape" || event.isComposing || event.defaultPrevented) return false;
       const top = layers[layers.length - 1];
       if (!top) return false;
       event.preventDefault();

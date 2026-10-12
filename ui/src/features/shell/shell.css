@@ -194,7 +194,7 @@
 .install-banner-icon {
   flex: none;
   display: inline-flex;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .install-banner-copy {
@@ -289,9 +289,21 @@
   height: 100%;
   max-height: 100%;
   overflow-y: auto;
+  /* The scrollbar's room is kept whether it shows or not. Without it a tab
+     that grew taller than the window lost 11 px of width at that moment, and
+     everything on it moved left. The same holds for every scrolling area
+     that holds content; `scripts/check-architecture.mjs` asks each one to
+     keep the room or to say why not. */
+  scrollbar-gutter: stable;
+  /* How much of that room the page's padding gives back (`.content-inner`):
+     all of it where the page scrolls, none where it does not keep any. */
+  --content-gutter: var(--scrollbar-size);
   overflow-x: hidden;
 }
 
+/* These tabs do not scroll as a page: their panels scroll themselves and keep
+   their own room. A kept gutter applies to a clipping box too, and here it
+   would only be an empty strip down the right of the tab. */
 .content.content-tab-news,
 .content.content-tab-units,
 .content.content-tab-chat,
@@ -299,14 +311,25 @@
 .content.content-tab-leaderboard,
 .content.content-tab-changelog,
 .content.content-tab-settings,
-.content.content-tab-training {
+.content.content-tab-training,
+.content.content-tab-tournaments {
   overflow: hidden;
+  scrollbar-gutter: auto;
+  --content-gutter: 0px;
+}
+
+/* Focused from code after a click in the sidebar, so the keys that follow
+   scroll the page that opened (`TabBarProps.onPointerSelect`). It is the page,
+   not a control, and draws no ring of its own. */
+.content:focus {
+  outline: none;
 }
 
 .content-inner {
   min-width: 0;
   min-height: 100%;
   padding: 28px 28px 18px;
+  padding-right: max(0px, 28px - var(--content-gutter, 0px));
   box-sizing: border-box;
 }
 
@@ -315,7 +338,8 @@
 .content-inner.content-leaderboard,
 .content-inner.content-changelog,
 .content-inner.content-settings,
-.content-inner.content-training {
+.content-inner.content-training,
+.content-inner.content-tournaments {
   height: 100%;
   overflow: hidden;
 }
@@ -436,6 +460,17 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding-inline: 0;
+}
+
+/* With the name hidden the button holds the avatar alone: one column,
+   centred, and no side padding. The padding left 30 px at the narrowest rail
+   for a 40 px picture, which then ran from the left edge out to the right,
+   off the line the icons above it are centred on. */
+.app-shell.is-sidebar-rail .sidebar-profile-button {
+  grid-template-columns: auto;
+  justify-content: center;
+  padding-inline: 0;
 }
 
 .app-shell.is-sidebar-rail .tab span {
@@ -445,6 +480,13 @@
 .app-shell.is-sidebar-rail .tab {
   justify-content: center;
   padding-inline: 0;
+}
+
+/* Game folders is the one entry with a caret after its label. With the label
+   gone, the caret's auto margin pushed it to the far edge and pulled the
+   folder icon off the column every other entry is centred on. */
+.app-shell.is-sidebar-rail .game-folders-caret {
+  display: none;
 }
 
 @media (max-width: 900px) {
@@ -482,6 +524,7 @@
 
   .content-inner {
     padding: 22px;
+    padding-right: max(0px, 22px - var(--content-gutter, 0px));
   }
 
   /* Stacked, so the tab is taller than the window and the window is what has
@@ -493,6 +536,8 @@
      narrowing the window is what stacks the panels in the first place. */
   .content.content-tab-play {
     overflow-y: auto;
+    scrollbar-gutter: stable;
+    --content-gutter: var(--scrollbar-size);
   }
 
   .content-inner.content-play {
@@ -511,6 +556,8 @@
 @media (max-height: 700px) {
   .content.content-tab-play {
     overflow-y: auto;
+    scrollbar-gutter: stable;
+    --content-gutter: var(--scrollbar-size);
   }
 
   .content-inner.content-play {
@@ -524,9 +571,26 @@
   /* Same pair as the Play tab above, and it was missing the same half. */
   .content.content-tab-leaderboard {
     overflow-y: auto;
+    scrollbar-gutter: stable;
+    --content-gutter: var(--scrollbar-size);
   }
 
   .content-inner.content-leaderboard {
+    height: auto;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 900px) {
+  /* The same pair for Tournaments, at the width its list and event stack:
+     stacked, the tab is taller than the window and the window scrolls. */
+  .content.content-tab-tournaments {
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    --content-gutter: var(--scrollbar-size);
+  }
+
+  .content-inner.content-tournaments {
     height: auto;
     overflow: visible;
   }

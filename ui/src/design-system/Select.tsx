@@ -84,6 +84,7 @@ export function Select<T extends string | number>({
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const search = useRef({ text: "", at: 0 });
   const id = useId();
   const listId = `${id}-listbox`;
 
@@ -118,6 +119,7 @@ export function Select<T extends string | number>({
   // array on every render, and an effect would snap the highlight back to the
   // value each time the parent re-rendered under an open list.
   const openList = () => {
+    search.current.text = "";
     const selectedIndex = options.findIndex((o) => o.value === value && !o.disabled);
     setHighlightedIndex(selectedIndex >= 0 ? selectedIndex : (nextSelectIndex(options, -1, "Home") ?? -1));
     setOpen(true);
@@ -126,12 +128,37 @@ export function Select<T extends string | number>({
   const choose = (index: number) => {
     const option = options[index];
     if (!option || option.disabled) return;
-    onChange(option.value);
+    if (option.value !== value) onChange(option.value);
+    search.current.text = "";
     setOpen(false);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (disabled) return;
+    if (!event.ctrlKey && !event.metaKey && !event.altKey && !event.nativeEvent.isComposing
+      && event.key.length === 1 && (event.key !== " " || (search.current.text !== "" && Date.now() - search.current.at < 700))) {
+      event.preventDefault();
+      const now = Date.now();
+      const previous = now - search.current.at < 700 && open ? search.current.text : "";
+      const text = previous + event.key.toLocaleLowerCase();
+      search.current = { text, at: now };
+      const repeated = [...text].every((character) => character === text[0]);
+      const prefix = repeated ? text[0] : text;
+      const current = open ? highlightedIndex : options.findIndex((option) => option.value === value);
+      // Repeated letters cycle; a longer prefix refines the current match.
+      const start = current + (repeated ? 1 : 0);
+      for (let offset = 0; offset < options.length; offset += 1) {
+        const index = (Math.max(start, 0) + offset) % options.length;
+        const option = options[index];
+        if (!option.disabled && option.label.toLocaleLowerCase().startsWith(prefix)) {
+          setHighlightedIndex(index);
+          setOpen(true);
+          return;
+        }
+      }
+      if (!open) openList();
+      return;
+    }
     switch (event.key) {
       case "Tab":
         // Focus is moving on; the list goes with it rather than staying open
@@ -151,9 +178,10 @@ export function Select<T extends string | number>({
       case "Home":
       case "End": {
         if (!open) {
-          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-            event.preventDefault();
-            openList();
+          event.preventDefault();
+          openList();
+          if (event.key === "Home" || event.key === "End") {
+            setHighlightedIndex(nextSelectIndex(options, -1, event.key) ?? -1);
           }
           return;
         }

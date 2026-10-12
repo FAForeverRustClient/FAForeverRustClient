@@ -15,9 +15,10 @@
 // read as a run of short sections with nothing to say they belong together,
 // so the reader lays them out as the wiki does.
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "../../i18n/useTranslation";
 import { parseBlocks, renderBlock, renderSpans, type Addresses, type Block } from "./markdown";
+import { ReadingLayout, type ReadingSection } from "../../shared/components/ReadingLayout";
 
 /** A guide's body, with what the page around it already says taken out. */
 export interface GuideOutline {
@@ -167,13 +168,6 @@ export function guideSegments(blocks: Block[]): GuideSegment[] {
   return segments;
 }
 
-interface Section {
-  id: string;
-  text: string;
-  /** 1 for a section, 2 for a part of one. */
-  depth: 1 | 2;
-}
-
 /** A heading's anchor: its words, and its position so two "Notes" differ. */
 function anchorFor(text: string, index: number): string {
   const words = text
@@ -197,6 +191,7 @@ function plainHeading(text: string): string {
 export function GuideReader({
   outline,
   documentUrl,
+  local,
 }: {
   outline: GuideOutline;
   /**
@@ -205,12 +200,14 @@ export function GuideReader({
    * still mean the page the guide was copied from.
    */
   documentUrl?: string;
+  /** Pictures attached to a guide still being written, by the path it writes. */
+  local?: ReadonlyMap<string, string>;
 }) {
   const { t } = useTranslation();
   const { blocks, source } = outline;
   const base = useMemo<Addresses>(
-    () => ({ page: source ?? undefined, document: documentUrl }),
-    [source, documentUrl],
+    () => ({ page: source ?? undefined, document: documentUrl, local }),
+    [source, documentUrl, local],
   );
 
   // The guide's own top level, whatever it wrote it as: a guide whose
@@ -246,7 +243,7 @@ export function GuideReader({
       tabs: update(previous.of === blocks ? previous.tabs : {}),
     }));
 
-  const sections = useMemo<Section[]>(
+  const sections = useMemo<ReadingSection[]>(
     () =>
       blocks.flatMap((block, index) =>
         block.kind === "heading" && block.level <= top + 1
@@ -261,9 +258,6 @@ export function GuideReader({
       ),
     [blocks, top],
   );
-  // A contents list of one or two entries is furniture, not navigation.
-  const hasToc = sections.filter((section) => section.depth === 1).length >= 3;
-  const active = useActiveSection(hasToc ? sections : [], JSON.stringify(chosen));
 
   const jump = (id: string) => {
     const tab = tabOf.get(id);
@@ -290,7 +284,7 @@ export function GuideReader({
       <Tag
         key={placed.index}
         id={anchorFor(placed.block.text, placed.index)}
-        className={`training-guide-heading is-rank-${rank}`}
+        className={`reading-heading is-rank-${rank}`}
       >
         {renderSpans(placed.block.text, base)}
       </Tag>
@@ -300,71 +294,28 @@ export function GuideReader({
     placed.block.kind === "heading" ? heading(placed) : renderBlock(placed.block, placed.index, base);
 
   return (
-    // The frame is the size container the layout below asks about: a
-    // container query answers for an element's descendants, never itself.
-    <div className="training-guide-frame">
-    <div className={hasToc ? "training-guide has-toc" : "training-guide"}>
-      <article className="training-guide-copy training-markdown">
-        {hasToc && (
-          <nav className="training-guide-jump" aria-label={t("training.guide.contents")}>
-            {sections
-              .filter((section) => section.depth === 1)
-              .map((section) => (
-                <button
-                  type="button"
-                  key={section.id}
-                  className="training-guide-jump-item"
-                  onClick={() => jump(section.id)}
-                >
-                  {section.text}
-                </button>
-              ))}
-          </nav>
-        )}
-        {segments.map((segment) =>
-          segment.kind === "block" ? (
-            render(segment.placed)
-          ) : (
-            <GuideTabs
-              key={`tabs-${segment.index}`}
-              segment={segment}
-              selected={chosen[segment.index] ?? 0}
-              onSelect={(tab) => setChosen((current) => ({ ...current, [segment.index]: tab }))}
-              render={render}
-              base={base}
-            />
-          ),
-        )}
-      </article>
-
-      {hasToc && (
-        <nav className="training-guide-toc" aria-label={t("training.guide.contents")}>
-          <p className="training-guide-toc-title">{t("training.guide.contents")}</p>
-          <ol>
-            {sections.map((section) => (
-              <li key={section.id}>
-                <button
-                  type="button"
-                  className={[
-                    "training-guide-toc-item",
-                    section.depth === 2 ? "is-part" : "",
-                    active === section.id ? "is-active" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  aria-current={active === section.id ? "location" : undefined}
-                  onClick={() => jump(section.id)}
-                  title={section.text}
-                >
-                  {section.text}
-                </button>
-              </li>
-            ))}
-          </ol>
-        </nav>
+    <ReadingLayout
+      sections={sections}
+      contentsLabel={t("training.guide.contents")}
+      className="training-markdown"
+      onJump={jump}
+      layoutKey={JSON.stringify(chosen)}
+    >
+      {segments.map((segment) =>
+        segment.kind === "block" ? (
+          render(segment.placed)
+        ) : (
+          <GuideTabs
+            key={`tabs-${segment.index}`}
+            segment={segment}
+            selected={chosen[segment.index] ?? 0}
+            onSelect={(tab) => setChosen((current) => ({ ...current, [segment.index]: tab }))}
+            render={render}
+            base={base}
+          />
+        ),
       )}
-    </div>
-    </div>
+    </ReadingLayout>
   );
 }
 
@@ -453,51 +404,4 @@ function GuideTabs({
       </section>
     </>
   );
-}
-
-/**
- * The section the reader is in: the last heading that has scrolled past the
- * top of the tab.
- *
- * Read off the scroll of whatever element scrolls the guide (the tab itself),
- * on a frame rather than per event, and only while there is a contents column
- * to mark it in. A tab that is not the open one is skipped, since its label
- * sits in the same row as the open one's; `tabs` is what changes when another
- * is opened, and is read again then.
- */
-function useActiveSection(sections: Section[], tabs: string): string | null {
-  const [active, setActive] = useState<string | null>(null);
-  const frame = useRef(0);
-  const ids = sections.map((section) => section.id).join(" ");
-
-  useEffect(() => {
-    if (!ids) return;
-    const list = ids.split(" ");
-    const first = document.getElementById(list[0]);
-    const scroller = first?.closest(".training-view") ?? null;
-    if (!scroller) return;
-    const measure = () => {
-      frame.current = 0;
-      const top = scroller.getBoundingClientRect().top + 96;
-      let current: string | null = list[0];
-      for (const id of list) {
-        const heading = document.getElementById(id);
-        if (!heading || heading.getAttribute("aria-selected") === "false") continue;
-        if (heading.getBoundingClientRect().top <= top) current = id;
-      }
-      setActive(current);
-    };
-    const onScroll = () => {
-      if (frame.current === 0) frame.current = requestAnimationFrame(measure);
-    };
-    measure();
-    scroller.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      scroller.removeEventListener("scroll", onScroll);
-      if (frame.current !== 0) cancelAnimationFrame(frame.current);
-      frame.current = 0;
-    };
-  }, [ids, tabs]);
-
-  return active;
 }

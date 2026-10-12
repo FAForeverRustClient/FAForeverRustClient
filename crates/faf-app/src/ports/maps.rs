@@ -11,6 +11,27 @@ use async_trait::async_trait;
 use faf_domain::protocol::vault_query::MapVaultQuery;
 use faf_domain::state::{InstalledMap, LocalMapPreview, MatchmakerMapPool, VaultMap};
 
+/// One step of a vault install, as the adapter reaches it.
+///
+/// Shared by the map and mod vaults, whose installs are the same two halves: a
+/// download whose size the server may or may not declare, then an unpacking
+/// with nothing to measure.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VaultInstallStep {
+    /// Bytes received so far, and the size the server declared, if it did.
+    Downloading {
+        received_bytes: u64,
+        total_bytes: Option<u64>,
+    },
+    /// The archive is whole and being unpacked.
+    Unpacking,
+}
+
+/// Where a vault install reports its steps. Called on whatever task the
+/// adapter runs on, once per chunk received: a caller that turns a step into
+/// an event throttles it itself.
+pub type VaultInstallProgress = std::sync::Arc<dyn Fn(VaultInstallStep) + Send + Sync>;
+
 /// One page of a vault search, plus what the server said about the rest.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct MapSearchPage {
@@ -25,6 +46,13 @@ pub trait MapsPort: Send + Sync {
     ///: mirrors the Python client's `MapApiConnector`'s default "All" browse
     /// query, newest first).
     async fn list_vault(&self) -> Result<Vec<VaultMap>, String>;
+
+    async fn list_vault_with_progress(
+        &self,
+        _progress: Option<tokio::sync::mpsc::Sender<faf_domain::state::maps::CatalogueProgress>>,
+    ) -> Result<Vec<VaultMap>, String> {
+        self.list_vault().await
+    }
 
     /// One page of a server-side vault search. This is what the Maps tab
     /// browses; [`Self::list_vault`] only feeds the folder-name lookup index.
@@ -59,6 +87,17 @@ pub trait MapsPort: Send + Sync {
         Ok(Vec::new())
     }
 
+    /// The vault's record for each named map, matched on its display name
+    /// without regard to case, the same shape [`Self::list_vault`] returns.
+    /// Several records may share a name; all of them come back. Defaults to
+    /// finding nothing, which is what a stub needs.
+    async fn find_vault_maps_by_display_name(
+        &self,
+        _display_names: &[String],
+    ) -> Result<Vec<VaultMap>, String> {
+        Ok(Vec::new())
+    }
+
     /// Load the rating-bracket map pools and veto limits for one queue.
     async fn list_matchmaker_pools(
         &self,
@@ -74,8 +113,37 @@ pub trait MapsPort: Send + Sync {
         download_url: String,
     ) -> Result<Vec<InstalledMap>, String>;
 
+    /// [`Self::install_map`], reporting each step to `progress`, and stopping
+    /// when `called_off` is cancelled while it still can.
+    ///
+    /// Not cancelled by dropping the future: only the implementation knows
+    /// whether the map is already in place when the call-off comes, and the
+    /// caller has to be told the truth either way. A cancel used to drop the
+    /// install even while it listed the maps folder after the rename, and the
+    /// map was then on disk while the vault said the install was called off
+    /// and the installed list did not have it.
+    ///
+    /// `Ok(None)` means it was called off in time and the maps folder is as
+    /// it was: the download's file is gone, and an archive being unpacked
+    /// was not renamed into place. Past that rename the call-off is too late,
+    /// and the answer is the installed list, as for any install. Defaults to
+    /// the plain install, which cannot be called off.
+    async fn install_map_reporting(
+        &self,
+        folder_name: String,
+        download_url: String,
+        progress: VaultInstallProgress,
+        called_off: tokio_util::sync::CancellationToken,
+    ) -> Result<Option<Vec<InstalledMap>>, String> {
+        let _ = (progress, called_off);
+        self.install_map(folder_name, download_url).await.map(Some)
+    }
+
     /// Delete a map folder (mirrors `MapsManagerDialog::delete_map`). Returns
     /// the refreshed installed list.
+    ///
+    /// Holds the map's folder against a replay or a live game staging the
+    /// same map while it deletes, the way an install does.
     async fn uninstall_map(&self, folder_name: String) -> Result<Vec<InstalledMap>, String>;
 
     /// Withdraw a map version from the vault, or put it back (mirrors

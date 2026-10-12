@@ -1,8 +1,25 @@
-import { SectionTabs, type SectionTab } from "../../design-system/SectionTabs";
+import { SectionTabs, sectionPanelProps, type SectionTab } from "../../design-system/SectionTabs";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
 export type PlayMode = "custom" | "matchmaking" | "coop" | "galacticWar";
+
+/** Ties the mode tabs to the panel under them, for assistive technology. */
+const PLAY_MODE_TABS_ID = "play-mode";
+
+/** What a mode's panel spreads on its outermost element to be that tab's panel. */
+export type PlayModePanelProps = ReturnType<typeof sectionPanelProps>;
+
+/**
+ * The id, role and label that make a mode's panel the one its tab controls.
+ *
+ * Spread on the panel's own outermost element rather than on a wrapper: every
+ * mode's panel is a grid or a flex column sized as a child of the Play view,
+ * and a box around it would be the child instead and undo that sizing.
+ */
+export function playModePanelProps(mode: PlayMode): PlayModePanelProps {
+  return sectionPanelProps(PLAY_MODE_TABS_ID, mode);
+}
 
 interface Props {
   mode: PlayMode;
@@ -33,5 +50,14 @@ export function PlayModeTabs(props: Props) {
     label: t(tab.label),
     count: props[tab.count],
   }));
-  return <SectionTabs active={props.mode} ariaLabel={t("lobby.mode.aria")} className="play-mode-tabs" items={items} onChange={props.onChange} />;
+  return (
+    <SectionTabs
+      active={props.mode}
+      ariaLabel={t("lobby.mode.aria")}
+      className="play-mode-tabs"
+      idPrefix={PLAY_MODE_TABS_ID}
+      items={items}
+      onChange={props.onChange}
+    />
+  );
 }

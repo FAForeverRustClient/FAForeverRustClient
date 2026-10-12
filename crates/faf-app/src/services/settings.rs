@@ -39,7 +39,7 @@ pub struct SettingsContext {
     /// on their own tasks, so two patches could both read the group before
     /// either emitted, and the second would carry the first's field back to
     /// its old value. Synchronous: nothing in between awaits.
-    merge: std::sync::Mutex<()>,
+    merge: SettingsMerge,
     /// Added sounds whose removal is under way. A notifications change that
     /// would newly choose one is refused, so a dropdown that still lists it
     /// cannot leave a saved setting naming a file about to be deleted.
@@ -64,6 +64,52 @@ impl SettingsContext {
     /// with a settings command's.
     pub fn write_order(&self) -> SerialMutation {
         self.persist.clone()
+    }
+
+    /// Read a settings group, change it and emit it, under the same lock the
+    /// settings commands merge under, for a service that writes a group of its
+    /// own (event reminders, chat read markers, the host form, vetoes).
+    ///
+    /// Without it such a service read the group, and a `Patch*` of the same
+    /// group could land before it emitted: its emit then carried the old value
+    /// of whatever the patch had just changed back into state. The
+    /// architecture check refuses a settings event emitted any other way from
+    /// outside this service.
+    pub fn merge_and_emit<E: Into<Option<SettingsEvent>>, R>(
+        &self,
+        out: &EventSink,
+        change: impl FnOnce(&faf_domain::state::SettingsState) -> (E, R),
+    ) -> R {
+        self.merge.merge_and_emit(out, change)
+    }
+
+    /// The same lock, for a service writing settings from a spawned task that
+    /// cannot borrow this context. See [`Self::write_order`] for its twin.
+    pub fn merger(&self) -> SettingsMerge {
+        self.merge.clone()
+    }
+}
+
+/// The lock every settings group is read, changed and emitted under, cloneable
+/// so a spawned task can hold it. See [`SettingsContext::merge_and_emit`].
+#[derive(Clone, Default)]
+pub struct SettingsMerge(std::sync::Arc<std::sync::Mutex<()>>);
+
+impl SettingsMerge {
+    pub fn merge_and_emit<E: Into<Option<SettingsEvent>>, R>(
+        &self,
+        out: &EventSink,
+        change: impl FnOnce(&faf_domain::state::SettingsState) -> (E, R),
+    ) -> R {
+        let _merging = self
+            .0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let (event, result) = out.with_state(|state| change(&state.settings));
+        if let Some(event) = event.into() {
+            out.emit(event);
+        }
+        result
     }
 }
 
@@ -265,12 +311,13 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         SettingsCommand::SetReplayNote {
             replay_id,
+            local_path,
             comment,
             tags,
         } => {
             merge(ctx, out, |settings| {
                 let mut preferences = settings.social.clone();
-                preferences.set_replay_note(replay_id, comment, tags);
+                preferences.set_replay_note(replay_id, local_path.as_deref(), comment, tags);
                 (SettingsEvent::SocialChanged { preferences }, ())
             });
             persist(ctx, out).await;
@@ -465,16 +512,7 @@ fn merge<E: Into<Option<SettingsEvent>>, R>(
     out: &EventSink,
     change: impl FnOnce(&faf_domain::state::SettingsState) -> (E, R),
 ) -> R {
-    let _merging = ctx
-        .settings
-        .merge
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let (event, result) = out.with_state(|state| change(&state.settings));
-    if let Some(event) = event.into() {
-        out.emit(event);
-    }
-    result
+    ctx.settings.merge_and_emit(out, change)
 }
 
 /// Write the whole settings document back, once there is one to write.
@@ -685,9 +723,10 @@ async fn refresh_content_after_path_change(ctx: &ServiceCtx, out: &EventSink) {
 /// It exists now, or will: the updater creates the managed install on the first
 /// launch. So the pick is answered rather than rejected: say what was picked
 /// and why it cannot be the target, and configure the place FAF's own copy
-/// goes. The retail install is not thrown away, it is found again by the
-/// updater, which reads `gamedata`, `movies`, `sounds` and `fonts` straight out
-/// of it (see `game_updater::retail_install_dir`).
+/// goes. The retail install is not thrown away: it is remembered (see
+/// [`remember_original_game`]), and the updater copies the engine's libraries
+/// out of it and points the game at its `gamedata`, `movies`, `sounds` and
+/// `fonts` (see `game_updater::retail_install_dir`).
 ///
 /// A path that is already a managed install, or empty, is returned untouched:
 /// this only fires on the retail game.
@@ -695,6 +734,7 @@ fn redirect_retail_pick(path: &str, ctx: &ServiceCtx, out: &EventSink, replay: b
     if !ctx.ports.process.is_original_game_install(path) {
         return path.to_string();
     }
+    remember_original_game(path, ctx, out);
     let defaults = ctx.ports.process.default_install_paths();
     let target = if replay {
         defaults.replay
@@ -732,6 +772,41 @@ fn redirect_retail_pick(path: &str, ctx: &ServiceCtx, out: &EventSink, replay: b
         }),
     );
     target
+}
+
+/// Keep the original game the player just picked, for the updater (#474).
+///
+/// The pick used to be dropped once it had been redirected, on the promise
+/// that the updater would find the original again. It only did when the game
+/// sat in one of the places it guesses, and a new player's often does not: a
+/// Steam library on a second drive is invisible to every guess, and no other
+/// FAF client has configured anything on their machine. The updater then had
+/// nothing to copy `BugSplat.dll` from, and the first game stopped there.
+///
+/// The executable is `bin/<exe>` inside the install, which is how
+/// `is_original_game_install` recognised it, so the root is two levels up.
+/// Persisted with the rest of the paths by the caller's `persist`, and handed
+/// to the path resolver straight away, so the very next launch has it.
+fn remember_original_game(executable: &str, ctx: &ServiceCtx, out: &EventSink) {
+    let Some(root) = std::path::Path::new(executable)
+        .parent()
+        .and_then(std::path::Path::parent)
+        .map(|root| root.to_string_lossy().into_owned())
+        .filter(|root| !root.is_empty())
+    else {
+        return;
+    };
+    merge(ctx, out, |settings| {
+        let event =
+            (settings.paths.original_game_dir != root).then(|| SettingsEvent::PathsChanged {
+                preferences: domain::PathPreferences {
+                    original_game_dir: root.clone(),
+                    ..settings.paths.clone()
+                },
+            });
+        (event, ())
+    });
+    sync_paths(ctx, out);
 }
 
 /// Answer a replay pick that is the live install, the way a retail pick is

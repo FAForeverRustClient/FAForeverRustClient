@@ -14,6 +14,7 @@
   .gw-layout {
     grid-template-columns: minmax(0, 1fr);
     overflow-y: auto;
+    scrollbar-gutter: stable;
   }
 }
 
@@ -39,6 +40,7 @@
   min-height: 0;
   gap: 22px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .gw-section {
@@ -97,12 +99,14 @@
   border-radius: var(--radius-sm);
 }
 
-.gw-notice-error {
-  color: var(--color-error);
+/* A failure is the shared notice. The section's gap already spaces it, and
+   the notice's own margin would add to that gap rather than collapse into it. */
+.gw-section > .gw-failure {
+  margin: 0;
 }
 
 .gw-notice-warn {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .gw-links {
@@ -163,6 +167,7 @@
   min-height: 0;
   padding-top: 68px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .gw-board-header {

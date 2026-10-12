@@ -1,5 +1,8 @@
 /* Shared catalogue chrome used by the map and mod vaults. */
 
+/* "Featured" on the artwork: the one mark that rides on it, so a quiet plate
+   rather than a strong outline. The plate stays because bare text over map
+   art is unreadable; the border is the ordinary one. */
 .vault-featured-badge {
   position: absolute;
   z-index: 1;
@@ -7,20 +10,15 @@
   right: 8px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 7px;
+  padding: 2px 8px;
   color: var(--color-text);
-  font-size: 12px;
-  font-weight: 650;
+  font-size: 11px;
+  font-weight: 600;
   letter-spacing: 0.02em;
-  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
-  border: 1px solid var(--color-border-strong);
+  line-height: 1.5;
+  background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-}
-
-.vault-featured-badge svg {
-  flex: none;
-  color: var(--color-warn);
 }
 
 .vault-subnav,
@@ -172,12 +170,6 @@
   font-size: 12px;
 }
 
-/* A note the user has to actually read, not a status line: the vault refusing a
-   change says something they cannot work out from the screen. */
-.vault-note.is-warn {
-  color: var(--color-warn);
-}
-
 /* The detail column is wider than it was. The report was about a mod's
    description, which had a hundred-odd pixels of a 350 px column to be read
    in and was cut mid-sentence on anything longer than a paragraph: "a complete
@@ -215,6 +207,12 @@
   justify-content: center;
   margin-top: 18px;
   padding: 0;
+}
+
+/* A short page's empty places (`GridPageFiller`): a card's size, and nothing
+   else. Hidden rather than transparent, so the pointer passes through. */
+.grid-page-filler {
+  visibility: hidden;
 }
 
 /* Current position when the total page count is unknown. */
@@ -366,15 +364,15 @@
 }
 
 .vault-badge.is-ok {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   background: color-mix(in srgb, var(--color-ok) 12%, transparent);
   border-color: color-mix(in srgb, var(--color-ok) 25%, transparent);
 }
 
-.vault-badge.is-warn {
-  color: var(--color-warn);
-  background: color-mix(in srgb, var(--color-warn) 12%, transparent);
-  border-color: color-mix(in srgb, var(--color-warn) 25%, transparent);
+.vault-badge.is-neutral {
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
 
 .vault-badge.is-accent {
@@ -504,7 +502,7 @@
 }
 
 .vault-action-favorite.is-active {
-  color: var(--color-warn);
+  color: var(--color-text);
 }
 
 /* Reporting a map or mod as offensive: last in the action row and icon-only.
@@ -515,11 +513,11 @@
 .vault-action-report {
   min-width: 34px;
   padding-inline: 9px;
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .vault-action-report:hover:not(:disabled) {
-  color: var(--color-error);
+  color: var(--color-error-text);
   border-color: color-mix(in srgb, var(--color-error) 45%, transparent);
   background: color-mix(in srgb, var(--color-error) 10%, transparent);
 }

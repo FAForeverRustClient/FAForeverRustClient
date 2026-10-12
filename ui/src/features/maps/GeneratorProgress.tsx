@@ -3,6 +3,7 @@
 import type { GeneratorStatus } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
+import { GeneratorFailure } from "../../shared/components/GeneratorFailure";
 import "./generator-progress.css";
 
 /** Whether a run is in flight. Mirrors `GeneratorStatus::is_busy` in faf-domain. */
@@ -58,6 +59,6 @@ export function GeneratorProgress() {
     case "cancelled":
       return <p className="muted generate-map-progress">{t("maps.generate.cancelled")}</p>;
     case "failed":
-      return <p className="generate-map-progress is-error">{status.payload.reason}</p>;
+      return <GeneratorFailure reason={status.payload.reason} className="generate-map-failure" />;
   }
 }

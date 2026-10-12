@@ -34,6 +34,7 @@
 
 .filter-rule-builder select,
 .filter-rule-builder input,
+.filter-whitelist-builder input,
 .host-form-top select,
 .host-form-top input,
 .host-options input,
@@ -116,7 +117,7 @@
 
 .host-form-global-error {
   margin-right: auto;
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: 12px;
   font-weight: 550;
 }
@@ -199,7 +200,7 @@
 .filter-rule-verb {
   flex: 0 0 auto;
   margin-right: 4px;
-  color: var(--color-warn);
+  color: var(--color-text);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.03em;
@@ -259,7 +260,7 @@
 }
 
 .filter-rule button.filter-rule-save:hover {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 .play-empty { margin: 0; padding: 18px; color: var(--color-subtle); font-size: 12px; text-align: center; }
 
@@ -401,7 +402,7 @@
 }
 
 .host-field-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: 11px;
   line-height: 1.3;
 }
@@ -468,7 +469,13 @@
   min-height: 22px;
 }
 
+/* Each column's title carries the icon its subject has in the navigation, so
+   the mods and the maps beside them tell apart at a glance and not only by
+   the word over each. */
 .host-column-header h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   margin: 0;
   font-size: 12px;
   font-weight: 650;
@@ -489,6 +496,7 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg);
@@ -518,6 +526,13 @@
   flex-direction: column;
   gap: 6px;
   padding: 6px;
+}
+
+.host-gametype-list.host-featured-mods {
+  /* No scrollbar gutter: FAF's four featured mods, a list that does not
+     grow and does not scroll. The reserved strip only made the rows' right
+     margin twice their left. The co-op dialog's campaigns keep theirs. */
+  scrollbar-gutter: auto;
 }
 
 .host-gametype-row {
@@ -708,9 +723,9 @@
 }
 
 .mod-badge-sim {
-  color: var(--color-warn);
-  background: color-mix(in srgb, var(--color-warn) 12%, transparent);
-  border-color: color-mix(in srgb, var(--color-warn) 25%, transparent);
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
 
 /* Column 3: Maps */
@@ -857,7 +872,11 @@
   flex-direction: column;
   gap: 12px;
   padding: 16px 10px 10px;
+  /* The scrollbar's kept room counts as part of the right padding, so the
+     sides match whether it shows or not (`--scrollbar-size`). */
+  padding-right: max(0px, 10px - var(--scrollbar-size));
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .host-preview-thumb-wrap {
@@ -894,52 +913,48 @@
   padding: 6px 6px 0;
 }
 
-.host-preview-name > span {
+/* The first span only: the ranked tag is a span on the same line, and a rule
+   for every span gave it the name's size and weight. */
+.host-preview-name > span:first-child {
   min-width: 0;
   overflow: hidden;
   color: var(--color-text);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Whether a game on this map counts, said beside the map's name. Muted at
-   rest and accented when it is ranked, because "unranked" is the answer that
-   changes a host's mind and "ranked" is the ordinary case. */
+/* Whether a game on this map counts, at the end of the name's line, drawn as
+   every tag in the client is: square corners, 11 px capitals. Green for
+   "ranked", as it always was, and in the error tint for "unranked", as on a
+   game's tile. It was a capsule; the shape is what changed, not the colour. */
 .host-map-ranked {
   flex: none;
-  padding: 1px 7px;
-  color: var(--color-muted);
-  background: color-mix(in srgb, var(--color-muted) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-muted) 30%, transparent);
-  border-radius: 999px;
+  margin-left: auto;
+  padding: 2px 6px;
+  color: var(--color-ok-text);
+  background: color-mix(in srgb, var(--color-ok) 12%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-ok) 35%, transparent);
+  border-radius: var(--radius-sm);
   font-size: 11px;
-  font-weight: 650;
-  letter-spacing: .04em;
+  font-weight: 600;
+  line-height: 14px;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
-.host-map-ranked.is-ranked {
-  color: var(--color-ok);
-  background: color-mix(in srgb, var(--color-ok) 14%, transparent);
-  border-color: color-mix(in srgb, var(--color-ok) 35%, transparent);
+.host-map-ranked.is-unranked {
+  color: var(--color-error-text);
+  background: color-mix(in srgb, var(--color-error) 12%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-error) 35%, transparent);
 }
 
-/* The version marker. A letter rather than an icon, in the same grey and at
-   the same width as the glyphs it shares a row with, so the row still reads as
-   one row rather than as a letter with icons after it. */
-.host-map-version-mark {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 13px;
-  color: var(--color-subtle);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
+/* The map's basic facts, first in the list and so without the rule the
+   generated map's settings draw over themselves below. */
+.host-map-facts.host-map-basic-facts {
+  padding-top: 0;
+  border-top: 0;
 }
 
 /* Far from the map list on purpose: this deletes a folder off the disk, and
@@ -951,7 +966,7 @@
   gap: 6px;
   margin-top: 2px;
   padding: 4px 8px;
-  color: var(--color-error);
+  color: var(--color-error-text);
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--color-error) 35%, transparent);
   border-radius: var(--radius-sm);
@@ -1016,6 +1031,8 @@
   user-select: all;
 }
 
+/* Quiet until pointed at, as the map preview's copy button is: a bordered box
+   at rest was one more outline beside the name. */
 .host-map-fullname-copy {
   display: inline-flex;
   flex: 0 0 auto;
@@ -1024,7 +1041,7 @@
   padding: 3px;
   color: var(--color-muted);
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
@@ -1035,27 +1052,12 @@
   border-color: var(--color-border-strong);
 }
 
-.host-map-info-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.host-map-fullname-copy:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
-.host-map-info-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 550;
-  color: var(--color-text);
-}
-
-.host-map-info-item svg {
-  color: var(--color-subtle);
-  flex-shrink: 0;
-}
-
-/* Author and version: two columns, two rows, label left and value right. */
+/* A map's facts: two columns, label left and value right. */
 .host-map-facts {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -1176,6 +1178,7 @@
     height: auto;
     max-height: 60vh;
     overflow-y: auto;
+    scrollbar-gutter: stable;
   }
 
   .host-column {
@@ -1285,6 +1288,7 @@
   flex-direction: column;
   gap: 4px;
   overflow-y: auto;
+  /* No scrollbar gutter: a pop-up as wide as what opened it, where a reserved strip would narrow every entry for a scrollbar most lists never show. */
   max-height: 180px;
 }
 
@@ -1334,7 +1338,7 @@
 }
 
 .host-preset-popover-delete:hover {
-  color: var(--color-error);
+  color: var(--color-error-text);
   background: color-mix(in srgb, var(--color-error) 12%, transparent);
 }
 
@@ -1424,6 +1428,7 @@
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -1455,6 +1460,7 @@
     height: auto;
     max-height: 50vh;
     overflow-y: auto;
+    scrollbar-gutter: stable;
   }
 }
 
@@ -1577,9 +1583,15 @@
 /* Same four-column shape as the custom dialog, with campaigns where that one
    asks which featured mod to run: in co-op the answer is always `coop`, so the
    question was three disabled rows. The mission list is narrower than a map
-   list because it holds one campaign, not the vault. */
+   list because it holds one campaign, not the vault. It takes the width that
+   is left over; the chosen mission's column is fixed and wider than the
+   custom dialog's, and its picture fills it from side to side. */
 .host-coop-grid {
-  grid-template-columns: 220px minmax(260px, 1fr) 320px 360px;
+  grid-template-columns: 220px minmax(260px, 1fr) 390px 360px;
+}
+
+.host-coop-modal .host-preview-thumb-wrap {
+  max-width: none;
 }
 
 .host-coop-faction-badge {
@@ -1600,11 +1612,14 @@
   white-space: normal;
 }
 
-/* A campaign name too long to share its line with the badge puts the badge on
-   the next line, in any language: the row wraps instead of squeezing both.
-   A name that fits keeps the badge beside it, as before. */
+/* The campaign's name, then its badge under it, in every row: beside the name
+   the badge squeezed long names into three lines, and badges of different
+   widths left the names' right edges ragged. */
 .host-coop-modal .host-gametype-title-row {
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--space-1);
 }
 
 .host-coop-modal .host-gametype-name {
@@ -1712,9 +1727,13 @@
 /* The selected map in the host dialog is a control now: it opens the same
    enlarged, zoomable preview the Maps tab and the game preview have. Bare,
    because the column already places the square. */
+/* The whole picture's frame is the button, whatever the art inside it: a
+   co-op mission whose art has not loaded shows a fallback with no height of
+   its own, and the button was then a 40px strip at the top of the frame. */
 .host-preview-button {
   display: block;
   width: 100%;
+  height: 100%;
   padding: 0;
   background: transparent;
   border: 0;
@@ -1744,6 +1763,7 @@
   margin: 0 0 var(--space-3);
   padding-left: var(--space-4);
   overflow-y: auto;
+  scrollbar-gutter: stable;
   font-size: 13px;
   line-height: 1.6;
 }
@@ -1793,6 +1813,19 @@
   font-size: 13px;
   line-height: 1.5;
   color: var(--color-text-muted);
+}
+
+/* The ICE adapter, when it is not the usual one. Full text colour rather than
+   muted, since it is the one line here that changes how the game connects; a
+   setting that disagrees with the host does not connect at all, so it warns. */
+.join-preparing-adapter {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.join-preparing-adapter[data-mismatch="true"] {
+  color: var(--color-warn-text);
 }
 
 .join-preparing-bar {
@@ -1859,6 +1892,7 @@
   margin: var(--space-2) 0 0;
   padding-left: var(--space-4);
   overflow-y: auto;
+  scrollbar-gutter: stable;
   color: var(--color-muted);
   font-size: 12px;
   line-height: 1.6;
@@ -1871,4 +1905,82 @@
 .join-preparing-note {
   margin: var(--space-2) 0 0;
   font-size: 12px;
+}
+
+/* The hosts always shown (issue 492), under the rules: a heading of its own,
+   then a name field and the hosts as square tags with their remove button. */
+.filter-whitelist {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-border);
+}
+
+.filter-whitelist-head h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.filter-whitelist-head p {
+  margin: 3px 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.filter-whitelist-builder {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.filter-whitelist-builder .btn-ghost {
+  height: 34px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.filter-whitelist-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.filter-whitelist-host {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 4px 0 8px;
+  font-size: 12px;
+  font-weight: 550;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.filter-whitelist-host > svg {
+  color: var(--color-muted);
+}
+
+.filter-whitelist-host button {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.filter-whitelist-host button:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
 }

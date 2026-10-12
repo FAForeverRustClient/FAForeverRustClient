@@ -140,6 +140,26 @@ describe("local replay query", () => {
       maxRating: 1600,
     })).toEqual([high]);
   });
+
+  it("finds files without a game id by the note kept on their path", () => {
+    // Two skirmishes, neither with a game id: only their paths tell them
+    // apart, and the note is kept on the normalised path, not on uid 0.
+    const skirmish = replay({ path: "C:\\Replays\\Skirmish.fafreplay", uid: null });
+    const other = replay({ path: "C:\\Replays\\Other.fafreplay", uid: null });
+    const game = replay();
+    const notes = [
+      { replayId: 101, path: null, comment: "ladder", tags: ["finals"] },
+      { replayId: 0, path: "c:/replays/skirmish.fafreplay", comment: "vs two hard AIs", tags: ["ai"] },
+    ];
+    const byNote = (note: string) =>
+      filterLocalReplays([skirmish, other, game], { ...EMPTY_LOCAL_REPLAY_QUERY, note }, undefined, notes);
+    const byTags = (tags: string[]) =>
+      filterLocalReplays([skirmish, other, game], { ...EMPTY_LOCAL_REPLAY_QUERY, tags }, undefined, notes);
+
+    expect(byNote("hard ai")).toEqual([skirmish]);
+    expect(byTags(["AI"])).toEqual([skirmish]);
+    expect(byTags(["finals"])).toEqual([game]);
+  });
 });
 
 describe("local replay detail window", () => {

@@ -4,8 +4,9 @@ import { extname, relative, resolve, sep } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const violations = [];
 // Generated output, not source: the same reason "dist" and "target" are here.
+// ".claude" holds local worktrees, other checkouts of other branches.
 const ignoredDirectories = new Set([
-  ".agents", ".git", "context", "dist", "graphify-out", "natives", "node_modules", "target",
+  ".agents", ".claude", ".git", "context", "dist", "graphify-out", "natives", "node_modules", "target",
 ]);
 
 async function sourceFiles(directory, extensions) {
@@ -147,6 +148,15 @@ for (const path of await sourceFiles(resolve(root, "crates/faf-app/src/services"
   if (handleMatch) {
     report(path, `line ${lineNumber(source, handleMatch.index)} calls another service's handler directly; use crate::runtime::run_command so the command policy applies`);
   }
+  // A settings group written from outside the settings service goes through
+  // `ctx.settings.merge_and_emit`, which reads, changes and emits it under the
+  // lock the settings commands merge under. Event reminders and chat read
+  // markers emitted straight from their own earlier read, and a settings patch
+  // to the same group landing in between was put back to its old value.
+  const settingsEmit = /\bemit\s*\(\s*SettingsEvent::/.exec(rustCode(source));
+  if (settingsEmit && !path.endsWith(`${sep}services${sep}settings.rs`)) {
+    report(path, `line ${lineNumber(source, settingsEmit.index)} emits a settings event directly; go through ctx.settings.merge_and_emit so it cannot undo a concurrent settings patch`);
+  }
 }
 
 // The domain crate is pure: the same state and input give the same result.
@@ -242,6 +252,28 @@ for (const path of await sourceFiles(featuresRoot, new Set([".ts", ".tsx"]))) {
   }
 }
 
+// A box that scrolls up and down keeps its scrollbar's room, or says why not.
+// Without the room, the scrollbar takes 11 px from the content the moment the
+// content overflows, and everything in the box moves left; a grid can lose a
+// column. A pop-up, a sidebar or a dialog can have a reason not to, and the
+// reason is written in the rule as a comment starting "No scrollbar gutter:".
+// A box whose scrollbar is hidden (`scrollbar-width: none`) takes no room to
+// begin with.
+for (const path of await sourceFiles(resolve(root, "ui/src"), new Set([".css"]))) {
+  const source = await readFile(path, "utf8");
+  for (const match of source.matchAll(/[^{}]*\{([^{}]*)\}/g)) {
+    const body = match[1];
+    const declarations = body.replace(/\/\*[\s\S]*?\*\//g, "");
+    const scrollsDown = /(^|[;\s])overflow-y\s*:\s*(auto|scroll)/.test(declarations)
+      || (/(^|[;\s])overflow\s*:\s*(auto|scroll)/.test(declarations)
+        && !/(^|[;\s])overflow-y\s*:\s*(hidden|visible|clip)/.test(declarations));
+    if (!scrollsDown) continue;
+    if (/scrollbar-gutter\s*:/.test(declarations) || /scrollbar-width\s*:\s*none/.test(declarations)) continue;
+    if (/No scrollbar gutter:/.test(body)) continue;
+    report(path, `line ${lineNumber(source, match.index + match[0].indexOf("{"))} scrolls without scrollbar-gutter; keep the room (scrollbar-gutter: stable) or say why not in a "No scrollbar gutter:" comment`);
+  }
+}
+
 // Compact metadata still has to remain readable on an ordinary desktop
 // display. This was previously documented but unenforced, which allowed more
 // than forty sub-floor declarations to accumulate again.
@@ -254,14 +286,65 @@ for (const path of await sourceFiles(resolve(root, "ui/src"), new Set([".css"]))
   }
 }
 
+// What Windows-1252 shows for the bytes 0x80 to 0x9F, in order. Saved back as
+// UTF-8 by a tool that read the file as Windows-1252, a "\u2605" becomes three
+// characters, an "a" with a circumflex, a small tilde and an ellipsis, and the
+// Maps tab once showed exactly that after its ratings.
+const windows1252High = [
+  0x20ac, 0x81, 0x201a, 0x192, 0x201e, 0x2026, 0x2020, 0x2021, 0x2c6, 0x2030, 0x160, 0x2039, 0x152, 0x8d, 0x17d, 0x8f,
+  0x90, 0x2018, 0x2019, 0x201c, 0x201d, 0x2022, 0x2013, 0x2014, 0x2dc, 0x2122, 0x161, 0x203a, 0x153, 0x9d, 0x17e, 0x178,
+];
+
+// The test that describes the damage has to spell it.
+const garbledOnPurpose = new Set(["ui/src/i18n/i18n.test.ts"]);
+
+function byteShownAs(codePoint) {
+  if (codePoint >= 0x80 && codePoint <= 0xff) return codePoint;
+  const index = windows1252High.indexOf(codePoint);
+  return index === -1 ? null : 0x80 + index;
+}
+
+// Where the source first spells a whole UTF-8 sequence one byte per character,
+// or -1. Only sequences that decode to a character a person writes count:
+// Latin, Greek, Cyrillic, punctuation and symbols, emoji. Real text can put an
+// accented letter before a guillemet or an ellipsis, but what those bytes
+// decode to is CJK or another script nobody writes here.
+function garbledAt(source) {
+  const chars = Array.from(source);
+  let offset = 0;
+  for (let i = 0; i < chars.length; offset += chars[i].length, i++) {
+    const lead = byteShownAs(chars[i].codePointAt(0));
+    if (lead === null || lead < 0xc2 || lead > 0xf4) continue;
+    const length = lead < 0xe0 ? 1 : lead < 0xf0 ? 2 : 3;
+    const tail = chars.slice(i + 1, i + 1 + length).map((char) => byteShownAs(char.codePointAt(0)));
+    if (tail.length !== length || tail.some((byte) => byte === null || byte < 0x80 || byte > 0xbf)) continue;
+    let decoded;
+    try {
+      decoded = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from([lead, ...tail])).codePointAt(0);
+    } catch {
+      continue;
+    }
+    const written = (decoded >= 0xa0 && decoded <= 0x24f) || (decoded >= 0x370 && decoded <= 0x52f)
+      || (decoded >= 0x2000 && decoded <= 0x2bff) || (decoded >= 0x1f000 && decoded <= 0x1faff);
+    if (written) return offset;
+  }
+  return -1;
+}
+
 // Repository prose is user-facing too. Keep the no-em-dash rule executable so
-// generated UI copy and documentation cannot silently reintroduce it.
+// generated UI copy and documentation cannot silently reintroduce it. The same
+// pass catches a file saved through the wrong encoding, which shows the user
+// its symbols as strings of accented letters.
 const textExtensions = new Set([".css", ".html", ".js", ".json", ".md", ".mjs", ".rs", ".ts", ".tsx"]);
 for (const path of await sourceFiles(root, textExtensions)) {
   const source = await readFile(path, "utf8");
   const index = source.indexOf("\u2014");
   if (index !== -1) {
     report(path, `line ${lineNumber(source, index)} contains an em dash`);
+  }
+  const garbled = garbledAt(source);
+  if (garbled !== -1 && !garbledOnPurpose.has(relative(root, path).split(sep).join("/"))) {
+    report(path, `line ${lineNumber(source, garbled)} spells a character as the bytes of its UTF-8 encoding; the file was saved through the wrong encoding`);
   }
 }
 

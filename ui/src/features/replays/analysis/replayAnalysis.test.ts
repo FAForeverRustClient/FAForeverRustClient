@@ -51,6 +51,7 @@ describe("the rolling count behind the activity graph", () => {
 describe("the players table", () => {
   const analysis = {
     uid: 1,
+    key: "uid:1",
     ticks: 12_000,
     gameVersion: "",
     armies: [

@@ -24,7 +24,7 @@
 //! POST {api}/mods/upload/complete   {"requestId": "<uuid>"}
 //! ```
 
-use std::io::Write as _;
+use std::io::{Read as _, Write as _};
 use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
@@ -42,6 +42,7 @@ use crate::infra::jsonapi::api_error_detail;
 use crate::infra::session::TokenStore;
 use crate::infra::{cache_dir, env_or};
 use crate::ports::UploadsPort;
+use tokio_util::sync::CancellationToken;
 
 /// Refuse anything larger than this before contacting the server.
 ///
@@ -67,6 +68,10 @@ pub struct UploadsClient {
     config: UploadsConfig,
     tokens: TokenStore,
     http: reqwest::Client,
+    /// The running publish's call-off, raised by `cancel_publish`. Replaced
+    /// by every publish, so a cancel meant for an earlier one cannot stop the
+    /// next.
+    publishing: std::sync::Mutex<Option<CancellationToken>>,
 }
 
 impl UploadsClient {
@@ -77,6 +82,7 @@ impl UploadsClient {
             // Not the shared client: see `upload_http_client` for why an
             // upload cannot use its read timeout.
             http: super::http::upload_http_client(),
+            publishing: std::sync::Mutex::new(None),
         }
     }
 
@@ -110,12 +116,21 @@ impl UploadsPort for UploadsClient {
         let config = self.config.clone();
         let tokens = self.tokens.clone();
         let http = self.http.clone();
+        // Replaces the last publish's call-off, which is long finished: the
+        // command policy runs one publish at a time.
+        let called_off = CancellationToken::new();
+        *self
+            .publishing
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(called_off.clone());
 
         tokio::spawn(async move {
-            let outcome = run(&config, &tokens, &http, &request, &tx).await;
+            let outcome = run(&config, &tokens, &http, &request, &tx, &called_off).await;
             let _ = tx
                 .send(match outcome {
-                    Ok(()) => UploadStatus::Succeeded,
+                    Ok(RunEnd::Published) => UploadStatus::Succeeded,
+                    // Nothing was published, and nothing failed.
+                    Ok(RunEnd::CalledOff) => UploadStatus::Idle,
                     Err(reason) => UploadStatus::Failed { reason },
                 })
                 .await;
@@ -123,25 +138,137 @@ impl UploadsPort for UploadsClient {
 
         rx
     }
+
+    fn cancel_publish(&self) {
+        if let Some(publishing) = self
+            .publishing
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .as_ref()
+        {
+            publishing.cancel();
+        }
+    }
 }
 
+/// How a publish that did not fail ended.
+#[derive(Debug, PartialEq, Eq)]
+enum RunEnd {
+    Published,
+    /// `cancel_publish` landed while the vault could not have the archive
+    /// yet. Nothing was published, and the temporary archive is gone.
+    CalledOff,
+}
+
+/// Arbitrate the last cancellable step against a concurrent Stop. A body
+/// polled by the HTTP task after cancellation must not complete the archive.
+#[derive(Default)]
+struct UploadCommitment(std::sync::atomic::AtomicU8);
+
+impl UploadCommitment {
+    const CANCELLABLE: u8 = 0;
+    const COMMITTED: u8 = 1;
+    const CANCELLED: u8 = 2;
+
+    fn commit(&self) -> bool {
+        self.0
+            .compare_exchange(
+                Self::CANCELLABLE,
+                Self::COMMITTED,
+                std::sync::atomic::Ordering::SeqCst,
+                std::sync::atomic::Ordering::SeqCst,
+            )
+            .is_ok()
+            || self.0.load(std::sync::atomic::Ordering::SeqCst) == Self::COMMITTED
+    }
+
+    /// True when stopping can still prevent publication.
+    fn cancel(&self) -> bool {
+        self.0
+            .compare_exchange(
+                Self::CANCELLABLE,
+                Self::CANCELLED,
+                std::sync::atomic::Ordering::SeqCst,
+                std::sync::atomic::Ordering::SeqCst,
+            )
+            .is_ok()
+            || self.is_cancelled()
+    }
+
+    fn is_cancelled(&self) -> bool {
+        self.0.load(std::sync::atomic::Ordering::SeqCst) == Self::CANCELLED
+    }
+}
+
+/// A temporary archive, deleted when this goes out of scope, which includes a
+/// publish called off part-way through being sent.
+///
+/// Rust opens files with delete sharing on Windows too, so the deletion goes
+/// through even while the request that was reading the file is still being
+/// torn down.
+struct TemporaryArchive(PathBuf);
+
+impl Drop for TemporaryArchive {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
+
+/// Zip the folder and send it, unless `called_off` is cancelled first.
+///
+/// A call-off stops the run while the archive is packed (see `zip_folder`)
+/// and while its bytes are still going out: the request is dropped in the
+/// middle of its body, which the server discards. `committed` is raised once
+/// the server could have the whole archive, the last byte of a map taken by
+/// the transport or a mod's storage upload about to be confirmed, and from
+/// there a call-off is ignored: stopping could no longer keep the archive out
+/// of the vault, only stop the client hearing whether it got in.
+///
+/// The final map chunk and cancellation share one atomic transition: a stop
+/// that wins prevents that chunk being yielded, even if the HTTP task is
+/// still polling the body while its request future is being dropped.
 async fn run(
     config: &UploadsConfig,
     tokens: &TokenStore,
     http: &reqwest::Client,
     request: &UploadRequest,
     tx: &mpsc::Sender<UploadStatus>,
-) -> Result<(), String> {
+    called_off: &CancellationToken,
+) -> Result<RunEnd, String> {
     let token = tokens.get().ok_or_else(|| "not logged in".to_string())?;
 
     let source = source_folder(request)?;
-    let archive = zip_folder(&source, request.kind, rename(request), tx).await?;
+    let Some(archive) = zip_folder(&source, request.kind, rename(request), tx, called_off).await?
+    else {
+        return Ok(RunEnd::CalledOff);
+    };
 
-    // Always remove the temporary archive, however this ends: both reference
-    // clients delete it in a `finally`.
-    let result = send(config, http, &token, request, &archive, tx).await;
-    let _ = tokio::fs::remove_file(&archive).await;
-    result
+    let committed = std::sync::Arc::new(UploadCommitment::default());
+    let sending = send(config, http, &token, request, &archive.0, tx, &committed);
+    // `sending` is dropped inside, before `archive` goes at the end of this
+    // scope: the request lets go of the file before the file is deleted.
+    send_unless_called_off(sending, &committed, called_off).await
+}
+
+/// Drive `sending` to its end, unless `called_off` is cancelled while
+/// `committed` is still down: then drop it there, which tears the request
+/// down mid-body, and say so.
+async fn send_unless_called_off(
+    sending: impl std::future::Future<Output = Result<(), String>>,
+    committed: &UploadCommitment,
+    called_off: &CancellationToken,
+) -> Result<RunEnd, String> {
+    tokio::pin!(sending);
+    tokio::select! {
+        biased;
+        () = called_off.cancelled() => {}
+        result = &mut sending => return result.map(|()| RunEnd::Published),
+    }
+    if !committed.cancel() {
+        // Too late to keep it out of the vault: see it through.
+        return sending.await.map(|()| RunEnd::Published);
+    }
+    Ok(RunEnd::CalledOff)
 }
 
 /// The `.scmap` inside the folder being published, read into a data URL.
@@ -372,14 +499,20 @@ struct Rename {
 /// failing the walk, since `write_archive` is about to visit the same tree and
 /// is the right place to report a real problem. A folder that measures zero
 /// simply leaves the bar indeterminate.
-fn folder_bytes(source: &Path) -> u64 {
+fn folder_bytes(source: &Path, called_off: &CancellationToken) -> u64 {
     let mut total = 0u64;
     let mut stack = vec![source.to_path_buf()];
     while let Some(dir) = stack.pop() {
+        if called_off.is_cancelled() {
+            break;
+        }
         let Ok(entries) = std::fs::read_dir(&dir) else {
             continue;
         };
         for entry in entries.flatten() {
+            if called_off.is_cancelled() {
+                break;
+            }
             let Ok(file_type) = entry.file_type() else {
                 continue;
             };
@@ -398,62 +531,88 @@ async fn zip_folder(
     kind: UploadKind,
     rename: Option<Rename>,
     tx: &mpsc::Sender<UploadStatus>,
-) -> Result<PathBuf, String> {
+    called_off: &CancellationToken,
+) -> Result<Option<TemporaryArchive>, String> {
     let source = source.to_path_buf();
     let target = cache_dir()?.join(format!(
         "upload-{}-{}.zip",
         kind.label(),
         std::process::id()
     ));
+    zip_to(source, target, rename, tx, called_off).await
+}
+
+async fn zip_to(
+    source: PathBuf,
+    target: PathBuf,
+    rename: Option<Rename>,
+    tx: &mpsc::Sender<UploadStatus>,
+    called_off: &CancellationToken,
+) -> Result<Option<TemporaryArchive>, String> {
+    let guard = called_off.clone().drop_guard();
     tokio::fs::create_dir_all(target.parent().unwrap_or(Path::new(".")))
         .await
         .map_err(|error| format!("could not create the cache directory: {error}"))?;
-
-    let output = target.clone();
-    let measured = {
-        let source = source.clone();
-        tokio::task::spawn_blocking(move || folder_bytes(&source))
-            .await
-            .unwrap_or(0)
-    };
-    let total_bytes = clamp_bytes(measured);
+    // Make the size walk cancellable too, with an indeterminate bar until measured.
     let _ = tx
         .send(UploadStatus::Compressing {
             done_bytes: 0,
-            total_bytes,
+            total_bytes: 0,
         })
         .await;
-
-    // `zip` is synchronous and this walks a whole directory, so progress comes
-    // back over the same channel from the blocking thread.
     let progress = tx.clone();
-    tokio::task::spawn_blocking(move || {
-        write_archive(&source, &output, rename.as_ref(), &|done| {
-            // `try_send` rather than `blocking_send`: a full channel means the
-            // UI is already a few frames behind, and dropping an intermediate
-            // percentage is better than stalling the compression to deliver it.
-            let _ = progress.try_send(UploadStatus::Compressing {
-                done_bytes: clamp_bytes(done),
-                total_bytes,
-            });
-        })
+    let cancellation = called_off.clone();
+    // Keep ownership until the blocking worker has stopped and cleaned up.
+    // Returning Idle earlier would let its progress overwrite cancellation,
+    // or let the next publish reuse an archive the old worker is still writing.
+    let packed = tokio::task::spawn_blocking(move || {
+        let total_bytes = clamp_bytes(folder_bytes(&source, &cancellation));
+        if cancellation.is_cancelled() {
+            return Ok(None);
+        }
+        let archive = TemporaryArchive(target);
+        let _ = progress.try_send(UploadStatus::Compressing {
+            done_bytes: 0,
+            total_bytes,
+        });
+        let written = write_archive(
+            &source,
+            &archive.0,
+            rename.as_ref(),
+            &|done| {
+                let _ = progress.try_send(UploadStatus::Compressing {
+                    done_bytes: clamp_bytes(done),
+                    total_bytes,
+                });
+            },
+            &cancellation,
+        );
+        if cancellation.is_cancelled() {
+            return Ok(None);
+        }
+        written.map(|()| Some(archive))
     })
     .await
-    .map_err(|error| format!("compression task failed: {error}"))??;
-
-    let size = tokio::fs::metadata(&target)
+    .map_err(|error| format!("compression task failed: {error}"))?;
+    guard.disarm();
+    let Some(archive) = packed? else {
+        return Ok(None);
+    };
+    if called_off.is_cancelled() {
+        return Ok(None);
+    }
+    let size = tokio::fs::metadata(&archive.0)
         .await
         .map_err(|error| format!("could not read the archive: {error}"))?
         .len();
     if size > MAX_ARCHIVE_BYTES {
-        let _ = tokio::fs::remove_file(&target).await;
         return Err(format!(
             "the archive is {} MB, over the {} MB limit",
             size / (1024 * 1024),
             MAX_ARCHIVE_BYTES / (1024 * 1024)
         ));
     }
-    Ok(target)
+    Ok(Some(archive))
 }
 
 /// Byte counts cross the IPC boundary as `u32`, and the archive limit is far
@@ -468,6 +627,7 @@ fn write_archive(
     target: &Path,
     rename: Option<&Rename>,
     on_progress: &dyn Fn(u64),
+    called_off: &CancellationToken,
 ) -> Result<(), String> {
     let mut renamed = false;
     let mut packed = 0u64;
@@ -485,10 +645,17 @@ fn write_archive(
 
     let mut stack = vec![source.to_path_buf()];
     let mut wrote_anything = false;
+    let mut buffer = [0u8; 64 * 1024];
     while let Some(dir) = stack.pop() {
+        if called_off.is_cancelled() {
+            return Err("upload cancelled".into());
+        }
         let entries = std::fs::read_dir(&dir)
             .map_err(|error| format!("could not read {}: {error}", dir.display()))?;
         for entry in entries {
+            if called_off.is_cancelled() {
+                return Err("upload cancelled".into());
+            }
             let entry = entry.map_err(|error| format!("could not read an entry: {error}"))?;
             let path = entry.path();
             let file_type = entry
@@ -512,28 +679,45 @@ fn write_archive(
                     .map_err(|error| format!("could not add {name}: {error}"))?;
                 stack.push(path);
             } else if file_type.is_file() {
-                let mut bytes = std::fs::read(&path)
-                    .map_err(|error| format!("could not read {}: {error}", path.display()))?;
-                // The rename happens on the way into the archive, so the
-                // author's own installed copy is left exactly as it was: they
-                // keep playing with the mod they have while the vault gets the
-                // renamed one.
-                if let Some(rename) = rename.filter(|_| !renamed && is_root_mod_info(&name)) {
-                    let source_text = String::from_utf8(bytes).map_err(|_| {
-                        "mod_info.lua is not valid UTF-8, so it cannot be renamed".to_string()
-                    })?;
-                    bytes = mod_info::rename_mod_info(&source_text, &rename.name, &rename.uid)
-                        .into_bytes();
-                    renamed = true;
-                }
                 writer
                     .start_file(&name, options)
                     .map_err(|error| format!("could not add {name}: {error}"))?;
-                writer
-                    .write_all(&bytes)
-                    .map_err(|error| format!("could not write {name}: {error}"))?;
-                packed += bytes.len() as u64;
-                on_progress(packed);
+                // Only the root mod metadata needs a rewrite; ordinary files
+                // stream through a bounded buffer and check cancellation per chunk.
+                if let Some(rename) = rename.filter(|_| !renamed && is_root_mod_info(&name)) {
+                    let source_text = std::fs::read_to_string(&path)
+                        .map_err(|error| format!("could not read mod_info.lua: {error}"))?;
+                    if called_off.is_cancelled() {
+                        return Err("upload cancelled".into());
+                    }
+                    let bytes = mod_info::rename_mod_info(&source_text, &rename.name, &rename.uid)
+                        .into_bytes();
+                    writer
+                        .write_all(&bytes)
+                        .map_err(|error| format!("could not write {name}: {error}"))?;
+                    packed += bytes.len() as u64;
+                    on_progress(packed);
+                    renamed = true;
+                } else {
+                    let mut file = std::fs::File::open(&path)
+                        .map_err(|error| format!("could not read {name}: {error}"))?;
+                    loop {
+                        if called_off.is_cancelled() {
+                            return Err("upload cancelled".into());
+                        }
+                        let read = file
+                            .read(&mut buffer)
+                            .map_err(|error| format!("could not read {name}: {error}"))?;
+                        if read == 0 {
+                            break;
+                        }
+                        writer
+                            .write_all(&buffer[..read])
+                            .map_err(|error| format!("could not write {name}: {error}"))?;
+                        packed += read as u64;
+                        on_progress(packed);
+                    }
+                }
                 wrote_anything = true;
             } else {
                 return Err(format!(
@@ -553,6 +737,9 @@ fn write_archive(
         // uid is one the vault already holds.
         return Err("that folder holds no mod_info.lua, so it cannot be renamed".to_string());
     }
+    if called_off.is_cancelled() {
+        return Err("upload cancelled".into());
+    }
     writer
         .finish()
         .map_err(|error| format!("could not finish the archive: {error}"))?;
@@ -566,6 +753,7 @@ async fn send(
     request: &UploadRequest,
     archive: &Path,
     tx: &mpsc::Sender<UploadStatus>,
+    committed: &std::sync::Arc<UploadCommitment>,
 ) -> Result<(), String> {
     let total_bytes = tokio::fs::metadata(archive)
         .await
@@ -581,9 +769,21 @@ async fn send(
 
     match request.kind {
         UploadKind::Map => {
-            upload_map(config, http, token, request, archive, total_bytes, tx).await?
+            upload_map(
+                config,
+                http,
+                token,
+                request,
+                archive,
+                total_bytes,
+                tx,
+                committed,
+            )
+            .await?
         }
-        UploadKind::Mod => upload_mod(config, http, token, archive, total_bytes, tx).await?,
+        UploadKind::Mod => {
+            upload_mod(config, http, token, archive, total_bytes, tx, committed).await?
+        }
     }
 
     let _ = tx
@@ -609,32 +809,77 @@ fn clamp(bytes: u64) -> u32 {
 ///
 /// Each chunk the transport takes is reported to `watch`, which is what lets
 /// a stalled upload be told apart from a slow one.
+///
+/// `committed`, when given, is raised with the last byte: from there the
+/// server can have the whole archive, and a publish is no longer called off
+/// (see `run`).
 fn counting_body(
     file: tokio::fs::File,
     total_bytes: u64,
     tx: mpsc::Sender<UploadStatus>,
     watch: UploadWatch,
+    committed: std::sync::Arc<UploadCommitment>,
+    commit_on_last_byte: bool,
 ) -> reqwest::Body {
+    reqwest::Body::wrap_stream(upload_body_stream(
+        file,
+        total_bytes,
+        tx,
+        watch,
+        committed,
+        commit_on_last_byte,
+    ))
+}
+
+fn upload_body_stream(
+    file: tokio::fs::File,
+    total_bytes: u64,
+    tx: mpsc::Sender<UploadStatus>,
+    watch: UploadWatch,
+    committed: std::sync::Arc<UploadCommitment>,
+    commit_on_last_byte: bool,
+) -> impl futures_util::Stream<Item = std::io::Result<Vec<u8>>> {
     use futures_util::StreamExt as _;
 
     if total_bytes == 0 {
+        if commit_on_last_byte {
+            committed.commit();
+        }
         watch.body_sent();
     }
     let mut sent = 0_u64;
-    let stream = counting_stream(file, total_bytes, tx).inspect(move |chunk| {
-        if let Ok(chunk) = chunk {
+    let progress = tx.clone();
+    counting_stream(file, total_bytes, tx).map(move |chunk| {
+        if committed.is_cancelled() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Interrupted,
+                "upload cancelled",
+            ));
+        }
+        if let Ok(chunk) = &chunk {
             sent += chunk.len() as u64;
         }
-        // Counted rather than waiting for the stream to end: with a declared
-        // length the transport need not poll past the last byte, and the
-        // server's processing time must not count as a stall.
         if sent >= total_bytes {
+            // Cancellation and the final chunk compete for one transition.
+            // If Stop won, the transport receives an error instead of that chunk.
+            if commit_on_last_byte && !committed.commit() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Interrupted,
+                    "upload cancelled",
+                ));
+            }
+            if commit_on_last_byte {
+                let _ = progress.try_send(UploadStatus::Uploading {
+                    sent_bytes: clamp(total_bytes),
+                    total_bytes: clamp(total_bytes),
+                });
+            }
             watch.body_sent();
         } else {
             watch.progressed();
         }
-    });
-    reqwest::Body::wrap_stream(stream)
+        chunk
+    })
 }
 
 /// The chunks `counting_body` sends, separated out so a test can drain them
@@ -678,7 +923,7 @@ fn counting_stream(
                 // Dropped rather than awaited: a full channel means the UI is
                 // behind, and a coarser bar beats a stalled upload.
                 let _ = progress.tx.try_send(UploadStatus::Uploading {
-                    sent_bytes: clamp(progress.sent),
+                    sent_bytes: clamp(progress.sent.min(progress.total.saturating_sub(1))),
                     total_bytes: clamp(progress.total),
                 });
             }
@@ -695,6 +940,7 @@ fn counting_stream(
 /// `application/octet-stream`, and the request is then refused before the
 /// handler runs, with `Content-Type 'application/octet-stream' is not
 /// supported`.
+#[allow(clippy::too_many_arguments)]
 async fn upload_map(
     config: &UploadsConfig,
     http: &reqwest::Client,
@@ -703,6 +949,7 @@ async fn upload_map(
     archive: &Path,
     total_bytes: u64,
     tx: &mpsc::Sender<UploadStatus>,
+    committed: &std::sync::Arc<UploadCommitment>,
 ) -> Result<(), String> {
     let file = tokio::fs::File::open(archive)
         .await
@@ -710,9 +957,18 @@ async fn upload_map(
 
     // The length is declared so the whole multipart body gets a
     // `Content-Length`: the vault's gateway will not take a chunked upload.
+    // The last byte of it commits the publish: the map is one request, and
+    // the server takes it as soon as it has all of it.
     let watch = UploadWatch::new();
     let part = reqwest::multipart::Part::stream_with_length(
-        counting_body(file, total_bytes, tx.clone(), watch.clone()),
+        counting_body(
+            file,
+            total_bytes,
+            tx.clone(),
+            watch.clone(),
+            committed.clone(),
+            true,
+        ),
         total_bytes,
     )
     // The server reads the extension off this name and only accepts `.zip`.
@@ -754,6 +1010,7 @@ async fn upload_mod(
     archive: &Path,
     total_bytes: u64,
     tx: &mpsc::Sender<UploadStatus>,
+    committed: &std::sync::Arc<UploadCommitment>,
 ) -> Result<(), String> {
     // 1. Ask FAF where to put it.
     let response = http
@@ -796,7 +1053,17 @@ async fn upload_mod(
             // Set by hand because the body is a stream: object storage rejects
             // a chunked PUT, and the signature covers the declared length.
             .header(reqwest::header::CONTENT_LENGTH, total_bytes)
-            .body(counting_body(file, total_bytes, tx.clone(), watch.clone()))
+            // Not the commitment: an archive in storage that FAF was never
+            // told about is not published, so the storage upload can still
+            // be called off after its last byte.
+            .body(counting_body(
+                file,
+                total_bytes,
+                tx.clone(),
+                watch.clone(),
+                committed.clone(),
+                false,
+            ))
             .send()
             .await
             .map_err(|error| {
@@ -813,7 +1080,10 @@ async fn upload_mod(
         .map_err(|stalled| stalled.to_string())??;
 
     // 3. Tell FAF it landed. Until this, the upload does not exist as far as
-    //    the vault is concerned.
+    //    the vault is concerned, and from here a call-off is too late.
+    if !committed.commit() {
+        return Err("upload cancelled".into());
+    }
     let _ = tx.send(UploadStatus::Finishing).await;
     let completed = http
         .post(format!("{}/mods/upload/complete", config.api_base))
@@ -979,6 +1249,7 @@ mod tests {
                 uid: "2222".into(),
             }),
             &|_| {},
+            &CancellationToken::new(),
         )
         .expect("the archive should be written");
 
@@ -1064,6 +1335,7 @@ version = 3
                 uid: "2222".into(),
             }),
             &|_| {},
+            &CancellationToken::new(),
         );
         assert!(result.is_err(), "{result:?}");
         assert!(result.unwrap_err().contains("cannot be renamed"));
@@ -1139,7 +1411,8 @@ version = 3
         std::fs::write(source.join("sub").join("script.lua"), b"-- x").unwrap();
 
         let archive = root.join("out.zip");
-        write_archive(&source, &archive, None, &|_| {}).expect("the archive should be written");
+        write_archive(&source, &archive, None, &|_| {}, &CancellationToken::new())
+            .expect("the archive should be written");
 
         let file = std::fs::File::open(&archive).unwrap();
         let mut zip = zip::ZipArchive::new(file).unwrap();
@@ -1165,7 +1438,13 @@ version = 3
         let source = root.join("nothing.v0001");
         std::fs::create_dir_all(&source).unwrap();
 
-        let result = write_archive(&source, &root.join("out.zip"), None, &|_| {});
+        let result = write_archive(
+            &source,
+            &root.join("out.zip"),
+            None,
+            &|_| {},
+            &CancellationToken::new(),
+        );
         assert!(result.is_err(), "{result:?}");
         assert!(result.unwrap_err().contains("empty"));
 
@@ -1184,7 +1463,13 @@ version = 3
         std::fs::write(&private, b"must not be published").unwrap();
         symlink(&private, source.join("innocent.txt")).unwrap();
 
-        let result = write_archive(&source, &root.join("out.zip"), None, &|_| {});
+        let result = write_archive(
+            &source,
+            &root.join("out.zip"),
+            None,
+            &|_| {},
+            &CancellationToken::new(),
+        );
         assert!(result.is_err(), "a symlink must never be followed");
         assert!(result.unwrap_err().contains("symbolic links"));
 
@@ -1402,6 +1687,178 @@ version = 3
         (root, archive)
     }
 
+    /// Raised when the future holding it is dropped.
+    struct DroppedFlag(std::sync::Arc<std::sync::atomic::AtomicBool>);
+
+    impl Drop for DroppedFlag {
+        fn drop(&mut self) {
+            self.0.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+
+    #[tokio::test]
+    async fn upload_cancellation_stops_packing_and_cleans_before_retry() {
+        let root = temp_dir("packing-cancel");
+        let source = root.join("map");
+        std::fs::create_dir_all(&source).unwrap();
+        std::fs::write(source.join("large.scmap"), vec![7u8; 2 * 1024 * 1024]).unwrap();
+        let target = root.join("upload.zip");
+        let called_off = CancellationToken::new();
+        let packed = std::sync::atomic::AtomicU64::new(0);
+        {
+            let archive = TemporaryArchive(target.clone());
+            let result = write_archive(
+                &source,
+                &archive.0,
+                None,
+                &|bytes| {
+                    packed.store(bytes, std::sync::atomic::Ordering::SeqCst);
+                    called_off.cancel();
+                },
+                &called_off,
+            );
+            assert!(result.is_err());
+            assert_eq!(packed.load(std::sync::atomic::Ordering::SeqCst), 64 * 1024);
+        }
+        assert!(!target.exists(), "cancelled compression left its archive");
+        let (tx, mut rx) = mpsc::channel(16);
+        // A new token can reuse the destination, with no old worker left writing it.
+        let archive = zip_to(source, target.clone(), None, &tx, &CancellationToken::new())
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(target.exists());
+        drop(archive);
+        assert!(!target.exists());
+        while rx.try_recv().is_ok() {}
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn upload_cancellation_prevents_the_transport_yielding_the_last_chunk() {
+        use futures_util::StreamExt as _;
+        let (root, archive) = scratch_archive("body-cancel", &vec![7u8; 128 * 1024]);
+        let file = tokio::fs::File::open(&archive).await.unwrap();
+        let (tx, _rx) = mpsc::channel(16);
+        let committed = std::sync::Arc::new(UploadCommitment::default());
+        let mut body = Box::pin(upload_body_stream(
+            file,
+            128 * 1024,
+            tx,
+            UploadWatch::new(),
+            committed.clone(),
+            true,
+        ));
+        assert_eq!(body.next().await.unwrap().unwrap().len(), 64 * 1024);
+        assert!(committed.cancel());
+        assert_eq!(
+            body.next().await.unwrap().unwrap_err().kind(),
+            std::io::ErrorKind::Interrupted
+        );
+        assert!(
+            !committed.commit(),
+            "a late HTTP poll committed a cancelled upload"
+        );
+        drop(body);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn upload_cancellation_distinguishes_map_completion_from_mod_registration() {
+        use futures_util::StreamExt as _;
+        let (root, archive) = scratch_archive("body-commit", b"archive");
+        for is_map in [true, false] {
+            let file = tokio::fs::File::open(&archive).await.unwrap();
+            let (tx, mut rx) = mpsc::channel(16);
+            let committed = std::sync::Arc::new(UploadCommitment::default());
+            let mut body = Box::pin(upload_body_stream(
+                file,
+                7,
+                tx,
+                UploadWatch::new(),
+                committed.clone(),
+                is_map,
+            ));
+            assert!(body.next().await.unwrap().is_ok());
+            if is_map {
+                assert_eq!(
+                    rx.try_recv().unwrap(),
+                    UploadStatus::Uploading {
+                        sent_bytes: 7,
+                        total_bytes: 7
+                    }
+                );
+            } else {
+                assert!(
+                    rx.try_recv().is_err(),
+                    "storage completion must not disable mod cancellation"
+                );
+            }
+            assert_eq!(committed.cancel(), !is_map);
+            assert_eq!(committed.commit(), is_map);
+            drop(body);
+        }
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    /// A publish called off while its bytes are still moving: the request is
+    /// dropped where it is, and the run says it was called off rather than
+    /// that it failed.
+    #[tokio::test]
+    async fn a_publish_called_off_before_its_last_byte_is_dropped() {
+        let called_off = CancellationToken::new();
+        let committed = UploadCommitment::default();
+        let dropped = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let flag = DroppedFlag(dropped.clone());
+        let sending = async move {
+            let _flag = flag;
+            std::future::pending::<Result<(), String>>().await
+        };
+
+        called_off.cancel();
+        // The timeout is a safety net, not an ordering: a call-off that is
+        // not heeded leaves the request waiting forever.
+        let end = tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            send_unless_called_off(sending, &committed, &called_off),
+        )
+        .await
+        .expect("the called-off publish never stopped");
+
+        assert_eq!(end, Ok(RunEnd::CalledOff));
+        assert!(
+            dropped.load(std::sync::atomic::Ordering::SeqCst),
+            "the request is torn down"
+        );
+    }
+
+    /// Called off once the server could have the whole archive: stopping
+    /// would only stop the client hearing whether it got in, so the run is
+    /// seen through and reports what happened.
+    #[tokio::test]
+    async fn a_publish_called_off_after_its_commitment_is_seen_through() {
+        let called_off = CancellationToken::new();
+        let committed = UploadCommitment::default();
+        assert!(committed.commit());
+        let (answer, answered) = tokio::sync::oneshot::channel::<()>();
+        let sending = async move {
+            let _ = answered.await;
+            Ok(())
+        };
+
+        called_off.cancel();
+        // The answer arrives only after the call-off has been looked at.
+        let (end, ()) = tokio::join!(
+            send_unless_called_off(sending, &committed, &called_off),
+            async move {
+                tokio::task::yield_now().await;
+                let _ = answer.send(());
+            }
+        );
+
+        assert_eq!(end, Ok(RunEnd::Published));
+    }
+
     #[tokio::test]
     async fn the_metadata_part_is_typed_as_json() {
         // Without this the vault answers "Content-Type 'application/octet-stream'
@@ -1431,6 +1888,7 @@ version = 3
                 &archive,
                 total,
                 &tx,
+                &std::sync::Arc::new(UploadCommitment::default()),
             ),
         )
         .await

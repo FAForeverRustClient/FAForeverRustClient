@@ -1,3 +1,4 @@
+import { useOverlayLayer } from "../../design-system/useOverlayLayer";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../../design-system/Icon";
@@ -24,6 +25,10 @@ const LEAGUE_ROW_BATCH = 200;
 const selectLeague = (leagueId: number) => ipc.send({
   kind: "Leaderboard",
   command: { type: "selectLeague", payload: { leagueId } },
+});
+const selectSeason = (seasonId: number) => ipc.send({
+  kind: "Leaderboard",
+  command: { type: "selectSeason", payload: { seasonId } },
 });
 
 function SeasonPicker({
@@ -68,23 +73,18 @@ function SeasonPicker({
     });
   }, []);
 
+  useOverlayLayer(open, () => { setOpen(false); triggerRef.current?.focus(); });
+
   useEffect(() => {
     if (!open) return;
     const closeOnOutsidePointer = (event: PointerEvent) => {
       const target = event.target as Node;
       if (!triggerRef.current?.contains(target) && !popoverRef.current?.contains(target)) setOpen(false);
     };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-    };
     document.addEventListener("pointerdown", closeOnOutsidePointer, true);
-    document.addEventListener("keydown", closeOnEscape);
+
     return () => {
       document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
-      document.removeEventListener("keydown", closeOnEscape);
     };
   }, [open]);
 
@@ -442,6 +442,19 @@ export function LeagueLeaderboardPanel() {
           onChange={(leagueId) => void selectLeague(leagueId)}
           idPrefix="leaderboard-league"
         />
+        {/* The season on the same line as the queues it is a season of. It
+            sat in the page header, nudged down to meet this line, where it
+            made the header taller than the ratings view's and moved the two
+            view tabs every time the view was switched. */}
+        {currentSeason && (
+          <LeagueSeasonToolbar
+            currentSeason={currentSeason}
+            seasons={state.seasons}
+            selectedSeasonId={state.selectedSeasonId}
+            disabled={state.seasonsStatus.type === "loading"}
+            onChange={(seasonId) => void selectSeason(seasonId)}
+          />
+        )}
       </div>
 
       {/* Everything under the tabs is the chosen league's, so it is that tab's
@@ -511,7 +524,7 @@ export function LeagueLeaderboardPanel() {
                   <LeaderboardTable
                     entries={filtered}
                     rowBatch={LEAGUE_ROW_BATCH}
-                    columns={["rank", "player", "league", "division", "score", "games"]}
+                    columns={["rank", "player", "division", "score", "games"]}
                     selectedPlayerId={selected?.playerId ?? null}
                     onSelect={setSelected}
                     emptyMessage={t("leaderboard.leagues.empty")}

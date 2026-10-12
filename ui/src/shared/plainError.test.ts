@@ -36,4 +36,15 @@ describe("plainError", () => {
       "Could not read scmp_009_scenario.lua: bad header.",
     );
   });
+
+  it("keeps a web address whole rather than cutting it like a path", () => {
+    // The tournament service names its address when it cannot be reached, so
+    // whoever runs a local server knows which one to start.
+    const unreachable =
+      "Could not reach the tournament service at https://tourney.example/api/. If that is a local server, check it is running.";
+    expect(plainError(unreachable)).toBe(unreachable);
+    expect(plainError("could not fetch https://tourney.example/api/map_pool: bad_gateway_reply")).toBe(
+      "Could not fetch https://tourney.example/api/map_pool: bad gateway reply.",
+    );
+  });
 });

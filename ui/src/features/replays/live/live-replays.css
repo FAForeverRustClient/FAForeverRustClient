@@ -128,10 +128,19 @@
 .live-replay-table-wrap {
   min-width: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   overflow-x: hidden;
 }
 
-/* As wide as the space it has, every column on screen (issue 341). */
+/* Sideways only once every column is at its floor and the floors are wider
+   than the panel (`useColumnWidths` marks the table): Watch then stays
+   reachable rather than cut off at the edge. */
+.live-replay-table-wrap:has(> [data-columns-overflow]) {
+  overflow-x: auto;
+}
+
+/* As wide as the space it has, every column on screen (issue 341), and no
+   column narrower than its floor. */
 .live-replay-table {
   width: 100%;
   border-collapse: collapse;
@@ -431,6 +440,11 @@
   border-radius: var(--radius-md);
   font-size: 11px;
   font-weight: 600;
+  /* The countdown changes every second, and in the font's own figures a "1"
+     is narrower than a "0": the card view's button, which is as wide as its
+     label, grew and shrank with each tick (issue 494). Figures of one width
+     hold it still; it changes size only when the count loses a digit. */
+  font-variant-numeric: tabular-nums;
   text-align: center;
   white-space: nowrap;
   cursor: pointer;

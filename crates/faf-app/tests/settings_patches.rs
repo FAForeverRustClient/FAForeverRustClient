@@ -21,9 +21,9 @@ use faf_domain::state::settings::{
 };
 use faf_domain::state::{
     GamePreferences, NotificationPreferences, NotificationSound, NotificationSoundChoices,
-    SettingsCommand, SettingsState,
+    ReplayNote, SettingsCommand, SettingsState, SocialPreferences,
 };
-use faf_domain::AppState;
+use faf_domain::{AppCommand, AppState};
 
 /// A stored sound name that is never on disk, so the removal under test finds
 /// nothing to delete and touches nothing real. The sounds directory is not
@@ -645,4 +645,71 @@ async fn a_name_that_is_not_a_stored_sound_changes_nothing_and_says_so() {
         state.notifications.items[0].title,
         "Could not remove the sound"
     );
+}
+
+/// A replay whose header names no game keeps its note on its file, written
+/// the way the panel sends it, while the game notes the settings file already
+/// held load and stay exactly as they were.
+#[tokio::test]
+async fn a_note_on_a_replay_without_a_game_id_is_kept_on_its_file() {
+    let game_note = ReplayNote {
+        replay_id: 42,
+        path: None,
+        comment: "Lots finals".into(),
+        tags: vec!["casts".into()],
+    };
+    let (app, saved) = loaded_app(SettingsState {
+        social: SocialPreferences {
+            player_notes: Vec::new(),
+            replay_notes: vec![game_note.clone()],
+        },
+        ..initial_settings()
+    })
+    .await;
+
+    // As JSON, the way the webview sends it, so the field's name on the wire
+    // is what is under test and not just the Rust struct.
+    let command: AppCommand = serde_json::from_value(serde_json::json!({
+        "kind": "Settings",
+        "command": {
+            "type": "setReplayNote",
+            "payload": {
+                "replayId": 0,
+                "localPath": r"C:\Replays\Skirmish.fafreplay",
+                "comment": "vs two hard AIs",
+                "tags": ["ai"],
+            },
+        },
+    }))
+    .unwrap();
+    app.dispatch_and_wait(command).await.unwrap();
+
+    let social = app.snapshot().settings.social;
+    assert_eq!(social.replay_notes.len(), 2);
+    assert_eq!(social.replay_note_for(42, None), Some(&game_note));
+    let file_note = social
+        .replay_note_for(0, Some("c:/replays/skirmish.fafreplay"))
+        .expect("the note is on the file, whichever way its path is written");
+    assert_eq!(file_note.comment, "vs two hard AIs");
+    assert_eq!(
+        file_note.path.as_deref(),
+        Some("c:/replays/skirmish.fafreplay")
+    );
+    until(&app, |state| {
+        saved.lock().unwrap().last() == Some(&state.settings)
+    })
+    .await;
+
+    // A panel from before file notes sends no path, and a replay with no game
+    // id and no path still has nothing to keep a note on.
+    let command: AppCommand = serde_json::from_value(serde_json::json!({
+        "kind": "Settings",
+        "command": {
+            "type": "setReplayNote",
+            "payload": { "replayId": 0, "comment": "lost", "tags": [] },
+        },
+    }))
+    .unwrap();
+    app.dispatch_and_wait(command).await.unwrap();
+    assert_eq!(app.snapshot().settings.social, social);
 }

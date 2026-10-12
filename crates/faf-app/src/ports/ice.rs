@@ -8,6 +8,7 @@
 //! ICE-server poll) lives behind this seam, so the launcher is backend-neutral.
 
 use async_trait::async_trait;
+use faf_domain::state::RelayStatus;
 use serde_json::Value;
 use tokio::sync::mpsc;
 
@@ -95,4 +96,13 @@ pub trait IcePort: Send + Sync {
     /// service on load and on change, so a game started right after the switch
     /// already honours it.
     fn set_debug_windows(&self, _windows: IceDebugWindows) {}
+
+    /// The running adapter's own view of its peers, for the live relay view.
+    ///
+    /// Idle by default: an adapter used directly in a test, and the fake,
+    /// have nothing running to ask. The Java adapter answers through its
+    /// `status` call; Pioneer has none, which the selectable wrapper says.
+    async fn relay_status(&self) -> RelayStatus {
+        RelayStatus::Idle
+    }
 }

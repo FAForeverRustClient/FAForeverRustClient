@@ -116,6 +116,22 @@ impl UploadStatus {
         )
     }
 
+    /// Whether calling the publish off still stops it: while the archive is
+    /// packed, and while its bytes are still being sent. Once the last byte is
+    /// out the server is deciding, and for a mod `Finishing` has already told
+    /// it the archive landed, so a cancel could no longer keep it out of the
+    /// vault. The twin is `isUploadCancellable` in `ui/src/store/reducers/uploads.ts`.
+    pub fn is_cancellable(&self) -> bool {
+        match self {
+            Self::Compressing { .. } => true,
+            Self::Uploading {
+                sent_bytes,
+                total_bytes,
+            } => sent_bytes < total_bytes || *total_bytes == 0,
+            _ => false,
+        }
+    }
+
     /// Progress as a percentage, when it is meaningful.
     pub fn percent(&self) -> Option<u32> {
         match self {
@@ -202,11 +218,22 @@ pub enum UploadsCommand {
     },
     /// Publish whatever the dialog currently describes.
     Start,
+    /// Stop the publish that is running, while the archive is being packed or
+    /// sent. The request is dropped mid-transfer, so the vault never receives
+    /// a whole archive, and the temporary archive is deleted. Once every byte
+    /// is sent the server decides on its own, and this does nothing: calling
+    /// it off then could only claim a stop that did not happen. Ends with the
+    /// status back at `Idle`.
+    Cancel,
 }
 
 pub fn reduce(state: &mut UploadsState, event: &UploadsEvent) {
     match event {
         UploadsEvent::Opened { request } => {
+            // A second dialog must not relabel a running upload or clear Stop.
+            if state.status.is_busy() {
+                return;
+            }
             // A fresh subject, so the previous map's picture goes with it.
             *state = UploadsState {
                 request: Some(request.clone()),
@@ -376,6 +403,35 @@ mod tests {
         assert!(!UploadStatus::Failed { reason: "x".into() }.is_busy());
     }
 
+    /// A publish can be called off until its last byte is sent, and not after:
+    /// from there the server decides whether it lands.
+    #[test]
+    fn a_publish_can_be_called_off_only_while_bytes_are_still_moving() {
+        assert!(UploadStatus::Compressing {
+            done_bytes: 1,
+            total_bytes: 9
+        }
+        .is_cancellable());
+        assert!(UploadStatus::Uploading {
+            sent_bytes: 5,
+            total_bytes: 9
+        }
+        .is_cancellable());
+        assert!(!UploadStatus::Uploading {
+            sent_bytes: 9,
+            total_bytes: 9
+        }
+        .is_cancellable());
+        for settled in [
+            UploadStatus::Idle,
+            UploadStatus::Finishing,
+            UploadStatus::Succeeded,
+            UploadStatus::Failed { reason: "x".into() },
+        ] {
+            assert!(!settled.is_cancellable(), "{settled:?}");
+        }
+    }
+
     #[test]
     fn opening_resets_any_previous_outcome() {
         let mut state = UploadsState {
@@ -388,6 +444,34 @@ mod tests {
         reduce(&mut state, &UploadsEvent::Opened { request: request() });
         assert_eq!(state.status, UploadStatus::Idle);
         assert_eq!(state.request, Some(request()));
+    }
+
+    #[test]
+    fn another_subject_cannot_replace_a_running_publish() {
+        for status in [
+            UploadStatus::Compressing {
+                done_bytes: 1,
+                total_bytes: 9,
+            },
+            UploadStatus::Uploading {
+                sent_bytes: 5,
+                total_bytes: 9,
+            },
+            UploadStatus::Finishing,
+        ] {
+            for visible in [true, false] {
+                let mut state = UploadsState {
+                    request: visible.then(request),
+                    status: status.clone(),
+                    preview: "old preview".into(),
+                };
+                let before = state.clone();
+                let mut other = request();
+                other.folder_name = "other_map.v0001".into();
+                reduce(&mut state, &UploadsEvent::Opened { request: other });
+                assert_eq!(state, before);
+            }
+        }
     }
 
     #[test]

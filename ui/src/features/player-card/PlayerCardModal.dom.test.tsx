@@ -13,12 +13,13 @@
 // Overview without first mounting whatever tab the previous player was left
 // on, which used to start the new player's map scan unasked.
 
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { AppCommand, PlayerCardEvent, PlayerCardProfile, PlayerMapStats } from "../../ipc/bindings";
+import { en } from "../../i18n/catalog/en";
 import { failOnConsoleError } from "../../testing/consoleGuard";
-import { applyEvent, clearSentCommands, sentCommands } from "../../testing/mounted";
+import { applyEvent, clearSentCommands, seedStore, sentCommands } from "../../testing/mounted";
 import { PlayerCardModal } from "./PlayerCardModal";
 
 vi.mock("../../ipc/client");
@@ -81,6 +82,25 @@ function mountOpenCard(playerId: number, login: string) {
 const card = (login: string) => screen.getByRole("dialog", { name: `Player card: ${login}` });
 
 describe("PlayerCardModal request races, mounted", () => {
+  it("dismisses lookup suggestions before the card and respects input composition", async () => {
+    const user = userEvent.setup();
+    seedStore((state) => ({ ...state, social: { ...state.social, players: [{
+      id: BOB, login: "Bob", globalRating: 1500, ratings: [], country: "", clan: "", avatarUrl: "", avatarTooltip: "",
+    }] } }));
+    mountOpenCard(ALICE, "Alice");
+    const input = screen.getByRole("textbox", { name: "Investigate another player" });
+    await user.type(input, "Bo");
+    expect(screen.getByRole("listbox")).toBeTruthy();
+    clearSentCommands();
+    fireEvent.keyDown(input, { key: "Escape", isComposing: true });
+    expect(screen.getByRole("listbox")).toBeTruthy();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(sentPlayerCard("close")).toEqual([]);
+    await user.keyboard("{Escape}");
+    expect(sentPlayerCard("close")).toHaveLength(1);
+  });
+
   it("lands a newly opened player on Overview without starting a map scan nobody asked for", async () => {
     const user = userEvent.setup();
     mountOpenCard(ALICE + 1, "Carol");
@@ -176,16 +196,19 @@ describe("PlayerCardModal request races, mounted", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("offers Retry on a failed profile and asks for the same player again", async () => {
+  it("says a failed profile plainly, keeps the reason on hover, and asks for the same player again", async () => {
     const user = userEvent.setup();
     cardEvent({ type: "loading", payload: { login: "Alice" } });
     render(<PlayerCardModal />);
-    cardEvent({ type: "loadFailed", payload: { reason: "HTTP 502" } });
+    const reason = "GET https://api.faforever.com/data/player returned HTTP 502";
+    cardEvent({ type: "loadFailed", payload: { reason } });
 
     const dialog = card("Alice");
-    expect(within(dialog).getByText("HTTP 502")).toBeTruthy();
+    const alert = within(dialog).getByRole("alert");
+    expect(within(alert).getByText(en["errors.cause.server"]).getAttribute("title")).toBe(reason);
+    expect(alert.textContent).not.toContain("HTTP 502");
     clearSentCommands();
-    await user.click(within(dialog).getByRole("button", { name: "Retry" }));
+    await user.click(within(alert).getByRole("button", { name: en["common.retry"] }));
     expect(sentPlayerCard("open")).toEqual([
       { kind: "PlayerCard", command: { type: "open", payload: { playerId: null, login: "Alice" } } },
     ]);
@@ -194,5 +217,16 @@ describe("PlayerCardModal request races, mounted", () => {
     expect(within(card("Alice")).queryByRole("button", { name: "Retry" })).toBeNull();
     cardEvent({ type: "loaded", payload: { profile: profile(ALICE, "Alice") } });
     expect(within(card("Alice")).getByRole("tablist", { name: "Player profile sections" })).toBeTruthy();
+  });
+
+  it("words a section that could not load plainly, with the backend's text on hover", () => {
+    const raw = "Ratings: HTTP 502 Bad Gateway";
+    cardEvent({ type: "loading", payload: { login: "Alice" } });
+    cardEvent({ type: "loaded", payload: { profile: { ...profile(ALICE, "Alice"), warnings: [raw] } } });
+    render(<PlayerCardModal />);
+
+    const item = within(card("Alice")).getByTitle(raw);
+    expect(item.textContent?.startsWith("Ratings: ")).toBe(true);
+    expect(item.textContent).not.toContain("HTTP 502");
   });
 });

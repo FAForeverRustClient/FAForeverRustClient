@@ -33,6 +33,7 @@
 
 .error-boundary-details pre {
   overflow: auto;
+  /* No scrollbar gutter: the text does not change while it is on screen, so its scrollbar never appears under the reader. */
   max-height: 180px;
   margin: var(--space-2) 0 0;
   padding: var(--space-2) var(--space-3);

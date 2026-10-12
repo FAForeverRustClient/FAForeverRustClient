@@ -76,7 +76,7 @@
 
 .player-note-editor-footer .is-limit,
 .player-note-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .player-note-error {

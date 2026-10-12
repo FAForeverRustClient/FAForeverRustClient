@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useOverlayLayer } from "../../design-system/useOverlayLayer";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import {
   SearchField,
   SearchPanel,
   SearchPanelSubmit,
+  SearchPanelToggle,
 } from "../../design-system/SearchPanel";
 import { Pagination } from "../../design-system/Pagination";
 import type { LeaderboardColumn, TableColumn } from "./LeaderboardTable";
@@ -17,7 +19,6 @@ import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import { DateInput } from "../../design-system/DateInput";
 import { plainError } from "../../shared/plainError";
-import { leaderboardLabel } from "../../shared/playerRatings";
 import {
   filterMemoryNow,
   isFilterRecord,
@@ -114,6 +115,7 @@ function rememberIncludeFormerNames(leaderboardIncludeFormerNames: boolean) {
 
 export function RatingLeaderboardPanel() {
   const { t } = useTranslation();
+  const playerFieldId = useId();
   const state = useAppStore((store) => store.state.leaderboard);
   const browsing = useAppStore((store) => store.state.settings.browsing);
   const savedIncludeFormerNames = browsing.leaderboardIncludeFormerNames;
@@ -126,6 +128,7 @@ export function RatingLeaderboardPanel() {
   const [before, setBefore] = useState(dayValue(state.ratingQuery.updatedBefore));
   const [pageSize, setPageSize] = useState(state.ratingQuery.pageSize);
   const [columnsOpen, setColumnsOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const columnsRef = useRef<HTMLDivElement>(null);
   const visibleColumns = (browsing.leaderboardRatingColumns ?? [
     "games", "updated",
@@ -204,23 +207,23 @@ export function RatingLeaderboardPanel() {
     setPageSize(state.ratingQuery.pageSize);
   }, [state.ratingQuery]);
 
+  useOverlayLayer(columnsOpen, () => {
+    setColumnsOpen(false);
+    columnsRef.current?.querySelector<HTMLButtonElement>(".leaderboard-columns-trigger")?.focus();
+  });
+
   useEffect(() => {
     if (!columnsOpen) return;
     const closeOnOutsidePointer = (event: PointerEvent) => {
       if (!columnsRef.current?.contains(event.target as Node)) setColumnsOpen(false);
     };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setColumnsOpen(false);
-    };
     document.addEventListener("pointerdown", closeOnOutsidePointer, true);
-    document.addEventListener("keydown", closeOnEscape);
+
     return () => {
       document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
-      document.removeEventListener("keydown", closeOnEscape);
     };
   }, [columnsOpen]);
 
-  const currentBoard = state.ratingLeaderboards.find((board) => board.technicalName === state.ratingQuery.leaderboard);
   const entries = state.ratingPage.entries;
   const selected = entries.find((entry) => entry.playerId === selectedId) ?? null;
   // Every board gets a column. Which of them the page is ranked by is the
@@ -232,6 +235,7 @@ export function RatingLeaderboardPanel() {
     () => crossRatingIndex(state.crossRatings),
     [state.crossRatings],
   );
+  const dateFilterCount = Number(Boolean(after)) + Number(Boolean(before));
   const submit = () => void load({
     leaderboard: state.ratingQuery.leaderboard,
     page: 1,
@@ -256,6 +260,12 @@ export function RatingLeaderboardPanel() {
     });
   };
   const changePage = (page: number) => void load({ ...state.ratingQuery, page });
+  // Beside the table rather than among the filters, so it applies at once,
+  // as the column choice beside it does.
+  const changePageSize = (size: number) => {
+    setPageSize(size);
+    void load({ ...state.ratingQuery, pageSize: size, page: 1 });
+  };
   const columns: TableColumn[] = ["rank", "player", ...boardColumns, ...visibleColumns];
   // The remembered "include previous names" choice survives Clear: it says how
   // the next name is looked up, and with the name cleared it filters nothing.
@@ -270,76 +280,83 @@ export function RatingLeaderboardPanel() {
 
   return (
     <section className="leaderboard-panel">
-      {/* No tabs. There is one table with every board in it, and the board the
-          ladder is ranked by is chosen by pressing that board's column
-          header: a strip of tabs above a table whose columns are the same
-          five boards was the same choice offered twice. */}
-      {currentBoard && (
-        <p className="leaderboard-description muted">
-          <span>{t("leaderboard.ratings.rankedByBoard", { board: leaderboardLabel(currentBoard.technicalName) })}</span>
-          {currentBoard.description && <span className="leaderboard-description-note">{currentBoard.description}</span>}
-        </p>
-      )}
-
+      {/* No tabs for the boards. There is one table with every board in it,
+          and the board the ladder is ranked by is chosen by pressing that
+          board's column header, which marks itself as the ranked one. */}
+      {/* The question on one line: the name, the search, how the name is
+          looked up; which players on a line of its own under it, with More
+          filters and Clear at its right end. What it
+          found and how the table shows it is a second, quieter line over the
+          table itself (`leaderboard-summary`), so the two settings that shape
+          the table sit at its top right rather than over the player panel. */}
       <SearchPanel
         className="leaderboard-search-panel"
         onSubmit={(event) => { event.preventDefault(); submit(); }}
+        // Which players, on a line of its own under the question: it picks
+        // the board's population, where the line above looks somebody up.
+        // One choice, so one control: the toolbar's own buttons joined into a
+        // pair, the chosen one filled as a chosen toggle is elsewhere in the
+        // client. Apart, they read as two actions.
+        //
+        // More filters and Clear at that line's other end: they change what
+        // the search covers rather than asking it.
         secondary={(
           <>
-            <Button className={activeOnly ? "active" : ""} onClick={() => changeActivityFilter(true)}>{t("leaderboard.ratings.activeThisMonth")}</Button>
-            <Button className={!activeOnly ? "active" : ""} onClick={() => changeActivityFilter(false)}>{t("leaderboard.ratings.allPlayers")}</Button>
-            <span className="spacer" />
-            <span className="leaderboard-result-count muted">
-              {state.ratingPage.totalResults === null
-                ? `${state.ratingPage.entries.length} loaded`
-                : t("leaderboard.rating.playerCount", {
-                  count: state.ratingPage.totalResults,
-                  formatted: formatNumber(state.ratingPage.totalResults),
-                })}
-            </span>
-            <div className="leaderboard-columns" ref={columnsRef}>
-              <Button
-                className={`leaderboard-columns-trigger${columnsOpen ? " active" : ""}`}
-                aria-expanded={columnsOpen}
-                aria-haspopup="dialog"
-                onClick={() => setColumnsOpen((open) => !open)}
-              >
-                <Icon name="filter" size={16} /> {t("leaderboard.ratings.columns")}
-              </Button>
-              {columnsOpen && <div className="leaderboard-columns-menu" role="dialog" aria-label={t("leaderboard.ratings.visibleLeaderboardColumns")}>
-                <div className="leaderboard-columns-menu-header">
-                  <strong>{t("leaderboard.ratings.visibleColumns")}</strong>
-                  <button type="button" className="leaderboard-columns-close" aria-label={t("leaderboard.ratings.closeColumnsMenu")} onClick={() => setColumnsOpen(false)}>
-                    <Icon name="close" size={14} />
-                  </button>
-                </div>
-                {OPTIONAL_COLUMNS.map((column) => (
-                  <label key={column.key}>
-                    <input
-                      type="checkbox"
-                      checked={visibleColumns.includes(column.key)}
-                      onChange={() => toggleColumn(column.key)}
-                    />
-                    {t(column.label)}
-                  </label>
-                ))}
-              </div>}
+            <div className="leaderboard-activity" role="group" aria-label={t("leaderboard.ratings.whichPlayers")}>
+              {[true, false].map((only) => (
+                <Button
+                  key={String(only)}
+                  className={activeOnly === only ? "active" : ""}
+                  aria-pressed={activeOnly === only}
+                  onClick={() => changeActivityFilter(only)}
+                >
+                  {t(only ? "leaderboard.ratings.activeThisMonth" : "leaderboard.ratings.allPlayers")}
+                </Button>
+              ))}
             </div>
-            <Button onClick={clearFilters}>{t("leaderboard.ratings.clear")}</Button>
-            <Button aria-label={t("leaderboard.ratings.refreshRankings")} onClick={() => void load(state.ratingQuery)}><Icon name="refresh" size={15} /> {t("leaderboard.ratings.refresh")}</Button>
+            <span className="leaderboard-search-end">
+              <SearchPanelToggle expanded={filtersOpen} count={dateFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
+              <Button onClick={clearFilters}>{t("leaderboard.ratings.clear")}</Button>
+            </span>
           </>
         )}
+        // The dates narrow "All players" to who played in a window. They used
+        // to sit in the main row, greyed out, for the board's default of this
+        // month's players, where they could not do anything; a date picked
+        // here switches to all players, which is the only way it can apply.
+        advanced={filtersOpen ? (
+          <div className="search-panel-advanced">
+            <div className="search-panel-advanced-grid">
+              <SearchField label={t("leaderboard.ratings.updatedAfter")}>
+                <DateInput className="search-panel-control" value={after} onChange={(value) => { setAfter(value); if (value) setActiveOnly(false); }} />
+              </SearchField>
+              <SearchField label={t("leaderboard.ratings.updatedBefore")}>
+                <DateInput className="search-panel-control" value={before} onChange={(value) => { setBefore(value); if (value) setActiveOnly(false); }} />
+              </SearchField>
+            </div>
+          </div>
+        ) : undefined}
       >
-        <SearchField
-          label={t(includeFormerNames ? "leaderboard.ratings.anyPlayerName" : "leaderboard.ratings.exactPlayer")}
-          className="leaderboard-search-player"
-        >
-          <input className="search-panel-control" value={player} placeholder={t("leaderboard.ratings.playerName")} onChange={(event) => setPlayer(event.target.value)} />
-        </SearchField>
+        {/* The name, the search, and the one thing that changes how the name
+            is looked up: the row reads as one question. The field has no
+            caption over it any more, which was a line of its own; how the
+            name is matched is in its placeholder and its accessible name, and
+            the box beside it shows the same while somebody types. */}
+        <div className="search-panel-field search-panel-field-grow leaderboard-search-player">
+          <input
+            id={`${playerFieldId}-name`}
+            className="search-panel-control"
+            value={player}
+            aria-label={t(includeFormerNames ? "leaderboard.ratings.anyPlayerName" : "leaderboard.ratings.exactPlayer")}
+            placeholder={t(includeFormerNames ? "leaderboard.ratings.anyPlayerName" : "leaderboard.ratings.playerName")}
+            onChange={(event) => setPlayer(event.target.value)}
+          />
+        </div>
+        <SearchPanelSubmit disabled={state.ratingsStatus.type === "loading"} />
         {/* Off by default, because it turns a lookup into a list of
             candidates: part of any name, current or former, and a released
-            name can have been worn by several accounts (#299). Once ticked
-            it stays ticked, across restarts too (#424). */}
+            name can have been worn by several accounts (#299). Once ticked it
+            stays ticked, across restarts too (#424). */}
         <label className="option-check leaderboard-search-former" title={t("leaderboard.ratings.includeFormerNamesHint")}>
           <input
             type="checkbox"
@@ -351,21 +368,70 @@ export function RatingLeaderboardPanel() {
           />
           {t("leaderboard.ratings.includeFormerNames")}
         </label>
-        <SearchField label={t("leaderboard.ratings.updatedAfter")} className="leaderboard-search-date">
-          <DateInput className="search-panel-control" value={after} readOnly={activeOnly} aria-disabled={activeOnly} onChange={setAfter} />
-        </SearchField>
-        <SearchField label={t("leaderboard.ratings.updatedBefore")} className="leaderboard-search-date">
-          <DateInput className="search-panel-control" value={before} readOnly={activeOnly} aria-disabled={activeOnly} onChange={setBefore} />
-        </SearchField>
-        <SearchField label={t("leaderboard.ratings.rows")} className="leaderboard-search-rows">
-          <select className="search-panel-control" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
-            {[25, 50, 75, 100].map((size) => <option key={size} value={size}>{size}</option>)}
-          </select>
-        </SearchField>
-        <SearchPanelSubmit disabled={state.ratingsStatus.type === "loading"} />
       </SearchPanel>
 
-      <div className="leaderboard-main-grid">
+      <div className="leaderboard-main-grid has-summary">
+        {/* What the search found and how the table shows it, on a line of its
+            own over the table and only over the table: the page length and
+            the columns belong to the table, not to the player panel beside
+            it. Refresh is here rather than with the search: it runs the shown
+            results again, where Search asks a new question. */}
+        <div className="leaderboard-summary">
+          <div className="leaderboard-summary-count">
+            <Icon name="users" size={16} />
+            <strong>
+              {state.ratingPage.totalResults === null
+                ? `${state.ratingPage.entries.length}`
+                : t("leaderboard.rating.playerCount", {
+                  count: state.ratingPage.totalResults,
+                  formatted: formatNumber(state.ratingPage.totalResults),
+                })}
+            </strong>
+          </div>
+          <span className="leaderboard-summary-tools">
+            <label className="leaderboard-summary-rows">
+              <span className="muted">{t("leaderboard.ratings.rows")}</span>
+              <select className="search-panel-control" value={pageSize} onChange={(event) => changePageSize(Number(event.target.value))}>
+                {[25, 50, 75, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+              </select>
+            </label>
+            <div className="leaderboard-columns" ref={columnsRef}>
+              <Button
+                className={`leaderboard-columns-trigger${columnsOpen ? " active" : ""}`}
+                aria-expanded={columnsOpen}
+                aria-haspopup="dialog"
+                onClick={() => setColumnsOpen((open) => !open)}
+              >
+                <Icon name="filter" size={15} /> {t("leaderboard.ratings.columns")}
+              </Button>
+              {columnsOpen && <div className="leaderboard-columns-menu" role="dialog" aria-label={t("leaderboard.ratings.visibleLeaderboardColumns")}>
+                <div className="leaderboard-columns-menu-header">
+                  <strong>{t("leaderboard.ratings.visibleColumns")}</strong>
+                  <button type="button" className="leaderboard-columns-close" aria-label={t("leaderboard.ratings.closeColumnsMenu")} onClick={() => setColumnsOpen(false)}>
+                    <Icon name="close" size={14} />
+                  </button>
+                </div>
+                {OPTIONAL_COLUMNS.map((column) => (
+                  <label key={column.key} className="option-check">
+                    <input
+                      type="checkbox"
+                      checked={visibleColumns.includes(column.key)}
+                      onChange={() => toggleColumn(column.key)}
+                    />
+                    {t(column.label)}
+                  </label>
+                ))}
+              </div>}
+            </div>
+            <Button
+              aria-label={t("leaderboard.ratings.refreshRankings")}
+              title={t("leaderboard.ratings.refreshRankings")}
+              onClick={() => void load(state.ratingQuery)}
+            >
+              <Icon name="refresh" size={15} />
+            </Button>
+          </span>
+        </div>
         <div className={`leaderboard-results surface-panel${state.ratingsStatus.type === "loading" ? " is-loading" : ""}`}>
           {state.ratingsStatus.type === "failed" ? (
             <div className="leaderboard-state leaderboard-error" title={state.ratingsStatus.payload.reason}>
@@ -387,7 +453,7 @@ export function RatingLeaderboardPanel() {
             />
           )}
         </div>
-        <PlayerDetailsPanel entry={selected} />
+        <PlayerDetailsPanel entry={selected} rankedBoard={state.ratingQuery.leaderboard} boards={state.ratingLeaderboards.map((board) => board.technicalName)} crossRatings={crossRatings} />
       </div>
 
       <div className="vault-pagination">

@@ -50,12 +50,20 @@
   gap: var(--space-2);
 }
 
+/* Wide enough for the longest month in every language, so the group's left
+   edge, and with it every button, holds still as the months go by. The name
+   reads from its left, beside the arrows that change it. */
 .events-period strong {
-  min-width: 168px;
+  min-width: 150px;
   font-size: 14px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  text-align: center;
+  text-align: left;
+}
+
+.events-period-steps {
+  display: flex;
+  gap: 4px;
 }
 
 .events-period-step {
@@ -431,12 +439,9 @@
   background: var(--color-bg);
 }
 
-/* Inset, so the ring sits on the square's own rules and not over the
-   neighbours'. */
-.event-day.is-today {
-  outline: 1px solid var(--color-accent);
-  outline-offset: -1px;
-}
+/* Today is its date, filled in the accent, rather than a ring round the
+   whole square: in the default theme the accent is white, and the ring was
+   the brightest line on the page. */
 
 .event-day-number {
   align-self: flex-start;
@@ -469,8 +474,11 @@
   font-weight: 400;
 }
 
-.event-day.is-today .event-day-number {
+.event-day.is-today .event-day-number,
+.event-day.is-today .event-day-number:hover {
+  color: var(--color-accent-contrast);
   font-weight: 700;
+  background: var(--color-accent);
 }
 
 .event-day-entries {
@@ -529,9 +537,13 @@
   border-right: none;
 }
 
-.event-week-day.is-today {
-  outline: 1px solid var(--color-accent);
-  outline-offset: -1px;
+/* Today as in the month: its date filled, not a ring round the column. */
+.event-week-day.is-today .event-week-date {
+  align-self: flex-start;
+  padding: 0 7px;
+  color: var(--color-accent-contrast);
+  background: var(--color-accent);
+  border-radius: var(--radius-sm);
 }
 
 .event-week-day > header {
@@ -1031,7 +1043,7 @@
 
 .event-submit-problem {
   margin: var(--space-3) 0 0;
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: 12px;
   line-height: 1.5;
 }

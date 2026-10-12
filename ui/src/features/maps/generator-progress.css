@@ -7,9 +7,11 @@
 }
 
 .generate-map-progress.is-ok {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
-.generate-map-progress.is-error {
-  color: var(--color-error);
+/* A failed run is the shared notice. The panes it sits in space their children
+   with a gap, which its own margin would add to. */
+.generate-map-failure {
+  margin: 0;
 }

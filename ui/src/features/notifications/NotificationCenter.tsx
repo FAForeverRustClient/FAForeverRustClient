@@ -1,3 +1,4 @@
+import { useOverlayLayer } from "../../design-system/useOverlayLayer";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "../../design-system/Icon";
 import type { ClientNotification, NotificationAction } from "../../ipc/bindings";
@@ -12,7 +13,7 @@ import { renderFormattedText, stripHtmlTags } from "../chat/messages/chatFormat"
 import { playNotificationSound, soundForKind } from "./notificationSound";
 import { raisesOsNotification } from "./osNotifications";
 import { RepeatCooldown, happensInView } from "./notificationGate";
-import { notificationBody, notificationTitle } from "./notificationText";
+import { notificationBody, notificationBodyDetail, notificationTitle } from "./notificationText";
 import "./notifications.css";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
@@ -194,17 +195,20 @@ export function NotificationCenter() {
     ipc.send({ kind: "Notifications", command: { type: "clear" } });
   }, []);
 
+  useOverlayLayer(open, () => {
+    setOpen(false);
+    panelRef.current?.querySelector<HTMLButtonElement>(".notification-bell")?.focus();
+  });
+
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
       if (!panelRef.current?.contains(event.target as Node)) setOpen(false);
     };
-    const onKeyDown = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
     window.addEventListener("pointerdown", onPointerDown, true);
-    window.addEventListener("keydown", onKeyDown);
+
     return () => {
       window.removeEventListener("pointerdown", onPointerDown, true);
-      window.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
 
@@ -321,7 +325,7 @@ export function NotificationCenter() {
               <article className={`notification-item${item.read ? " is-read" : ""}${notificationTone(item)}`} key={item.id}>
                 <button className="notification-content" type="button" onClick={() => handleAction(item)}>
                   <span className="notification-item-head"><strong>{notificationTitle(item)}</strong><time dateTime={item.createdAt}>{formatTime(item.createdAt, "", use24HourTime)}</time></span>
-                  <span className="notification-body">{renderFormattedText(notificationBody(item))}</span>
+                  <span className="notification-body" title={notificationBodyDetail(item) ?? undefined}>{renderFormattedText(notificationBody(item))}</span>
                   {actionContent(item.action)}
                 </button>
                 <button className="notification-dismiss" type="button" onClick={() => { hideToast(item.id); dismiss(item.id); }} aria-label={t("notifications.dismiss", { title: notificationTitle(item) })}>
@@ -346,7 +350,9 @@ export function NotificationCenter() {
           <article className={`notification-toast${notificationTone(item)}`} key={item.id}>
             <button type="button" onClick={() => handleAction(item)}>
               <strong>{notificationTitle(item)}</strong>
-              <span className="notification-body">{renderFormattedText(notificationBody(item))}</span>
+              {/* A failure reason is worded plainly; the original is on hover,
+                  here and in the centre (see `notificationText`). */}
+              <span className="notification-body" title={notificationBodyDetail(item) ?? undefined}>{renderFormattedText(notificationBody(item))}</span>
               {actionContent(item.action)}
             </button>
             <button
