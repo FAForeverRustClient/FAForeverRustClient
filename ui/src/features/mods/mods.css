@@ -818,22 +818,32 @@
 
 /* The right-hand side: one row of controls, all 30px tall, so the corner
    reads as a toolbar rather than a pile of shapes. */
+/* The right-hand column runs the card's height: remove at the top, the star
+   and the switch at the bottom, both at the right edge. */
 .installed-mod-side {
   display: flex;
-  align-items: center;
+  align-self: stretch;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 
 .installed-mod-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
-.installed-mod-actions button {
+.installed-mod-side button {
   min-height: 30px;
   height: 30px;
   padding: 0 10px;
   font-size: 12px;
+}
+
+.installed-mod-side .mod-vault-uninstall.is-icon {
+  padding: 0;
 }
 
 .installed-mod-actions .mod-favorite-button {
@@ -873,9 +883,13 @@
   }
 
 
-  .installed-mod-actions {
+  /* Under the mod on a narrow window: one line at the right, remove at its
+     far end. */
+  .installed-mod-side {
     grid-column: 1 / -1;
-    justify-content: flex-end;
+    flex-direction: row-reverse;
+    align-items: center;
+    justify-content: flex-start;
   }
 }
 

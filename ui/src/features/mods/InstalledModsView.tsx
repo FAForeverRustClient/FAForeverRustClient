@@ -127,12 +127,24 @@ function InstalledModCard({
           )}
         </span>
       </button>
-      {/* One row, every control the same height: the star, the switch, the
-          update when there is one, and remove. A state chip used to sit above
-          them on a row of its own, which made a two-tier cluster of five
-          shapes in the card's corner; the state is already the card's green
-          edge and tint, and the button beside it says which way it switches. */}
+      {/* Remove alone in the top right corner, away from the switches, so it
+          is not what a quick click on enable lands on. The star, the update
+          when there is one, and the switch together at the bottom right. All
+          the same height; the state is the card's green edge and tint, and the
+          switch says which way it goes. */}
       <div className="installed-mod-side">
+        {/* An icon rather than the word, the way the Maps tab does it.
+            "Uninstall" in red was the loudest thing on a row whose subject is
+            the mod. */}
+        <Button
+          className="mod-vault-uninstall is-icon"
+          disabled={busy}
+          aria-label={t("mods.installed.uninstallNamed", { name: mod.displayName })}
+          title={t(installing ? "mods.installed.working" : "mods.installed.uninstall")}
+          onClick={onUninstall}
+        >
+          <Icon name="trash" size={14} />
+        </Button>
         <div className="installed-mod-actions">
           {/* The same star as the vault's, on the screen where it pays: these
               are the mods the player already has, and the set they star is the
@@ -149,26 +161,14 @@ function InstalledModCard({
           >
             <Icon name="star" size={15} fill={favorite ? "currentColor" : "none"} />
           </button>
-        <Button disabled={busy} onClick={onToggle}>
-          {t(toggling ? "mods.installed.updating" : mod.enabled ? "mods.installed.disable" : "mods.installed.enable")}
-        </Button>
-        {onUpdate && metadata && (
-          <Button variant="primary" disabled={busy || !metadata.downloadUrl} onClick={onUpdate}>
-            {t(installing ? "mods.installed.working" : "mods.vault.update")}
+          {onUpdate && metadata && (
+            <Button variant="primary" disabled={busy || !metadata.downloadUrl} onClick={onUpdate}>
+              {t(installing ? "mods.installed.working" : "mods.vault.update")}
+            </Button>
+          )}
+          <Button disabled={busy} onClick={onToggle}>
+            {t(toggling ? "mods.installed.updating" : mod.enabled ? "mods.installed.disable" : "mods.installed.enable")}
           </Button>
-        )}
-        {/* An icon rather than the word, the way the Maps tab already does it.
-            "Uninstall" in red was the loudest thing on a row whose subject is
-            the mod, and it sat beside two buttons that are ordinary switches. */}
-        <Button
-          className="mod-vault-uninstall is-icon"
-          disabled={busy}
-          aria-label={t("mods.installed.uninstallNamed", { name: mod.displayName })}
-          title={t(installing ? "mods.installed.working" : "mods.installed.uninstall")}
-          onClick={onUninstall}
-        >
-          <Icon name="trash" size={14} />
-        </Button>
         </div>
       </div>
     </article>
