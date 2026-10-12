@@ -70,17 +70,19 @@ export function markerPlacements(
   ];
 }
 
+/// Rejects with the image's error event: nothing here is shown, since a
+/// picture that does not load leaves the caller's own one in place.
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error(`could not load ${src.slice(0, 40)}`));
+    image.onerror = reject;
     image.src = src;
   });
 }
 
-/** Draw the picture and its icons, as a PNG data URL. */
-async function composeMarkedPreview(preview: MarkedMapPreview): Promise<string> {
+/** Draw the picture and its icons, as a PNG data URL; `null` without a 2d canvas. */
+async function composeMarkedPreview(preview: MarkedMapPreview): Promise<string | null> {
   const [base, hydro, mass, army] = await Promise.all([
     loadImage(preview.image),
     loadImage(hydroIcon),
@@ -93,7 +95,7 @@ async function composeMarkedPreview(preview: MarkedMapPreview): Promise<string> 
   canvas.width = width;
   canvas.height = height;
   const context = canvas.getContext("2d");
-  if (!context) throw new Error("no 2d canvas context");
+  if (!context) return null;
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
   context.drawImage(base, 0, 0, width, height);
