@@ -192,6 +192,15 @@
   margin: 0 var(--space-2) 0 var(--space-1);
 }
 
+/* More filters and Clear, pushed to the right end of the second line. */
+.leaderboard-search-end {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
 /* Two toolbar buttons sharing a border: the inner corners squared, the
    second drawn one pixel over the first, and the chosen one filled as the
    search panel fills a chosen toggle (`.search-panel-secondary`). */
@@ -223,14 +232,43 @@
   border-color: var(--color-accent);
 }
 
-/* What was found and how the table shows it, pushed to the right edge. A
-   margin rather than a spacer, so it stays right on a line of its own when
-   the row wraps on a narrow window. */
-.leaderboard-toolbar-results {
+/* What was found and how the table shows it: a line over the table column
+   only, the count at its start and the table's own settings at its end. The
+   player panel beside it starts level with the table, not with this line. */
+.leaderboard-main-grid.has-summary {
+  grid-template-rows: auto minmax(0, 1fr);
+  row-gap: var(--space-2);
+}
+
+.leaderboard-main-grid.has-summary > .leaderboard-summary {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.leaderboard-main-grid.has-summary > .leaderboard-results {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.leaderboard-main-grid.has-summary > .leaderboard-player-panel {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.leaderboard-summary {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+/* A margin rather than a spacer, so the tools stay right on a line of their
+   own when the row wraps on a narrow window. */
+.leaderboard-summary-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin-left: auto;
 }
 
@@ -1210,6 +1248,17 @@
   .leaderboard-main-grid,
   .leaderboard-overview-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* One column: the player panel goes under the table rather than into a
+     second column the grid no longer has. */
+  .leaderboard-main-grid.has-summary {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .leaderboard-main-grid.has-summary > .leaderboard-player-panel {
+    grid-column: 1;
+    grid-row: 3;
   }
 
   .leaderboard-overview-grid,
