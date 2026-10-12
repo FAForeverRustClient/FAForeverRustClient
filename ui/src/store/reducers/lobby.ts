@@ -172,6 +172,21 @@ export function reduceLobby(state: LobbyState, event: LobbyEvent): LobbyState {
         matchmaking: preparing && state.matchmaking.type === "launching" ? { type: "idle" } : state.matchmaking,
       };
     }
+    case "launchAbandoned": {
+      // The launcher called a launch off before a game process existed (#487):
+      // a join that is already "launched" has no exit to end it, so this does.
+      const join = state.join;
+      const abandoned =
+        (join.type === "launched" && join.payload.launch.uid === event.payload.id)
+        || (join.type === "joining" && join.payload.id === event.payload.id)
+        || join.type === "preparing";
+      if (!abandoned) return state;
+      return {
+        ...state,
+        join: { type: "idle" },
+        matchmaking: state.matchmaking.type === "launching" ? { type: "idle" } : state.matchmaking,
+      };
+    }
     case "inGame":
       return { ...state, join: { type: "inGame" } };
     case "launchFailed":
