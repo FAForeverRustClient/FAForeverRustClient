@@ -554,6 +554,9 @@
   max-height: calc(100vh - 120px);
   min-width: 0;
   overflow-y: auto;
+  /* No scrollbar gutter: the panel scrolls only on a window too short for it,
+     and a reserved strip would stop the picture band short of the panel's
+     right edge on every other one. */
   overscroll-behavior: contain;
 }
 

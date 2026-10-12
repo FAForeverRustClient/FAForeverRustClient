@@ -8,6 +8,9 @@
   max-height: 84vh;
   padding: 0;
   overflow-y: auto;
+  /* No scrollbar gutter: a dialog sized to its content, as `.modal-panel` says,
+     and a reserved strip would stop the verdict's band short of the right
+     edge whenever the list is short enough not to scroll. */
 }
 
 .reviews-head {
