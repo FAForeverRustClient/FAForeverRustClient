@@ -410,6 +410,30 @@ pub(crate) fn helper_search_roots() -> Vec<std::path::PathBuf> {
         .collect()
 }
 
+/// `name` as one folder name: never a separator, a drive or a control
+/// character, and never the folder itself or its parent.
+///
+/// The second half matters because of what is done with the result. The
+/// cache's `versions` folder is joined with it and, when a build is pruned,
+/// removed with `remove_dir_all`; a name of `..` there named the cache's own
+/// parent. Windows also drops trailing dots and spaces from a path component,
+/// so any name made only of those (and the empty name, which joins to the
+/// folder itself) becomes underscores instead.
+pub fn sanitize_folder_name(name: &str) -> String {
+    let cleaned: String = name
+        .chars()
+        .map(|c| match c {
+            '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => '_',
+            other if other.is_control() => '_',
+            other => other,
+        })
+        .collect();
+    if cleaned.chars().all(|c| c == '.' || c == ' ') {
+        return "_".repeat(cleaned.chars().count().max(1));
+    }
+    cleaned
+}
+
 /// A folder (or file) the client writes to and the user may want to open.
 ///
 /// The Java client reveals six such locations from its main menu
@@ -418,15 +442,6 @@ pub(crate) fn helper_search_roots() -> Vec<std::path::PathBuf> {
 /// shared FAF directory and patches a `game.prefs` none of which a user would
 /// guess. Resolution lives here rather than in the shell so the paths cannot
 /// drift from the ones the adapters actually use.
-pub fn sanitize_folder_name(name: &str) -> String {
-    name.chars()
-        .map(|c| match c {
-            '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => '_',
-            other => other,
-        })
-        .collect()
-}
-
 pub fn client_folder(kind: &str) -> Result<std::path::PathBuf, String> {
     let path = match kind {
         "maps" => faf_content::vault_dir().join("maps"),
@@ -929,5 +944,18 @@ mod identity_tests {
         // The slug goes into a User-Agent product token and a keyring service
         // name; neither tolerates a space.
         assert!(!APP_SLUG.contains(' '));
+    }
+
+    #[test]
+    fn a_folder_name_never_names_the_folder_or_its_parent() {
+        assert_eq!(sanitize_folder_name("FAF 3838"), "FAF 3838");
+        assert_eq!(sanitize_folder_name("a/b\\c:d"), "a_b_c_d");
+        assert_eq!(sanitize_folder_name(".."), "__");
+        assert_eq!(sanitize_folder_name("."), "_");
+        assert_eq!(sanitize_folder_name(""), "_");
+        // Windows strips the trailing dots and spaces, which leaves `..`.
+        assert_eq!(sanitize_folder_name(".. ."), "____");
+        assert_eq!(sanitize_folder_name("v1.2"), "v1.2");
+        assert_eq!(sanitize_folder_name("a\nb"), "a_b");
     }
 }
