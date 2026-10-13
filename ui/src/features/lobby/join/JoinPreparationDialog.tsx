@@ -29,15 +29,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
-import type { Game, GameLaunch } from "../../../ipc/bindings";
+import type { GameLaunch } from "../../../ipc/bindings";
 import { useAppStore } from "../../../store/store";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { ipc } from "../../../ipc/client";
-import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
 import { lastJoinRequestId } from "../../../shared/joinGame";
 import { mapPresentation } from "../../../shared/mapPresentation";
-import { LaunchProgress, type LaunchContext } from "../../../shared/components/LaunchProgress";
-import { adapterNoteOf, joinProgressOf, nextStep } from "./joinProgress";
+import { LaunchProgress } from "../../../shared/components/LaunchProgress";
+import { adapterNoteOf, contextOf, joinProgressOf, nextStep } from "./joinProgress";
 import "../game-dialogs.css";
 
 /**
@@ -111,15 +110,21 @@ export function JoinPreparationDialog() {
   // pick the adapter, and before it the dialog has no title to read.
   const adapterNote = progress.kind === "starting" ? adapterNoteOf(joinAdapter, progress.name) : null;
   const starting = progress.kind === "starting";
-  const stage = starting ? 2 : progress.phase === "map" ? 1 : 0;
-  const context = contextOf(
-    starting ? launch : launchSeen.current,
-    matchmakerLaunching ? null : games.find((game) => game.id === lastJoinRequestId()) ?? null,
-    (map) => mapPresentation(vault, map).displayName,
-  );
+  const seating = progress.kind === "seating";
+  const stage = starting || seating ? 2 : progress.phase === "map" ? 1 : 0;
+  const shownLaunch = starting ? launch : launchSeen.current;
+  // The lobby the join is for: the launch order's game once there is one,
+  // else the lobby the last join was sent for. A matchmaker game is in no
+  // list until it has started.
+  const lobbyGame = matchmakerLaunching
+    ? null
+    : games.find((game) => game.id === (shownLaunch?.uid ?? lastJoinRequestId())) ?? null;
+  const context = contextOf(shownLaunch, lobbyGame, (map) => mapPresentation(vault, map).displayName);
   const phase = starting
     ? t("lobby.joinProgress.phase.starting")
-    : t(`lobby.joinProgress.phase.${progress.phase}`);
+    : seating
+      ? t("lobby.joinProgress.phase.seating")
+      : t(`lobby.joinProgress.phase.${progress.phase}`);
 
   return (
     <LaunchProgress
@@ -144,8 +149,8 @@ export function JoinPreparationDialog() {
       }}
       progressLabel={t("lobby.joinProgress.title")}
       progressText={percent === null ? detail || phase : `${detail || phase}, ${percent}%`}
-      detail={starting ? t("lobby.joinProgress.startingNote") : progress.detail}
-      detailIsText={starting}
+      detail={starting ? t("lobby.joinProgress.startingNote") : seating ? phase : progress.detail}
+      detailIsText={starting || seating}
       // Says in words what the title's mark said, which is why the mark is
       // gone from the name above, as it is in the game browser.
       notice={adapterNote && {
@@ -184,30 +189,4 @@ export function JoinPreparationDialog() {
       }
     />
   );
-}
-
-/**
- * What the head names: the launch order once there is one, otherwise the
- * lobby the last join was sent for.
- */
-function contextOf(
-  launch: GameLaunch | null,
-  game: Game | null,
-  mapLabel: (map: string) => string,
-): LaunchContext | null {
-  if (launch) {
-    return {
-      name: splitGoAdapterTitle(launch.name).title,
-      mapName: launch.mapname || null,
-      detail: launch.mapname ? mapLabel(launch.mapname) : null,
-    };
-  }
-  if (game) {
-    return {
-      name: splitGoAdapterTitle(game.title).title,
-      mapName: game.map || null,
-      detail: game.map ? mapLabel(game.map) : null,
-    };
-  }
-  return null;
 }

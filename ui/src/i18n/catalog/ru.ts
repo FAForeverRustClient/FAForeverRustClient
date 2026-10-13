@@ -2665,6 +2665,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.joinProgress.hide": "Скрыть",
   "lobby.joinProgress.startingTitle": "Запуск игры",
   "lobby.joinProgress.phase.starting": "Forged Alliance запускается",
+  "lobby.joinProgress.phase.seating": "Ожидание разрешения сервера",
   "lobby.joinProgress.startingNote": "Это может занять несколько секунд.",
   "lobby.joinProgress.dontShowAgain": "Больше не показывать",
   "lobby.joinProgress.dontShowAgainHint": "Включить это окно снова можно в Настройках, раздел «Игра».",

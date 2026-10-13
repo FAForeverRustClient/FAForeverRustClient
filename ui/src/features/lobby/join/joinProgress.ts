@@ -6,13 +6,21 @@
 // store renders from its initial state under `jsdom`, so a test driving it
 // through a join would be asserting against a snapshot that never moves.
 
-import type { IceAdapter, JoinState, PreparationPhase } from "../../../ipc/bindings";
+import type { Game, GameLaunch, IceAdapter, JoinState, PreparationPhase } from "../../../ipc/bindings";
+import type { LaunchContext } from "../../../shared/components/LaunchProgress";
 import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
 import { adapterForGame } from "../../../shared/rules/iceAdapter";
 
 export type JoinProgress =
   /** Patching, checksumming, downloading, staging a map: the slow part. */
   | { kind: "preparing"; phase: PreparationPhase; detail: string; progress: number | null }
+  /**
+   * The files are ready and the join request is out: the server has yet to
+   * answer it with the launch order. Short, but it sits between the two
+   * phases that show the dialog, and returning `null` here closed the dialog
+   * and opened it again a moment later, its step log gone.
+   */
+  | { kind: "seating" }
   /**
    * The launch order is accepted and Forged Alliance is coming up.
    *
@@ -45,8 +53,14 @@ export function joinProgressOf(join: JoinState): JoinProgress | null {
       };
     case "launched":
       return { kind: "starting", name: join.payload.launch.name };
-    case "idle":
+    // A join is "joining" twice: the moment it is pressed, before the first
+    // preparation step, and again once the files are ready and the request
+    // has gone to the server. Neither is a reason to close the dialog.
     case "joining":
+      return join.payload.prepared
+        ? { kind: "seating" }
+        : { kind: "preparing", phase: "asking", detail: "", progress: null };
+    case "idle":
     case "inGame":
     case "failed":
     case "launchFailed":
@@ -97,4 +111,37 @@ export function adapterNoteOf(adapter: IceAdapter, title: string): AdapterNote |
   const hostOnGo = splitGoAdapterTitle(title).goAdapter;
   if (adapterForGame(adapter, title) === "go") return hostOnGo ? "hostOnGo" : "goAgainstHost";
   return hostOnGo ? "javaAgainstHost" : null;
+}
+
+/**
+ * What the head names: the launch order once there is one, otherwise the
+ * lobby the last join was sent for.
+ *
+ * The map comes from the launch order only when it names one, which only a
+ * matchmaker launch does: for a custom game or a hosted one `mapname` is
+ * empty, the server having been told the map rather than telling it. The
+ * head lost its map picture the moment the game started; it reads the
+ * lobby's map then.
+ */
+export function contextOf(
+  launch: GameLaunch | null,
+  game: Game | null,
+  mapLabel: (map: string) => string,
+): LaunchContext | null {
+  if (launch) {
+    const map = launch.mapname || game?.map || "";
+    return {
+      name: splitGoAdapterTitle(launch.name || game?.title || "").title,
+      mapName: map || null,
+      detail: map ? mapLabel(map) : null,
+    };
+  }
+  if (game) {
+    return {
+      name: splitGoAdapterTitle(game.title).title,
+      mapName: game.map || null,
+      detail: game.map ? mapLabel(game.map) : null,
+    };
+  }
+  return null;
 }
