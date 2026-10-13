@@ -72,7 +72,7 @@ const ACKNOWLEDGMENTS = [
   { name: "Nuggets", note: "links.thanks.note.feedback" },
   { name: "Vindex", note: "links.thanks.note.feedback" },
   { name: "Sheppy", note: "links.thanks.note.communityHub" },
-  { name: "Katsu and the DPG Clan", note: "links.thanks.note.ruLocalization" },
+  { name: "Katsu- & DPG Clan", note: "links.thanks.note.ruLocalization" },
 ] as const satisfies readonly { name: string; note: MessageKey | null }[];
 
 /** One row of the directory. The chip is the whole point of the page. */
