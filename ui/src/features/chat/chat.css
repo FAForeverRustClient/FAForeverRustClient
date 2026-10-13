@@ -620,9 +620,12 @@ html.is-resizing-chat-roster * {
   );
 }
 
+/* Shrinks to fit, never grows: whatever follows the name (the note mark)
+   sits right after it rather than at the far end of the row. The button
+   around it still takes the row's width, so the whole row is clickable. */
 .chat-roster-user .chat-nick {
   min-width: 0;
-  flex: 1;
+  flex: 0 1 auto;
 }
 
 .chat-nick:hover {
