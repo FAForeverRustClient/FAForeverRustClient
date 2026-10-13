@@ -915,6 +915,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.host.enforceRating": "Rating erzwingen",
   "lobby.host.minRating": "Mindestrating",
   "lobby.host.maxRating": "Höchstrating",
+  "lobby.host.minRatingPlaceholder": "Min",
+  "lobby.host.maxRatingPlaceholder": "Max",
   "lobby.host.selectedMap": "Gewählte Karte",
   "lobby.host.random": "Zufällig",
   "lobby.host.randomTitle": "Zufällige Karte aus der gefilterten Liste wählen",

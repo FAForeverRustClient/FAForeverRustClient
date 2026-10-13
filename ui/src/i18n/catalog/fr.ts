@@ -2108,6 +2108,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.host.enforceRating": "Imposer un classement",
   "lobby.host.minRating": "Classement minimum",
   "lobby.host.maxRating": "Classement maximum",
+  "lobby.host.minRatingPlaceholder": "Min",
+  "lobby.host.maxRatingPlaceholder": "Max",
   "lobby.host.selectedMap": "Carte sélectionnée",
   "lobby.host.random": "Aléatoire",
   "lobby.host.randomTitle": "Choisir une carte au hasard dans la liste filtrée",

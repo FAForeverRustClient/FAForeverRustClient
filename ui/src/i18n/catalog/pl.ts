@@ -2085,6 +2085,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.host.enforceRating": "Wymuś ranking graczy",
   "lobby.host.minRating": "Ranking minimalny",
   "lobby.host.maxRating": "Ranking maksymalny",
+  "lobby.host.minRatingPlaceholder": "Min",
+  "lobby.host.maxRatingPlaceholder": "Maks",
   "lobby.host.selectedMap": "Wybrana mapa",
   "lobby.host.random": "Losowo",
   "lobby.host.randomTitle": "Wybierz losową mapę z przefiltrowanej listy",
