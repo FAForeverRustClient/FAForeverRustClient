@@ -20,8 +20,7 @@ import {
   SearchPanelSubmit,
   SearchPanelToggle,
 } from "../../design-system/SearchPanel";
-// Only the from-disk entry point: publishing an installed map moved into its own
-// modal on this branch, so `openUpload` is no longer called from here.
+// Only the from-disk entry point: publishing an installed map has its own modal.
 import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { Pagination } from "../../design-system/Pagination";
 import type { GeneratorStatus, InstalledMap, MapsSection, MapVaultQuery, VaultMap } from "../../ipc/bindings";

@@ -378,8 +378,7 @@ async fn read_local_metadata(
         .flat_map(|team| &team.players)
         .filter_map(|player| player.rating)
         .collect();
-    let average_rating =
-        (!ratings.is_empty()).then(|| ratings.iter().sum::<i32>() / ratings.len() as i32);
+    let average_rating = super::vault_rows::average_rating(&ratings);
     let file_name = path
         .file_name()
         .and_then(|name| name.to_str())

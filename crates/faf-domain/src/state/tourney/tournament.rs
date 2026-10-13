@@ -621,8 +621,8 @@ impl Tourney {
                         .flatten()
                         .find_map(|id| rows.iter().position(|row| row.team_id == id));
                     if let Some(at) = advanced {
-                        rows[at].wins += 1;
-                        rows[at].game_diff += 1;
+                        rows[at].wins = rows[at].wins.saturating_add(1);
+                        rows[at].game_diff = rows[at].game_diff.saturating_add(1);
                     }
                 }
                 MatchStatus::Done => {
@@ -635,14 +635,17 @@ impl Tourney {
                     } else {
                         (entry.score2, entry.score1)
                     };
-                    let margin = high.unwrap_or(0) - low.unwrap_or(0);
+                    // Scores are the server's numbers: saturating, so a wild one
+                    // makes a wild standing rather than a panic in a debug build
+                    // and a silent wrap in a release one.
+                    let margin = high.unwrap_or(0).saturating_sub(low.unwrap_or(0));
                     if let Some(at) = rows.iter().position(|row| &row.team_id == winner) {
-                        rows[at].wins += 1;
-                        rows[at].game_diff += margin;
+                        rows[at].wins = rows[at].wins.saturating_add(1);
+                        rows[at].game_diff = rows[at].game_diff.saturating_add(margin);
                     }
                     if let Some(at) = rows.iter().position(|row| &row.team_id == loser) {
-                        rows[at].losses += 1;
-                        rows[at].game_diff -= margin;
+                        rows[at].losses = rows[at].losses.saturating_add(1);
+                        rows[at].game_diff = rows[at].game_diff.saturating_sub(margin);
                     }
                 }
                 _ => {}
