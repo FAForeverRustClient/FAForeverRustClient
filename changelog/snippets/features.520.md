@@ -1,0 +1,1 @@
+- Joining a game and starting a replay show a redesigned progress window that names the map and the replay id, and can be switched off.

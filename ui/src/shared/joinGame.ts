@@ -61,6 +61,17 @@ export function joinGame(id: number, password: string | null = null) {
   return send(id, password, false);
 }
 
+/**
+ * The game the last join was sent for, so the progress dialog can name it.
+ *
+ * A custom join prepares its files *before* the request goes out, and the
+ * `preparing` state carries no id; this is the only place that knows which
+ * lobby the download is for.
+ */
+export function lastJoinRequestId(): number | null {
+  return lastRequest?.id ?? null;
+}
+
 /** Send the join the confirmation dialog was holding. */
 export function confirmPendingJoin(id: number, password: string | null) {
   setPendingJoin(null);

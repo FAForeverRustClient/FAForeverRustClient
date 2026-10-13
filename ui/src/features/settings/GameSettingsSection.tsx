@@ -63,6 +63,30 @@ export function GameSettingsSection() {
         />
       </SettingRow>
 
+      {/* The two progress windows. Each carries its own "do not show again",
+          which is what turns it off; these rows are how it comes back. */}
+      <SettingRow
+        label={t("settings.game.showJoinProgress")}
+        hint={t("settings.game.showJoinProgressHint")}
+      >
+        <SettingsSwitch
+          checked={preferences.showJoinProgress ?? true}
+          onChange={(showJoinProgress) => void save({ showJoinProgress })}
+          label={t("settings.game.showJoinProgress")}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label={t("settings.game.showReplayProgress")}
+        hint={t("settings.game.showReplayProgressHint")}
+      >
+        <SettingsSwitch
+          checked={preferences.showReplayProgress ?? true}
+          onChange={(showReplayProgress) => void save({ showReplayProgress })}
+          label={t("settings.game.showReplayProgress")}
+        />
+      </SettingRow>
+
       <SettingRow label={t("settings.game.autoGenerateMaps")}>
         <SettingsSwitch
           checked={preferences.autoGenerateMaps ?? true}

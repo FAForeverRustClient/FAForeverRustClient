@@ -149,7 +149,7 @@ async fn watching_a_vault_replay_does_not_pass_for_a_library_download() {
 
     assert!(matches!(
         events.recv().await.unwrap(),
-        AppEvent::Replays(ReplayEvent::Connecting)
+        AppEvent::Replays(ReplayEvent::Connecting { .. })
     ));
     assert!(matches!(
         events.recv().await.unwrap(),
