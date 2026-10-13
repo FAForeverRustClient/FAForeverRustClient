@@ -336,7 +336,7 @@ fn parent_directory(path: &Path) -> &Path {
 /// one filesystem operation. `NamedTempFile::persist` provides the platform-
 /// specific replacement semantics (including Windows) and removes the
 /// temporary file if any earlier step fails.
-fn write_atomically(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+pub(crate) fn write_atomically(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     let mut temporary = tempfile::NamedTempFile::new_in(parent_directory(path))?;
     temporary.write_all(bytes)?;
     temporary.as_file().sync_all()?;

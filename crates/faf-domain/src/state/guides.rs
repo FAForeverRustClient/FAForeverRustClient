@@ -1183,6 +1183,16 @@ pub fn entry_problem(entry: &TrainingResource) -> Option<String> {
             entry.url
         ));
     }
+    // Not a rule the repository's script has. A client-side refusal on top of
+    // it costs that script nothing, and the address is the one way a
+    // submission could pass for a guide the tab reads while being fetched
+    // from somebody else's repository.
+    if crate::state::training::is_disguised_raw_address(&entry.url) {
+        return Some(format!(
+            "the link \"{}\" hides where it leads; write it without escapes, backslashes or dot segments",
+            entry.url
+        ));
+    }
     if entry.url.is_empty() && entry.kind != TrainingKind::Lesson && entry.tutorial_id.is_none() {
         return Some(
             "the entry has neither a link nor a guide, so nothing would happen when a reader opens it"
@@ -2064,6 +2074,12 @@ mod tests {
             ..entry()
         };
         assert!(entry_problem(&spaced).is_some());
+
+        let disguised = TrainingResource {
+            url: "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/%2e%2e/%2e%2e/%2e%2e/a/r/main/g.md".into(),
+            ..entry()
+        };
+        assert!(entry_problem(&disguised).unwrap().contains("hides"));
 
         let inverted = TrainingResource {
             rating_min: Some(1500),

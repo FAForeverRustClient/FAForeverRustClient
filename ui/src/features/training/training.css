@@ -2524,6 +2524,8 @@ div.training-detail-guide-problem p {
 .training-detail-meta dd {
   margin: 2px 0 0;
   font-size: 13px;
+  /* A submitted address is one unbroken word and would push the grid wide. */
+  overflow-wrap: anywhere;
 }
 
 /* What to read next: the library's own cards, on the library's own grid. */

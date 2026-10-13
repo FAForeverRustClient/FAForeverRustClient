@@ -103,11 +103,40 @@ pub(super) fn load_cache_manifest(cache_dir: &Path) -> CacheManifest {
     CacheManifest::default()
 }
 
+/// Held around every read-modify-write of the manifest.
+///
+/// A replay staging and a live install hold different install leases, so two
+/// of them can finish at once; each read the manifest, added its own entry and
+/// wrote the file back, and the second write dropped the first entry. One lock
+/// for the process is enough: there is one manifest per cache, and a write is
+/// a few kilobytes.
+static MANIFEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+fn lock_manifest() -> std::sync::MutexGuard<'static, ()> {
+    MANIFEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+/// Replace the manifest whole, so a crash or a full disk mid-write leaves the
+/// previous one rather than half of a new one.
+fn write_cache_manifest(cache_dir: &Path, manifest: &CacheManifest) {
+    let manifest_path = cache_dir.join("cache_manifest.json");
+    if let Ok(json) = serde_json::to_string_pretty(manifest) {
+        if let Err(error) =
+            crate::infra::settings_file::write_atomically(&manifest_path, json.as_bytes())
+        {
+            tracing::warn!(%error, "could not write the game cache manifest");
+        }
+    }
+}
+
 pub(super) fn save_cache_manifest_entry(cache_dir: &Path, entry: CacheManifestEntry) {
     if !cache_dir.is_dir() {
         let _ = std::fs::create_dir_all(cache_dir);
     }
     sync_version_folder(cache_dir, &entry);
+    let _manifest = lock_manifest();
     let mut manifest = load_cache_manifest(cache_dir);
     manifest.entries.retain(|e| {
         !(e.featured_mod == entry.featured_mod
@@ -116,13 +145,11 @@ pub(super) fn save_cache_manifest_entry(cache_dir: &Path, entry: CacheManifestEn
             && e.name == entry.name)
     });
     manifest.entries.push(entry);
-    let manifest_path = cache_dir.join("cache_manifest.json");
-    if let Ok(json) = serde_json::to_string_pretty(&manifest) {
-        let _ = std::fs::write(manifest_path, json);
-    }
+    write_cache_manifest(cache_dir, &manifest);
 }
 
 fn prune_cache_manifest(cache_dir: &Path) {
+    let _manifest = lock_manifest();
     let mut manifest = load_cache_manifest(cache_dir);
     if manifest.entries.is_empty() {
         return;
@@ -143,10 +170,7 @@ fn prune_cache_manifest(cache_dir: &Path) {
         }
         keep
     });
-    let manifest_path = cache_dir.join("cache_manifest.json");
-    if let Ok(json) = serde_json::to_string_pretty(&manifest) {
-        let _ = std::fs::write(manifest_path, json);
-    }
+    write_cache_manifest(cache_dir, &manifest);
 }
 
 /// Prune files in `cache_dir` older than `max_age_days`. If `max_age_days == 0`, no files are removed.

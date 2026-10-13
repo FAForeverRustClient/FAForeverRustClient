@@ -32,8 +32,10 @@ use faf_domain::state::{SiteDocument, SiteRead, SiteWrite};
 use serde_json::{json, Value};
 
 use crate::infra::env_or;
+use crate::infra::http::{REQUEST_DEADLINE, UPLOAD_RESPONSE_DEADLINE};
 use crate::infra::jsonapi::{bounded_document_body, request_error};
 use crate::infra::session::TokenStore;
+use crate::infra::vault_install::bounded_body;
 use crate::ports::{
     RequestError, TourneyChatPort, TourneyEntryPort, TourneyMapsPort, TourneyMatchPort,
     TourneyOrganiserPort, TourneyReadPort, TourneySitePort,
@@ -45,6 +47,10 @@ use crate::ports::{
 /// `node server.js`, or at the test cluster's `tournaments.faforever.xyz`,
 /// without rebuilding.
 const DEFAULT_API_BASE: &str = "https://tournaments.faforever.com";
+
+/// A request body past this size is an upload, and waits on
+/// [`UPLOAD_RESPONSE_DEADLINE`] rather than [`REQUEST_DEADLINE`].
+const LARGE_BODY_BYTES: usize = 256 * 1024;
 
 #[derive(Debug, Clone)]
 pub struct TourneyConfig {
@@ -90,14 +96,35 @@ impl TourneyClient {
     /// instead, which exactly one route needs: the session endpoint is
     /// `/auth/faf/me` rather than `/api/auth/faf/me`, because it belongs to the
     /// login flow rather than to the API.
+    ///
+    /// Every request carries the player's FAF token, so the address has to be
+    /// HTTPS: `TOURNEY_API_BASE` is read in release builds too, and an
+    /// `http://` value there used to send the token in the clear. Plain HTTP is
+    /// kept for this machine only, which is what a local `node server.js` is.
+    ///
+    /// No segment of `path` may be `.` or `..`. The URL parser resolves them,
+    /// percent-encoded or not, so a tournament id of `..` turned
+    /// `t/../signup` into `/api/signup`: another route on the same host, with
+    /// the same token.
     fn url(&self, path: &str) -> Result<url::Url, RequestError> {
+        if path.split('/').any(is_dot_segment) {
+            return Err(RequestError::unexpected(
+                "that tournament address is not a valid one".to_string(),
+            ));
+        }
         let base = self.config.api_base.trim_end_matches('/');
         let full = match path.strip_prefix('/') {
             Some(rooted) => format!("{base}/{rooted}"),
             None => format!("{base}/api/{path}"),
         };
-        url::Url::parse(&full)
-            .map_err(|error| RequestError::unexpected(format!("invalid API base: {error}")))
+        let url = url::Url::parse(&full)
+            .map_err(|error| RequestError::unexpected(format!("invalid API base: {error}")))?;
+        if url.scheme() != "https" && !(url.scheme() == "http" && super::is_loopback(&url)) {
+            return Err(RequestError::unexpected(
+                "the tournament service must be reached over https://".to_string(),
+            ));
+        }
+        Ok(url)
     }
 
     async fn send(
@@ -127,9 +154,24 @@ impl TourneyClient {
             .request(method, url)
             .bearer_auth(token)
             .header(reqwest::header::ACCEPT, "application/json");
+        // A whole-request deadline like every other API adapter's. Without one
+        // a service that accepted the connection and went quiet held the
+        // request, and the serial slot every tournament write waits in, for as
+        // long as the socket stayed open. A large body (a description picture
+        // travels as a data URL) gets the upload allowance instead.
+        let mut deadline = REQUEST_DEADLINE;
         if let Some(body) = body {
-            request = request.json(&body);
+            let bytes = serde_json::to_vec(&body).map_err(|error| {
+                RequestError::unexpected(format!("could not encode the request: {error}"))
+            })?;
+            if bytes.len() > LARGE_BODY_BYTES {
+                deadline = UPLOAD_RESPONSE_DEADLINE;
+            }
+            request = request
+                .header(reqwest::header::CONTENT_TYPE, "application/json")
+                .body(bytes);
         }
+        request = request.timeout(deadline);
 
         let response = request
             .send()
@@ -182,19 +224,22 @@ impl TourneyClient {
         use base64::Engine as _;
         const MAX_PREVIEW_BYTES: usize = 4 * 1024 * 1024;
         const VAULT_PREVIEW_HOST: &str = "content.faforever.com";
-        let response = self.http.get(url).send().await.ok()?;
-        // Only the vault's own content host: the shared client follows
-        // redirects, and a picture fetched from wherever one pointed would be
-        // uploaded to the tournament under the organiser's name.
-        if !response.status().is_success() || response.url().host_str() != Some(VAULT_PREVIEW_HOST)
-        {
-            return None;
-        }
-        // Refused before the body is read, not after it has been.
-        if response
-            .content_length()
-            .is_some_and(|length| length > MAX_PREVIEW_BYTES as u64)
-        {
+        // Only the vault's own content host, checked before the request is made
+        // and again after: the shared client follows redirects, and a picture
+        // fetched from wherever one pointed would be uploaded to the tournament
+        // under the organiser's name.
+        let from_vault = |address: &url::Url| {
+            address.scheme() == "https" && address.host_str() == Some(VAULT_PREVIEW_HOST)
+        };
+        let address = url::Url::parse(url).ok().filter(from_vault)?;
+        let response = self
+            .http
+            .get(address)
+            .timeout(REQUEST_DEADLINE)
+            .send()
+            .await
+            .ok()?;
+        if !response.status().is_success() || !from_vault(response.url()) {
             return None;
         }
         let mime = response
@@ -206,8 +251,11 @@ impl TourneyClient {
         if !mime.starts_with("image/") {
             return None;
         }
-        let bytes = response.bytes().await.ok()?;
-        if bytes.is_empty() || bytes.len() > MAX_PREVIEW_BYTES {
+        // Streamed against the limit, with or without a `Content-Length`.
+        let bytes = bounded_body(response, "the map preview", MAX_PREVIEW_BYTES as u64)
+            .await
+            .ok()?;
+        if bytes.is_empty() {
             return None;
         }
         let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
@@ -240,6 +288,12 @@ impl TourneyClient {
 /// here assumes they are safe to paste into a URL.
 fn encode(segment: &str) -> String {
     url::form_urlencoded::byte_serialize(segment.as_bytes()).collect()
+}
+
+/// `.` or `..`, in any of the spellings the URL parser resolves as one.
+fn is_dot_segment(segment: &str) -> bool {
+    let plain = segment.to_ascii_lowercase().replace("%2e", ".");
+    plain == "." || plain == ".."
 }
 
 /// Turn a failed response into the category the UI acts on.
@@ -1337,6 +1391,36 @@ mod tests {
             .url(&format!("t/{}/signup", encode("../../admin")))
             .unwrap();
         assert_eq!(url.path(), "/api/t/..%2F..%2Fadmin/signup");
+    }
+
+    #[test]
+    fn an_id_made_of_dots_is_refused_rather_than_resolved() {
+        // `encode` leaves dots alone and the parser resolves a dot segment,
+        // escaped or not, so these used to leave `t/` for another route.
+        let client = client("https://tournaments.faforever.com");
+        for id in [".", ".."] {
+            let path = format!("t/{}/signup", encode(id));
+            assert!(client.url(&path).is_err(), "{path}");
+        }
+        // An id that is itself escaped has its `%` escaped again, so it stays
+        // one ordinary segment.
+        let escaped = client
+            .url(&format!("t/{}/signup", encode("%2e%2e")))
+            .unwrap();
+        assert_eq!(escaped.path(), "/api/t/%252e%252e/signup");
+        // And the escaped spellings are caught should one ever arrive bare.
+        assert!(client.url("t/%2e%2e/signup").is_err());
+        assert!(client.url("t/.%2E/signup").is_err());
+    }
+
+    #[test]
+    fn the_token_only_travels_over_https_or_to_this_machine() {
+        assert!(client("http://tournaments.example").url("t").is_err());
+        assert!(client("ftp://tournaments.example").url("t").is_err());
+        assert!(client("https://tournaments.example").url("t").is_ok());
+        assert!(client("http://localhost:3000").url("t").is_ok());
+        assert!(client("http://127.0.0.1:3000").url("t").is_ok());
+        assert!(client("http://[::1]:3000").url("t").is_ok());
     }
 
     #[tokio::test]

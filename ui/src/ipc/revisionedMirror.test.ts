@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppEvent, AppState } from "./bindings";
-import { RECOVERY_MAX_ATTEMPTS, RevisionedMirror, recoveryRetryDelay } from "./revisionedMirror";
+import {
+  MAX_PENDING_EVENTS,
+  RECOVERY_MAX_ATTEMPTS,
+  RevisionedMirror,
+  recoveryRetryDelay,
+} from "./revisionedMirror";
 
 const connecting: AppEvent = { kind: "Session", event: { type: "connecting" } };
 const disconnected: AppEvent = { kind: "Session", event: { type: "disconnected" } };
@@ -57,6 +62,31 @@ describe("RevisionedMirror", () => {
 
     expect(hydrate).toHaveBeenCalledOnce();
     expect(apply).toHaveBeenCalledWith(disconnected);
+  });
+
+  it("stops holding events behind a gap that never closes, and recovers from a snapshot", async () => {
+    const hydrate = vi.fn();
+    const apply = vi.fn();
+    const last = MAX_PENDING_EVENTS + 10;
+    const resnapshot = vi.fn().mockResolvedValue({ revision: last - 1, state: snapshotState });
+    const mirror = new RevisionedMirror(hydrate, apply, resnapshot);
+
+    mirror.replace({ revision: 1, state: snapshotState });
+    // Revision 2 never arrives, so everything after it waits, more of it than
+    // the mirror holds.
+    for (let revision = 3; revision < last; revision += 1) {
+      mirror.receive({ kind: "event", revision, event: connecting });
+    }
+    // An older snapshot landing in between does not count as caught up: the
+    // events that were let go are newer than it.
+    mirror.replace({ revision: 50, state: snapshotState });
+    mirror.receive({ kind: "event", revision: last, event: disconnected });
+    expect(apply).not.toHaveBeenCalled();
+
+    // The snapshot the gap asked for covers them, and ordered traffic resumes.
+    await vi.waitFor(() => expect(apply).toHaveBeenCalledWith(disconnected));
+    expect(apply).toHaveBeenCalledOnce();
+    expect(hydrate).toHaveBeenCalledTimes(3);
   });
 
   it("does not apply an event across a revision gap and recovers from a snapshot", async () => {
