@@ -2184,6 +2184,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "chat.roster.filterPlaceholder": { one: "{count} personne, tapez pour filtrer", other: "{count} personnes, tapez pour filtrer" },
   "chat.roster.filterAria": { one: "Filtrer la liste ({count} personne)", other: "Filtrer la liste ({count} personnes)" },
   "chat.roster.noteMark": "Votre note : {note}",
+  "chat.roster.sortLabel": "Trier les joueurs par",
+  "chat.roster.sortName": "Nom",
   "chat.message.openConversation": "Écrire à {name}",
   "chat.loadOlder": "Charger les messages précédents ({count} restants)",
   "maps.generate.installedReady": "Installée dans le dossier des cartes et prête à jouer",

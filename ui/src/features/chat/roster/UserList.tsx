@@ -10,6 +10,10 @@
 // flag and clan tag: all of which come from the lobby's player record rather
 // than from IRC, so an IRC-only nickname simply renders bare.
 //
+// The players inside each group can be ordered by their rating on one board
+// (#513), highest first, with the rating shown at the end of the row while
+// they are; the groups themselves stay where they are.
+//
 // A player you wrote a note about carries a small mark after the name, with
 // the note as its tooltip (#519): the note was only ever visible on the
 // profile, so nothing in the list said there was one.
@@ -21,6 +25,7 @@
 import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatPreferences, ChatUser, Game, PlayerProfile, SocialState, VaultMap } from "../../../ipc/bindings";
 import { Icon } from "../../../design-system/Icon";
+import { Select } from "../../../design-system/Select";
 import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
 import { playersByNickname } from "../../../store/reducer";
@@ -40,6 +45,8 @@ import { useCountryLabel } from "../../../shared/hooks/useCountryLabel";
 import { GameSummaryPopover } from "./GameSummaryPopover";
 import { gamePresenceIndex, type GamePresence } from "./gameSummary";
 import { usePlayerRatingCard } from "./PlayerRatingCard";
+import { isRosterSort, ROSTER_SORTS, sortRoster, type RosterSort } from "./rosterSort";
+import { displayedRating, leaderboardLabel } from "../../../shared/playerRatings";
 
 interface Props {
   users: ChatUser[];
@@ -111,6 +118,7 @@ export const UserList = memo(function UserList({
   const { t } = useTranslation();
   // Remembered as the filter setting says (#447).
   const [filter, setFilter] = useRememberedFilter("chat.users", "", (value) => typeof value === "string");
+  const [sort, setSort] = useRememberedFilter<RosterSort>("chat.usersSort", "name", isRosterSort);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(600);
   const [itemHeight, setItemHeight] = useState(FALLBACK_ITEM_HEIGHT);
@@ -174,8 +182,12 @@ export const UserList = memo(function UserList({
     for (const user of matching) {
       buckets.get(categoryOf(user, self, social, socialKnown, ownClan))?.push(user);
     }
+    if (sort !== "name") {
+      const profileOf = (nickname: string) => profilesByLogin.get(nickname.toLowerCase());
+      for (const [category, bucket] of buckets) buckets.set(category, sortRoster(bucket, sort, profileOf));
+    }
     return buckets;
-  }, [users, self, social, filter]);
+  }, [users, self, social, filter, sort, profilesByLogin]);
 
   // Flatten ordered categories and users into a unified virtualization list.
   const flatItems = useMemo<RosterFlatItem[]>(() => {
@@ -244,6 +256,20 @@ export const UserList = memo(function UserList({
             }}
           />
         </label>
+        <Select<RosterSort>
+          className="chat-roster-sort"
+          label={t("chat.roster.sortLabel")}
+          value={sort}
+          onChange={(next) => {
+            setSort(next);
+            setScrollTop(0);
+            if (listRef.current) listRef.current.scrollTop = 0;
+          }}
+          options={ROSTER_SORTS.map((value) => ({
+            value,
+            label: value === "name" ? t("chat.roster.sortName") : leaderboardLabel(value),
+          }))}
+        />
       </div>
 
       <div
@@ -307,6 +333,7 @@ export const UserList = memo(function UserList({
                     user={item.user}
                     profile={profile}
                     note={profile ? notesById.get(profile.id) : undefined}
+                    sortedRating={sort === "name" ? undefined : displayedRating(profile, sort)}
                     social={social}
                     presence={presences.get(item.user.name.toLocaleLowerCase()) ?? null}
                     mapVault={mapVault}
@@ -330,6 +357,7 @@ const RosterRow = memo(function RosterRow({
   user,
   profile,
   note,
+  sortedRating,
   social,
   presence,
   mapVault,
@@ -343,6 +371,12 @@ const RosterRow = memo(function RosterRow({
   profile: PlayerProfile | undefined;
   /** The player's note, when one was written about them. */
   note: string | undefined;
+  /**
+   * The rating the list is ordered by, shown at the end of the row: `null`
+   * for nobody rated on that board, `undefined` while the list is not sorted
+   * by rating.
+   */
+  sortedRating: number | null | undefined;
   social: SocialState;
   presence: GamePresence | null;
   mapVault: VaultMap[];
@@ -422,6 +456,9 @@ const RosterRow = memo(function RosterRow({
             </span>
           )}
         </button>
+        {sortedRating !== undefined && (
+          <span className="chat-roster-rating">{sortedRating ?? "\u2013"}</span>
+        )}
         {presence && <GameSummaryPopover presence={presence} social={social} vault={mapVault} />}
       </div>
       {card}

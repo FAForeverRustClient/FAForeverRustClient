@@ -170,6 +170,8 @@ export const en = {
   "chat.roster.filterPlaceholder": { one: "{count} user, type to filter", other: "{count} users, type to filter" },
   "chat.roster.filterAria": { one: "Filter the roster ({count} user)", other: "Filter the roster ({count} users)" },
   "chat.roster.noteMark": "Your note: {note}",
+  "chat.roster.sortLabel": "Order players by",
+  "chat.roster.sortName": "Name",
   "chat.message.openConversation": "Message {name}",
   "chat.search.open": "Search",
   "chat.jumpToLatest": "Jump to latest",

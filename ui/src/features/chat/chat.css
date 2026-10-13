@@ -1032,8 +1032,27 @@ html.is-resizing-chat-roster * {
 
 /* ── Roster ───────────────────────────────────────────────────────────── */
 .chat-roster-search {
+  display: flex;
+  gap: 6px;
   padding: var(--space-2) 6px;
   border-bottom: 1px solid var(--color-border);
+}
+
+/* The order of the players in each group (issue 513): narrow beside the
+   search box, which keeps the rest of the width. */
+.chat-roster-sort {
+  flex: none;
+  width: 92px;
+}
+
+/* The rating the list is ordered by, at the end of the row. */
+.chat-roster-rating {
+  flex: none;
+  min-width: 32px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .chat-roster-search-field {
