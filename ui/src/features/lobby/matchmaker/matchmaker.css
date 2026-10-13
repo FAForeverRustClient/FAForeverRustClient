@@ -520,7 +520,9 @@
   height: 20px;
   margin-left: 4px;
   object-fit: contain;
-  image-rendering: auto;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
 }
 
 .matchmaker-player-meta {

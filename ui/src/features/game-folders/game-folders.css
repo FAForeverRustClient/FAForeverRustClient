@@ -22,17 +22,23 @@
   transform: translateX(2px);
 }
 
+/* The menu, in the sidebar's own grammar: each folder is an icon and a label
+   like the tab it sits beside, at the tab's 13 px, in full text colour. The
+   entries used to be 12 px muted grey under shouted uppercase headings, which
+   read as a list of disabled options. Sized to its longest label (Russian is
+   the long one) rather than a fixed 200 px. */
 .game-folders-popover {
   position: fixed;
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  width: 200px;
+  width: max-content;
+  min-width: 212px;
+  max-width: min(300px, calc(100vw - 16px));
   max-height: calc(100vh - 16px);
   overflow-y: auto;
   /* No scrollbar gutter: a pop-up as wide as what opened it, where a reserved strip would narrow every entry for a scrollbar most lists never show. */
-  padding: var(--space-2);
+  padding: var(--space-1);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
@@ -46,35 +52,79 @@
   gap: 1px;
 }
 
+/* The groups are told apart by a rule, the way the player menu's are, and
+   named quietly under it. */
+.game-folders-group + .game-folders-group {
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--color-border);
+}
+
 .game-folders-group-title {
-  margin: 0 0 4px;
-  padding: 0 8px;
+  margin: 0;
+  padding: 6px 10px 4px;
   color: var(--color-subtle);
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .game-folders-entry {
   display: flex;
   align-items: center;
-  padding: 6px 8px;
-  color: var(--color-muted);
+  gap: 10px;
+  min-height: 32px;
+  padding: 0 10px;
+  color: var(--color-text);
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 450;
   text-align: left;
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background 100ms ease, color 100ms ease;
+  transition: background-color 100ms ease;
 }
 
-.game-folders-entry:hover {
-  color: var(--color-text);
+.game-folders-entry-icon {
+  flex: none;
+  color: var(--color-muted);
+  transition: color 100ms ease;
+}
+
+.game-folders-entry-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-folders-entry-opens {
+  flex: none;
+  margin-left: var(--space-2);
+  color: var(--color-subtle);
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+
+.game-folders-entry:hover,
+.game-folders-entry:focus-visible {
   background: var(--color-surface-hover);
+}
+
+.game-folders-entry:hover .game-folders-entry-icon,
+.game-folders-entry:focus-visible .game-folders-entry-icon {
+  color: var(--color-text);
+}
+
+.game-folders-entry:hover .game-folders-entry-opens,
+.game-folders-entry:focus-visible .game-folders-entry-opens {
+  opacity: 1;
+}
+
+.game-folders-entry:active {
+  background: var(--color-surface);
 }
 
 .game-folders-entry:focus-visible {
@@ -83,11 +133,20 @@
 }
 
 .game-folders-error {
-  margin: 0;
-  padding: 4px 8px;
+  margin: var(--space-1) 0 0;
+  padding: 6px 10px 4px;
   color: var(--color-error-text);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
+  border-top: 1px solid var(--color-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-folders-entry,
+  .game-folders-entry-icon,
+  .game-folders-entry-opens {
+    transition: none;
+  }
 }
 
 /* Collapsed sidebar: the labels are gone from the tabs, so the disclosure hides
