@@ -16,3 +16,4 @@ anything inside it.
 ## Unreleased
 
 - Security fixes in the guide reader and the guide review queue, which now also shows the link each submission points to.
+- A guide with unusual formatting no longer freezes the client while it opens.
