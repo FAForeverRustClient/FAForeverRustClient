@@ -374,26 +374,49 @@ pub fn hosted_recording(url: &str) -> Option<HostedGuide<'_>> {
 
 fn hosted_document<'a>(url: &'a str, suffix: &str) -> Option<HostedGuide<'a>> {
     let rest = url.strip_prefix("https://raw.githubusercontent.com/")?;
-    if !rest.ends_with(suffix) {
+    if !rest.ends_with(suffix) || !plain_path(rest) {
         return None;
     }
     let mut parts = rest.splitn(4, '/');
-    let guide = HostedGuide {
+    Some(HostedGuide {
         owner: parts.next()?,
         repo: parts.next()?,
         reference: parts.next()?,
         path: parts.next()?,
-    };
-    let empty = guide.owner.is_empty()
-        || guide.repo.is_empty()
-        || guide.reference.is_empty()
-        || guide.path.is_empty();
-    // `..` in the path would still resolve on GitHub's side, and a catalogue
-    // entry has no business walking out of the directory it names.
-    if empty || guide.path.contains("..") {
-        return None;
-    }
-    Some(guide)
+    })
+}
+
+/// Whether `url` is on GitHub's raw host but written in a form the URL parser
+/// would rewrite: a percent escape, a backslash, a dot segment and the rest of
+/// what [`plain_path`] refuses.
+///
+/// Such an address is never read by the tab, so it is harmless in the
+/// catalogue, but nobody writes one by accident. A submission carrying one is
+/// trying to be read as the trusted repository while pointing elsewhere, and
+/// is refused before it is accepted rather than merely ignored afterwards.
+pub fn is_disguised_raw_address(url: &str) -> bool {
+    url.strip_prefix("https://raw.githubusercontent.com/")
+        .is_some_and(|rest| !plain_path(rest))
+}
+
+/// Whether a raw address is already in the form an HTTP client will send.
+///
+/// The repository test reads the string as written, and the request goes out
+/// after the URL parser has normalised it. The two have to agree, or
+/// `guides/main/%2e%2e/%2e%2e/%2e%2e/someone/else/main/g.md` names the trusted
+/// repository here and fetches another one there. So anything the parser would
+/// rewrite is refused outright rather than reasoned about: a percent escape, a
+/// backslash (read as `/`), a query or fragment, whitespace and control
+/// characters, and an empty, `.` or `..` segment anywhere, not only in the file
+/// path. `..` would also still resolve on GitHub's side, and a catalogue entry
+/// has no business walking out of the directory it names.
+fn plain_path(rest: &str) -> bool {
+    let rewritten =
+        |c: char| matches!(c, '%' | '\\' | '?' | '#') || c.is_whitespace() || c.is_control();
+    !rest.chars().any(rewritten)
+        && rest
+            .split('/')
+            .all(|segment| !segment.is_empty() && segment != "." && segment != "..")
 }
 
 /// The leaderboard's word for a mode the catalogue speaks in.
@@ -1947,6 +1970,61 @@ mod tests {
         AuthState, LocalReplay, LocalReplayPlayer, LocalReplayStatus, LocalReplayTeam,
         MatchmakerPlayerProfile, Player, PlayerCardState, PlayerRatingSummary, ReplayState,
     };
+
+    // -- hosted documents --------------------------------------------------
+
+    #[test]
+    fn a_plain_raw_address_names_its_repository() {
+        let guide = hosted_guide(
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/eco.md",
+        )
+        .expect("a plain address is a hosted guide");
+        assert_eq!(guide.repository(), "FAForeverRustClient/guides");
+        assert_eq!(guide.reference, "main");
+        assert_eq!(guide.path, "guides/eco.md");
+    }
+
+    #[test]
+    fn an_address_the_url_parser_would_rewrite_is_not_a_hosted_guide() {
+        // Each of these passes a naive owner/repo split as the trusted
+        // repository, and each one is fetched from somewhere else once the URL
+        // parser has normalised it (or, for the plain dot segments, once
+        // GitHub has).
+        for url in [
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/%2e%2e/%2e%2e/%2e%2e/a/r/main/g.md",
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/..\\..\\a\\r\\main/g.md",
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/../../a/r/main/g.md",
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/./../g.md",
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/g.md?x=.md",
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/g#.md",
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/main//g.md",
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/g\t.md",
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/a b.md",
+        ] {
+            assert_eq!(hosted_guide(url), None, "{url}");
+        }
+    }
+
+    #[test]
+    fn a_disguised_raw_address_is_told_apart_from_a_plain_one() {
+        assert!(is_disguised_raw_address(
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/%2e%2e/x.md"
+        ));
+        assert!(!is_disguised_raw_address(
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/x.md"
+        ));
+        assert!(!is_disguised_raw_address(
+            "https://www.youtube.com/watch?v=abc"
+        ));
+    }
+
+    #[test]
+    fn a_double_dot_inside_a_file_name_is_not_a_dot_segment() {
+        assert!(hosted_recording(
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/bo/seton..v2.json"
+        )
+        .is_some());
+    }
 
     fn resource(id: &str) -> TrainingResource {
         TrainingResource {
