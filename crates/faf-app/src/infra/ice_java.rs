@@ -184,7 +184,7 @@ impl JavaAdapter {
     async fn spawn_and_connect(
         &self,
         params: &IceParams,
-        ice: &IceServers,
+        force_relay: bool,
         rpc_port: u16,
         gpg_port: u16,
     ) -> Result<(JsonRpcClient, mpsc::Receiver<RpcNotification>), String> {
@@ -202,7 +202,7 @@ impl JavaAdapter {
             "--gpgnet-port".into(),
             gpg_port.to_string(),
         ];
-        if ice.force_relay {
+        if force_relay {
             args.push("--force-relay".into());
         }
         let windows = *self.debug_windows.lock().unwrap();
@@ -249,8 +249,10 @@ impl JavaAdapter {
                 }
             });
         }
-        if let Some(prev) = self.child.lock().unwrap().replace(child) {
-            drop(prev);
+        // An adapter still recorded here is one nothing speaks to any more:
+        // stopped, not merely forgotten, which would leave its JVM running.
+        if let Some(mut previous) = self.child.lock().unwrap().replace(child) {
+            let _ = previous.start_kill();
         }
 
         // JSON-RPC control channel. A refusal here is usually the adapter
@@ -260,13 +262,135 @@ impl JavaAdapter {
         match JsonRpcClient::connect("127.0.0.1", rpc_port, RPC_CONNECT_TIMEOUT).await {
             Ok(connected) => Ok(connected),
             Err(reason) => {
-                if let Some(mut failed) = self.child.lock().unwrap().take() {
-                    let _ = failed.start_kill();
-                }
+                self.kill_child();
                 Err(reason)
             }
         }
     }
+
+    /// Start the adapter on ports free at the time, trying fresh ones when it
+    /// does not answer on the first.
+    ///
+    /// Reserving a port means binding it and letting it go, so the numbers
+    /// are free when they are chosen and not necessarily when the adapter
+    /// binds them a moment later. Losing that race cost a fifteen second wait
+    /// on the RPC connect and then a join that failed with nothing in the log
+    /// to say why, so it is worth another go with fresh numbers.
+    async fn spawn_on_free_ports(
+        &self,
+        params: &IceParams,
+        force_relay: bool,
+        asked: std::time::Instant,
+    ) -> Result<SpawnedAdapter, String> {
+        let mut attempt = 0;
+        loop {
+            attempt += 1;
+            // Both at once, so they cannot come back as the same number: see
+            // `infra::free_ports`.
+            let ports = free_ports(2).ok_or("could not reserve the adapter's ports")?;
+            let (rpc_port, gpg_port) = (ports[0], ports[1]);
+            match self
+                .spawn_and_connect(params, force_relay, rpc_port, gpg_port)
+                .await
+            {
+                Ok((rpc, notifications)) => {
+                    tracing::info!(
+                        game_id = params.game_id,
+                        attempt,
+                        force_relay,
+                        milliseconds = asked.elapsed().as_millis() as u64,
+                        "the ICE adapter answered"
+                    );
+                    return Ok((gpg_port, rpc, notifications));
+                }
+                Err(reason) if attempt < PORT_ATTEMPTS => tracing::warn!(
+                    attempt,
+                    rpc_port,
+                    gpgnet_port = gpg_port,
+                    %reason,
+                    "the ICE adapter did not answer on the ports it was given; retrying"
+                ),
+                Err(reason) => return Err(reason),
+            }
+        }
+    }
+
+    /// Stop the adapter process this start launched, if one is running.
+    fn kill_child(&self) {
+        if let Some(mut child) = self.child.lock().unwrap().take() {
+            let _ = child.start_kill();
+        }
+    }
+}
+
+/// A started adapter: its GPGNet port, its control channel and what it says.
+type SpawnedAdapter = (u16, JsonRpcClient, mpsc::Receiver<RpcNotification>);
+
+/// What [`session_and_adapter`] reads from a session.
+trait ForcesRelay {
+    fn force_relay(&self) -> bool;
+}
+
+impl ForcesRelay for IceServers {
+    fn force_relay(&self) -> bool {
+        self.force_relay
+    }
+}
+
+/// Fetch the ICE session and start the adapter at the same time, and answer
+/// both, or the first failure with nothing left running.
+///
+/// - The adapter is started without `--force-relay`. A session that asks for
+///   it gets the adapter stopped and started again with the flag, before
+///   anything has been told to it.
+/// - A session that cannot be had stops the adapter, whether it is already
+///   up or still starting: the start is dropped where it is, and `kill` stops
+///   the process it may have launched by then.
+/// - An adapter that cannot be started ends the wait for the session.
+///
+/// Generic over the two steps so that this ordering can be tested without a
+/// JVM or the API.
+async fn session_and_adapter<S, A, Session, Spawn>(
+    session: Session,
+    spawn: impl Fn(bool) -> Spawn,
+    kill: impl Fn(),
+) -> Result<(S, A), String>
+where
+    S: ForcesRelay,
+    Session: std::future::Future<Output = Result<S, String>>,
+    Spawn: std::future::Future<Output = Result<A, String>>,
+{
+    let mut session = Box::pin(session);
+    let mut starting = Box::pin(spawn(false));
+    let (session, adapter) = tokio::select! {
+        fetched = &mut session => match fetched {
+            Ok(fetched) => (fetched, starting.await?),
+            Err(reason) => {
+                drop(starting);
+                kill();
+                return Err(reason);
+            }
+        },
+        started = &mut starting => {
+            let adapter = started?;
+            match session.await {
+                Ok(fetched) => (fetched, adapter),
+                Err(reason) => {
+                    drop(adapter);
+                    kill();
+                    return Err(reason);
+                }
+            }
+        }
+    };
+    if !session.force_relay() {
+        return Ok((session, adapter));
+    }
+    tracing::info!("the ICE session forces relaying; restarting the adapter with --force-relay");
+    drop(adapter);
+    kill();
+    let adapter = spawn(true).await?;
+    Ok((session, adapter))
 }
 
 #[async_trait]
@@ -279,63 +403,43 @@ impl IcePort for JavaAdapter {
             return Err("the optional Java ICE adapter is not installed".into());
         }
 
-        // How long each of the two steps below takes, in the log: whether
-        // starting the adapter while the session is fetched would save any
-        // time is a question for these numbers (#493), not for a guess.
+        // The session and the adapter are both seconds of waiting, and only
+        // one switch of the adapter's depends on the session: so they are had
+        // at the same time (#493). The adapter starts without
+        // `--force-relay`, which is what nearly every session says, and is
+        // started again with it for one that says otherwise.
+        //
+        // Java fetches the session first and starts the adapter after it
+        // (`GameRunner.startIceAdapter`), which is the sum of the two.
         let asked = std::time::Instant::now();
-
-        // ICE servers (the Java adapter doesn't fetch these itself). Said in
-        // so many words when they are missing: the bare status read as if the
-        // adapter on the player's machine had failed, when it was never run.
-        let ice =
-            fetch_ice_servers_retrying(&self.http, &self.config.api_base, &token, params.game_id)
-                .await
-                .map_err(|reason| {
-                    format!("the FAF server did not hand out this game's relay servers ({reason})")
-                })?;
-        self.memory.remember_servers(params.game_id, &ice.servers);
-        tracing::info!(
-            game_id = params.game_id,
-            milliseconds = asked.elapsed().as_millis() as u64,
-            "the ICE session arrived"
-        );
-        let spawning = std::time::Instant::now();
-
-        // Reserving a port means binding it and letting it go, so the numbers
-        // are free when they are chosen and not necessarily when the adapter
-        // binds them a moment later. Losing that race cost a fifteen second
-        // wait on the RPC connect and then a join that failed with nothing in
-        // the log to say why, so it is worth another go with fresh numbers.
-        let mut attempt = 0;
-        let (gpg_port, rpc, mut notifications) = loop {
-            attempt += 1;
-            // Both at once, so they cannot come back as the same number: see
-            // `infra::free_ports`.
-            let ports = free_ports(2).ok_or("could not reserve the adapter's ports")?;
-            let (rpc_port, gpg_port) = (ports[0], ports[1]);
-            match self
-                .spawn_and_connect(&params, &ice, rpc_port, gpg_port)
-                .await
-            {
-                Ok((rpc, notifications)) => {
-                    tracing::info!(
-                        game_id = params.game_id,
-                        attempt,
-                        milliseconds = spawning.elapsed().as_millis() as u64,
-                        "the ICE adapter answered"
-                    );
-                    break (gpg_port, rpc, notifications);
-                }
-                Err(reason) if attempt < PORT_ATTEMPTS => tracing::warn!(
-                    attempt,
-                    rpc_port,
-                    gpgnet_port = gpg_port,
-                    %reason,
-                    "the ICE adapter did not answer on the ports it was given; retrying"
-                ),
-                Err(reason) => return Err(reason),
-            }
+        let session = async {
+            let ice = fetch_ice_servers_retrying(
+                &self.http,
+                &self.config.api_base,
+                &token,
+                params.game_id,
+            )
+            .await
+            // Said in so many words when they are missing: the bare status
+            // read as if the adapter on the player's machine had failed,
+            // when it was never run.
+            .map_err(|reason| {
+                format!("the FAF server did not hand out this game's relay servers ({reason})")
+            })?;
+            tracing::info!(
+                game_id = params.game_id,
+                milliseconds = asked.elapsed().as_millis() as u64,
+                "the ICE session arrived"
+            );
+            Ok(ice)
         };
+        let (ice, (gpg_port, rpc, mut notifications)) = session_and_adapter(
+            session,
+            |force_relay| self.spawn_on_free_ports(&params, force_relay, asked),
+            || self.kill_child(),
+        )
+        .await?;
+        self.memory.remember_servers(params.game_id, &ice.servers);
 
         rpc.call("setIceServers", vec![Value::Array(ice.servers)]);
         rpc.call(
@@ -743,6 +847,147 @@ mod tests {
     }
 
     use super::*;
+
+    /// A fake session for [`session_and_adapter`].
+    struct FakeSession(bool);
+
+    impl ForcesRelay for FakeSession {
+        fn force_relay(&self) -> bool {
+            self.0
+        }
+    }
+
+    /// Counts what [`session_and_adapter`] starts and stops: every start is
+    /// one adapter process, every kill stops the one that is running.
+    #[derive(Default)]
+    struct Starts {
+        started: std::sync::Mutex<Vec<bool>>,
+        running: std::sync::atomic::AtomicI32,
+        killed: std::sync::atomic::AtomicI32,
+    }
+
+    impl Starts {
+        async fn spawn(&self, force_relay: bool, delay_ms: u64, fail: bool) -> Result<u32, String> {
+            use std::sync::atomic::Ordering;
+            self.started.lock().unwrap().push(force_relay);
+            self.running.store(1, Ordering::SeqCst);
+            tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+            if fail {
+                // As `spawn_and_connect` does: a start that fails stops its
+                // own process.
+                self.running.store(0, Ordering::SeqCst);
+                return Err("the adapter did not answer".into());
+            }
+            Ok(7)
+        }
+
+        fn kill(&self) {
+            use std::sync::atomic::Ordering;
+            self.killed.fetch_add(1, Ordering::SeqCst);
+            self.running.store(0, Ordering::SeqCst);
+        }
+
+        fn running(&self) -> i32 {
+            self.running.load(std::sync::atomic::Ordering::SeqCst)
+        }
+    }
+
+    async fn session_after(
+        delay_ms: u64,
+        outcome: Result<bool, &str>,
+    ) -> Result<FakeSession, String> {
+        tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+        outcome.map(FakeSession).map_err(str::to_string)
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn the_session_and_the_adapter_are_had_at_the_same_time() {
+        let starts = Starts::default();
+        let begun = tokio::time::Instant::now();
+        let (session, adapter) = session_and_adapter(
+            session_after(800, Ok(false)),
+            |force| starts.spawn(force, 2_500, false),
+            || starts.kill(),
+        )
+        .await
+        .unwrap();
+        assert!(!session.0);
+        assert_eq!(adapter, 7);
+        assert_eq!(
+            begun.elapsed(),
+            Duration::from_millis(2_500),
+            "the longer of the two, not their sum"
+        );
+        assert_eq!(*starts.started.lock().unwrap(), [false]);
+        assert_eq!(starts.running(), 1, "the adapter is left running");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_session_that_forces_relaying_restarts_the_adapter_with_the_flag() {
+        let starts = Starts::default();
+        let (session, _) = session_and_adapter(
+            session_after(800, Ok(true)),
+            |force| starts.spawn(force, 2_500, false),
+            || starts.kill(),
+        )
+        .await
+        .unwrap();
+        assert!(session.0);
+        assert_eq!(
+            *starts.started.lock().unwrap(),
+            [false, true],
+            "started without the flag, then again with it"
+        );
+        assert_eq!(starts.killed.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert_eq!(starts.running(), 1, "only the second one is running");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_session_that_fails_after_the_adapter_started_stops_it() {
+        let starts = Starts::default();
+        let failed = session_and_adapter(
+            session_after(4_000, Err("ice servers returned 500")),
+            |force| starts.spawn(force, 1_000, false),
+            || starts.kill(),
+        )
+        .await;
+        assert_eq!(failed.err().as_deref(), Some("ice servers returned 500"));
+        assert_eq!(starts.running(), 0, "no adapter is left behind");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_session_that_fails_while_the_adapter_starts_stops_it_at_once() {
+        let starts = Starts::default();
+        let begun = tokio::time::Instant::now();
+        let failed = session_and_adapter(
+            session_after(300, Err("no access")),
+            |force| starts.spawn(force, 2_500, false),
+            || starts.kill(),
+        )
+        .await;
+        assert!(failed.is_err());
+        assert_eq!(
+            begun.elapsed(),
+            Duration::from_millis(300),
+            "the start is not waited out"
+        );
+        assert_eq!(starts.running(), 0, "the process it launched is stopped");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn an_adapter_that_cannot_start_ends_the_wait_for_the_session() {
+        let starts = Starts::default();
+        let begun = tokio::time::Instant::now();
+        let failed = session_and_adapter(
+            session_after(20_000, Ok(false)),
+            |force| starts.spawn(force, 1_000, true),
+            || starts.kill(),
+        )
+        .await;
+        assert_eq!(failed.err().as_deref(), Some("the adapter did not answer"));
+        assert_eq!(begun.elapsed(), Duration::from_millis(1_000));
+        assert_eq!(starts.running(), 0);
+    }
 
     #[test]
     fn only_the_not_now_answers_are_tried_again() {
