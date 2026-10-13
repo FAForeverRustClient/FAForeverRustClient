@@ -312,6 +312,7 @@ impl IcePort for PioneerAdapter {
             game_port,
             to_lobby: to_lobby_rx,
             from_lobby: from_lobby_tx,
+            late_failure: None,
         })
     }
 
@@ -420,6 +421,7 @@ impl IcePort for FakeIce {
             game_port: 0,
             to_lobby: to_lobby_rx,
             from_lobby: from_lobby_tx,
+            late_failure: None,
         })
     }
     fn stop(&self) {}
