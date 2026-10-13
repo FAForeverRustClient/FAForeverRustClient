@@ -507,6 +507,8 @@ fn write_fa_path_lua(
     featured_mod: &str,
     version: i32,
 ) -> Result<(), String> {
+    // Written inside a Lua string literal that FA executes on start.
+    super::require_featured_mod_name(featured_mod)?;
     let vault_path = documents_vault_dir().unwrap_or_else(|| target_dir.join("vault"));
     let content = format!(
         "fa_path = \"{}\"\ncustom_vault_path = \"{}\"\nGameType = \"{featured_mod}\"\nGameVersion = \"{version}\"\nClientVersion = \"{}\"\nForceAffinity = false\n",

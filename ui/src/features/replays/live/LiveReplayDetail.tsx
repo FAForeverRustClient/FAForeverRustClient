@@ -355,7 +355,6 @@ export function LiveReplayDetail({
             onClick={(event) => event.stopPropagation()}
           >
             <MapPreviewFrame
-              kicker={t("lobby.browser.mapPreview")}
               title={mapLabel}
               subtitle={title === mapLabel ? undefined : title}
               onClose={() => setEnlarged(false)}

@@ -6,6 +6,22 @@ import { GeneratorFailure } from "../../shared/components/GeneratorFailure";
 import { GeneratorProgress } from "./GeneratorProgress";
 import { GENERATED_MAP_PLACEHOLDER_URL } from "../../shared/mapPresentation";
 import { formatMapSize, summariseDecodedName } from "../../shared/generatorPresentation";
+import { useGeneratedMapArt } from "../../shared/markedMapPreview";
+
+/// One of several maps from a run, as a thumbnail: with FAF's icons on it,
+/// as the large picture beside it has them.
+function GeneratedResultThumb({ mapName, fallbackUrl }: { mapName: string; fallbackUrl: string | undefined }) {
+  const url = useGeneratedMapArt(mapName) ?? fallbackUrl;
+  return (
+    <GeneratePreviewImg
+      url={url}
+      alt={mapName}
+      className="generate-map-thumb-img"
+      placeholderClassName="generate-map-thumb-placeholder"
+      iconSize={20}
+    />
+  );
+}
 
 export function GeneratedMapResults({ model, onClose }: {
   onClose: () => void; model: Pick<GeneratorDialogModel,
@@ -51,13 +67,7 @@ export function GeneratedMapResults({ model, onClose }: {
                   onClick={() => setSelectedMapIndex(idx)}
                   title={map}
                 >
-                  <GeneratePreviewImg
-                    url={previews[map]}
-                    alt={map}
-                    className="generate-map-thumb-img"
-                    placeholderClassName="generate-map-thumb-placeholder"
-                    iconSize={20}
-                  />
+                  <GeneratedResultThumb mapName={map} fallbackUrl={previews[map]} />
                   <span className="generate-map-thumb-index">#{idx + 1}</span>
                 </button>
               ))}

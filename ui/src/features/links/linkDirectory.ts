@@ -19,18 +19,20 @@
 // it says. The hints used to end in "by Vindex", "by Sheppy", "by Nuggets":
 // naming the person who runs a site reads as an endorsement of that person,
 // and it is not what the reader of this page needs. What they need before
-// clicking is whether they are leaving FAF, so the chip says exactly that and
-// nothing more. The people are thanked at the bottom of the page instead.
+// clicking is whether they are leaving FAF, so a row FAF runs carries an
+// "Official" tag, and every row names the host it opens in its tooltip. The
+// people are thanked at the bottom of the page instead.
 
+import type { IconName } from "../../design-system/Icon";
 import type { LiveStream } from "../../ipc/bindings";
 import type { MessageKey } from "../../i18n";
 
 /**
- * Who runs a destination. Drawn as a chip on every card.
+ * Who runs a destination. An `official` row carries a tag saying so; a
+ * `community` one carries none, and its tooltip names the host it opens and
+ * that FAF does not run it.
  *
- * `community` is deliberately not "a name we know": see the note above. The
- * variant keeps its name because it is what the section it feeds is about, but
- * the chip it draws reads "External".
+ * `community` is deliberately not "a name we know": see the note above.
  */
 export type LinkOrigin = "official" | "community";
 
@@ -49,6 +51,11 @@ export const LINK_SECTIONS: LinkSection[] = ["play", "tools", "games", "watch"];
 export interface DirectoryLink {
   /** Stable id, used as the React key and in tests. */
   id: string;
+  /**
+   * The glyph on the card. What the page is scanned by: with one "external"
+   * arrow on every row, Discord, the wiki and Twitch looked the same.
+   */
+  icon: IconName;
   name: MessageKey;
   hint: MessageKey;
   href: string;
@@ -71,12 +78,14 @@ export interface DirectoryLink {
  *
  * Sources: the community hub above, plus the DoodlePros sites it does not list
  * (FAFScribbl is missing from it, which the issue points out) and FAF's own
- * wiki. Ordered within a section by how often somebody is likely to want it,
- * which for the first four is the order a new player meets them in.
+ * wiki. The order within a section is the maintainers' choice: FAF's site,
+ * Discord, wiki and forum first; the tournaments ahead of the stats sites;
+ * the daily unit ahead of the two games that take longer.
  */
 export const DIRECTORY: readonly DirectoryLink[] = [
   {
     id: "faforever",
+    icon: "globe",
     name: "links.entry.website",
     // Deliberately not "news, leaderboards and the vaults", which is what this
     // said first and is wrong on all three counts: the site's news is out of
@@ -89,23 +98,8 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     section: "play",
   },
   {
-    id: "forum",
-    name: "links.entry.forum",
-    hint: "links.entry.forumHint",
-    href: "https://forum.faforever.com/",
-    origin: "official",
-    section: "play",
-  },
-  {
-    id: "wiki",
-    name: "links.entry.wiki",
-    hint: "links.entry.wikiHint",
-    href: "https://wiki.faforever.com/",
-    origin: "official",
-    section: "play",
-  },
-  {
     id: "discord",
+    icon: "discord",
     name: "links.entry.discord",
     hint: "links.entry.discordHint",
     href: "https://discord.gg/fQxrjwru6E",
@@ -113,7 +107,35 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     section: "play",
   },
   {
+    id: "wiki",
+    icon: "book",
+    name: "links.entry.wiki",
+    hint: "links.entry.wikiHint",
+    href: "https://wiki.faforever.com/",
+    origin: "official",
+    section: "play",
+  },
+  {
+    id: "forum",
+    icon: "chat",
+    name: "links.entry.forum",
+    hint: "links.entry.forumHint",
+    href: "https://forum.faforever.com/",
+    origin: "official",
+    section: "play",
+  },
+  {
+    id: "tournaments",
+    icon: "trophy",
+    name: "links.entry.tournaments",
+    hint: "links.entry.tournamentsHint",
+    href: "https://tournaments.faforever.com/",
+    origin: "official",
+    section: "tools",
+  },
+  {
     id: "tracker",
+    icon: "leaderboard",
     name: "links.entry.tracker",
     hint: "links.entry.trackerHint",
     href: "https://faftracker.xyz/",
@@ -122,6 +144,7 @@ export const DIRECTORY: readonly DirectoryLink[] = [
   },
   {
     id: "companion",
+    icon: "activity",
     name: "links.entry.companion",
     hint: "links.entry.companionHint",
     href: "https://fa-companion.services.atlantishq.de/",
@@ -130,6 +153,7 @@ export const DIRECTORY: readonly DirectoryLink[] = [
   },
   {
     id: "mapgen",
+    icon: "maps",
     name: "links.entry.mapgen",
     hint: "links.entry.mapgenHint",
     href: "https://mapgen.services.atlantishq.de/",
@@ -138,6 +162,7 @@ export const DIRECTORY: readonly DirectoryLink[] = [
   },
   {
     id: "tierlists",
+    icon: "list",
     name: "links.entry.tierlists",
     hint: "links.entry.tierlistsHint",
     href: "https://fa-companion.services.atlantishq.de/tierlist-overview",
@@ -145,15 +170,17 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     section: "tools",
   },
   {
-    id: "tournaments",
-    name: "links.entry.tournaments",
-    hint: "links.entry.tournamentsHint",
-    href: "https://tournaments.faforever.com/",
-    origin: "official",
-    section: "tools",
+    id: "daily",
+    icon: "calendar",
+    name: "links.entry.daily",
+    hint: "links.entry.dailyHint",
+    href: "https://daily.doodlepros.com/",
+    origin: "community",
+    section: "games",
   },
   {
     id: "guessr",
+    icon: "eye",
     name: "links.entry.guessr",
     hint: "links.entry.guessrHint",
     href: "https://fafguessr.doodlepros.com/",
@@ -162,6 +189,7 @@ export const DIRECTORY: readonly DirectoryLink[] = [
   },
   {
     id: "scribbl",
+    icon: "edit",
     name: "links.entry.scribbl",
     hint: "links.entry.scribblHint",
     href: "https://fafscribbl.doodlepros.com/",
@@ -169,15 +197,8 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     section: "games",
   },
   {
-    id: "daily",
-    name: "links.entry.daily",
-    hint: "links.entry.dailyHint",
-    href: "https://daily.doodlepros.com/",
-    origin: "community",
-    section: "games",
-  },
-  {
     id: "twitch",
+    icon: "twitch",
     name: "links.entry.twitch",
     hint: "links.entry.twitchHint",
     href: "https://www.twitch.tv/faflive",
@@ -187,6 +208,7 @@ export const DIRECTORY: readonly DirectoryLink[] = [
   },
   {
     id: "youtube",
+    icon: "youtube",
     name: "links.entry.youtube",
     hint: "links.entry.youtubeHint",
     href: "https://www.youtube.com/c/ForgedAllianceForever",
@@ -200,6 +222,7 @@ export const DIRECTORY: readonly DirectoryLink[] = [
   // choosing. Kick has no YouTube-style game channel, so it is the category.
   {
     id: "twitchCategory",
+    icon: "twitch",
     name: "links.entry.twitchCategory",
     hint: "links.entry.twitchCategoryHint",
     href: "https://www.twitch.tv/directory/category/supreme-commander-forged-alliance",
@@ -208,6 +231,7 @@ export const DIRECTORY: readonly DirectoryLink[] = [
   },
   {
     id: "youtubeCategory",
+    icon: "youtube",
     name: "links.entry.youtubeCategory",
     hint: "links.entry.youtubeCategoryHint",
     href: "https://www.youtube.com/channel/UChiCO27pbaXDR0d0JfxlIpw",
@@ -216,6 +240,7 @@ export const DIRECTORY: readonly DirectoryLink[] = [
   },
   {
     id: "kickCategory",
+    icon: "kick",
     name: "links.entry.kickCategory",
     hint: "links.entry.kickCategoryHint",
     href: "https://kick.com/category/supreme-commander-forged-alliance",
@@ -224,24 +249,25 @@ export const DIRECTORY: readonly DirectoryLink[] = [
   },
 ];
 
-/** What the origin filter is set to. `null` is "show everything". */
-export type OriginFilter = LinkOrigin | null;
-
 /**
- * The entries of one section under the current filter, in directory order.
+ * The entries of one section, in directory order.
  *
- * A section with nothing left in it returns empty and the view draws no
- * heading: filtering to "official" should not leave empty groups behind.
+ * There used to be an origin filter as well (All / Official / External). It
+ * was taken out: with seventeen entries in four cards the whole directory fits
+ * on one screen, and the Official tag already says what the filter did.
  */
-export function sectionLinks(section: LinkSection, filter: OriginFilter): DirectoryLink[] {
-  return DIRECTORY.filter(
-    (link) => link.section === section && (filter === null || link.origin === filter),
-  );
+export function sectionLinks(section: LinkSection): DirectoryLink[] {
+  return DIRECTORY.filter((link) => link.section === section);
 }
 
-/** How many entries the filter would show, for the count on the filter chip. */
-export function countByOrigin(origin: LinkOrigin): number {
-  return DIRECTORY.filter((link) => link.origin === origin).length;
+/**
+ * The address a card leads to, as a reader says it: the host without `www.`.
+ *
+ * Drawn under every card. It answers "where does this take me" literally,
+ * which a chip saying "External" only answered in general.
+ */
+export function displayHost(href: string): string {
+  return new URL(href).hostname.replace(/^www\./, "");
 }
 
 /**

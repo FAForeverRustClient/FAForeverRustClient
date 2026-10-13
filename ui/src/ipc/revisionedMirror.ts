@@ -32,6 +32,16 @@ const RECOVERY_RETRY_MAX_MS = 15_000;
  */
 export const RECOVERY_MAX_ATTEMPTS = 4;
 
+/**
+ * Events held back, waiting for the revision before them, before the mirror
+ * stops holding them and asks for a snapshot instead.
+ *
+ * Without a ceiling a gap that never closed (a snapshot that kept failing, a
+ * backend that skipped a revision) grew this buffer for as long as events kept
+ * coming. Past this many, a whole `AppState` is the cheaper way back anyway.
+ */
+export const MAX_PENDING_EVENTS = 4_096;
+
 /** The retry delay after `failures` failed snapshots in a row (1-based). */
 export function recoveryRetryDelay(failures: number): number {
   const backoff = RECOVERY_RETRY_BASE_MS * 2 ** Math.max(0, failures - 1);
@@ -54,6 +64,8 @@ export function recoveryRetryDelay(failures: number): number {
 export class RevisionedMirror {
   private revision: number | null = null;
   private pending = new Map<number, AppEvent>();
+  /** The newest revision dropped from `pending` unapplied, if any was. */
+  private lostThrough: number | null = null;
   private recoveryInFlight = false;
   private recoveryTimer: ReturnType<typeof setTimeout> | null = null;
   private lastRecoveryAt = 0;
@@ -74,12 +86,12 @@ export class RevisionedMirror {
       return;
     }
     if (this.revision === null) {
-      this.pending.set(message.revision, message.event);
+      this.hold(message.revision, message.event);
       return;
     }
     if (message.revision <= this.revision) return;
     if (message.revision !== this.revision + 1) {
-      this.pending.set(message.revision, message.event);
+      this.hold(message.revision, message.event);
       this.requestRecovery();
       return;
     }
@@ -98,6 +110,9 @@ export class RevisionedMirror {
     }
     this.hydrate(snapshot.state);
     this.revision = snapshot.revision;
+    if (this.lostThrough !== null && this.lostThrough <= snapshot.revision) {
+      this.lostThrough = null;
+    }
 
     for (const revision of this.pending.keys()) {
       if (revision <= snapshot.revision) this.pending.delete(revision);
@@ -115,6 +130,20 @@ export class RevisionedMirror {
     this.disposed = true;
     if (this.recoveryTimer !== null) clearTimeout(this.recoveryTimer);
     this.recoveryTimer = null;
+  }
+
+  /**
+   * Keep an event until the revisions before it have arrived. Once too many
+   * are waiting they are all let go and remembered only as "lost up to here",
+   * which counts as a gap until a snapshot at least that new has landed.
+   */
+  private hold(revision: number, event: AppEvent): void {
+    this.pending.set(revision, event);
+    if (this.pending.size <= MAX_PENDING_EVENTS) return;
+    for (const held of this.pending.keys()) {
+      if (this.lostThrough === null || held > this.lostThrough) this.lostThrough = held;
+    }
+    this.pending.clear();
   }
 
   private drainPending(): void {
@@ -136,6 +165,7 @@ export class RevisionedMirror {
 
   private hasRevisionGap(): boolean {
     if (this.revision === null) return false;
+    if (this.lostThrough !== null && this.lostThrough > this.revision) return true;
     for (const revision of this.pending.keys()) {
       if (revision > this.revision + 1) return true;
     }

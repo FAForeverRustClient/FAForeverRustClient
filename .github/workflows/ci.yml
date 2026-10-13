@@ -94,10 +94,15 @@ jobs:
       # to move to, and a gate nobody can pass gets switched off rather than
       # fixed.
       #
-      # The two ignores are quick-xml, reached only through
-      # `plist -> tauri-utils -> tauri-build`: a build dependency, not
-      # something the shipped client links or runs, and pinned there by
-      # plist's own requirement until Tauri moves. Revisit when it does.
+      # The two ignores are quick-xml, reached only through `plist`, and
+      # pinned there by plist's own requirement until Tauri moves. Revisit
+      # when it does. `tauri-utils` requires plist on every platform, so
+      # quick-xml *is* linked into the shipped Windows and Linux client, not
+      # only into the build. What keeps the advisories out of reach is that
+      # nothing there parses XML with it: tauri's one `plist::from_file` reads
+      # a macOS bundle's Info.plist on restart and is compiled for macOS only,
+      # and tauri-utils only writes a plist, at bundle time. macOS is not
+      # shipped.
       - name: cargo audit
         run: cargo audit --ignore RUSTSEC-2026-0194 --ignore RUSTSEC-2026-0195
 
@@ -156,8 +161,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # What ships to players: no known advisory in a production dependency.
+      # Development tools are kept at zero by the overrides in
+      # pnpm-workspace.yaml rather than by this gate, because a fresh advisory
+      # in a linter should not stop every pull request until somebody pins it.
+      - name: No known advisories in shipped packages
+        run: pnpm audit --prod
+
       - name: Architecture boundaries
         run: pnpm run architecture
+
+      # The Release workflow only picks up snippets named <category>.<pr>.md,
+      # so a typo here would drop a line from the release notes in silence.
+      - name: Changelog snippets are well formed
+        run: node scripts/changelog.mjs verify
 
       # Every user-visible string goes through the i18n catalogue. The scanner
       # lists any literal that still reads like copy; the budget is zero, so a

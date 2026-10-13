@@ -53,14 +53,14 @@ export function AccountSupportSettingsSection() {
           {t(auth.mode === "offline" ? "settings.account.leaveOffline" : "settings.account.logOut")}
         </Button>
       </SettingRow>
-      <SettingRow label={t("settings.account.fafAccount")} hint={t("settings.account.fafAccountHint")}>
+      <SettingRow label={t("settings.account.fafAccount")}>
         <div className="settings-external-links">
           <ExternalAction href={ACCOUNT_LINKS.rename}>{t("settings.account.changeUsername")}</ExternalAction>
           <ExternalAction href={ACCOUNT_LINKS.recover}>{t("settings.account.resetPassword")}</ExternalAction>
           <ExternalAction href={ACCOUNT_LINKS.steam}>{t("settings.account.linkSteam")}</ExternalAction>
         </div>
       </SettingRow>
-      <SettingRow label={t("settings.account.helpCommunityRules")} hint={t("settings.account.helpCommunityRulesHint")}>
+      <SettingRow label={t("settings.account.helpCommunityRules")}>
         <div className="settings-external-links">
           <ExternalAction href={ACCOUNT_LINKS.support}>{t("settings.account.support")}</ExternalAction>
           <ExternalAction href={ACCOUNT_LINKS.help}>{t("settings.account.technicalHelp")}</ExternalAction>

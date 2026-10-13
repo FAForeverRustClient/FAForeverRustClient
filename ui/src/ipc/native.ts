@@ -42,6 +42,19 @@ export interface WebviewEngine {
   webkitVersion: string | null;
 }
 
+/** Mirrors `faf_app::infra::map_markers::MarkedMapPreview`. */
+export interface MarkedMapPreview {
+  /** The `.scmap`'s own picture, with nothing drawn on it, as a data URL. */
+  image: string;
+  /** The map's extent in map units, which `image` covers whole. */
+  width: number;
+  height: number;
+  /** `[x, z]` of each marker in map units: across, then down the picture. */
+  mass: [number, number][];
+  hydro: [number, number][];
+  spawns: [number, number][];
+}
+
 export const native = {
   openLogFolder(kind: LogKind): Promise<void> {
     return invoke("open_log_folder", { kind });
@@ -73,9 +86,18 @@ export const native = {
     return invoke<string>("import_background_image", { path });
   },
 
-  /** The stored background's bytes, for the page to show. */
-  readBackgroundImage(name: string): Promise<number[]> {
-    return invoke<number[]>("read_background_image", { name });
+  /** The stored background's bytes, for the page to show. Raw, not JSON. */
+  readBackgroundImage(name: string): Promise<ArrayBuffer> {
+    return invoke<ArrayBuffer>("read_background_image", { name });
+  },
+
+  /**
+   * An installed map's clean picture and where its mass, hydros and spawns
+   * are. Rejects when the map is not installed or its files cannot be read,
+   * which callers treat as "show the picture they already had".
+   */
+  readMarkedMapPreview(folderName: string): Promise<MarkedMapPreview> {
+    return invoke<MarkedMapPreview>("read_marked_map_preview", { folderName });
   },
 
   /** One stored sound's bytes, for the page to decode. */

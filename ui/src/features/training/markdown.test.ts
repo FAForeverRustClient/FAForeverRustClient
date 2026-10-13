@@ -562,3 +562,31 @@ describe("a cited video", () => {
     expect(soleVideo("[a page](https://example.com/page)")).toBeNull();
   });
 });
+
+describe("hostile input", () => {
+  // Every pattern here used to read to the end of its line from every
+  // position it could start at: 64 KB of `[` took about three seconds, and a
+  // guide may be 512 KB. The bound is loose on purpose; the old parser missed
+  // it by a factor of a hundred, the new one by none.
+  const size = 256 * 1024;
+  const fill = (unit: string) => unit.repeat(Math.ceil(size / unit.length)).slice(0, size);
+  const inputs: Record<string, string> = {
+    brackets: fill("["),
+    images: fill("!["),
+    links: fill("[a](x"),
+    tags: fill("<img "),
+    "a tabset heading": `# ${fill("{.")}`,
+    "a delimiter row of spaces": `| a |\n${fill(" ")}|x`,
+    "a table cell": `| a | b |\n| --- | --- |\n| ${fill("[")} | x |`,
+  };
+
+  for (const [name, input] of Object.entries(inputs)) {
+    it(`parses ${name} in linear time`, () => {
+      const started = performance.now();
+      for (const block of parseBlocks(input)) {
+        if ("text" in block && typeof block.text === "string") parseSpans(block.text);
+      }
+      expect(performance.now() - started).toBeLessThan(1500);
+    });
+  }
+});

@@ -77,6 +77,8 @@ export type IconName =
   | "changelog"
   | "github"
   | "twitch"
+  | "youtube"
+  | "kick"
   | "discord"
   | "settings"
   | "logout"
@@ -251,6 +253,10 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     github: <><path d="M15 22v-3.3c0-1.1-.4-1.9-1-2.3 3.3-.4 6.7-1.6 6.7-7.1 0-1.6-.6-2.9-1.6-3.9.2-.4.7-1.9-.2-3.8 0 0-1.3-.4-4.1 1.5a14 14 0 0 0-7.5 0C4.5 1.2 3.2 1.6 3.2 1.6c-.9 1.9-.4 3.4-.2 3.8-1 1-1.6 2.3-1.6 3.9 0 5.5 3.4 6.7 6.7 7.1-.6.4-1 1.1-1 2.3V22" /><path d="M7.1 18.3c-3 .9-3-1.4-4.2-1.8" /></>,
     // The Twitch glyph, drawn in this set's outline style.
     twitch: <><path d="M4 3h16v11l-5 5h-4l-3 3v-3H4Z" /><path d="M11 8v4M16 8v4" /></>,
+    // Lucide `youtube`.
+    youtube: <><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" /><path d="m10 15 5-3-5-3z" /></>,
+    // The Kick mark, drawn in this set's outline style: its stepped K.
+    kick: <><path d="M5 3h5v5h2V6h2V3h5v6h-2v2h-2v2h2v2h2v6h-5v-3h-2v-2h-2v5H5Z" /></>,
     // The Discord mark, drawn in this set's outline style: the face, its two
     // eyes, and the smile line along its chin.
     discord: <><path d="M8.2 5.2A15 15 0 0 0 4.4 6.5C2.3 9.7 1.7 12.8 2 15.9a15 15 0 0 0 4.6 2.4l1.1-1.9M15.8 5.2a15 15 0 0 1 3.8 1.3c2.1 3.2 2.7 6.3 2.4 9.4a15 15 0 0 1-4.6 2.4l-1.1-1.9" /><path d="M7.6 16.3c2.9 1.3 5.9 1.3 8.8 0M7.9 7.6c2.7-.9 5.5-.9 8.2 0" /><circle cx="9.1" cy="12.3" r="1.2" /><circle cx="14.9" cy="12.3" r="1.2" /></>,

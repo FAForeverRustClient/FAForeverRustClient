@@ -41,6 +41,8 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 
+use crate::infra::http::REQUEST_DEADLINE;
+use crate::infra::vault_install::bounded_body;
 use crate::infra::{env_or, env_or_disabled};
 use crate::ports::TrainingPort;
 
@@ -130,6 +132,21 @@ impl TrainingConfig {
 /// visit asks with the cached copy's `ETag` instead, which costs nothing when
 /// nothing changed and at most five minutes of staleness when something did.
 /// Busting the CDN on every open made every visit download the whole document.
+/// `url` parsed, when parsing changes nothing about it and it is a plain HTTPS
+/// address on GitHub's raw host: no port, no credentials, no query, no
+/// fragment.
+fn exact_address(url: &str) -> Option<url::Url> {
+    let parsed = url::Url::parse(url).ok()?;
+    let plain = parsed.scheme() == "https"
+        && parsed.host_str() == Some("raw.githubusercontent.com")
+        && parsed.port().is_none()
+        && parsed.username().is_empty()
+        && parsed.password().is_none()
+        && parsed.query().is_none()
+        && parsed.fragment().is_none();
+    (plain && parsed.as_str() == url).then_some(parsed)
+}
+
 fn uncached(url: &str) -> String {
     if url.is_empty() {
         return String::new();
@@ -172,6 +189,7 @@ impl TrainingCatalogueClient {
             request = request.header(reqwest::header::IF_NONE_MATCH, etag);
         }
         let response = request
+            .timeout(REQUEST_DEADLINE)
             .send()
             .await
             .map_err(|error| format!("could not reach the training catalogue: {error}"))?;
@@ -188,14 +206,13 @@ impl TrainingCatalogueClient {
             .and_then(|value| value.to_str().ok())
             .unwrap_or_default()
             .to_string();
-        let bytes = response
-            .bytes()
-            .await
-            .map_err(|error| format!("could not read the training catalogue: {error}"))?;
-        if bytes.len() > MAX_MANIFEST_BYTES {
-            return Err("the training catalogue document was unexpectedly large".into());
-        }
-        let manifest = String::from_utf8(bytes.to_vec())
+        let bytes = bounded_body(
+            response,
+            "the training catalogue",
+            MAX_MANIFEST_BYTES as u64,
+        )
+        .await?;
+        let manifest = String::from_utf8(bytes)
             .map_err(|_| "the training catalogue is not text".to_string())?;
         Ok(Fetched::Body { manifest, etag })
     }
@@ -394,10 +411,17 @@ impl TrainingCatalogueClient {
                 document.repository()
             ));
         }
+        // The repository was read off the string; the request is made from the
+        // parsed address. `hosted_document` already refuses everything the
+        // parser rewrites, and this is the other half of that promise: the
+        // address fetched is exactly the address checked, or nothing is.
+        let checked = exact_address(url)
+            .ok_or_else(|| format!("that {what} is not a document this client can read"))?;
 
         let response = self
             .http
-            .get(uncached(url))
+            .get(uncached(checked.as_str()))
+            .timeout(REQUEST_DEADLINE)
             .send()
             .await
             .map_err(|error| format!("could not reach the {what}: {error}"))?;
@@ -405,14 +429,8 @@ impl TrainingCatalogueClient {
         if !status.is_success() {
             return Err(format!("the {what} responded with {status}"));
         }
-        let bytes = response
-            .bytes()
-            .await
-            .map_err(|error| format!("could not read the {what}: {error}"))?;
-        if bytes.len() > max_bytes {
-            return Err(format!("that {what} was unexpectedly large"));
-        }
-        String::from_utf8(bytes.to_vec()).map_err(|_| format!("that {what} is not text"))
+        let bytes = bounded_body(response, &format!("that {what}"), max_bytes as u64).await?;
+        String::from_utf8(bytes).map_err(|_| format!("that {what} is not text"))
     }
 }
 
@@ -778,6 +796,28 @@ impl TrainingPort for FakeTraining {
 mod tests {
     use super::*;
     use faf_domain::state::TrainingLinks;
+
+    #[test]
+    fn only_an_address_the_parser_leaves_alone_is_fetched() {
+        let plain =
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/eco.md";
+        assert_eq!(
+            exact_address(plain).map(String::from),
+            Some(plain.to_string())
+        );
+        for rewritten in [
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/%2e%2e/%2e%2e/%2e%2e/a/r/main/g.md",
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/..\\..\\a\\r\\main/g.md",
+            "https://RAW.githubusercontent.com/FAForeverRustClient/guides/main/g.md",
+            "https://raw.githubusercontent.com:443/FAForeverRustClient/guides/main/g.md",
+            "https://raw.githubusercontent.com:8443/FAForeverRustClient/guides/main/g.md",
+            "https://x@raw.githubusercontent.com/FAForeverRustClient/guides/main/g.md",
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/g.md?a=b",
+            "http://raw.githubusercontent.com/FAForeverRustClient/guides/main/g.md",
+        ] {
+            assert_eq!(exact_address(rewritten), None, "{rewritten}");
+        }
+    }
 
     #[test]
     fn the_bundled_catalogue_is_a_snapshot_of_the_published_one() {

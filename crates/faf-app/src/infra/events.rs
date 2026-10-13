@@ -106,6 +106,7 @@ impl EventsCatalogueClient {
         let response = self
             .http
             .get(uncached(&self.config.manifest_url))
+            .timeout(super::http::REQUEST_DEADLINE)
             .send()
             .await
             .map_err(|error| format!("could not reach the events catalogue: {error}"))?;
@@ -113,13 +114,12 @@ impl EventsCatalogueClient {
         if !status.is_success() {
             return Err(format!("the events catalogue responded with {status}"));
         }
-        let bytes = response
-            .bytes()
-            .await
-            .map_err(|error| format!("could not read the events catalogue: {error}"))?;
-        if bytes.len() > MAX_MANIFEST_BYTES {
-            return Err("the events catalogue document was unexpectedly large".into());
-        }
+        let bytes = super::vault_install::bounded_body(
+            response,
+            "the events catalogue",
+            MAX_MANIFEST_BYTES as u64,
+        )
+        .await?;
         let mut catalogue = parse_manifest(&bytes)?;
         catalogue.source = EventsSource::Remote;
         if catalogue.submit_url.is_empty() {
