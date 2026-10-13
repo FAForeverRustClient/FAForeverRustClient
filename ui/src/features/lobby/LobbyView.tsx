@@ -52,6 +52,7 @@ import { plainError } from "../../shared/plainError";
 import { useForgetFiltersOnLeave, useRememberedFilter } from "../../shared/filterMemory";
 import { DEFAULT_BROWSING_PREFERENCES } from "../../shared/browsingPreferences";
 import { onlineCommanders } from "./galactic-war/galacticWarOnline";
+import { boundsText } from "../../shared/ratingBounds";
 
 /// How often the Galactic War player count is re-asked while the Play tab is
 /// open. A minute: often enough that the number is not stale advice about
@@ -305,7 +306,7 @@ function GameDetails({
               )}
             </dd>
           </div>
-          <div><dt>{t("lobby.details.ratingRange")}</dt><dd>{game.ratingMin !== null || game.ratingMax !== null ? t("lobby.details.ratingRangeValue", { from: game.ratingMin ?? t("lobby.details.any"), to: game.ratingMax ?? t("lobby.details.any") }) : t("lobby.details.open")}</dd></div>
+          <div><dt>{t("lobby.details.ratingRange")}</dt><dd>{boundsText(game.ratingMin, game.ratingMax) ?? t("lobby.details.open")}</dd></div>
         </dl>
         {simMods.length > 0 && (
           <div className="game-detail-section">

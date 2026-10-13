@@ -780,10 +780,8 @@ export const en = {
   "lobby.details.players": "Players",
   "lobby.details.averageRating": "Average rating",
   "lobby.details.ratingRange": "Rating range",
-  "lobby.details.ratingRangeValue": "{from} to {to}",
   "lobby.details.visibility": "Visibility",
   "lobby.details.unrated": "Unrated",
-  "lobby.details.any": "Any",
   "lobby.details.open": "Open",
   "lobby.details.public": "Public",
   "lobby.details.downloadMap": "Download map",
@@ -1298,7 +1296,6 @@ export const en = {
   "lobby.mapPool.vetoHint": "Click a map to see it large. Press Assign vetoes, then click a map to veto it or lift its veto. Every change is sent at once.",
   "lobby.mapPool.selectHint": "Select a map for details, or enter veto mode to edit.",
   "lobby.browser.new": "New",
-  "lobby.browser.any": "Any",
   // Words rather than a hyphen, because the tooltip is where a negative lower
   // bound has to be unambiguous: "-1000-700" is what the tag itself cannot say.
   "lobby.browser.resizeColumn": "Resize the {column} column",
@@ -1319,8 +1316,8 @@ export const en = {
   "lobby.browser.tileRatingTitle": "Average rating",
   "lobby.browser.playerCount": { one: "{count} player", other: "{count} players" },
   "lobby.browser.teamRating": "{rating} rating",
-  "lobby.browser.ratingRangeTooltip": "Rating range: {from} to {to}",
-  "lobby.browser.ratingRangeEnforcedTooltip": "Rating range: {from} to {to}. The host enforces it, so players outside it cannot join.",
+  "lobby.browser.ratingRangeTooltip": "Rating range: {range}",
+  "lobby.browser.ratingRangeEnforcedTooltip": "Rating range: {range}. The host enforces it, so players outside it cannot join.",
   "lobby.browser.openRange": "Open",
   "lobby.browser.ratingBetween": "{min} to {max}",
   "lobby.party.friend": "Friend",
@@ -1377,7 +1374,7 @@ export const en = {
   "lobby.details.inGame": "In game",
   "lobby.details.preparing": "Preparing…",
   "lobby.details.ratingLocked": "Outside the rating range",
-  "lobby.details.ratingLockedTitle": "The host limited this lobby to ratings {from} to {to}. Yours is {rating}.",
+  "lobby.details.ratingLockedTitle": "The host limited this lobby to a rating range: {range}. Yours is {rating}.",
   "lobby.details.alreadyInGame": "You are already in a game",
   "lobby.mode.aria": "Play modes",
   "lobby.mode.custom": "Custom",
@@ -3232,6 +3229,8 @@ export const en = {
   "common.cancel": "Cancel",
   "common.retry": "Retry",
   "common.rangeBetween": "{low} to {high}",
+  "common.rangeFrom": "From {low}",
+  "common.rangeUpTo": "Up to {high}",
   // A release of a map, a mod or a tool. `version` is the bare number.
   "common.version": "v{version}",
   // Map sizes. The numbers arrive already in kilometres, formatted.
