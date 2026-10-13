@@ -4509,6 +4509,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.sound.remove": "Retirer {name}",
   "lobby.joinProgress.startingTitle": "Lancement de la partie",
   "lobby.joinProgress.phase.starting": "Forged Alliance est en train de s'ouvrir",
+  "lobby.joinProgress.phase.seating": "En attente de l'accord du serveur",
   "lobby.joinProgress.startingNote": "Cela peut prendre quelques secondes.",
   "lobby.joinProgress.dontShowAgain": "Ne plus afficher",
   "lobby.joinProgress.dontShowAgainHint": "Paramètres, Jeu permet de réactiver cette fenêtre.",

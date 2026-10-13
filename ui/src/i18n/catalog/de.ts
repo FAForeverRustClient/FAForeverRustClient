@@ -4741,6 +4741,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.sound.remove": "{name} entfernen",
   "lobby.joinProgress.startingTitle": "Spiel wird gestartet",
   "lobby.joinProgress.phase.starting": "Forged Alliance wird geöffnet",
+  "lobby.joinProgress.phase.seating": "Warte auf die Freigabe des Servers",
   "lobby.joinProgress.startingNote": "Das kann ein paar Sekunden dauern.",
   "lobby.joinProgress.dontShowAgain": "Nicht mehr anzeigen",
   "lobby.joinProgress.dontShowAgainHint": "Unter Einstellungen, Spiel lässt sich dieses Fenster wieder einschalten.",

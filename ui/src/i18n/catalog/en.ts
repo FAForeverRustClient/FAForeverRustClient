@@ -5117,6 +5117,7 @@ export const en = {
   "settings.notifications.sound.remove": "Remove {name}",
   "lobby.joinProgress.startingTitle": "Starting the game",
   "lobby.joinProgress.phase.starting": "Forged Alliance is opening",
+  "lobby.joinProgress.phase.seating": "Waiting for the server to let you in",
   "lobby.joinProgress.startingNote": "This can take a few seconds.",
   "lobby.joinProgress.dontShowAgain": "Do not show again",
   "lobby.joinProgress.dontShowAgainHint": "Settings, Game turns this window back on.",
