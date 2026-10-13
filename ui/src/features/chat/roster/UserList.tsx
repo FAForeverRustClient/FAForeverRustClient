@@ -10,9 +10,10 @@
 // flag and clan tag: all of which come from the lobby's player record rather
 // than from IRC, so an IRC-only nickname simply renders bare.
 //
-// The players inside each group can be ordered by their rating on one board
-// (#513), highest first, with the rating shown at the end of the row while
-// they are; the groups themselves stay where they are.
+// The filter button beside the search box (#513) narrows the list to a rating
+// range on one board and can order the players inside each group by that
+// rating, highest first; the groups themselves stay where they are, and the
+// rating shows at the end of each row while either is set.
 //
 // A player you wrote a note about carries a small mark after the name, with
 // the note as its tooltip (#519): the note was only ever visible on the
@@ -25,12 +26,11 @@
 import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatPreferences, ChatUser, Game, PlayerProfile, SocialState, VaultMap } from "../../../ipc/bindings";
 import { Icon } from "../../../design-system/Icon";
-import { Select } from "../../../design-system/Select";
 import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
 import { playersByNickname } from "../../../store/reducer";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { useRememberedFilter } from "../../../shared/filterMemory";
+import { useRememberedFilter, useRememberedFilters } from "../../../shared/filterMemory";
 import {
   USER_CATEGORY_LABELS,
   USER_CATEGORY_ORDER,
@@ -46,8 +46,9 @@ import { GameSummaryPopover } from "./GameSummaryPopover";
 import { gamePresenceIndex, type GamePresence } from "./gameSummary";
 import { usePlayerRatingCard } from "./PlayerRatingCard";
 import { PlayerNoteMark } from "../../../shared/components/PlayerNoteMark";
-import { isRosterSort, ROSTER_SORTS, sortRoster, type RosterSort } from "./rosterSort";
-import { displayedRating, leaderboardLabel } from "../../../shared/playerRatings";
+import { DEFAULT_ROSTER_VIEW, readRosterView, shapeRoster, showsRating } from "./rosterSort";
+import { RosterViewMenu } from "./RosterViewMenu";
+import { displayedRating } from "../../../shared/playerRatings";
 
 interface Props {
   users: ChatUser[];
@@ -119,7 +120,8 @@ export const UserList = memo(function UserList({
   const { t } = useTranslation();
   // Remembered as the filter setting says (#447).
   const [filter, setFilter] = useRememberedFilter("chat.users", "", (value) => typeof value === "string");
-  const [sort, setSort] = useRememberedFilter<RosterSort>("chat.usersSort", "name", isRosterSort);
+  const { filters: rememberedView, setFilters: setView } = useRememberedFilters("chat.usersView", DEFAULT_ROSTER_VIEW);
+  const view = useMemo(() => readRosterView(rememberedView), [rememberedView]);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(600);
   const [itemHeight, setItemHeight] = useState(FALLBACK_ITEM_HEIGHT);
@@ -183,12 +185,13 @@ export const UserList = memo(function UserList({
     for (const user of matching) {
       buckets.get(categoryOf(user, self, social, socialKnown, ownClan))?.push(user);
     }
-    if (sort !== "name") {
-      const profileOf = (nickname: string) => profilesByLogin.get(nickname.toLowerCase());
-      for (const [category, bucket] of buckets) buckets.set(category, sortRoster(bucket, sort, profileOf));
-    }
+    const profileOf = (nickname: string) => profilesByLogin.get(nickname.toLowerCase());
+    // Yourself stays whatever the range says: the "You" group is where the
+    // list starts, and an empty one reads as the list being broken.
+    const isSelf = (user: ChatUser) => user.name.toLowerCase() === self.toLowerCase();
+    for (const [category, bucket] of buckets) buckets.set(category, shapeRoster(bucket, view, profileOf, isSelf));
     return buckets;
-  }, [users, self, social, filter, sort, profilesByLogin]);
+  }, [users, self, social, filter, view, profilesByLogin]);
 
   // Flatten ordered categories and users into a unified virtualization list.
   const flatItems = useMemo<RosterFlatItem[]>(() => {
@@ -257,19 +260,13 @@ export const UserList = memo(function UserList({
             }}
           />
         </label>
-        <Select<RosterSort>
-          className="chat-roster-sort"
-          label={t("chat.roster.sortLabel")}
-          value={sort}
+        <RosterViewMenu
+          view={view}
           onChange={(next) => {
-            setSort(next);
+            setView(next);
             setScrollTop(0);
             if (listRef.current) listRef.current.scrollTop = 0;
           }}
-          options={ROSTER_SORTS.map((value) => ({
-            value,
-            label: value === "name" ? t("chat.roster.sortName") : leaderboardLabel(value),
-          }))}
         />
       </div>
 
@@ -334,7 +331,7 @@ export const UserList = memo(function UserList({
                     user={item.user}
                     profile={profile}
                     note={profile ? notesById.get(profile.id) : undefined}
-                    sortedRating={sort === "name" ? undefined : displayedRating(profile, sort)}
+                    sortedRating={showsRating(view) ? displayedRating(profile, view.board) : undefined}
                     social={social}
                     presence={presences.get(item.user.name.toLocaleLowerCase()) ?? null}
                     mapVault={mapVault}
@@ -373,9 +370,9 @@ const RosterRow = memo(function RosterRow({
   /** The player's note, when one was written about them. */
   note: string | undefined;
   /**
-   * The rating the list is ordered by, shown at the end of the row: `null`
-   * for nobody rated on that board, `undefined` while the list is not sorted
-   * by rating.
+   * The rating on the board the list is filtered or ordered by, shown at the
+   * end of the row: `null` for nobody rated on that board, `undefined` while
+   * the list is neither.
    */
   sortedRating: number | null | undefined;
   social: SocialState;

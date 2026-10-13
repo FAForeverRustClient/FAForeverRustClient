@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import type { ChatUser, PlayerProfile } from "../../../ipc/bindings";
-import { isRosterSort, sortRoster } from "./rosterSort";
+import { DEFAULT_ROSTER_VIEW, isRosterViewActive, readRosterView, shapeRoster, type RosterView } from "./rosterSort";
 
 function user(name: string): ChatUser {
-  return { name } as ChatUser;
+  return { name, elevation: "" };
 }
 
 function profile(login: string, ratings: Record<string, number>): PlayerProfile {
@@ -33,23 +33,33 @@ const profiles = new Map([
 ]);
 const profileOf = (nickname: string) => profiles.get(nickname.toLowerCase());
 const users = [user("ircOnly"), user("Ada"), user("Bert"), user("Cleo")];
+const view = (changes: Partial<RosterView>): RosterView => ({ ...DEFAULT_ROSTER_VIEW, ...changes });
+const names = (list: ChatUser[]) => list.map((u) => u.name);
 
-describe("roster sort (#513)", () => {
-  it("leaves the server's order alone by default", () => {
-    expect(sortRoster(users, "name", profileOf).map((u) => u.name)).toEqual(["ircOnly", "Ada", "Bert", "Cleo"]);
+describe("roster view (#513)", () => {
+  it("leaves the server's order and everybody alone by default", () => {
+    expect(isRosterViewActive(DEFAULT_ROSTER_VIEW)).toBe(false);
+    expect(names(shapeRoster(users, DEFAULT_ROSTER_VIEW, profileOf))).toEqual(["ircOnly", "Ada", "Bert", "Cleo"]);
   });
 
-  it("puts the highest rating on the chosen board first, ties in their order", () => {
-    expect(sortRoster(users, "global", profileOf).map((u) => u.name)).toEqual(["Bert", "Cleo", "Ada", "ircOnly"]);
+  it("puts the highest rating on the chosen board first, ties in their order, unrated last", () => {
+    expect(names(shapeRoster(users, view({ order: "rating" }), profileOf))).toEqual(["Bert", "Cleo", "Ada", "ircOnly"]);
+    expect(names(shapeRoster(users, view({ order: "rating", board: "ladder_1v1" }), profileOf)))
+      .toEqual(["Ada", "Cleo", "ircOnly", "Bert"]);
   });
 
-  it("reads the board that was chosen, and puts those unrated on it last", () => {
-    expect(sortRoster(users, "ladder_1v1", profileOf).map((u) => u.name)).toEqual(["Ada", "Cleo", "ircOnly", "Bert"]);
+  it("keeps only the players inside the range on the chosen board", () => {
+    expect(names(shapeRoster(users, view({ min: 1000 }), profileOf))).toEqual(["Bert", "Cleo"]);
+    expect(names(shapeRoster(users, view({ board: "ladder_1v1", max: 1000 }), profileOf))).toEqual(["Cleo"]);
   });
 
-  it("accepts only sorts it knows when one is remembered", () => {
-    expect(isRosterSort("tmm_2v2")).toBe(true);
-    expect(isRosterSort("rating")).toBe(false);
-    expect(isRosterSort(3)).toBe(false);
+  it("never filters out whoever the caller keeps", () => {
+    const kept = shapeRoster(users, view({ min: 5000 }), profileOf, (u) => u.name === "Ada");
+    expect(names(kept)).toEqual(["Ada"]);
+  });
+
+  it("replaces a remembered view it cannot read", () => {
+    expect(readRosterView({ board: "nonsense", order: "rating", min: 1200, max: Number.NaN }))
+      .toEqual({ board: "global", order: "rating", min: 1200, max: null });
   });
 });
