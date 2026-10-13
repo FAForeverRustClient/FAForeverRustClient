@@ -1,0 +1,354 @@
+/* ── The wait for Forged Alliance: joining a game, starting a replay ─────
+   Three bands, as the client's cards have them: a raised head naming what is
+   starting, the body with the progress, a foot with the ways out. The panel
+   carries no padding of its own so the head and foot can run edge to edge. */
+
+.modal-panel.launch-progress-modal {
+  width: min(480px, calc(100vw - 32px));
+  max-width: 480px;
+  padding: 0;
+  overflow: hidden auto;
+}
+
+/* The close button sits on the raised head, so it takes the head's colours. */
+.launch-progress-modal > .modal-close {
+  top: var(--space-3);
+  right: var(--space-3);
+}
+
+/* ── head ── */
+
+.launch-progress-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 72px;
+  padding: var(--space-3) calc(var(--space-4) + 28px) var(--space-3) var(--space-4);
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.launch-progress-map {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  background: var(--color-picture-backdrop);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.launch-progress-map.is-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--color-muted);
+  background: var(--color-surface-hover);
+}
+
+.launch-progress-map.is-placeholder[data-tone="error"] {
+  color: var(--color-error-text);
+  background: color-mix(in srgb, var(--color-error) 12%, var(--color-surface-hover));
+  border-color: color-mix(in srgb, var(--color-error) 40%, var(--color-border));
+}
+
+.launch-progress-heading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.launch-progress-heading h2 {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.launch-progress-context {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+}
+
+.launch-progress-name {
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.launch-progress-sub {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Without a game to name, the title is the line that says what is going on,
+   so it reads as a title again rather than as the eyebrow over a name. */
+.launch-progress-heading:not(:has(.launch-progress-name)) h2 {
+  color: var(--color-text);
+  font-size: 15px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ── body ── */
+
+.launch-progress-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.launch-progress-status {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: calc(var(--space-1) - var(--space-3));
+}
+
+.launch-progress-phase {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.launch-progress-percent {
+  flex: 0 0 auto;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* One segment per stage. The grid's columns are set inline from the count. */
+.launch-progress-bar {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.launch-progress-segment {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.launch-progress-track {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  background: var(--color-surface-raised);
+  border-radius: calc(var(--radius-sm) - 4px);
+}
+
+/* Full width and scaled to the share done, so a step animates a transform
+   rather than relaying the dialog out. The sweep drives `transform` through
+   its keyframes and is not given a scale. */
+.launch-progress-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--color-accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 200ms ease;
+}
+
+.launch-progress-segment[data-state="done"] .launch-progress-fill {
+  transform: none;
+}
+
+.launch-progress-bar[data-indeterminate="true"] .launch-progress-segment[data-state="current"] .launch-progress-fill {
+  width: 35%;
+  transform: none;
+  animation: launch-progress-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes launch-progress-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .launch-progress-bar[data-indeterminate="true"] .launch-progress-segment[data-state="current"] .launch-progress-fill {
+    width: 100%;
+    opacity: 0.4;
+    animation: none;
+  }
+}
+
+.launch-progress-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.launch-progress-segment[data-state="done"] .launch-progress-label {
+  color: var(--color-muted);
+}
+
+.launch-progress-segment[data-state="current"] .launch-progress-label {
+  color: var(--color-text);
+}
+
+/* File names are long and carry no spaces: one line, cut at the end, the whole
+   name on hover. */
+.launch-progress-detail {
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.launch-progress-detail.is-text {
+  font-family: inherit;
+  white-space: normal;
+}
+
+.launch-progress-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text);
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.launch-progress-notice > svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--color-muted);
+}
+
+.launch-progress-notice[data-tone="warn"] {
+  background: color-mix(in srgb, var(--color-warn) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-warn) 40%, var(--color-border));
+}
+
+.launch-progress-notice[data-tone="warn"] > svg {
+  color: var(--color-warn-text);
+}
+
+.launch-progress-notice[data-tone="error"] {
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-error) 40%, var(--color-border));
+}
+
+.launch-progress-notice[data-tone="error"] > svg {
+  color: var(--color-error-text);
+}
+
+.launch-progress-log {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.launch-progress-log-toggle {
+  min-height: 28px;
+  padding: 4px 10px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.launch-progress-log-toggle:hover:not(:disabled) {
+  color: var(--color-text);
+}
+
+.launch-progress-log-list {
+  align-self: stretch;
+  max-height: 168px;
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + 2.4em);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.launch-progress-log-list > li {
+  overflow-wrap: anywhere;
+}
+
+.launch-progress-log-list > li::marker {
+  color: var(--color-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.launch-progress-log-list > li.is-current {
+  color: var(--color-text);
+}
+
+/* ── foot ── */
+
+.launch-progress-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+/* "Do not show again": a real button, but the quietest one in the row. */
+.launch-progress-dismiss {
+  min-height: 28px;
+  padding: 4px 10px;
+  color: var(--color-muted);
+  font-size: 12px;
+  border-color: transparent;
+}
+
+.launch-progress-dismiss:hover:not(:disabled) {
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.launch-progress-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+  margin-left: auto;
+}

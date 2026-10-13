@@ -1753,8 +1753,7 @@
 
 /* ── joining: what will be downloaded, and then what is ──────────────── */
 
-.join-download-modal,
-.join-preparing-modal {
+.join-download-modal {
   width: min(480px, 92vw);
 }
 
@@ -1796,114 +1795,6 @@
 }
 
 .join-download-remember {
-  font-size: 12px;
-}
-
-/* The phase leads and the file follows: which kind of waiting this is stays
-   still while the line under it changes once per file. */
-.join-preparing-phase {
-  margin: 0 0 var(--space-1);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.join-preparing-detail {
-  margin: 0 0 var(--space-2);
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--color-text-muted);
-}
-
-/* The ICE adapter, when it is not the usual one. Full text colour rather than
-   muted, since it is the one line here that changes how the game connects; a
-   setting that disagrees with the host does not connect at all, so it warns. */
-.join-preparing-adapter {
-  margin: 0 0 var(--space-2);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.join-preparing-adapter[data-mismatch="true"] {
-  color: var(--color-warn-text);
-}
-
-.join-preparing-bar {
-  height: 6px;
-  overflow: hidden;
-  background: var(--color-surface-raised);
-  border-radius: 999px;
-}
-
-/* Full width and scaled to the fraction done, so progress animates a
-   transform rather than relaying the dialog out on every step. The sweep
-   below drives `transform` through its keyframes and is not given a scale. */
-.join-preparing-bar > span {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background: var(--color-accent);
-  transform-origin: left center;
-  transition: transform 200ms ease;
-}
-
-/* No percentage to show: a sweep says "running" without implying a position. */
-.join-preparing-bar[data-indeterminate="true"] > span {
-  width: 35%;
-  animation: join-preparing-sweep 1.4s ease-in-out infinite;
-}
-
-@keyframes join-preparing-sweep {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(300%); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .join-preparing-bar[data-indeterminate="true"] > span {
-    animation: none;
-    width: 100%;
-    opacity: 0.4;
-  }
-}
-
-.join-preparing-percent {
-  margin: var(--space-1) 0 var(--space-3);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.join-preparing-steps-toggle {
-  padding: 0;
-  color: var(--color-muted);
-  font: inherit;
-  font-size: 12px;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.join-preparing-steps-toggle:hover {
-  color: var(--color-text);
-}
-
-.join-preparing-steps {
-  max-height: 180px;
-  margin: var(--space-2) 0 0;
-  padding-left: var(--space-4);
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-  color: var(--color-muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.join-preparing-steps > li.is-current {
-  color: var(--color-text);
-}
-
-.join-preparing-note {
-  margin: var(--space-2) 0 0;
   font-size: 12px;
 }
 

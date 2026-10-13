@@ -257,7 +257,7 @@ async fn a_match_past_the_delay_can_be_watched() {
     let h = Harness::start().await;
     h.live_game_started(42, LIVE_REPLAY_DELAY_SECONDS + 1).await;
 
-    assert!(matches!(h.watch(42).await, ReplayEvent::Connecting));
+    assert!(matches!(h.watch(42).await, ReplayEvent::Connecting { .. }));
     for _ in 0..200 {
         if !h.watched.lock().unwrap().is_empty() {
             break;
@@ -274,7 +274,7 @@ async fn a_game_the_lobby_never_reported_is_not_blocked() {
     // here would break legitimate playback.
     let h = Harness::start().await;
 
-    assert!(matches!(h.watch(999).await, ReplayEvent::Connecting));
+    assert!(matches!(h.watch(999).await, ReplayEvent::Connecting { .. }));
     for _ in 0..200 {
         if !h.watched.lock().unwrap().is_empty() {
             break;

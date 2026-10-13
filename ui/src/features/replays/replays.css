@@ -432,67 +432,6 @@
   border-color: var(--color-text);
 }
 
-/* ── Starting a replay ─────────────────────────────────────────────────────
-   The overlay the Play tab has, for the wait the replay tabs used to spend in
-   silence: the file coming down, the relay opening, Forged Alliance starting.
-   Nothing here reports a position, because the replay port reports none. */
-.replay-starting-detail {
-  margin-bottom: var(--space-3);
-}
-
-.replay-starting-bar {
-  height: 6px;
-  overflow: hidden;
-  background: var(--color-surface-raised);
-  border-radius: 999px;
-}
-
-/* Measured: full width and scaled to the share done, so a step animates a
-   transform rather than relaying the dialog out. The sweep below drives
-   `transform` through its keyframes and is not given a scale. */
-.replay-starting-bar > span {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background: var(--color-accent);
-  transform-origin: left center;
-  transition: transform 200ms ease;
-}
-
-.replay-starting-bar[data-indeterminate="true"] > span {
-  width: 35%;
-  animation: replay-starting-sweep 1.4s ease-in-out infinite;
-}
-
-@keyframes replay-starting-sweep {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(300%); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .replay-starting-bar[data-indeterminate="true"] > span {
-    width: 100%;
-    opacity: 0.4;
-    animation: none;
-  }
-}
-
-/* Room between the bar and the buttons under it.
-
-   The bar is six pixels of constant motion and the row sat straight against
-   it, so Cancel and Hide read as part of the bar rather than as the row
-   below. Scoped to this dialog: `.confirm-dialog-actions` is the shared row
-   every modal in the client uses, and most of them have a paragraph above it
-   rather than something moving. */
-.replay-starting-modal .confirm-dialog-actions {
-  margin-top: var(--space-4);
-}
-
-.replay-starting-note {
-  margin-top: var(--space-2);
-  font-size: 11px;
-}
-
 /* A private comment and tags on the replay (issue 324), in an overlay over
    the replay panel. Quiet on purpose: it is the reader's own index. */
 .replay-notes {
@@ -642,10 +581,3 @@
   justify-content: flex-end;
 }
 
-/* The file or step being fetched (issue 392). File names are long and carry
-   no spaces, so they may break anywhere rather than widen the dialog. */
-.replay-starting-step {
-  margin: 0;
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}

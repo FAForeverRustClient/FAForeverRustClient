@@ -670,12 +670,36 @@ pub struct ReplayPreparation {
     pub progress: Option<u8>,
 }
 
+/// Which replay a launch is starting.
+///
+/// What the starting dialog names: its map and its id, looked up in the lists
+/// the client already holds. The status line used to say only "connecting",
+/// and the dialog over it could not tell one replay from another.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(
+    tag = "type",
+    content = "payload",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum ReplayLaunch {
+    /// A finished game from the vault, by its game id.
+    Vault { uid: i32 },
+    /// A game still being played, with the map its stream was opened for.
+    Live { target: LiveReplayTarget },
+    /// A replay file on this disk.
+    File { path: String },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum ReplayStatus {
     #[default]
     Idle,
-    Connecting,
+    /// A launch is being prepared. See [`ReplayLaunch`].
+    Connecting {
+        launch: ReplayLaunch,
+    },
     /// FA has been launched. `uid` is `None` for a local file whose header
     /// failed to parse (playback still proceeds; we just can't label it).
     Playing {
@@ -977,7 +1001,9 @@ pub struct ReplayState {
     rename_all_fields = "camelCase"
 )]
 pub enum ReplayEvent {
-    Connecting,
+    Connecting {
+        launch: ReplayLaunch,
+    },
     /// One step of the launch being prepared. See [`ReplayState::preparing`].
     Preparing {
         step: ReplayPreparation,
@@ -1261,15 +1287,17 @@ pub enum ReplayCommand {
 
 pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
     match event {
-        ReplayEvent::Connecting => {
-            state.status = ReplayStatus::Connecting;
+        ReplayEvent::Connecting { launch } => {
+            state.status = ReplayStatus::Connecting {
+                launch: launch.clone(),
+            };
             state.last_warning = None;
             state.preparing = None;
         }
         ReplayEvent::Preparing { step } => {
             // Only while a launch is starting: a step that arrives after the
             // game is up, or after a cancel, describes nothing on screen.
-            if state.status == ReplayStatus::Connecting {
+            if matches!(state.status, ReplayStatus::Connecting { .. }) {
                 state.preparing = Some(step.clone());
             }
         }
@@ -1821,8 +1849,18 @@ mod tests {
     fn connecting_then_playing() {
         let mut s = ReplayState::default();
         assert_eq!(s.status, ReplayStatus::Idle);
-        reduce(&mut s, &ReplayEvent::Connecting);
-        assert_eq!(s.status, ReplayStatus::Connecting);
+        reduce(
+            &mut s,
+            &ReplayEvent::Connecting {
+                launch: ReplayLaunch::Vault { uid: 42 },
+            },
+        );
+        assert_eq!(
+            s.status,
+            ReplayStatus::Connecting {
+                launch: ReplayLaunch::Vault { uid: 42 }
+            }
+        );
         reduce(
             &mut s,
             &ReplayEvent::Playing {
@@ -1852,7 +1890,12 @@ mod tests {
         ] {
             let mut s = ReplayState::default();
             reduce(&mut s, &ReplayEvent::VaultDownloadStarted { uid: 42 });
-            reduce(&mut s, &ReplayEvent::Connecting);
+            reduce(
+                &mut s,
+                &ReplayEvent::Connecting {
+                    launch: ReplayLaunch::Vault { uid: 42 },
+                },
+            );
             reduce(&mut s, &ending);
             assert_eq!(
                 s.download_status,
@@ -1956,7 +1999,12 @@ mod tests {
             },
         );
         assert_eq!(s.last_warning.as_deref(), Some("could not stage map foo"));
-        reduce(&mut s, &ReplayEvent::Connecting);
+        reduce(
+            &mut s,
+            &ReplayEvent::Connecting {
+                launch: ReplayLaunch::Vault { uid: 42 },
+            },
+        );
         assert_eq!(s.last_warning, None);
     }
 
