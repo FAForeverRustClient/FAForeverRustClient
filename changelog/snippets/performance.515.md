@@ -1,0 +1,1 @@
+- A custom background picture loads faster when the client starts.
