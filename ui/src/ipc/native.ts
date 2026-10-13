@@ -86,9 +86,9 @@ export const native = {
     return invoke<string>("import_background_image", { path });
   },
 
-  /** The stored background's bytes, for the page to show. */
-  readBackgroundImage(name: string): Promise<number[]> {
-    return invoke<number[]>("read_background_image", { name });
+  /** The stored background's bytes, for the page to show. Raw, not JSON. */
+  readBackgroundImage(name: string): Promise<ArrayBuffer> {
+    return invoke<ArrayBuffer>("read_background_image", { name });
   },
 
   /**

@@ -146,20 +146,31 @@ fn unescape_tag_value(value: &str) -> String {
 /// Format one IRC line from a command and its params. The last param is sent
 /// `:trailing` if it is empty, contains a space, or itself starts with `:`,
 /// exactly when the grammar requires it.
+///
+/// Always exactly one line. A CR, LF or NUL in any part is sent as a space:
+/// IRC ends a line at either of the first two and many servers at the third,
+/// so a message, channel name or part reason carrying one would otherwise send
+/// whatever followed it as a command of its own, `QUIT` or a `PRIVMSG` to
+/// somebody else included.
 pub fn format_line(command: &str, params: &[&str]) -> String {
-    let mut out = String::from(command);
+    let mut out = one_line(command);
     if let Some((last, init)) = params.split_last() {
         for p in init {
             out.push(' ');
-            out.push_str(p);
+            out.push_str(&one_line(p));
         }
+        let last = one_line(last);
         out.push(' ');
         if last.is_empty() || last.contains(' ') || last.starts_with(':') {
             out.push(':');
         }
-        out.push_str(last);
+        out.push_str(&last);
     }
     out
+}
+
+fn one_line(text: &str) -> String {
+    text.replace(['\r', '\n', '\0'], " ")
 }
 
 /// Format one IRC line carrying outgoing IRCv3 message tags.
@@ -413,6 +424,26 @@ mod tests {
     #[test]
     fn format_line_no_params() {
         assert_eq!(format_line("CAP END", &[]), "CAP END");
+    }
+
+    #[test]
+    fn format_line_never_sends_a_second_line() {
+        assert_eq!(
+            format_line("PRIVMSG", &["#aeolus", "hi\r\nQUIT :bye"]),
+            "PRIVMSG #aeolus :hi  QUIT :bye"
+        );
+        // A channel name is a middle parameter, where a break used to start a
+        // new command with no colon in the way.
+        assert_eq!(
+            format_line("JOIN", &["#a\nPRIVMSG NickServ :x"]),
+            "JOIN :#a PRIVMSG NickServ :x"
+        );
+        assert_eq!(
+            format_line("PART", &["#a\0b", "gone\nnow"]),
+            "PART #a b :gone now"
+        );
+        let tagged = format_tagged_line(&[("+draft/reply", "1")], "PRIVMSG", &["#a", "x\ny"]);
+        assert!(!tagged.contains(['\r', '\n', '\0']), "{tagged:?}");
     }
 
     #[test]

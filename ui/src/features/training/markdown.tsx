@@ -19,7 +19,7 @@
 // honest failure: the forum may still render it, and hiding it here would be a
 // preview that lies in the other direction.
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -92,8 +92,15 @@ function readList(lines: string[], start: number): { block: ListBlock; next: num
   return { block: { kind: "list", ordered, items }, next: index };
 }
 
-/** A GFM delimiter row: `| --- | :-: |`, pipes at the ends optional. */
-const TABLE_DELIMITER = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
+/**
+ * A GFM delimiter row: `| --- | :-: |`, pipes at the ends optional.
+ *
+ * Written so that every run of spaces has exactly one place it can go. The
+ * obvious `\s*\|?\s*` lets two quantifiers share one run, and a long line of
+ * spaces that then failed tried every way of splitting it, which on one line of
+ * a guide was seconds of a frozen window.
+ */
+const TABLE_DELIMITER = /^\s*(?:\|\s*)?:?-+:?\s*(?:\|\s*:?-+:?\s*)*(?:\|\s*)?$/;
 
 /** Split one table row into its cells, honouring `\|` as a literal pipe. */
 export function tableCells(line: string): string[] {
@@ -180,7 +187,7 @@ export function parseBlocks(source: string): Block[] {
       // lean on that, writing a visible "## Spending Resources" over a
       // "## Spending Resources{.tabset}", so showing it put every such title
       // on the page twice. What it keeps is where the tabs start.
-      if (/\{[^}]*\.tabset\b[^}]*\}\s*$/.test(heading[2])) {
+      if (/\{[^{}]*\.tabset\b[^{}]*\}\s*$/.test(heading[2])) {
         blocks.push({ kind: "tabset", level: Math.min(depth, 4) as 1 | 2 | 3 | 4 });
         index += 1;
         continue;
@@ -190,7 +197,7 @@ export function parseBlocks(source: string): Block[] {
         level: Math.min(depth, 4) as 1 | 2 | 3 | 4,
         // A trailing attribute block (`## Early Game{.tabset}`) is an
         // instruction to the wiki's renderer, not part of the title.
-        text: heading[2].replace(/\s*\{[.#][^}]*\}\s*$/, "").trim(),
+        text: heading[2].replace(/\{[.#][^{}]*\}\s*$/, "").trim(),
       });
       index += 1;
       continue;
@@ -286,9 +293,18 @@ type Span =
  * cell, an image at a stated size (the resource icons in front of "Mass" and
  * "Energy"), and a key on the keyboard. All become React elements; nothing
  * here is ever parsed as markup.
+ *
+ * Every repeated part stops at the character that would open the same token
+ * again (`[` in a link's text, `(` in its address, `<` in a tag, `{` in an
+ * attribute block). Each start position therefore only reads up to the next
+ * opener, and a failed attempt costs as much as the gap it covered. Without
+ * that, a paragraph of `[` read to its end from every one of them: 64 KB of
+ * it, which any submission could carry, froze the client for seconds. Nested
+ * brackets in a link's text and parentheses in its address are what this
+ * gives up; neither was ever read correctly before either.
  */
 const INLINE =
-  /(`[^`]+`)|(\*\*\*[^*]+\*\*\*)|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*\n]+\*)|(_[^_\n]+_)|(!\[[^\]]*\]\([^)\s]+\)(?:\{[^}\n]*\})?)|(\[[^\]]+\]\([^)\s]+\))|(<\/?br\s*\/?>)|(<img\s[^>]*>)|(<kbd>[^<\n]{1,40}<\/kbd>)/i;
+  /(`[^`]+`)|(\*\*\*[^*]+\*\*\*)|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*\n]+\*)|(_[^_\n]+_)|(!\[[^[\]]*\]\([^()\s]+\)(?:\{[^{}\n]*\})?)|(\[[^[\]]+\]\([^()\s]+\))|(<\/?br\s*\/?>)|(<img\s[^<>]*>)|(<kbd>[^<\n]{1,40}<\/kbd>)/i;
 
 /** An HTML image tag's `src`, its `width` when it states one, and its `alt`. */
 const IMG_SRC = /\ssrc\s*=\s*["']([^"']+)["']/i;
@@ -789,7 +805,9 @@ export function Markdown({
   /** What its relative addresses are relative to: see [`Addresses`]. */
   base?: Addresses;
 }) {
-  const blocks = parseBlocks(source);
+  // Parsed once per source rather than on every render: a queue row re-renders
+  // whenever the queue does, and a guide can be half a megabyte.
+  const blocks = useMemo(() => parseBlocks(source), [source]);
   return (
     <div className={className ? `training-markdown ${className}` : "training-markdown"}>
       {blocks.map((block, index) => renderBlock(block, index, base))}

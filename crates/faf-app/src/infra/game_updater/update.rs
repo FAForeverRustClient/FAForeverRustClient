@@ -538,8 +538,10 @@ async fn install_featured_mod(
             0,
             pending,
         ));
+        // Not `http`: the files are fetched with the download token in a
+        // header, and that client follows redirects without asking.
         update_outdated(
-            http,
+            &crate::infra::http::no_redirect_http_client(),
             api_base,
             cache_dir,
             target_dir,
@@ -708,6 +710,9 @@ async fn fetch_mod_id(
     api_base: &str,
     featured_mod: &str,
 ) -> Result<String, String> {
+    // The filter is RSQL built by hand, so a quote in the name would end the
+    // value early and let the rest be read as more filter.
+    super::require_featured_mod_name(featured_mod)?;
     let mut url = url::Url::parse(&format!("{api_base}/data/featuredMod"))
         .map_err(|e| format!("invalid API base: {e}"))?;
     url.query_pairs_mut()
@@ -928,6 +933,63 @@ async fn update_outdated(
     Ok(())
 }
 
+/// How many redirects one featured-mod file may go through.
+const MAX_FEATURED_FILE_REDIRECTS: usize = 5;
+
+/// Ask for one featured-mod file, following redirects one hop at a time.
+///
+/// The request carries the file's download token as a header of its own name.
+/// reqwest drops `Authorization` and cookies when a redirect leaves the host,
+/// but not a custom header, so following redirects automatically handed the
+/// token to wherever a hop pointed. Every hop is held to the same rule as the
+/// address the API gave, before anything is sent to it.
+async fn get_featured_file(
+    http: &reqwest::Client,
+    file: &FeaturedModFile,
+    api_base: &str,
+) -> Result<reqwest::Response, String> {
+    let mut url = url::Url::parse(&file.cacheable_url)
+        .map_err(|_| format!("the API returned an invalid address for {}", file.name))?;
+    for hop in 0..=MAX_FEATURED_FILE_REDIRECTS {
+        if !is_allowed_download_host(url.as_str(), api_base) {
+            return Err(format!(
+                "the download of {} was redirected outside FAF",
+                file.name
+            ));
+        }
+        let resp = http
+            .get(url.clone())
+            .header(&file.hmac_parameter, &file.hmac_token)
+            .header(reqwest::header::USER_AGENT, "FAF Client")
+            .send()
+            .await
+            .map_err(|e| format!("could not download {}: {e}", file.name))?;
+        if !resp.status().is_redirection() {
+            return Ok(resp);
+        }
+        if hop == MAX_FEATURED_FILE_REDIRECTS {
+            break;
+        }
+        let location = resp
+            .headers()
+            .get(reqwest::header::LOCATION)
+            .and_then(|value| value.to_str().ok())
+            .ok_or_else(|| {
+                format!(
+                    "could not download {}: a redirect without a destination",
+                    file.name
+                )
+            })?;
+        url = url
+            .join(location)
+            .map_err(|_| format!("could not download {}: an invalid redirect", file.name))?;
+    }
+    Err(format!(
+        "could not download {}: too many redirects",
+        file.name
+    ))
+}
+
 /// Whether the file on disk already is the one the API listed.
 async fn file_matches_checksum(target_dir: &Path, file: &FeaturedModFile) -> bool {
     let Ok(target_path) = safe_join_file(target_dir, &file.group, &file.name) else {
@@ -1015,6 +1077,8 @@ fn is_allowed_download_host(raw: &str, api_base: &str) -> bool {
 /// The caller has already established that this file does not match, so there
 /// is no checksum shortcut here: `done`/`total` count the files being
 /// *fetched*, not the whole mod.
+///
+/// `http` must not follow redirects itself; see [`get_featured_file`].
 #[allow(clippy::too_many_arguments)]
 async fn update_file(
     http: &reqwest::Client,
@@ -1113,13 +1177,7 @@ async fn update_file(
         // client's `downloadManager/__init__.py`: `setRawHeader(hmac_parameter,
         // hmac_token)`. A custom User-Agent is set there too; some CDN configs
         // gate on it, so we send the same one.
-        let resp = http
-            .get(&file.cacheable_url)
-            .header(&file.hmac_parameter, &file.hmac_token)
-            .header(reqwest::header::USER_AGENT, "FAF Client")
-            .send()
-            .await
-            .map_err(|e| format!("could not download {}: {e}", file.name))?;
+        let resp = get_featured_file(http, file, api_base).await?;
         if !resp.status().is_success() {
             return Err(format!(
                 "could not download {}: {}",

@@ -56,6 +56,8 @@
 //! begin with: FA reads those directly from disk via `/replay "<path>"`, with
 //! no TCP or pipe involved and no size limit or freeze concern either way.
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use faf_domain::state::LiveReplayTarget;
@@ -68,7 +70,7 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 use crate::infra::session::TokenStore;
-use crate::infra::{fetch_access_url, free_port, validated_ws_url};
+use crate::infra::{fetch_access_url, validated_ws_url};
 use crate::ports::ProcessPort;
 
 use super::names::normalize_mod;
@@ -109,6 +111,41 @@ enum LiveTransport {
 /// setting's hint warns about.
 #[cfg(windows)]
 const PIPE_TERMINATOR: [u8; 2048] = [0u8; 2048];
+
+/// How much of the stream may wait for FA to read it before the session gives
+/// up.
+///
+/// The queue between the WebSocket and FA exists so the socket keeps being
+/// read (and its keepalive pings answered) while FA is busy loading, and that
+/// has to be a queue FA can fall well behind: joining a game in progress
+/// delivers everything played so far at once. What it must not be is
+/// unbounded, because a game that stops reading for good would otherwise grow
+/// it for as long as the game is broadcast. A whole recorded game is tens of
+/// megabytes, so this is several of them.
+const MAX_RELAY_BACKLOG: usize = 256 * 1024 * 1024;
+
+/// The bytes queued for FA and not yet written to it.
+#[derive(Clone, Default)]
+struct Backlog(Arc<AtomicUsize>);
+
+impl Backlog {
+    /// Count `bytes` in, or say the backlog is full.
+    fn admit(&self, bytes: usize) -> bool {
+        let before = self.0.fetch_add(bytes, Ordering::Relaxed);
+        if before.saturating_add(bytes) > MAX_RELAY_BACKLOG {
+            tracing::warn!(
+                queued = before,
+                "the game stopped reading the live replay; ending the session"
+            );
+            return false;
+        }
+        true
+    }
+
+    fn written(&self, bytes: usize) {
+        self.0.fetch_sub(bytes, Ordering::Relaxed);
+    }
+}
 
 /// Relays a live game from the replay server to FA.
 ///
@@ -283,11 +320,16 @@ impl LiveStreamer {
 
         match transport {
             LiveTransport::Tcp => {
-                let port =
-                    free_port().ok_or_else(|| "could not reserve a local port".to_string())?;
-                let listener = TcpListener::bind(("127.0.0.1", port))
+                // Bound straight to port 0 and asked which one it got, rather
+                // than reserving a free port and binding it again: in between,
+                // anything else could take it.
+                let listener = TcpListener::bind(("127.0.0.1", 0))
                     .await
                     .map_err(|e| format!("could not bind local replay proxy: {e}"))?;
+                let port = listener
+                    .local_addr()
+                    .map_err(|e| format!("could not bind local replay proxy: {e}"))?
+                    .port();
 
                 process
                     .launch_replay(launch_args(format!(
@@ -375,17 +417,21 @@ async fn relay_session(
 ) {
     let (mut tcp_read, mut tcp_write) = tcp.into_split();
     let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
-    if tx.send(first).is_err() {
+    let backlog = Backlog::default();
+    if !backlog.admit(first.len()) || tx.send(first).is_err() {
         return;
     }
 
     // WS → queue. Never blocks on the (possibly slow-to-drain) TCP side, so
-    // the server's keepalive pings always get answered promptly.
-    let ws_to_queue = tokio::spawn(async move {
+    // the server's keepalive pings always get answered promptly. Bounded by
+    // bytes rather than by waiting, for the same reason: see
+    // [`MAX_RELAY_BACKLOG`].
+    let queued = backlog.clone();
+    let mut ws_to_queue = tokio::spawn(async move {
         while let Some(msg) = ws_read.next().await {
             match msg {
                 Ok(Message::Binary(data)) => {
-                    if tx.send(data).is_err() {
+                    if !queued.admit(data.len()) || tx.send(data).is_err() {
                         break;
                     }
                 }
@@ -396,17 +442,18 @@ async fn relay_session(
     });
 
     // Queue → TCP. Can block on FA being busy without affecting the above.
-    let queue_to_tcp = tokio::spawn(async move {
+    let mut queue_to_tcp = tokio::spawn(async move {
         while let Some(data) = rx.recv().await {
             if tcp_write.write_all(&data).await.is_err() {
                 break;
             }
+            backlog.written(data.len());
         }
     });
 
     // TCP → WS: the game talking back (rare during pure playback, but the
     // wire protocol is nominally bidirectional: see the module docs).
-    let tcp_to_ws = tokio::spawn(async move {
+    let mut tcp_to_ws = tokio::spawn(async move {
         let mut buf = [0u8; 8192];
         loop {
             match tcp_read.read(&mut buf).await {
@@ -424,11 +471,23 @@ async fn relay_session(
         }
     });
 
-    // The session ends as soon as any leg does: the other two are aborted.
+    // How it ends depends on which leg ends first. Dropping a `JoinHandle`
+    // does not stop its task, so a leg that has to stop is aborted by name.
     tokio::select! {
-        _ = ws_to_queue => {}
-        _ = queue_to_tcp => {}
-        _ = tcp_to_ws => {}
+        // The broadcast is over. What is still queued goes to FA all the same:
+        // the queue leg drains it and then closes the socket, which is how FA
+        // learns the stream ended, and the game's side ends with it.
+        _ = &mut ws_to_queue => {}
+        // FA stopped reading, or hung up. Nothing more read from the server
+        // can reach it.
+        _ = &mut queue_to_tcp => {
+            ws_to_queue.abort();
+            tcp_to_ws.abort();
+        }
+        _ = &mut tcp_to_ws => {
+            ws_to_queue.abort();
+            queue_to_tcp.abort();
+        }
     }
 }
 
@@ -445,18 +504,20 @@ async fn pipe_relay_session(
     first: Vec<u8>,
 ) {
     let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
-    if tx.send(first).is_err() {
+    let backlog = Backlog::default();
+    if !backlog.admit(first.len()) || tx.send(first).is_err() {
         return;
     }
 
     // WS -> queue, exactly as on the TCP path: reading the socket must never
     // wait on FA draining the pipe, or the server's keepalive pings go
     // unanswered while the game is catching up.
-    let ws_to_queue = tokio::spawn(async move {
+    let queued = backlog.clone();
+    let mut ws_to_queue = tokio::spawn(async move {
         while let Some(msg) = ws_read.next().await {
             match msg {
                 Ok(Message::Binary(data)) => {
-                    if tx.send(data).is_err() {
+                    if !queued.admit(data.len()) || tx.send(data).is_err() {
                         break;
                     }
                 }
@@ -466,11 +527,12 @@ async fn pipe_relay_session(
         }
     });
 
-    let queue_to_pipe = tokio::spawn(async move {
+    let mut queue_to_pipe = tokio::spawn(async move {
         while let Some(data) = rx.recv().await {
             if pipe.write_all(&data).await.is_err() {
                 return;
             }
+            backlog.written(data.len());
         }
         // The stream ended rather than the pipe breaking, so FA is still
         // sitting there waiting for more. Unblock it.
@@ -479,8 +541,11 @@ async fn pipe_relay_session(
     });
 
     tokio::select! {
-        _ = ws_to_queue => {}
-        _ = queue_to_pipe => {}
+        // The broadcast is over; the queue leg is left to drain what is still
+        // queued and write the terminator, which is what ends the game's read.
+        _ = &mut ws_to_queue => {}
+        // The pipe broke: nothing more read from the server can reach FA.
+        _ = &mut queue_to_pipe => ws_to_queue.abort(),
     }
 
     // Nothing reads from FA on this transport, but the socket still has to be

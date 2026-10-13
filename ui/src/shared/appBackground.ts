@@ -38,7 +38,7 @@ export function useAppBackground(name: string, dim: number) {
     native.readBackgroundImage(name)
       .then((bytes) => {
         if (cancelled) return;
-        url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: backgroundMimeType(name) }));
+        url = URL.createObjectURL(new Blob([bytes], { type: backgroundMimeType(name) }));
         root.style.setProperty("--app-background-image", `url("${url}")`);
         root.dataset.background = "custom";
       })

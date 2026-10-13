@@ -49,7 +49,7 @@ use faf_domain::state::guides::{
     acceptance_comment, catalogue_claim, entry_from_issue, entry_problem, foreign_files,
     guide_image_path, id_candidates, is_submission_issue, merge_commit_message, place_images,
     pull_guide_note, submission_branch, submitted_guide_id, CatalogueClaim, ACCEPTED_LABEL,
-    ACCEPT_MARKER, DECLINED_LABEL, DECLINE_MARKER, GUIDES_BRANCH,
+    ACCEPT_MARKER, DECLINED_LABEL, DECLINE_MARKER, GUIDES_BRANCH, MAX_IMAGES,
 };
 use faf_domain::state::{
     accept_commit_message, catalogue_with, guide_file_path, guide_from_body, guide_raw_url,
@@ -486,8 +486,15 @@ impl GuidesClient {
         serde_json::from_str(&body).map_err(|error| Failure::unreadable(&what, error))
     }
 
-    /// The comments on an issue, as text. The first hundred, which for a
-    /// submission is all of them.
+    /// The comments on an issue that the repository's own people wrote, as
+    /// text. The first hundred, which for a submission is all of them.
+    ///
+    /// These are read for the verdict markers, which say how far an earlier
+    /// accept or decline got. Anybody can comment on a public issue, so a
+    /// marker pasted by a passer-by used to block the opposite verdict, and an
+    /// accept marker on an issue made the next accept close it as completed
+    /// without publishing anything. Only an owner, member or collaborator's
+    /// comment counts, which is every account this tab lets decide.
     async fn comments(&self, number: i32) -> Result<Vec<String>, Failure> {
         let what = format!("read the comments on #{number}");
         let body = self
@@ -505,6 +512,7 @@ impl GuidesClient {
             serde_json::from_str(&body).map_err(|error| Failure::unreadable(&what, error))?;
         Ok(comments
             .into_iter()
+            .filter(Comment::written_by_maintainers)
             .filter_map(|comment| comment.body)
             .collect())
     }
@@ -790,6 +798,7 @@ impl GuidesClient {
         let response = self
             .http
             .get(url)
+            .timeout(super::http::REQUEST_DEADLINE)
             .send()
             .await
             .map_err(|error| format!("could not read {url}: {error}"))?;
@@ -797,14 +806,12 @@ impl GuidesClient {
         if !status.is_success() {
             return Err(format!("{url} answered {status}"));
         }
-        let bytes = response
-            .bytes()
-            .await
-            .map_err(|error| format!("could not read {url}: {error}"))?;
-        if bytes.len() > MAX_GUIDE_BYTES {
-            return Err(format!("{url} is too large to be a guide"));
-        }
-        String::from_utf8(bytes.to_vec()).map_err(|_| format!("{url} is not text"))
+        // Streamed against the limit rather than read whole and measured: the
+        // file sits in the submitter's fork, and the queue reads it as soon as
+        // anyone opens the pending list, signed in or not.
+        let bytes =
+            super::vault_install::bounded_body(response, url, MAX_GUIDE_BYTES as u64).await?;
+        String::from_utf8(bytes).map_err(|_| format!("{url} is not text"))
     }
 
     /// One open pull request as a row of the queue.
@@ -830,30 +837,11 @@ impl GuidesClient {
                 Vec::new()
             }
         };
-        let paths: Vec<String> = files.iter().map(|file| file.filename.clone()).collect();
-        let id = submitted_guide_id(&paths);
-        let mut foreign = foreign_files(id.as_deref(), &paths);
-        // Only what the pull request adds goes in with one press. A changed,
-        // renamed or removed file is an edit to something already published,
-        // and that is a review on GitHub rather than a guide in a queue.
-        for file in files.iter().filter(|file| file.status != "added") {
-            for path in std::iter::once(&file.filename).chain(file.previous_filename.as_ref()) {
-                if !foreign.contains(path) {
-                    foreign.push(path.clone());
-                }
-            }
-        }
-        let images = match &id {
-            Some(id) => {
-                let folder = guide_image_path(id, "");
-                paths
-                    .iter()
-                    .filter(|path| path.starts_with(&folder) && !foreign.contains(*path))
-                    .cloned()
-                    .collect()
-            }
-            None => Vec::new(),
-        };
+        let ProposedFiles {
+            id,
+            foreign,
+            images,
+        } = ProposedFiles::sort(&files);
 
         let guide_url = match (&id, &pull.head.repo) {
             (Some(id), Some(repo)) => format!(
@@ -965,6 +953,58 @@ impl GuidesClient {
         }
     }
 
+    /// Refuse to merge `sha` unless the files it changes are a guide and its
+    /// pictures, read for exactly that commit.
+    ///
+    /// The queue's file list came from a separate, earlier request answered
+    /// for whatever the head was at that moment, so a pull request that swapped
+    /// its head between "guide plus something else" and "just the guide" could
+    /// show the clean list and merge the other one. Comparing against the
+    /// commit itself names the files the squash will actually bring in. The
+    /// comparison lists at most 300 files, so the count is held against the
+    /// pull request's own `changed_files` as well: a short list is refused, not
+    /// trusted.
+    async fn check_files_at(
+        &self,
+        number: i32,
+        sha: &str,
+        changed_files: Option<usize>,
+        id: &str,
+    ) -> Result<(), String> {
+        let what = format!("read the files of #{number} at {sha}");
+        let body = self
+            .send(
+                Method::GET,
+                &format!(
+                    "/repos/{}/compare/{GUIDES_BRANCH}...{sha}",
+                    self.config.repo
+                ),
+                None,
+                &what,
+            )
+            .await?;
+        let comparison: Comparison =
+            serde_json::from_str(&body).map_err(|error| Failure::unreadable(&what, error))?;
+        if changed_files != Some(comparison.files.len()) {
+            return Err(format!(
+                "GitHub listed only part of what #{number} changes, so it was not merged. Review it on GitHub instead"
+            ));
+        }
+        let proposed = ProposedFiles::sort(&comparison.files);
+        if !proposed.foreign.is_empty() {
+            return Err(format!(
+                "#{number} changes more than its guide and pictures ({}), so it was not merged",
+                proposed.foreign.join(", ")
+            ));
+        }
+        if proposed.id.as_deref() != Some(id) {
+            return Err(format!(
+                "#{number} no longer carries the guide the queue read, so it was not merged. Refresh the queue and read it again before accepting"
+            ));
+        }
+        Ok(())
+    }
+
     /// Accept a pull request: merge it, then publish its entry.
     async fn accept_pull(
         &self,
@@ -1012,6 +1052,8 @@ impl GuidesClient {
                     "#{number} has changed since the queue read it, so it was not merged. Refresh the queue and read it again before accepting"
                 ));
             }
+            self.check_files_at(number, &pull.head_sha, current.changed_files, &entry.id)
+                .await?;
             self.merge(
                 number,
                 &pull.head_sha,
@@ -1792,6 +1834,19 @@ struct Label {
 #[derive(Debug, Deserialize)]
 struct Comment {
     body: Option<String>,
+    /// The commenter's relation to the repository: `OWNER`, `MEMBER`,
+    /// `COLLABORATOR`, `CONTRIBUTOR`, `NONE` and a few more.
+    #[serde(default)]
+    author_association: Option<String>,
+}
+
+impl Comment {
+    fn written_by_maintainers(&self) -> bool {
+        matches!(
+            self.author_association.as_deref(),
+            Some("OWNER" | "MEMBER" | "COLLABORATOR")
+        )
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -1838,6 +1893,10 @@ struct Pull {
     #[serde(default)]
     labels: Vec<Label>,
     head: PullHead,
+    /// How many files the head changes. Only on a single pull request's own
+    /// answer, like `merged`.
+    #[serde(default)]
+    changed_files: Option<usize>,
 }
 
 impl Pull {
@@ -1868,6 +1927,62 @@ struct PullFile {
     status: String,
     #[serde(default)]
     previous_filename: Option<String>,
+}
+
+/// `GET /compare/{base}...{head}`, of which only the files are read.
+#[derive(Debug, Deserialize)]
+struct Comparison {
+    #[serde(default)]
+    files: Vec<PullFile>,
+}
+
+/// A pull request's files, sorted into the guide they carry, its pictures and
+/// everything that does not belong in a submission.
+#[derive(Debug, Default)]
+struct ProposedFiles {
+    id: Option<String>,
+    foreign: Vec<String>,
+    images: Vec<String>,
+}
+
+impl ProposedFiles {
+    fn sort(files: &[PullFile]) -> Self {
+        let paths: Vec<String> = files.iter().map(|file| file.filename.clone()).collect();
+        let id = submitted_guide_id(&paths);
+        let mut foreign = foreign_files(id.as_deref(), &paths);
+        // Only what the pull request adds goes in with one press. A changed,
+        // renamed or removed file is an edit to something already published,
+        // and that is a review on GitHub rather than a guide in a queue.
+        for file in files.iter().filter(|file| file.status != "added") {
+            for path in std::iter::once(&file.filename).chain(file.previous_filename.as_ref()) {
+                if !foreign.contains(path) {
+                    foreign.push(path.clone());
+                }
+            }
+        }
+        let mut images: Vec<String> = match &id {
+            Some(id) => {
+                let folder = guide_image_path(id, "");
+                paths
+                    .iter()
+                    .filter(|path| path.starts_with(&folder) && !foreign.contains(*path))
+                    .cloned()
+                    .collect()
+            }
+            None => Vec::new(),
+        };
+        // The submission form never sends more than this, so a pull request
+        // that does was not made by it. The extra pictures are listed as
+        // foreign, which keeps the row out of one-press accepting.
+        if images.len() > MAX_IMAGES {
+            foreign.extend(images.split_off(MAX_IMAGES));
+        }
+        Self {
+            id,
+            foreign,
+            images,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -2472,7 +2587,7 @@ mod tests {
         // The comment is written after the commits, so its presence means
         // they are done: a retry must not commit or comment again.
         let marker: &'static str = Box::leak(
-            json!([{ "body": acceptance_comment("a-guide-2") }])
+            json!([{ "body": acceptance_comment("a-guide-2"), "author_association": "MEMBER" }])
                 .to_string()
                 .into_boxed_str(),
         );
@@ -2495,7 +2610,7 @@ mod tests {
     #[tokio::test]
     async fn a_declined_submission_cannot_be_accepted_afterwards() {
         let marker: &'static str = Box::leak(
-            json!([{ "body": rejection_comment(RejectReason::Duplicate, "") }])
+            json!([{ "body": rejection_comment(RejectReason::Duplicate, ""), "author_association": "OWNER" }])
                 .to_string()
                 .into_boxed_str(),
         );
@@ -2506,6 +2621,37 @@ mod tests {
         let refused = client.accept(submission()).await.expect_err("refused");
         assert!(refused.contains("declined"));
         assert!(seen.lock().unwrap().iter().all(|r| r.method == "GET"));
+    }
+
+    #[tokio::test]
+    async fn a_verdict_marker_from_a_passer_by_counts_for_nothing() {
+        // Anybody can comment on a public issue. Pasting the decline marker
+        // used to block every accept, and pasting the accept marker made the
+        // next accept close the issue as done without publishing it.
+        let markers: &'static str = Box::leak(
+            json!([
+                { "body": rejection_comment(RejectReason::Duplicate, ""), "author_association": "NONE" },
+                { "body": acceptance_comment("a-guide"), "author_association": "CONTRIBUTOR" },
+                { "body": acceptance_comment("a-guide") },
+            ])
+            .to_string()
+            .into_boxed_str(),
+        );
+        let (base, seen) = serve(maintainer_route(markers, Arc::new(Mutex::new(0)))).await;
+        let client = client_at(&base);
+        holding(&client, "token");
+
+        client.accept(submission()).await.expect("accepted");
+
+        let seen = seen.lock().unwrap();
+        assert!(
+            seen.iter()
+                .any(|r| r.method == "PUT" && r.target.ends_with("/contents/catalogue.json")),
+            "the entry was published: {seen:?}"
+        );
+        assert!(seen
+            .iter()
+            .any(|r| r.method == "POST" && r.target.ends_with("/comments")));
     }
 
     #[tokio::test]
@@ -2536,6 +2682,7 @@ mod tests {
             "user": { "login": "author" },
             "state": "open",
             "head": { "sha": sha, "ref": "submission/setons-air-1", "repo": { "full_name": head_repo } },
+            "changed_files": 2,
         })
     }
 
@@ -2637,15 +2784,28 @@ mod tests {
         assert!(!rows[0].is_acceptable());
     }
 
+    /// What the guide and its one picture look like compared against `main`.
+    const CLEAN_COMPARISON: &str = r#"{"files":[
+        {"filename":"guides/setons-air.md","status":"added"},
+        {"filename":"guides/images/setons-air/opening.png","status":"added"}]}"#;
+
     /// GitHub as a maintainer sees it around pull request #7, whose head is
     /// `head_sha` now.
     fn merging_route(head_sha: &'static str) -> Route {
+        merging_route_comparing(head_sha, CLEAN_COMPARISON)
+    }
+
+    /// [`merging_route`], with `comparison` as what the head changes.
+    fn merging_route_comparing(head_sha: &'static str, comparison: &'static str) -> Route {
         Arc::new(
             move |request: &Seen| match (request.method.as_str(), request.target.as_str()) {
                 ("GET", "/user") => reply(200, r#"{"login":"maintainer"}"#),
                 ("GET", "/repos/o/r") => reply(200, r#"{"permissions":{"push":true}}"#),
                 ("GET", "/repos/o/r/pulls/7") => {
                     reply(200, &pull_json(head_sha, "o/r").to_string())
+                }
+                ("GET", target) if target == format!("/repos/o/r/compare/main...{head_sha}") => {
+                    reply(200, comparison)
                 }
                 ("GET", "/repos/o/r/issues/7/comments?per_page=100") => reply(200, "[]"),
                 ("PUT", "/repos/o/r/pulls/7/merge") => reply(200, r#"{"merged":true}"#),
@@ -2719,6 +2879,49 @@ mod tests {
 
         let refused = client.accept(proposed()).await.expect_err("refused");
         assert!(refused.contains("changed since"), "{refused}");
+        assert!(
+            seen.lock().unwrap().iter().all(|r| r.method == "GET"),
+            "nothing written"
+        );
+    }
+
+    #[tokio::test]
+    async fn the_files_merged_are_the_files_of_the_commit_merged() {
+        // The queue showed a clean list, read while the head was another
+        // commit. The commit about to be merged also edits the catalogue, and
+        // that is what decides.
+        let (base, seen) = serve(merging_route_comparing(
+            "abc",
+            r#"{"files":[
+                {"filename":"guides/setons-air.md","status":"added"},
+                {"filename":"catalogue.json","status":"modified"}]}"#,
+        ))
+        .await;
+        let client = client_at(&base);
+        holding(&client, "token");
+
+        let refused = client.accept(proposed()).await.expect_err("refused");
+        assert!(refused.contains("catalogue.json"), "{refused}");
+        assert!(
+            seen.lock().unwrap().iter().all(|r| r.method == "GET"),
+            "nothing written"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_file_list_shorter_than_the_pull_request_is_not_trusted() {
+        // `changed_files` says two, the comparison names one: whatever was cut
+        // off could be anything.
+        let (base, seen) = serve(merging_route_comparing(
+            "abc",
+            r#"{"files":[{"filename":"guides/setons-air.md","status":"added"}]}"#,
+        ))
+        .await;
+        let client = client_at(&base);
+        holding(&client, "token");
+
+        let refused = client.accept(proposed()).await.expect_err("refused");
+        assert!(refused.contains("only part"), "{refused}");
         assert!(
             seen.lock().unwrap().iter().all(|r| r.method == "GET"),
             "nothing written"

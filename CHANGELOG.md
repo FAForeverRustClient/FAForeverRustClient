@@ -12,3 +12,9 @@ and links work there, tables do not.
 A section starts with `## <version>` (`## 0.9.0`, `## v0.9.0` and
 `## [0.9.0] - 2026-10-20` all work) and runs to the next `## `. Use `###` for
 anything inside it.
+
+## Unreleased
+
+- Security fixes in the guide reader and the guide review queue, which now also shows the link each submission points to.
+- A guide with unusual formatting no longer freezes the client while it opens.
+- A custom background picture loads faster when the client starts.
