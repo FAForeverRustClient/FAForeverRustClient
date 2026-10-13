@@ -58,6 +58,7 @@ impl ChangelogClient {
         let response = self
             .http
             .get(url)
+            .timeout(super::http::REQUEST_DEADLINE)
             .send()
             .await
             .map_err(|e| format!("could not reach the changelog: {e}"))?;
@@ -67,16 +68,14 @@ impl ChangelogClient {
             return Err(format!("the changelog responded with {status}"));
         }
 
-        let bytes = response
-            .bytes()
-            .await
-            .map_err(|e| format!("could not read the changelog: {e}"))?;
-        if bytes.len() > MAX_DOCUMENT_BYTES {
-            return Err("the changelog document was unexpectedly large".into());
-        }
+        let bytes = super::vault_install::bounded_body(
+            response,
+            "the changelog document",
+            MAX_DOCUMENT_BYTES as u64,
+        )
+        .await?;
 
-        String::from_utf8(bytes.to_vec())
-            .map_err(|_| "the changelog document was not valid UTF-8".into())
+        String::from_utf8(bytes).map_err(|_| "the changelog document was not valid UTF-8".into())
     }
 }
 

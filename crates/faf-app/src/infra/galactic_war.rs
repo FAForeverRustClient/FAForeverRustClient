@@ -211,22 +211,46 @@ impl GalacticWarGateway {
 
     /// Fetch the `.sha256` published beside the archive, if there is one.
     ///
-    /// A missing file is `Ok(None)`, not an error: none is published today.
-    async fn expected_digest(&self, url: &str) -> Option<String> {
+    /// A missing file (a 404) is `Ok(None)`, not an error: none is published
+    /// today. Anything else that is not a digest is an error. A timeout, a 5xx
+    /// or an unreadable body used to count as "none published" as well, which
+    /// let the archive install unchecked exactly when the check had something
+    /// to say. The digest comes from the same host as the archive, so this is
+    /// a check against a damaged download rather than a signature; the HTTPS
+    /// connection is what vouches for the source.
+    async fn expected_digest(&self, url: &str) -> Result<Option<String>, String> {
+        let unreadable = || "could not read the Galactic War archive's checksum".to_string();
         let response = self
             .http
             .get(format!("{url}.sha256"))
             .timeout(API_TIMEOUT)
             .send()
             .await
-            .ok()?;
-        if !response.status().is_success() {
-            return None;
+            .map_err(|error| {
+                format!(
+                    "{}: {}",
+                    unreadable(),
+                    crate::infra::http::describe_transport_error(&error)
+                )
+            })?;
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(None);
         }
-        let body = response.text().await.ok()?;
+        if !response.status().is_success() {
+            return Err(format!("{}: {}", unreadable(), response.status()));
+        }
+        let body = response.text().await.map_err(|_| unreadable())?;
         // `sha256sum` writes "<hex>  <filename>"; take the first field.
-        let digest = body.split_whitespace().next()?.to_ascii_lowercase();
-        (digest.len() == 64 && digest.chars().all(|c| c.is_ascii_hexdigit())).then_some(digest)
+        let digest = body
+            .split_whitespace()
+            .next()
+            .unwrap_or_default()
+            .to_ascii_lowercase();
+        if digest.len() == 64 && digest.chars().all(|c| c.is_ascii_hexdigit()) {
+            Ok(Some(digest))
+        } else {
+            Err(unreadable())
+        }
     }
 
     /// Download the archive, reporting progress, without trusting
@@ -307,7 +331,7 @@ impl GalacticWarGateway {
             biased;
             () = cancel.cancelled() => return Err("installation cancelled".into()),
             result = async {
-                let expected = self.expected_digest(&url).await;
+                let expected = self.expected_digest(&url).await?;
                 let archive = self.download_archive(&url, &progress).await?;
                 Ok::<_, String>((expected, archive))
             } => result?,
