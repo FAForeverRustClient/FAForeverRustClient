@@ -2698,6 +2698,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "chat.gameBadge.aria": "{status}: {title} на карте {map}",
   "chat.roster.filterPlaceholder": { one: "{count} человек, введите текст для фильтра", few: "{count} человека, введите текст для фильтра", many: "{count} человек, введите текст для фильтра", other: "{count} человека, введите текст для фильтра" },
   "chat.roster.filterAria": { one: "Фильтр списка ({count} человек)", few: "Фильтр списка ({count} человека)", many: "Фильтр списка ({count} человек)", other: "Фильтр списка ({count} человека)" },
+  "chat.roster.noteMark": "Ваша заметка: {note}",
   "chat.message.openConversation": "Написать {name}",
   "chat.loadOlder": "Загрузить более ранние сообщения (осталось {count})",
   "maps.generate.installedReady": "Установлена в папку пользовательских карт и готова к игре",

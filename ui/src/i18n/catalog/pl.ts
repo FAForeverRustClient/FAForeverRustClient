@@ -2215,6 +2215,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "chat.gameBadge.aria": "{status}: {title} na mapie {map}",
   "chat.roster.filterPlaceholder": { one: "{count} użytkownik, pisz, aby filtrować", few: "{count} użytkownicy, pisz, aby filtrować", many: "{count} użytkowników, pisz, aby filtrować", other: "{count} użytkownika, pisz, aby filtrować" },
   "chat.roster.filterAria": { one: "Filtruj listę ({count} użytkownik)", few: "Filtruj listę ({count} użytkownicy)", many: "Filtruj listę ({count} użytkowników)", other: "Filtruj listę ({count} użytkownika)" },
+  "chat.roster.noteMark": "Twoja notatka: {note}",
   "chat.message.openConversation": "Napisz do {name}",
   "chat.loadOlder": "Wczytaj wcześniejsze wiadomości (pozostało {count})",
   "maps.generate.installedReady": "Zainstalowana w twoim katalogu map i gotowa do gry",

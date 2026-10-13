@@ -169,6 +169,7 @@ export const en = {
   "chat.gameBadge.aria": "{status}: {title} on {map}",
   "chat.roster.filterPlaceholder": { one: "{count} user, type to filter", other: "{count} users, type to filter" },
   "chat.roster.filterAria": { one: "Filter the roster ({count} user)", other: "Filter the roster ({count} users)" },
+  "chat.roster.noteMark": "Your note: {note}",
   "chat.message.openConversation": "Message {name}",
   "chat.search.open": "Search",
   "chat.jumpToLatest": "Jump to latest",

@@ -10,6 +10,10 @@
 // flag and clan tag: all of which come from the lobby's player record rather
 // than from IRC, so an IRC-only nickname simply renders bare.
 //
+// A player you wrote a note about carries a small mark after the name, with
+// the note as its tooltip (#519): the note was only ever visible on the
+// profile, so nothing in the list said there was one.
+//
 // Double-click opens a private conversation; right-click opens the user menu.
 // From the keyboard, Enter or Space on a row opens the conversation, since a
 // keyboard has no double-click (see `opensConversationOnClick`).
@@ -146,6 +150,12 @@ export const UserList = memo(function UserList({
 
   // Shared with the message list, which needs exactly the same index.
   const profilesByLogin = playersByNickname(social.players);
+  // Notes are kept by account id, so a renamed player keeps theirs.
+  const playerNotes = useAppStore((s) => s.state.settings.social.playerNotes);
+  const notesById = useMemo(
+    () => new Map(playerNotes.map((entry) => [entry.playerId, entry.note])),
+    [playerNotes],
+  );
 
   const groups = useMemo(() => {
     const needle = filter.trim().toLowerCase();
@@ -290,11 +300,13 @@ export const UserList = memo(function UserList({
                     </li>
                   );
                 }
+                const profile = profilesByLogin.get(item.user.name.toLowerCase());
                 return (
                   <RosterRow
                     key={item.key}
                     user={item.user}
-                    profile={profilesByLogin.get(item.user.name.toLowerCase())}
+                    profile={profile}
+                    note={profile ? notesById.get(profile.id) : undefined}
                     social={social}
                     presence={presences.get(item.user.name.toLocaleLowerCase()) ?? null}
                     mapVault={mapVault}
@@ -317,6 +329,7 @@ export const UserList = memo(function UserList({
 const RosterRow = memo(function RosterRow({
   user,
   profile,
+  note,
   social,
   presence,
   mapVault,
@@ -328,6 +341,8 @@ const RosterRow = memo(function RosterRow({
 }: {
   user: ChatUser;
   profile: PlayerProfile | undefined;
+  /** The player's note, when one was written about them. */
+  note: string | undefined;
   social: SocialState;
   presence: GamePresence | null;
   mapVault: VaultMap[];
@@ -337,6 +352,7 @@ const RosterRow = memo(function RosterRow({
   onContextMenu: (nick: string, event: React.MouseEvent) => void;
   menuOpen: boolean;
 }) {
+  const { t } = useTranslation();
   const countryOf = useCountryLabel();
   const nameStyle = resolvedNickStyle(user.name, user, social, preferences, self);
   const { cardProps, anchorRef, card } = usePlayerRatingCard(
@@ -395,6 +411,16 @@ const RosterRow = memo(function RosterRow({
             {profile?.clan && <span className="chat-clan">[{profile.clan}]</span>}
             {user.name}
           </span>
+          {note && (
+            <span
+              className="chat-note-mark"
+              role="img"
+              aria-label={t("chat.roster.noteMark", { note })}
+              title={t("chat.roster.noteMark", { note })}
+            >
+              <Icon name="edit" size={12} />
+            </span>
+          )}
         </button>
         {presence && <GameSummaryPopover presence={presence} social={social} vault={mapVault} />}
       </div>
