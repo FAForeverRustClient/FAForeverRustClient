@@ -3,7 +3,10 @@
 //! Unlike the Go adapter (a GPGNet relay), the Java adapter is driven over
 //! **JSON-RPC** ([`jsonrpc`](crate::infra::jsonrpc)) and **hosts the GPGNet port
 //! for the game itself** (so there is no relay server, and the adapter: not us,
-//! answers `CreateLobby`). It also does not fetch ICE servers itself, so we poll
+//! answers `CreateLobby`). The game is launched before the adapter is up, on a
+//! port this client holds and passes through to the adapter's, bytes untouched:
+//! see [`gpgnet_proxy`](crate::infra::gpgnet_proxy). It also does not fetch ICE
+//! servers itself, so we poll
 //! `GET {api}/ice/session/game/{id}` and push them via `setIceServers`. Mirrors the
 //! Python client's `IceAdapterClient.py` / `IceAdapterProcess.py` / `IceServersPoller.py`.
 //!
@@ -11,17 +14,19 @@
 //! `java`). Select with `FAF_ICE_ADAPTER_KIND=java` or the connectivity setting.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use async_trait::async_trait;
 use serde_json::Value;
 use tokio::process::{Child, Command};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
 use faf_domain::state::{RelayPeer, RelaySnapshot, RelayStatus};
 
 use crate::infra::connectivity::IceSessionMemory;
+use crate::infra::gpgnet_proxy::GpgNetProxy;
 use crate::infra::jsonrpc::{JsonRpcClient, RpcNotification};
 use crate::infra::session::TokenStore;
 use crate::infra::{console_window, free_ports};
@@ -146,6 +151,15 @@ pub struct JavaAdapter {
     debug_windows: Arc<Mutex<IceDebugWindows>>,
     /// Where the relay URLs of each session go, for the connectivity check.
     memory: IceSessionMemory,
+    /// The `forceRelay` of the last session, which the next adapter is
+    /// started with: the session may arrive after the adapter, and the switch
+    /// is a command-line flag. Server-wide in practice
+    /// (`fafProperties.forceRelay()` in the icebreaker), and off.
+    force_relay_seen: Arc<AtomicBool>,
+    /// The adapter coming up behind a launched game, and the GPGNet port the
+    /// game was given meanwhile: both stopped with the adapter, so a game that
+    /// ended cannot be failed by what was still on its way.
+    bring_up: Mutex<Option<(tokio::task::AbortHandle, GpgNetProxy)>>,
 }
 
 impl JavaAdapter {
@@ -158,6 +172,8 @@ impl JavaAdapter {
             rpc: Arc::new(Mutex::new(None)),
             debug_windows: Arc::new(Mutex::new(IceDebugWindows::default())),
             memory: IceSessionMemory::default(),
+            force_relay_seen: Arc::new(AtomicBool::new(false)),
+            bring_up: Mutex::new(None),
         }
     }
 
@@ -170,13 +186,31 @@ impl JavaAdapter {
         self.memory = memory;
         self
     }
+
+    /// Stop bringing an adapter up, and close the game's GPGNet port.
+    fn halt_bring_up(&self) {
+        if let Some((running, proxy)) = self.bring_up.lock().unwrap().take() {
+            running.abort();
+            drop(proxy);
+        }
+    }
 }
 
 /// How long the live relay view waits for the adapter's `status` answer. It
 /// asks every couple of seconds, so a slower answer is as good as none.
 const STATUS_TIMEOUT: Duration = Duration::from_secs(3);
 
-impl JavaAdapter {
+/// What starting an adapter process needs: owned, so that the start can run
+/// behind the game.
+#[derive(Clone)]
+struct AdapterProcess {
+    config: JavaConfig,
+    child: Arc<Mutex<Option<Child>>>,
+    /// Read once per launch: a switch flipped mid-game applies to the next.
+    windows: IceDebugWindows,
+}
+
+impl AdapterProcess {
     /// One attempt at starting the adapter on a given pair of ports.
     ///
     /// Split out so the caller can have another go: see the note at the call
@@ -205,7 +239,7 @@ impl JavaAdapter {
         if force_relay {
             args.push("--force-relay".into());
         }
-        let windows = *self.debug_windows.lock().unwrap();
+        let windows = self.windows;
         args.extend(window_args(windows));
 
         tracing::info!(
@@ -326,7 +360,7 @@ impl JavaAdapter {
 /// A started adapter: its GPGNet port, its control channel and what it says.
 type SpawnedAdapter = (u16, JsonRpcClient, mpsc::Receiver<RpcNotification>);
 
-/// What [`session_and_adapter`] reads from a session.
+/// What [`adapter_and_session`] reads from a session.
 trait ForcesRelay {
     fn force_relay(&self) -> bool;
 }
@@ -337,60 +371,347 @@ impl ForcesRelay for IceServers {
     }
 }
 
-/// Fetch the ICE session and start the adapter at the same time, and answer
-/// both, or the first failure with nothing left running.
+/// How far [`adapter_and_session`] got before the game can be started.
+enum Started<S, A, Session> {
+    /// The session came first, and the adapter runs with what it says.
+    Complete(S, A),
+    /// The adapter answered first. The session is still on its way, and the
+    /// game is started without waiting for it.
+    Early(A, Session),
+}
+
+/// Start the adapter while the ICE session is fetched, and answer as soon as
+/// the adapter does (#511).
 ///
-/// - The adapter is started without `--force-relay`. A session that asks for
-///   it gets the adapter stopped and started again with the flag, before
-///   anything has been told to it.
-/// - A session that cannot be had stops the adapter, whether it is already
-///   up or still starting: the start is dropped where it is, and `kill` stops
-///   the process it may have launched by then.
+/// The adapter needs its ICE servers only once it connects to a peer
+/// (`PeerIceModule.gatherCandidates`), and `setIceServers` can be sent at
+/// any time; Java and Python send it after the start anyway. The game, on the
+/// other hand, takes a quarter of a minute to reach its lobby, and the session
+/// has taken ten seconds of that on its own (FAF's icebreaker). So the game no
+/// longer waits for it.
+///
+/// - The adapter is started with `force_relay`, the last thing a session
+///   said: the flag is a command-line switch and cannot be sent later.
+/// - A session that comes first and disagrees gets the adapter started again
+///   with its own answer, before anything has been told to it.
+/// - A session that cannot be had before the adapter answers stops the
+///   adapter, whether it is already up or still starting.
 /// - An adapter that cannot be started ends the wait for the session.
 ///
 /// Generic over the two steps so that this ordering can be tested without a
 /// JVM or the API.
-async fn session_and_adapter<S, A, Session, Spawn>(
-    session: Session,
+async fn adapter_and_session<S, A, Session, Spawn>(
+    mut session: Session,
+    force_relay: bool,
     spawn: impl Fn(bool) -> Spawn,
     kill: impl Fn(),
-) -> Result<(S, A), String>
+) -> Result<Started<S, A, Session>, String>
 where
     S: ForcesRelay,
-    Session: std::future::Future<Output = Result<S, String>>,
+    Session: std::future::Future<Output = Result<S, String>> + Unpin,
     Spawn: std::future::Future<Output = Result<A, String>>,
 {
-    let mut session = Box::pin(session);
-    let mut starting = Box::pin(spawn(false));
-    let (session, adapter) = tokio::select! {
-        fetched = &mut session => match fetched {
-            Ok(fetched) => (fetched, starting.await?),
-            Err(reason) => {
-                drop(starting);
-                kill();
-                return Err(reason);
-            }
-        },
-        started = &mut starting => {
-            let adapter = started?;
-            match session.await {
-                Ok(fetched) => (fetched, adapter),
+    let mut starting = Box::pin(spawn(force_relay));
+    tokio::select! {
+        fetched = &mut session => {
+            let fetched = match fetched {
+                Ok(fetched) => fetched,
                 Err(reason) => {
-                    drop(adapter);
+                    drop(starting);
                     kill();
                     return Err(reason);
                 }
+            };
+            let adapter = starting.await?;
+            if fetched.force_relay() == force_relay {
+                return Ok(Started::Complete(fetched, adapter));
+            }
+            tracing::info!(
+                force_relay = fetched.force_relay(),
+                "the ICE session asks for another relay switch; restarting the adapter before the game starts"
+            );
+            drop(adapter);
+            kill();
+            let adapter = spawn(fetched.force_relay()).await?;
+            Ok(Started::Complete(fetched, adapter))
+        }
+        // Dropping `session` on a failed start is what stops the fetch.
+        started = &mut starting => Ok(Started::Early(started?, session)),
+    }
+}
+
+/// Wait out a session the game was started without, and say whether the
+/// adapter can use it.
+///
+/// Usable unless it cannot be had, or it forces relaying on an adapter that
+/// was started without `--force-relay`: the switch cannot be sent later, and
+/// the adapter cannot be restarted under a game that is connected to it. Then
+/// `failed` hears why, and the launcher stops the game. The answer is
+/// remembered in `seen`, so the next launch starts the adapter with it and
+/// this happens once, when FAF turns the switch on.
+///
+/// The other way round is left running: an adapter that relays although the
+/// session would allow direct connections still connects.
+async fn finish_late_session<S, Session>(
+    session: Session,
+    adapter_forces_relay: bool,
+    seen: &AtomicBool,
+    failed: oneshot::Sender<String>,
+) -> Option<S>
+where
+    S: ForcesRelay,
+    Session: std::future::Future<Output = Result<S, String>>,
+{
+    match session.await {
+        Ok(fetched) => {
+            seen.store(fetched.force_relay(), Ordering::SeqCst);
+            if fetched.force_relay() && !adapter_forces_relay {
+                tracing::warn!("forceRelay changed; launch abandoned");
+                let _ = failed.send(
+                    "the FAF server switched this game to relayed connections after it started; \
+                     please join again"
+                        .to_string(),
+                );
+                return None;
+            }
+            Some(fetched)
+        }
+        Err(reason) => {
+            let _ = failed.send(reason);
+            None
+        }
+    }
+}
+
+/// Lobby messages to the adapter, held back while it has no ICE servers.
+///
+/// What only concerns the game passes: `HostGame`, and the server's GPGNet
+/// messages for it. The first message that concerns a peer, and everything
+/// after it, is kept until the servers are set, then let through in the order
+/// it came. Nothing later ever overtakes something earlier: an `IceMsg` ahead
+/// of its `ConnectToPeer` is a peer that never connects.
+#[derive(Debug, Default)]
+struct RelayGate {
+    open: bool,
+    held: Vec<RelayMsg>,
+}
+
+impl RelayGate {
+    /// `msg` if it may go to the adapter now; otherwise it is kept.
+    fn pass(&mut self, msg: RelayMsg) -> Option<RelayMsg> {
+        if self.open || (self.held.is_empty() && !needs_peers(&msg.command)) {
+            return Some(msg);
+        }
+        self.held.push(msg);
+        None
+    }
+
+    /// Open for good, and hand back what was kept, in order.
+    fn open(&mut self) -> Vec<RelayMsg> {
+        self.open = true;
+        std::mem::take(&mut self.held)
+    }
+}
+
+/// The lobby messages that make the adapter reach for a peer, which it does
+/// with the ICE servers it was given.
+fn needs_peers(command: &str) -> bool {
+    matches!(
+        command,
+        "JoinGame" | "ConnectToPeer" | "IceMsg" | "DisconnectFromPeer"
+    )
+}
+
+/// What the adapter needs from its control channel here: one call at a time,
+/// in order. A trait so that the lobby forwarding can be tested without a JVM.
+trait RpcCalls {
+    fn call(&self, method: &str, params: Vec<Value>);
+}
+
+impl RpcCalls for JsonRpcClient {
+    fn call(&self, method: &str, params: Vec<Value>) {
+        JsonRpcClient::call(self, method, params);
+    }
+}
+
+/// Lobby game-relay messages to the adapter, from the moment the game is
+/// launched.
+///
+/// Until the adapter answers, everything is kept as it came. Then it goes
+/// through the [`RelayGate`], which holds what concerns a peer until the ICE
+/// servers are set, and `setIceServers` goes out the moment both the adapter
+/// and the servers are there. One task for all of it, so nothing can overtake
+/// `setIceServers` or anything that came before it.
+///
+/// An adapter that never answers leaves nothing to send to: the messages are
+/// dropped from then on, still read so the lobby is never kept waiting, and
+/// the launcher stops the game for it.
+async fn forward_lobby_messages<R: RpcCalls>(
+    mut from_lobby: mpsc::Receiver<RelayMsg>,
+    mut answered: oneshot::Receiver<R>,
+    mut servers: oneshot::Receiver<Vec<Value>>,
+    asked: std::time::Instant,
+) {
+    let mut adapter: Option<R> = None;
+    let mut awaiting_adapter = true;
+    let mut awaiting_servers = true;
+    let mut before_the_adapter: Vec<RelayMsg> = Vec::new();
+    let mut gate = RelayGate::default();
+    loop {
+        tokio::select! {
+            biased;
+            up = &mut answered, if awaiting_adapter => {
+                awaiting_adapter = false;
+                let Ok(up) = up else {
+                    before_the_adapter.clear();
+                    continue;
+                };
+                for msg in before_the_adapter.drain(..) {
+                    if let Some(msg) = gate.pass(msg) {
+                        forward_to_adapter(&up, &msg);
+                    }
+                }
+                adapter = Some(up);
+            }
+            arrived = &mut servers, if awaiting_servers && adapter.is_some() => {
+                awaiting_servers = false;
+                // None at all: the session failed, and the launcher stops the
+                // game and this adapter.
+                let (Ok(servers), Some(adapter)) = (arrived, adapter.as_ref()) else {
+                    continue;
+                };
+                adapter.call("setIceServers", vec![Value::Array(servers)]);
+                let held = gate.open();
+                tracing::info!(
+                    held = held.len(),
+                    milliseconds = asked.elapsed().as_millis() as u64,
+                    "ICE session arrived, releasing held messages"
+                );
+                for msg in &held {
+                    forward_to_adapter(adapter, msg);
+                }
+            }
+            msg = from_lobby.recv() => {
+                let Some(msg) = msg else {
+                    break;
+                };
+                match adapter.as_ref() {
+                    Some(adapter) => {
+                        if let Some(msg) = gate.pass(msg) {
+                            forward_to_adapter(adapter, &msg);
+                        }
+                    }
+                    None if awaiting_adapter => before_the_adapter.push(msg),
+                    None => {}
+                }
             }
         }
-    };
-    if !session.force_relay() {
-        return Ok((session, adapter));
     }
-    tracing::info!("the ICE session forces relaying; restarting the adapter with --force-relay");
-    drop(adapter);
-    kill();
-    let adapter = spawn(true).await?;
-    Ok((session, adapter))
+}
+
+/// Everything [`JavaAdapter::start`] hands to the task that brings the
+/// adapter up behind the game.
+struct BringUp {
+    process: AdapterProcess,
+    params: IceParams,
+    asked: std::time::Instant,
+    force_relay_seen: Arc<AtomicBool>,
+    memory: IceSessionMemory,
+    rpc: Arc<Mutex<Option<JsonRpcClient>>>,
+    adapter_port: tokio::sync::watch::Sender<Option<u16>>,
+    to_lobby: mpsc::Sender<RelayMsg>,
+    answered: oneshot::Sender<JsonRpcClient>,
+    servers: oneshot::Sender<Vec<Value>>,
+    failed: oneshot::Sender<String>,
+}
+
+impl BringUp {
+    /// Start the adapter and see the session through, while the game loads.
+    ///
+    /// Aborted by `stop`, which drops `failed` unanswered: a game that ended
+    /// or was called off is not failed by what was still on its way.
+    async fn run<Session>(self, session: Session)
+    where
+        Session: std::future::Future<Output = Result<IceServers, String>> + Unpin,
+    {
+        let Self {
+            process,
+            params,
+            asked,
+            force_relay_seen,
+            memory,
+            rpc: rpc_slot,
+            adapter_port,
+            to_lobby,
+            answered,
+            servers,
+            failed,
+        } = self;
+        let game_id = params.game_id;
+        let adapter_forces_relay = force_relay_seen.load(Ordering::SeqCst);
+        let started = adapter_and_session(
+            session,
+            adapter_forces_relay,
+            |force_relay| process.spawn_on_free_ports(&params, force_relay, asked),
+            || process.kill_child(),
+        )
+        .await;
+        let (adapter, late) = match started {
+            Ok(Started::Complete(ice, adapter)) => {
+                force_relay_seen.store(ice.force_relay, Ordering::SeqCst);
+                memory.remember_servers(game_id, &ice.servers);
+                let _ = servers.send(ice.servers);
+                (adapter, None)
+            }
+            Ok(Started::Early(adapter, session)) => {
+                tracing::info!(
+                    game_id,
+                    milliseconds = asked.elapsed().as_millis() as u64,
+                    "the ICE adapter is up before the ICE session; the game does not wait for it"
+                );
+                (adapter, Some((session, servers)))
+            }
+            Err(reason) => {
+                let _ = failed.send(reason);
+                return;
+            }
+        };
+        let (gpg_port, rpc, mut notifications) = adapter;
+
+        rpc.call(
+            "setLobbyInitMode",
+            vec![Value::String(lobby_init_mode_name(params.init_mode))],
+        );
+
+        // adapter notifications → lobby.
+        tokio::spawn(async move {
+            while let Some(note) = notifications.recv().await {
+                log_connectivity(&note);
+                if let Some(relay) = relay_from_notification(&note) {
+                    if to_lobby.send(relay).await.is_err() {
+                        break;
+                    }
+                }
+            }
+            tracing::warn!("Java ICE adapter notification stream ended");
+        });
+
+        *rpc_slot.lock().unwrap() = Some(rpc.clone());
+        let _ = answered.send(rpc);
+        // The game's connection goes through from here, or right away when
+        // the game connects later, which is the usual order.
+        let _ = adapter_port.send(Some(gpg_port));
+
+        let Some((session, servers)) = late else {
+            return;
+        };
+        if let Some(ice) =
+            finish_late_session(session, adapter_forces_relay, &force_relay_seen, failed).await
+        {
+            memory.remember_servers(game_id, &ice.servers);
+            let _ = servers.send(ice.servers);
+        }
+    }
 }
 
 #[async_trait]
@@ -402,87 +723,99 @@ impl IcePort for JavaAdapter {
         if self.config.jar_path.is_empty() {
             return Err("the optional Java ICE adapter is not installed".into());
         }
+        // Whatever an earlier game left starting is no use to this one.
+        self.halt_bring_up();
 
-        // The session and the adapter are both seconds of waiting, and only
-        // one switch of the adapter's depends on the session: so they are had
-        // at the same time (#493). The adapter starts without
-        // `--force-relay`, which is what nearly every session says, and is
-        // started again with it for one that says otherwise.
+        // The game is launched as soon as this returns, on a GPGNet port this
+        // client holds (`GpgNetProxy`), and loads for eleven seconds or more
+        // before it connects there. The adapter, about two seconds of JVM
+        // start, and the ICE session, ten seconds of FAF's icebreaker (#493,
+        // #511), come up behind it, in `bring_up`. Anything that goes wrong
+        // there reaches the launcher through `late_failure`, which stops the
+        // game.
         //
-        // Java fetches the session first and starts the adapter after it
-        // (`GameRunner.startIceAdapter`), which is the sum of the two.
+        // Java fetches the session, then starts the adapter, then the game
+        // (`GameRunner.startIceAdapter`), which is the sum of all three.
         let asked = std::time::Instant::now();
-        let session = async {
-            let ice = fetch_ice_servers_retrying(
-                &self.http,
-                &self.config.api_base,
-                &token,
-                params.game_id,
-            )
+        let proxy = GpgNetProxy::open()
             .await
-            // Said in so many words when they are missing: the bare status
-            // read as if the adapter on the player's machine had failed,
-            // when it was never run.
-            .map_err(|reason| {
-                format!("the FAF server did not hand out this game's relay servers ({reason})")
-            })?;
+            .map_err(|error| format!("could not open the game's GPGNet port: {error}"))?;
+        let game_port = proxy.port();
+        let game_id = params.game_id;
+        // The servers remembered for the last game are not this one's.
+        self.memory.remember_game(game_id);
+
+        let http = self.http.clone();
+        let api_base = self.config.api_base.clone();
+        // Owned, so that it can go on after this call.
+        let session = Box::pin(async move {
+            let ice = fetch_ice_servers_retrying(&http, &api_base, &token, game_id)
+                .await
+                // Said in so many words when they are missing: the bare status
+                // read as if the adapter on the player's machine had failed,
+                // when it was never run.
+                .map_err(|reason| {
+                    format!("the FAF server did not hand out this game's relay servers ({reason})")
+                })?;
             tracing::info!(
-                game_id = params.game_id,
+                game_id,
                 milliseconds = asked.elapsed().as_millis() as u64,
                 "the ICE session arrived"
             );
-            Ok(ice)
-        };
-        let (ice, (gpg_port, rpc, mut notifications)) = session_and_adapter(
-            session,
-            |force_relay| self.spawn_on_free_ports(&params, force_relay, asked),
-            || self.kill_child(),
-        )
-        .await?;
-        self.memory.remember_servers(params.game_id, &ice.servers);
-
-        rpc.call("setIceServers", vec![Value::Array(ice.servers)]);
-        rpc.call(
-            "setLobbyInitMode",
-            vec![Value::String(lobby_init_mode_name(params.init_mode))],
-        );
+            Ok::<_, String>(ice)
+        });
 
         let (to_lobby_tx, to_lobby_rx) = mpsc::channel::<RelayMsg>(64);
-        let (from_lobby_tx, mut from_lobby_rx) = mpsc::channel::<RelayMsg>(64);
+        let (from_lobby_tx, from_lobby_rx) = mpsc::channel::<RelayMsg>(64);
+        let (answered_tx, answered_rx) = oneshot::channel::<JsonRpcClient>();
+        let (servers_tx, servers_rx) = oneshot::channel::<Vec<Value>>();
+        let (failed_tx, failed_rx) = oneshot::channel::<String>();
 
-        // adapter notifications → lobby.
-        tokio::spawn(async move {
-            while let Some(note) = notifications.recv().await {
-                log_connectivity(&note);
-                if let Some(relay) = relay_from_notification(&note) {
-                    if to_lobby_tx.send(relay).await.is_err() {
-                        break;
-                    }
-                }
-            }
-            tracing::warn!("Java ICE adapter notification stream ended");
-        });
+        // lobby game-relay → adapter RPC calls. Started now, so the lobby is
+        // never kept waiting on a full channel while the adapter starts.
+        tokio::spawn(forward_lobby_messages(
+            from_lobby_rx,
+            answered_rx,
+            servers_rx,
+            asked,
+        ));
 
-        // lobby game-relay → adapter RPC calls.
-        let rpc_for_calls = rpc.clone();
-        tokio::spawn(async move {
-            while let Some(msg) = from_lobby_rx.recv().await {
-                if let Some((method, p)) = rpc_call_for(&msg) {
-                    rpc_for_calls.call(&method, p);
-                }
-            }
-        });
-
-        *self.rpc.lock().unwrap() = Some(rpc);
+        let bring_up = BringUp {
+            process: AdapterProcess {
+                config: self.config.clone(),
+                child: self.child.clone(),
+                windows: *self.debug_windows.lock().unwrap(),
+            },
+            params,
+            asked,
+            force_relay_seen: self.force_relay_seen.clone(),
+            memory: self.memory.clone(),
+            rpc: self.rpc.clone(),
+            adapter_port: proxy.adapter_port(),
+            to_lobby: to_lobby_tx,
+            answered: answered_tx,
+            servers: servers_tx,
+            failed: failed_tx,
+        };
+        let running = tokio::spawn(bring_up.run(session));
+        *self.bring_up.lock().unwrap() = Some((running.abort_handle(), proxy));
+        tracing::info!(
+            game_id,
+            milliseconds = asked.elapsed().as_millis() as u64,
+            "the game's GPGNet port is open; the ICE adapter starts behind the game"
+        );
 
         Ok(ConnectivitySession {
-            game_port: gpg_port,
+            game_port,
             to_lobby: to_lobby_rx,
             from_lobby: from_lobby_tx,
+            late_failure: Some(failed_rx),
         })
     }
 
     fn stop(&self) {
+        // First, so that nothing it was about to start outlives the kill below.
+        self.halt_bring_up();
         if let Some(rpc) = self.rpc.lock().unwrap().take() {
             rpc.call("quit", vec![]);
         }
@@ -771,6 +1104,13 @@ fn relay_from_notification(note: &RpcNotification) -> Option<RelayMsg> {
     }
 }
 
+/// Hand one lobby message to the adapter, as the call it maps to.
+fn forward_to_adapter(rpc: &impl RpcCalls, msg: &RelayMsg) {
+    if let Some((method, params)) = rpc_call_for(msg) {
+        rpc.call(&method, params);
+    }
+}
+
 /// Map a lobby game-relay message to a JSON-RPC call (method, params), or `None`
 /// to ignore. Mirrors `IceAdapterClient.handle_message`.
 fn rpc_call_for(msg: &RelayMsg) -> Option<(String, Vec<Value>)> {
@@ -848,7 +1188,7 @@ mod tests {
 
     use super::*;
 
-    /// A fake session for [`session_and_adapter`].
+    /// A fake session for [`adapter_and_session`].
     struct FakeSession(bool);
 
     impl ForcesRelay for FakeSession {
@@ -857,7 +1197,7 @@ mod tests {
         }
     }
 
-    /// Counts what [`session_and_adapter`] starts and stops: every start is
+    /// Counts what [`adapter_and_session`] starts and stops: every start is
     /// one adapter process, every kill stops the one that is running.
     #[derive(Default)]
     struct Starts {
@@ -892,25 +1232,59 @@ mod tests {
         }
     }
 
-    async fn session_after(
+    fn session_after(
         delay_ms: u64,
-        outcome: Result<bool, &str>,
-    ) -> Result<FakeSession, String> {
-        tokio::time::sleep(Duration::from_millis(delay_ms)).await;
-        outcome.map(FakeSession).map_err(str::to_string)
+        outcome: Result<bool, &'static str>,
+    ) -> std::pin::Pin<Box<impl std::future::Future<Output = Result<FakeSession, String>>>> {
+        Box::pin(async move {
+            tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+            outcome.map(FakeSession).map_err(str::to_string)
+        })
     }
 
     #[tokio::test(start_paused = true)]
-    async fn the_session_and_the_adapter_are_had_at_the_same_time() {
+    async fn the_game_does_not_wait_for_a_session_slower_than_the_adapter() {
+        // His log for #511: the adapter answered after about 2.5 seconds, the
+        // session after ten.
         let starts = Starts::default();
         let begun = tokio::time::Instant::now();
-        let (session, adapter) = session_and_adapter(
-            session_after(800, Ok(false)),
+        let started = adapter_and_session(
+            session_after(10_000, Ok(false)),
+            false,
             |force| starts.spawn(force, 2_500, false),
             || starts.kill(),
         )
         .await
         .unwrap();
+        let Started::Early(adapter, session) = started else {
+            panic!("the launch waited for the session");
+        };
+        assert_eq!(adapter, 7);
+        assert_eq!(begun.elapsed(), Duration::from_millis(2_500));
+        assert_eq!(*starts.started.lock().unwrap(), [false]);
+        assert_eq!(starts.running(), 1, "the adapter is left running");
+
+        // The session is still on its way, and arrives in its own time.
+        let fetched = session.await.unwrap();
+        assert!(!fetched.0);
+        assert_eq!(begun.elapsed(), Duration::from_millis(10_000));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_session_that_comes_first_is_handed_over_with_the_adapter() {
+        let starts = Starts::default();
+        let begun = tokio::time::Instant::now();
+        let started = adapter_and_session(
+            session_after(800, Ok(false)),
+            false,
+            |force| starts.spawn(force, 2_500, false),
+            || starts.kill(),
+        )
+        .await
+        .unwrap();
+        let Started::Complete(session, adapter) = started else {
+            panic!("a session that was there is not handed over as pending");
+        };
         assert!(!session.0);
         assert_eq!(adapter, 7);
         assert_eq!(
@@ -919,20 +1293,20 @@ mod tests {
             "the longer of the two, not their sum"
         );
         assert_eq!(*starts.started.lock().unwrap(), [false]);
-        assert_eq!(starts.running(), 1, "the adapter is left running");
     }
 
     #[tokio::test(start_paused = true)]
-    async fn a_session_that_forces_relaying_restarts_the_adapter_with_the_flag() {
+    async fn a_session_that_comes_first_and_forces_relaying_restarts_the_adapter() {
         let starts = Starts::default();
-        let (session, _) = session_and_adapter(
+        let started = adapter_and_session(
             session_after(800, Ok(true)),
+            false,
             |force| starts.spawn(force, 2_500, false),
             || starts.kill(),
         )
         .await
         .unwrap();
-        assert!(session.0);
+        assert!(matches!(started, Started::Complete(FakeSession(true), _)));
         assert_eq!(
             *starts.started.lock().unwrap(),
             [false, true],
@@ -943,29 +1317,33 @@ mod tests {
     }
 
     #[tokio::test(start_paused = true)]
-    async fn a_session_that_fails_after_the_adapter_started_stops_it() {
+    async fn the_adapter_starts_with_the_switch_the_last_session_asked_for() {
         let starts = Starts::default();
-        let failed = session_and_adapter(
-            session_after(4_000, Err("ice servers returned 500")),
-            |force| starts.spawn(force, 1_000, false),
+        let started = adapter_and_session(
+            session_after(800, Ok(true)),
+            true,
+            |force| starts.spawn(force, 2_500, false),
             || starts.kill(),
         )
-        .await;
-        assert_eq!(failed.err().as_deref(), Some("ice servers returned 500"));
-        assert_eq!(starts.running(), 0, "no adapter is left behind");
+        .await
+        .unwrap();
+        assert!(matches!(started, Started::Complete(FakeSession(true), _)));
+        assert_eq!(*starts.started.lock().unwrap(), [true], "started once");
+        assert_eq!(starts.killed.load(std::sync::atomic::Ordering::SeqCst), 0);
     }
 
     #[tokio::test(start_paused = true)]
     async fn a_session_that_fails_while_the_adapter_starts_stops_it_at_once() {
         let starts = Starts::default();
         let begun = tokio::time::Instant::now();
-        let failed = session_and_adapter(
+        let failed = adapter_and_session(
             session_after(300, Err("no access")),
+            false,
             |force| starts.spawn(force, 2_500, false),
             || starts.kill(),
         )
         .await;
-        assert!(failed.is_err());
+        assert_eq!(failed.err().as_deref(), Some("no access"));
         assert_eq!(
             begun.elapsed(),
             Duration::from_millis(300),
@@ -978,8 +1356,9 @@ mod tests {
     async fn an_adapter_that_cannot_start_ends_the_wait_for_the_session() {
         let starts = Starts::default();
         let begun = tokio::time::Instant::now();
-        let failed = session_and_adapter(
+        let failed = adapter_and_session(
             session_after(20_000, Ok(false)),
+            false,
             |force| starts.spawn(force, 1_000, true),
             || starts.kill(),
         )
@@ -987,6 +1366,226 @@ mod tests {
         assert_eq!(failed.err().as_deref(), Some("the adapter did not answer"));
         assert_eq!(begun.elapsed(), Duration::from_millis(1_000));
         assert_eq!(starts.running(), 0);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_late_session_that_arrives_is_handed_on_and_reports_nothing() {
+        let seen = AtomicBool::new(false);
+        let (failed, mut failure) = oneshot::channel();
+        let late =
+            finish_late_session(session_after(10_000, Ok(false)), false, &seen, failed).await;
+        assert!(matches!(late, Some(FakeSession(false))));
+        assert!(
+            failure.try_recv().is_err(),
+            "the launcher hears nothing and stops listening"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_late_session_that_fails_reaches_the_launcher() {
+        let seen = AtomicBool::new(false);
+        let (failed, failure) = oneshot::channel();
+        let late = finish_late_session(
+            session_after(21_000, Err("ice servers returned 503")),
+            false,
+            &seen,
+            failed,
+        )
+        .await;
+        assert!(late.is_none(), "nothing is handed to the adapter");
+        assert_eq!(failure.await.as_deref(), Ok("ice servers returned 503"));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_late_session_that_forces_relaying_fails_the_game_once_and_is_remembered() {
+        let seen = AtomicBool::new(false);
+        let (failed, failure) = oneshot::channel();
+        let late = finish_late_session(session_after(10_000, Ok(true)), false, &seen, failed).await;
+        assert!(late.is_none());
+        assert!(failure.await.unwrap().contains("please join again"));
+        assert!(
+            seen.load(Ordering::SeqCst),
+            "the next adapter starts with --force-relay"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn an_adapter_that_relays_when_it_need_not_is_left_running() {
+        let seen = AtomicBool::new(true);
+        let (failed, mut failure) = oneshot::channel();
+        let late = finish_late_session(session_after(10_000, Ok(false)), true, &seen, failed).await;
+        assert!(matches!(late, Some(FakeSession(false))));
+        assert!(failure.try_recv().is_err());
+        assert!(
+            !seen.load(Ordering::SeqCst),
+            "the next adapter starts without the flag"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_late_session_stopped_with_the_adapter_leaves_the_launcher_nothing_to_wait_for() {
+        // `stop` aborts the task: a game that ended, or a launch called off,
+        // must not be failed by a session that was still on its way.
+        let seen = std::sync::Arc::new(AtomicBool::new(false));
+        let (failed, failure) = oneshot::channel::<String>();
+        let waiting = seen.clone();
+        let pending = tokio::spawn(async move {
+            finish_late_session(
+                session_after(10_000, Err("too late")),
+                false,
+                &waiting,
+                failed,
+            )
+            .await;
+        });
+        tokio::time::sleep(Duration::from_millis(3_000)).await;
+        pending.abort();
+        assert!(
+            failure.await.is_err(),
+            "closed without an answer, not left hanging"
+        );
+    }
+
+    fn relay(command: &str) -> RelayMsg {
+        RelayMsg {
+            command: command.into(),
+            args: Vec::new(),
+        }
+    }
+
+    fn commands(msgs: &[RelayMsg]) -> Vec<&str> {
+        msgs.iter().map(|msg| msg.command.as_str()).collect()
+    }
+
+    #[test]
+    fn the_gate_lets_the_host_through_and_holds_from_the_first_peer_on() {
+        let mut gate = RelayGate::default();
+        assert_eq!(gate.pass(relay("HostGame")), Some(relay("HostGame")));
+        assert_eq!(gate.pass(relay("GameOption")), Some(relay("GameOption")));
+
+        assert_eq!(gate.pass(relay("JoinGame")), None);
+        // Nothing overtakes what is held, a game-only message included.
+        assert_eq!(gate.pass(relay("GameOption")), None);
+        assert_eq!(gate.pass(relay("ConnectToPeer")), None);
+        assert_eq!(gate.pass(relay("IceMsg")), None);
+
+        assert_eq!(
+            commands(&gate.open()),
+            ["JoinGame", "GameOption", "ConnectToPeer", "IceMsg"],
+            "released in the order they came"
+        );
+        assert_eq!(gate.pass(relay("IceMsg")), Some(relay("IceMsg")));
+        assert!(gate.open().is_empty());
+    }
+
+    #[test]
+    fn every_message_that_reaches_for_a_peer_is_held() {
+        for command in ["JoinGame", "ConnectToPeer", "IceMsg", "DisconnectFromPeer"] {
+            let mut gate = RelayGate::default();
+            assert_eq!(gate.pass(relay(command)), None, "{command}");
+        }
+    }
+
+    /// The adapter's calls, by name, in the order the forwarder made them.
+    #[derive(Clone, Default)]
+    struct Recorded(std::sync::Arc<std::sync::Mutex<Vec<String>>>);
+
+    impl RpcCalls for Recorded {
+        fn call(&self, method: &str, _params: Vec<Value>) {
+            self.0.lock().unwrap().push(method.to_string());
+        }
+    }
+
+    impl Recorded {
+        fn calls(&self) -> Vec<String> {
+            self.0.lock().unwrap().clone()
+        }
+    }
+
+    /// Let the forwarder catch up with what was just sent to it.
+    async fn settle() {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+
+    struct Forwarder {
+        lobby: mpsc::Sender<RelayMsg>,
+        answered: oneshot::Sender<Recorded>,
+        servers: oneshot::Sender<Vec<Value>>,
+    }
+
+    fn forwarder() -> Forwarder {
+        let (lobby, from_lobby) = mpsc::channel(64);
+        let (answered, answered_rx) = oneshot::channel();
+        let (servers, servers_rx) = oneshot::channel();
+        tokio::spawn(forward_lobby_messages(
+            from_lobby,
+            answered_rx,
+            servers_rx,
+            std::time::Instant::now(),
+        ));
+        Forwarder {
+            lobby,
+            answered,
+            servers,
+        }
+    }
+
+    #[tokio::test]
+    async fn what_the_lobby_sends_before_the_adapter_answers_is_kept_for_it() {
+        let f = forwarder();
+        f.lobby.send(relay("HostGame")).await.unwrap();
+        f.lobby.send(relay("JoinGame")).await.unwrap();
+        settle().await;
+
+        let adapter = Recorded::default();
+        assert!(f.answered.send(adapter.clone()).is_ok());
+        settle().await;
+        assert_eq!(
+            adapter.calls(),
+            ["hostGame"],
+            "the host goes through, the peer waits for the servers"
+        );
+
+        f.lobby.send(relay("ConnectToPeer")).await.unwrap();
+        settle().await;
+        assert_eq!(adapter.calls(), ["hostGame"]);
+
+        f.servers
+            .send(vec![json!({ "urls": "turn:relay" })])
+            .unwrap();
+        settle().await;
+        assert_eq!(
+            adapter.calls(),
+            ["hostGame", "setIceServers", "joinGame", "connectToPeer"]
+        );
+    }
+
+    #[tokio::test]
+    async fn servers_that_come_before_the_adapter_are_set_before_anything_it_held() {
+        let f = forwarder();
+        f.servers
+            .send(vec![json!({ "urls": "turn:relay" })])
+            .unwrap();
+        f.lobby.send(relay("JoinGame")).await.unwrap();
+        settle().await;
+
+        let adapter = Recorded::default();
+        assert!(f.answered.send(adapter.clone()).is_ok());
+        settle().await;
+        assert_eq!(adapter.calls(), ["setIceServers", "joinGame"]);
+    }
+
+    #[tokio::test]
+    async fn an_adapter_that_never_answers_never_keeps_the_lobby_waiting() {
+        let f = forwarder();
+        drop(f.answered);
+        tokio::time::timeout(Duration::from_secs(5), async {
+            for _ in 0..500 {
+                f.lobby.send(relay("IceMsg")).await.unwrap();
+            }
+        })
+        .await
+        .expect("the messages are read and dropped, not left to fill the channel");
     }
 
     #[test]

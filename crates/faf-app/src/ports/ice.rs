@@ -10,7 +10,7 @@
 use async_trait::async_trait;
 use faf_domain::state::RelayStatus;
 use serde_json::Value;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
 /// A connectivity message in the lobby relay format: identical to what crosses
 /// the lobby (`{ command, target: "game", args }`). The shared currency between
@@ -45,6 +45,15 @@ pub struct ConnectivitySession {
     pub to_lobby: mpsc::Receiver<RelayMsg>,
     /// Lobby game-target messages to feed into the adapter.
     pub from_lobby: mpsc::Sender<RelayMsg>,
+    /// Set when the session was handed back before the adapter was up, so
+    /// the game can start sooner: the Java adapter hands out the game's
+    /// GPGNet port at once and comes up, ICE servers included, while the game
+    /// loads (#511). Answers once, with the reason, if the adapter or its
+    /// servers then cannot be had, and the game must be stopped. Closes
+    /// without an answer once everything arrived, or when the adapter is
+    /// stopped. `None` for a session that was complete when it was handed
+    /// back.
+    pub late_failure: Option<oneshot::Receiver<String>>,
 }
 
 /// Which of the Java adapter's diagnostic surfaces the next launch shows.

@@ -182,6 +182,7 @@ mod tests {
                 game_port: 1,
                 to_lobby,
                 from_lobby,
+                late_failure: None,
             })
         }
         fn stop(&self) {
