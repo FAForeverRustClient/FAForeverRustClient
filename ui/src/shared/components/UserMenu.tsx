@@ -58,7 +58,8 @@ export interface UserMenuTarget {
 export interface UserMenuActions {
   privateMessage: (nickname: string) => void;
   copyUsername: (nickname: string) => void;
-  viewProfile: (playerId: number | null, nickname: string) => void;
+  /** Left out on the profile itself, where the entry would reopen the page it is on. */
+  viewProfile?: (playerId: number | null, nickname: string) => void;
   joinGame: (game: Game) => void;
   watchGame: (game: Game) => void;
   viewReplays: (username: string) => void;
@@ -157,7 +158,8 @@ export function UserMenu({
 
   // The most common actions come first. Double-clicking the source name
   // already opens a private message, so profile lookup leads the menu.
-  item(t("chat.menu.viewProfile"), () => actions.viewProfile(profile?.id ?? null, nickname));
+  const { viewProfile } = actions;
+  if (viewProfile) item(t("chat.menu.viewProfile"), () => viewProfile(profile?.id ?? null, nickname));
   if (!isSelf) item(t("chat.menu.privateMessage"), () => actions.privateMessage(nickname));
   item(t("chat.menu.copyUsername"), () => actions.copyUsername(nickname));
 

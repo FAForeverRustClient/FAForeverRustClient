@@ -2071,12 +2071,6 @@ export const en = {
   "playerCard.action.replays": "Replays",
   "playerCard.action.message": "Message",
   "playerCard.action.addFriend": "Add friend",
-  "playerCard.action.removeFriend": "Remove friend",
-  "playerCard.action.markFoe": "Mark foe",
-  "playerCard.action.removeFoe": "Remove foe",
-  "playerCard.names.name": "Name",
-  "playerCard.names.usedUntil": "Used until",
-  "playerCard.names.empty": "No previous names.",
 
   // Player card: rating history section.
   "playerCard.period.day": "Last day",
@@ -2104,30 +2098,16 @@ export const en = {
   // Player card: overview section.
   "playerCard.overview.warnings": "Some profile sections could not be loaded",
   "playerCard.overview.foundByFormerName": "Found by a former name: {name} is now {login}. Names can be taken again once released, so this is the account that used it last.",
-  "playerCard.overview.ratingsEyebrow": "Ratings",
-  "playerCard.overview.ratingsTitle": "Current rating queues",
-  "playerCard.overview.ratingsHint": "Select a queue to explore its full history",
   "playerCard.overview.accountEyebrow": "Account",
   "playerCard.overview.playerId": "Player ID",
   "playerCard.overview.registered": "Registered",
-  "playerCard.overview.userAgent": "User agent",
-  "playerCard.overview.country": "Country",
   "playerCard.overview.clan": "Clan",
-  "playerCard.overview.clanJoined": "Clan joined",
   "playerCard.overview.noClan": "No clan",
   "playerCard.overview.avatarsEyebrow": "Assigned avatars",
   "playerCard.overview.noAvatars": "No assigned avatars",
   "playerCard.overview.avatarFallback": "Avatar",
   "playerCard.overview.wearAvatar": "Wear {name}",
   "playerCard.overview.avatarExpires": "Expires {date}",
-  "playerCard.overview.competitiveEyebrow": "Competitive",
-  "playerCard.overview.placementsTitle": "Active league placements",
-  "playerCard.overview.placementMeta": "{score} score · {games} games",
-  "playerCard.rating.meanDeviation": "Mean ± deviation",
-  "playerCard.rating.games": "Games",
-  "playerCard.rating.won": "Won",
-  "playerCard.rating.winRate": "Win rate",
-  "playerCard.rating.viewHistory": "View history",
   "playerCard.rating.viewHistoryAria": "View {queue} rating history",
 
   // Player card: statistics section. Faction names are proper nouns and stay
@@ -2202,6 +2182,40 @@ export const en = {
   // Player card: own avatar picker.
   "playerCard.avatar.fallbackHint": "If an avatar you wear stops being yours, such as a tournament avatar passing to the next winner, the client switches back to the one you chose before it.",
   "playerCard.avatar.none": "No avatar",
+  "playerCard.avatar.wearing": "Wearing {name}",
+  "playerCard.avatar.wearingNone": "No avatar worn",
+
+  // Player card: the header over every tab.
+  "playerCard.hero.memberSince": "Member since {date}",
+  "playerCard.hero.openClan": "Open clan {name}",
+  "playerCard.hero.you": "You",
+  "playerCard.presence.playing": "In a game",
+  "playerCard.presence.lobby": "In a lobby",
+  "playerCard.action.friend": "Friend",
+  "playerCard.action.more": "More",
+
+  // Player card overview: one row per queue, with its league.
+  "playerCard.queues.title": "Ratings",
+  "playerCard.queues.none": "No rated games yet.",
+  "playerCard.queues.showUnplayed": { one: "Show {count} unplayed queue", other: "Show {count} unplayed queues" },
+  "playerCard.queues.hideUnplayed": "Hide unplayed queues",
+  "playerCard.queues.gamesCount": { one: "{games} game", other: "{games} games" },
+  "playerCard.queues.noGames": "No games",
+  "playerCard.queues.leagueTitle": "{season} · score {score} · {games} games",
+  "playerCard.queues.ratingTitle": "Mean {mean} ± {deviation}",
+
+  // Player card overview: faction split, clan, account and former names.
+  "playerCard.factions.title": "Factions",
+  "playerCard.factions.allStatistics": "All statistics",
+  "playerCard.factions.detail": "{games} games · {rate}% won",
+  "playerCard.clanSummary.meta": { one: "Joined {date} · {count} member", other: "Joined {date} · {count} members" },
+  "playerCard.clanSummary.findOne": "Found or join one",
+  "playerCard.overview.client": "Client",
+  "playerCard.names.name": "Name",
+  "playerCard.names.usedUntil": "Used until",
+  "playerCard.names.empty": "No previous names.",
+  "playerCard.names.until": "until {date}",
+  "playerCard.names.showAll": "Show all {count}",
 
   // Player card: rating history chart.
   "playerCard.chart.empty": "No rating history for this period.",

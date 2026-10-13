@@ -6,7 +6,7 @@ import { Icon } from "../../design-system/Icon";
 import { SectionTabs, sectionPanelProps } from "../../design-system/SectionTabs";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { ipc } from "../../ipc/client";
-import type { PlayerCardProfile, PlayerProfile, PlayerRatingSummary, RatingHistoryPeriod } from "../../ipc/bindings";
+import type { Game, PlayerCardProfile, PlayerNameRecord, PlayerProfile, PlayerRatingSummary, RatingHistoryPeriod } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { flagSrc } from "../../shared/countryFlags";
 import { useCountryLabel } from "../../shared/hooks/useCountryLabel";
@@ -28,19 +28,24 @@ import { plainError } from "../../shared/plainError";
 import "./player-card.css";
 import { formatNumber, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
-import { formatDateTime } from "../../shared/format/dates";
+import { formatDate, formatDateTime } from "../../shared/format/dates";
+import { usePlayerMenu } from "../../shared/hooks/usePlayerMenu";
 
 type PlayerCardTab = "overview" | "ratings" | "statistics" | "maps" | "results" | "achievements" | "names" | "clan";
 
 // Message *keys*, not text: these registries are module-level constants, so a
 // literal would be captured once at import time and would not follow a language
 // change. Callers resolve them with `t()` at render.
+//
+// Games before the things about the person: what they play and how it went,
+// then achievements, former names and the clan. The overview shows the latest
+// few names and sends "show all" here.
 const TABS: Array<{ id: PlayerCardTab; label: MessageKey }> = [
   { id: "overview", label: "playerCard.tab.overview" },
   { id: "ratings", label: "playerCard.tab.ratings" },
-  { id: "statistics", label: "playerCard.tab.statistics" },
-  { id: "maps", label: "playerCard.tab.maps" },
   { id: "results", label: "playerCard.tab.results" },
+  { id: "maps", label: "playerCard.tab.maps" },
+  { id: "statistics", label: "playerCard.tab.statistics" },
   { id: "achievements", label: "playerCard.tab.achievements" },
   { id: "names", label: "playerCard.tab.names" },
   { id: "clan", label: "playerCard.tab.clan" },
@@ -393,6 +398,39 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
   );
 }
 
+/** Every name the account has given up, newest first. */
+function PlayerNames({ names }: { names: PlayerNameRecord[] }) {
+  const { t } = useTranslation();
+  if (names.length === 0) return <div className="player-card-empty muted">{t("playerCard.names.empty")}</div>;
+  const newestFirst = [...names].sort((left, right) => right.changeTime.localeCompare(left.changeTime));
+  return (
+    <div className="player-names-view">
+      <table className="surface-panel">
+        <thead><tr><th>{t("playerCard.names.name")}</th><th>{t("playerCard.names.usedUntil")}</th></tr></thead>
+        <tbody>
+          {newestFirst.map((record) => (
+            <tr key={`${record.name}-${record.changeTime}`}><td>{record.name}</td><td>{formatDateTime(record.changeTime)}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** What the player is doing right now, from the lobby's own game lists. */
+function usePresence(login: string | undefined): { kind: "playing" | "lobby"; title: string } | null {
+  const games = useAppStore((store) => store.state.lobby.games);
+  const liveGames = useAppStore((store) => store.state.lobby.liveGames);
+  if (!login) return null;
+  const key = login.toLocaleLowerCase();
+  const seats = (game: Game) => Object.values(game.teams).some((team) => team.some((name) => name.toLocaleLowerCase() === key));
+  const live = liveGames.find(seats);
+  if (live) return { kind: "playing", title: live.title };
+  const lobby = games.find((game) => game.host.toLocaleLowerCase() === key || seats(game));
+  if (lobby) return { kind: "lobby", title: lobby.title };
+  return null;
+}
+
 export function PlayerCardModal() {
   const countryOf = useCountryLabel();
   const state = useAppStore((store) => store.state.playerCard);
@@ -400,8 +438,10 @@ export function PlayerCardModal() {
   const me = useAppStore((store) => store.state.auth.player);
   const social = useAppStore((store) => store.state.social);
   const playerNotes = useAppStore((store) => store.state.settings.social.playerNotes);
+  const { openPlayerMenu, playerMenu } = usePlayerMenu({ fromProfile: true });
   const [tab, setTab] = useState<PlayerCardTab>("overview");
   const [ratingId, setRatingId] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
   const profile = state.profile;
   // The profile `tab` was chosen for. The effect below chooses it a render
   // after a new profile lands, and until then `tab` is still the previous
@@ -416,6 +456,7 @@ export function PlayerCardModal() {
       ?? social.players.find((candidate) => candidate.login.localeCompare(profile.login, undefined, { sensitivity: "base" }) === 0)
     : undefined;
   const country = profile?.country || knownPlayer?.country || "";
+  const presence = usePresence(profile?.login);
 
   useEffect(() => {
     if (!profile) return;
@@ -423,13 +464,13 @@ export function PlayerCardModal() {
     setTab(takePlayerCardTab() ?? "overview");
     setRatingId(profile.ratings[0]?.leaderboardId ?? null);
     setTabFor(profile);
+    setCopied(false);
   }, [profile]);
 
   if (!state.open) return null;
   const rating = profile?.ratings.find((candidate) => candidate.leaderboardId === ratingId) ?? profile?.ratings[0] ?? null;
   const isMe = profile && me?.id === profile.playerId;
   const isFriend = profile ? social.friends.some((name) => name.localeCompare(profile.login, undefined, { sensitivity: "base" }) === 0) : false;
-  const isFoe = profile ? social.foes.some((name) => name.localeCompare(profile.login, undefined, { sensitivity: "base" }) === 0) : false;
   const playerNote = profile ? noteForPlayer(playerNotes, profile.playerId) : "";
   const setRelation = (relation: "friend" | "foe", member: boolean) => profile && ipc.send({ kind: "Social", command: { type: "setRelation", payload: { playerId: profile.playerId, login: profile.login, relation, member } } });
   const openHistory = (next: PlayerRatingSummary) => { setRatingId(next.leaderboardId); setTab("ratings"); };
@@ -448,45 +489,130 @@ export function PlayerCardModal() {
     ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
     closePlayerCard();
   };
+  const copyName = async () => {
+    if (!profile) return;
+    await navigator.clipboard.writeText(profile.login);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1_500);
+  };
+  // The avatar the player wears: the profile's when it lists one as worn, the
+  // lobby's otherwise, which also knows it for somebody whose avatars the
+  // profile could not load.
+  const wornAvatar = profile?.avatars.find((avatar) => avatar.selected && avatar.url);
+  const avatarUrl = wornAvatar?.url || knownPlayer?.avatarUrl || "";
+  const avatarName = wornAvatar?.tooltip || knownPlayer?.avatarTooltip || "";
+  const displayName = profile?.login || state.requestedLogin || t("playerCard.fallbackName");
 
   return (
     <Modal
       className="player-card-modal"
       // The player's name, as the heading shows it: "Dialog" named nothing.
-      ariaLabel={t("playerCard.dialogAria", {
-        name: profile?.login || state.requestedLogin || t("playerCard.fallbackName"),
-      })}
+      ariaLabel={t("playerCard.dialogAria", { name: displayName })}
       onClose={() => void closePlayerCard()}
     >
-      <div className="player-card-header">
+      {/* Who, then what you can do with them. The identity reads left to right
+          as everywhere else in the client (avatar, clan tag, name), with the
+          facts about the person in one quiet line under it; the actions sit
+          at the end, the main one last. Copying the name is a small thing
+          done to the name, so it sits beside it as an icon. */}
+      <header className="player-card-hero">
         <div className="player-card-identity">
-          {country && (
-            <img
-              src={flagSrc(country)}
-              alt={countryOf(country)}
-              title={countryOf(country)}
-              width={16}
-              height={16}
-              decoding="async"
-              draggable={false}
-            />
+          <div className="player-card-name-row">
+            {avatarUrl && (
+              <img
+                className="player-card-avatar"
+                src={avatarUrl}
+                alt=""
+                title={avatarName || undefined}
+                width={40}
+                height={20}
+                decoding="async"
+                draggable={false}
+              />
+            )}
+            {profile?.clan && (
+              <button
+                type="button"
+                className="player-card-clan-tag"
+                title={t("playerCard.hero.openClan", { name: profile.clan.name })}
+                onClick={() => setTab("clan")}
+              >
+                [{profile.clan.tag}]
+              </button>
+            )}
+            <h2><PlayerName name={displayName} /></h2>
+            {profile && (
+              <button
+                type="button"
+                className="player-card-copy"
+                aria-label={t(copied ? "leaderboard.player.copied" : "playerCard.action.copyName")}
+                title={t(copied ? "leaderboard.player.copied" : "playerCard.action.copyName")}
+                onClick={() => void copyName()}
+              >
+                <Icon name={copied ? "check" : "copy"} size={14} />
+              </button>
+            )}
+          </div>
+          {profile && (
+            <ul className="player-card-meta">
+              {country && (
+                <li>
+                  <img
+                    src={flagSrc(country)}
+                    alt=""
+                    width={16}
+                    height={16}
+                    decoding="async"
+                    draggable={false}
+                  />
+                  {countryOf(country)}
+                </li>
+              )}
+              {profile.registeredAt && (
+                <li title={formatDateTime(profile.registeredAt)}>
+                  {t("playerCard.hero.memberSince", { date: formatDate(profile.registeredAt, "", { year: "numeric", month: "long" }) })}
+                </li>
+              )}
+              {presence && (
+                <li className={`player-card-presence is-${presence.kind}`} title={presence.title || undefined}>
+                  <span className="player-card-presence-dot" aria-hidden />
+                  {presence.kind === "playing" ? t("playerCard.presence.playing") : t("playerCard.presence.lobby")}
+                </li>
+              )}
+              {isMe && <li className="player-card-you">{t("playerCard.hero.you")}</li>}
+            </ul>
           )}
-          <h2>
-            <PlayerName name={profile?.login || state.requestedLogin || t("playerCard.fallbackName")} />
-          </h2>
         </div>
-        <PlayerLookupSearch
-          players={social.players}
-          onSelect={(playerId, login) => void openPlayerCard(playerId, login)}
-        />
-        {profile && <div className="player-card-actions">
-          <Button onClick={() => void navigator.clipboard.writeText(profile.login)}>{t("playerCard.action.copyName")}</Button>
-          <Button onClick={browseReplays}>{t("playerCard.action.replays")}</Button>
-          {!isMe && <Button onClick={() => void messagePlayer(profile.login)}>{t("playerCard.action.message")}</Button>}
-          {!isMe && <Button onClick={() => setRelation("friend", !isFriend)}>{t(isFriend ? "playerCard.action.removeFriend" : "playerCard.action.addFriend")}</Button>}
-          {!isMe && <Button onClick={() => setRelation("foe", !isFoe)}>{t(isFoe ? "playerCard.action.removeFoe" : "playerCard.action.markFoe")}</Button>}
-        </div>}
-      </div>
+        {profile && (
+          <div className="player-card-actions">
+            <Button onClick={browseReplays}>
+              <Icon name="replays" size={15} />
+              {t("playerCard.action.replays")}
+            </Button>
+            {!isMe && (
+              <Button onClick={() => setRelation("friend", !isFriend)} aria-pressed={isFriend}>
+                <Icon name={isFriend ? "check" : "plus"} size={15} />
+                {t(isFriend ? "playerCard.action.friend" : "playerCard.action.addFriend")}
+              </Button>
+            )}
+            {/* Everything else the player menu offers anywhere in the client
+                (foe, mute, name colour, party invite, join or watch their
+                game, report), behind one button rather than a row of them. */}
+            {!isMe && (
+              <Button aria-haspopup="menu" onClick={(event) => openPlayerMenu(profile.login, event)}>
+                {t("playerCard.action.more")}
+                <Icon name="chevronDown" size={14} />
+              </Button>
+            )}
+            {!isMe && (
+              <Button variant="primary" onClick={() => void messagePlayer(profile.login)}>
+                <Icon name="chat" size={15} />
+                {t("playerCard.action.message")}
+              </Button>
+            )}
+          </div>
+        )}
+      </header>
 
       {state.profileStatus === "loading" && <div className="player-card-loading muted">{t("playerCard.profileLoading")}</div>}
       {state.profileStatus === "failed" && (
@@ -502,11 +628,11 @@ export function PlayerCardModal() {
           {plainError(state.profileError)}
         </StatusNotice>
       )}
-      {profile && (
-        <>
-          {/* Same underline strip as the Play and Chat tabs, rather than a row
-              of pill buttons: these switch a view, they do not perform an
-              action. */}
+      {/* Same underline strip as the Play and Chat tabs, rather than a row of
+          pill buttons: these switch a view, they do not perform an action.
+          Looking up somebody else is the quiet thing at its end. */}
+      <div className="player-card-nav">
+        {profile ? (
           <SectionTabs
             active={shownTab}
             ariaLabel={t("playerCard.sections.aria")}
@@ -515,29 +641,44 @@ export function PlayerCardModal() {
             onChange={setTab}
             idPrefix="player-card"
           />
-          <div className="player-card-content" {...sectionPanelProps("player-card", shownTab)}>
-            {shownTab === "overview" && <PlayerOverview profile={profile} country={country} note={playerNote} onOpenHistory={openHistory} avatarsSelectable={Boolean(isMe)} />}
-            {shownTab === "ratings" && rating && <PlayerRatingHistory rating={rating} ratings={profile.ratings} onRatingChange={(next) => setRatingId(next.leaderboardId)} />}
-            {shownTab === "ratings" && !rating && <div className="player-card-empty muted">{t("playerCard.noRatingHistory")}</div>}
-            {shownTab === "statistics" && <PlayerStatistics profile={profile} />}
-            {shownTab === "maps" && <PlayerMapStatistics playerId={profile.playerId} />}
-            {shownTab === "results" && <PlayerResults playerId={profile.playerId} />}
-            {shownTab === "achievements" && <PlayerAchievements achievements={profile.achievements} />}
-            {shownTab === "names" && <div className="player-names-view"><table className="surface-panel"><thead><tr><th>{t("playerCard.names.name")}</th><th>{t("playerCard.names.usedUntil")}</th></tr></thead><tbody>{profile.names.map((record) => <tr key={`${record.name}-${record.changeTime}`}><td>{record.name}</td><td>{formatDateTime(record.changeTime)}</td></tr>)}</tbody></table>{profile.names.length === 0 && <p className="muted">{t("playerCard.names.empty")}</p>}</div>}
-            {shownTab === "clan" && (
-              <PlayerClanView
-                clan={profile.clan}
-                selfLogin={me?.name ?? ""}
-                onMessageLeader={messagePlayer}
-                /* Management only on your own card. Every control it draws is
-                   about the clan *you* are in, and the server would refuse
-                   every one of them aimed at somebody else's. */
-                manageable={me !== null && me.id === profile.playerId}
-              />
-            )}
-          </div>
-        </>
+        ) : <span className="player-card-tabs" />}
+        <PlayerLookupSearch
+          players={social.players}
+          onSelect={(playerId, login) => void openPlayerCard(playerId, login)}
+        />
+      </div>
+      {profile && (
+        <div className="player-card-content" {...sectionPanelProps("player-card", shownTab)}>
+          {shownTab === "overview" && (
+            <PlayerOverview
+              profile={profile}
+              note={playerNote}
+              isMe={Boolean(isMe)}
+              onOpenHistory={openHistory}
+              onOpenTab={setTab}
+            />
+          )}
+          {shownTab === "ratings" && rating && <PlayerRatingHistory rating={rating} ratings={profile.ratings} onRatingChange={(next) => setRatingId(next.leaderboardId)} />}
+          {shownTab === "ratings" && !rating && <div className="player-card-empty muted">{t("playerCard.noRatingHistory")}</div>}
+          {shownTab === "statistics" && <PlayerStatistics profile={profile} />}
+          {shownTab === "maps" && <PlayerMapStatistics playerId={profile.playerId} />}
+          {shownTab === "results" && <PlayerResults playerId={profile.playerId} />}
+          {shownTab === "achievements" && <PlayerAchievements achievements={profile.achievements} />}
+          {shownTab === "names" && <PlayerNames names={profile.names} />}
+          {shownTab === "clan" && (
+            <PlayerClanView
+              clan={profile.clan}
+              selfLogin={me?.name ?? ""}
+              onMessageLeader={messagePlayer}
+              /* Management only on your own card. Every control it draws is
+                 about the clan *you* are in, and the server would refuse
+                 every one of them aimed at somebody else's. */
+              manageable={me !== null && me.id === profile.playerId}
+            />
+          )}
+        </div>
       )}
+      {playerMenu}
     </Modal>
   );
 }
