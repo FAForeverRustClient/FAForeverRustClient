@@ -262,7 +262,6 @@ export function AppShell() {
             <ProfileMenu
               target={profileMenu}
               name={player.name}
-              onViewProfile={() => void openPlayerCard(player.id, player.name)}
               onCopyName={() => void navigator.clipboard?.writeText(player.name)}
               onPlayOffline={() => ipc.send({ kind: "Auth", command: { type: "launchOfflineGame" } })}
               onLogOut={logOut}

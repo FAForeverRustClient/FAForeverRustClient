@@ -2,8 +2,8 @@
 //
 // Signing out and starting the game offline both lived in Settings only, and
 // a right-click on one's own name is where people looked for them first. The
-// sidebar has no room for two more buttons, so they are here, beside the two
-// entries the same name offers everywhere else (profile, copy).
+// sidebar has no room for two more buttons, so they are here, beside copying
+// the name. No "View profile": a left click on the name already opens it.
 //
 // Built from the player menu's parts: its look (`chat-user-menu`), its
 // placement beside what opened it, and its way of closing, so the two menus
@@ -26,14 +26,13 @@ export interface ProfileMenuTarget {
 interface Props {
   target: ProfileMenuTarget;
   name: string;
-  onViewProfile: () => void;
   onCopyName: () => void;
   onPlayOffline: () => void;
   onLogOut: () => void;
   onClose: () => void;
 }
 
-export function ProfileMenu({ target, name, onViewProfile, onCopyName, onPlayOffline, onLogOut, onClose }: Props) {
+export function ProfileMenu({ target, name, onCopyName, onPlayOffline, onLogOut, onClose }: Props) {
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
@@ -94,7 +93,6 @@ export function ProfileMenu({ target, name, onViewProfile, onCopyName, onPlayOff
         style={{ left: position.x, top: position.y, maxHeight: position.maxHeight }}
         onContextMenu={(e) => e.preventDefault()}
       >
-        {entry(t("chat.menu.viewProfile"), onViewProfile)}
         {entry(t("chat.menu.copyUsername"), onCopyName)}
         <hr className="chat-user-menu-separator" />
         {entry(t("auth.playOffline"), onPlayOffline)}
