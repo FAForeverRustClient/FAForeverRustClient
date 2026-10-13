@@ -2510,7 +2510,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.host.reloadMods": "Recargar los mods",
   "lobby.host.modCount": "{active} activos · {installed} instalados",
   "lobby.host.mapCount": { one: "{count} mapa", other: "{count} mapas" },
-  "lobby.host.ratingTo": "a",
   "lobby.host.filter": "Filtrar",
   "lobby.host.filterWidth": "Ancho",
   "lobby.host.filterHeight": "Alto",

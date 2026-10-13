@@ -94,7 +94,7 @@ export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
           <div className="host-rating-inputs">
             <OptionalNumberInput
               className="number-input"
-              placeholder={t("common.any")}
+              placeholder={t("lobby.host.minRatingPlaceholder")}
               disabled={!settings.ratingEnabled}
               value={settings.ratingMin}
               min={-9999}
@@ -103,10 +103,9 @@ export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
               onChange={settings.setRatingMin}
               aria-label={t("lobby.host.minRating")}
             />
-            <span className="muted">to</span>
             <OptionalNumberInput
               className="number-input"
-              placeholder={t("common.any")}
+              placeholder={t("lobby.host.maxRatingPlaceholder")}
               disabled={!settings.ratingEnabled}
               value={settings.ratingMax}
               min={-9999}

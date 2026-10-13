@@ -2438,12 +2438,11 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.host.passwordProtected": "Защищена паролем",
   "lobby.host.password": "Пароль",
   "lobby.host.passwordAria": "Пароль игры",
-  // Reads with the two inputs and the "до" between them: "Ограничить рейтинг
-  // игроков с [800] до [1500]". The review's version ended in another
-  // "рейтинга", which repeats the word the label opens with.
-  "lobby.host.enforceRating": "Ограничить рейтинг игроков от",
+  "lobby.host.enforceRating": "Обязательный рейтинг",
   "lobby.host.minRating": "Минимальный рейтинг",
   "lobby.host.maxRating": "Максимальный рейтинг",
+  "lobby.host.minRatingPlaceholder": "Мин",
+  "lobby.host.maxRatingPlaceholder": "Макс",
   "lobby.host.selectedMap": "Выбранная карта",
   "lobby.host.random": "Случайно",
   "lobby.host.randomTitle": "Выбрать случайную карту из отфильтрованного списка",
@@ -2479,7 +2478,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
     many: "{count} карт",
     other: "{count} карты",
   },
-  "lobby.host.ratingTo": "до",
   "lobby.host.filter": "Фильтр",
   "lobby.host.presets": "Шаблоны",
   "lobby.host.randomMap": "Случайная карта",

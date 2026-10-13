@@ -871,7 +871,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.host.reloadMods": "Mods neu laden",
   "lobby.host.modCount": "{active} aktiv · {installed} installiert",
   "lobby.host.mapCount": { one: "{count} Karte", other: "{count} Karten" },
-  "lobby.host.ratingTo": "bis",
   "lobby.host.filter": "Filter",
   "lobby.host.filterWidth": "Breite",
   "lobby.host.filterHeight": "Höhe",
