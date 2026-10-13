@@ -34,8 +34,20 @@ pub(super) fn guess_mod_from_filename(path: &Path) -> String {
 
 /// `ladder1v1` isn't a real mod: the Python client folds it to `faf` when
 /// building `/init`.
+///
+/// Anything that is not shaped like a mod's name at all becomes `faf` too. The
+/// name comes out of the replay file's header, which is whatever the file's
+/// author wrote, and it goes on into FA's command line, an API filter and a
+/// Lua file the game runs (see
+/// [`crate::infra::game_updater::is_featured_mod_name`]).
 pub(super) fn normalize_mod(mod_name: &str) -> String {
     if mod_name == "ladder1v1" {
+        "faf".to_string()
+    } else if !crate::infra::game_updater::is_featured_mod_name(mod_name) {
+        tracing::warn!(
+            mod_name = %mod_name.escape_debug(),
+            "a replay names a featured mod that is not a mod's name; playing it as faf"
+        );
         "faf".to_string()
     } else {
         mod_name.to_string()
@@ -64,5 +76,22 @@ mod tests {
         assert_eq!(normalize_mod("ladder1v1"), "faf");
         assert_eq!(normalize_mod("faf"), "faf");
         assert_eq!(normalize_mod("murderparty"), "murderparty");
+    }
+
+    #[test]
+    fn a_header_value_that_is_not_a_mod_name_plays_as_faf() {
+        // Each of these would mean something in the `/init` argument, the RSQL
+        // filter or the `GameType = "..."` line of fa_path.lua.
+        for forged in [
+            "",
+            "x\",technicalName==\"faf",
+            "faf\"\nos.execute(\"calc\")\n--",
+            "../../evil",
+            "..\\evil",
+            "faf.lua",
+            "f a f",
+        ] {
+            assert_eq!(normalize_mod(forged), "faf", "{forged:?}");
+        }
     }
 }
