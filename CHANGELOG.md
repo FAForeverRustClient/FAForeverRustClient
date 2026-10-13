@@ -12,3 +12,7 @@ and links work there, tables do not.
 A section starts with `## <version>` (`## 0.9.0`, `## v0.9.0` and
 `## [0.9.0] - 2026-10-20` all work) and runs to the next `## `. Use `###` for
 anything inside it.
+
+## Unreleased
+
+- The External links tab is laid out as four cards with an icon for every site, and fits on one screen

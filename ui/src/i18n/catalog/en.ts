@@ -408,11 +408,6 @@ export const en = {
   // The link directory. Sections group by what a link is for; the chip on each
   // card says who runs it.
   "links.title": "External links",
-  "links.subtitle": "Everywhere else FAF happens: FAF's own sites, and the tools and games the community built.",
-  "links.filter.aria": "Show links by who made them",
-  "links.filter.all": "All ({count})",
-  "links.filter.official": "Official ({count})",
-  "links.filter.community": "External ({count})",
   "links.live": "LIVE",
   "links.liveNow": "Streaming now",
   // Plural: the viewer count, with the broadcaster's own stream title in front
@@ -422,13 +417,15 @@ export const en = {
     other: "{title} - {count} watching",
   },
   "links.origin.official": "Official",
-  "links.origin.community": "External",
   "links.origin.officialTitle": "Run by FAF",
   "links.origin.communityTitle": "Not hosted by FAF",
   "links.section.play": "FAF itself",
   "links.section.tools": "Tools and stats",
   "links.section.games": "Games and fun",
   "links.section.watch": "Streams and videos",
+  "links.repos.client": "This client",
+  "links.repos.faf": "FAF",
+  "links.repos.others": "Other clients",
   "links.entry.website": "FAForever",
   "links.entry.websiteHint": "The official FAForever website",
   "links.entry.forum": "FAF Forum",
@@ -547,7 +544,6 @@ export const en = {
   // Contribution tab.
   "contribution.title": "Contribute",
   "contribution.specialThanks": "Special thanks",
-  "contribution.subtitle": "FAF is open source. Contributions, fixes, and ideas are welcome.",
   "contribution.repositories": "GitHub repositories",
 
   // Embedded web views.

@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { validateHttpsUrl } from "../../shared/externalLinks";
 import type { LiveStream } from "../../ipc/bindings";
 import {
-  countByOrigin,
   DIRECTORY,
+  displayHost,
   LINK_SECTIONS,
   liveStreamFor,
   sectionLinks,
@@ -30,24 +30,13 @@ describe("the link directory", () => {
 
   it("leaves no section empty, which would draw a heading over nothing", () => {
     for (const section of LINK_SECTIONS) {
-      expect(sectionLinks(section, null).length).toBeGreaterThan(0);
+      expect(sectionLinks(section).length).toBeGreaterThan(0);
     }
-  });
-
-  it("filters a section down to one origin", () => {
-    const community = sectionLinks("watch", "community");
-    expect(community.length).toBeGreaterThan(0);
-    expect(community.every((link) => link.origin === "community")).toBe(true);
-    expect(sectionLinks("watch", null).length).toBeGreaterThan(community.length);
   });
 
   it("keeps directory order inside a section", () => {
     const order = DIRECTORY.filter((link) => link.section === "tools").map((link) => link.id);
-    expect(sectionLinks("tools", null).map((link) => link.id)).toEqual(order);
-  });
-
-  it("counts each origin for the filter chips", () => {
-    expect(countByOrigin("official") + countByOrigin("community")).toBe(DIRECTORY.length);
+    expect(sectionLinks("tools").map((link) => link.id)).toEqual(order);
   });
 
   it("still lists what the community hub leaves out", () => {
@@ -56,7 +45,7 @@ describe("the link directory", () => {
   });
 
   it("opens with the four addresses a new player is given, in that order", () => {
-    expect(sectionLinks("play", null).map((link) => link.id)).toEqual([
+    expect(sectionLinks("play").map((link) => link.id)).toEqual([
       "faforever",
       "forum",
       "wiki",
@@ -76,7 +65,9 @@ describe("the link directory", () => {
 
   it("names no individual streamer, only FAF's own channels and the platforms' game pages", () => {
     // A hand-picked list of casters reads as favouritism (#329).
-    const community = sectionLinks("watch", "community").map((link) => link.href);
+    const community = sectionLinks("watch")
+      .filter((link) => link.origin === "community")
+      .map((link) => link.href);
     expect(community).toEqual([
       "https://www.twitch.tv/directory/category/supreme-commander-forged-alliance",
       "https://www.youtube.com/channel/UChiCO27pbaXDR0d0JfxlIpw",
@@ -90,6 +81,12 @@ describe("the link directory", () => {
     // the wiki above.
     expect(DIRECTORY.filter((link) => link.href.includes("wiki.faforever.com"))).toHaveLength(1);
     expect(DIRECTORY.some((link) => link.id === "unitdb")).toBe(false);
+  });
+
+  it("shows the host a card opens, without the www", () => {
+    expect(displayHost("https://www.faforever.com/")).toBe("faforever.com");
+    expect(displayHost("https://forum.faforever.com/")).toBe("forum.faforever.com");
+    expect(displayHost("https://www.twitch.tv/faflive")).toBe("twitch.tv");
   });
 });
 
