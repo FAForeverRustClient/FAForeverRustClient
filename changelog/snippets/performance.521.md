@@ -1,0 +1,1 @@
+- Joining, hosting and matchmaker games start faster: game files that have not changed since the last check are no longer read again, a hosted game is no longer checked twice, and the ICE adapter starts while its relay servers are fetched.

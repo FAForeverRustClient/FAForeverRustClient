@@ -1,0 +1,3 @@
+- Right-click your own name in the sidebar to play offline, log out or copy your name.
+- Players you wrote a note about carry a note mark in the chat list; hover it to read the note.
+- The chat list can order players by their rating on Global, 1v1, 2v2, 3v3 or 4v4.
