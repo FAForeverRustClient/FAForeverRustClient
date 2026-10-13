@@ -1,0 +1,1 @@
+- The join window no longer closes and reopens while the server seats you, and keeps the map picture once the game starts.
