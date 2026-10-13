@@ -4,6 +4,8 @@ import { Icon } from "../../design-system/Icon";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { EmptyState } from "../../design-system/EmptyState";
 import { PlayerName } from "../../shared/components/nameColors";
+import { PlayerNoteMark } from "../../shared/components/PlayerNoteMark";
+import { noteForPlayer } from "../../shared/rules/playerNotes";
 import { ipc } from "../../ipc/client";
 import type { CoopMission, Game, VaultMap } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
@@ -126,6 +128,7 @@ function GameDetails({
   const maps = useAppStore((state) => state.state.maps);
   const lobby = useAppStore((state) => state.state.lobby);
   const social = useAppStore((state) => state.state.social);
+  const playerNotes = useAppStore((state) => state.state.settings.social.playerNotes);
   const player = useAppStore((state) => state.state.auth.player);
   const presentation = mapPresentation(maps.vault, game.map);
   const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
@@ -394,6 +397,7 @@ function GameDetails({
                         >
                           <PlayerName name={p} />
                         </button>
+                        <PlayerNoteMark note={profile ? noteForPlayer(playerNotes, profile.id) : undefined} />
                         {rating !== null && <span className="player-rating">{rating}</span>}
                       </li>
                     );

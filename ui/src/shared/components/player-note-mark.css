@@ -1,0 +1,10 @@
+/* A player with a note of yours (issue 519): a quiet mark after the name.
+   Never shrunk away by a long name. Here rather than in chat.css, which is
+   only loaded once the chat tab has been visited, and the Play tab shows the
+   mark too. */
+.player-note-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--color-muted);
+}

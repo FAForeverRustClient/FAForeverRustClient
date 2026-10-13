@@ -45,6 +45,7 @@ import { useCountryLabel } from "../../../shared/hooks/useCountryLabel";
 import { GameSummaryPopover } from "./GameSummaryPopover";
 import { gamePresenceIndex, type GamePresence } from "./gameSummary";
 import { usePlayerRatingCard } from "./PlayerRatingCard";
+import { PlayerNoteMark } from "../../../shared/components/PlayerNoteMark";
 import { isRosterSort, ROSTER_SORTS, sortRoster, type RosterSort } from "./rosterSort";
 import { displayedRating, leaderboardLabel } from "../../../shared/playerRatings";
 
@@ -386,7 +387,6 @@ const RosterRow = memo(function RosterRow({
   onContextMenu: (nick: string, event: React.MouseEvent) => void;
   menuOpen: boolean;
 }) {
-  const { t } = useTranslation();
   const countryOf = useCountryLabel();
   const nameStyle = resolvedNickStyle(user.name, user, social, preferences, self);
   const { cardProps, anchorRef, card } = usePlayerRatingCard(
@@ -445,16 +445,7 @@ const RosterRow = memo(function RosterRow({
             {profile?.clan && <span className="chat-clan">[{profile.clan}]</span>}
             {user.name}
           </span>
-          {note && (
-            <span
-              className="chat-note-mark"
-              role="img"
-              aria-label={t("chat.roster.noteMark", { note })}
-              title={t("chat.roster.noteMark", { note })}
-            >
-              <Icon name="edit" size={12} />
-            </span>
-          )}
+          <PlayerNoteMark note={note} />
         </button>
         {sortedRating !== undefined && (
           <span className="chat-roster-rating">{sortedRating ?? "\u2013"}</span>

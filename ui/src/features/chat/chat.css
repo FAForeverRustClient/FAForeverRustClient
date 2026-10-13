@@ -1235,15 +1235,6 @@ html.is-resizing-chat-roster * {
   text-align: left;
 }
 
-/* A player with a note of yours (issue 519): a quiet mark after the name,
-   with the note as its tooltip. Never shrunk away by a long name. */
-.chat-note-mark {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  color: var(--color-muted);
-}
-
 /* In the roster this has to fit inside one virtualised row (the row height less
    `.chat-roster-user`'s vertical padding), or a player in a game makes their row
    taller than every other one and the whole list's positions drift. */
