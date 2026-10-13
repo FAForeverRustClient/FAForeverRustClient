@@ -51,6 +51,7 @@ import { joinGame } from "../../shared/joinGame";
 import { plainError } from "../../shared/plainError";
 import { useForgetFiltersOnLeave, useRememberedFilter } from "../../shared/filterMemory";
 import { DEFAULT_BROWSING_PREFERENCES } from "../../shared/browsingPreferences";
+import { onlineCommanders } from "./galactic-war/galacticWarOnline";
 
 /// How often the Galactic War player count is re-asked while the Play tab is
 /// open. A minute: often enough that the number is not stale advice about
@@ -790,7 +791,7 @@ export function LobbyView() {
         customGames={customGames.length}
         queuedPlayers={queuedPlayerCount(lobby.matchmakerQueues)}
         coopGames={coopGames.length}
-        galacticWarOnline={galacticWar.statistics?.season?.numOnlinePlayers ?? 0}
+        galacticWarOnline={onlineCommanders(galacticWar.statistics)}
         onChange={(mode) =>
           ipc.send({
             kind: "Lobby",
