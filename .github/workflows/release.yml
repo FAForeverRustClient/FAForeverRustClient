@@ -8,9 +8,10 @@ name: Release
 # requests, and publishing to every user is not something a merge should do on
 # its own.
 #
-# The release notes are not typed in either: they are the `## <version>`
-# section of CHANGELOG.md, which rides along with the version bump. A form
-# field cannot carry them, because `workflow_dispatch` inputs are one line.
+# The release notes are not typed in either: every pull request leaves a
+# snippet in `changelog/snippets`, and the ones added since the previous
+# release are combined here (see changelog/README.md). A form field could not
+# carry them anyway, because `workflow_dispatch` inputs are one line.
 #
 # The release is opened as a draft, the builds upload into it, and only when
 # every platform has succeeded is it published. Publishing is the moment two
@@ -99,31 +100,19 @@ jobs:
           fi
           echo "$TAG is free"
 
-      # The heading may be written `## 0.9.0`, `## v0.9.0` or `## [0.9.0] -
-      # 2026-10-20`; the section runs to the next `## `. A release without a
-      # section is refused rather than shipped with an empty post on Discord.
-      - name: Read the release notes from CHANGELOG.md
+      # The previous release is the newest `v*` tag behind this commit, never
+      # this version's own: with allow_existing_tag that tag already exists,
+      # and taking it would leave nothing to combine. A release with no new
+      # snippets is refused rather than shipped with an empty post on Discord.
+      - name: Combine the changelog snippets
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          if [ ! -f CHANGELOG.md ]; then
-            echo "::error::CHANGELOG.md is missing."
-            exit 1
-          fi
-          awk -v ver="$VERSION" '
-            /^## / {
-              if (found) exit
-              heading = $2
-              gsub(/^\[|\]$/, "", heading)
-              sub(/^v/, "", heading)
-              if (heading == ver) { found = 1; next }
-            }
-            found { print }
-          ' CHANGELOG.md > notes.raw
-          # Drop the blank lines around the section, keep the ones inside it.
-          sed -e '/./,$!d' notes.raw | tac | sed -e '/./,$!d' | tac > release-notes.md
+          PREVIOUS=$(git describe --tags --abbrev=0 --match 'v*' --exclude "v$VERSION" HEAD 2>/dev/null || true)
+          echo "Snippets added since ${PREVIOUS:-the beginning}"
+          node scripts/changelog.mjs combine $PREVIOUS > release-notes.md
           if [ ! -s release-notes.md ]; then
-            echo "::error::CHANGELOG.md has no '## $VERSION' section, or it is empty. Write what changed before releasing."
+            echo "::error::No changelog snippets were added since ${PREVIOUS:-the beginning}. See changelog/README.md."
             exit 1
           fi
           # No length limit here: the bridge posts the notes as the Discord
