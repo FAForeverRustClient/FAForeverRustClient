@@ -555,16 +555,24 @@ pub(crate) fn validated_ws_url(raw: &str) -> Result<String, String> {
         return Err("the access service returned an unsafe WebSocket URL".into());
     }
 
-    let loopback = url.host_str().is_some_and(|host| {
-        host.eq_ignore_ascii_case("localhost")
-            || host
-                .parse::<std::net::IpAddr>()
-                .is_ok_and(|address| address.is_loopback())
-    });
-    if url.scheme() != "wss" && !(url.scheme() == "ws" && loopback) {
+    if url.scheme() != "wss" && !(url.scheme() == "ws" && is_loopback(&url)) {
         return Err("remote WebSocket connections must use wss://".into());
     }
     Ok(url.to_string())
+}
+
+/// Whether `url` names this machine: `localhost` or a loopback address. The
+/// one place a plaintext scheme is allowed to carry a token, because the bytes
+/// never leave the computer.
+pub(crate) fn is_loopback(url: &url::Url) -> bool {
+    url.host_str().is_some_and(|host| {
+        host.eq_ignore_ascii_case("localhost")
+            || host
+                .trim_start_matches('[')
+                .trim_end_matches(']')
+                .parse::<std::net::IpAddr>()
+                .is_ok_and(|address| address.is_loopback())
+    })
 }
 
 /// Build a [`Ports`] bundle backed entirely by fakes. Fully offline; used by tests.
