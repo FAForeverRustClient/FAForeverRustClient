@@ -213,6 +213,20 @@ const CMDST_ADVANCE: u8 = 0;
 /// hundred orders.
 const PLAYER_ORDER_COMMANDS: std::ops::RangeInclusive<u8> = 12..=19;
 
+/// How far back [`fold_chat_record`] looks for the line a record repeats.
+///
+/// The two-second window alone is no bound: a stream whose clock never
+/// advances keeps every record inside it, and comparing each new record with
+/// all the earlier ones made a crafted replay of a few hundred megabytes cost
+/// minutes to hours of a blocking thread. The copies of one line arrive
+/// together, one per recipient, so a game would need more than this many
+/// players to spread them further apart.
+const CHAT_LOOKBACK: usize = 256;
+
+/// The most chat lines one replay's details keep. A long, chatty team game
+/// has a few hundred; anything past this is not a conversation anybody reads.
+const MAX_CHAT_RECORDS: usize = 20_000;
+
 /// What one pass over the command stream produces.
 struct CommandStream {
     chat_messages: Vec<ReplayChatMessage>,
@@ -348,7 +362,8 @@ fn walk_command_stream(cursor: &mut Cursor<&[u8]>, sources: &[String]) -> Comman
 /// seconds, and collapsing those would be a worse bug than the one being fixed.
 fn fold_chat_record(records: &mut Vec<ChatRecord>, record: ChatRecord) {
     let mut duplicate_of: Option<usize> = None;
-    for index in (0..records.len()).rev() {
+    let oldest = records.len().saturating_sub(CHAT_LOOKBACK);
+    for index in (oldest..records.len()).rev() {
         let seen = &records[index];
         if record.time_seconds > seen.time_seconds.saturating_add(2) {
             break;
@@ -376,6 +391,7 @@ fn fold_chat_record(records: &mut Vec<ChatRecord>, record: ChatRecord) {
                 records[index].sender = record.sender;
             }
         }
+        None if records.len() >= MAX_CHAT_RECORDS => {}
         None => records.push(record),
     }
 }
@@ -482,6 +498,33 @@ fn chat_sender(
 mod tests {
     use super::*;
     use crate::infra::replay::test_support::{lua_number, lua_string};
+
+    fn chat_line(message: String) -> ChatRecord {
+        ChatRecord {
+            time_seconds: 0,
+            to: "all".into(),
+            sender: Some("someone".into()),
+            id: None,
+            message,
+        }
+    }
+
+    #[test]
+    fn a_stream_whose_clock_never_moves_is_folded_in_bounded_time() {
+        // Every record at second zero: the two-second window alone used to
+        // compare each new one with all before it.
+        let mut records = Vec::new();
+        for n in 0..(MAX_CHAT_RECORDS + 500) {
+            fold_chat_record(&mut records, chat_line(format!("line {n}")));
+        }
+        assert_eq!(records.len(), MAX_CHAT_RECORDS);
+        // A copy of a recent line is still recognised as one.
+        let last = records.last().unwrap().message.clone();
+        let mut copy = chat_line(last);
+        copy.sender = None;
+        fold_chat_record(&mut records, copy);
+        assert_eq!(records.len(), MAX_CHAT_RECORDS);
+    }
 
     #[tokio::test]
     async fn test_parse_detailed_replay_from_test_file() {

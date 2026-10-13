@@ -36,17 +36,6 @@ import { useLocale } from "../../i18n/useTranslation";
 /** The vault rules, which an uploader is agreeing to. */
 export const VAULT_RULES_URL = "https://wiki.faforever.com/en/Development/Vault/Rules";
 
-export const openUpload = (kind: UploadKind, folderName: string, displayName: string) =>
-  ipc.send({
-    kind: "Uploads",
-    command: {
-      type: "open",
-      payload: {
-        request: { kind, folderName, displayName, ranked: false, sourcePath: null, renameTo: "" },
-      },
-    },
-  });
-
 /**
  * Where the picker should open for this kind of upload.
  *

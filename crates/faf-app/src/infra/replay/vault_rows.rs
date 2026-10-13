@@ -310,6 +310,19 @@ fn calculate_match_quality(teams: &[Vec<(f64, f64)>]) -> Option<i32> {
         .then_some((quality * 100.0).round().clamp(0.0, 100.0) as i32)
 }
 
+/// The mean of a game's ratings, for the vault list and the local library
+/// alike. Summed wide: the ratings are the server's numbers (or a replay
+/// file's), and an `i32` sum of a few large ones wrapped silently in a release
+/// build and panicked in a debug one.
+pub(super) fn average_rating(ratings: &[i32]) -> Option<i32> {
+    if ratings.is_empty() {
+        return None;
+    }
+    let sum: i64 = ratings.iter().map(|rating| i64::from(*rating)).sum();
+    // A mean of `i32`s is always within `i32`.
+    Some((sum / ratings.len() as i64) as i32)
+}
+
 fn faction_value(value: &Value) -> Option<i32> {
     if let Some(number) = value.as_i64() {
         return i32::try_from(number).ok();
@@ -472,11 +485,7 @@ pub(super) fn parse_vault_replays(doc: &JsonApiDoc) -> Vec<VaultReplay> {
                     .flat_map(|t| &t.players)
                     .filter_map(|p| p.rating)
                     .collect();
-                if ratings.is_empty() {
-                    None
-                } else {
-                    Some(ratings.iter().sum::<i32>() / ratings.len() as i32)
-                }
+                average_rating(&ratings)
             };
             let (reviews_average, reviews_count) = resolve_reviews(&game.relationships, &index);
             let title = game
@@ -542,6 +551,14 @@ pub(super) fn parse_vault_replays(doc: &JsonApiDoc) -> Vec<VaultReplay> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn an_average_of_large_ratings_does_not_wrap() {
+        assert_eq!(average_rating(&[]), None);
+        assert_eq!(average_rating(&[1500, 1700]), Some(1600));
+        assert_eq!(average_rating(&[i32::MAX, i32::MAX]), Some(i32::MAX));
+        assert_eq!(average_rating(&[i32::MIN, i32::MIN]), Some(i32::MIN));
+    }
 
     #[test]
     fn parses_vault_replays_resolving_map_and_mod_through_included() {

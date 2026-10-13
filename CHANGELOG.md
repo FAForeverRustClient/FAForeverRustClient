@@ -19,3 +19,7 @@ request as the change. The version bump renames that heading to the version
 and opens a new empty `## Unreleased` above it.
 
 ## Unreleased
+
+- Security fixes in the guide reader and the guide review queue, which now also shows the link each submission points to.
+- A guide with unusual formatting no longer freezes the client while it opens.
+- A custom background picture loads faster when the client starts.

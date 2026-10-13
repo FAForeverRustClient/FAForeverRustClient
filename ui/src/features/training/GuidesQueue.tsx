@@ -357,6 +357,10 @@ function EntryFacts({ entry }: { entry: NonNullable<GuideSubmission["entry"]> })
   const { t } = useTranslation();
   const facts: Array<[string, string]> = [];
   facts.push([t("training.queue.entryId"), entry.id]);
+  // The address exactly as submitted, as text rather than a link: it is what
+  // every reader's client opens or fetches once this is accepted, and the one
+  // fact a maintainer cannot judge from the title.
+  if (entry.url) facts.push([t("training.contribute.url"), entry.url]);
   if (entry.level) facts.push([t("training.detail.level"), t(levelLabel(entry.level))]);
   if (entry.gameModes.length > 0) facts.push([t("training.detail.modes"), entry.gameModes.join(", ")]);
   if (entry.maps.length > 0) facts.push([t("training.detail.maps"), entry.maps.join(", ")]);

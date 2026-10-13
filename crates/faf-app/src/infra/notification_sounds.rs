@@ -203,7 +203,13 @@ pub(crate) fn sanitise(name: &str) -> String {
             .and_then(|ext| ext.to_str())
             .unwrap_or("wav")
             .to_string();
-        let keep = 119 - extension.len().min(100);
+        // A byte count, so it is walked back to the start of a character: a
+        // name in Cyrillic, Chinese or with an umlaut put the cut inside one,
+        // and slicing there panicked inside a synchronous command.
+        let mut keep = 119 - extension.len().min(100);
+        while !trimmed.is_char_boundary(keep) {
+            keep -= 1;
+        }
         format!("{}.{}", &trimmed[..keep], extension)
     } else {
         trimmed.to_string()
@@ -284,6 +290,23 @@ mod tests {
         assert!(bounded.len() <= 120, "{} chars", bounded.len());
         assert!(bounded.ends_with(".wav"));
         assert!(is_safe_name(&bounded));
+    }
+
+    #[test]
+    fn a_long_name_is_cut_between_characters_not_inside_one() {
+        // Two- three- and four-byte characters, each long enough to reach the
+        // cut at every possible offset, and the same with the timestamp a
+        // background picture's name gets in front of it.
+        for unit in ["\u{e4}", "\u{416}", "\u{58f0}", "\u{1f50a}"] {
+            for pad in 0..4 {
+                for stamp in ["", "20261013120000-"] {
+                    let name = format!("{stamp}{}{}.png", "x".repeat(pad), unit.repeat(80));
+                    let bounded = sanitise(&name);
+                    assert!(bounded.len() <= 120, "{} bytes", bounded.len());
+                    assert!(bounded.ends_with(".png"), "{bounded}");
+                }
+            }
+        }
     }
 
     #[test]
