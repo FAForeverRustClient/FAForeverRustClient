@@ -1,0 +1,1 @@
+- The profile's Maps and Results tabs load faster: the latest 1,000 games, the full history on request.

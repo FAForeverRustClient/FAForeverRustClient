@@ -1,0 +1,1 @@
+- More of the client is translated: leaderboard, league and division names, units and many labels follow the client language.

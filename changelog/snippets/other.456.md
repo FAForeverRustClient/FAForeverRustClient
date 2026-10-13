@@ -1,0 +1,1 @@
+- The client signs in to FAF under its own registered id instead of the Python client's. Remembered logins stay signed in.

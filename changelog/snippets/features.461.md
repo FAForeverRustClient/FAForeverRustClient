@@ -1,0 +1,8 @@
+- A custom background picture in the Appearance settings.
+- A borderless window option for the game (Settings, Game, Windows only).
+- The replay vault can show game results, off by default to avoid spoilers.
+- Installed maps can be sorted by "Recently installed".
+- A private chat shows the game the other player is in.
+- Notifications are translated.
+- The Hall of Fame has a player search.
+- Live replay filters can be kept after a restart.

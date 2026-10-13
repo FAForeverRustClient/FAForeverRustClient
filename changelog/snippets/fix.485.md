@@ -1,0 +1,1 @@
+- Range slider handles on the same value can be dragged apart in either direction.

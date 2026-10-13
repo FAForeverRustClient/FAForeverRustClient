@@ -1,0 +1,1 @@
+- Co-op mission names and descriptions are translated, as are campaign names and badges.

@@ -1,0 +1,1 @@
+- The game filter can always show the games of hosts you name.
