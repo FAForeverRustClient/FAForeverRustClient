@@ -78,6 +78,24 @@ pub async fn start(
     // the progress of the next matchmaker or hosted game as well.
     ctx.lobby.clear_launch_cancellation();
 
+    // A game this client asked to host runs on the hosting preference, which
+    // is what its title's mark announced. Taken either way: the next launch
+    // is somebody else's game unless a new host request says otherwise.
+    //
+    // Its install and map were brought up to date before the host request
+    // went out (`prepare_host`), which this order answers moments later, so
+    // they are not checked again. That second pass is the one Java never
+    // makes: its `prepareAndLaunchGameWhenReady` prepares once, then goes
+    // straight to `startOnlineGame`.
+    let hosted_game = ctx
+        .lobby
+        .take_hosted()
+        .filter(|hosted| hosted.title == launch.name);
+    let already_prepared =
+        already_prepared || hosted_game.as_ref().is_some_and(|hosted| hosted.prepared);
+    let hosted = hosted_game.is_some();
+    let started = std::time::Instant::now();
+
     // 0. Reproduce a generated map before anything else.
     //
     // Matchmaker pools contain maps that are never distributed as files: the
@@ -116,14 +134,14 @@ pub async fn start(
         }
     }
 
+    tracing::info!(
+        game_id = launch.uid,
+        already_prepared,
+        milliseconds = started.elapsed().as_millis() as u64,
+        "launch: the install is ready"
+    );
+
     // 2. Bring up the connectivity backend (it picks its own ports / control plane).
-    // A game this client asked to host runs on the hosting preference, which
-    // is what its title's mark announced. Taken either way: the next launch
-    // is somebody else's game unless a new host request says otherwise.
-    let hosted = ctx
-        .lobby
-        .take_hosted_title()
-        .is_some_and(|title| title == launch.name);
     let session = match ctx
         .ports
         .ice
@@ -165,6 +183,13 @@ pub async fn start(
         ctx.ports.ice.stop();
         return fail(ctx, out, format!("game launch: {e}"));
     }
+    // From the server's launch order to a running game, the number to compare
+    // with the other clients (#511).
+    tracing::info!(
+        game_id = launch.uid,
+        milliseconds = started.elapsed().as_millis() as u64,
+        "launch: the game is started"
+    );
     // Java cancels delayed replay actions as soon as GameRunner becomes active.
     // Do the same so auto-watch can never replace a game the user just launched.
     super::replays::cancel_live_tracking(out);

@@ -29,6 +29,8 @@
 //!   cache when it is there.
 //! - `cache`: the cache manifest and its upkeep (prune, expire, inspect,
 //!   clear).
+//! - `checksums`: what each installed file hashed to, so an unchanged file
+//!   is not read again on the next launch.
 //! - `maps`: staging a map from the vault CDN for a replay or a live game.
 //! - `content_store`: the content-addressed store underneath all of them.
 
@@ -37,6 +39,7 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 mod cache;
+mod checksums;
 mod content_store;
 mod install;
 mod maps;

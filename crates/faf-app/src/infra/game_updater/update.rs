@@ -15,6 +15,7 @@ use crate::infra::vault_install::bounded_body_to_file;
 use crate::ports::{PreparationPhase, PreparationStep};
 
 use super::cache::{save_cache_manifest_entry, CacheManifestEntry, CachedFileInfo};
+use super::checksums;
 use super::content_store::{self, replace_with_copy, ContentStore};
 use super::install::{finish_install, patch_exe_version};
 use super::{
@@ -512,7 +513,9 @@ async fn install_featured_mod(
     // however long it took to read a few hundred files. And it cannot say what
     // is about to be downloaded, because it only discovers the next outdated
     // file after finishing the previous one.
-    let outdated = checksum_pass(
+    let checking = std::time::Instant::now();
+    let checked = checksum_pass(
+        cache_dir,
         target_dir,
         &files,
         featured_mod,
@@ -520,7 +523,19 @@ async fn install_featured_mod(
         progress,
         called_off,
     )
-    .await?;
+    .await;
+    // Whatever the pass read is worth keeping, a pass called off half way
+    // included: the next one starts from it.
+    save_checksums(cache_dir).await;
+    let outdated = checked?;
+    tracing::info!(
+        featured_mod,
+        version = resolved,
+        files = total,
+        outdated = outdated.len(),
+        milliseconds = checking.elapsed().as_millis() as u64,
+        "checked the installed files"
+    );
 
     if outdated.is_empty() {
         // `on_mod_progress` in the Python dialog, for `ProgressInfo(0, 0, "")`.
@@ -540,7 +555,7 @@ async fn install_featured_mod(
         ));
         // Not `http`: the files are fetched with the download token in a
         // header, and that client follows redirects without asking.
-        update_outdated(
+        let updated = update_outdated(
             &crate::infra::http::no_redirect_http_client(),
             api_base,
             cache_dir,
@@ -552,7 +567,9 @@ async fn install_featured_mod(
             lease,
             called_off,
         )
-        .await?;
+        .await;
+        save_checksums(cache_dir).await;
+        updated?;
     }
 
     let shipped_exe = files
@@ -704,6 +721,23 @@ async fn install_featured_mod(
     })
 }
 
+/// [`checksums::save`], off the async runtime.
+async fn save_checksums(cache_dir: &Path) {
+    let cache_dir = cache_dir.to_path_buf();
+    let _ = off_runtime(move || checksums::save(&cache_dir)).await;
+}
+
+/// Featured mod ids by API base and technical name, for as long as the
+/// process runs.
+///
+/// An id is the row's primary key and never changes, but it used to be asked
+/// for on every preparation: one round trip to the API before the file list
+/// could even be requested. The API base is part of the key, so a client
+/// pointed at the test server does not use production's ids.
+type ModIds = std::collections::HashMap<(String, String), String>;
+
+static MOD_IDS: Mutex<Option<ModIds>> = Mutex::new(None);
+
 async fn fetch_mod_id(
     http: &reqwest::Client,
     token: &str,
@@ -713,6 +747,14 @@ async fn fetch_mod_id(
     // The filter is RSQL built by hand, so a quote in the name would end the
     // value early and let the rest be read as more filter.
     super::require_featured_mod_name(featured_mod)?;
+    let cache_key = (api_base.to_string(), featured_mod.to_string());
+    if let Some(id) = MOD_IDS
+        .lock()
+        .ok()
+        .and_then(|guard| guard.as_ref()?.get(&cache_key).cloned())
+    {
+        return Ok(id);
+    }
     let mut url = url::Url::parse(&format!("{api_base}/data/featuredMod"))
         .map_err(|e| format!("invalid API base: {e}"))?;
     url.query_pairs_mut()
@@ -740,11 +782,18 @@ async fn fetch_mod_id(
     }
 
     let doc: JsonApiList = serde_json::from_str(&body).map_err(|e| format!("invalid JSON: {e}"))?;
-    doc.data
+    let id = doc
+        .data
         .into_iter()
         .next()
         .map(|e| e.id)
-        .ok_or_else(|| format!("no featured mod named '{featured_mod}'"))
+        .ok_or_else(|| format!("no featured mod named '{featured_mod}'"))?;
+    if let Ok(mut guard) = MOD_IDS.lock() {
+        guard
+            .get_or_insert_with(ModIds::new)
+            .insert(cache_key, id.clone());
+    }
+    Ok(id)
 }
 
 /// Fetch the file list for one release, or for `latest` when `version` is
@@ -765,6 +814,9 @@ static FILE_LIST_CACHE: Mutex<Option<FileListCache>> = Mutex::new(None);
 
 pub fn clear_file_list_cache() {
     if let Ok(mut lock) = FILE_LIST_CACHE.lock() {
+        *lock = None;
+    }
+    if let Ok(mut lock) = MOD_IDS.lock() {
         *lock = None;
     }
 }
@@ -854,9 +906,15 @@ async fn fetch_file_list(
 /// wrong length -- counts as outdated and is left to [`update_file`], which is
 /// where a bad checksum from the API becomes an error.
 ///
+/// "Read" is what it costs the first time. A file that has not changed since
+/// a pass last read it is answered from [`checksums`] without being opened,
+/// which turns the usual launch, on an install nothing has touched, from
+/// hundreds of megabytes read into a few timestamps compared.
+///
 /// Stops before the next file once `called_off` is cancelled: the pass only
 /// reads, so there is nothing to finish.
 async fn checksum_pass<'a>(
+    cache_dir: &Path,
     target_dir: &Path,
     files: &'a [FeaturedModFile],
     featured_mod: &str,
@@ -880,7 +938,7 @@ async fn checksum_pass<'a>(
             index + 1,
             total,
         ));
-        if !file_matches_checksum(target_dir, file).await {
+        if !file_matches_checksum(cache_dir, target_dir, file).await {
             outdated.push(file);
         }
     }
@@ -991,12 +1049,19 @@ async fn get_featured_file(
 }
 
 /// Whether the file on disk already is the one the API listed.
-async fn file_matches_checksum(target_dir: &Path, file: &FeaturedModFile) -> bool {
+async fn file_matches_checksum(
+    cache_dir: &Path,
+    target_dir: &Path,
+    file: &FeaturedModFile,
+) -> bool {
     let Ok(target_path) = safe_join_file(target_dir, &file.group, &file.name) else {
         return false;
     };
-    file_md5(&target_path)
+    let cache_dir = cache_dir.to_path_buf();
+    off_runtime(move || checksums::installed_md5(&cache_dir, &target_path))
         .await
+        .ok()
+        .flatten()
         .is_some_and(|md5| md5.eq_ignore_ascii_case(&file.md5))
 }
 
@@ -1146,10 +1211,18 @@ async fn update_file(
     // store calls around them only touch the cache, which no install lease
     // covers.
     if let Some(entry) = cached {
-        let target = target_path.clone();
-        off_runtime_leased(lease, move || replace_with_copy(&entry, &target))
-            .await?
-            .map_err(|e| format!("could not copy cached {}: {e}", file.name))?;
+        let (target, cache, md5) = (
+            target_path.clone(),
+            cache_dir.to_path_buf(),
+            file.md5.clone(),
+        );
+        off_runtime_leased(lease, move || {
+            replace_with_copy(&entry, &target)?;
+            checksums::record(&cache, &target, &md5);
+            Ok::<_, std::io::Error>(())
+        })
+        .await?
+        .map_err(|e| format!("could not copy cached {}: {e}", file.name))?;
         progress(PreparationStep::counted(
             PreparationPhase::Downloading,
             detail,
@@ -1233,10 +1306,18 @@ async fn update_file(
         off_runtime(move || ContentStore::new(&root).insert(&group, &md5, &source)).await??
     };
     {
-        let target = target_path.clone();
-        off_runtime_leased(lease, move || replace_with_copy(&entry, &target))
-            .await?
-            .map_err(|e| format!("could not write {}: {e}", target_path.display()))?;
+        let (target, cache, md5) = (
+            target_path.clone(),
+            cache_dir.to_path_buf(),
+            file.md5.clone(),
+        );
+        off_runtime_leased(lease, move || {
+            replace_with_copy(&entry, &target)?;
+            checksums::record(&cache, &target, &md5);
+            Ok::<_, std::io::Error>(())
+        })
+        .await?
+        .map_err(|e| format!("could not write {}: {e}", target_path.display()))?;
     }
     progress(PreparationStep::counted(
         PreparationPhase::Downloading,
@@ -1379,6 +1460,7 @@ mod tests {
 
         let seen = std::sync::Mutex::new(Vec::new());
         let outdated = checksum_pass(
+            &dir.path().join("cache"),
             dir.path(),
             &files,
             "faf",
@@ -1425,6 +1507,7 @@ mod tests {
         });
 
         let outdated = checksum_pass(
+            &dir.path().join("cache"),
             dir.path(),
             &files,
             "faf",
