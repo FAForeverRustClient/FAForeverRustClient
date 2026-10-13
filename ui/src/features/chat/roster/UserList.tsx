@@ -10,6 +10,15 @@
 // flag and clan tag: all of which come from the lobby's player record rather
 // than from IRC, so an IRC-only nickname simply renders bare.
 //
+// The filter button beside the search box (#513) narrows the list to a rating
+// range on one board and can order the players inside each group by that
+// rating, highest first; the groups themselves stay where they are, and the
+// rating shows at the end of each row while either is set.
+//
+// A player you wrote a note about carries a small mark after the name, with
+// the note as its tooltip (#519): the note was only ever visible on the
+// profile, so nothing in the list said there was one.
+//
 // Double-click opens a private conversation; right-click opens the user menu.
 // From the keyboard, Enter or Space on a row opens the conversation, since a
 // keyboard has no double-click (see `opensConversationOnClick`).
@@ -21,7 +30,7 @@ import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
 import { playersByNickname } from "../../../store/reducer";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { useRememberedFilter } from "../../../shared/filterMemory";
+import { useRememberedFilter, useRememberedFilters } from "../../../shared/filterMemory";
 import {
   USER_CATEGORY_LABELS,
   USER_CATEGORY_ORDER,
@@ -36,6 +45,10 @@ import { useCountryLabel } from "../../../shared/hooks/useCountryLabel";
 import { GameSummaryPopover } from "./GameSummaryPopover";
 import { gamePresenceIndex, type GamePresence } from "./gameSummary";
 import { usePlayerRatingCard } from "./PlayerRatingCard";
+import { PlayerNoteMark } from "../../../shared/components/PlayerNoteMark";
+import { DEFAULT_ROSTER_VIEW, readRosterView, shapeRoster, showsRating } from "./rosterSort";
+import { RosterViewMenu } from "./RosterViewMenu";
+import { displayedRating } from "../../../shared/playerRatings";
 
 interface Props {
   users: ChatUser[];
@@ -107,6 +120,8 @@ export const UserList = memo(function UserList({
   const { t } = useTranslation();
   // Remembered as the filter setting says (#447).
   const [filter, setFilter] = useRememberedFilter("chat.users", "", (value) => typeof value === "string");
+  const { filters: rememberedView, setFilters: setView } = useRememberedFilters("chat.usersView", DEFAULT_ROSTER_VIEW);
+  const view = useMemo(() => readRosterView(rememberedView), [rememberedView]);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(600);
   const [itemHeight, setItemHeight] = useState(FALLBACK_ITEM_HEIGHT);
@@ -146,6 +161,12 @@ export const UserList = memo(function UserList({
 
   // Shared with the message list, which needs exactly the same index.
   const profilesByLogin = playersByNickname(social.players);
+  // Notes are kept by account id, so a renamed player keeps theirs.
+  const playerNotes = useAppStore((s) => s.state.settings.social.playerNotes);
+  const notesById = useMemo(
+    () => new Map(playerNotes.map((entry) => [entry.playerId, entry.note])),
+    [playerNotes],
+  );
 
   const groups = useMemo(() => {
     const needle = filter.trim().toLowerCase();
@@ -164,8 +185,13 @@ export const UserList = memo(function UserList({
     for (const user of matching) {
       buckets.get(categoryOf(user, self, social, socialKnown, ownClan))?.push(user);
     }
+    const profileOf = (nickname: string) => profilesByLogin.get(nickname.toLowerCase());
+    // Yourself stays whatever the range says: the "You" group is where the
+    // list starts, and an empty one reads as the list being broken.
+    const isSelf = (user: ChatUser) => user.name.toLowerCase() === self.toLowerCase();
+    for (const [category, bucket] of buckets) buckets.set(category, shapeRoster(bucket, view, profileOf, isSelf));
     return buckets;
-  }, [users, self, social, filter]);
+  }, [users, self, social, filter, view, profilesByLogin]);
 
   // Flatten ordered categories and users into a unified virtualization list.
   const flatItems = useMemo<RosterFlatItem[]>(() => {
@@ -234,6 +260,14 @@ export const UserList = memo(function UserList({
             }}
           />
         </label>
+        <RosterViewMenu
+          view={view}
+          onChange={(next) => {
+            setView(next);
+            setScrollTop(0);
+            if (listRef.current) listRef.current.scrollTop = 0;
+          }}
+        />
       </div>
 
       <div
@@ -290,11 +324,14 @@ export const UserList = memo(function UserList({
                     </li>
                   );
                 }
+                const profile = profilesByLogin.get(item.user.name.toLowerCase());
                 return (
                   <RosterRow
                     key={item.key}
                     user={item.user}
-                    profile={profilesByLogin.get(item.user.name.toLowerCase())}
+                    profile={profile}
+                    note={profile ? notesById.get(profile.id) : undefined}
+                    sortedRating={showsRating(view) ? displayedRating(profile, view.board) : undefined}
                     social={social}
                     presence={presences.get(item.user.name.toLocaleLowerCase()) ?? null}
                     mapVault={mapVault}
@@ -317,6 +354,8 @@ export const UserList = memo(function UserList({
 const RosterRow = memo(function RosterRow({
   user,
   profile,
+  note,
+  sortedRating,
   social,
   presence,
   mapVault,
@@ -328,6 +367,14 @@ const RosterRow = memo(function RosterRow({
 }: {
   user: ChatUser;
   profile: PlayerProfile | undefined;
+  /** The player's note, when one was written about them. */
+  note: string | undefined;
+  /**
+   * The rating on the board the list is filtered or ordered by, shown at the
+   * end of the row: `null` for nobody rated on that board, `undefined` while
+   * the list is neither.
+   */
+  sortedRating: number | null | undefined;
   social: SocialState;
   presence: GamePresence | null;
   mapVault: VaultMap[];
@@ -395,7 +442,11 @@ const RosterRow = memo(function RosterRow({
             {profile?.clan && <span className="chat-clan">[{profile.clan}]</span>}
             {user.name}
           </span>
+          <PlayerNoteMark note={note} />
         </button>
+        {sortedRating !== undefined && (
+          <span className="chat-roster-rating">{sortedRating ?? "\u2013"}</span>
+        )}
         {presence && <GameSummaryPopover presence={presence} social={social} vault={mapVault} />}
       </div>
       {card}

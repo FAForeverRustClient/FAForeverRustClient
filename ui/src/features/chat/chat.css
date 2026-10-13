@@ -620,9 +620,12 @@ html.is-resizing-chat-roster * {
   );
 }
 
+/* Shrinks to fit, never grows: whatever follows the name (the note mark)
+   sits right after it rather than at the far end of the row. The button
+   around it still takes the row's width, so the whole row is clickable. */
 .chat-roster-user .chat-nick {
   min-width: 0;
-  flex: 1;
+  flex: 0 1 auto;
 }
 
 .chat-nick:hover {
@@ -1032,8 +1035,129 @@ html.is-resizing-chat-roster * {
 
 /* ── Roster ───────────────────────────────────────────────────────────── */
 .chat-roster-search {
+  position: relative;
+  display: flex;
+  gap: 6px;
   padding: var(--space-2) 6px;
   border-bottom: 1px solid var(--color-border);
+}
+
+/* The filter button beside the search box (issue 513), and its overlay:
+   which players the list shows and in what order. */
+.chat-roster-search .chat-roster-search-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-roster-view {
+  flex: none;
+}
+
+.chat-roster-view-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 100%;
+  min-height: 28px;
+  color: var(--color-subtle);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.chat-roster-view-button:hover,
+.chat-roster-view-button.is-open {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+/* Something is set: the list is not the whole list. */
+.chat-roster-view-button.is-active {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.chat-roster-view-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* As wide as the search row it opens from, so the roster's own edges can
+   never cut it off, however narrow the roster is dragged. */
+.chat-roster-view-panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% - 2px);
+  left: 6px;
+  right: 6px;
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+.chat-roster-view-row {
+  display: grid;
+  gap: 6px;
+}
+
+.chat-roster-view-label {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.chat-roster-view-row .settings-segmented {
+  display: flex;
+}
+
+.chat-roster-view-row .settings-segmented button {
+  flex: 1;
+  min-height: 26px;
+  padding: 0 6px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.chat-roster-view-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.chat-roster-view-reset {
+  min-height: 26px;
+  padding: 0 var(--space-2);
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.chat-roster-view-reset:hover:not(:disabled) {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.chat-roster-view-reset:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* The rating the list is ordered by, at the end of the row. */
+.chat-roster-rating {
+  flex: none;
+  min-width: 32px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .chat-roster-search-field {

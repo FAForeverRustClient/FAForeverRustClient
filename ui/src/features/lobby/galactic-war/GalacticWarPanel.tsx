@@ -21,6 +21,7 @@ import { galacticWarFactionLabel } from "../../../shared/factions";
 import { openHttpsUrl } from "../../../shared/externalLinks";
 import { plainError } from "../../../shared/plainError";
 import { canLaunch, installTarget, isBusy, updateAvailable } from "../../../shared/rules/galacticWarActions";
+import { onlineCommanders } from "./galacticWarOnline";
 import { ringSegments, type RingSegment } from "./galacticWarRing";
 import type { PlayModePanelProps } from "../PlayModeTabs";
 import "./galactic-war.css";
@@ -181,7 +182,7 @@ export function GalacticWarPanel({
       value: cycleAge === null ? NO_VALUE : t("lobby.galacticWar.cycle.days", { count: cycleAge }),
     },
     { key: "players", label: t("lobby.galacticWar.stat.players"), value: String(season?.numPlayers ?? 0) },
-    { key: "online", label: t("lobby.galacticWar.stat.online"), value: String(season?.numOnlinePlayers ?? 0) },
+    { key: "online", label: t("lobby.galacticWar.stat.online"), value: String(onlineCommanders(state.statistics)) },
     { key: "avatars", label: t("lobby.galacticWar.stat.avatars"), value: String(season?.numAvatars ?? 0) },
     { key: "battles", label: t("lobby.galacticWar.stat.battles"), value: String(season?.numBattles ?? 0) },
     { key: "planets", label: t("lobby.galacticWar.stat.planets"), value: String(season?.numPlanets ?? 0) },

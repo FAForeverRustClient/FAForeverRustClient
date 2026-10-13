@@ -16,6 +16,7 @@ import {
   mergeGeneratorRows,
 } from "../../../shared/generatedMapDescription";
 import { t } from "../../../i18n";
+import { boundsText } from "../../../shared/ratingBounds";
 import { displayedRating, gameLeaderboard, ratingGateBlocks } from "../../../shared/playerRatings";
 import { toggleFavoriteMap, useIsFavoriteMap } from "../../../shared/favoriteMaps";
 import { SaveGeneratorPresetForm } from "../../../shared/components/SaveGeneratorPresetForm";
@@ -141,8 +142,7 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
     joinLabel = t("lobby.details.ratingLocked");
     joinDisabled = true;
     joinTitle = t("lobby.details.ratingLockedTitle", {
-      from: game.ratingMin === null ? t("lobby.browser.any") : String(game.ratingMin),
-      to: game.ratingMax === null ? t("lobby.browser.any") : String(game.ratingMax),
+      range: boundsText(game.ratingMin, game.ratingMax) ?? "",
       rating: String(ownRating ?? 0),
     });
   }
