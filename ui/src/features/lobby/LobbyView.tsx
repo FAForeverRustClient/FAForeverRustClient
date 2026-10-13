@@ -1,60 +1,34 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "../../design-system/Button";
-import { Icon } from "../../design-system/Icon";
-import { StatusNotice } from "../../design-system/StatusNotice";
-import { EmptyState } from "../../design-system/EmptyState";
-import { PlayerName } from "../../shared/components/nameColors";
-import { PlayerNoteMark } from "../../shared/components/PlayerNoteMark";
-import { noteForPlayer } from "../../shared/rules/playerNotes";
+import { useEffect, useState } from "react";
 import { ipc } from "../../ipc/client";
-import type { CoopMission, Game, VaultMap } from "../../ipc/bindings";
+import type { Game } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { GameFiltersModal, type GameFilterRule } from "./browser/GameFiltersModal";
 import { activeFilterCount } from "./browser/gameFilterRules";
-import { hostWhitelist, shownDespiteFilters } from "./browser/hostWhitelist";
+import { useFilteredGames } from "./browser/useFilteredGames";
 import { HostGameModal } from "./host/HostGameModal";
 import { HostCoopModal } from "./host/HostCoopModal";
+import { useHostDialog } from "./host/useHostDialog";
 import { MatchmakingPanel } from "./matchmaker/MatchmakingPanel";
 import { CoopPanel } from "./coop/CoopPanel";
 import { GalacticWarPanel } from "./galactic-war/GalacticWarPanel";
 import { Modal } from "../../design-system/Modal";
-import { ResizeHandle } from "../../design-system/ResizeHandle";
-import { CustomGamesBrowser } from "./browser/CustomGamesBrowser";
+import { CustomGamesPanel } from "./browser/CustomGamesPanel";
 import { GamePreviewDialog } from "./browser/GamePreviewDialog";
-import { displayTeamName } from "./browser/GameLineup";
-import { isCoopGame, isCustomGameRanked, type GameViewMode } from "../../shared/gameRules";
+import { type GameViewMode } from "../../shared/gameRules";
 import { CustomGamesToolbar, type SortMode } from "./browser/CustomGamesToolbar";
-import { compareGames } from "./browser/gameSortOrder";
-import { columnWidths, detailWidth, emptyDetailGivesWay, withDetailResized } from "./browser/browserLayout";
-import { GameMapImage } from "./GameMapImage";
-import { requestModVaultFocus } from "../../shared/modVaultFocus";
+import { useDetailPanelLayout } from "./browser/useDetailPanelLayout";
 import { PlayModeTabs, playModePanelProps } from "./PlayModeTabs";
 import { queuedPlayerCount } from "./queuedPlayers";
 import { PrivateGameDialog } from "./join/PrivateGameDialog";
-import { flagSrc } from "../../shared/countryFlags";
-import {
-  GLOBAL_LEADERBOARD,
-  averageRating,
-  displayedRating,
-  gameLeaderboard,
-  leaderboardLabel,
-} from "../../shared/playerRatings";
-import { useCountryLabel } from "../../shared/hooks/useCountryLabel";
-import { isGeneratedMap, mapPresentation, mapSize } from "../../shared/mapPresentation";
-import { openPlayerCard } from "../../shared/playerCardActions";
 import { usePlayerMenu } from "../../shared/hooks/usePlayerMenu";
-import { findPlayer } from "../../store/reducer";
-import { splitGoAdapterTitle } from "../../shared/goAdapterTitle";
 import "./browser/custom-games.css";
 import "./game-dialogs.css";
 import "./play.css";
-import { useTranslation } from "../../i18n/useTranslation";
+import { useLocale } from "../../i18n/useTranslation";
 import { joinGame } from "../../shared/joinGame";
-import { plainError } from "../../shared/plainError";
 import { useForgetFiltersOnLeave, useRememberedFilter } from "../../shared/filterMemory";
 import { DEFAULT_BROWSING_PREFERENCES } from "../../shared/browsingPreferences";
 import { onlineCommanders } from "./galactic-war/galacticWarOnline";
-import { boundsText } from "../../shared/ratingBounds";
 
 /// How often the Galactic War player count is re-asked while the Play tab is
 /// open. A minute: often enough that the number is not stale advice about
@@ -62,365 +36,14 @@ import { boundsText } from "../../shared/ratingBounds";
 /// request to a gateway that is not FAF's.
 const GALACTIC_WAR_POLL_MS = 60_000;
 
-/**
- * How long a click waits for a second one: Windows' default double-click
- * time, which the webview follows. See `selectGame` in `LobbyView`.
- */
-const DOUBLE_CLICK_MS = 500;
-
 const connect = () => ipc.send({ kind: "Lobby", command: { type: "connect" } });
 const join = (id: number, password: string | null = null) => joinGame(id, password);
 
-function matchesRule(game: Game, rule: GameFilterRule, vault: VaultMap[]) {
-  if (rule.field === "rating") {
-    const target = Number(rule.value);
-    if (!Number.isFinite(target)) return false;
-    if (rule.constraint === "above") return Number(game.averageRating) > target;
-    if (rule.constraint === "below") return Number(game.averageRating) < target;
-    if (rule.constraint === "notEquals") return Number(game.averageRating) !== target;
-    return Number(game.averageRating) === target;
-  }
-  const target = rule.value.replace(/^["']|["']$/g, "").trim().toLocaleLowerCase();
-  if (!target) return false;
-
-  const testString = (val: string) => {
-    const value = val.toLocaleLowerCase();
-    if (rule.constraint === "starts") return value.startsWith(target);
-    if (rule.constraint === "ends") return value.endsWith(target);
-    if (rule.constraint === "equals") return value === target;
-    if (rule.constraint === "notEquals") return value !== target;
-    return value.includes(target);
-  };
-
-  if (rule.field === "title") {
-    return testString(game.title);
-  }
-  if (rule.field === "host") {
-    return testString(game.host);
-  }
-  if (rule.field === "map") {
-    const mapDisplay = mapPresentation(vault, game.map).displayName;
-    return testString(game.map) || testString(mapDisplay);
-  }
-  if (rule.field === "titleOrMap") {
-    const mapDisplay = mapPresentation(vault, game.map).displayName;
-    return testString(game.title) || testString(game.map) || testString(mapDisplay);
-  }
-  if (rule.field === "mod") {
-    return testString(game.modName);
-  }
-  return false;
-}
-
-function GameDetails({
-  game,
-  onJoin,
-  onOpenUserMenu,
-  onPreview,
-}: {
-  game: Game;
-  onJoin: () => void;
-  onOpenUserMenu: (nickname: string, event: React.MouseEvent) => void;
-  onPreview?: () => void;
-}) {
-  const countryOf = useCountryLabel();
-  const { t } = useTranslation();
-  const maps = useAppStore((state) => state.state.maps);
-  const lobby = useAppStore((state) => state.state.lobby);
-  const social = useAppStore((state) => state.state.social);
-  const playerNotes = useAppStore((state) => state.state.settings.social.playerNotes);
-  const player = useAppStore((state) => state.state.auth.player);
-  const presentation = mapPresentation(maps.vault, game.map);
-  const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
-  const isGenerated = isGeneratedMap(game.map);
-  // How big the map is, which the lobby's game record does not carry: the
-  // vault knows it for anything uploaded, the built-in table for the
-  // base-game maps that are not vault records, and a generated map's own
-  // name, which encodes it. Decoding that name is one command for the one
-  // game this panel is showing, the same request the preview dialog makes.
-  const decoded = useAppStore((state) => state.state.mapGenerator.decoded?.[game.map]);
-  useEffect(() => {
-    if (!isGenerated || decoded) return;
-    ipc.send({
-      kind: "MapGenerator",
-      command: { type: "decodeNames", payload: { mapNames: [game.map] } },
-    });
-  }, [isGenerated, decoded, game.map]);
-  const size = mapSize(maps.vault, game.map, decoded?.mapSize);
-  const mapInstalled = maps.installed.some(
-    (map) =>
-      map.folderName.toLowerCase() === game.map.toLowerCase() ||
-      map.folderName.toLowerCase().startsWith(`${game.map.toLowerCase()}.`),
-  );
-  const isGeneratingThisMap =
-    mapGenStatus.type === "generating" ||
-    mapGenStatus.type === "downloading" ||
-    mapGenStatus.type === "resolvingVersion";
-  const teams = useMemo(() => {
-    return Object.entries(game.teams)
-      .filter(([, players]) => players.length > 0)
-      .sort(([a], [b]) => {
-        if (a === "-1" || a === "null") return 1;
-        if (b === "-1" || b === "null") return -1;
-        const numA = Number(a);
-        const numB = Number(b);
-        if (Number.isFinite(numA) && Number.isFinite(numB)) return numA - numB;
-        return a.localeCompare(b);
-      });
-  }, [game.teams]);
-  // Every rating in this panel, the headline average included, is the one
-  // this game is rated on. A ladder lobby listing global ratings is the
-  // number the game is not about.
-  const leaderboard = gameLeaderboard(game.ratingType);
-  const simMods = Object.entries(game.simMods);
-  const [expandedMods, setExpandedMods] = useState(false);
-  useEffect(() => {
-    setExpandedMods(false);
-  }, [game.id]);
-
-  const isHost = !!player && game.host.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0;
-  const isPlayerInGame = !!player && Object.values(game.teams).some((teamPlayers) =>
-    teamPlayers.some((p) => p.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0)
-  );
-
-  const isJoiningThis = lobby.join.type === "joining" && lobby.join.payload.id === game.id;
-  const isPreparingThis = lobby.join.type === "preparing";
-  const isLaunchedThis = lobby.join.type === "launched" && lobby.join.payload.launch.uid === game.id;
-  const isInGame = lobby.join.type === "inGame";
-
-  const isBusyWithOther = (lobby.join.type === "joining" && lobby.join.payload.id !== game.id)
-    || (lobby.join.type === "launched" && !isLaunchedThis)
-    || (isInGame && !isPlayerInGame && !isHost);
-
-  // A join this game refused, said here, beside the button that tries again.
-  // It was an 11 px line in the status bar, in English, with no way out.
-  const failedHere = lobby.join.type === "failed" && lobby.join.payload.id === game.id
-    ? plainError(lobby.join.payload.reason)
-    : null;
-
-  let joinLabel = failedHere ? t("lobby.details.joinAgain") : t("lobby.details.joinGame");
-  let joinDisabled = false;
-  let joinTitle: string | undefined;
-
-  if (isHost) {
-    joinLabel = t("lobby.details.hostedByYou");
-    joinDisabled = true;
-  } else if (isPlayerInGame) {
-    joinLabel = t("lobby.details.inGame");
-    joinDisabled = true;
-  } else if (isJoiningThis) {
-    joinLabel = t("lobby.details.joining");
-    joinDisabled = true;
-  } else if (isPreparingThis) {
-    joinLabel = t("lobby.details.preparing");
-    joinDisabled = true;
-  } else if (isBusyWithOther) {
-    joinLabel = t("lobby.details.joinGame");
-    joinDisabled = true;
-    joinTitle = t("lobby.details.alreadyInGame");
-  }
-
-  const hostProfile = findPlayer(social, game.host);
-
-  // The same jump the preview dialog offers, here in the sidebar: a player
-  // reading the mod list should not have to open the map preview first to find
-  // out what one of these mods is.
-  const openModInVault = (mod: string) => {
-    requestModVaultFocus(mod);
-    ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "mods" } } });
-  };
-
-  return (
-    <aside className="game-detail-panel surface-panel">
-      <div className="game-map-preview-wrap">
-        <button
-          type="button"
-          className="game-map-preview"
-          onClick={onPreview}
-          title={t("lobby.browser.previewMap")}
-          aria-label={t("lobby.browser.previewMap")}
-        >
-          <GameMapImage
-            mapName={game.map}
-            vault={maps.vault}
-            className="game-detail-map-image"
-            placeholderClassName="map-preview-placeholder"
-            large
-          />
-          {game.passwordProtected && (
-            <span className="private-badge" role="img" aria-label={t("lobby.details.privateGame")} title={t("lobby.details.privateGame")}>
-              <Icon name="lock" size={16} />
-            </span>
-          )}
-        </button>
-        {!mapInstalled && isGenerated && (
-          <Button
-            className="game-map-preview-action"
-            disabled={isGeneratingThisMap}
-            onClick={() =>
-              ipc.send({
-                kind: "MapGenerator",
-                command: {
-                  type: "generateNamed",
-                  payload: {
-                    mapName: game.map,
-                  },
-                },
-              })
-            }
-          >
-            <Icon name="plus" size={13} />
-            {isGeneratingThisMap ? t("lobby.browser.generatingMap") : t("lobby.browser.generateMap")}
-          </Button>
-        )}
-      </div>
-      <div className="game-detail-content">
-        <div className="game-detail-title">
-          <h2>{splitGoAdapterTitle(game.title).title}</h2>
-          <p>
-            {t("lobby.details.hostLabel")}{" "}
-            <button
-              type="button"
-              className="game-team-player"
-              onClick={() => openPlayerCard(hostProfile?.id ?? null, game.host)}
-              onContextMenu={(e) => onOpenUserMenu(game.host, e)}
-              title={t("lobby.browser.openProfile", { name: game.host })}
-            >
-              <PlayerName name={game.host} />
-            </button>
-          </p>
-        </div>
-        <dl className="game-summary-list">
-          <div><dt>{t("lobby.details.map")}</dt><dd>{presentation.displayName}</dd></div>
-          {/* Only where one of the three sources actually knows it. A row
-              reading 10 km because that is the commonest size would be worse
-              than no row: this is a number somebody is deciding on. */}
-          {size && <div><dt>{t("lobby.details.mapSize")}</dt><dd>{size.full}</dd></div>}
-          <div><dt>{t("lobby.details.players")}</dt><dd>{game.players} / {game.maxPlayers}</dd></div>
-          {/* Named where it is not the global board, because a row reading
-              "583" is not checkable against anything until it says which
-              ladder it is 583 on. */}
-          <div>
-            <dt>{t("lobby.details.averageRating")}</dt>
-            <dd>
-              {game.averageRating || t("lobby.details.unrated")}
-              {leaderboard !== GLOBAL_LEADERBOARD && (
-                <small className="game-detail-leaderboard"> {leaderboardLabel(leaderboard)}</small>
-              )}
-            </dd>
-          </div>
-          <div><dt>{t("lobby.details.ratingRange")}</dt><dd>{boundsText(game.ratingMin, game.ratingMax) ?? t("lobby.details.open")}</dd></div>
-        </dl>
-        {simMods.length > 0 && (
-          <div className="game-detail-section">
-            <h3>{t("lobby.details.simMods")}</h3>
-            <div className="game-detail-tags">
-              {(expandedMods ? simMods : simMods.slice(0, 4)).map(([uid, mod]) => (
-                <button
-                  type="button"
-                  className="tag tag-action"
-                  key={uid}
-                  title={t("lobby.details.openModInVault", { mod })}
-                  onClick={() => openModInVault(mod)}
-                >
-                  {mod}
-                </button>
-              ))}
-              {simMods.length > 4 && (
-                <button
-                  type="button"
-                  className="game-detail-more-tags"
-                  onClick={() => setExpandedMods((prev) => !prev)}
-                >
-                  {expandedMods
-                    ? t("lobby.details.showLessMods")
-                    : t("lobby.details.showMoreMods", { count: simMods.length - 4 })}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-        {teams.length > 0 && (
-          <div className="game-detail-section">
-            {teams.map(([team, players]) => {
-              const isObserver = team === "-1" || team === "null";
-              const playerRatings = players.map((p) =>
-                displayedRating(findPlayer(social, p), leaderboard),
-              );
-              const known = playerRatings.filter((r): r is number => r !== null);
-              const totalRating = known.length > 0
-                ? known.reduce((sum, r) => sum + r, 0)
-                : null;
-              const avgRating = averageRating(playerRatings);
-              // A one-player team has no average and no total: both are the
-              // rating already printed on that player's own row, two inches
-              // to the right. A free-for-all is a column of these, and the
-              // stats it grew were the same number said three times.
-              const showsStats = !isObserver && totalRating !== null && players.length > 1;
-              return (
-                <div className="game-team" key={team}>
-                  <div className="game-team-header">
-                    <span className="game-team-name">
-                      {displayTeamName(team, teams.length === 1)}
-                    </span>
-                    {showsStats && (
-                      <span className="game-team-stats">
-                        {t("lobby.details.teamStats", { average: avgRating ?? "", total: totalRating ?? "" })}
-                      </span>
-                    )}
-                  </div>
-                <ul className="game-team-player-list">
-                  {players.map((p) => {
-                    const profile = findPlayer(social, p);
-                    const rating = displayedRating(profile, leaderboard);
-                    return (
-                      <li key={p} className="game-preview-player-row">
-                        {profile?.country ? (
-                          <img
-                            src={flagSrc(profile.country)}
-                            alt={countryOf(profile.country)}
-                            title={countryOf(profile.country)}
-                            width={16}
-                            height={16}
-                            decoding="async"
-                            draggable={false}
-                          />
-                        ) : (
-                          <i className="game-lineup-flag-placeholder" />
-                        )}
-                        <button
-                          type="button"
-                          className="game-team-player"
-                          onClick={() => openPlayerCard(profile?.id ?? null, p)}
-                          onContextMenu={(e) => onOpenUserMenu(p, e)}
-                          title={t("lobby.browser.openProfile", { name: p })}
-                        >
-                          <PlayerName name={p} />
-                        </button>
-                        <PlayerNoteMark note={profile ? noteForPlayer(playerNotes, profile.id) : undefined} />
-                        {rating !== null && <span className="player-rating">{rating}</span>}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-      <div className="game-detail-footer">
-        {failedHere && (
-          <StatusNotice tone="error" detail={lobby.join.type === "failed" ? lobby.join.payload.reason : undefined}>{t("lobby.details.joinFailed", { reason: failedHere })}</StatusNotice>
-        )}
-        <Button className="game-detail-join" variant="primary" disabled={joinDisabled} title={joinTitle} onClick={onJoin}>{joinLabel}</Button>
-      </div>
-    </aside>
-  );
-}
-
 export function LobbyView() {
-  const { t } = useTranslation();
+  // Redrawn on a language change, as it was while it translated its own
+  // strings: the large preview below uses the module `t`, and is redrawn only
+  // when this view is.
+  useLocale();
   const lobby = useAppStore((state) => state.state.lobby);
   const maps = useAppStore((state) => state.state.maps);
   const social = useAppStore((state) => state.state.social);
@@ -431,7 +54,6 @@ export function LobbyView() {
   const gameBrowser = browsing.customGamesBrowser;
   const [search, setSearch] = useRememberedFilter("play.search", "");
   const sort: SortMode = gameBrowser.sort;
-  const sortReversed = gameBrowser.sortReversed;
   const gameView: GameViewMode = browsing.customGamesView;
   const hidePrivate = gameBrowser.hidePrivate;
   const hideModded = gameBrowser.hideModded;
@@ -439,8 +61,6 @@ export function LobbyView() {
   const hideFoes = gameBrowser.hideFoes;
   const applyFilters = gameBrowser.applyFilters;
   const rules: GameFilterRule[] = gameBrowser.rules;
-  const foeSet = useMemo(() => new Set(social.foes.map((f) => f.toLowerCase())), [social.foes]);
-  const whitelist = useMemo(() => hostWhitelist(browsing.whitelistedHosts), [browsing.whitelistedHosts]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   // A join that fails opens that game in the panel, where the reason and the
   // way to try again are. It is the game the player just asked to join, from
@@ -455,7 +75,6 @@ export function LobbyView() {
   // dialog opened, however often the host changed it since (#384).
   const [previewSnapshot, setPreviewGame] = useState<Game | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [hostOpen, setHostOpen] = useState(false);
   const [passwordGame, setPasswordGame] = useState<Game | null>(null);
   const [password, setPassword] = useState("");
 
@@ -474,67 +93,15 @@ export function LobbyView() {
     ipc.send({ kind: "Mods", command: { type: "loadInstalled" } });
   }, []);
 
-  const isMatchmakerGame = (game: Game) =>
-    game.gameType.toLocaleLowerCase() === "matchmaker" ||
-    game.visibility.toLocaleLowerCase() === "matchmaker";
-
-  const customGames = useMemo(
-    () => lobby.games.filter((game) => !isCoopGame(game) && !isMatchmakerGame(game)),
-    [lobby.games],
-  );
-  const coopGames = useMemo(
-    () => lobby.games.filter((game) => isCoopGame(game) && !isMatchmakerGame(game)),
-    [lobby.games],
-  );
-
-  const filtered = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    return customGames
-      .slice()
-      .filter(
-        (game) =>
-          !query ||
-          [
-            game.title,
-            game.host,
-            game.map,
-            mapPresentation(maps.vault, game.map).displayName,
-            game.modName,
-          ].some((value) => value.toLocaleLowerCase().includes(query)),
-      )
-      .filter((game) => shownDespiteFilters(game.host, whitelist, () =>
-        (!hidePrivate || !game.passwordProtected)
-        && (!hideModded || Object.keys(game.simMods).length === 0)
-        && (!hideUnranked || isCustomGameRanked(game, maps.vault, mods.vault))
-        && (!hideFoes || !foeSet.has(game.host.toLowerCase()))
-        && (!applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))))
-      .sort((left, right) => compareGames(sort, sortReversed, left, right));
-  }, [applyFilters, customGames, foeSet, hideFoes, hideModded, hidePrivate, hideUnranked, maps.vault, mods.vault, rules, search, sort, sortReversed, whitelist]);
-
-  const filteredCoopGames = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    return coopGames
-      .slice()
-      .filter(
-        (game) =>
-          !query ||
-          [
-            game.title,
-            game.host,
-            game.map,
-            mapPresentation(maps.vault, game.map).displayName,
-            game.modName,
-          ].some((value) => value.toLocaleLowerCase().includes(query)),
-      )
-      .filter((game) => shownDespiteFilters(game.host, whitelist, () =>
-        (!hidePrivate || !game.passwordProtected)
-        && (!hideModded || Object.keys(game.simMods).length === 0)
-        && (!hideFoes || !foeSet.has(game.host.toLowerCase()))
-        && (!applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))))
-      .sort((left, right) => compareGames(sort, sortReversed, left, right));
-    // No ranked filter here, and no checkbox for one in the co-op toolbar: a
-    // mission is never rated, so hiding the unranked games hid all of them.
-  }, [applyFilters, coopGames, foeSet, hideFoes, hideModded, hidePrivate, maps.vault, rules, search, sort, sortReversed, whitelist]);
+  const { customGames, coopGames, filtered, filteredCoopGames } = useFilteredGames({
+    games: lobby.games,
+    search,
+    gameBrowser,
+    whitelistedHosts: browsing.whitelistedHosts,
+    foes: social.foes,
+    mapVault: maps.vault,
+    modVault: mods.vault,
+  });
 
   // Only ever the game the player picked. Falling back to the first row put a
   // different game under the Join button whenever the picked one closed,
@@ -605,152 +172,18 @@ export function LobbyView() {
     });
   });
 
-  // Why the list is empty, which decides what it says and what it offers.
-  // "No games match. Adjust the search or the filters" used to stand for all
-  // of these, so a player who was not connected went looking for a filter.
-  const emptyGames =
-    lobby.status === "disconnected" ? (
-      <EmptyState icon="globe" title={t("lobby.browser.disconnected")} hint={t("lobby.browser.disconnectedHint")}>
-        <Button onClick={() => ipc.send({ kind: "Lobby", command: { type: "connect" } })}>
-          {t("status.reconnect")}
-        </Button>
-      </EmptyState>
-    ) : lobby.status === "connecting" ? (
-      <EmptyState icon="refresh" title={t("lobby.browser.connecting")} />
-    ) : customGames.length === 0 ? (
-      <EmptyState icon="play" title={t("lobby.browser.noGames")} hint={t("lobby.browser.noGamesHint")}>
-        <Button onClick={() => { setCoopMissionToHost(null); setHostOpen(true); }}>
-          {t("lobby.toolbar.hostGame")}
-        </Button>
-      </EmptyState>
-    ) : (
-      <EmptyState icon="search" title={t("lobby.browser.noMatch")} hint={t("lobby.browser.noMatchHint")}>
-        <Button
-          onClick={() => {
-            setSearch("");
-            updateGameBrowser({
-              hidePrivate: false,
-              hideModded: false,
-              hideUnranked: false,
-              hideFoes: false,
-              applyFilters: false,
-            });
-          }}
-        >
-          {t("lobby.browser.clearFilters")}
-        </Button>
-      </EmptyState>
-    );
-
-  // Same shape as the list's column drag: the saved width seeds a local copy,
-  // the drag moves the copy, and letting go persists it. A settings write per
-  // pointer move would be a backend round trip per pixel.
-  const savedDetailWidth = useAppStore(
-    (state) => state.state.settings.browsing.customGamesBrowser.detailWidth,
-  );
-  const [draggedDetailWidth, setDraggedDetailWidth] = useState<number | null>(null);
-  const detailDragOrigin = useRef<number | null>(null);
-  const detailHidden = useAppStore(
-    (state) => state.state.settings.browsing.customGamesBrowser.detailHidden,
-  );
-  const currentDetailWidth = draggedDetailWidth ?? detailWidth(savedDetailWidth);
-  // How wide the list and the panel are together, for the empty panel below.
-  const [layoutElement, setLayoutElement] = useState<HTMLDivElement | null>(null);
-  const [layoutWidth, setLayoutWidth] = useState(0);
-  useEffect(() => {
-    if (!layoutElement || typeof ResizeObserver === "undefined") return;
-    const measure = () => setLayoutWidth(layoutElement.clientWidth);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(layoutElement);
-    return () => observer.disconnect();
-  }, [layoutElement]);
-  // With no game picked and nothing to report, the panel only says "select a
-  // game", and in list view it steps aside wherever the list would otherwise
-  // have to draw its columns narrower than they are (`emptyDetailGivesWay`).
-  // Never while its own divider is held: a panel that vanished under the
-  // pointer would be the strangest thing a drag could do.
-  const detailEmpty = !selected && lobby.join.type !== "failed";
-  // A click that picks a game while the empty panel has stepped aside brings
-  // the panel back, and the list narrows under the pointer. A double click is
-  // two clicks, so its second one landed on whatever had moved there (at
-  // 1100 by 720, the map preview) instead of joining the game. The panel
-  // waits out the double-click interval before it takes its room back.
-  const [revealHeld, setRevealHeld] = useState(false);
-  const revealTimer = useRef<number | undefined>(undefined);
-  useEffect(() => () => window.clearTimeout(revealTimer.current), []);
-  // Asked for from the toolbar while it had stepped aside: the empty panel
-  // then stays until it is folded away. The toolbar's button shows what is on
-  // screen, so it read "Show the details panel" there, and a press that left
-  // the panel away would have been a button that does nothing.
-  const [emptyKept, setEmptyKept] = useState(false);
-  const detailGivesWay =
-    revealHeld ||
-    (detailEmpty &&
-      !emptyKept &&
-      gameView === "list" &&
-      draggedDetailWidth === null &&
-      emptyDetailGivesWay(layoutWidth, currentDetailWidth, columnWidths(gameBrowser.columnWidths)));
-  // Read by the click handler, which outlives the render it was made in.
-  const panelAway = useRef(detailGivesWay);
-  useEffect(() => {
-    panelAway.current = detailGivesWay;
+  // The details panel's width, fold and stepping aside; a click on a game
+  // picks it through `selectGame`, which can hold the panel back first.
+  const detailLayout = useDetailPanelLayout({
+    selected,
+    join: lobby.join,
+    gameView,
+    gameBrowser,
+    setSelectedId,
+    updateGameBrowser,
   });
-  const selectGame = useCallback((id: number | null) => {
-    if (id !== null && panelAway.current) {
-      setRevealHeld(true);
-      window.clearTimeout(revealTimer.current);
-      revealTimer.current = window.setTimeout(() => setRevealHeld(false), DOUBLE_CLICK_MS);
-    }
-    setSelectedId(id);
-  }, []);
-  const detailShown = !detailHidden && !detailGivesWay;
-  const toggleDetails = () => {
-    setEmptyKept(!detailShown);
-    // Folding a panel that only stepped aside was the old press here: it
-    // changed nothing on screen and saved the panel as folded, so the next
-    // game picked opened without it.
-    if (detailShown || detailHidden) updateGameBrowser({ detailHidden: detailShown });
-  };
-  const detailStyle = useMemo(
-    // The divider's track is the whole gap, as the chat roster's is, so the
-    // two tabs space their side panel the same. Folded away (#370, #377), or
-    // empty and stepped aside, the list takes the whole width: the toolbar
-    // holds the button that folds and unfolds the panel, so the gap has
-    // nothing left to hold.
-    () => ({
-      gridTemplateColumns: detailShown
-        ? `minmax(360px, 1fr) var(--space-3) ${currentDetailWidth}px`
-        : "minmax(360px, 1fr)",
-    }),
-    [currentDetailWidth, detailShown],
-  );
-  const onDetailDrag = (delta: number) => {
-    detailDragOrigin.current ??= currentDetailWidth;
-    setDraggedDetailWidth(withDetailResized(detailDragOrigin.current, delta));
-  };
-  const onDetailCommit = () => {
-    detailDragOrigin.current = null;
-    if (draggedDetailWidth !== null) updateGameBrowser({ detailWidth: draggedDetailWidth });
-    setDraggedDetailWidth(null);
-  };
-  const onDetailReset = () => {
-    detailDragOrigin.current = null;
-    setDraggedDetailWidth(null);
-    updateGameBrowser({ detailWidth: 0 });
-  };
 
-  // Which mission the co-op dialog should open on. `undefined` means "whatever
-  // the leaderboard is showing", which is the case when the toolbar button is
-  // used rather than a specific mission.
-  const [coopMissionToHost, setCoopMissionToHost] = useState<CoopMission | null>(null);
-  // A title another tab prepared, e.g. the tournament tab offering to host a
-  // bracket match. It lives in the lobby slice because it has to cross a tab
-  // boundary; opening the dialog when one arrives is the whole handling.
-  const hostPrefill = useAppStore((store) => store.state.lobby.hostPrefill);
-  useEffect(() => {
-    if (hostPrefill !== null) setHostOpen(true);
-  }, [hostPrefill]);
+  const { hostOpen, coopMissionToHost, hostPrefill, openHostDialog, closeHostDialog } = useHostDialog();
 
   // How many people are in Galactic War, kept current for as long as the Play
   // tab is the tab being looked at.
@@ -767,24 +200,6 @@ export function LobbyView() {
     const timer = setInterval(ask, GALACTIC_WAR_POLL_MS);
     return () => clearInterval(timer);
   }, []);
-
-  const handleHostCoop = (mission?: CoopMission) => {
-    setCoopMissionToHost(mission ?? null);
-    setHostOpen(true);
-  };
-
-  // Stable, because the host dialogs are `memo`'d and this is their only
-  // prop that is not a store value. A fresh closure per render would hand them
-  // a changed prop on every game list the lobby sends, which is the one thing
-  // the memo exists to stop.
-  const closeHostDialog = useCallback(() => {
-    setHostOpen(false);
-    setCoopMissionToHost(null);
-    // Otherwise the dialog reopens the next time this tab is visited.
-    if (hostPrefill !== null) {
-      ipc.send({ kind: "Lobby", command: { type: "clearHostPrefill" } });
-    }
-  }, [hostPrefill]);
 
   return (
     <div className="play-view">
@@ -845,100 +260,68 @@ export function LobbyView() {
               onHideFoes={(value) => updateGameBrowser({ hideFoes: value })}
               onApplyFilters={(value) => updateGameBrowser({ applyFilters: value })}
               onOpenFilters={() => setFiltersOpen(true)}
-              onHost={() => handleHostCoop()}
+              onHost={() => openHostDialog()}
               onRefresh={() => ipc.send({ kind: "Coop", command: { type: "refreshCatalog" } })}
             />
           )}
           onJoin={requestJoin}
-          onHost={handleHostCoop}
+          onHost={openHostDialog}
         />
       ) : inGalacticWar ? (
         <GalacticWarPanel panelProps={playModePanelProps("galacticWar")} />
       ) : (
-        <div
-          {...playModePanelProps("custom")}
-          className="custom-games-layout"
-          style={detailStyle}
-          ref={setLayoutElement}
-        >
-          <CustomGamesToolbar
-            search={search}
-            sort={sort}
-            viewMode={gameView}
-            hidePrivate={hidePrivate}
-            hideModded={hideModded}
-            hideUnranked={hideUnranked}
-            hideFoes={hideFoes}
-            applyFilters={applyFilters}
-            filterCount={filterCount}
-            connected={connected}
-            onSearch={setSearch}
-            onSort={(value) => updateGameBrowser({ sort: value, sortReversed: false })}
-            onViewMode={selectGameView}
-            onHidePrivate={(value) => updateGameBrowser({ hidePrivate: value })}
-            onHideModded={(value) => updateGameBrowser({ hideModded: value })}
-            onHideUnranked={(value) => updateGameBrowser({ hideUnranked: value })}
-            onHideFoes={(value) => updateGameBrowser({ hideFoes: value })}
-            onApplyFilters={(value) => updateGameBrowser({ applyFilters: value })}
-            onOpenFilters={() => setFiltersOpen(true)}
-            onHost={() => {
-              setCoopMissionToHost(null);
-              setHostOpen(true);
-            }}
-            detailHidden={!detailShown}
-            onToggleDetails={toggleDetails}
-          />
-
-          <CustomGamesBrowser
-            games={filtered}
-            totalGames={customGames.length}
-            selectedId={selected?.id ?? null}
-            vault={maps.vault}
-            viewMode={gameView}
-            onSelect={selectGame}
-            onJoin={requestJoin}
-            onPreview={setPreviewGame}
-            empty={emptyGames}
-          />
-          {/* The divider sits between the list and the panel rather than on
-              either, so dragging it reads as moving the boundary. The panel
-              folds away and back from the toolbar (#370, #377); the choice is
-              a setting, so it holds across restarts. */}
-          {detailShown && (
-            <div className="custom-games-divider">
-              <ResizeHandle
-                label={t("lobby.browser.resizeDetails")}
-                onDrag={onDetailDrag}
-                onEnd={onDetailCommit}
-                onReset={onDetailReset}
-              />
-            </div>
-          )}
-          {!detailShown ? null : selected ? (
-            <GameDetails
-              game={selected}
-              onJoin={() => requestJoin(selected)}
-              onOpenUserMenu={openPlayerMenu}
-              onPreview={() => setPreviewGame(selected)}
+        <CustomGamesPanel
+          panelProps={playModePanelProps("custom")}
+          layout={detailLayout}
+          toolbar={(
+            <CustomGamesToolbar
+              search={search}
+              sort={sort}
+              viewMode={gameView}
+              hidePrivate={hidePrivate}
+              hideModded={hideModded}
+              hideUnranked={hideUnranked}
+              hideFoes={hideFoes}
+              applyFilters={applyFilters}
+              filterCount={filterCount}
+              connected={connected}
+              onSearch={setSearch}
+              onSort={(value) => updateGameBrowser({ sort: value, sortReversed: false })}
+              onViewMode={selectGameView}
+              onHidePrivate={(value) => updateGameBrowser({ hidePrivate: value })}
+              onHideModded={(value) => updateGameBrowser({ hideModded: value })}
+              onHideUnranked={(value) => updateGameBrowser({ hideUnranked: value })}
+              onHideFoes={(value) => updateGameBrowser({ hideFoes: value })}
+              onApplyFilters={(value) => updateGameBrowser({ applyFilters: value })}
+              onOpenFilters={() => setFiltersOpen(true)}
+              onHost={() => openHostDialog()}
+              detailHidden={!detailLayout.detailShown}
+              onToggleDetails={detailLayout.toggleDetails}
             />
-          ) : (
-            <aside className="game-detail-panel surface-panel empty">
-              {/* A refused join for a game that has since gone from the list
-                  (the host left, it launched): the panel is where the reader
-                  looks after pressing Join, so the reason is said here too. */}
-              {lobby.join.type === "failed" ? (
-                <StatusNotice tone="error" detail={lobby.join.payload.reason}>
-                  {t("lobby.details.joinFailed", { reason: plainError(lobby.join.payload.reason) })}
-                </StatusNotice>
-              ) : (
-                <>
-                  <Icon name="play" size={24} />
-                  <p>{t("lobby.details.selectGame")}</p>
-                </>
-              )}
-            </aside>
           )}
-        </div>
+          games={filtered}
+          totalGames={customGames.length}
+          selected={selected}
+          vault={maps.vault}
+          viewMode={gameView}
+          status={lobby.status}
+          join={lobby.join}
+          onJoin={requestJoin}
+          onPreview={setPreviewGame}
+          onOpenUserMenu={openPlayerMenu}
+          onReconnect={() => ipc.send({ kind: "Lobby", command: { type: "connect" } })}
+          onHost={() => openHostDialog()}
+          onClearFilters={() => {
+            setSearch("");
+            updateGameBrowser({
+              hidePrivate: false,
+              hideModded: false,
+              hideUnranked: false,
+              hideFoes: false,
+              applyFilters: false,
+            });
+          }}
+        />
       )}
 
       {filtersOpen && (

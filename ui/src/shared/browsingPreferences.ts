@@ -522,7 +522,7 @@ function truncateTrimmed(value: string, maxCharacters: number): string {
 
 // A comma-separated list since the live filters became multi-select: each
 // count is checked on its own, and one bad entry drops only itself. Twin of
-// `normalize_player_count` in crates/faf-domain/src/state/settings.rs.
+// `normalize_player_count` in crates/faf-domain/src/state/settings/live_replays.rs.
 function normalizePlayerCount(value: string): string {
   const counts: string[] = [];
   for (const part of value.split(",")) {

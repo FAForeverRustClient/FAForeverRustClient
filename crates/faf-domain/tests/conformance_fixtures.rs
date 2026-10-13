@@ -10092,7 +10092,8 @@ const EVENT_ENUM_SOURCES: &[(&str, &str, &str)] = &[
     (
         "Settings",
         "SettingsEvent",
-        include_str!("../src/state/settings.rs"),
+        // The settings slice is a directory; its events are declared in one file.
+        include_str!("../src/state/settings/messages.rs"),
     ),
     (
         "Social",
