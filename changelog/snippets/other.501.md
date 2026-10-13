@@ -1,0 +1,1 @@
+- Chat has a real Search button, and section tab icons line up with their text.

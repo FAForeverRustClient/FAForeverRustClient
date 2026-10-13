@@ -1,0 +1,2 @@
+- The Leaderboard is redesigned, with a wider player panel that shows the player's rating on every board.
+- Checkboxes and the "More filters" button look the same everywhere.
