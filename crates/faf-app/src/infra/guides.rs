@@ -512,7 +512,7 @@ impl GuidesClient {
             serde_json::from_str(&body).map_err(|error| Failure::unreadable(&what, error))?;
         Ok(comments
             .into_iter()
-            .filter(Comment::from_the_repository)
+            .filter(Comment::written_by_maintainers)
             .filter_map(|comment| comment.body)
             .collect())
     }
@@ -1841,7 +1841,7 @@ struct Comment {
 }
 
 impl Comment {
-    fn from_the_repository(&self) -> bool {
+    fn written_by_maintainers(&self) -> bool {
         matches!(
             self.author_association.as_deref(),
             Some("OWNER" | "MEMBER" | "COLLABORATOR")
