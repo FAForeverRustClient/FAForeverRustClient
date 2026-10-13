@@ -72,10 +72,7 @@ export function GameCacheSettingsSection() {
           it is filed with the rest of the disk the client spends rather than
           beside the switch that generates them. Same slice of settings either
           way: only the register it is drawn in has changed. */}
-      <SettingRow
-        label={t("settings.game.keepGeneratedMaps")}
-        hint={t("settings.game.keepGeneratedMapsHint")}
-      >
+      <SettingRow label={t("settings.game.keepGeneratedMaps")}>
         <div className="settings-inline-pair">
           <SettingsSwitch
             checked={preferences.keepGeneratedMaps ?? false}
@@ -98,10 +95,7 @@ export function GameCacheSettingsSection() {
           />
         </div>
       </SettingRow>
-      <SettingRow
-        label={t("settings.game.cacheLifetime")}
-        hint={t("settings.game.cacheLifetimeHint")}
-      >
+      <SettingRow label={t("settings.game.cacheLifetime")}>
         <select
           className="settings-select"
           value={currentLifetime}

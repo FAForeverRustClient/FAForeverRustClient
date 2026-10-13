@@ -43,7 +43,7 @@ export function ChatSettingsSection() {
           the document root and repaint the game tiles in the Play tab, so they
           are a client-wide choice; a font size that changes one pane is a
           setting of that pane. */}
-      <SettingRow label={t("settings.chat.fontSize")} hint={t("settings.chat.fontSizeHint")}>
+      <SettingRow label={t("settings.chat.fontSize")}>
         <label className="settings-slider">
           <input
             type="range"
@@ -71,14 +71,14 @@ export function ChatSettingsSection() {
           <span>{preferences.senderWidth || 116} px</span>
         </label>
       </SettingRow>
-      <SettingRow label={t("settings.chat.messageTimestamps")} hint={t("settings.chat.messageTimestampsHint")}>
+      <SettingRow label={t("settings.chat.messageTimestamps")}>
         <SettingsSwitch
           checked={preferences.showTimestamps}
           onChange={(showTimestamps) => void save({ showTimestamps })}
           label={t("settings.chat.messageTimestamps")}
         />
       </SettingRow>
-      <SettingRow label={t("settings.chat.24HourTime")} hint={t("settings.chat.24HourTimeHint")}>
+      <SettingRow label={t("settings.chat.24HourTime")}>
         <SettingsSwitch
           checked={preferences.use24HourTime}
           disabled={!preferences.showTimestamps}
@@ -86,24 +86,21 @@ export function ChatSettingsSection() {
           label={t("settings.chat.24HourTime")}
         />
       </SettingRow>
-      <SettingRow label={t("settings.chat.showJoinsParts")} hint={t("settings.chat.showJoinsPartsHint")}>
+      <SettingRow label={t("settings.chat.showJoinsParts")}>
         <SettingsSwitch
           checked={preferences.showJoinsParts}
           onChange={(showJoinsParts) => void save({ showJoinsParts })}
           label={t("settings.chat.showJoinsParts")}
         />
       </SettingRow>
-      <SettingRow label={t("settings.chat.hideFoeMessages")} hint={t("settings.chat.hideFoeMessagesHint")}>
+      <SettingRow label={t("settings.chat.hideFoeMessages")}>
         <SettingsSwitch
           checked={preferences.hideFoeMessages}
           onChange={(hideFoeMessages) => void save({ hideFoeMessages })}
           label={t("settings.chat.hideFoeMessages")}
         />
       </SettingRow>
-      <SettingRow
-        label={t("settings.chat.joinMyLanguage")}
-        hint={t("settings.chat.joinMyLanguageHint")}
-      >
+      <SettingRow label={t("settings.chat.joinMyLanguage")}>
         <SettingsSwitch
           checked={preferences.autoJoinLanguageChannel}
           onChange={(autoJoinLanguageChannel) =>
@@ -112,10 +109,7 @@ export function ChatSettingsSection() {
           label={t("settings.chat.joinMyLanguage")}
         />
       </SettingRow>
-      <SettingRow
-        label={t("settings.chat.autoJoinNewbie")}
-        hint={t("settings.chat.autoJoinNewbieHint")}
-      >
+      <SettingRow label={t("settings.chat.autoJoinNewbie")}>
         <SettingsSwitch
           checked={preferences.autoJoinNewbieChannel}
           onChange={(autoJoinNewbieChannel) =>
@@ -165,7 +159,6 @@ export function ChatSettingsSection() {
       </SettingRow>
       <div className="setting-block settings-channels">
         <span className="setting-label">{t("settings.chat.autoJoinLabel")}</span>
-        <span className="muted">{t("settings.chat.autoJoinHint")}</span>
         <div className="settings-inline-form">
           <input
             className="settings-input"
