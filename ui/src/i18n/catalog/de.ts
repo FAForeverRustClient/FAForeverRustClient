@@ -415,11 +415,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "events.bundled": "Gezeigt wird der Kalender, der mit diesem Client geliefert wurde: der veröffentlichte Community-Katalog war nicht lesbar.",
 
   "links.title": "Externe Links",
-  "links.subtitle": "Alles andere, wo FAF stattfindet: die eigenen Seiten von FAF und die Werkzeuge und Spiele der Community.",
-  "links.filter.aria": "Links danach filtern, wer sie betreibt",
-  "links.filter.all": "Alle ({count})",
-  "links.filter.official": "Offiziell ({count})",
-  "links.filter.community": "Extern ({count})",
   "links.live": "LIVE",
   "links.liveNow": "Sendet jetzt",
   "links.liveWithViewers": {
@@ -427,13 +422,15 @@ export const de: Partial<Record<MessageKey, Message>> = {
     other: "{title} - {count} Zuschauer",
   },
   "links.origin.official": "Offiziell",
-  "links.origin.community": "Extern",
   "links.origin.officialTitle": "Wird von FAF betrieben",
   "links.origin.communityTitle": "Wird nicht von FAF betrieben",
   "links.section.play": "FAF selbst",
   "links.section.tools": "Werkzeuge und Statistiken",
   "links.section.games": "Spiele und Spaß",
   "links.section.watch": "Streams und Videos",
+  "links.repos.client": "Dieser Client",
+  "links.repos.faf": "FAF",
+  "links.repos.others": "Andere Clients",
   "links.entry.website": "FAForever",
   "links.entry.websiteHint": "Die offizielle FAForever-Website",
   "links.entry.forum": "FAF-Forum",
@@ -471,7 +468,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
 
   "contribution.title": "Mitwirken",
   "contribution.specialThanks": "Besonderer Dank",
-  "contribution.subtitle": "FAF ist quelloffen. Beiträge, Korrekturen und Ideen sind willkommen.",
   "contribution.repositories": "GitHub-Repositories",
 
   "units.frameTitle": "ETFreeman-Einheitendatenbank",
