@@ -1,0 +1,1 @@
+- Games start a few seconds sooner: Forged Alliance now launches while the relay servers are still being fetched, instead of waiting for them.
