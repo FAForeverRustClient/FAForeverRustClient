@@ -1,0 +1,1 @@
+- Installed maps fit one screen per page, and the pager stays in place.

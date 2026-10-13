@@ -1,0 +1,6 @@
+- Toasts disappear after 5 seconds.
+- The emoji picker stays open after picking an emoji.
+- After a cancelled match you can search again right away.
+- Queue ratings update after every game.
+- Chat messages no longer vanish in busy channels.
+- Co-op missions are listed in campaign order, and the map generator window no longer cuts off its labels.

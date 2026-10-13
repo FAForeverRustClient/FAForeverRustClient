@@ -1,0 +1,1 @@
+- Older installed map versions no longer show a wrong "Unranked" tag.

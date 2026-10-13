@@ -1,0 +1,1 @@
+- The Units tab shows the unit database inside the client again on Linux.
