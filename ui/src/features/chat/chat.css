@@ -1039,10 +1039,16 @@ html.is-resizing-chat-roster * {
 }
 
 /* The order of the players in each group (issue 513): narrow beside the
-   search box, which keeps the rest of the width. */
-.chat-roster-sort {
+   search box, which keeps the rest of the width. Scoped to the search row so
+   it outranks the select's own full width, whichever stylesheet loads last. */
+.chat-roster-search .chat-roster-sort {
   flex: none;
   width: 92px;
+}
+
+.chat-roster-search .chat-roster-search-field {
+  flex: 1;
+  min-width: 0;
 }
 
 /* The rating the list is ordered by, at the end of the row. */
