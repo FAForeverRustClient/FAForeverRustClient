@@ -74,6 +74,7 @@ pub mod game;
 pub mod game_cache;
 pub mod game_logs;
 pub mod game_updater;
+pub(crate) mod gpgnet_proxy;
 pub mod guides;
 pub(crate) mod http;
 pub mod ice_java;

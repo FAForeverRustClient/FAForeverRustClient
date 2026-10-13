@@ -208,9 +208,6 @@ pub async fn start(
         "launch: the game is started"
     );
     let late_failure = session.late_failure;
-    if late_failure.is_some() {
-        tracing::info!(game_id = launch.uid, "game started before the ICE session");
-    }
     // Java cancels delayed replay actions as soon as GameRunner becomes active.
     // Do the same so auto-watch can never replace a game the user just launched.
     super::replays::cancel_live_tracking(out);
@@ -289,16 +286,16 @@ pub async fn start(
 
     out.emit(LobbyEvent::InGame);
 
-    // 6. Stop the game if the ICE session it was started without cannot be
-    //    had after all (#511). Watched only from here, after `InGame`, so the
-    //    failure is the last word on this launch.
+    // 6. Stop the game if the adapter or the ICE session it was started
+    //    without cannot be had after all (#511). Watched only from here,
+    //    after `InGame`, so the failure is the last word on this launch.
     if let Some(late_failure) = late_failure {
         let ports = ctx.ports.clone();
         let sink = out.clone();
         let running_game = ctx.lobby.running_game_handle();
         let game_id = launch.uid;
         tokio::spawn(async move {
-            // Closed without an answer: the session arrived, or the adapter
+            // Closed without an answer: everything arrived, or the adapter
             // was stopped with the game.
             let Ok(reason) = late_failure.await else {
                 return;
@@ -309,7 +306,7 @@ pub async fn start(
             tracing::warn!(
                 game_id,
                 %reason,
-                "the ICE session failed after the game started; stopping the game"
+                "the ICE adapter or session failed after the game started; stopping the game"
             );
             // The exit watcher then releases the seat and the running game.
             stopped_by_failure.store(true, Ordering::SeqCst);
