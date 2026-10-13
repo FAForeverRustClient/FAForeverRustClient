@@ -78,8 +78,9 @@ export interface DirectoryLink {
  *
  * Sources: the community hub above, plus the DoodlePros sites it does not list
  * (FAFScribbl is missing from it, which the issue points out) and FAF's own
- * wiki. Ordered within a section by how often somebody is likely to want it,
- * which for the first four is the order a new player meets them in.
+ * wiki. The order within a section is the maintainers' choice: FAF's site,
+ * Discord, wiki and forum first; the tournaments ahead of the stats sites;
+ * the daily unit ahead of the two games that take longer.
  */
 export const DIRECTORY: readonly DirectoryLink[] = [
   {
@@ -97,11 +98,11 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     section: "play",
   },
   {
-    id: "forum",
-    icon: "chat",
-    name: "links.entry.forum",
-    hint: "links.entry.forumHint",
-    href: "https://forum.faforever.com/",
+    id: "discord",
+    icon: "discord",
+    name: "links.entry.discord",
+    hint: "links.entry.discordHint",
+    href: "https://discord.gg/fQxrjwru6E",
     origin: "official",
     section: "play",
   },
@@ -115,13 +116,22 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     section: "play",
   },
   {
-    id: "discord",
-    icon: "discord",
-    name: "links.entry.discord",
-    hint: "links.entry.discordHint",
-    href: "https://discord.gg/fQxrjwru6E",
+    id: "forum",
+    icon: "chat",
+    name: "links.entry.forum",
+    hint: "links.entry.forumHint",
+    href: "https://forum.faforever.com/",
     origin: "official",
     section: "play",
+  },
+  {
+    id: "tournaments",
+    icon: "trophy",
+    name: "links.entry.tournaments",
+    hint: "links.entry.tournamentsHint",
+    href: "https://tournaments.faforever.com/",
+    origin: "official",
+    section: "tools",
   },
   {
     id: "tracker",
@@ -160,13 +170,13 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     section: "tools",
   },
   {
-    id: "tournaments",
-    icon: "trophy",
-    name: "links.entry.tournaments",
-    hint: "links.entry.tournamentsHint",
-    href: "https://tournaments.faforever.com/",
-    origin: "official",
-    section: "tools",
+    id: "daily",
+    icon: "calendar",
+    name: "links.entry.daily",
+    hint: "links.entry.dailyHint",
+    href: "https://daily.doodlepros.com/",
+    origin: "community",
+    section: "games",
   },
   {
     id: "guessr",
@@ -183,15 +193,6 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     name: "links.entry.scribbl",
     hint: "links.entry.scribblHint",
     href: "https://fafscribbl.doodlepros.com/",
-    origin: "community",
-    section: "games",
-  },
-  {
-    id: "daily",
-    icon: "calendar",
-    name: "links.entry.daily",
-    hint: "links.entry.dailyHint",
-    href: "https://daily.doodlepros.com/",
     origin: "community",
     section: "games",
   },

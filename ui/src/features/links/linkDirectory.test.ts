@@ -44,12 +44,12 @@ describe("the link directory", () => {
     expect(DIRECTORY.some((link) => link.id === "scribbl")).toBe(true);
   });
 
-  it("opens with the four addresses a new player is given, in that order", () => {
+  it("opens with FAF's own four addresses, in the order the maintainers set", () => {
     expect(sectionLinks("play").map((link) => link.id)).toEqual([
       "faforever",
-      "forum",
-      "wiki",
       "discord",
+      "wiki",
+      "forum",
     ]);
   });
 
