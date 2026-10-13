@@ -587,6 +587,8 @@ const INITIAL: AppState = {
       launchWrapper: "",
       autoGenerateMaps: true,
       confirmDownloadsBeforeJoining: true,
+      showJoinProgress: true,
+      showReplayProgress: true,
       cacheLifetimeDays: 30,
       cacheSizeAlertGb: 10,
       cacheRollingBranches: false,

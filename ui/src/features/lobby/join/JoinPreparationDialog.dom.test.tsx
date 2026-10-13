@@ -73,6 +73,31 @@ function mountPreparing(adapter: IceAdapter = "dynamic") {
 }
 
 describe("JoinPreparationDialog, mounted", () => {
+  it("stops showing itself with one patchGame, and the setting keeps it away", async () => {
+    const user = userEvent.setup();
+    mountPreparing();
+    await user.click(screen.getByRole("button", { name: "Do not show again" }));
+
+    expect(sentCommands()).toEqual([
+      { kind: "Settings", command: { type: "patchGame", payload: { patch: { showJoinProgress: false } } } },
+    ]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("shows nothing while the setting is off, though the join runs", () => {
+    seedStore((state) => ({
+      ...state,
+      settings: { ...state.settings, game: { ...state.settings.game, showJoinProgress: false } },
+      lobby: {
+        ...state.lobby,
+        status: "connected",
+        join: { type: "preparing", payload: { phase: "downloading", detail: "setons_clutch.zip", progress: 40 } },
+      },
+    }));
+    render(<JoinPreparationDialog />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("narrates the preparation and cancels with one cancelJoin, closing only once the backend confirms", async () => {
     const user = userEvent.setup();
     mountPreparing();
@@ -202,9 +227,9 @@ describe("JoinPreparationDialog, the adapter line", () => {
       expect(
         screen.getByText("This game runs on the Go adapter (faf-pioneer), so you join on it too."),
       ).toBeDefined();
-      // The line says it in words, so the name loses the raw mark, as it does
-      // in the game browser.
-      expect(screen.getByText("Joining “Friday Setons”. The game window will appear shortly.")).toBeDefined();
+      // The line says it in words, so the name in the head loses the raw
+      // mark, as it does in the game browser.
+      expect(screen.getByText("Friday Setons")).toBeDefined();
     },
   );
 

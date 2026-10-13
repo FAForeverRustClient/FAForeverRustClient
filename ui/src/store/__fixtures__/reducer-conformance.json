@@ -3246,6 +3246,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
@@ -53621,6 +53623,14 @@
         {
           "event": {
             "event": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "uid": 7
+                  },
+                  "type": "vault"
+                }
+              },
               "type": "connecting"
             },
             "kind": "Replays"
@@ -53653,6 +53663,14 @@
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
             "status": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "uid": 7
+                  },
+                  "type": "vault"
+                }
+              },
               "type": "connecting"
             },
             "vault": [],
@@ -53742,6 +53760,14 @@
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
             "status": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "uid": 7
+                  },
+                  "type": "vault"
+                }
+              },
               "type": "connecting"
             },
             "vault": [],
@@ -53882,6 +53908,18 @@
         {
           "event": {
             "event": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "target": {
+                      "map": "scmp_009",
+                      "modName": "faf",
+                      "uid": 9
+                    }
+                  },
+                  "type": "live"
+                }
+              },
               "type": "connecting"
             },
             "kind": "Replays"
@@ -53914,6 +53952,18 @@
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
             "status": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "target": {
+                      "map": "scmp_009",
+                      "modName": "faf",
+                      "uid": 9
+                    }
+                  },
+                  "type": "live"
+                }
+              },
               "type": "connecting"
             },
             "vault": [],
@@ -55365,6 +55415,14 @@
         {
           "event": {
             "event": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "uid": 7
+                  },
+                  "type": "vault"
+                }
+              },
               "type": "connecting"
             },
             "kind": "Replays"
@@ -55428,6 +55486,14 @@
               43
             ],
             "status": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "uid": 7
+                  },
+                  "type": "vault"
+                }
+              },
               "type": "connecting"
             },
             "vault": [],
@@ -55594,6 +55660,14 @@
         {
           "event": {
             "event": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "path": "C:/replays/7.fafreplay"
+                  },
+                  "type": "file"
+                }
+              },
               "type": "connecting"
             },
             "kind": "Replays"
@@ -55657,6 +55731,14 @@
               43
             ],
             "status": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "path": "C:/replays/7.fafreplay"
+                  },
+                  "type": "file"
+                }
+              },
               "type": "connecting"
             },
             "vault": [],
@@ -55822,6 +55904,14 @@
         {
           "event": {
             "event": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "uid": 8
+                  },
+                  "type": "vault"
+                }
+              },
               "type": "connecting"
             },
             "kind": "Replays"
@@ -55885,6 +55975,14 @@
               43
             ],
             "status": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "uid": 8
+                  },
+                  "type": "vault"
+                }
+              },
               "type": "connecting"
             },
             "vault": [],
@@ -58166,6 +58264,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
@@ -58450,6 +58550,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -58744,6 +58846,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -59032,6 +59136,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -59320,6 +59426,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -59618,6 +59726,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -59922,6 +60032,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -60223,6 +60335,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -60532,6 +60646,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -60924,6 +61040,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -61278,6 +61396,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -61634,6 +61754,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -62127,6 +62249,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -76216,6 +76340,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
@@ -76510,6 +76636,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
@@ -76834,6 +76962,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
@@ -77144,6 +77274,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
@@ -77268,6 +77400,8 @@
                   "keepGeneratedMapsLimit": 0,
                   "launchWrapper": "gamemoderun",
                   "pipeLiveReplay": false,
+                  "showJoinProgress": true,
+                  "showReplayProgress": true,
                   "steamPresence": false
                 }
               },
@@ -77441,6 +77575,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
@@ -77729,6 +77865,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
@@ -78016,6 +78154,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
@@ -78331,6 +78471,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
@@ -78615,6 +78757,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
@@ -78919,6 +79063,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
@@ -79213,6 +79359,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
@@ -79493,6 +79641,8 @@
                     "keepGeneratedMapsLimit": 0,
                     "launchWrapper": "",
                     "pipeLiveReplay": false,
+                    "showJoinProgress": true,
+                    "showReplayProgress": true,
                     "steamPresence": false
                   },
                   "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -79771,6 +79921,8 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -120926,6 +121078,8 @@
         "keepGeneratedMapsLimit": 0,
         "launchWrapper": "",
         "pipeLiveReplay": false,
+        "showJoinProgress": true,
+        "showReplayProgress": true,
         "steamPresence": false
       },
       "gamePath": "",

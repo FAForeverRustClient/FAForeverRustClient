@@ -7111,7 +7111,10 @@ fn cases() -> Vec<Case> {
                     },
                 }
                 .into(),
-                ReplayEvent::Connecting.into(),
+                ReplayEvent::Connecting {
+                    launch: ReplayLaunch::Vault { uid: 7 },
+                }
+                .into(),
                 ReplayEvent::Preparing {
                     step: ReplayPreparation {
                         detail: "Downloading ForgedAlliance.exe".into(),
@@ -7129,7 +7132,16 @@ fn cases() -> Vec<Case> {
         case(
             "a replay connects, fails, and is dismissed",
             vec![
-                ReplayEvent::Connecting.into(),
+                ReplayEvent::Connecting {
+                    launch: ReplayLaunch::Live {
+                        target: LiveReplayTarget {
+                            uid: 9,
+                            mod_name: "faf".into(),
+                            map: "scmp_009".into(),
+                        },
+                    },
+                }
+                .into(),
                 ReplayEvent::Failed {
                     reason: "delayed by five minutes".into(),
                 }
@@ -7210,18 +7222,29 @@ fn cases() -> Vec<Case> {
                 // real library download with it; a watch's download is a step
                 // of its launch now (`ReplayEvent::Preparing`).
                 ReplayEvent::VaultDownloadStarted { uid: 44 }.into(),
-                ReplayEvent::Connecting.into(),
+                ReplayEvent::Connecting {
+                    launch: ReplayLaunch::Vault { uid: 7 },
+                }
+                .into(),
                 ReplayEvent::Playing {
                     uid: Some(7),
                     warning: None,
                 }
                 .into(),
-                ReplayEvent::Connecting.into(),
+                ReplayEvent::Connecting {
+                    launch: ReplayLaunch::File {
+                        path: "C:/replays/7.fafreplay".into(),
+                    },
+                }
+                .into(),
                 ReplayEvent::Failed {
                     reason: "could not update game to version 3701".into(),
                 }
                 .into(),
-                ReplayEvent::Connecting.into(),
+                ReplayEvent::Connecting {
+                    launch: ReplayLaunch::Vault { uid: 8 },
+                }
+                .into(),
                 ReplayEvent::Closed.into(),
                 // Called off from the status bar: back to idle, no failure. A
                 // cancel for another replay changes nothing.

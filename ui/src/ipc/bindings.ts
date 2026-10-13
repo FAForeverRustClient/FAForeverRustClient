@@ -3130,6 +3130,20 @@ export type GamePreferences = {
 	 */
 	confirmDownloadsBeforeJoining?: boolean,
 	/**
+	 *  Show the dialog that narrates a join, from the file check to the game
+	 *  window appearing.
+	 *
+	 *  Off, the status bar narrates the same alone. The dialog carries its
+	 *  own "do not show again", which is what turns this off; the settings
+	 *  row is how it comes back.
+	 */
+	showJoinProgress?: boolean,
+	/**
+	 *  The same for starting a replay: the file coming down, the engine build
+	 *  being checked, Forged Alliance opening.
+	 */
+	showReplayProgress?: boolean,
+	/**
 	 *  Maximum lifetime in days for cached game data and replay binaries.
 	 *  `None` or `0` means cache retention is indefinite / automatic purging is disabled.
 	 */
@@ -3221,6 +3235,8 @@ export type GamePreferencesPatch = {
 	launchWrapper?: string,
 	autoGenerateMaps?: boolean,
 	confirmDownloadsBeforeJoining?: boolean,
+	showJoinProgress?: boolean,
+	showReplayProgress?: boolean,
 	cacheLifetimeDays?: number | null,
 	cacheSizeAlertGb?: number | null,
 	cacheRollingBranches?: boolean,
@@ -7948,7 +7964,9 @@ export type ReplayDownloadStatus = { type: "idle" } | { type: "downloading"; pay
 	reason: string,
 } };
 
-export type ReplayEvent = { type: "connecting" } |
+export type ReplayEvent = { type: "connecting"; payload: {
+	launch: ReplayLaunch,
+} } |
 /**  One step of the launch being prepared. See [`ReplayState::preparing`]. */
 { type: "preparing"; payload: {
 	step: ReplayPreparation,
@@ -8081,6 +8099,27 @@ export type ReplayGameOption = {
 	key: string,
 	value: string,
 };
+
+/**
+ *  Which replay a launch is starting.
+ *
+ *  What the starting dialog names: its map and its id, looked up in the lists
+ *  the client already holds. The status line used to say only "connecting",
+ *  and the dialog over it could not tell one replay from another.
+ */
+export type ReplayLaunch =
+/**  A finished game from the vault, by its game id. */
+{ type: "vault"; payload: {
+	uid: number,
+} } |
+/**  A game still being played, with the map its stream was opened for. */
+{ type: "live"; payload: {
+	target: LiveReplayTarget,
+} } |
+/**  A replay file on this disk. */
+{ type: "file"; payload: {
+	path: string,
+} };
 
 /**
  *  A private, local comment and set of tags on one replay (#324).
@@ -8501,7 +8540,11 @@ export type ReplayState = {
 	recentMatchmakerStatus: VaultStatus,
 };
 
-export type ReplayStatus = { type: "idle" } | { type: "connecting" } |
+export type ReplayStatus = { type: "idle" } |
+/**  A launch is being prepared. See [`ReplayLaunch`]. */
+{ type: "connecting"; payload: {
+	launch: ReplayLaunch,
+} } |
 /**
  *  FA has been launched. `uid` is `None` for a local file whose header
  *  failed to parse (playback still proceeds; we just can't label it).

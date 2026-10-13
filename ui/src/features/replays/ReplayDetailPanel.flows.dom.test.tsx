@@ -169,7 +169,7 @@ describe("Replay detail flows, mounted from the Replays workspace", () => {
     // which has not arrived between two clicks of one double click.
     expect(sent("watchVault")).toEqual([watchVault(5151), watchVault(5151)]);
 
-    replayEvent({ type: "connecting" });
+    replayEvent({ type: "connecting", payload: { launch: { type: "vault", payload: { uid: 5151 } } } });
     expect(watch).toHaveProperty("disabled", true);
     clearSentCommands();
     await user.dblClick(watch);
@@ -197,7 +197,7 @@ describe("Replay detail flows, mounted from the Replays workspace", () => {
     const dialog = await openCard(user, "Ladder night");
     const watch = within(dialog).getByRole("button", { name: "Watch" });
 
-    replayEvent({ type: "connecting" });
+    replayEvent({ type: "connecting", payload: { launch: { type: "vault", payload: { uid: 5151 } } } });
     expect(watch).toHaveProperty("disabled", true);
     await user.click(watch);
     expect(sent("watchVault")).toEqual([]);

@@ -1740,6 +1740,18 @@ pub struct GamePreferences {
     /// it, whatever this is set to.
     #[serde(default = "default_true")]
     pub confirm_downloads_before_joining: bool,
+    /// Show the dialog that narrates a join, from the file check to the game
+    /// window appearing.
+    ///
+    /// Off, the status bar narrates the same alone. The dialog carries its
+    /// own "do not show again", which is what turns this off; the settings
+    /// row is how it comes back.
+    #[serde(default = "default_true")]
+    pub show_join_progress: bool,
+    /// The same for starting a replay: the file coming down, the engine build
+    /// being checked, Forged Alliance opening.
+    #[serde(default = "default_true")]
+    pub show_replay_progress: bool,
     /// Maximum lifetime in days for cached game data and replay binaries.
     /// `None` or `0` means cache retention is indefinite / automatic purging is disabled.
     #[serde(default = "default_cache_lifetime_days")]
@@ -1839,6 +1851,8 @@ impl Default for GamePreferences {
             launch_wrapper: String::new(),
             auto_generate_maps: true,
             confirm_downloads_before_joining: true,
+            show_join_progress: true,
+            show_replay_progress: true,
             cache_lifetime_days: default_cache_lifetime_days(),
             cache_size_alert_gb: default_cache_size_alert_gb(),
             cache_rolling_branches: false,
@@ -3413,6 +3427,8 @@ preference_patch! {
         launch_wrapper: String,
         auto_generate_maps: bool,
         confirm_downloads_before_joining: bool,
+        show_join_progress: bool,
+        show_replay_progress: bool,
         cache_lifetime_days: Option<u32>,
         cache_size_alert_gb: Option<u32>,
         cache_rolling_branches: bool,
