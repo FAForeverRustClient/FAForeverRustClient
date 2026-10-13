@@ -18,4 +18,3 @@ anything inside it.
 - Security fixes in the guide reader and the guide review queue, which now also shows the link each submission points to.
 - A guide with unusual formatting no longer freezes the client while it opens.
 - A custom background picture loads faster when the client starts.
-- The External links tab is laid out as four cards with an icon for every site, and fits on one screen.
