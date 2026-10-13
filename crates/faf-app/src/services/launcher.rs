@@ -41,6 +41,10 @@ impl LaunchSession {
         // apply backpressure instead of silently dropping the one candidate a
         // peer needs to connect.
         tracing::trace!(%command, "launcher: forwarding lobby relay message to adapter");
+        if is_handshake_order(&command) {
+            // Names only: the arguments carry peers' addresses and ids.
+            tracing::info!(%command, "server -> game: lobby handshake");
+        }
         if self
             .from_lobby
             .send(RelayMsg { command, args })
@@ -50,6 +54,16 @@ impl LaunchSession {
             tracing::warn!("launcher: connectivity adapter stopped accepting lobby messages");
         }
     }
+}
+
+/// The orders from the server that move the game out of its "Connecting"
+/// screen. Logged by name at the default level, together with the game's own
+/// `GameState` reports, because a game that stays on "Connecting" is the
+/// question they answer: the game said `Idle`, the server said `HostGame` or
+/// `JoinGame`, and which of the two never came (#499). Everything else in the
+/// relay stays at trace: it is per peer and per candidate.
+fn is_handshake_order(command: &str) -> bool {
+    matches!(command, "HostGame" | "JoinGame")
 }
 
 /// Run the launch chain. Emits `InGame` on success (returning the session) or
@@ -202,6 +216,10 @@ pub async fn start(
         tracing::debug!("launcher: adapter->lobby pump started");
         while let Some(msg) = to_lobby.recv().await {
             tracing::trace!(command = %msg.command, "launcher: adapter -> server lobby");
+            if msg.command == "GameState" {
+                let state = msg.args.first().and_then(Value::as_str).unwrap_or("?");
+                tracing::info!(state, "game -> server: game state");
+            }
             lobby.send_game_relay(msg.command, msg.args);
         }
         tracing::debug!("launcher: adapter->lobby pump ended (adapter session channel closed)");
