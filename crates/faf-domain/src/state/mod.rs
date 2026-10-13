@@ -87,11 +87,12 @@ pub use leaderboard::{
     RatingLeaderboard, RatingPage, RatingQuery, SeasonLeaderboard,
 };
 pub use lobby::{
-    rating_for_game, rating_gate_blocks, reconcile_avatar, remember_avatar, title_marks_go_adapter,
-    with_go_adapter_tag, AvailableAvatar, AvatarListStatus, AvatarReconciliation, Game, GameLaunch,
-    HostGameConfig, JoinState, LobbyCommand, LobbyEvent, LobbyState, LobbyStatus, MatchmakerQueue,
-    MatchmakingState, PartyMember, PartyState, PlayMode, PlayerVeto, PreparationPhase, RatingRange,
-    GLOBAL_LEADERBOARD, GO_ADAPTER_TITLE_TAG,
+    rating_for_game, rating_gate_blocks, reconcile_avatar, remember_avatar, title_marks_exp_java_adapter,
+    title_marks_go_adapter, with_exp_java_adapter_tag, with_go_adapter_tag, AvailableAvatar,
+    AvatarListStatus, AvatarReconciliation, Game, GameLaunch, HostGameConfig, JoinState,
+    LobbyCommand, LobbyEvent, LobbyState, LobbyStatus, MatchmakerQueue, MatchmakingState,
+    PartyMember, PartyState, PlayMode, PlayerVeto, PreparationPhase, RatingRange,
+    EXP_JAVA_ADAPTER_TITLE_TAG, GLOBAL_LEADERBOARD, GO_ADAPTER_TITLE_TAG,
 };
 pub use map_generator::{
     is_valid_preset_name, preset_file_name, DecodedMapName, DecodedStyle, GenerationType,

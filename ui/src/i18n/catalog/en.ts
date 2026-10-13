@@ -895,8 +895,10 @@ export const en = {
   "lobby.browser.ranked": "Ranked",
   "lobby.browser.unranked": "Unranked",
   "lobby.browser.goAdapter": "Go adapter",
+  "lobby.browser.expJavaAdapter": "Exp Java",
   "lobby.browser.moreTags": "+{count} more",
   "lobby.browser.goAdapterTitle": "Hosted on the Go adapter (faf-pioneer). On Dynamic you join on Go automatically; otherwise choose Go in the connectivity settings.",
+  "lobby.browser.expJavaAdapterTitle": "Hosted on the Experimental Java adapter (v4.0.0). On Dynamic you join on Exp Java automatically; otherwise choose Exp Java in the connectivity settings.",
   // The sim-mod tag says how many, and its tooltip says the thing the count
   // does not: whether those mods cost the game its rating. Plural because
   // German needs a different noun form, which a ternary could not express.
@@ -1788,6 +1790,7 @@ export const en = {
   "settings.updates.aNewerVersion": "a newer version",
   "settings.updates.lastChecked": "checked {time}",
   "settings.connectivity.java": "Java (faf-ice-adapter)",
+  "settings.connectivity.expJava": "Exp Java (faf-ice-adapter 4.0.0)",
   "settings.connectivity.go": "Go (faf-pioneer, experimental)",
   // The connectivity check and the live relay view (Settings > Connectivity).
   "settings.connectivityCheck.label": "Connectivity check",
@@ -1805,6 +1808,7 @@ export const en = {
   "settings.connectivityCheck.outcome.fail": "Failed",
   "settings.connectivityCheck.adapter.dynamic": "Dynamic (follows the host)",
   "settings.connectivityCheck.adapter.java": "Java",
+  "settings.connectivityCheck.adapter.expJava": "Exp Java",
   "settings.connectivityCheck.adapter.go": "Pioneer (Go)",
   "settings.connectivityCheck.transport.udp": "UDP",
   "settings.connectivityCheck.transport.tcp": "TCP",

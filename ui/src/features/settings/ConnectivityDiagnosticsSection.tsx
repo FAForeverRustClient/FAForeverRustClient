@@ -41,6 +41,7 @@ type Translate = Translation["t"];
 const ADAPTER: Record<IceAdapter, MessageKey> = {
   dynamic: "settings.connectivityCheck.adapter.dynamic",
   java: "settings.connectivityCheck.adapter.java",
+  expJava: "settings.connectivityCheck.adapter.expJava",
   go: "settings.connectivityCheck.adapter.go",
 };
 

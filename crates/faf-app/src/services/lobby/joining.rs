@@ -2,8 +2,8 @@
 //! the map before the server is asked, and calling a join off.
 
 use faf_domain::state::{
-    with_go_adapter_tag, HostGameConfig, HostGamePreferences, IceAdapter, JoinState, LobbyEvent,
-    SettingsEvent,
+    with_exp_java_adapter_tag, with_go_adapter_tag, HostGameConfig, HostGamePreferences,
+    IceAdapter, JoinState, LobbyEvent, SettingsEvent,
 };
 
 use crate::ports::ModPrepFailure;
@@ -200,12 +200,19 @@ pub(super) async fn host(config: HostGameConfig, ctx: &ServiceCtx, out: &EventSi
                     (),
                 )
             });
-            // Hosted on Go, the title says so, for everybody on Dynamic to
-            // join on Go as well; see `GO_ADAPTER_TITLE_TAG`. After the
+            // Hosted on Go or Exp Java, the title says so, for everybody on Dynamic to
+            // join on the corresponding adapter as well; see `GO_ADAPTER_TITLE_TAG`
+            // and `EXP_JAVA_ADAPTER_TITLE_TAG`. After the
             // remembered form above, which keeps the title as typed.
-            let config = if ctx.ports.ice.hosting_adapter() == IceAdapter::Go {
+            let host_adapter = ctx.ports.ice.hosting_adapter();
+            let config = if host_adapter == IceAdapter::Go {
                 HostGameConfig {
                     title: with_go_adapter_tag(&config.title),
+                    ..config
+                }
+            } else if host_adapter == IceAdapter::ExpJava {
+                HostGameConfig {
+                    title: with_exp_java_adapter_tag(&config.title),
                     ..config
                 }
             } else {

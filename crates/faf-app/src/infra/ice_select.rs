@@ -34,12 +34,14 @@ pub(crate) fn adapter_override() -> Option<IceAdapter> {
 pub(crate) fn parse_adapter(raw: &str) -> IceAdapter {
     match raw.trim().to_ascii_lowercase().as_str() {
         "go" | "pioneer" | "faf-pioneer" => IceAdapter::Go,
+        "exp_java" | "exp-java" | "expjava" => IceAdapter::ExpJava,
         _ => IceAdapter::Java,
     }
 }
 
 pub struct SelectableIce {
     java: Arc<dyn IcePort>,
+    exp_java: Arc<dyn IcePort>,
     go: Arc<dyn IcePort>,
     /// The user's choice for joining. Ignored while [`adapter_override`]
     /// returns a value.
@@ -53,9 +55,14 @@ pub struct SelectableIce {
 }
 
 impl SelectableIce {
-    pub fn new(java: Arc<dyn IcePort>, go: Arc<dyn IcePort>) -> Self {
+    pub fn new(
+        java: Arc<dyn IcePort>,
+        exp_java: Arc<dyn IcePort>,
+        go: Arc<dyn IcePort>,
+    ) -> Self {
         Self {
             java,
+            exp_java,
             go,
             preferred: Mutex::new(IceAdapter::default()),
             preferred_host: Mutex::new(IceAdapter::Java),
@@ -81,6 +88,7 @@ impl SelectableIce {
             // `for_game` never returns `Dynamic`; Java is the safe reading of
             // an undecided choice all the same.
             IceAdapter::Java | IceAdapter::Dynamic => &self.java,
+            IceAdapter::ExpJava => &self.exp_java,
             IceAdapter::Go => &self.go,
         }
     }
@@ -114,6 +122,7 @@ impl IcePort for SelectableIce {
             // left a process behind, so stop both rather than guess.
             None => {
                 self.java.stop();
+                self.exp_java.stop();
                 self.go.stop();
             }
         }
@@ -130,14 +139,16 @@ impl IcePort for SelectableIce {
     fn hosting_adapter(&self) -> IceAdapter {
         match adapter_override().unwrap_or_else(|| *self.preferred_host.lock().unwrap()) {
             IceAdapter::Go => IceAdapter::Go,
+            IceAdapter::ExpJava => IceAdapter::ExpJava,
             _ => IceAdapter::Java,
         }
     }
 
-    /// Pushed to both backends rather than only the selected one: the
+    /// Pushed to all backends rather than only the selected one: the
     /// preference can change between this call and the next launch.
     fn set_debug_windows(&self, windows: IceDebugWindows) {
         self.java.set_debug_windows(windows);
+        self.exp_java.set_debug_windows(windows);
         self.go.set_debug_windows(windows);
     }
 
@@ -205,16 +216,17 @@ mod tests {
         }
     }
 
-    fn pair() -> (Arc<Counting>, Arc<Counting>, SelectableIce) {
+    fn pair() -> (Arc<Counting>, Arc<Counting>, Arc<Counting>, SelectableIce) {
         let java = Arc::new(Counting::default());
+        let exp_java = Arc::new(Counting::default());
         let go = Arc::new(Counting::default());
-        let ice = SelectableIce::new(java.clone(), go.clone());
-        (java, go, ice)
+        let ice = SelectableIce::new(java.clone(), exp_java.clone(), go.clone());
+        (java, exp_java, go, ice)
     }
 
     #[tokio::test]
     async fn java_is_the_default_backend() {
-        let (java, go, ice) = pair();
+        let (java, _exp_java, go, ice) = pair();
         ice.start(params()).await.unwrap();
         assert_eq!(java.started.load(Ordering::SeqCst), 1);
         assert_eq!(go.started.load(Ordering::SeqCst), 0);
@@ -222,10 +234,13 @@ mod tests {
 
     #[tokio::test]
     async fn dynamic_joins_a_marked_lobby_on_go_and_every_other_on_java() {
-        let (java, go, ice) = pair();
+        let (java, exp_java, go, ice) = pair();
         ice.set_backend(IceAdapter::Dynamic);
         ice.start(titled("Friday 4v4 [go-adapter]")).await.unwrap();
         assert_eq!(go.started.load(Ordering::SeqCst), 1, "the host is on Go");
+        ice.stop();
+        ice.start(titled("Friday 4v4 [exp-java-adapter]")).await.unwrap();
+        assert_eq!(exp_java.started.load(Ordering::SeqCst), 1, "the host is on Exp Java");
         ice.stop();
         ice.start(titled("Friday 4v4")).await.unwrap();
         assert_eq!(java.started.load(Ordering::SeqCst), 1, "no mark, so Java");
@@ -234,7 +249,7 @@ mod tests {
 
     #[tokio::test]
     async fn an_explicit_choice_ignores_the_mark() {
-        let (java, go, ice) = pair();
+        let (java, _exp_java, go, ice) = pair();
         ice.set_backend(IceAdapter::Java);
         ice.start(titled("Friday 4v4 [go-adapter]")).await.unwrap();
         assert_eq!(java.started.load(Ordering::SeqCst), 1);
@@ -243,7 +258,7 @@ mod tests {
 
     #[test]
     fn hosting_has_its_own_choice() {
-        let (_java, _go, ice) = pair();
+        let (_java, _exp_java, _go, ice) = pair();
         if adapter_override().is_some() {
             return;
         }
@@ -256,6 +271,8 @@ mod tests {
         );
         ice.set_host_backend(IceAdapter::Go);
         assert_eq!(ice.hosting_adapter(), IceAdapter::Go);
+        ice.set_host_backend(IceAdapter::ExpJava);
+        assert_eq!(ice.hosting_adapter(), IceAdapter::ExpJava);
         ice.set_host_backend(IceAdapter::Dynamic);
         assert_eq!(
             ice.hosting_adapter(),
@@ -268,7 +285,7 @@ mod tests {
     async fn a_hosted_game_starts_on_the_hosting_choice() {
         // Joining on explicit Java while hosting on Go: the title carries the
         // mark, and the host's own game has to run on what the mark says.
-        let (java, go, ice) = pair();
+        let (java, _exp_java, go, ice) = pair();
         if adapter_override().is_some() {
             return;
         }
@@ -287,7 +304,7 @@ mod tests {
     #[tokio::test]
     async fn choosing_java_takes_effect_on_the_next_launch() {
         // The point of holding both: no restart.
-        let (java, go, ice) = pair();
+        let (java, _exp_java, go, ice) = pair();
         ice.set_backend(IceAdapter::Java);
         ice.start(params()).await.unwrap();
         assert_eq!(java.started.load(Ordering::SeqCst), 1);
@@ -298,7 +315,7 @@ mod tests {
     async fn stop_reaches_the_backend_that_is_actually_running() {
         // Switching the preference mid-game must not leave the started
         // adapter alive while stopping an idle one.
-        let (java, go, ice) = pair();
+        let (java, _exp_java, go, ice) = pair();
         ice.start(params()).await.unwrap();
         ice.set_backend(IceAdapter::Go);
         ice.stop();
@@ -310,9 +327,10 @@ mod tests {
     #[tokio::test]
     async fn stopping_without_a_started_backend_stops_both() {
         // A start that failed part-way may still have left a process behind.
-        let (java, go, ice) = pair();
+        let (java, exp_java, go, ice) = pair();
         ice.stop();
         assert_eq!(java.stopped.load(Ordering::SeqCst), 1);
+        assert_eq!(exp_java.stopped.load(Ordering::SeqCst), 1);
         assert_eq!(go.stopped.load(Ordering::SeqCst), 1);
     }
 
@@ -322,8 +340,9 @@ mod tests {
             fail: true,
             ..Counting::default()
         });
+        let exp_java = Arc::new(Counting::default());
         let go = Arc::new(Counting::default());
-        let ice = SelectableIce::new(java.clone(), go.clone());
+        let ice = SelectableIce::new(java.clone(), exp_java.clone(), go.clone());
 
         let error = match ice.start(params()).await {
             Ok(_) => panic!("experimental fallback unexpectedly started"),
@@ -333,13 +352,14 @@ mod tests {
         assert_eq!(java.started.load(Ordering::SeqCst), 1);
         assert_eq!(go.started.load(Ordering::SeqCst), 0);
         assert_eq!(java.stopped.load(Ordering::SeqCst), 1);
+        assert_eq!(exp_java.stopped.load(Ordering::SeqCst), 1);
         assert_eq!(go.stopped.load(Ordering::SeqCst), 1);
         assert_eq!(error, "Java (faf-ice-adapter) could not start: no adapter");
     }
 
     #[tokio::test]
     async fn the_relay_status_comes_from_the_running_backend() {
-        let (_java, _go, ice) = pair();
+        let (_java, _exp_java, _go, ice) = pair();
         assert_eq!(
             ice.relay_status().await,
             RelayStatus::Idle,
@@ -366,6 +386,8 @@ mod tests {
         assert_eq!(parse_adapter("  GO "), IceAdapter::Go);
         assert_eq!(parse_adapter("pioneer"), IceAdapter::Go);
         assert_eq!(parse_adapter("faf-pioneer"), IceAdapter::Go);
+        assert_eq!(parse_adapter("exp_java"), IceAdapter::ExpJava);
+        assert_eq!(parse_adapter("exp-java"), IceAdapter::ExpJava);
         assert_eq!(parse_adapter("java"), IceAdapter::Java);
     }
 

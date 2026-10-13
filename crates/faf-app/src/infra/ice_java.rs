@@ -61,6 +61,15 @@ impl JavaConfig {
             log_dir: log_directory().to_string_lossy().into_owned(),
         }
     }
+
+    pub fn exp_faf() -> Self {
+        Self {
+            java_path: super::java_runtime::preferred_java_path(),
+            jar_path: default_exp_jar_path(),
+            api_base: env_or("FAF_API_BASE", "https://api.faforever.com"),
+            log_dir: log_directory().to_string_lossy().into_owned(),
+        }
+    }
 }
 
 /// Where the adapters write their logs: `FAF_ICE_LOG_DIR`, or the default
@@ -88,6 +97,20 @@ pub(crate) fn default_jar_path() -> String {
         .unwrap_or_default()
 }
 
+pub(crate) fn default_exp_jar_path() -> String {
+    if let Ok(path) = std::env::var("FAF_EXP_JAVA_ICE_ADAPTER_JAR") {
+        if !path.trim().is_empty() {
+            return path;
+        }
+    }
+
+    let roots = crate::infra::helper_search_roots();
+
+    resolve_exp_jar_from_roots(&roots)
+        .map(|path| path.to_string_lossy().into_owned())
+        .unwrap_or_default()
+}
+
 fn resolve_jar_from_roots(roots: &[PathBuf]) -> Option<PathBuf> {
     roots
         .iter()
@@ -102,6 +125,24 @@ fn resolve_jar_from_roots(roots: &[PathBuf]) -> Option<PathBuf> {
                     .join("faf-ice-adapter.jar"),
                 root.join("java-ice-adapter").join("faf-ice-adapter.jar"),
                 root.join("faf-ice-adapter.jar"),
+            ]
+        })
+        .find(|candidate| candidate.is_file())
+}
+
+fn resolve_exp_jar_from_roots(roots: &[PathBuf]) -> Option<PathBuf> {
+    roots
+        .iter()
+        .flat_map(|root| {
+            [
+                root.join("natives")
+                    .join("exp-java-ice-adapter")
+                    .join("faf-ice-adapter.jar"),
+                root.join("resources")
+                    .join("natives")
+                    .join("exp-java-ice-adapter")
+                    .join("faf-ice-adapter.jar"),
+                root.join("exp-java-ice-adapter").join("faf-ice-adapter.jar"),
             ]
         })
         .find(|candidate| candidate.is_file())
@@ -179,6 +220,10 @@ impl JavaAdapter {
 
     pub fn faf(tokens: TokenStore) -> Self {
         Self::new(JavaConfig::faf(), tokens)
+    }
+
+    pub fn exp_faf(tokens: TokenStore) -> Self {
+        Self::new(JavaConfig::exp_faf(), tokens)
     }
 
     /// Share the session memory the connectivity check reads.

@@ -1915,9 +1915,10 @@ export type ConnectivityPreferences = {
 	/**  The adapter games are joined on. `Dynamic` by default. */
 	adapter: IceAdapter,
 	/**
-	 *  The adapter games this client hosts run on: Java or Go, Java by
+	 *  The adapter games this client hosts run on: Java, ExpJava, or Go, Java by
 	 *  default. Hosting on Go marks the title (see
-	 *  `lobby::GO_ADAPTER_TITLE_TAG`) so a `Dynamic` joiner follows.
+	 *  `lobby::GO_ADAPTER_TITLE_TAG`) and hosting on ExpJava marks the title (see
+	 *  `lobby::EXP_JAVA_ADAPTER_TITLE_TAG`) so a `Dynamic` joiner follows.
 	 */
 	hostAdapter: IceAdapter,
 	/**
@@ -3798,6 +3799,8 @@ export type IceAdapter =
 "dynamic" |
 /**  `faf-ice-adapter`, driven over JSON-RPC. */
 "java" |
+/**  Experimental Java adapter (v4.0.0). */
+"expJava" |
 /**
  *  Experimental faf-pioneer backend. Owns a local GPGNet relay the Java
  *  adapter has no equivalent of.
