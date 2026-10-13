@@ -1,0 +1,1 @@
+- The player card has a new header and overview: rating tiles with league emblem, mean and deviation, and the rest of the profile as cards beside each other.
