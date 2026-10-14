@@ -521,7 +521,7 @@ const INITIAL: AppState = {
       sound: true,
       // Chime everywhere but the found match, mirroring
       // `NotificationSoundChoices::default()` in
-      // `crates/faf-domain/src/state/settings.rs`. The two are compared by the
+      // `crates/faf-domain/src/state/settings/notifications.rs`. The two are compared by the
       // reducer conformance fixture, so changing one without the other fails
       // CI rather than drifting quietly.
       sounds: {

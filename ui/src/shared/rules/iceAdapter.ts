@@ -1,6 +1,6 @@
 // Which ICE adapter a game starts on.
 //
-// Twin of `IceAdapter::for_game` in the domain's `state/settings.rs`, pinned by
+// Twin of `IceAdapter::for_game` in the domain's `state/settings/connectivity.rs`, pinned by
 // the `iceAdapterChoices` cases in the conformance fixture. The backend makes
 // the real choice when it starts the adapter (`SelectableIce::selected`, from
 // the launch order's title); this reads the same title and the same setting so

@@ -13,7 +13,7 @@
  *
  * ── How to put it back ──────────────────────────────────────────────────
  *
- * 1. faf-domain, `state/settings.rs`: add the variant back to `Theme`. It was
+ * 1. faf-domain, `state/settings/appearance.rs`: add the variant back to `Theme`. It was
  *    called `Test` and serialised as `test`, which is the name to change if it
  *    ships for real. Adding it next to `PythonClient` rather than replacing it
  *    is the cheaper move: two themes cost one token block.
