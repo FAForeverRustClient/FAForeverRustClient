@@ -1,0 +1,1 @@
+- The Events tab no longer has a subtitle under its title.
