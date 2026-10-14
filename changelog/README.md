@@ -38,24 +38,6 @@ what the pull request does, change the snippet with it. The pull request
 number is only known once the pull request is open, so the snippet is usually
 its second commit.
 
-## Writing a line
-
-- One sentence, ideally under 20 words. The details belong in the pull
-  request.
-- What the player notices, in their words: "window", not "page" or "web
-  view".
-- A fix says what no longer goes wrong: "no longer blurry", "no longer cuts
-  a running game's connection".
-- Concrete, not vague: "an icon for each folder", not "easier to read".
-- Exactly what changed and no more: "avatars in player lists" when the
-  avatars in chat messages were left as they were.
-- A setting by its place in the client: (Settings, General, "Keep running
-  during a game").
-
-```markdown
-- Flags and avatars in player lists are no longer blurry on scaled displays, such as 4K at 150%.
-```
-
 ## At release
 
 The Release workflow combines every snippet added since the previous release
@@ -78,6 +60,24 @@ snippet, so a typo in a file name cannot silently drop a line from the release.
 
 This is the scheme FAForever/fa uses for its game patch notes
 (`changelog/snippets` there), trimmed to the categories a client needs.
+
+## Writing a line
+
+- One sentence, ideally under 20 words. The details belong in the pull
+  request.
+- What the player notices, in their words: "window", not "page" or "web
+  view".
+- A fix says what no longer goes wrong: "no longer blurry", "no longer cuts
+  a running game's connection".
+- Concrete, not vague: "an icon for each folder", not "easier to read".
+- Exactly what changed and no more: "avatars in player lists" when the
+  avatars in chat messages were left as they were.
+- A setting by its place in the client: (Settings, General, "Keep running
+  during a game").
+
+```markdown
+- Flags and avatars in player lists are no longer blurry on scaled displays, such as 4K at 150%.
+```
 
 ## Highlights
 
