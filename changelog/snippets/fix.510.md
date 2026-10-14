@@ -1,0 +1,1 @@
+- Flags and avatars in player lists are no longer blurry on scaled displays, such as 4K at 150%.

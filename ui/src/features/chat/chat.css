@@ -1788,10 +1788,15 @@ img.chat-game-map {
   border-radius: var(--radius-sm);
 }
 
+/* Sharp on a scaled screen: a 40x20 avatar at 150 % covers 60x30 device
+   pixels, and smoothing that stretch blurs it. Same as the sidebar's. */
 .chat-avatar img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
 }
 
 /* Country flag sits between the avatar and the clan/name identity. */
@@ -2036,6 +2041,9 @@ img.chat-game-map {
   width: 40px;
   height: 20px;
   object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
 }
 
 .chat-game-elapsed b {
@@ -2183,6 +2191,9 @@ img.chat-game-map {
 .chat-player-card-avatar {
   flex: 0 0 auto;
   border-radius: var(--radius-sm);
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
 }
 
 .chat-player-card-empty {

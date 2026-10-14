@@ -1501,6 +1501,9 @@ html[data-background="custom"] .training-collection-head {
   height: 20px;
   padding: 5px;
   object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);

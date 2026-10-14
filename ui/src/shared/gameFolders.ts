@@ -6,6 +6,7 @@
 // anywhere. It exists once here so those two never disagree about what a
 // "client folder" is.
 
+import type { IconName } from "../design-system/Icon";
 import { native, type ClientFolder, type LogKind } from "../ipc/native";
 import type { MessageKey } from "../i18n";
 
@@ -24,6 +25,8 @@ export interface FolderEntry {
   /** Stable id: the React key, and what a test names. */
   id: string;
   label: MessageKey;
+  /** Maps, mods and replays take their tab's icon, so the two read as one. */
+  icon: IconName;
   target: FolderTarget;
 }
 
@@ -45,20 +48,20 @@ export const FOLDER_GROUPS: readonly FolderGroup[] = [
     id: "client",
     title: "settings.folders.label",
     entries: [
-      { id: "maps", label: "settings.folders.maps", target: { kind: "client", folder: "maps" } },
-      { id: "mods", label: "settings.folders.mods", target: { kind: "client", folder: "mods" } },
-      { id: "replays", label: "settings.folders.replays", target: { kind: "client", folder: "replays" } },
-      { id: "vault", label: "settings.folders.vault", target: { kind: "client", folder: "vault" } },
-      { id: "gameCache", label: "settings.folders.gameCache", target: { kind: "client", folder: "gameCache" } },
-      { id: "gamePrefs", label: "settings.folders.gamePrefs", target: { kind: "client", folder: "gamePrefs" } },
+      { id: "maps", label: "settings.folders.maps", icon: "maps", target: { kind: "client", folder: "maps" } },
+      { id: "mods", label: "settings.folders.mods", icon: "mods", target: { kind: "client", folder: "mods" } },
+      { id: "replays", label: "settings.folders.replays", icon: "replays", target: { kind: "client", folder: "replays" } },
+      { id: "vault", label: "settings.folders.vault", icon: "folder", target: { kind: "client", folder: "vault" } },
+      { id: "gameCache", label: "settings.folders.gameCache", icon: "drive", target: { kind: "client", folder: "gameCache" } },
+      { id: "gamePrefs", label: "settings.folders.gamePrefs", icon: "settings", target: { kind: "client", folder: "gamePrefs" } },
     ],
   },
   {
     id: "diagnostics",
     title: "gameFolders.diagnostics",
     entries: [
-      { id: "gameLogs", label: "settings.diagnostics.gameLogs", target: { kind: "log", log: "game" } },
-      { id: "clientLogs", label: "settings.diagnostics.clientLogs", target: { kind: "log", log: "client" } },
+      { id: "gameLogs", label: "settings.diagnostics.gameLogs", icon: "changelog", target: { kind: "log", log: "game" } },
+      { id: "clientLogs", label: "settings.diagnostics.clientLogs", icon: "changelog", target: { kind: "log", log: "client" } },
     ],
   },
 ];

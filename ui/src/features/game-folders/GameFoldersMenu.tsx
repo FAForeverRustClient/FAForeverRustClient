@@ -21,6 +21,11 @@ import { FOLDER_GROUPS, openFolderEntry, type FolderEntry } from "../../shared/g
 import { plainError } from "../../shared/plainError";
 import "./game-folders.css";
 
+// The menu's size in English before it has been measured, for its first
+// frame: close to the real one, so it does not visibly jump into place.
+const ESTIMATED_WIDTH = 212;
+const ESTIMATED_HEIGHT = 340;
+
 export function GameFoldersMenu() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -39,8 +44,8 @@ export function GameFoldersMenu() {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const menu = menuRef.current?.getBoundingClientRect();
-    const menuHeight = menu?.height ?? 270;
-    const menuWidth = menu?.width ?? 200;
+    const menuHeight = menu?.height ?? ESTIMATED_HEIGHT;
+    const menuWidth = menu?.width ?? ESTIMATED_WIDTH;
 
     // Position to the right of the trigger / sidebar
     let left = trigger.right + 8;
@@ -91,7 +96,7 @@ export function GameFoldersMenu() {
       const trigger = triggerRef.current?.getBoundingClientRect();
       if (trigger) {
         const left = Math.round(trigger.right + 8);
-        const top = Math.round(Math.max(8, trigger.bottom - 270));
+        const top = Math.round(Math.max(8, trigger.bottom - ESTIMATED_HEIGHT));
         setPosition({ top, left });
       }
     }
@@ -144,7 +149,11 @@ export function GameFoldersMenu() {
                     key={entry.id}
                     onClick={() => void openEntry(entry)}
                   >
-                    {t(entry.label)}
+                    <Icon className="game-folders-entry-icon" name={entry.icon} size={16} />
+                    <span className="game-folders-entry-label">{t(entry.label)}</span>
+                    {/* It opens outside the client, in the file manager: said
+                        on the row being pointed at, not on all eight. */}
+                    <Icon className="game-folders-entry-opens" name="external" size={13} />
                   </button>
                 ))}
               </div>
