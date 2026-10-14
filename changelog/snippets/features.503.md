@@ -1,0 +1,2 @@
+- Closing the client during a game hides it to the tray, so the game keeps its connection, and the client closes by itself once the game ends and its replay is uploaded. "Keep running during a game" in Settings, General turns this off.
+- On Windows, the client's window comes back by itself if its page crashes, without taking the focus from your game.
