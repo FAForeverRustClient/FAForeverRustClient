@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use super::map_generator_name::{MAP_SIZE_STEP, NUM_BINS, SYMMETRIES};
+use crate::state::GeneratorOptionLists;
 
 /// The map-name template. Lower case throughout because the server rejects
 /// mixed-case map names (the Java client's `GENERATED_MAP_NAME` carries the
@@ -654,6 +655,11 @@ fn pick_density(
 /// so the batch becomes one single-map run per map instead, each with its own
 /// fresh pick for every parameter.
 ///
+/// A list left on "Random" counts as a selection of everything in `all`, the
+/// lists the generator release reports: several maps asked for at random are
+/// several different maps, each with its own visible pick, rather than seeds
+/// of one configuration the generator chose once. See [`random_from_all`].
+///
 /// Everything else stays one run: a single map, a pinned seed (which already
 /// forces one map), raw arguments, a generation-type preset (which ignores the
 /// style options), or a selection with nothing to choose between. There the
@@ -663,20 +669,81 @@ fn pick_density(
 /// randomness stays with the caller and tests can drive it deterministically.
 pub fn plan_batch(
     options: &GeneratorOptions,
+    all: &GeneratorOptionLists,
     mut next_random: impl FnMut() -> u64,
 ) -> Vec<GeneratorOptions> {
     let count = options.num_to_generate.unwrap_or(1);
     let generator_batches_itself = count <= 1
         || !options.seed.is_empty()
         || !options.command_line_args.is_empty()
-        || options.generation_type.flag().is_some()
-        || !has_choices_to_reroll(options);
+        || options.generation_type.flag().is_some();
     if generator_batches_itself {
         return vec![options.clone()];
     }
+    let candidates = random_from_all(options, all);
+    if !has_choices_to_reroll(&candidates) {
+        return vec![options.clone()];
+    }
     (0..count)
-        .map(|_| resolve_choices(options, &mut next_random))
+        .map(|_| resolve_choices(&candidates, &mut next_random))
         .collect()
+}
+
+/// The options with every list left on "Random" replaced by the whole list.
+///
+/// The map style and the four component styles are one decision, not five:
+/// a map style replaces the components, and components make a custom map.
+/// So, as the generator decides it for a single map:
+///
+/// * a map style chosen: the components are ignored and stay as they are;
+/// * a component chosen: the map is custom, and each component still on
+///   "Random" draws from its whole list;
+/// * nothing chosen: each map draws a whole map style.
+///
+/// An empty list in `all` (a release too old to report it, or lists not read
+/// yet) leaves that choice where it was, with the generator.
+fn random_from_all(options: &GeneratorOptions, all: &GeneratorOptionLists) -> GeneratorOptions {
+    let mut filled = options.clone();
+    let fill = |single: &str, chosen: &mut Vec<String>, whole: &[String]| {
+        if single.is_empty() && chosen.is_empty() {
+            *chosen = whole.to_vec();
+        }
+    };
+    fill(&options.symmetry, &mut filled.symmetries, &all.symmetries);
+
+    let chosen = |single: &str, multi: &[String]| !single.is_empty() || !multi.is_empty();
+    let map_style = chosen(&options.style, &options.styles);
+    let custom = chosen(&options.terrain_style, &options.terrain_styles)
+        || chosen(&options.texture_style, &options.texture_styles)
+        || chosen(&options.resource_style, &options.resource_styles)
+        || chosen(&options.prop_style, &options.prop_styles);
+    if map_style {
+        // The map style decides the components.
+    } else if custom {
+        fill(
+            &options.terrain_style,
+            &mut filled.terrain_styles,
+            &all.terrain_styles,
+        );
+        fill(
+            &options.texture_style,
+            &mut filled.texture_styles,
+            &all.texture_styles,
+        );
+        fill(
+            &options.resource_style,
+            &mut filled.resource_styles,
+            &all.resource_styles,
+        );
+        fill(
+            &options.prop_style,
+            &mut filled.prop_styles,
+            &all.prop_styles,
+        );
+    } else {
+        fill(&options.style, &mut filled.styles, &all.styles);
+    }
+    filled
 }
 
 /// Whether any parameter has more than one candidate left to pick from.
@@ -2110,7 +2177,7 @@ mod tests {
         };
         let mut calls = 0u32;
         let mut random = seeded_random();
-        let batch = plan_batch(&options, || {
+        let batch = plan_batch(&options, &GeneratorOptionLists::empty(), || {
             calls += 1;
             random()
         });
@@ -2160,7 +2227,7 @@ mod tests {
             symmetries: vec!["POINT3".into(), "POINT4".into(), "XZ".into()],
             ..Default::default()
         };
-        for map in plan_batch(&options, seeded_random()) {
+        for map in plan_batch(&options, &GeneratorOptionLists::empty(), seeded_random()) {
             assert_ne!(map.symmetry, "POINT3", "POINT3 cannot make two teams");
         }
     }
@@ -2186,9 +2253,89 @@ mod tests {
             ..Default::default()
         };
         for options in [single_choices, pinned_seed, one_map] {
-            let batch = plan_batch(&options, || panic!("nothing to pick"));
+            let batch = plan_batch(&options, &GeneratorOptionLists::empty(), || {
+                panic!("nothing to pick")
+            });
             assert_eq!(batch, vec![options], "left to the generator's own batching");
         }
+    }
+
+    fn all_lists() -> GeneratorOptionLists {
+        let list = |values: &[&str]| values.iter().map(|v| v.to_string()).collect();
+        GeneratorOptionLists {
+            symmetries: list(&["POINT2", "POINT4", "XZ", "ZX"]),
+            styles: list(&["BASIC", "BIG_ISLANDS", "CENTER_LAKE", "LAND_BRIDGE"]),
+            terrain_styles: list(&["HILLY", "VALLEY", "MOUNTAIN_RANGE"]),
+            texture_styles: list(&["LUSH", "FROST", "MOON"]),
+            resource_styles: list(&["BASIC", "LOW_MEX", "WATER_MEX"]),
+            prop_styles: list(&["BASIC", "ROCKS", "ENEMY_CIV"]),
+        }
+    }
+
+    #[test]
+    fn a_random_batch_draws_each_map_from_the_whole_lists() {
+        // Everything on "Random": the generator's own batching would vary only
+        // the seed, so each map now draws a symmetry and a whole map style.
+        let options = GeneratorOptions {
+            num_to_generate: Some(6),
+            ..Default::default()
+        };
+        let all = all_lists();
+        let batch = plan_batch(&options, &all, seeded_random());
+
+        assert_eq!(batch.len(), 6, "one run per requested map");
+        for map in &batch {
+            assert_eq!(map.num_to_generate, None);
+            assert!(all.symmetries.contains(&map.symmetry));
+            assert!(all.styles.contains(&map.style));
+            // Nothing chose a component, so none is forced onto the map.
+            assert!(map.terrain_style.is_empty() && map.prop_style.is_empty());
+        }
+        let styles: std::collections::HashSet<_> = batch.iter().map(|m| &m.style).collect();
+        assert!(styles.len() > 1, "the maps differ in more than their seed");
+    }
+
+    #[test]
+    fn a_chosen_component_makes_the_random_ones_draw_components() {
+        let options = GeneratorOptions {
+            num_to_generate: Some(4),
+            terrain_style: "VALLEY".into(),
+            ..Default::default()
+        };
+        let all = all_lists();
+        for map in plan_batch(&options, &all, seeded_random()) {
+            assert!(map.style.is_empty(), "a custom map gets no map style");
+            assert_eq!(map.terrain_style, "VALLEY", "the choice is kept");
+            assert!(all.texture_styles.contains(&map.texture_style));
+            assert!(all.resource_styles.contains(&map.resource_style));
+            assert!(all.prop_styles.contains(&map.prop_style));
+        }
+    }
+
+    #[test]
+    fn a_chosen_map_style_leaves_the_components_alone() {
+        let options = GeneratorOptions {
+            num_to_generate: Some(4),
+            styles: vec!["BASIC".into()],
+            ..Default::default()
+        };
+        for map in plan_batch(&options, &all_lists(), seeded_random()) {
+            assert_eq!(map.style, "BASIC");
+            assert!(map.terrain_style.is_empty() && map.texture_style.is_empty());
+        }
+    }
+
+    #[test]
+    fn a_random_batch_without_lists_stays_one_generator_run() {
+        // A release too old to report its lists, or lists not read yet.
+        let options = GeneratorOptions {
+            num_to_generate: Some(4),
+            ..Default::default()
+        };
+        let batch = plan_batch(&options, &GeneratorOptionLists::empty(), || {
+            panic!("nothing to pick")
+        });
+        assert_eq!(batch, vec![options]);
     }
 
     #[test]

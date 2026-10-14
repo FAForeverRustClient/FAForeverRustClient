@@ -33,7 +33,9 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use faf_domain::protocol::map_generator::{self, GeneratorVersion, VersionPolicy};
-use faf_domain::state::{GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus};
+use faf_domain::state::{
+    GeneratorOptionLists, GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus,
+};
 use serde::Deserialize;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
@@ -1241,11 +1243,16 @@ impl NeroxisMapGenerator {
         }
 
         // A batch whose selections leave something to choose becomes one run
-        // per map, each with its own pick (#414); otherwise this is the single
-        // run it always was. Reproducing by name never has a choice to make.
+        // per map, each with its own pick (#414), and a list left on "Random"
+        // is a choice among everything this release offers; otherwise this is
+        // the single run it always was. Reproducing by name never has a
+        // choice to make.
         let batch = match map_name {
             Some(_) => vec![options],
-            None => map_generator::plan_batch(&options, rand::random::<u64>),
+            None => {
+                let all = self.known_option_lists(&version.to_string()).await;
+                map_generator::plan_batch(&options, &all, rand::random::<u64>)
+            }
         };
         // Every command line is built before anything is downloaded, so an
         // unusable option is refused without side effects, as it always was.
@@ -1343,6 +1350,26 @@ impl NeroxisMapGenerator {
         let mut all: HashMap<String, HashMap<String, Vec<String>>> =
             serde_json::from_str(&raw).ok()?;
         all.remove(version)
+    }
+
+    /// The option lists already read for a version, from the cache the dialog
+    /// fills when it opens.
+    ///
+    /// Not queried here: that is six JVM starts in front of a run the user is
+    /// waiting on. A list that is missing stays empty, which leaves that choice
+    /// to the generator, as it was before "Random" was re-rolled per map.
+    async fn known_option_lists(&self, version: &str) -> GeneratorOptionLists {
+        let mut cached = self.cached_options(version).await.unwrap_or_default();
+        let mut take =
+            |query: GeneratorOptionQuery| cached.remove(query.flag()).unwrap_or_default();
+        GeneratorOptionLists {
+            symmetries: take(GeneratorOptionQuery::Symmetries),
+            styles: take(GeneratorOptionQuery::Styles),
+            terrain_styles: take(GeneratorOptionQuery::TerrainStyles),
+            texture_styles: take(GeneratorOptionQuery::TextureStyles),
+            resource_styles: take(GeneratorOptionQuery::ResourceStyles),
+            prop_styles: take(GeneratorOptionQuery::PropStyles),
+        }
     }
 
     async fn store_options(&self, version: &str, query: GeneratorOptionQuery, values: &[String]) {
