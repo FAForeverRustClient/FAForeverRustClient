@@ -1932,7 +1932,7 @@
 
 /* An opponent's name opens the player menu on either click, so it looks like
    something to click: the pointer and an underline, as a leaderboard name
-   has (#539). It keeps its own colour, so a friend or foe still reads as
+   has. It keeps its own colour, so a friend or foe still reads as
    one. */
 .matchmaker-recent-opponent-link {
   cursor: pointer;
