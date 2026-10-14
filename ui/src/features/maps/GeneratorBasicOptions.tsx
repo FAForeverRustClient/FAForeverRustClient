@@ -3,7 +3,7 @@ import { Row } from "./GenerateMapControls";
 import { Select } from "../../design-system/Select";
 import { NumberInput } from "../../design-system/NumberInput";
 import { MAX_MAPS_PER_RUN, issueKey, describeIssue } from "../../shared/generatorPresentation";
-import { GENERATION_TYPES, loadOptions } from "./generatorCommands";
+import { loadOptions } from "./generatorCommands";
 
 export function GeneratorBasicOptions({ model }: {
   model: Pick<GeneratorDialogModel,
@@ -82,10 +82,7 @@ export function GeneratorBasicOptions({ model }: {
           />
         </Row>
 
-        <Row
-          label={t("maps.generate.styleOfGame")}
-          hint={t(GENERATION_TYPES[form.generationType].hint)}
-        >
+        <Row label={t("maps.generate.styleOfGame")}>
           <Select
             label={t("maps.generate.styleOfGame")}
             value={form.generationType}

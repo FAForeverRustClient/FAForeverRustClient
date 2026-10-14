@@ -48,7 +48,6 @@ export function GeneratorStyleOptions({ model }: {
       <Row
         label={t("maps.generate.terrainStyles")}
         superseded={styleOverrides}
-        hint={styleOverrides ? t("maps.generate.styleSuperseded") : undefined}
       >
         <MultiSelect
           label={t("maps.generate.terrainStyles")}
@@ -62,7 +61,6 @@ export function GeneratorStyleOptions({ model }: {
       <Row
         label={t("maps.generate.textureStyles")}
         superseded={styleOverrides}
-        hint={styleOverrides ? t("maps.generate.styleSuperseded") : undefined}
       >
         <MultiSelect
           label={t("maps.generate.textureStyles")}
@@ -76,7 +74,6 @@ export function GeneratorStyleOptions({ model }: {
       <Row
         label={t("maps.generate.resourceStyles")}
         superseded={styleOverrides}
-        hint={styleOverrides ? t("maps.generate.styleSuperseded") : undefined}
       >
         <MultiSelect
           label={t("maps.generate.resourceStyles")}
@@ -90,7 +87,6 @@ export function GeneratorStyleOptions({ model }: {
       <Row
         label={t("maps.generate.propStyles")}
         superseded={styleOverrides}
-        hint={styleOverrides ? t("maps.generate.styleSuperseded") : undefined}
       >
         <MultiSelect
           label={t("maps.generate.propStyles")}

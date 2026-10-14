@@ -80,9 +80,6 @@ describe("Generate Map over Host Game, mounted", () => {
       name: "Must divide evenly between 2 teams.",
     })).toBeNull();
     expect(within(generator).getByRole("button", {
-      name: "Where Neroxis maps are saved. Blank uses the default folder.",
-    })).toBeDefined();
-    expect(within(generator).getByRole("button", {
       name: "Enter Neroxis command-line arguments here. If filled in, the settings above are ignored.",
     })).toBeDefined();
     expect(generator.querySelector("[role='tooltip']")).toBeNull();

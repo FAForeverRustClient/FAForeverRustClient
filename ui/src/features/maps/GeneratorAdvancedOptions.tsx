@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { GeneratorStyleOptions } from "./GeneratorStyleOptions";
 import type { GeneratorDialogModel } from "./useGeneratorDialog";
 import { Row } from "./GenerateMapControls";
@@ -39,6 +40,13 @@ export function GeneratorAdvancedOptions({ model }: {
   >
 }) {
   const { t, form, set, reproducing, typeOverrides, busy, state, showHelp, setShowHelp } = model;
+  // The resolved name answers "Check options" and nothing else. Generating
+  // resolves one too, as its own preflight, and that one is no answer to a
+  // question anybody here asked: it is the run's business, so a run hides it.
+  const [checked, setChecked] = useState(false);
+  useEffect(() => {
+    if (busy) setChecked(false);
+  }, [busy]);
   return (
     <fieldset className="generate-map-fieldset" disabled={reproducing}>
       {typeOverrides && (
@@ -79,7 +87,7 @@ export function GeneratorAdvancedOptions({ model }: {
           </div>
         </Row>
 
-        <Row label={t("maps.generate.outputPath")} hint={t("maps.generate.outputPathTooltip")}>
+        <Row label={t("maps.generate.outputPath")}>
           <input
             className="generate-map-control"
             value={form.outputPath}
@@ -131,13 +139,20 @@ export function GeneratorAdvancedOptions({ model }: {
 
         <Row label={t("maps.generate.tools")}>
           <div className="generate-map-tools-group">
-            <Button type="button" onClick={() => void preflight(form)} disabled={busy}>
+            <Button
+              type="button"
+              onClick={() => {
+                setChecked(true);
+                void preflight(form);
+              }}
+              disabled={busy}
+            >
               {t("maps.generate.checkOptions")}
             </Button>
             {/* What the press answered. The backend clears it on
                 the next edit, so it can never name the options
                 that are no longer on screen. */}
-            {state.predictedName && !reproducing ? (
+            {checked && state.predictedName && !reproducing ? (
               <code className="generate-map-name-code">{state.predictedName}</code>
             ) : null}
             <Button
@@ -168,7 +183,7 @@ export function GeneratorPresets({ model }: { model: PresetsModel }) {
   return (
     <fieldset className="generate-map-fieldset" disabled={model.reproducing}>
       <div className="generate-map-presets">
-        <div className="generate-map-grid-2col generate-map-grid-top generate-map-presets-grid">
+        <div className="generate-map-grid-2col generate-map-grid-top">
           <Row label={t("maps.generate.presets")}>
             <Select
               label={t("maps.generate.presets")}
