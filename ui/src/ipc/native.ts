@@ -206,6 +206,15 @@ export const native = {
     return invoke("exit_app");
   },
 
+  /**
+   * Tell the shell the page has loaded and its close confirmation is
+   * listening. Until it hears this, after a start, a crash or a reload, it
+   * asks natively instead (`src-tauri/src/exit.rs`).
+   */
+  pageReady(): Promise<void> {
+    return invoke("page_ready");
+  },
+
   closeWindow(): Promise<void> {
     return invoke("exit_app");
   },

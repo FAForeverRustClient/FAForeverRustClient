@@ -27,6 +27,10 @@ export function ExitGuard() {
       })
       .then((unlisten) => {
         dispose = unlisten;
+        // Listening now, so the shell may ask through this page rather than
+        // natively. Said after the listener exists, not when the page starts
+        // loading: a question sent before it would reach nobody.
+        void native.pageReady();
       });
     return () => dispose?.();
   }, []);

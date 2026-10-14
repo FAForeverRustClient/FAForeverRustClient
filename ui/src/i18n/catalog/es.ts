@@ -1073,6 +1073,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
 
   "settings.general.startPage.label": "Página de inicio",
   "settings.general.autoLogin.label": "Inicio de sesión automático",
+  "settings.general.keepRunningDuringGame.label": "Seguir en marcha durante una partida",
+  "settings.general.keepRunningDuringGame.hint": "Si cierras la ventana o eliges \"Quit\" en la bandeja durante una partida, el cliente se oculta en la bandeja y la partida conserva su conexión. Se cierra solo cuando termina la partida, salvo que lo vuelvas a abrir. Desactivado, pregunta antes de cerrarse.",
   "settings.general.filterMemory.label": "Recordar filtros",
   "settings.general.filterMemory.never": "Nunca",
   "settings.general.filterMemory.session": "Hasta cerrar el cliente",
