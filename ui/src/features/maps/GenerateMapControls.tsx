@@ -1,6 +1,7 @@
 // The small building blocks of the generator form.
 
 import { useEffect, useState, type ReactNode } from "react";
+import { Icon } from "../../design-system/Icon";
 import { GENERATED_MAP_PLACEHOLDER_URL } from "../../shared/mapPresentation";
 
 /** One labelled option. The label column is fixed so every control lines up. */
@@ -24,10 +25,23 @@ export function Row({
   if (className) classes.push(className);
   return (
     <div className={classes.join(" ")}>
-      <span className="generate-map-row-label">{label}</span>
+      <span className="generate-map-row-label">
+        <span className="generate-map-row-label-text">{label}</span>
+        {hint && (
+          <span className="generate-map-hint-wrap">
+            <button
+              type="button"
+              className="generate-map-hint-trigger"
+              title={hint}
+              aria-label={hint}
+            >
+              <Icon name="info" size={13} />
+            </button>
+          </span>
+        )}
+      </span>
       <div className="generate-map-row-control">
         {children}
-        {hint && <small className="generate-map-row-hint">{hint}</small>}
       </div>
     </div>
   );

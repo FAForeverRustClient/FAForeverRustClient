@@ -4,8 +4,24 @@ import { Row } from "./GenerateMapControls";
 import { Select } from "../../design-system/Select";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import { MAX_PRESET_NAME } from "../../shared/generatorPresets";
+import { isUsablePresetName, MAX_PRESET_NAME } from "../../shared/generatorPresets";
 import { GENERATION_TYPES, deletePreset, preflight, loadHelp } from "./generatorCommands";
+
+type PresetsModel = Pick<GeneratorDialogModel,
+  | "t"
+  | "reproducing"
+  | "presetOptions"
+  | "selectedPresetName"
+  | "presets"
+  | "applyPreset"
+  | "rename"
+  | "presetName"
+  | "setPresetName"
+  | "presetNameUsable"
+  | "save"
+  | "saved"
+  | "existing"
+>;
 
 export function GeneratorAdvancedOptions({ model }: {
   model: Pick<GeneratorDialogModel,
@@ -16,22 +32,13 @@ export function GeneratorAdvancedOptions({ model }: {
     | "typeOverrides"
     | "styleOverrides"
     | "lists"
-    | "presetOptions"
-    | "presets"
-    | "applyPreset"
-    | "presetName"
-    | "setPresetName"
-    | "presetNameUsable"
-    | "save"
-    | "saved"
-    | "existing"
     | "busy"
     | "state"
     | "showHelp"
     | "setShowHelp"
   >
 }) {
-  const { t, form, set, reproducing, typeOverrides, presetOptions, presets, applyPreset, presetName, setPresetName, presetNameUsable, save, saved, existing, busy, state, showHelp, setShowHelp } = model;
+  const { t, form, set, reproducing, typeOverrides, busy, state, showHelp, setShowHelp } = model;
   return (
     <fieldset className="generate-map-fieldset" disabled={reproducing}>
       {typeOverrides && (
@@ -47,8 +54,8 @@ export function GeneratorAdvancedOptions({ model }: {
       <hr className="generate-map-divider" />
 
       <div className="generate-map-grid-2col">
-        <Row label={t("maps.generate.seed")}>
-          <div className="generate-map-seed" title={t("maps.generate.seedHint")}>
+        <Row label={t("maps.generate.seed")} hint={t("maps.generate.seedHint")}>
+          <div className="generate-map-seed">
             <input
               className="generate-map-control"
               value={form.seed}
@@ -72,7 +79,7 @@ export function GeneratorAdvancedOptions({ model }: {
           </div>
         </Row>
 
-        <Row label={t("maps.generate.outputPath")}>
+        <Row label={t("maps.generate.outputPath")} hint={t("maps.generate.outputPathTooltip")}>
           <input
             className="generate-map-control"
             value={form.outputPath}
@@ -82,7 +89,10 @@ export function GeneratorAdvancedOptions({ model }: {
           />
         </Row>
 
-        <Row label={t("maps.generate.rawArguments")}>
+        <Row
+          label={t("maps.generate.rawArguments")}
+          hint={t("maps.generate.rawArgumentsHint")}
+        >
           <input
             className="generate-map-control"
             value={form.commandLineArgs}
@@ -90,54 +100,6 @@ export function GeneratorAdvancedOptions({ model }: {
             placeholder={t("maps.generate.overridesEveryOption")}
             onChange={(e) => set("commandLineArgs", e.target.value)}
           />
-        </Row>
-      </div>
-
-      <hr className="generate-map-divider" />
-
-      {/* Top-aligned: the right cell carries a field with buttons
-                      under it and the left one a single dropdown, and stretched
-                      cells put those two on different lines. */}
-      <div className="generate-map-grid-2col generate-map-grid-top">
-        <Row label={t("maps.generate.presets")}>
-          <Select
-            label={t("maps.generate.presets")}
-            value=""
-            placeholder={
-              presets.length === 0
-                ? t("maps.generate.presetsEmpty")
-                : t("maps.generate.presetsLoad")
-            }
-            options={presetOptions}
-            onChange={applyPreset}
-          />
-        </Row>
-
-        <Row label={t("maps.generate.presetName")} className="generate-map-row-tall">
-          <div className="generate-map-preset-save-group">
-            <input
-              className="generate-map-control"
-              value={presetName}
-              maxLength={MAX_PRESET_NAME}
-              aria-label={t("maps.generate.presetName")}
-              placeholder={t("maps.generate.presetName")}
-              onChange={(e) => setPresetName(e.target.value)}
-            />
-            <div className="generate-map-preset-save-group-buttons">
-              <Button type="button" disabled={!presetNameUsable} onClick={save}>
-                {saved
-                  ? t("maps.generate.settingsSaved")
-                  : existing
-                    ? t("maps.generate.presetReplace")
-                    : t("maps.generate.presetSave")}
-              </Button>
-              {existing && (
-                <Button type="button" onClick={() => void deletePreset(existing.name)}>
-                  {t("maps.generate.presetDelete")}
-                </Button>
-              )}
-            </div>
-          </div>
         </Row>
       </div>
 
@@ -173,8 +135,8 @@ export function GeneratorAdvancedOptions({ model }: {
               {t("maps.generate.checkOptions")}
             </Button>
             {/* What the press answered. The backend clears it on
-                            the next edit, so it can never name the options
-                            that are no longer on screen. */}
+                the next edit, so it can never name the options
+                that are no longer on screen. */}
             {state.predictedName && !reproducing ? (
               <code className="generate-map-name-code">{state.predictedName}</code>
             ) : null}
@@ -189,6 +151,90 @@ export function GeneratorAdvancedOptions({ model }: {
             </Button>
           </div>
         </Row>
+      </div>
+      {showHelp && (
+        <pre className="generate-map-help">
+          {state.helpText || t("maps.generate.loadingHelp")}
+        </pre>
+      )}
+    </fieldset>
+  );
+}
+
+export function GeneratorPresets({ model }: { model: PresetsModel }) {
+  const { t, presetOptions, presets, applyPreset, rename, presetName, setPresetName,
+    presetNameUsable, save, saved, existing } = model;
+
+  return (
+    <fieldset className="generate-map-fieldset" disabled={model.reproducing}>
+      <div className="generate-map-presets">
+        <div className="generate-map-grid-2col generate-map-grid-top generate-map-presets-grid">
+          <Row label={t("maps.generate.presets")}>
+            <Select
+              label={t("maps.generate.presets")}
+              value={model.selectedPresetName}
+              placeholder={
+                presets.length === 0
+                  ? t("maps.generate.presetsEmpty")
+                  : t("maps.generate.presetsLoad")
+              }
+              options={presetOptions}
+              onChange={applyPreset}
+              placement="top"
+              optionAction={{
+                icon: "trash",
+                label: (option) => `${t("maps.generate.presetDelete")}: ${option.label}`,
+                onSelect: (option) => void deletePreset(option.value),
+                danger: true,
+              }}
+              optionRename={{
+                label: (option) => `${t("maps.generate.presetRename")}: ${option.label}`,
+                placeholder: (option) => option.label,
+                confirmLabel: () => t("maps.generate.presetSave"),
+                cancelLabel: () => t("maps.generate.cancel"),
+                onRename: (option, name) => rename(option.value, name),
+                isValid: (option, name) => {
+                  const trimmed = name.trim();
+                  return isUsablePresetName(trimmed)
+                    && !presets.some((preset) =>
+                      preset.name.toLowerCase() === trimmed.toLowerCase()
+                      && preset.name !== option.value,
+                    );
+                },
+              }}
+            />
+          </Row>
+
+          <Row
+            label={t("maps.generate.presetCreateName")}
+            className="generate-map-row-tall generate-map-preset-create-row"
+          >
+            <div className="generate-map-preset-save-group">
+              <div className="generate-map-preset-name-field">
+                <input
+                  className="generate-map-control"
+                  value={presetName}
+                  maxLength={MAX_PRESET_NAME}
+                  aria-label={t("maps.generate.presetNamePlaceholder")}
+                  placeholder={t("maps.generate.presetNamePlaceholder")}
+                  onChange={(e) => setPresetName(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  className="generate-map-preset-save-button"
+                  disabled={!presetNameUsable}
+                  onClick={save}
+                >
+                  {saved
+                    ? t("maps.generate.settingsSaved")
+                    : existing
+                      ? t("maps.generate.presetReplace")
+                      : t("maps.generate.presetSave")}
+                </Button>
+              </div>
+            </div>
+          </Row>
+        </div>
       </div>
     </fieldset>
   );

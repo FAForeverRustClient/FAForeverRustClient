@@ -187,6 +187,9 @@ impl MapGeneratorPort for HeldGenerator {
     async fn delete_preset(&self, _name: &str) -> Result<(), String> {
         unreachable!()
     }
+    async fn rename_preset(&self, _name: &str, _new_name: &str) -> Result<(), String> {
+        unreachable!()
+    }
     async fn latest_version(&self) -> Result<String, String> {
         unreachable!()
     }

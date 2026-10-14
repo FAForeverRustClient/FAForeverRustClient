@@ -35,7 +35,7 @@ use async_trait::async_trait;
 use faf_domain::protocol::map_generator::{self, GeneratorVersion, VersionPolicy};
 use faf_domain::state::{GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus};
 use serde::Deserialize;
-use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::mpsc;
 
@@ -1691,6 +1691,54 @@ impl MapGeneratorPort for NeroxisMapGenerator {
         }
     }
 
+    async fn rename_preset(&self, name: &str, new_name: &str) -> Result<(), String> {
+        let path = self.preset_path(name)?;
+        let new_path = self.preset_path(new_name)?;
+        let raw = tokio::fs::read_to_string(&path)
+            .await
+            .map_err(|error| format!("could not read the preset: {error}"))?;
+        let mut preset: GeneratorPreset = serde_json::from_str(&raw)
+            .map_err(|error| format!("could not decode the preset: {error}"))?;
+        preset.name = new_name.trim().to_string();
+        preset.saved_at = chrono::Utc::now().to_rfc3339();
+        let json = serde_json::to_vec_pretty(&preset)
+            .map_err(|error| format!("could not encode the preset: {error}"))?;
+
+        let same_path = path == new_path
+            || (cfg!(windows)
+                && path
+                    .to_string_lossy()
+                    .eq_ignore_ascii_case(&new_path.to_string_lossy()));
+        if same_path {
+            return tokio::fs::write(&path, json)
+                .await
+                .map_err(|error| format!("could not rename the preset: {error}"));
+        }
+
+        let mut destination = tokio::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&new_path)
+            .await
+            .map_err(|error| format!("could not create the renamed preset: {error}"))?;
+        if let Err(error) = destination.write_all(&json).await {
+            drop(destination);
+            let _ = tokio::fs::remove_file(&new_path).await;
+            return Err(format!("could not write the renamed preset: {error}"));
+        }
+        drop(destination);
+
+        if let Err(error) = tokio::fs::remove_file(&path).await {
+            if let Err(rollback_error) = tokio::fs::remove_file(&new_path).await {
+                tracing::error!(%rollback_error, ?new_path, "could not roll back a failed preset rename");
+            }
+            return Err(format!(
+                "could not remove the old preset after renaming: {error}"
+            ));
+        }
+        Ok(())
+    }
+
     async fn latest_version(&self) -> Result<String, String> {
         self.resolve_latest().await.map(|v| v.to_string())
     }
@@ -1817,6 +1865,10 @@ impl MapGeneratorPort for FakeMapGenerator {
     }
 
     async fn delete_preset(&self, _name: &str) -> Result<(), String> {
+        Ok(())
+    }
+
+    async fn rename_preset(&self, _name: &str, _new_name: &str) -> Result<(), String> {
         Ok(())
     }
 
@@ -2389,6 +2441,42 @@ mod tests {
         let presets = generator.list_presets().await;
         assert_eq!(presets.len(), 1, "{presets:?}");
         assert_eq!(presets[0].options.spawn_count, Some(16));
+    }
+
+    #[tokio::test]
+    async fn renaming_a_preset_keeps_its_options_and_rejects_an_existing_name() {
+        let dir = temp_dir("presets-rename");
+        let generator = NeroxisMapGenerator::new(config(&dir));
+        let options = GeneratorOptions {
+            spawn_count: Some(8),
+            ..Default::default()
+        };
+        generator.save_preset("Old name", &options).await.unwrap();
+        generator
+            .save_preset("Already used", &GeneratorOptions::default())
+            .await
+            .unwrap();
+
+        generator
+            .rename_preset("Old name", "New name")
+            .await
+            .unwrap();
+        let presets = generator.list_presets().await;
+        assert_eq!(presets.len(), 2);
+        assert!(presets
+            .iter()
+            .any(|preset| { preset.name == "New name" && preset.options.spawn_count == Some(8) }));
+        assert!(!dir.join("generators/presets/old-name.json").exists());
+
+        assert!(generator
+            .rename_preset("New name", "Already used")
+            .await
+            .is_err());
+        assert!(generator
+            .list_presets()
+            .await
+            .iter()
+            .any(|preset| preset.name == "New name"));
     }
 
     #[tokio::test]

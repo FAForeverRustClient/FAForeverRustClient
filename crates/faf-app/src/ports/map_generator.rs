@@ -78,6 +78,8 @@ pub trait MapGeneratorPort: Send + Sync {
     /// hand-edited preset must not hide the rest of the library.
     async fn list_presets(&self) -> Vec<GeneratorPreset>;
 
+    async fn rename_preset(&self, name: &str, new_name: &str) -> Result<(), String>;
+
     async fn delete_preset(&self, name: &str) -> Result<(), String>;
 
     /// The newest generator release this client supports, as `x.y.z`.

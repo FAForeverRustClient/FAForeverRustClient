@@ -4710,7 +4710,10 @@ export type MapGeneratorCommand =
 	requestId?: number,
 } } |
 /**  Re-read the preset library from disk. */
-{ type: "loadPresets" } | { type: "deletePreset"; payload: {
+{ type: "loadPresets" } | { type: "renamePreset"; payload: {
+	name: string,
+	newName: string,
+} } | { type: "deletePreset"; payload: {
 	name: string,
 } } |
 /**

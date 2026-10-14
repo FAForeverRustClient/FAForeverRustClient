@@ -1,9 +1,14 @@
 /* Generate-a-map dialog: see GenerateMapModal.tsx. */
 
 .generate-map-modal {
-  width: min(1320px, calc(100vw - 48px));
-  max-width: 1320px;
+  width: min(1344px, calc(100vw - 48px));
+  max-width: 1344px;
+  height: 90vh;
   max-height: 92vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 24px 28px;
 }
 
@@ -30,6 +35,23 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.generate-map-scroll-content {
+  display: grid;
+  grid-auto-rows: max-content;
+  align-content: space-evenly;
+  row-gap: 14px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  box-sizing: border-box;
+  padding: 4px 8px 10px 0;
 }
 
 /* Common form fields and controls */
@@ -119,8 +141,16 @@
   justify-content: flex-end;
   align-items: center;
   gap: var(--space-2);
-  margin-top: 6px;
-  padding-top: 14px;
+  flex-shrink: 0;
+  padding: 14px 0 4px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.generate-map-presets {
+  flex-shrink: 0;
+  padding: 10px 8px 10px 0;
+  background: var(--color-surface);
   border-top: 1px solid var(--color-border);
 }
 
@@ -135,18 +165,21 @@
 .generate-map-unified-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(400px, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 24px;
-  align-items: start;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .generate-map-form-pane {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  max-height: calc(88vh - 90px);
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-  padding-right: 8px;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .generate-map-preview-pane {
@@ -158,6 +191,10 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
   position: sticky;
   top: 0;
 }
@@ -438,9 +475,36 @@
 @media (max-width: 900px) {
   .generate-map-unified-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
   }
+
   .generate-map-form-pane {
-    max-height: none;
+    height: auto;
+    overflow-y: visible;
+    scrollbar-gutter: auto;
+    padding-right: 8px;
+  }
+
+  .generate-map {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+
+  .generate-map-scroll-content {
+    flex: 0 0 auto;
+    min-height: auto;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .generate-map-preview-pane {
+    height: auto;
+    overflow-y: visible;
+    scrollbar-gutter: auto;
+    position: static;
   }
 }
 
@@ -472,13 +536,13 @@
 .generate-map-rows {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 14px;
 }
 
 .generate-map-grid-2col {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 48px;
+  gap: 14px 20px;
 }
 
 /* A pair of cells whose contents differ in height -- here a single dropdown
@@ -490,35 +554,68 @@
   align-items: start;
 }
 
+.generate-map-presets-grid {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+}
+
+.generate-map-preset-create-row .generate-map-row-label-text {
+  padding-left: 12px;
+}
+
 .generate-map-row {
   display: grid;
-  grid-template-columns: 105px minmax(0, 1fr);
+  grid-template-columns: 154px minmax(0, 1fr);
   gap: 6px;
-  align-items: center;
-}
-
-/* Wraps rather than ending in "...": every language but English runs longer
-   than the 105px column, and a cut-off label could not be read at all (issue 459). */
-.generate-map-row-label {
-  font-size: 12px;
-  color: var(--color-muted);
-  overflow-wrap: anywhere;
-}
-
-/* A row whose control is taller than one field: a text box with buttons under
-   it, say. The label belongs beside the *field*, not in the middle of the
-   whole stack, which is where centring it against the row put it -- level with
-   the gap between the box and the buttons, and a half-button lower than the
-   label of the single-field row beside it. Top-aligning the row and giving the
-   label the height of one control centres it on the field instead. */
-.generate-map-row.generate-map-row-tall {
   align-items: start;
 }
 
-.generate-map-row-tall > .generate-map-row-label {
+/* Wraps rather than ending in "...": every language but English runs longer
+   than the label column, and a cut-off label could not be read at all (issue 459). */
+.generate-map-row-label {
+  position: relative;
   display: flex;
   align-items: center;
-  height: 34px;
+  min-width: 0;
+  min-height: 34px;
+  padding-right: 20px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.generate-map-row-label-text {
+  min-width: 0;
+  overflow-wrap: normal;
+}
+
+.generate-map-hint-wrap {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  display: inline-flex;
+  transform: translateY(-50%);
+}
+
+.generate-map-hint-trigger {
+  display: inline-grid;
+  width: 16px;
+  height: 20px;
+  place-items: center;
+  padding: 0;
+  color: var(--color-subtle);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: help;
+}
+
+.generate-map-hint-trigger:hover,
+.generate-map-hint-trigger:focus-visible {
+  color: var(--color-accent);
+}
+
+.generate-map-hint-trigger:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
 .generate-map-row-control {
@@ -526,12 +623,6 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-}
-
-.generate-map-row-hint {
-  font-size: 11px;
-  color: var(--color-subtle);
-  line-height: 1.35;
 }
 
 /* MultiSelect and RangeSlider render their own label, which would duplicate the row's. Hidden
@@ -548,6 +639,27 @@
 .generate-map-row .range-slider {
   max-width: none;
   width: 100%;
+}
+
+.generate-map-row-density .generate-map-row-label {
+  align-self: center;
+  transform: translateY(8px);
+}
+
+.generate-map-row-density .range-slider {
+  gap: 0;
+}
+
+.generate-map-row-density .range-slider-head {
+  box-sizing: border-box;
+  height: 16px;
+  align-items: center;
+  pointer-events: none;
+  padding-right: 4px;
+}
+
+.generate-map-row-density .range-slider-track {
+  height: 34px;
 }
 
 .generate-map-row .multi-select {
@@ -583,10 +695,6 @@
   min-width: 0;
 }
 
-/* The name field above its buttons rather than beside them. Side by side, a
-   name field, Save and the Replace/Delete pair that appears once a preset is
-   selected did not fit the column, and the button that appeared last was the
-   one pushed out of sight. Vertical space is what this row has. */
 .generate-map-preset-save-group {
   display: flex;
   flex-direction: column;
@@ -594,23 +702,66 @@
   align-items: stretch;
 }
 
-.generate-map-preset-save-group .generate-map-control {
-  min-width: 0;
-}
-
-.generate-map-preset-save-group-buttons {
+.generate-map-preset-name-field {
   display: flex;
-  gap: 6px;
-  align-items: stretch;
+  min-width: 0;
+  min-height: 36px;
+  overflow: hidden;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 
-/* Both buttons the same height, whatever they say. A longer translation
-   wraps to a second line rather than being cut off (issue 459), and the row's
-   `align-items: stretch` keeps the button beside it just as tall. */
-.generate-map-preset-save-group-buttons > * {
-  flex: 1;
-  min-width: 0;
+.generate-map-preset-name-field:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-glow);
+}
+
+.generate-map-preset-name-field .generate-map-control {
+  flex: 1 1 auto;
+  width: 0;
+  height: auto;
   min-height: 34px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  line-height: 1.2;
+}
+
+.generate-map-preset-name-field .generate-map-control:hover {
+  background: transparent;
+}
+
+.generate-map-preset-name-field .generate-map-control:focus-visible {
+  border: 0;
+  outline: 0;
+}
+
+.generate-map-preset-save-button.btn-ghost {
+  flex: 0 1 45%;
+  min-width: 0;
+  max-width: 48%;
+  min-height: 34px;
+  margin: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-left: 1px solid var(--color-border);
+  border-radius: 0;
+  background: transparent;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+
+.generate-map-preset-save-button.btn-ghost:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.generate-map-preset-save-button.btn-ghost:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .generate-map-check {
@@ -766,6 +917,10 @@
 }
 
 @media (max-width: 720px) {
+  .generate-map-presets-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .generate-map-grid-2col {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -781,12 +936,6 @@
    picker rather than a single anonymous slot. */
 .generate-map-presets {
   margin: 0;
-}
-
-.generate-map-preset-actions {
-  display: flex;
-  gap: 6px;
-  align-items: center;
 }
 
 /* The preview doubles as the button that enlarges it. Kept visually identical
@@ -857,6 +1006,30 @@
   overflow: visible;
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+.generate-map .multi-select-popover {
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100vw - 48px);
+  box-shadow: var(--shadow-sm);
+}
+
+.generate-map-row-symmetries .multi-select-popover {
+  width: max-content;
+  min-width: 0;
+}
+
+.generate-map-grid-2col > .generate-map-row:nth-child(even) .multi-select-popover {
+  left: auto;
+  right: 0;
+}
+
+@media (max-width: 720px) {
+  .generate-map-grid-2col > .generate-map-row:nth-child(even) .multi-select-popover {
+    left: 0;
+    right: auto;
+  }
 }
 
 .generate-map .multi-select-trigger {
