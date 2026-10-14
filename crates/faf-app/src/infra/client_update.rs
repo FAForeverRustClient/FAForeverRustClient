@@ -118,6 +118,13 @@ pub struct GitHubUpdates {
     /// `None` until one has been. Every check refreshes it and nothing else
     /// has to: see [`ClientUpdatePort::release_notes`].
     notes: Arc<Mutex<Option<Vec<ClientReleaseNotes>>>>,
+    /// Held for the length of one read of the release list. The startup check
+    /// and the Changelog tab asking for the notes used to read it side by
+    /// side: open Client updates before the check had its answer and the
+    /// cache was still empty, so a second request went out, and whichever
+    /// answer landed last was kept even when it was the older one. Now the
+    /// notes wait for a read already on the way and take what it stored.
+    reading: Arc<tokio::sync::Mutex<()>>,
 }
 
 impl GitHubUpdates {
@@ -129,6 +136,7 @@ impl GitHubUpdates {
             // release prefix; this is what stops a later hop undoing that.
             http: super::http::https_only_download_client(),
             notes: Arc::default(),
+            reading: Arc::default(),
         }
     }
 
@@ -377,12 +385,19 @@ impl ClientUpdatePort for GitHubUpdates {
     async fn latest(&self, channel: ReleaseChannel) -> Result<Option<ClientRelease>, String> {
         // Always read fresh: a check is the moment a new release is found.
         // The notes come along for free, which is the point of keeping them.
+        let _reading = self.reading.lock().await;
         let releases = self.fetch_releases().await?;
         self.remember_notes(&releases);
         Ok(pick_release(&releases, channel))
     }
 
     async fn release_notes(&self) -> Result<Vec<ClientReleaseNotes>, String> {
+        if let Some(notes) = self.cached_release_notes() {
+            return Ok(notes);
+        }
+        // A check may be reading the list right now. Wait for it, and use what
+        // it stored; read only if it failed or nothing was reading.
+        let _reading = self.reading.lock().await;
         if let Some(notes) = self.cached_release_notes() {
             return Ok(notes);
         }
@@ -406,11 +421,13 @@ impl ClientUpdatePort for GitHubUpdates {
         let config = self.config.clone();
         let http = self.http.clone();
         let notes = self.notes.clone();
+        let reading = self.reading.clone();
         tokio::spawn(async move {
             let client = GitHubUpdates {
                 config,
                 http,
                 notes,
+                reading,
             };
             let outcome = client.run_download(&release, &tx, &called_off).await;
             // The sender goes only after the partial file did: see the port.
@@ -806,6 +823,16 @@ mod tests {
     /// A local release list that answers every request with `body` and counts
     /// how often it was asked.
     async fn serve_release_list(body: String) -> (String, Arc<std::sync::atomic::AtomicUsize>) {
+        serve_release_list_after(body, std::time::Duration::ZERO).await
+    }
+
+    /// The same, answering each request only after `delay`, so a read can be
+    /// caught while it is still on the way. A request is counted when it
+    /// arrives, before the wait.
+    async fn serve_release_list_after(
+        body: String,
+        delay: std::time::Duration,
+    ) -> (String, Arc<std::sync::atomic::AtomicUsize>) {
         use std::sync::atomic::{AtomicUsize, Ordering as Atomic};
         use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
@@ -829,6 +856,7 @@ mod tests {
                         }
                     }
                     counted.fetch_add(1, Atomic::SeqCst);
+                    tokio::time::sleep(delay).await;
                     let reply = format!(
                         "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\
                          Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
@@ -892,6 +920,42 @@ mod tests {
             requests.load(Atomic::SeqCst),
             3,
             "the second answered from memory"
+        );
+    }
+
+    #[tokio::test]
+    async fn notes_asked_for_during_a_check_wait_for_its_read() {
+        use std::sync::atomic::Ordering as Atomic;
+
+        let releases = serde_json::json!([
+            release_json("v0.4.0", true, true),
+            release_json("v0.3.0", true, true),
+        ]);
+        let (base, requests) =
+            serve_release_list_after(releases.to_string(), std::time::Duration::from_millis(200))
+                .await;
+        let client = Arc::new(GitHubUpdates::new(ClientUpdateConfig {
+            api_base: base,
+            ..config()
+        }));
+
+        // The startup check reads the list...
+        let check = tokio::spawn({
+            let client = client.clone();
+            async move { client.latest(ReleaseChannel::PreRelease).await }
+        });
+        while requests.load(Atomic::SeqCst) == 0 {
+            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        }
+        // ...and Client updates is opened while that read is on the way.
+        let notes = client.release_notes().await.expect("notes");
+        check.await.expect("the check ran").expect("a check");
+
+        assert_eq!(notes.len(), 2);
+        assert_eq!(
+            requests.load(Atomic::SeqCst),
+            1,
+            "the notes waited for the check's read instead of reading again"
         );
     }
 
