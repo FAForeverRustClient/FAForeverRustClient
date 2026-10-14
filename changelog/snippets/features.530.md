@@ -1,0 +1,1 @@
+- Hosting with a password needs no checkbox: fill in the password field, or leave it empty for an open game.
