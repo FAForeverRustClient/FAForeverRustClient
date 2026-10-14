@@ -1,0 +1,1 @@
+- Lobby rating limits now use clear Min/Max labels, and the enforcement option is labeled as required.
