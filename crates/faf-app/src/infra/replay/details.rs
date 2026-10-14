@@ -5,24 +5,24 @@
 //! the command stream, the largest thing in a replay, and the chat in that
 //! stream is a subject of its own with its own rules for what one line is.
 
-use std::io::{Cursor, Read};
+use std::io::{BufReader, Cursor, Read};
 use std::path::Path;
 
 use faf_domain::state::{ReplayChatMessage, ReplayCommandStats, ReplayDetails, ReplayGameOption};
 use serde_json::Value;
 
-use super::codec::read_replay_header_and_body;
+use super::codec::{open_replay_stream, read_head};
 use super::library::local_sim_mods;
 use super::scfa_header::{
-    game_version_from_string, parse_replay_lua, replay_string, replay_u32, replay_u8,
-    skip_replay_bytes,
+    game_version_from_string, next_command_record, parse_replay_lua, replay_string, replay_u32,
+    replay_u8, skip_replay_bytes,
 };
 
 pub(super) async fn read_detailed_info(path: &Path) -> Result<ReplayDetails, String> {
     let path = path.to_owned();
     tokio::task::spawn_blocking(move || {
-        let (header, body_bytes) = read_replay_header_and_body(&path)?;
-        let mut details = parse_detailed_info_from_body(&body_bytes);
+        let (header, stream) = open_replay_stream(&path)?;
+        let mut details = parse_detailed_info(stream)?;
         details.sim_mods = header.as_ref().map(local_sim_mods).unwrap_or_default();
         Ok(details)
     })
@@ -30,36 +30,85 @@ pub(super) async fn read_detailed_info(path: &Path) -> Result<ReplayDetails, Str
     .map_err(|error| format!("could not parse replay details: {error}"))?
 }
 
+/// [`parse_detailed_info`] over a body already in memory.
 pub fn parse_detailed_info_from_body(body: &[u8]) -> ReplayDetails {
-    let mut cursor = Cursor::new(body);
-    let game_version = game_version_from_string(replay_string(&mut cursor).as_deref());
-    if !skip_replay_bytes(&mut cursor, 3) {
-        return replay_details_with_version(game_version);
-    }
-    let _raw_map = replay_string(&mut cursor);
-    if !skip_replay_bytes(&mut cursor, 4) {
-        return replay_details_with_version(game_version);
-    }
-    let Some(_) = replay_u32(&mut cursor) else {
-        return replay_details_with_version(game_version);
-    };
-    if parse_replay_lua(&mut cursor, 0).is_none() {
-        return replay_details_with_version(game_version);
-    }
-    let Some(_) = replay_u32(&mut cursor) else {
-        return replay_details_with_version(game_version);
-    };
-    let game_options_lua = parse_replay_lua(&mut cursor, 0);
+    // A slice cannot fail to read, and the head parser answers once it has
+    // the last of it, so the fallback is never taken.
+    parse_detailed_info(body).unwrap_or_else(|_| replay_details_with_version(None))
+}
 
-    let Some(source_count) = replay_u8(&mut cursor) else {
-        return ReplayDetails {
-            game_options: extract_game_options(game_options_lua.as_ref(), game_version),
+/// The details of one replay, read off its command stream as it is
+/// decompressed. Only the head, the part in front of the first record, is
+/// held in memory; the records are read one at a time.
+fn parse_detailed_info(mut stream: impl Read) -> Result<ReplayDetails, String> {
+    let (head, rest) = read_head(&mut stream, |bytes, last| {
+        let mut cursor = Cursor::new(bytes);
+        let head = read_details_head(&mut cursor);
+        (head.whole || last).then(|| (head, cursor.position() as usize))
+    })?;
+    let game_options = extract_game_options(head.game_options_lua.as_ref(), head.game_version);
+    let Some(sources) = head.sources else {
+        return Ok(ReplayDetails {
+            game_options,
             chat_messages: Vec::new(),
             command_stats: Vec::new(),
             sim_seconds: 0,
             sim_mods: Vec::new(),
-            game_version,
-        };
+            game_version: head.game_version,
+        });
+    };
+
+    let mut records = BufReader::new(Cursor::new(rest).chain(stream));
+    let stream = walk_command_stream(&mut records, &sources);
+
+    Ok(ReplayDetails {
+        game_options,
+        chat_messages: stream.chat_messages,
+        command_stats: stream.command_stats,
+        sim_seconds: stream.ticks / TICKS_PER_SECOND,
+        // Filled in by the caller, which is the only place that has seen the
+        // `.fafreplay` header this body was unwrapped from.
+        sim_mods: Vec::new(),
+        game_version: head.game_version,
+    })
+}
+
+/// What stands in front of the command stream, as far as it could be read.
+struct DetailsHead {
+    game_version: Option<i32>,
+    game_options_lua: Option<Value>,
+    /// The command sources the stream switches between. `None` when the head
+    /// ended before their table, and then there is no stream to walk either.
+    sources: Option<Vec<String>>,
+    /// Whether every part of it was read, up to the first command record. A
+    /// head that is not whole was cut short by the end of what has been read
+    /// so far, or is malformed; only reading more tells the two apart.
+    whole: bool,
+}
+
+fn read_details_head(cursor: &mut Cursor<&[u8]>) -> DetailsHead {
+    let version = replay_string(cursor);
+    let mut head = DetailsHead {
+        game_version: game_version_from_string(version.as_deref()),
+        game_options_lua: None,
+        sources: None,
+        whole: false,
+    };
+    if !skip_replay_bytes(cursor, 3) {
+        return head;
+    }
+    let raw_map = replay_string(cursor);
+    if !skip_replay_bytes(cursor, 4)
+        || replay_u32(cursor).is_none()
+        || parse_replay_lua(cursor, 0).is_none()
+        || replay_u32(cursor).is_none()
+    {
+        return head;
+    }
+    head.game_options_lua = parse_replay_lua(cursor, 0);
+
+    let Some(source_count) = replay_u8(cursor) else {
+        return head;
     };
 
     // The army table below is walked only to reach the command stream behind
@@ -73,47 +122,46 @@ pub fn parse_detailed_info_from_body(body: &[u8]) -> ReplayDetails {
     // to say about who typed what.
     let mut sources: Vec<String> = Vec::with_capacity(usize::from(source_count));
     for _ in 0..source_count {
-        let Some(name) = replay_string(&mut cursor) else {
+        let Some(name) = replay_string(cursor) else {
             break;
         };
-        if replay_u32(&mut cursor).is_none() {
+        if replay_u32(cursor).is_none() {
             break;
         }
         sources.push(name);
     }
-    let _ = replay_u8(&mut cursor);
-    let army_count = replay_u8(&mut cursor).unwrap_or(0);
+    let cheats = replay_u8(cursor);
+    let army_count = replay_u8(cursor);
+    let mut whole = version.is_some()
+        && raw_map.is_some()
+        && head.game_options_lua.is_some()
+        && sources.len() == usize::from(source_count)
+        && cheats.is_some()
+        && army_count.is_some();
 
-    for _ in 0..army_count {
-        if replay_u32(&mut cursor).is_none() {
+    for _ in 0..army_count.unwrap_or(0) {
+        if replay_u32(cursor).is_none() {
+            whole = false;
             break;
         }
-        if !matches!(parse_replay_lua(&mut cursor, 0), Some(Value::Object(_))) {
+        if !matches!(parse_replay_lua(cursor, 0), Some(Value::Object(_))) {
+            whole = false;
             break;
         }
-        let Some(source) = replay_u8(&mut cursor) else {
+        let Some(source) = replay_u8(cursor) else {
+            whole = false;
             break;
         };
-        if source != u8::MAX {
-            let _ = replay_u8(&mut cursor);
+        if source != u8::MAX && replay_u8(cursor).is_none() {
+            whole = false;
+            break;
         }
     }
 
-    skip_replay_bytes(&mut cursor, 4);
-
-    let game_options = extract_game_options(game_options_lua.as_ref(), game_version);
-    let stream = walk_command_stream(&mut cursor, &sources);
-
-    ReplayDetails {
-        game_options,
-        chat_messages: stream.chat_messages,
-        command_stats: stream.command_stats,
-        sim_seconds: stream.ticks / TICKS_PER_SECOND,
-        // Filled in by the caller, which is the only place that has seen the
-        // `.fafreplay` header this body was unwrapped from.
-        sim_mods: Vec::new(),
-        game_version,
-    }
+    whole &= skip_replay_bytes(cursor, 4);
+    head.sources = Some(sources);
+    head.whole = whole;
+    head
 }
 
 fn replay_details_with_version(game_version: Option<i32>) -> ReplayDetails {
@@ -248,33 +296,15 @@ struct CommandStream {
 /// prefixed by whose they are, so counting them per source and dividing by the
 /// game time gives the commands-per-minute the thread asked for. Its one
 /// judgement call is which records count, which is `PLAYER_ORDER_COMMANDS`.
-fn walk_command_stream(cursor: &mut Cursor<&[u8]>, sources: &[String]) -> CommandStream {
+fn walk_command_stream(stream: &mut impl Read, sources: &[String]) -> CommandStream {
     let mut current_ticks: u32 = 0;
     let mut records: Vec<ChatRecord> = Vec::new();
     let mut counts: Vec<u32> = vec![0; sources.len()];
     let mut current_source: Option<usize> = None;
-    let body = *cursor.get_ref();
-    let len = body.len();
+    let mut buffer = Vec::new();
 
-    while (cursor.position() + 3) <= len as u64 {
-        let Some(cmd_type) = replay_u8(cursor) else {
-            break;
-        };
-        let mut len_bytes = [0u8; 2];
-        if Read::read_exact(cursor, &mut len_bytes).is_err() {
-            break;
-        }
-        let cmd_len = u16::from_le_bytes(len_bytes) as usize;
-        if cmd_len < 3 {
-            break;
-        }
-        let payload_len = cmd_len - 3;
-        let pos = cursor.position() as usize;
-        if pos + payload_len > len {
-            break;
-        }
-        let payload = &body[pos..pos + payload_len];
-        cursor.set_position((pos + payload_len) as u64);
+    while let Some(cmd_type) = next_command_record(stream, &mut buffer) {
+        let payload = buffer.as_slice();
 
         if cmd_type == CMDST_ADVANCE {
             if payload.len() >= 4 {
@@ -681,6 +711,69 @@ mod tests {
         let names: Vec<String> = players.iter().map(|name| (*name).to_string()).collect();
         let mut cursor = Cursor::new(stream);
         walk_command_stream(&mut cursor, &names).command_stats
+    }
+
+    /// A reader that hands out a few bytes per call, the way a decompressor
+    /// is free to.
+    struct Trickle<'a>(&'a [u8]);
+
+    impl Read for Trickle<'_> {
+        fn read(&mut self, out: &mut [u8]) -> std::io::Result<usize> {
+            let count = out.len().min(self.0.len()).min(7);
+            out[..count].copy_from_slice(&self.0[..count]);
+            self.0 = &self.0[count..];
+            Ok(count)
+        }
+    }
+
+    /// A whole body: the head the engine writes in front of the command
+    /// stream, for one player, with a scenario table too large for the first
+    /// read of a head, then `stream`.
+    fn body_with_a_large_head(stream: &[u8]) -> Vec<u8> {
+        let mut body = b"Supreme Commander v1.50.3675\0".to_vec();
+        body.extend_from_slice(&[0; 3]);
+        body.extend_from_slice(b"/maps/x/x_scenario.lua\0");
+        body.extend_from_slice(&[0; 4]);
+        body.extend_from_slice(&0u32.to_le_bytes());
+        body.extend_from_slice(&lua_table(&[]));
+        body.extend_from_slice(&0u32.to_le_bytes());
+        body.extend_from_slice(&lua_table(&[(
+            "Description",
+            lua_string(&"x".repeat(200_000)),
+        )]));
+        body.push(1);
+        body.extend_from_slice(b"Vindex\0");
+        body.extend_from_slice(&1u32.to_le_bytes());
+        body.push(0); // cheats
+        body.push(0); // armies
+        body.extend_from_slice(&[0; 4]);
+        body.extend_from_slice(stream);
+        body
+    }
+
+    #[test]
+    fn a_head_longer_than_the_first_read_is_read_whole_and_the_records_after_it_walked() {
+        let mut stream = source(0);
+        stream.extend_from_slice(&order());
+        stream.extend_from_slice(&order());
+        stream.extend_from_slice(&advance(600));
+
+        let details =
+            parse_detailed_info(Trickle(&body_with_a_large_head(&stream))).expect("a whole body");
+        assert_eq!(details.game_version, Some(3675));
+        assert_eq!(details.command_stats.len(), 1);
+        assert_eq!(details.command_stats[0].player, "Vindex");
+        assert_eq!(details.command_stats[0].commands, 2);
+        assert_eq!(details.sim_seconds, 60);
+    }
+
+    #[test]
+    fn a_body_that_ends_inside_its_head_gives_back_what_was_read() {
+        let body = body_with_a_large_head(&advance(600));
+        let details = parse_detailed_info(Trickle(&body[..100_000])).expect("not an error");
+        assert_eq!(details.game_version, Some(3675));
+        assert!(details.command_stats.is_empty());
+        assert_eq!(details.sim_seconds, 0);
     }
 
     #[test]

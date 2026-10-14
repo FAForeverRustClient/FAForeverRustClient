@@ -367,6 +367,25 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
     }
 }
 
+/// The next record of the command stream: its type, with its payload read
+/// into `payload`.
+///
+/// A record is a type byte, a little-endian `u16` length that counts those
+/// three bytes, then the payload. `None` at the end of the stream, and at a
+/// record that is shorter than its own prefix or longer than what is left,
+/// which is where both walkers have always stopped.
+pub(crate) fn next_command_record(stream: &mut impl Read, payload: &mut Vec<u8>) -> Option<u8> {
+    let mut prefix = [0u8; 3];
+    stream.read_exact(&mut prefix).ok()?;
+    let length = usize::from(u16::from_le_bytes([prefix[1], prefix[2]]));
+    if length < 3 {
+        return None;
+    }
+    payload.resize(length - 3, 0);
+    stream.read_exact(payload).ok()?;
+    Some(prefix[0])
+}
+
 pub(crate) fn replay_u8(cursor: &mut Cursor<&[u8]>) -> Option<u8> {
     let mut value = [0; 1];
     Read::read_exact(cursor, &mut value).ok()?;

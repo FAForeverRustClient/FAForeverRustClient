@@ -15,7 +15,7 @@ use faf_domain::state::{ReplayAnalysis, ReplayDetails};
 use crate::infra::cache_dir;
 use crate::ports::ReplayDetailsPort;
 
-use super::codec::read_replay_header_and_body;
+use super::codec::open_replay_stream;
 use super::details::read_detailed_info;
 use super::library::ReplayLibrary;
 use super::names::is_replay_file_name;
@@ -117,12 +117,13 @@ impl ReplayDetailsPort for ReplayReader {
                     if cancel.is_cancelled() {
                         return Err("analysis cancelled".into());
                     }
-                    read_replay_header_and_body(&path).map(|(_, body)| body)
+                    open_replay_stream(&path).map(|(_, stream)| stream)
                 }
             },
-            move |body| {
-                crate::infra::replay_analysis::analyse_replay_body_cancellable(uid, &body, &cancel)
-                    .ok_or_else(|| "analysis cancelled".to_string())
+            move |stream| {
+                crate::infra::replay_analysis::analyse_replay_stream_cancellable(
+                    uid, stream, &cancel,
+                )
             },
         )
         .await?
@@ -134,10 +135,11 @@ impl ReplayDetailsPort for ReplayReader {
 ///
 /// A caller that stops waiting (the replay service drops this future when a
 /// newer analysis replaces the request) cannot stop a blocking task that has
-/// started, but it can keep the next one from starting. Reading and
-/// decompressing the file is the first stage; walking the command stream, the
-/// longer of the two, is the second, and a read called off during the first
-/// never begins it.
+/// started, but it can keep the next one from starting. Opening the file and
+/// reading its header line is the first stage; decompressing the command
+/// stream and walking it, the longer of the two, is the second, and a read
+/// called off during the first never begins it. The walk itself checks the
+/// token between records.
 async fn in_two_stages<B: Send + 'static, T: Send + 'static>(
     read: impl FnOnce() -> Result<B, String> + Send + 'static,
     analyse: impl FnOnce(B) -> T + Send + 'static,
