@@ -289,7 +289,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
                 they are the door. */}
             <OptionalNumberInput
               className="number-input"
-              placeholder={t("common.any")}
+              placeholder={t("lobby.host.minRatingPlaceholder")}
               value={ratingMin}
               min={-9999}
               max={9999}
@@ -297,10 +297,9 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
               onChange={setRatingMin}
               aria-label={t("lobby.host.minRating")}
             />
-            <span className="muted">{t("lobby.host.ratingTo")}</span>
             <OptionalNumberInput
               className="number-input"
-              placeholder={t("common.any")}
+              placeholder={t("lobby.host.maxRatingPlaceholder")}
               value={ratingMax}
               min={-9999}
               max={9999}

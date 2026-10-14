@@ -1097,6 +1097,8 @@ export const en = {
   "lobby.host.enforceRating": "Enforce player rating",
   "lobby.host.minRating": "Minimum rating",
   "lobby.host.maxRating": "Maximum rating",
+  "lobby.host.minRatingPlaceholder": "Min",
+  "lobby.host.maxRatingPlaceholder": "Max",
   "lobby.host.selectedMap": "Selected Map",
   "lobby.host.random": "Random",
   "lobby.host.randomTitle": "Choose a random map from the filtered list",
@@ -1132,8 +1134,6 @@ export const en = {
   // and every language showed them in English.
   "lobby.host.modCount": "{active} active · {installed} installed",
   "lobby.host.mapCount": { one: "{count} map", other: "{count} maps" },
-  /** Between the two rating inputs: "Enforce player rating [800] to [1500]". */
-  "lobby.host.ratingTo": "to",
   "lobby.host.filter": "Filter",
   "lobby.host.filterWidth": "Width",
   "lobby.host.filterHeight": "Height",
