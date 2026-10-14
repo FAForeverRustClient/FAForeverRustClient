@@ -1,1 +1,1 @@
-- Country flags and player avatars are sharp instead of blurry on high-resolution screens with display scaling, such as 4K at 150%.
+- Flags and avatars in player lists are no longer blurry on scaled displays, such as 4K at 150%.
