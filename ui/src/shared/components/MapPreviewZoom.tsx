@@ -519,7 +519,7 @@ export function FavoriteMapStar({ favorite, label, onToggle }: {
  * smaller frame of its own, so a map looked different depending on which tab
  * it was opened from.
  */
-export function MapPreviewDialog({ map, meta, onClose, children, downloadUrl, vaultLink = true }: {
+export function MapPreviewDialog({ map, meta, onClose, children, downloadUrl, vaultLink = true, footer }: {
   map: PreviewableMap;
   /// Whether to offer "Open in the map vault": not from the vault itself.
   vaultLink?: boolean;
@@ -531,13 +531,15 @@ export function MapPreviewDialog({ map, meta, onClose, children, downloadUrl, va
   children?: ReactNode;
   /// Where the map's zip is, so starring a map that is not on disk can fetch it.
   downloadUrl?: string;
+  /// Under the picture: a generated map's settings, for one.
+  footer?: ReactNode;
   onClose: () => void;
 }) {
   const label = map.displayName || map.folderName;
   const favorite = useIsFavoriteMap(map.folderName);
   return (
     <Modal onClose={onClose} className="map-preview-modal">
-      <div className="map-preview-dialog">
+      <div className={footer ? "map-preview-dialog has-footer" : "map-preview-dialog"}>
         {/* The map's name, not "Map preview" over it: what kind of dialog
             this is shows from the picture under it. */}
         <header className="map-preview-dialog-header">
@@ -576,6 +578,7 @@ export function MapPreviewDialog({ map, meta, onClose, children, downloadUrl, va
             )
             : <MapPreview map={map} large />)}
         </ZoomableImage>
+        {footer}
       </div>
     </Modal>
   );
