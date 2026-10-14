@@ -59,10 +59,7 @@ export function GeneratorBasicOptions({ model }: {
           />
         </Row>
 
-        <Row
-          label={t("maps.generate.spawns")}
-          hint={teams > 0 ? t("maps.generate.spawnsMultipleHint", { teams }) : undefined}
-        >
+        <Row label={t("maps.generate.spawns")}>
           <Select
             label={t("maps.generate.spawns")}
             value={form.spawnCount ?? 6}

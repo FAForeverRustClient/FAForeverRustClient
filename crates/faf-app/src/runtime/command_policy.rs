@@ -368,6 +368,7 @@ fn map_generator(command: &MapGeneratorCommand) -> CommandPolicy {
         | MapGeneratorCommand::LoadHelp { .. }
         | MapGeneratorCommand::SavePreset { .. }
         | MapGeneratorCommand::LoadPresets
+        | MapGeneratorCommand::RenamePreset { .. }
         | MapGeneratorCommand::DeletePreset { .. } => ORDINARY,
         MapGeneratorCommand::Cancel => PRIORITY,
     }

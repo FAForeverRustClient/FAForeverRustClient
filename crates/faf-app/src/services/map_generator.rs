@@ -306,6 +306,24 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             }
         }
         MapGeneratorCommand::LoadPresets => reload_presets(ctx, out).await,
+        MapGeneratorCommand::RenamePreset { name, new_name } => {
+            if let Err(reason) = ctx
+                .ports
+                .map_generator
+                .rename_preset(&name, &new_name)
+                .await
+            {
+                services::notifications::add_failure(
+                    out,
+                    services::notifications::Text::new(
+                        "notifications.msg.generatorPresetRenameFailed",
+                    ),
+                    "Could not rename the preset",
+                    reason,
+                );
+            }
+            reload_presets(ctx, out).await;
+        }
         MapGeneratorCommand::DeletePreset { name } => {
             if let Err(reason) = ctx.ports.map_generator.delete_preset(&name).await {
                 services::notifications::add_failure(

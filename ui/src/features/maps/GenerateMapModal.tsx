@@ -26,7 +26,7 @@ import { ZoomableImage } from "../../shared/components/MapPreviewZoom";
 import { cancel } from "./generatorCommands";
 import { Row } from "./GenerateMapControls";
 import { GeneratorBasicOptions } from "./GeneratorBasicOptions";
-import { GeneratorAdvancedOptions } from "./GeneratorAdvancedOptions";
+import { GeneratorAdvancedOptions, GeneratorPresets } from "./GeneratorAdvancedOptions";
 import { GeneratedMapResults } from "./GeneratedMapResults";
 import { useGeneratorDialog } from "./useGeneratorDialog";
 import "./generate-map.css";
@@ -40,7 +40,7 @@ interface Props {
 export function GenerateMapModal({ onClose, onGenerated }: Props) {
   const model = useGeneratorDialog(onClose, onGenerated);
   const { t, reproduceName, setReproduceName, reproducing, reproduceValid, decoded,
-    showHelp, state, busy, submittable, submit, zoomed, setZoomed, currentPreviewUrl, currentMap } = model;
+    busy, submittable, submit, zoomed, setZoomed, currentPreviewUrl, currentMap } = model;
 
   return (
     // While the preview is zoomed, Escape and a backdrop click belong to the
@@ -56,67 +56,65 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
         {/* Left Column: Generator Form & Controls */}
         <div className="generate-map-form-pane">
           <form className="generate-map" onSubmit={submit}>
-            {/* Outside every `<fieldset disabled={reproducing}>` below, and it
-                has to stay outside: `disabled` on a fieldset is inherited by
-                its descendants and a nested fieldset cannot take it back, so a
-                name typed into a field *inside* one disabled itself on the
-                first keystroke. The only way back out was closing the dialog. */}
-            <div className="generate-map-reproduce">
-              <Row label={t("maps.generate.reproduceTitle")}>
-                <div className="generate-map-seed">
-                  <input
-                    className="generate-map-control"
-                    value={reproduceName}
-                    aria-invalid={reproducing && !reproduceValid}
-                    aria-label={t("maps.generate.mapNameSeed")}
-                    placeholder={t("maps.generate.mapNameSeedPlaceholder")}
-                    onChange={(e) => setReproduceName(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="generate-map-seed-btn"
-                    disabled={!reproducing}
-                    aria-label={t("maps.generate.reproduceClear")}
-                    title={t("maps.generate.reproduceClear")}
-                    onClick={() => setReproduceName("")}
-                  >
-                    <Icon name="close" size={13} />
-                  </button>
+            <div className="generate-map-scroll-content">
+              {/* Outside every `<fieldset disabled={reproducing}>` below, and it
+                  has to stay outside: `disabled` on a fieldset is inherited by
+                  its descendants and a nested fieldset cannot take it back, so a
+                  name typed into a field *inside* one disabled itself on the
+                  first keystroke. The only way back out was closing the dialog. */}
+              <div className="generate-map-reproduce">
+                <Row label={t("maps.generate.reproduceTitle")}>
+                  <div className="generate-map-seed">
+                    <input
+                      className="generate-map-control"
+                      value={reproduceName}
+                      aria-invalid={reproducing && !reproduceValid}
+                      aria-label={t("maps.generate.mapNameSeed")}
+                      placeholder={t("maps.generate.mapNameSeedPlaceholder")}
+                      onChange={(e) => setReproduceName(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="generate-map-seed-btn"
+                      disabled={!reproducing}
+                      aria-label={t("maps.generate.reproduceClear")}
+                      title={t("maps.generate.reproduceClear")}
+                      onClick={() => setReproduceName("")}
+                    >
+                      <Icon name="close" size={13} />
+                    </button>
+                  </div>
+                </Row>
+              </div>
+
+              {reproducing && (
+                <div className="generate-map-banner">
+                  <strong>{t("maps.generate.rebuildingBanner")}</strong>
+                  <span>
+                    {reproduceValid
+                      ? t("maps.generate.rebuildingHint")
+                      : t("maps.generate.notAGeneratedName")}
+                  </span>
+                  {decoded && (
+                    <ul className="generate-map-facts">
+                      {summariseDecodedName(decoded, t).map((fact) => (
+                        <li key={fact} className="generate-map-fact">
+                          {fact}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-              </Row>
+              )}
+
+              <GeneratorBasicOptions model={model} />
+
+              <hr className="generate-map-divider" />
+
+              <GeneratorAdvancedOptions model={model} />
             </div>
 
-            {reproducing && (
-              <div className="generate-map-banner">
-                <strong>{t("maps.generate.rebuildingBanner")}</strong>
-                <span>
-                  {reproduceValid
-                    ? t("maps.generate.rebuildingHint")
-                    : t("maps.generate.notAGeneratedName")}
-                </span>
-                {decoded && (
-                  <ul className="generate-map-facts">
-                    {summariseDecodedName(decoded, t).map((fact) => (
-                      <li key={fact} className="generate-map-fact">
-                        {fact}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-
-            <GeneratorBasicOptions model={model} />
-
-            <hr className="generate-map-divider" />
-
-            <GeneratorAdvancedOptions model={model} />
-
-            {showHelp && (
-              <pre className="generate-map-help">
-                {state.helpText || t("maps.generate.loadingHelp")}
-              </pre>
-            )}
+            <GeneratorPresets model={model} />
 
             <div className="generate-map-actions">
               <Button type="button" onClick={onClose}>
