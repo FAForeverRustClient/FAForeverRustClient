@@ -67,6 +67,18 @@ pub struct GeneralPreferences {
     /// the default rather than failing.
     #[serde(default)]
     pub filter_memory: FilterMemory,
+    /// Closing the client during a game hides it to the tray instead.
+    ///
+    /// The window's close button and the tray's Quit both: the client keeps
+    /// the lobby connection, the ICE adapter and the replay relay up until the
+    /// game has ended, then exits by itself, unless it was brought back from
+    /// the tray in the meantime. An accidental click on the close button in the
+    /// middle of a game used to cost that game's connection; the Java and
+    /// Python clients only ask first. Off, the client asks before closing, as
+    /// it did before this existed. `default_true` so a settings file written
+    /// before it reads as on.
+    #[serde(default = "default_true")]
+    pub keep_running_during_game: bool,
 }
 
 /// How long a filter outlives the moment it was set (#447).
@@ -511,6 +523,7 @@ impl Default for GeneralPreferences {
             auto_login: true,
             remember_typed_entries: false,
             filter_memory: FilterMemory::Session,
+            keep_running_during_game: true,
         }
     }
 }
@@ -3276,6 +3289,7 @@ preference_patch! {
         auto_login: bool,
         remember_typed_entries: bool,
         filter_memory: FilterMemory,
+        keep_running_during_game: bool,
     }
 }
 

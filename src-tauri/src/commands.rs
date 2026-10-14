@@ -7,8 +7,8 @@
 //! * [`dispatch`], [`dispatch_and_wait`] and [`snapshot`] are the *only*
 //!   way state moves across the boundary (ARCHITECTURE.md §1).
 //! * The folder, log and sound commands are desktop plumbing with no state.
-//! * [`webview_engine`] and [`exit_app`] are facts about, and control over,
-//!   the shell process itself.
+//! * [`webview_engine`], [`exit_app`] and [`page_ready`] are facts about, and
+//!   control over, the shell process itself.
 
 use faf_app::VersionedSnapshot;
 use faf_domain::AppCommand;
@@ -312,6 +312,14 @@ pub(crate) fn snapshot(core: tauri::State<'_, Core>) -> VersionedSnapshot {
 #[tauri::command]
 pub(crate) fn exit_app(app: tauri::AppHandle) {
     app.exit(0);
+}
+
+/// The page has loaded and its close confirmation (`ExitGuard`) is listening.
+/// Until the shell hears this, closing during a game asks natively, and a
+/// window rebuilt after a crash is held open (`exit`, `webview_recovery`).
+#[tauri::command]
+pub(crate) fn page_ready(app: tauri::AppHandle) {
+    crate::exit::page_ready(&app);
 }
 
 /// Which rendering engine the client actually ended up in.

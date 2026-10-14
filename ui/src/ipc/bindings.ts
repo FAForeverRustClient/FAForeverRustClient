@@ -3277,6 +3277,19 @@ export type GeneralPreferences = {
 	 *  the default rather than failing.
 	 */
 	filterMemory?: FilterMemory,
+	/**
+	 *  Closing the client during a game hides it to the tray instead.
+	 *
+	 *  The window's close button and the tray's Quit both: the client keeps
+	 *  the lobby connection, the ICE adapter and the replay relay up until the
+	 *  game has ended, then exits by itself, unless it was brought back from
+	 *  the tray in the meantime. An accidental click on the close button in the
+	 *  middle of a game used to cost that game's connection; the Java and
+	 *  Python clients only ask first. Off, the client asks before closing, as
+	 *  it did before this existed. `default_true` so a settings file written
+	 *  before it reads as on.
+	 */
+	keepRunningDuringGame?: boolean,
 };
 
 /**  A change to [`GeneralPreferences`]; see `preference_patch!`. */
@@ -3285,6 +3298,7 @@ export type GeneralPreferencesPatch = {
 	autoLogin?: boolean,
 	rememberTypedEntries?: boolean,
 	filterMemory?: FilterMemory,
+	keepRunningDuringGame?: boolean,
 };
 
 /**

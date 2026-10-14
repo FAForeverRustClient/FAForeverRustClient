@@ -1,0 +1,2 @@
+- Closing the client during a game hides it to the tray, so your game stays connected, and it quits when the game ends (Settings, General, "Keep running during a game").
+- On Windows, the client recovers on its own if its window crashes, without pulling you out of your game.

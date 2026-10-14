@@ -470,7 +470,6 @@ export const en = {
 
   // The community calendar.
   "events.title": "Events",
-  "events.subtitle": "Tournaments, patches and what the community has planned. Times are shown in your own time zone.",
   "events.suggest": "Suggest an event",
   "events.submit.title": "Suggest an event",
   "events.submit.intro": "Fill this in and the client hands you a ready-made submission. Times are yours: the conversion happens here.",
@@ -568,6 +567,8 @@ export const en = {
   // Settings: general section.
   "settings.general.startPage.label": "Start page",
   "settings.general.autoLogin.label": "Auto sign-in",
+  "settings.general.keepRunningDuringGame.label": "Keep running during a game",
+  "settings.general.keepRunningDuringGame.hint": "Closing the window, or \"Quit\" in the tray, while a game runs hides the client to the tray instead, so the game keeps its connection. It exits by itself once the game ends, unless you open it again. Off, it asks before closing.",
   "settings.general.rememberTypedEntries.label": "Suggest what you typed before",
   "settings.general.filterMemory.label": "Remember filters",
   "settings.general.filterMemory.never": "Never",
@@ -629,6 +630,7 @@ export const en = {
   "lobby.galacticWar.news.empty": "Galactic War does not publish announcements to this client yet.",
   "lobby.galacticWar.link.site": "Galactic War website",
   "lobby.galacticWar.link.forum": "FAF forum",
+  "lobby.galacticWar.how.title": "How it works",
   "lobby.galacticWar.how.galaxy.title": "The galaxy",
   "lobby.galacticWar.how.galaxy.body": "Four factions contest a shared galaxy of planets. Territory changes hands as battles are won and lost, so what you see is one continuous cycle rather than a single match.",
   "lobby.galacticWar.how.avatar.title": "Your avatar",

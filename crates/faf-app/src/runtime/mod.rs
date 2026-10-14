@@ -213,6 +213,9 @@ pub struct App {
     event_tx: broadcast::Sender<AppEvent>,
     versioned_event_tx: broadcast::Sender<VersionedEvent>,
     revision: Arc<AtomicU64>,
+    /// The game port, for [`Self::replay_upload_pending`]: the one thing about
+    /// a game's end the state does not record.
+    process: Arc<dyn crate::ports::ProcessPort>,
 }
 
 /// The command-processing loop. Spawn `run()` on any async runtime.
@@ -455,6 +458,7 @@ impl App {
         let revision = Arc::new(AtomicU64::new(0));
         let order = Arc::new(ReleaseOrder::default());
         let send_order = Arc::new(Mutex::new(()));
+        let process = ports.process.clone();
 
         let sink = EventSink {
             state: state.clone(),
@@ -498,6 +502,7 @@ impl App {
             event_tx,
             versioned_event_tx,
             revision,
+            process,
         };
         let app_loop = AppLoop {
             cmd_rx,
@@ -637,6 +642,14 @@ impl App {
     pub fn with_state<T>(&self, read: impl FnOnce(&AppState) -> T) -> T {
         let state = self.state.read().expect("app state lock poisoned");
         read(&state)
+    }
+
+    /// Whether the last online game's replay is still being written or
+    /// uploaded, which goes on for up to a minute after the game itself has
+    /// ended. For the shell, which can exit by itself once a game ends and
+    /// must not cut the upload short.
+    pub fn replay_upload_pending(&self) -> bool {
+        self.process.replay_upload_pending()
     }
 }
 

@@ -335,7 +335,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "reviews.saved": "Gespeichert.",
 
   "events.title": "Termine",
-  "events.subtitle": "Turniere, Patches und was die Community geplant hat. Zeiten erscheinen in deiner eigenen Zeitzone.",
   "events.suggest": "Termin vorschlagen",
   "events.submit.title": "Termin vorschlagen",
   "events.submit.intro": "Ausfüllen, und der Client baut die Einreichung fertig zusammen. Die Zeiten sind deine: umgerechnet wird hier.",
@@ -482,6 +481,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
 
   "settings.general.startPage.label": "Startseite",
   "settings.general.autoLogin.label": "Automatisch anmelden",
+  "settings.general.keepRunningDuringGame.label": "Während eines Spiels weiterlaufen",
+  "settings.general.keepRunningDuringGame.hint": "Schließt du während eines Spiels das Fenster oder wählst im Tray \"Quit\", verschwindet der Client stattdessen im Tray und das Spiel behält seine Verbindung. Er beendet sich von selbst, sobald das Spiel vorbei ist, außer du öffnest ihn wieder. Ausgeschaltet fragt er vor dem Schließen nach.",
   "settings.general.rememberTypedEntries.label": "Frühere Eingaben vorschlagen",
   "settings.general.filterMemory.label": "Filter merken",
   "settings.general.filterMemory.never": "Nie",
@@ -533,6 +534,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.galacticWar.news.empty": "Galactic War veröffentlicht noch keine Ankündigungen an diesen Client.",
   "lobby.galacticWar.link.site": "Galactic-War-Website",
   "lobby.galacticWar.link.forum": "FAF-Forum",
+  "lobby.galacticWar.how.title": "So funktioniert es",
   "lobby.galacticWar.how.galaxy.title": "Die Galaxie",
   "lobby.galacticWar.how.galaxy.body": "Vier Fraktionen kämpfen um eine gemeinsame Galaxie aus Planeten. Gebiete wechseln den Besitzer, wenn Schlachten gewonnen oder verloren werden. Es ist ein durchgehender Zyklus, keine einzelne Partie.",
   "lobby.galacticWar.how.avatar.title": "Dein Avatar",

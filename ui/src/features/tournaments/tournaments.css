@@ -1332,6 +1332,9 @@
   border-radius: var(--radius-sm);
   object-fit: contain;
   flex: none;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
 }
 
 /* Most players have no avatar, so this is the common case rather than the
@@ -7804,6 +7807,9 @@ button.tournament-chat-author:hover {
   height: 20px;
   object-fit: contain;
   border-radius: var(--radius-sm);
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
 }
 
 /* The leaderboard's name: its own colour, underlined on hover and while its

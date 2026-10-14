@@ -122,6 +122,14 @@ pub trait ProcessPort: Send + Sync {
         false
     }
 
+    /// Whether the last online game's replay is still being written or
+    /// uploaded. The recorder outlives the game by up to a minute, and the
+    /// shell, which can exit by itself once a game ends, waits for it. A port
+    /// that records nothing has nothing pending, which is the default.
+    fn replay_upload_pending(&self) -> bool {
+        false
+    }
+
     /// Launch the game. Returns once the process has been spawned. Errors if the
     /// executable can't be resolved or started.
     async fn launch_game(&self, params: GameLaunchParams) -> Result<(), String>;
