@@ -1,0 +1,1 @@
+- The Game folders menu in the sidebar is easier to read, with an icon for every folder.
