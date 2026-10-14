@@ -470,7 +470,6 @@ export const en = {
 
   // The community calendar.
   "events.title": "Events",
-  "events.subtitle": "Tournaments, patches and what the community has planned. Times are shown in your own time zone.",
   "events.suggest": "Suggest an event",
   "events.submit.title": "Suggest an event",
   "events.submit.intro": "Fill this in and the client hands you a ready-made submission. Times are yours: the conversion happens here.",

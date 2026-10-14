@@ -144,7 +144,6 @@ export function EventsView() {
       <header className="events-head">
         <div className="events-head-copy">
           <h2 className="view-title">{t("events.title")}</h2>
-          <p>{t("events.subtitle")}</p>
         </div>
         {/* Only when the catalogue was read from the network: the copy that
             ships with the client names no submission address, because it is

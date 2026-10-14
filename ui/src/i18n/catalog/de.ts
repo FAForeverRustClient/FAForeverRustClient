@@ -335,7 +335,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "reviews.saved": "Gespeichert.",
 
   "events.title": "Termine",
-  "events.subtitle": "Turniere, Patches und was die Community geplant hat. Zeiten erscheinen in deiner eigenen Zeitzone.",
   "events.suggest": "Termin vorschlagen",
   "events.submit.title": "Termin vorschlagen",
   "events.submit.intro": "Ausfüllen, und der Client baut die Einreichung fertig zusammen. Die Zeiten sind deine: umgerechnet wird hier.",
