@@ -2861,7 +2861,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "links.entry.kickCategory": "Forged Alliance на Kick",
   "links.entry.kickCategoryHint": "Все, кто стримит игру на Kick",
   "events.title": "События",
-  "events.subtitle": "Турниры, патчи и планы сообщества. Время показано в вашем часовом поясе.",
   "events.suggest": "Предложить событие",
   "events.submit.title": "Предложить событие",
   "events.submit.intro": "Заполните форму, и клиент подготовит готовую заявку. Время указывайте своё: пересчёт происходит здесь.",

@@ -2348,7 +2348,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "links.entry.kickCategory": "Forged Alliance sur Kick",
   "links.entry.kickCategoryHint": "Tous ceux qui diffusent le jeu sur Kick",
   "events.title": "Événements",
-  "events.subtitle": "Tournois, patchs et ce que la communauté a prévu. Les horaires sont affichés dans votre fuseau horaire.",
   "events.suggest": "Proposer un événement",
   "events.submit.title": "Proposer un événement",
   "events.submit.intro": "Remplissez ceci et le client vous prépare une proposition prête à envoyer. Les horaires sont les vôtres : la conversion se fait ici.",

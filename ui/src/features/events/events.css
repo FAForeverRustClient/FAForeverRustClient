@@ -9,12 +9,12 @@
 
 .events-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
 }
 
-/* The subtitle gives way before the button does: a two-line "Suggest an
+/* The title gives way before the button does: a two-line "Suggest an
    event" in German was the first thing to break at a narrow window. */
 .events-head > button {
   flex: none;
@@ -27,13 +27,6 @@
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.025em;
-}
-
-.events-head-copy p {
-  margin: 4px 0 0;
-  color: var(--color-muted);
-  font-size: 13px;
-  line-height: 1.4;
 }
 
 .events-toolbar {
