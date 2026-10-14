@@ -12,7 +12,7 @@
 // list and nothing else.
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Icon } from "./Icon";
+import { Icon, type IconName } from "./Icon";
 import { useOverlayLayer } from "./useOverlayLayer";
 import "./select.css";
 
@@ -30,6 +30,21 @@ interface Props<T extends string | number> {
   disabled?: boolean;
   className?: string;
   placeholder?: string;
+  placement?: "bottom" | "top";
+  optionAction?: {
+    icon: IconName;
+    label: (option: SelectOption<T>) => string;
+    onSelect: (option: SelectOption<T>) => void;
+    danger?: boolean;
+  };
+  optionRename?: {
+    label: (option: SelectOption<T>) => string;
+    placeholder: (option: SelectOption<T>) => string;
+    confirmLabel: (option: SelectOption<T>) => string;
+    cancelLabel: (option: SelectOption<T>) => string;
+    onRename: (option: SelectOption<T>, name: string) => void;
+    isValid: (option: SelectOption<T>, name: string) => boolean;
+  };
 }
 
 /**
@@ -78,12 +93,18 @@ export function Select<T extends string | number>({
   disabled = false,
   className = "",
   placeholder,
+  placement = "bottom",
+  optionAction,
+  optionRename,
 }: Props<T>) {
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
+  const [editingValue, setEditingValue] = useState<T | null>(null);
+  const [editingName, setEditingName] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const editingInputRef = useRef<HTMLInputElement>(null);
   const search = useRef({ text: "", at: 0 });
   const id = useId();
   const listId = `${id}-listbox`;
@@ -113,6 +134,13 @@ export function Select<T extends string | number>({
     const item = listRef.current?.children[highlightedIndex] as HTMLElement | undefined;
     item?.scrollIntoView?.({ block: "nearest" });
   }, [open, highlightedIndex]);
+
+  useLayoutEffect(() => {
+    if (editingValue !== null) {
+      editingInputRef.current?.focus();
+      editingInputRef.current?.select();
+    }
+  }, [editingValue]);
 
   // Opening highlights the current value, so the arrows start from it. Done
   // here rather than in an effect keyed on `options`: callers pass a fresh
@@ -225,11 +253,20 @@ export function Select<T extends string | number>({
       </button>
 
       {open && (
-        <div className="select-popover" role="listbox" id={listId} ref={listRef} aria-labelledby={id}>
+        <div className={`select-popover${placement === "top" ? " is-above" : ""}`} role="listbox" id={listId} ref={listRef} aria-labelledby={id}>
           {options.map((option, idx) => {
-            const isSelected = option.value === value;
+            const isSelected = option.value === value && !option.disabled;
             const isHighlighted = idx === highlightedIndex;
-            return (
+            const isEditing = editingValue === option.value;
+            const hasOptionActions = !option.disabled && (optionAction !== undefined || optionRename !== undefined);
+            const finishRename = () => {
+              if (!optionRename || !optionRename.isValid(option, editingName)) return;
+              optionRename.onRename(option, editingName.trim());
+              setEditingValue(null);
+              setOpen(true);
+              triggerRef.current?.focus();
+            };
+            const optionButton = (
               <button
                 type="button"
                 key={String(option.value)}
@@ -242,7 +279,7 @@ export function Select<T extends string | number>({
                 // relies on and what keeps the list open under the pointer.
                 tabIndex={-1}
                 disabled={option.disabled}
-                className={`select-option${isSelected ? " is-selected" : ""}${isHighlighted ? " is-highlighted" : ""}`}
+                className={`select-option${hasOptionActions ? " select-option-main" : ""}${isSelected ? " is-selected" : ""}${isHighlighted ? " is-highlighted" : ""}`}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => choose(idx)}
                 onMouseEnter={() => setHighlightedIndex(idx)}
@@ -250,6 +287,103 @@ export function Select<T extends string | number>({
                 <span className="select-option-label">{option.label}</span>
                 {isSelected && <Icon name="check" size={13} className="select-option-check" />}
               </button>
+            );
+
+            if (!hasOptionActions) {
+              return optionButton;
+            }
+            return (
+              <div className="select-option-row" key={String(option.value)} role="presentation">
+                {isEditing && optionRename ? (
+                  <div
+                    id={selectOptionId(id, idx)}
+                    role="option"
+                    aria-selected={false}
+                    className="select-option-edit"
+                  >
+                    <input
+                      ref={editingInputRef}
+                      className="select-option-edit-input"
+                      value={editingName}
+                      aria-label={optionRename.label(option)}
+                      placeholder={optionRename.placeholder(option)}
+                      onChange={(event) => setEditingName(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          finishRename();
+                        } else if (event.key === "Escape") {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setEditingValue(null);
+                          triggerRef.current?.focus();
+                        } else {
+                          event.stopPropagation();
+                        }
+                      }}
+                    />
+                  </div>
+                ) : optionButton}
+                {isEditing ? (
+                  <>
+                    <button
+                      type="button"
+                      className="select-option-action"
+                      aria-label={optionRename?.confirmLabel(option)}
+                      title={optionRename?.confirmLabel(option)}
+                      disabled={!optionRename?.isValid(option, editingName)}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={finishRename}
+                    >
+                      <Icon name="check" size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className="select-option-action"
+                      aria-label={optionRename?.cancelLabel(option)}
+                      title={optionRename?.cancelLabel(option)}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        setEditingValue(null);
+                        triggerRef.current?.focus();
+                      }}
+                    >
+                      <Icon name="close" size={14} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {optionRename && (
+                      <button
+                        type="button"
+                        className="select-option-action"
+                        aria-label={optionRename.label(option)}
+                        title={optionRename.label(option)}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => {
+                          setEditingName(option.label);
+                          setEditingValue(option.value);
+                        }}
+                      >
+                        <Icon name="edit" size={14} />
+                      </button>
+                    )}
+                    {optionAction && (
+                      <button
+                        type="button"
+                        className={`select-option-action${optionAction.danger ? " is-danger" : ""}`}
+                        aria-label={optionAction.label(option)}
+                        title={optionAction.label(option)}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => optionAction.onSelect(option)}
+                      >
+                        <Icon name={optionAction.icon} size={14} />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             );
           })}
         </div>

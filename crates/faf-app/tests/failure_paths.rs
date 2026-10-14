@@ -692,6 +692,10 @@ impl MapGeneratorPort for GatedGenerator {
         FakeMapGenerator.delete_preset(name).await
     }
 
+    async fn rename_preset(&self, name: &str, new_name: &str) -> Result<(), String> {
+        FakeMapGenerator.rename_preset(name, new_name).await
+    }
+
     async fn latest_version(&self) -> Result<String, String> {
         FakeMapGenerator.latest_version().await
     }

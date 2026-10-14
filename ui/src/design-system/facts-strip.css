@@ -24,6 +24,11 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* For a dialog wide enough to keep a dozen facts to three rows. */
+.facts-grid.has-4-columns {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .facts-grid + .facts-grid {
   padding-top: var(--space-3);
   border-top: 1px solid var(--color-border);
@@ -36,6 +41,7 @@
 }
 
 /* No hairline and no indent at the start of a row. */
+.facts-grid.has-4-columns > div:nth-child(4n + 1),
 .facts-grid.has-3-columns > div:nth-child(3n + 1),
 .facts-grid.has-2-columns > div:nth-child(2n + 1) {
   padding-left: 0;

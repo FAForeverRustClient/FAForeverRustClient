@@ -141,7 +141,7 @@ export function useGeneratorDialog(onClose: () => void, onGenerated?: (maps: str
     beginRun(() => void generate(form));
   };
 
-  const { presets, existing, saved, presetName, setPresetName, presetNameUsable, save, applyPreset } =
+  const { presets, existing, saved, presetName, setPresetName, presetNameUsable, save, applyPreset, rename, selectedPresetName } =
     useGeneratorPresets(state, form, (options) => updateForm({ type: "replace", options }));
 
   const seedPinsOneMap = form.seed.trim() !== "";
@@ -271,6 +271,6 @@ export function useGeneratorDialog(onClose: () => void, onGenerated?: (maps: str
   const currentFacts = currentMap ? state.decoded?.[currentMap] : undefined;
   const pickable = Boolean(onGenerated);
 
-  return { failure, retry, t, state, form, set, showHelp, setShowHelp, busy, reproduceName, setReproduceName, reproducing, reproduceValid, decoded, blocking, advisory, submittable, submit, presets, existing, saved, presetName, setPresetName, presetNameUsable, save, applyPreset, seedPinsOneMap, teams, changeTeams, versionOptions, mapSizeOptions, teamOptions, spawnSelectOptions, generationTypeOptions, presetOptions, lists, styleOverrides, typeOverrides, rawOverrides, results, selectedMapIndex, setSelectedMapIndex, copied, zoomed, setZoomed, copyCurrentName, currentMap, currentPreviewUrl, currentFacts, pickable, previews, pick, handleDeleteMap };
+  return { failure, retry, t, state, form, set, showHelp, setShowHelp, busy, reproduceName, setReproduceName, reproducing, reproduceValid, decoded, blocking, advisory, submittable, submit, presets, existing, saved, presetName, setPresetName, presetNameUsable, save, applyPreset, rename, selectedPresetName, seedPinsOneMap, teams, changeTeams, versionOptions, mapSizeOptions, teamOptions, spawnSelectOptions, generationTypeOptions, presetOptions, lists, styleOverrides, typeOverrides, rawOverrides, results, selectedMapIndex, setSelectedMapIndex, copied, zoomed, setZoomed, copyCurrentName, currentMap, currentPreviewUrl, currentFacts, pickable, previews, pick, handleDeleteMap };
 }
 export type GeneratorDialogModel = ReturnType<typeof useGeneratorDialog>;

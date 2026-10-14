@@ -16,7 +16,7 @@ export function GeneratorStyleOptions({ model }: {
   const { t, form, set, lists, styleOverrides } = model;
   return (
     <div className="generate-map-grid-2col">
-      <Row label={t("maps.generate.symmetries")}>
+      <Row label={t("maps.generate.symmetries")} className="generate-map-row-symmetries">
         <MultiSelect
           label={t("maps.generate.symmetries")}
           options={lists.symmetries.map((s) => ({ value: s, label: s }))}
@@ -41,14 +41,13 @@ export function GeneratorStyleOptions({ model }: {
           options={lists.styles.map((s) => ({ value: s, label: s }))}
           selected={form.styles ?? []}
           onChange={(styles) => set("styles", styles)}
-          anyLabel={t("maps.generate.randomAny")}
+          anyLabel={t("maps.generate.ownStyle")}
         />
       </Row>
 
       <Row
         label={t("maps.generate.terrainStyles")}
         superseded={styleOverrides}
-        hint={styleOverrides ? t("maps.generate.styleSuperseded") : undefined}
       >
         <MultiSelect
           label={t("maps.generate.terrainStyles")}
@@ -62,7 +61,6 @@ export function GeneratorStyleOptions({ model }: {
       <Row
         label={t("maps.generate.textureStyles")}
         superseded={styleOverrides}
-        hint={styleOverrides ? t("maps.generate.styleSuperseded") : undefined}
       >
         <MultiSelect
           label={t("maps.generate.textureStyles")}
@@ -76,7 +74,6 @@ export function GeneratorStyleOptions({ model }: {
       <Row
         label={t("maps.generate.resourceStyles")}
         superseded={styleOverrides}
-        hint={styleOverrides ? t("maps.generate.styleSuperseded") : undefined}
       >
         <MultiSelect
           label={t("maps.generate.resourceStyles")}
@@ -90,7 +87,6 @@ export function GeneratorStyleOptions({ model }: {
       <Row
         label={t("maps.generate.propStyles")}
         superseded={styleOverrides}
-        hint={styleOverrides ? t("maps.generate.styleSuperseded") : undefined}
       >
         <MultiSelect
           label={t("maps.generate.propStyles")}
@@ -101,7 +97,7 @@ export function GeneratorStyleOptions({ model }: {
         />
       </Row>
 
-      <Row label={t("maps.generate.reclaimDensity")}>
+      <Row label={t("maps.generate.reclaimDensity")} className="generate-map-row-density">
         <RangeSlider
           label={t("maps.generate.reclaimDensity")}
           min={0}
@@ -117,7 +113,7 @@ export function GeneratorStyleOptions({ model }: {
         />
       </Row>
 
-      <Row label={t("maps.generate.resourceDensity")}>
+      <Row label={t("maps.generate.resourceDensity")} className="generate-map-row-density">
         <RangeSlider
           label={t("maps.generate.resourceDensity")}
           min={0}

@@ -1602,61 +1602,18 @@
   border-color: var(--color-border-strong);
 }
 
-/* Demoted, not deleted: map size is about the map, so it stays, as a caption
-   under the picture rather than as a column beside it. */
-.game-preview-dialog-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-  margin: 0;
+/* The generator's settings under the picture reach the panel's edges, as the
+   facts band does in every other panel: 24px is `.game-preview-modal`'s
+   horizontal padding. */
+.game-preview-dialog .generator-facts-strip {
+  --facts-strip-bleed: 24px;
 }
 
-.game-preview-dialog-facts > div {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  font-size: 12px;
-}
-
-.game-preview-dialog-facts dt { color: var(--color-muted); }
-
-.game-preview-dialog-facts dd {
-  margin: 0;
-  color: var(--color-text);
-}
-
-/* A generated map's settings, as a sheet: even columns, each label over its
-   value, on a quiet panel that holds them together under the name row. */
-.game-preview-dialog-facts.is-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: var(--space-3) var(--space-4);
-  padding: var(--space-3);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.game-preview-dialog-facts.is-grid > div {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 2px;
-  min-width: 0;
-}
-
-.game-preview-dialog-facts.is-grid > .is-wide {
-  grid-column: span 2;
-}
-
-.game-preview-dialog-facts.is-grid dt {
-  font-size: 11px;
-}
-
-.game-preview-dialog-facts.is-grid dd {
-  font-size: 13px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
+/* Three rows of settings under the picture take more than the allowance
+   above leaves, so a generated map's picture gives up the difference rather
+   than the dialog scrolling. */
+.game-preview-dialog.has-facts {
+  --preview-size-allowance: 320px;
 }
 
 /* The tile's and the details panel's plate (`.game-tile-private`), with the

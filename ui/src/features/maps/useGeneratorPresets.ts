@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import type { GeneratorOptions, MapGeneratorState } from "../../ipc/bindings";
 import { isUsablePresetName } from "../../shared/generatorPresets";
-import { savePreset } from "./generatorCommands";
+import { renamePreset, savePreset } from "./generatorCommands";
 
 export function useGeneratorPresets(state: MapGeneratorState, form: GeneratorOptions, replace: (options: GeneratorOptions) => void) {
   const [saved, setSaved] = useState(false);
-  const [presetName, setPresetName] = useState("");
+  const [presetName, setPresetNameState] = useState("");
+  const [selectedPresetName, setSelectedPresetName] = useState<string | null>(null);
   const presets = useMemo(() => state.presets ?? [], [state.presets]);
+  const selectedPreset = presets.find((preset) => preset.name === selectedPresetName);
+  const setPresetName = (name: string) => {
+    setPresetNameState(name);
+    setSelectedPresetName(null);
+  };
   const trimmedPreset = presetName.trim();
   // Matching is case-insensitive because the file name is: saving "ladder"
   // over "Ladder" replaces it rather than making a second entry.
@@ -42,8 +48,24 @@ export function useGeneratorPresets(state: MapGeneratorState, form: GeneratorOpt
     const preset = presets.find((entry) => entry.name === name);
     if (!preset) return;
     replace(preset.options);
-    setPresetName(preset.name);
+    setSelectedPresetName(preset.name);
   };
 
-  return { presets, existing, saved, presetName, setPresetName, presetNameUsable, save, applyPreset };
+  const rename = (name: string, newName: string) => {
+    renamePreset(name, newName);
+    if (selectedPresetName === name) setSelectedPresetName(newName);
+  };
+
+  return {
+    presets,
+    existing,
+    saved,
+    presetName,
+    setPresetName,
+    presetNameUsable,
+    save,
+    applyPreset,
+    rename,
+    selectedPresetName: selectedPreset?.name ?? "",
+  };
 }
