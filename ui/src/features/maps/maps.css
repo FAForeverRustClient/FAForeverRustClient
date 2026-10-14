@@ -478,6 +478,7 @@
      it, and a strip kept for that narrowed the picture and the facts band in
      every other window. */
   overflow-y: auto;
+  scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
 
