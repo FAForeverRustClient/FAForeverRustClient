@@ -629,7 +629,7 @@ export function ClientStatusBar() {
 
   return (
     <footer ref={rootRef} className="client-status-bar" aria-label={t("status.bar.aria")}>
-      <span className="client-status-version">v{session.backendVersion || "0.8.0"}</span>
+      <span className="client-status-version">v{session.backendVersion || "0.9.0"}</span>
       {joinState.type === "preparing"
         ? <GamePreparationStatus state={joinState} />
         : joinTaskVisible
