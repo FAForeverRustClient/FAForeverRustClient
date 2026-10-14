@@ -475,6 +475,7 @@
   max-height: calc(100vh - 120px);
   min-width: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
 
