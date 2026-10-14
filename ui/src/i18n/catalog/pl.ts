@@ -1804,6 +1804,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.galacticWar.news.empty": "Galactic War nie publikuje jeszcze ogłoszeń w tym kliencie.",
   "lobby.galacticWar.link.site": "Strona Galactic War",
   "lobby.galacticWar.link.forum": "Forum FAF",
+  "lobby.galacticWar.how.title": "Jak to działa",
   "lobby.galacticWar.how.galaxy.title": "Galaktyka",
   "lobby.galacticWar.how.galaxy.body": "Cztery frakcje walczą o wspólną galaktykę planet. Terytorium zmienia właściciela wraz z wygranymi i przegranymi bitwami, więc to jeden ciągły cykl, a nie pojedyncza rozgrywka.",
   "lobby.galacticWar.how.avatar.title": "Twój awatar",

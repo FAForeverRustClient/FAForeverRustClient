@@ -1777,6 +1777,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.galacticWar.news.empty": "Galactic War ne publie pas encore d'annonces vers ce client.",
   "lobby.galacticWar.link.site": "Site de Galactic War",
   "lobby.galacticWar.link.forum": "Forum FAF",
+  "lobby.galacticWar.how.title": "Comment ça marche",
   "lobby.galacticWar.how.galaxy.title": "La galaxie",
   "lobby.galacticWar.how.galaxy.body": "Quatre factions se disputent une galaxie partagée de planètes. Le territoire change de mains au fil des batailles gagnées et perdues : il s'agit d'un cycle continu, pas d'une partie isolée.",
   "lobby.galacticWar.how.avatar.title": "Votre avatar",
