@@ -1,10 +1,10 @@
 // Tests for the frontend navigation reducer, the twin of
 // `faf_domain::state::nav::reduce`.
 //
-// The sections are what is worth pinning: Maps, Mods, Replays and Settings
-// read their open section from here, and a section that a tab change reset (or
-// that leaked into another destination) is exactly the bug this state exists
-// to prevent.
+// The sections are what is worth pinning: Maps, Mods, Replays, Settings and
+// Changelog read their open section from here, and a section that a tab
+// change reset (or that leaked into another destination) is exactly the bug
+// this state exists to prevent.
 
 import { describe, expect, it } from "vitest";
 import type { NavEvent, NavState } from "../../ipc/bindings";
@@ -23,6 +23,8 @@ describe("reduceNav", () => {
       modsSection: "vault",
       replaysSection: "online",
       settingsSection: "general",
+      changelogSection: "game",
+      changelogClientVersion: null,
     });
   });
 
@@ -49,6 +51,20 @@ describe("reduceNav", () => {
       modsSection: "installed",
       replaysSection: "local",
       settingsSection: "cache",
+      changelogSection: "game",
+      changelogClientVersion: null,
     });
+  });
+
+  it("opens the client section on a chosen release, and keeps the release", () => {
+    const next = apply(useAppStore.getState().state.nav, [
+      { type: "changelogClientReleaseSelected", payload: { version: "0.4.0" } },
+      { type: "changelogSectionSelected", payload: { section: "game" } },
+    ]);
+    expect(next.changelogSection).toBe("game");
+    expect(next.changelogClientVersion).toBe("0.4.0");
+    expect(
+      apply(next, [{ type: "changelogClientReleaseSelected", payload: { version: "0.3.0" } }]),
+    ).toMatchObject({ changelogSection: "client", changelogClientVersion: "0.3.0" });
   });
 });

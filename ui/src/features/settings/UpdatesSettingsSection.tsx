@@ -40,6 +40,13 @@ export function UpdatesSettingsSection() {
           label={t("settings.updates.includePreReleases")}
         />
       </SettingRow>
+      <SettingRow label={t("settings.updates.showWhatsNew")}>
+        <SettingsSwitch
+          checked={preferences.showWhatsNew}
+          onChange={(showWhatsNew) => void save({ showWhatsNew })}
+          label={t("settings.updates.showWhatsNew")}
+        />
+      </SettingRow>
       <SettingRow
         label={t("settings.updates.updateStatus")}
         className="setting-row-update-status"

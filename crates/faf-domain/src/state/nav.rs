@@ -95,6 +95,16 @@ pub enum SettingsSection {
     Diagnostics,
 }
 
+/// The list open inside Changelog: FAForever's game patches, or this client's
+/// own releases. See [`MapsSection`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ChangelogSection {
+    #[default]
+    Game,
+    Client,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct NavState {
@@ -105,16 +115,41 @@ pub struct NavState {
     pub mods_section: ModsSection,
     pub replays_section: ReplaysSection,
     pub settings_section: SettingsSection,
+    pub changelog_section: ChangelogSection,
+    /// The client release open in Changelog's client section, by version;
+    /// `None` opens the newest. Here rather than in the view for the reason
+    /// the sections are, and because this is how the rest of the client points
+    /// at one release: the update banner and the What's new popup select the
+    /// tab and then the release.
+    pub changelog_client_version: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum NavEvent {
-    TabSelected { tab: Tab },
-    MapsSectionSelected { section: MapsSection },
-    ModsSectionSelected { section: ModsSection },
-    ReplaysSectionSelected { section: ReplaysSection },
-    SettingsSectionSelected { section: SettingsSection },
+    TabSelected {
+        tab: Tab,
+    },
+    MapsSectionSelected {
+        section: MapsSection,
+    },
+    ModsSectionSelected {
+        section: ModsSection,
+    },
+    ReplaysSectionSelected {
+        section: ReplaysSection,
+    },
+    SettingsSectionSelected {
+        section: SettingsSection,
+    },
+    ChangelogSectionSelected {
+        section: ChangelogSection,
+    },
+    /// A client release was chosen, which opens the client section too: the
+    /// release would not be on screen otherwise.
+    ChangelogClientReleaseSelected {
+        version: String,
+    },
 }
 
 /// One command per destination rather than one carrying a destination and a
@@ -123,11 +158,29 @@ pub enum NavEvent {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum NavCommand {
-    Select { tab: Tab },
-    SelectMapsSection { section: MapsSection },
-    SelectModsSection { section: ModsSection },
-    SelectReplaysSection { section: ReplaysSection },
-    SelectSettingsSection { section: SettingsSection },
+    Select {
+        tab: Tab,
+    },
+    SelectMapsSection {
+        section: MapsSection,
+    },
+    SelectModsSection {
+        section: ModsSection,
+    },
+    SelectReplaysSection {
+        section: ReplaysSection,
+    },
+    SelectSettingsSection {
+        section: SettingsSection,
+    },
+    SelectChangelogSection {
+        section: ChangelogSection,
+    },
+    /// Open one client release in Changelog's client section. Leaves the tab
+    /// alone; a caller outside the tab sends [`NavCommand::Select`] as well.
+    SelectChangelogClientRelease {
+        version: String,
+    },
 }
 
 pub fn reduce(state: &mut NavState, event: &NavEvent) {
@@ -137,6 +190,11 @@ pub fn reduce(state: &mut NavState, event: &NavEvent) {
         NavEvent::ModsSectionSelected { section } => state.mods_section = *section,
         NavEvent::ReplaysSectionSelected { section } => state.replays_section = *section,
         NavEvent::SettingsSectionSelected { section } => state.settings_section = *section,
+        NavEvent::ChangelogSectionSelected { section } => state.changelog_section = *section,
+        NavEvent::ChangelogClientReleaseSelected { version } => {
+            state.changelog_section = ChangelogSection::Client;
+            state.changelog_client_version = Some(version.clone());
+        }
     }
 }
 
@@ -159,6 +217,31 @@ mod tests {
         assert_eq!(s.mods_section, ModsSection::Vault);
         assert_eq!(s.replays_section, ReplaysSection::Online);
         assert_eq!(s.settings_section, SettingsSection::General);
+        assert_eq!(s.changelog_section, ChangelogSection::Game);
+        assert_eq!(s.changelog_client_version, None);
+    }
+
+    #[test]
+    fn choosing_a_client_release_opens_the_client_section_on_it() {
+        let mut s = NavState::default();
+        reduce(
+            &mut s,
+            &NavEvent::ChangelogClientReleaseSelected {
+                version: "0.4.0".into(),
+            },
+        );
+        assert_eq!(s.changelog_section, ChangelogSection::Client);
+        assert_eq!(s.changelog_client_version.as_deref(), Some("0.4.0"));
+
+        // Back to the game patches: the release is kept for the next visit.
+        reduce(
+            &mut s,
+            &NavEvent::ChangelogSectionSelected {
+                section: ChangelogSection::Game,
+            },
+        );
+        assert_eq!(s.changelog_section, ChangelogSection::Game);
+        assert_eq!(s.changelog_client_version.as_deref(), Some("0.4.0"));
     }
 
     #[test]

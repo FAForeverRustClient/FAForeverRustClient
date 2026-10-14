@@ -33,9 +33,9 @@ struct SlowSettings {
 
 #[async_trait]
 impl SettingsPort for SlowSettings {
-    async fn load(&self) -> SettingsState {
+    async fn load(&self) -> Option<SettingsState> {
         self.released.notified().await;
-        self.stored.clone()
+        Some(self.stored.clone())
     }
 
     async fn save(&self, settings: &SettingsState) -> Result<(), String> {

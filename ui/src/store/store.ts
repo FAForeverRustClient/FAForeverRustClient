@@ -19,6 +19,8 @@ const INITIAL: AppState = {
     modsSection: "vault",
     replaysSection: "online",
     settingsSection: "general",
+    changelogSection: "game",
+    changelogClientVersion: null,
   },
   notifications: { items: [] },
   chat: {
@@ -422,6 +424,9 @@ const INITIAL: AppState = {
     release: null,
     dismissedVersion: "",
     lastChecked: "",
+    notes: [],
+    notesStatus: { type: "idle" },
+    whatsNew: null,
   },
   changelog: {
     releases: [],
@@ -612,7 +617,7 @@ const INITIAL: AppState = {
       iceAdapterConsoleWindow: false,
       mapGeneratorWindow: false,
     },
-    updates: { automatic: true, preRelease: true },
+    updates: { automatic: true, preRelease: true, showWhatsNew: true, lastSeenVersion: null },
     browsing: {
       customGamesView: "tiles",
       replaysView: "tiles",

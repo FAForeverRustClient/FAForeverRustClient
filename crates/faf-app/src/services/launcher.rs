@@ -447,7 +447,7 @@ async fn ensure_generated_map(
         return Ok(());
     }
 
-    let settings = ctx.ports.settings.load().await;
+    let settings = ctx.ports.settings.load().await.unwrap_or_default();
     if !settings.game.auto_generate_maps {
         return Err(format!(
             "map {map_name} is not installed and automatic map generation is disabled in settings"

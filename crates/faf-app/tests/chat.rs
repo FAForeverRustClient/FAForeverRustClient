@@ -26,8 +26,8 @@ struct RecordingSettings {
 
 #[async_trait]
 impl SettingsPort for RecordingSettings {
-    async fn load(&self) -> SettingsState {
-        SettingsState::default()
+    async fn load(&self) -> Option<SettingsState> {
+        Some(SettingsState::default())
     }
 
     async fn save(&self, settings: &SettingsState) -> Result<(), String> {

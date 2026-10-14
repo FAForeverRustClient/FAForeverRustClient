@@ -1965,7 +1965,7 @@ impl<'de> Deserialize<'de> for DiscordPreferences {
 }
 
 /// Client self-update: whether to look for a newer build, and which ones count.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdatePreferences {
     /// Announce an optional update: the banner, and the notification.
@@ -1990,6 +1990,19 @@ pub struct UpdatePreferences {
     /// as a prerelease, so a client on the stable channel was never offered
     /// one. A settings file that already stores the choice keeps it.
     pub pre_release: bool,
+    /// Show what changed, once, on the first start after the client was
+    /// updated. See `whats_new_on_startup` in the client-update slice.
+    pub show_whats_new: bool,
+    /// The newest version whose What's new popup was dismissed, or that was
+    /// recorded without one: a fresh install, a downgrade, the popup turned
+    /// off. A fresh install is recorded as the settings load finds no file,
+    /// so `None` is a settings file written before this existed, and reads as
+    /// an update from an older build.
+    ///
+    /// Written when the popup is dismissed rather than when it opens, so a
+    /// start that never got to show it (offline, notes not loaded) shows it
+    /// again next time instead of losing it.
+    pub last_seen_version: Option<String>,
 }
 
 impl Default for UpdatePreferences {
@@ -1997,6 +2010,8 @@ impl Default for UpdatePreferences {
         Self {
             automatic: true,
             pre_release: true,
+            show_whats_new: true,
+            last_seen_version: None,
         }
     }
 }
@@ -2024,6 +2039,8 @@ impl<'de> Deserialize<'de> for UpdatePreferences {
         struct Wire {
             automatic: bool,
             pre_release: bool,
+            show_whats_new: bool,
+            last_seen_version: Option<String>,
         }
 
         impl Default for Wire {
@@ -2032,6 +2049,8 @@ impl<'de> Deserialize<'de> for UpdatePreferences {
                 Self {
                     automatic: defaults.automatic,
                     pre_release: defaults.pre_release,
+                    show_whats_new: defaults.show_whats_new,
+                    last_seen_version: defaults.last_seen_version,
                 }
             }
         }
@@ -2040,6 +2059,8 @@ impl<'de> Deserialize<'de> for UpdatePreferences {
         Ok(Self {
             automatic: wire.automatic,
             pre_release: wire.pre_release,
+            show_whats_new: wire.show_whats_new,
+            last_seen_version: wire.last_seen_version,
         })
     }
 }
@@ -3477,6 +3498,8 @@ preference_patch! {
     UpdatePreferencesPatch for UpdatePreferences {
         automatic: bool,
         pre_release: bool,
+        show_whats_new: bool,
+        last_seen_version: Option<String>,
     }
 }
 
@@ -4074,7 +4097,7 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
         SettingsEvent::DiscordChanged { preferences } => state.discord = *preferences,
         SettingsEvent::ConnectivityChanged { preferences } => state.connectivity = *preferences,
         SettingsEvent::DebugChanged { preferences } => state.debug = *preferences,
-        SettingsEvent::UpdatesChanged { preferences } => state.updates = *preferences,
+        SettingsEvent::UpdatesChanged { preferences } => state.updates = preferences.clone(),
         SettingsEvent::BrowsingChanged { preferences } => {
             state.browsing = preferences.as_ref().clone().normalized()
         }
@@ -4596,6 +4619,23 @@ mod tests {
             settings.updates.channel(),
             super::super::ReleaseChannel::PreRelease
         );
+    }
+
+    #[test]
+    fn a_settings_file_from_before_whats_new_shows_it_and_has_seen_nothing() {
+        // `None` is how the update to the build that starts recording this is
+        // told apart: it reads as an update from an older build, so that
+        // update shows the popup (a fresh install is recorded at load).
+        let settings: SettingsState =
+            serde_json::from_str(r#"{"updates":{"automatic":true,"preRelease":false}}"#).unwrap();
+        assert!(settings.updates.show_whats_new);
+        assert_eq!(settings.updates.last_seen_version, None);
+
+        let patch: UpdatePreferencesPatch =
+            serde_json::from_str(r#"{"lastSeenVersion":"0.4.0"}"#).unwrap();
+        let updated = patch.apply_to(settings.updates.clone());
+        assert_eq!(updated.last_seen_version.as_deref(), Some("0.4.0"));
+        assert!(!updated.pre_release, "an untouched field is left alone");
     }
 
     #[test]

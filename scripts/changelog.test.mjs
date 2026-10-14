@@ -5,6 +5,7 @@ describe("parseSnippetName", () => {
   it("reads the category and the pull request", () => {
     expect(parseSnippetName("fix.505.md")).toEqual({ category: "fix", pr: 505 });
     expect(parseSnippetName("features.7.md")).toEqual({ category: "features", pr: 7 });
+    expect(parseSnippetName("highlights.530.md")).toEqual({ category: "highlights", pr: 530 });
   });
 
   it("refuses anything else", () => {
@@ -61,6 +62,34 @@ describe("combineSnippets", () => {
         "- other",
       ].join("\n")
     );
+  });
+
+  it("leads with the highlights, and leaves the heading out when there are none", () => {
+    const highlighted = combineSnippets([
+      { name: "features.3.md", text: "- feature\n" },
+      { name: "highlights.12.md", text: "- the headline\n- the other headline\n" },
+      { name: "fix.4.md", text: "- fix\n" },
+    ]);
+    // "Highlights" is the heading the client's What's new window looks for.
+    expect(highlighted).toBe(
+      [
+        "### Highlights",
+        "",
+        "- the headline",
+        "- the other headline",
+        "",
+        "### Features",
+        "",
+        "- feature",
+        "",
+        "### Bug fixes",
+        "",
+        "- fix",
+      ].join("\n")
+    );
+
+    const plain = combineSnippets([{ name: "features.3.md", text: "- feature\n" }]);
+    expect(plain).toBe(["### Features", "", "- feature"].join("\n"));
   });
 
   it("is empty when there is nothing to say", () => {

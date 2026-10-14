@@ -20,8 +20,8 @@ struct RecordingSettings {
 
 #[async_trait]
 impl SettingsPort for RecordingSettings {
-    async fn load(&self) -> SettingsState {
-        SettingsState {
+    async fn load(&self) -> Option<SettingsState> {
+        Some(SettingsState {
             // Off, so the startup cache pass this test has to run cannot sweep
             // the real game-files cache on whoever is running the suite. The
             // measuring half only reads. See `cache_dir` in `infra`, which is
@@ -31,7 +31,7 @@ impl SettingsPort for RecordingSettings {
                 ..faf_domain::state::GamePreferences::default()
             },
             ..SettingsState::default()
-        }
+        })
     }
 
     async fn save(&self, settings: &SettingsState) -> Result<(), String> {
@@ -169,7 +169,7 @@ struct FilteredSettings(FilterMemory);
 
 #[async_trait]
 impl SettingsPort for FilteredSettings {
-    async fn load(&self) -> SettingsState {
+    async fn load(&self) -> Option<SettingsState> {
         let mut settings = SettingsState::default();
         settings.game.cache_lifetime_days = None;
         settings.general.filter_memory = self.0;
@@ -181,7 +181,7 @@ impl SettingsPort for FilteredSettings {
         browsing
             .remembered_filters
             .insert("installedMods".into(), r#"{"search":"ui"}"#.into());
-        settings
+        Some(settings)
     }
 
     async fn save(&self, _settings: &SettingsState) -> Result<(), String> {

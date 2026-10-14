@@ -144,6 +144,16 @@ export function reduceNav(state: NavState, event: NavEvent): NavState {
       return { ...state, replaysSection: event.payload.section };
     case "settingsSectionSelected":
       return { ...state, settingsSection: event.payload.section };
+    case "changelogSectionSelected":
+      return { ...state, changelogSection: event.payload.section };
+    // Choosing a client release opens the client section too, or it would not
+    // be on screen.
+    case "changelogClientReleaseSelected":
+      return {
+        ...state,
+        changelogSection: "client",
+        changelogClientVersion: event.payload.version,
+      };
   }
 }
 

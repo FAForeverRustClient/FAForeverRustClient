@@ -16,6 +16,7 @@ import { InstallBanner } from "./InstallBanner";
 import { WebviewEngineBanner } from "./WebviewEngineBanner";
 import { UpdateBanner } from "../updates/UpdateBanner";
 import { UpdateGate } from "../updates/UpdateGate";
+import { WhatsNewDialog } from "../updates/WhatsNewDialog";
 import { BrandMark } from "../../design-system/BrandMark";
 import { PlayerCardModal } from "../player-card/PlayerCardModal";
 import { ReviewsPanel } from "../reviews/ReviewsPanel";
@@ -315,6 +316,10 @@ export function AppShell() {
       {/* Last, and outside the banner row: this one is a dialog over the
           whole client rather than a strip inside it. */}
       <UpdateGate />
+      {/* Beside the gate, and never over it: it waits while the gate or a
+          game is up. Here, in the signed-in shell, so it is never shown over
+          the login screen. */}
+      <WhatsNewDialog />
       <ClientStatusBar />
       <ModReplacementDialog />
       <JoinDownloadDialog />
