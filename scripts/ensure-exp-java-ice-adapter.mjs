@@ -2,11 +2,18 @@ import { join } from "node:path";
 
 import { downloadVerified } from "./download-verified.mjs";
 
+// GodFuper's WebRTC build of faf-ice-adapter, not yet an official FAForever
+// release (FAForever/java-ice-adapter#91). Bundled beside the official
+// adapter, which stays the default; players opt in under Settings.
 const pinnedVersion = "4.0.0";
 const platformAssets = {
   win32: {
     name: `faf-ice-adapter-${pinnedVersion}-win.jar`,
     sha256: "6a55b8ff88b9477495a30ac13f3d9788c7f05a90842aa2141a81a98024118994",
+  },
+  linux: {
+    name: `faf-ice-adapter-${pinnedVersion}-linux.jar`,
+    sha256: "ea13bb4c704ed2acf75c830a6822c2a6eaf0e2260dd41a5a2e3f357d7ac981c5",
   },
 };
 const release = platformAssets[process.platform];

@@ -55,11 +55,7 @@ pub struct SelectableIce {
 }
 
 impl SelectableIce {
-    pub fn new(
-        java: Arc<dyn IcePort>,
-        exp_java: Arc<dyn IcePort>,
-        go: Arc<dyn IcePort>,
-    ) -> Self {
+    pub fn new(java: Arc<dyn IcePort>, exp_java: Arc<dyn IcePort>, go: Arc<dyn IcePort>) -> Self {
         Self {
             java,
             exp_java,
@@ -239,8 +235,14 @@ mod tests {
         ice.start(titled("Friday 4v4 [go-adapter]")).await.unwrap();
         assert_eq!(go.started.load(Ordering::SeqCst), 1, "the host is on Go");
         ice.stop();
-        ice.start(titled("Friday 4v4 [exp-java-adapter]")).await.unwrap();
-        assert_eq!(exp_java.started.load(Ordering::SeqCst), 1, "the host is on Exp Java");
+        ice.start(titled("Friday 4v4 [exp-java-adapter]"))
+            .await
+            .unwrap();
+        assert_eq!(
+            exp_java.started.load(Ordering::SeqCst),
+            1,
+            "the host is on Exp Java"
+        );
         ice.stop();
         ice.start(titled("Friday 4v4")).await.unwrap();
         assert_eq!(java.started.load(Ordering::SeqCst), 1, "no mark, so Java");

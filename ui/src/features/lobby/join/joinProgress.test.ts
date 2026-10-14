@@ -99,6 +99,13 @@ describe("the adapter line", () => {
     ["go", "Friday 4v4", "goAgainstHost"],
     ["dynamic", "Friday 4v4", null],
     ["java", "Friday 4v4", null],
+    // The same against a game hosted on the experimental Java adapter.
+    ["dynamic", "Friday 4v4 [exp-java-adapter]", "hostOnExpJava"],
+    ["expJava", "Friday 4v4 [EXP-JAVA-ADAPTER]", "hostOnExpJava"],
+    ["java", "Friday 4v4 [exp-java-adapter]", "javaAgainstExpJavaHost"],
+    ["expJava", "Friday 4v4", "expJavaAgainstHost"],
+    ["expJava", "Friday 4v4 [go-adapter]", "expJavaAgainstHost"],
+    ["go", "Friday 4v4 [exp-java-adapter]", "goAgainstHost"],
   ])("%s joining \"%s\" is %s", (adapter, title, note) => {
     expect(adapterNoteOf(adapter, title)).toBe(note);
   });

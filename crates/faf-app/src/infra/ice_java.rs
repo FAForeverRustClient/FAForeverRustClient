@@ -142,7 +142,8 @@ fn resolve_exp_jar_from_roots(roots: &[PathBuf]) -> Option<PathBuf> {
                     .join("natives")
                     .join("exp-java-ice-adapter")
                     .join("faf-ice-adapter.jar"),
-                root.join("exp-java-ice-adapter").join("faf-ice-adapter.jar"),
+                root.join("exp-java-ice-adapter")
+                    .join("faf-ice-adapter.jar"),
             ]
         })
         .find(|candidate| candidate.is_file())
