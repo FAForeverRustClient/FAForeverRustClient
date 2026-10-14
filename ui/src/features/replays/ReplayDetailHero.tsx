@@ -234,7 +234,6 @@ export function ReplayMapPreviewOverlay({
             The technical name under it is what the Play tab's preview has
             too. */}
         <MapPreviewFrame
-          kicker={t("lobby.browser.mapPreview")}
           title={mapLabel}
           subtitle={cardTitle === mapLabel ? undefined : cardTitle}
           onClose={onClose}

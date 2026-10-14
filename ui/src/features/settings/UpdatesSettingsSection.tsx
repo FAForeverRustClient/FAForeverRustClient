@@ -26,29 +26,29 @@ export function UpdatesSettingsSection() {
 
   return (
     <>
-      <SettingRow
-        label={t("settings.updates.checkUpdatesAt")}
-        hint={t("settings.updates.checkUpdatesAtHint")}
-      >
+      <SettingRow label={t("settings.updates.checkUpdatesAt")}>
         <SettingsSwitch
           checked={preferences.automatic}
           onChange={(automatic) => void save({ automatic })}
           label={t("settings.updates.checkUpdatesAt")}
         />
       </SettingRow>
-      <SettingRow
-        label={t("settings.updates.includePreReleases")}
-        hint={t("settings.updates.includePreReleasesHint")}
-      >
+      <SettingRow label={t("settings.updates.includePreReleases")}>
         <SettingsSwitch
           checked={preferences.preRelease}
           onChange={(preRelease) => void save({ preRelease })}
           label={t("settings.updates.includePreReleases")}
         />
       </SettingRow>
+      <SettingRow label={t("settings.updates.showWhatsNew")}>
+        <SettingsSwitch
+          checked={preferences.showWhatsNew}
+          onChange={(showWhatsNew) => void save({ showWhatsNew })}
+          label={t("settings.updates.showWhatsNew")}
+        />
+      </SettingRow>
       <SettingRow
         label={t("settings.updates.updateStatus")}
-        hint={t("settings.updates.updateStatusHint")}
         className="setting-row-update-status"
       >
         {/* The status first and the button at the row's edge, where every

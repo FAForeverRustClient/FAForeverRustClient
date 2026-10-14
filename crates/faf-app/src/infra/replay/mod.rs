@@ -13,7 +13,7 @@
 //!   metadata, deletion.
 //! - [`ReplayReader`] (`reader`): finding one replay's file for the detail and
 //!   analysis reads; `details` parses game options, chat and command counts
-//!   from a whole body.
+//!   from the command stream as it is decompressed.
 //! - [`ReplayPlayback`] (`playback`): preparing a replay file and launching FA
 //!   on it, with `preparation` (the replay install: engine build and map) and
 //!   `live` (spectating a game in progress through the replay server).
@@ -45,13 +45,16 @@ mod test_support;
 mod vault;
 mod vault_rows;
 
+pub(crate) use codec::read_head;
 pub use details::parse_detailed_info_from_body;
 pub use fake::FakeReplay;
 pub(crate) use library::local_replays_dir;
 pub use library::{validated_local_replay_path, ReplayLibrary, LOCAL_REPLAY_PAGE_LIMIT};
 pub use playback::ReplayPlayback;
 pub use reader::ReplayReader;
-pub(crate) use scfa_header::{parse_replay_lua, replay_string, replay_u32, replay_u8};
+pub(crate) use scfa_header::{
+    next_command_record, parse_replay_lua, replay_string, replay_u32, replay_u8,
+};
 pub use vault::ReplayVault;
 
 /// The endpoints and install every replay collaborator is built from. Each

@@ -19,6 +19,8 @@ const INITIAL: AppState = {
     modsSection: "vault",
     replaysSection: "online",
     settingsSection: "general",
+    changelogSection: "game",
+    changelogClientVersion: null,
   },
   notifications: { items: [] },
   chat: {
@@ -422,6 +424,9 @@ const INITIAL: AppState = {
     release: null,
     dismissedVersion: "",
     lastChecked: "",
+    notes: [],
+    notesStatus: { type: "idle" },
+    whatsNew: null,
   },
   changelog: {
     releases: [],
@@ -488,7 +493,13 @@ const INITIAL: AppState = {
     mapPoolsSeen: [],
     avatarHistory: [],
     cacheInfo: { totalFiles: 0, totalSizeBytes: 0, versions: [] },
-    general: { startPage: "news", autoLogin: true, rememberTypedEntries: false, filterMemory: "session" },
+    general: {
+      startPage: "news",
+      autoLogin: true,
+      rememberTypedEntries: false,
+      filterMemory: "session",
+      keepRunningDuringGame: true,
+    },
     appearance: {
       density: "comfortable",
       reduceMotion: false,
@@ -510,7 +521,7 @@ const INITIAL: AppState = {
       sound: true,
       // Chime everywhere but the found match, mirroring
       // `NotificationSoundChoices::default()` in
-      // `crates/faf-domain/src/state/settings.rs`. The two are compared by the
+      // `crates/faf-domain/src/state/settings/notifications.rs`. The two are compared by the
       // reducer conformance fixture, so changing one without the other fails
       // CI rather than drifting quietly.
       sounds: {
@@ -587,6 +598,8 @@ const INITIAL: AppState = {
       launchWrapper: "",
       autoGenerateMaps: true,
       confirmDownloadsBeforeJoining: true,
+      showJoinProgress: true,
+      showReplayProgress: true,
       cacheLifetimeDays: 30,
       cacheSizeAlertGb: 10,
       cacheRollingBranches: false,
@@ -604,7 +617,7 @@ const INITIAL: AppState = {
       iceAdapterConsoleWindow: false,
       mapGeneratorWindow: false,
     },
-    updates: { automatic: true, preRelease: true },
+    updates: { automatic: true, preRelease: true, showWhatsNew: true, lastSeenVersion: null },
     browsing: {
       customGamesView: "tiles",
       replaysView: "tiles",

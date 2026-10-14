@@ -513,10 +513,14 @@
   outline-offset: 2px;
 }
 
+/* Sharp on a scaled screen, like the chat's avatars. */
 .leaderboard-avatar {
   flex: 0 0 auto;
   object-fit: contain;
   border-radius: var(--radius-sm);
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
 }
 
 .leaderboard-avatar {

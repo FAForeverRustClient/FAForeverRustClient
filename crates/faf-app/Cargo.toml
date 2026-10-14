@@ -46,7 +46,9 @@ zip = "2"
 chrono = "0.4"
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "time"] }
+# `test-util` for paused time: a test of how long two overlapping steps take
+# reads the clock it controls, not the machine's.
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "time", "test-util"] }
 
 # `#[async_trait]` puts a bare `#[must_use]` on every method it rewrites, and
 # the method returns a boxed future, which is `#[must_use]` already. Clippy

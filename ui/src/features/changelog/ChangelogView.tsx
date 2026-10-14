@@ -11,40 +11,78 @@
 // sit in a column beside the note when the surface is wide enough to have
 // room for one, and as a row of jump links above it when it is not, so the
 // note never shares its width with an empty margin or a third panel.
+//
+// The tab has two sections, the game's patches and this client's own
+// releases, which share that layout (`noteReader`) so they read as one tab.
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Button } from "../../design-system/Button";
 import { EmptyState } from "../../design-system/EmptyState";
 import { Icon } from "../../design-system/Icon";
+import { SectionTabs, sectionPanelProps } from "../../design-system/SectionTabs";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
+import type { MessageKey } from "../../i18n";
 import { useRememberedFilter } from "../../shared/filterMemory";
 import { plainError } from "../../shared/plainError";
 import { formatDate } from "../../shared/format/dates";
 import { FeaturedModIcon } from "../../shared/components/FeaturedModIcon";
-import type {
-  ChangelogBlock,
-  ChangelogListItem,
-  ChangelogRelease,
-  ChangelogSpan,
-} from "../../ipc/bindings";
+import { ChangelogBlockView } from "../../shared/components/ChangelogBlocks";
+import type { ChangelogBlock, ChangelogRelease, ChangelogSection } from "../../ipc/bindings";
+import { ClientReleasesView } from "./ClientReleasesView";
+import {
+  anchorFor,
+  keepCurrentRowInView,
+  NoteContentsColumn,
+  NoteJumpRow,
+  noteSections,
+  useNoteContents,
+  type Section,
+} from "./noteReader";
 import "./changelog.css";
 
 /** Rolling branches have no date and belong above the dated years. */
 const BRANCH_GROUP = "";
 
-/** A section of the open note, as the contents list and the jump row name it. */
-interface Section {
-  id: string;
-  text: string;
-  /** 1 for a section heading, 2 for what sits inside one (a unit, a sub-heading). */
-  depth: 1 | 2;
-}
-
 type Translate = ReturnType<typeof useTranslation>["t"];
+
+const SECTIONS: Record<ChangelogSection, MessageKey> = {
+  game: "changelog.section.game",
+  client: "changelog.section.client",
+};
+
+/**
+ * The section is the backend's, like the vaults' sources, so it survives the
+ * tab unmounting when another one is chosen, and so the update banner and the
+ * What's new popup can open the tab on a client release.
+ */
+const selectSection = (section: ChangelogSection) =>
+  ipc.send({ kind: "Nav", command: { type: "selectChangelogSection", payload: { section } } });
+
+export function ChangelogView() {
+  const { t } = useTranslation();
+  const section = useAppStore((state) => state.state.nav.changelogSection);
+
+  return (
+    <div className="changelog-workspace">
+      <div className="vault-subnav">
+        <SectionTabs
+          active={section}
+          ariaLabel={t("changelog.section.aria")}
+          items={(Object.keys(SECTIONS) as ChangelogSection[]).map((key) => ({ id: key, label: t(SECTIONS[key]) }))}
+          onChange={selectSection}
+          idPrefix="changelog-section"
+        />
+      </div>
+      <div className="changelog-panel" {...sectionPanelProps("changelog-section", section)}>
+        {section === "client" ? <ClientReleasesView /> : <GameChangelogView />}
+      </div>
+    </div>
+  );
+}
 
 /** The upstream kind, in the reader's language where the client knows it. */
 // The upstream kinds, compared without regard to case: they come from the
@@ -76,137 +114,14 @@ function noteTitle(blocks: ChangelogBlock[], fallback: string, hasDate: boolean)
   return { title: text || fallback, skipFirst: true };
 }
 
-function Spans({ spans }: { spans: ChangelogSpan[] }) {
-  return (
-    <>
-      {spans.map((span, index) => {
-        switch (span.type) {
-          case "strong":
-            return <strong key={index}>{span.payload}</strong>;
-          case "code":
-            return <code key={index}>{span.payload}</code>;
-          case "link":
-            return (
-              <button
-                key={index}
-                type="button"
-                className="changelog-link"
-                title={span.payload.url}
-                onClick={() => void native.openUrl(span.payload.url)}
-              >
-                {span.payload.text}
-              </button>
-            );
-          case "issue":
-            return (
-              <button
-                key={index}
-                type="button"
-                className="changelog-issue"
-                title={span.payload.url}
-                onClick={() => void native.openUrl(span.payload.url)}
-              >
-                #{span.payload.number}
-              </button>
-            );
-          default:
-            return <span key={index}>{span.payload}</span>;
-        }
-      })}
-    </>
-  );
-}
-
-function ListItems({ items }: { items: ChangelogListItem[] }) {
-  return (
-    <ul className="changelog-list">
-      {items.map((item, index) => (
-        <li key={index}>
-          {item.change ? (
-            // A value change reads as a diff, the way the site styles it: the
-            // strike and the arrow say which is which before the colour does.
-            <span className="changelog-change">
-              <span className="changelog-change-label">{item.change.label}</span>
-              <span className="changelog-old">{item.change.old}</span>
-              <Icon name="arrowRight" size={12} />
-              <span className="changelog-new">{item.change.new}</span>
-            </span>
-          ) : (
-            <Spans spans={item.spans} />
-          )}
-          {item.children.length > 0 && <ListItems items={item.children} />}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function Block({ block, anchorId }: { block: ChangelogBlock; anchorId: string }) {
-  switch (block.type) {
-    case "heading": {
-      // The page title is the one `h1`; the note's sections start at `h2`.
-      const level = Math.min(Math.max(block.payload.level, 2), 4);
-      const Tag = `h${level}` as "h2" | "h3" | "h4";
-      return (
-        <Tag id={anchorId} className={`changelog-heading changelog-heading-${level}`}>
-          {block.payload.text}
-        </Tag>
-      );
-    }
-    case "unit":
-      return (
-        <div id={anchorId} className="changelog-unit">
-          <span className="changelog-unit-icons">
-            {block.payload.units.map((unit) => (
-              <img
-                key={unit.unitId}
-                className="changelog-unit-icon"
-                src={unit.iconUrl}
-                alt=""
-                title={unit.unitId}
-                loading="lazy"
-                draggable={false}
-                /* Older notes name units the site never drew an icon for, and a
-                   missing sprite should leave a gap rather than a broken image. */
-                onError={(event) => event.currentTarget.classList.add("is-missing")}
-              />
-            ))}
-          </span>
-          <span className="changelog-unit-name">{block.payload.name}</span>
-        </div>
-      );
-    case "list":
-      return <ListItems items={block.payload.items} />;
-    default:
-      return (
-        <p className="changelog-paragraph">
-          <Spans spans={block.payload.spans} />
-        </p>
-      );
-  }
-}
-
-const anchorFor = (index: number) => `changelog-block-${index}`;
-
-export function ChangelogView() {
+function GameChangelogView() {
   const { t } = useTranslation();
   const changelog = useAppStore((state) => state.state.changelog);
   // Remembered as the filter setting says (#447).
   const [search, setSearch] = useRememberedFilter("changelog.search", "", (value) => typeof value === "string");
   /// The years the reader has flipped from their default, folded or open.
   const [toggledGroups, setToggledGroups] = useState<Set<string>>(() => new Set());
-  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const tocRef = useRef<HTMLElement>(null);
   const listRef = useRef<HTMLElement>(null);
-  const isClickScrolling = useRef(false);
-  const clickScrollTimeout = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (clickScrollTimeout.current) clearTimeout(clickScrollTimeout.current);
-    };
-  }, []);
 
   useEffect(() => {
     ipc.send({ kind: "Changelog", command: { type: "load" } });
@@ -268,101 +183,15 @@ export function ChangelogView() {
     [entry, selected],
   );
 
-  const sections = useMemo<Section[]>(() => {
-    if (!entry) return [];
-    return entry.blocks.flatMap((block, index): Section[] => {
-      if (heading.skipFirst && index === 0) return [];
-      if (block.type === "heading" && block.payload.level <= 3) {
-        return [{ id: anchorFor(index), text: block.payload.text, depth: block.payload.level <= 2 ? 1 : 2 }];
-      }
-      if (block.type === "unit") return [{ id: anchorFor(index), text: block.payload.name, depth: 2 }];
-      return [];
-    });
-  }, [entry, heading.skipFirst]);
-  const topSections = sections.filter((section) => section.depth === 1);
+  const sections = useMemo<Section[]>(
+    () => (entry ? noteSections(entry.blocks, heading.skipFirst) : []),
+    [entry, heading.skipFirst],
+  );
+  const { scrollRef, tocRef, activeSectionId, onNoteScroll, jumpTo } = useNoteContents(sections, changelog.selected);
 
-  // A new note opens at its top at once, not after a long smooth scroll.
-  // Keyed on the selection alone: keyed on the section list too, any store
-  // update that rebuilt the list threw the reader back to the top, and cut
-  // short a jump that was still gliding.
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
-    setActiveSectionId(null);
+    keepCurrentRowInView(listRef.current);
   }, [changelog.selected]);
-
-  // The first section is the current one until the reader moves, and a
-  // rebuilt list keeps the current one if it still has it.
-  useEffect(() => {
-    setActiveSectionId((current) =>
-      current && sections.some((section) => section.id === current) ? current : sections[0]?.id ?? null,
-    );
-  }, [sections]);
-
-  // The selected row is kept in view, whichever way it was chosen: a click,
-  // the arrow keys, or the newer and older buttons over the note. By hand, on
-  // the list alone: `scrollIntoView` also scrolls every container around the
-  // list, and the first selection, which lands as the tab loads, could nudge
-  // the whole page. The top allowance keeps the row clear of the sticky year
-  // heading.
-  useEffect(() => {
-    const list = listRef.current;
-    const row = list?.querySelector<HTMLElement>(".changelog-release[aria-current='page']");
-    if (!list || !row) return;
-    const bounds = list.getBoundingClientRect();
-    const rect = row.getBoundingClientRect();
-    if (rect.top < bounds.top + 36) list.scrollTop -= bounds.top + 36 - rect.top;
-    else if (rect.bottom > bounds.bottom) list.scrollTop += rect.bottom - bounds.bottom;
-  }, [changelog.selected]);
-
-  const handleNoteScroll = () => {
-    if (isClickScrolling.current) return;
-    const container = scrollRef.current;
-    if (!container || sections.length === 0) return;
-    if (container.scrollHeight - container.scrollTop - container.clientHeight <= 24) {
-      setActiveSectionId(sections[sections.length - 1].id);
-      return;
-    }
-    const containerTop = container.getBoundingClientRect().top;
-    let currentId = sections[0].id;
-    for (const section of sections) {
-      const element = document.getElementById(section.id);
-      if (!element) continue;
-      if (element.getBoundingClientRect().top - containerTop <= 72) currentId = section.id;
-      else break;
-    }
-    setActiveSectionId(currentId);
-  };
-
-  // The contents column scrolls on its own when a note has many units, and
-  // follows the reader so the highlighted entry never leaves it. By hand,
-  // on the column alone: `scrollIntoView` scrolls every scrollable ancestor,
-  // and the column sits inside the note's scroll, so it cancelled the smooth
-  // scroll a click on an entry had just started.
-  useEffect(() => {
-    const nav = tocRef.current;
-    const item = nav?.querySelector<HTMLElement>(".changelog-toc-item.is-active");
-    if (!nav || !item) return;
-    const bounds = nav.getBoundingClientRect();
-    const rect = item.getBoundingClientRect();
-    if (rect.bottom > bounds.bottom) nav.scrollTop += rect.bottom - bounds.bottom + 8;
-    else if (rect.top < bounds.top) nav.scrollTop -= bounds.top - rect.top + 8;
-  }, [activeSectionId]);
-
-  const jumpTo = (id: string) => {
-    setActiveSectionId(id);
-    isClickScrolling.current = true;
-    if (clickScrollTimeout.current) clearTimeout(clickScrollTimeout.current);
-    clickScrollTimeout.current = window.setTimeout(() => {
-      isClickScrolling.current = false;
-    }, 800);
-    const element = document.getElementById(id);
-    const container = scrollRef.current;
-    if (!element || !container) return;
-    const offset = element.getBoundingClientRect().top - container.getBoundingClientRect().top;
-    // Smooth or instant per the stylesheet's `scroll-behavior`, which
-    // honours a request for reduced motion.
-    container.scrollTo({ top: Math.max(0, container.scrollTop + offset - 16) });
-  };
 
   const select = (id: string) =>
     ipc.send({ kind: "Changelog", command: { type: "select", payload: { id } } });
@@ -574,26 +403,10 @@ export function ChangelogView() {
           </header>
         )}
 
-        <div className="changelog-note-scroll" ref={scrollRef} onScroll={handleNoteScroll}>
+        <div className="changelog-note-scroll" ref={scrollRef} onScroll={onNoteScroll}>
           <div className={`changelog-note-layout${sections.length > 0 ? " has-toc" : ""}`}>
             <div className="changelog-note-copy">
-              {/* The sections as a row of jump links, for a surface too narrow
-                  for the contents column. Only the top level: units are many,
-                  and a wrapped row of thirty names is not a way to find one. */}
-              {topSections.length > 1 && (
-                <nav className="changelog-jump" aria-label={t("changelog.contents")}>
-                  {topSections.map((section) => (
-                    <button
-                      key={section.id}
-                      type="button"
-                      className="changelog-jump-item"
-                      onClick={() => jumpTo(section.id)}
-                    >
-                      {section.text}
-                    </button>
-                  ))}
-                </nav>
-              )}
+              <NoteJumpRow sections={sections} onJump={jumpTo} />
 
               {loadingEntry && !entry && (
                 <div className="changelog-skeleton" aria-label={t("changelog.loadingNote")}>
@@ -617,33 +430,17 @@ export function ChangelogView() {
 
               {entry?.blocks.map((block, index) =>
                 heading.skipFirst && index === 0 ? null : (
-                  <Block key={index} block={block} anchorId={anchorFor(index)} />
+                  <ChangelogBlockView key={index} block={block} anchorId={anchorFor(index)} />
                 ),
               )}
             </div>
 
-            {sections.length > 0 && (
-              <nav className="changelog-toc" ref={tocRef} aria-label={t("changelog.contents")}>
-                <p className="changelog-toc-title">{t("changelog.contents")}</p>
-                <ul className="changelog-toc-list">
-                  {sections.map((section) => (
-                    <li key={section.id}>
-                      <button
-                        type="button"
-                        className={`changelog-toc-item depth-${section.depth}${
-                          activeSectionId === section.id ? " is-active" : ""
-                        }`}
-                        aria-current={activeSectionId === section.id ? "location" : undefined}
-                        title={section.depth === 2 ? section.text : undefined}
-                        onClick={() => jumpTo(section.id)}
-                      >
-                        {section.text}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            )}
+            <NoteContentsColumn
+              sections={sections}
+              activeSectionId={activeSectionId}
+              navRef={tocRef}
+              onJump={jumpTo}
+            />
           </div>
         </div>
       </article>

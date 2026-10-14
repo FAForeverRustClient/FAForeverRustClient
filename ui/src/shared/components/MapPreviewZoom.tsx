@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
 import { ipc } from "../../ipc/client";
+import type { VaultMap } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { MapPreview, type PreviewableMap } from "./MapPreview";
+import { MapThumbnail } from "./MapThumbnail";
 import { toggleFavoriteMap, useIsFavoriteMap } from "../favoriteMaps";
+import { requestMapVaultFocus } from "../mapVaultFocus";
+import { isGeneratedMap } from "../mapPresentation";
+import { Button } from "../../design-system/Button";
 import "./map-preview-zoom.css";
 import {
   MAX_SCALE,
@@ -26,6 +30,10 @@ const KEY_PAN = 60;
 /// Where a double click lands. Two and a half times is a quarter of the map
 /// filling the dialog, which is the "let me look at that spawn" step.
 const DOUBLE_CLICK_SCALE = 2.5;
+
+/// A generated map has no vault record, so its thumbnail is asked for without
+/// one. A constant so the thumbnail's memo does not see a new list each render.
+const NO_VAULT: VaultMap[] = [];
 
 /**
  * Put the preview PNG on the clipboard.
@@ -79,11 +87,14 @@ async function copyImageToClipboard(url: string): Promise<void> {
  * inside, including the copy, which reads the `currentSrc` the browser settled
  * on rather than a URL guessed up front.
  */
-export function ZoomableImage({ label, children, actions }: {
+export function ZoomableImage({ label, children, actions, overlay }: {
   label: string;
   children: ReactNode;
   /** Buttons of the caller's own, drawn just before Copy image. */
   actions?: ReactNode;
+  /** Laid over the picture's frame and not zoomed with it, such as the
+   *  generate button in the corner that the small preview has too. */
+  overlay?: ReactNode;
 }) {
   const { t } = useTranslation();
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -91,6 +102,9 @@ export function ZoomableImage({ label, children, actions }: {
   const [copied, setCopied] = useState<"idle" | "image" | "link" | "failed">("idle");
   const [isDragging, setIsDragging] = useState(false);
   const [isWheeling, setIsWheeling] = useState(false);
+  // The gestures, opened by the info button. It used to say them only on
+  // hover, and a click on it did nothing.
+  const [helpOpen, setHelpOpen] = useState(false);
   const dragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
   const wheelTimeoutRef = useRef<number | null>(null);
 
@@ -183,8 +197,17 @@ export function ZoomableImage({ label, children, actions }: {
     isWheeling ? "is-wheeling" : "",
   ].filter(Boolean).join(" ");
 
+  const copyLabel = t(copied === "image"
+    ? "maps.preview.imageCopied"
+    : copied === "link"
+      ? "maps.preview.linkCopied"
+      : copied === "failed"
+        ? "maps.preview.copyFailed"
+        : "maps.preview.copyImage");
+
   return (
     <div className="map-preview-zoom">
+      <div className="map-preview-stage">
       <div
         ref={viewportRef}
         className={viewportClass}
@@ -260,13 +283,14 @@ export function ZoomableImage({ label, children, actions }: {
           {children}
         </div>
       </div>
+      {overlay}
+      </div>
+      {/* Under the picture, not on it: the zoom at the start of the row, and
+          at its end the caller's buttons and Copy image, as icons. One zoom
+          control, not three: reset is the stepper's last segment, the
+          percentage only says how far in the picture is, and the gestures are
+          on the info mark beside it. */}
       <div className="map-preview-controls">
-        {/* One control, not three. Reset was a full button beside the stepper,
-            and the percentage was a second reset: at 100 % both were greyed
-            out, and the left half of the row read as switched off. Reset is
-            the stepper's last segment now, and the percentage only says how
-            far in the picture is. The gestures are on the info mark beside
-            it rather than in a line of their own under the row. */}
         <div className="map-preview-zoom-buttons" role="group" aria-label={t("maps.preview.zoomGroup")}>
           <div className="map-preview-stepper">
             <button
@@ -303,22 +327,38 @@ export function ZoomableImage({ label, children, actions }: {
               <Icon name="refresh" size={14} />
             </button>
           </div>
-          <span className="map-preview-help" role="img" aria-label={t("maps.preview.zoomHint")} title={t("maps.preview.zoomHint")}>
-            <Icon name="info" size={15} />
+          <span className="map-preview-help-wrap">
+            <button
+              type="button"
+              className={helpOpen ? "map-preview-help is-open" : "map-preview-help"}
+              aria-expanded={helpOpen}
+              aria-label={t("maps.preview.zoomHint")}
+              onClick={() => setHelpOpen((open) => !open)}
+              onBlur={() => setHelpOpen(false)}
+            >
+              <Icon name="info" size={15} />
+            </button>
+            {helpOpen && (
+              <span className="map-preview-help-popover" role="tooltip">
+                {t("maps.preview.zoomHint")}
+              </span>
+            )}
           </span>
         </div>
         <div className="map-preview-actions">
           {actions}
-          <Button onClick={copy} title={t("maps.preview.copyImage")}>
-          <Icon name={copied === "image" || copied === "link" ? "check" : "copy"} size={14} />
-          {t(copied === "image"
-            ? "maps.preview.imageCopied"
-            : copied === "link"
-              ? "maps.preview.linkCopied"
-              : copied === "failed"
-                ? "maps.preview.copyFailed"
-                : "maps.preview.copyImage")}
-        </Button>
+          {/* The copy icon the client uses everywhere else, in the corner under
+              the picture; what it did is said on its tooltip, and the icon
+              turns into a tick once the picture is on the clipboard. */}
+          <button
+            type="button"
+            className="map-preview-icon-btn"
+            onClick={copy}
+            title={copyLabel}
+            aria-label={copyLabel}
+          >
+            <Icon name={copied === "image" || copied === "link" ? "check" : "copy"} size={15} />
+          </button>
         </div>
       </div>
     </div>
@@ -380,6 +420,95 @@ export function MapPreviewFrame({ kicker, title, subtitle, label, onClose, child
 }
 
 /**
+ * Copies a map's name, beside the title it belongs to: the name as it reads,
+ * without the folder's version suffix, except for a generated map, whose
+ * full name is the only way back to it. The icon turns into a tick for two
+ * seconds once the name is on the clipboard.
+ */
+export function CopyMapNameButton({ name, generated = false }: {
+  name: string;
+  /// A generated map's name can be pasted into Generate map, which the
+  /// tooltip says.
+  generated?: boolean;
+}) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 2_000);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+  const words = t(copied
+    ? "lobby.browser.mapNameCopied"
+    : generated
+      ? "lobby.browser.copyMapNameGenerated"
+      : "lobby.browser.copyMapName");
+  return (
+    <button
+      type="button"
+      className="map-preview-title-copy"
+      aria-label={words}
+      title={words}
+      onClick={() => ipc.run(navigator.clipboard.writeText(name).then(() => setCopied(true)))}
+    >
+      <Icon name={copied ? "check" : "copy"} size={15} />
+    </button>
+  );
+}
+
+/**
+ * Opens the map in the Maps tab's vault: searched for by name, with the
+ * version shown here selected, so its detail panel is open on arrival. Beside
+ * the star and Copy image under the picture. `onNavigate` closes whatever
+ * dialog the button sits in first.
+ */
+export function OpenMapInVaultButton({ name, folderName, onNavigate }: {
+  name: string;
+  folderName: string;
+  onNavigate?: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Button
+      onClick={() => {
+        requestMapVaultFocus({ name, folderName });
+        onNavigate?.();
+        ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "maps" } } });
+      }}
+    >
+      <Icon name="maps" size={14} />
+      {t("maps.preview.openInVault")}
+    </Button>
+  );
+}
+
+/**
+ * The favourite as a star, the way the vault's cards show it: filled when the
+ * map is starred, its words on the tooltip. Shared by the map preview dialog
+ * and the Play tab's game preview, which both put it beside Copy image.
+ */
+export function FavoriteMapStar({ favorite, label, onToggle }: {
+  favorite: boolean;
+  label: string;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslation();
+  const words = t(favorite ? "maps.vault.removeFavoriteAria" : "maps.vault.addFavoriteAria", { name: label });
+  return (
+    <button
+      type="button"
+      className={favorite ? "map-preview-icon-btn is-favorite" : "map-preview-icon-btn"}
+      aria-pressed={favorite}
+      aria-label={words}
+      title={words}
+      onClick={onToggle}
+    >
+      <Icon name="star" size={15} fill={favorite ? "currentColor" : "none"} />
+    </button>
+  );
+}
+
+/**
  * A map opened at full size in a dialog of its own: the Maps tab, the host
  * dialog, a chat game card and the matchmaker's map pool all open this one.
  *
@@ -390,8 +519,10 @@ export function MapPreviewFrame({ kicker, title, subtitle, label, onClose, child
  * smaller frame of its own, so a map looked different depending on which tab
  * it was opened from.
  */
-export function MapPreviewDialog({ map, meta, onClose, children, downloadUrl }: {
+export function MapPreviewDialog({ map, meta, onClose, children, downloadUrl, vaultLink = true, footer }: {
   map: PreviewableMap;
+  /// Whether to offer "Open in the map vault": not from the vault itself.
+  vaultLink?: boolean;
   /// The line under the title: size, player count, whatever the tab knows.
   meta?: ReactNode;
   /// The image to zoom, for a caller that resolves map art its own way: the
@@ -400,55 +531,54 @@ export function MapPreviewDialog({ map, meta, onClose, children, downloadUrl }: 
   children?: ReactNode;
   /// Where the map's zip is, so starring a map that is not on disk can fetch it.
   downloadUrl?: string;
+  /// Under the picture: a generated map's settings, for one.
+  footer?: ReactNode;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
   const label = map.displayName || map.folderName;
   const favorite = useIsFavoriteMap(map.folderName);
-  const [copiedName, setCopiedName] = useState(false);
   return (
     <Modal onClose={onClose} className="map-preview-modal">
-      <div className="map-preview-dialog">
+      <div className={footer ? "map-preview-dialog has-footer" : "map-preview-dialog"}>
+        {/* The map's name, not "Map preview" over it: what kind of dialog
+            this is shows from the picture under it. */}
         <header className="map-preview-dialog-header">
-          <span className="map-preview-dialog-kicker">{t("lobby.browser.mapPreview")}</span>
-          <h2 title={label}>{label}</h2>
+          <div className="map-preview-title-row">
+            <h2 title={label}>{label}</h2>
+            <CopyMapNameButton name={label} />
+          </div>
           {meta && <p>{meta}</p>}
         </header>
         <ZoomableImage
           label={label}
           actions={map.folderName ? (
-            <Button
-              aria-pressed={favorite}
-              onClick={() => toggleFavoriteMap(map.folderName, downloadUrl)}
-              title={t(favorite ? "maps.vault.removeFavoriteAria" : "maps.vault.addFavoriteAria", { name: label })}
-            >
-              <Icon name="star" size={14} />
-              {t(favorite ? "lobby.browser.removeFavoriteMap" : "lobby.browser.addFavoriteMap")}
-            </Button>
+            <>
+              {vaultLink && !isGeneratedMap(map.folderName) && (
+                <OpenMapInVaultButton name={label} folderName={map.folderName} onNavigate={onClose} />
+              )}
+              <FavoriteMapStar
+                favorite={favorite}
+                label={label}
+                onToggle={() => toggleFavoriteMap(map.folderName, downloadUrl)}
+              />
+            </>
           ) : undefined}
         >
-          {children ?? <MapPreview map={map} large />}
+          {children ?? (isGeneratedMap(map.folderName)
+            // A generated map's picture comes from where every other view
+            // gets it, FAF's icons included; the vault has none for it.
+            ? (
+              <MapThumbnail
+                mapName={map.folderName}
+                vault={NO_VAULT}
+                className="map-vault-preview"
+                placeholderClassName="map-vault-preview map-vault-preview-empty"
+                large
+              />
+            )
+            : <MapPreview map={map} large />)}
         </ZoomableImage>
-        {/* The full technical name, untruncated and copyable, as the Play
-            tab's preview has it: the folder is what the vault and the disk
-            know a map by, and for a generated map it is the only way back. */}
-        {map.folderName && (
-          <div className="map-preview-dialog-name">
-            <span>{t("lobby.browser.mapFullName")}</span>
-            <code>{map.folderName}</code>
-            <button
-              type="button"
-              className="map-preview-dialog-copy"
-              aria-label={t(copiedName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
-              title={t(copiedName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
-              onClick={() =>
-                ipc.run(navigator.clipboard.writeText(map.folderName).then(() => setCopiedName(true)))
-              }
-            >
-              <Icon name={copiedName ? "check" : "copy"} size={13} />
-            </button>
-          </div>
-        )}
+        {footer}
       </div>
     </Modal>
   );

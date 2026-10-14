@@ -10,7 +10,7 @@ use crate::ports::PreparationStep;
 use faf_domain::state::ReplayPreparation;
 use faf_domain::state::{
     live_replay_delay_remaining, LiveReplayTarget, LiveReplayTracking, LiveReplayTrackingAction,
-    NotificationAction, NotificationKind, ReplayCommand, ReplayEvent, ReplayQuery,
+    NotificationAction, NotificationKind, ReplayCommand, ReplayEvent, ReplayLaunch, ReplayQuery,
     ResolvedReplayMap, VaultReplay,
 };
 use std::collections::HashMap;
@@ -467,7 +467,11 @@ async fn watch_live(target: LiveReplayTarget, ctx: &ServiceCtx, out: &EventSink)
     let Some(ticket) = begin_launch(ctx, out, LaunchTarget::Live(target.uid)) else {
         return;
     };
-    out.emit(ReplayEvent::Connecting);
+    out.emit(ReplayEvent::Connecting {
+        launch: ReplayLaunch::Live {
+            target: target.clone(),
+        },
+    });
     let uid = target.uid;
     launch(
         ticket,
@@ -554,7 +558,9 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             let Some(ticket) = begin_launch(ctx, out, LaunchTarget::File(path.clone())) else {
                 return;
             };
-            out.emit(ReplayEvent::Connecting);
+            out.emit(ReplayEvent::Connecting {
+                launch: ReplayLaunch::File { path: path.clone() },
+            });
             launch(
                 ticket,
                 ctx.ports.replay_playback.play_file(PathBuf::from(path)),
@@ -638,7 +644,9 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             let Some(ticket) = begin_launch(ctx, out, LaunchTarget::Vault(uid)) else {
                 return;
             };
-            out.emit(ReplayEvent::Connecting);
+            out.emit(ReplayEvent::Connecting {
+                launch: ReplayLaunch::Vault { uid },
+            });
             // Watching a vault replay downloads it before launching FA. That
             // download is the launch's first preparation step now, narrated
             // with the others (and measured) on the starting dialog and the

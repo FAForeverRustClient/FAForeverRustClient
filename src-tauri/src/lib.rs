@@ -6,8 +6,9 @@
 //! - forward every [`AppEvent`] from the core to the frontend on `app://event`
 //!   ([`startup`]);
 //! - own desktop-only concerns: the window and what may load in it
-//!   ([`window`], [`navigation`]), the tray ([`tray`]), and diagnostic-log
-//!   access ([`diagnostics`]).
+//!   ([`window`], [`navigation`]), what closing does during a game
+//!   ([`exit`]), the tray ([`tray`]), and diagnostic-log access
+//!   ([`diagnostics`]).
 //!
 //! All logic lives in `faf-app`/`faf-domain`. [`run`] only assembles the
 //! modules above in the order Tauri needs them; it must stay boring.
@@ -21,9 +22,12 @@ use tauri::Manager;
 
 mod commands;
 mod diagnostics;
+mod exit;
 mod navigation;
 mod startup;
 mod tray;
+#[cfg(windows)]
+mod webview_recovery;
 mod window;
 
 /// The channel the backend emits state deltas on. The frontend listens here.
@@ -71,13 +75,11 @@ pub fn run() {
         // the client that is already up, raise its window, and exit quietly.
         // Anything else means two clients fighting over one lobby connection.
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-            if let Some(window) = app.get_webview_window("main") {
-                // Unminimise first: `set_focus` on a minimised window raises
-                // nothing on Windows and the click appears to do nothing.
-                let _ = window.unminimize();
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
+            // Shown again (and so no longer closing after the game), the way
+            // the tray's Open does it, a window being rebuilt included.
+            // `set_focus` on a minimised window raises nothing on Windows,
+            // which is why that unminimises before it focuses.
+            tray::restore_main_window(app);
             if let Some(path) = startup::replay_argument(&argv) {
                 startup::open_replay_from_argument(app, path);
             }
@@ -100,6 +102,15 @@ pub fn run() {
         // monitor still covers, and otherwise leaves the placement to the OS.
         // A monitor that was unplugged therefore costs the position and nothing
         // else, rather than opening the window somewhere nobody can see.
+        //
+        // Only the window a start opens. One built again after a crash
+        // (`main-2` and on, `webview_recovery`) takes the crashed window's
+        // place itself, and its label comes back at the next crash of a later
+        // run: the plugin would restore whatever that earlier `main-2` was
+        // left as, maximising included, which shows and activates the window
+        // mid-game. Not tracking it costs only this: a start after a recovery
+        // opens where the window was when it crashed, not where the rebuilt
+        // one was left.
         .plugin(
             tauri_plugin_window_state::Builder::default()
                 .with_state_flags(
@@ -107,6 +118,7 @@ pub fn run() {
                         | tauri_plugin_window_state::StateFlags::POSITION
                         | tauri_plugin_window_state::StateFlags::MAXIMIZED,
                 )
+                .with_filter(|label| label == window::MAIN_LABEL)
                 .build(),
         )
         .on_window_event(window::on_window_event)
@@ -125,6 +137,9 @@ pub fn run() {
             let backend_version = env!("CARGO_PKG_VERSION").to_string();
             startup::locate_bundled_helpers(app);
             let core = startup::start_core(app, backend_version);
+            app.manage(exit::ExitAfterGame::default());
+            app.manage(exit::PageReady::default());
+            exit::watch(app, core.clone());
             app.manage(Core(core));
 
             // The other half of the file association: this is the client being
@@ -137,7 +152,16 @@ pub fn run() {
                 startup::open_replay_from_argument(app.handle(), path);
             }
 
-            window::build_main(app)?;
+            app.manage(window::MainWindow::default());
+            #[cfg(windows)]
+            app.manage(webview_recovery::Recoveries::default());
+            // Coming, not missing, until its page starts to load.
+            #[cfg(windows)]
+            webview_recovery::expect_window(app.handle());
+            #[cfg_attr(not(windows), allow(unused_variables))]
+            let main_window = window::build_main(app.handle(), window::Build::First)?;
+            #[cfg(windows)]
+            webview_recovery::watch(&main_window);
             tray::build(app)?;
             Ok(())
         })
@@ -153,6 +177,7 @@ pub fn run() {
             commands::read_notification_sound,
             commands::import_background_image,
             commands::read_background_image,
+            commands::read_marked_map_preview,
             commands::open_version_folder,
             commands::reveal_replay,
             commands::read_latest_log,
@@ -160,10 +185,17 @@ pub fn run() {
             commands::system_date_pattern,
             commands::report_webview_stall,
             commands::report_event_cost,
-            commands::exit_app
+            commands::exit_app,
+            commands::page_ready
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app, _event| {
+            // Rebuilding the window after its web view's browser process exited
+            // closes the only window, which must not exit the client.
+            #[cfg(windows)]
+            webview_recovery::on_run_event(_app, &_event);
+        });
 }
 
 #[cfg(test)]

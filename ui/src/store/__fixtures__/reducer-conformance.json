@@ -3246,12 +3246,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -3350,7 +3353,9 @@
             "theme": "forgeDark",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         }
@@ -3687,6 +3692,8 @@
           },
           "expected": {
             "activeTab": "play",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -3705,6 +3712,8 @@
           },
           "expected": {
             "activeTab": "training",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -3728,6 +3737,8 @@
           },
           "expected": {
             "activeTab": "maps",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -3746,6 +3757,8 @@
           },
           "expected": {
             "activeTab": "maps",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
             "mapsSection": "installed",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -3764,6 +3777,8 @@
           },
           "expected": {
             "activeTab": "maps",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
             "mapsSection": "installed",
             "modsSection": "installed",
             "replaysSection": "online",
@@ -3782,6 +3797,8 @@
           },
           "expected": {
             "activeTab": "maps",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
             "mapsSection": "installed",
             "modsSection": "installed",
             "replaysSection": "live",
@@ -3800,6 +3817,8 @@
           },
           "expected": {
             "activeTab": "maps",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
             "mapsSection": "installed",
             "modsSection": "installed",
             "replaysSection": "live",
@@ -3818,10 +3837,137 @@
           },
           "expected": {
             "activeTab": "chat",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
             "mapsSection": "installed",
             "modsSection": "installed",
             "replaysSection": "live",
             "settingsSection": "connectivity"
+          }
+        }
+      ]
+    },
+    {
+      "name": "nav opens the client changelog on a chosen release and keeps it",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "tab": "changelog"
+              },
+              "type": "tabSelected"
+            },
+            "kind": "Nav"
+          },
+          "expected": {
+            "activeTab": "changelog",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "section": "client"
+              },
+              "type": "changelogSectionSelected"
+            },
+            "kind": "Nav"
+          },
+          "expected": {
+            "activeTab": "changelog",
+            "changelogClientVersion": null,
+            "changelogSection": "client",
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "section": "game"
+              },
+              "type": "changelogSectionSelected"
+            },
+            "kind": "Nav"
+          },
+          "expected": {
+            "activeTab": "changelog",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "version": "0.4.0"
+              },
+              "type": "changelogClientReleaseSelected"
+            },
+            "kind": "Nav"
+          },
+          "expected": {
+            "activeTab": "changelog",
+            "changelogClientVersion": "0.4.0",
+            "changelogSection": "client",
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "section": "game"
+              },
+              "type": "changelogSectionSelected"
+            },
+            "kind": "Nav"
+          },
+          "expected": {
+            "activeTab": "changelog",
+            "changelogClientVersion": "0.4.0",
+            "changelogSection": "game",
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "version": "0.3.0"
+              },
+              "type": "changelogClientReleaseSelected"
+            },
+            "kind": "Nav"
+          },
+          "expected": {
+            "activeTab": "changelog",
+            "changelogClientVersion": "0.3.0",
+            "changelogSection": "client",
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
           }
         }
       ]
@@ -10271,10 +10417,15 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
             "lastChecked": "",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": null,
             "status": {
               "type": "checking"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -10291,10 +10442,15 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
             "lastChecked": "2026-02-01T09:00:00Z",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": null,
             "status": {
               "type": "checking"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -10319,6 +10475,10 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
             "lastChecked": "2026-02-01T09:00:00Z",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -10330,7 +10490,8 @@
             },
             "status": {
               "type": "available"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -10348,6 +10509,10 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
             "lastChecked": "2026-02-01T09:00:00Z",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -10363,7 +10528,8 @@
                 "totalBytes": 4096
               },
               "type": "downloading"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -10377,6 +10543,10 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
             "lastChecked": "2026-02-01T09:00:00Z",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -10388,7 +10558,8 @@
             },
             "status": {
               "type": "available"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -10406,6 +10577,10 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
             "lastChecked": "2026-02-01T09:00:00Z",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -10421,7 +10596,8 @@
                 "totalBytes": 4096
               },
               "type": "downloading"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -10438,6 +10614,10 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
             "lastChecked": "2026-02-01T09:00:00Z",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -10452,7 +10632,8 @@
                 "path": "/cache/updates/faf-client-0.3.0.exe"
               },
               "type": "ready"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -10466,6 +10647,10 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
             "lastChecked": "2026-02-01T09:00:00Z",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -10480,7 +10665,8 @@
                 "path": "/cache/updates/faf-client-0.3.0.exe"
               },
               "type": "ready"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -10494,6 +10680,10 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
             "lastChecked": "2026-02-01T09:00:00Z",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -10505,7 +10695,8 @@
             },
             "status": {
               "type": "installing"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -10522,6 +10713,10 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "0.3.0",
             "lastChecked": "2026-02-01T09:00:00Z",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -10533,7 +10728,8 @@
             },
             "status": {
               "type": "installing"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -10547,10 +10743,15 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "0.3.0",
             "lastChecked": "2026-02-01T09:00:00Z",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": null,
             "status": {
               "type": "upToDate"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -10567,10 +10768,628 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "0.3.0",
             "lastChecked": "2026-02-01T09:05:00Z",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": null,
             "status": {
               "type": "upToDate"
-            }
+            },
+            "whatsNew": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "the client's release notes load, outlive a failed refresh, and what's new is dismissed",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "type": "notesLoading"
+            },
+            "kind": "ClientUpdate"
+          },
+          "expected": {
+            "currentVersion": "",
+            "dismissedVersion": "",
+            "lastChecked": "",
+            "notes": [],
+            "notesStatus": {
+              "type": "loading"
+            },
+            "release": null,
+            "status": {
+              "type": "idle"
+            },
+            "whatsNew": null
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "reason": "GitHub is unreachable"
+              },
+              "type": "notesFailed"
+            },
+            "kind": "ClientUpdate"
+          },
+          "expected": {
+            "currentVersion": "",
+            "dismissedVersion": "",
+            "lastChecked": "",
+            "notes": [],
+            "notesStatus": {
+              "payload": {
+                "reason": "GitHub is unreachable"
+              },
+              "type": "failed"
+            },
+            "release": null,
+            "status": {
+              "type": "idle"
+            },
+            "whatsNew": null
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "notesLoading"
+            },
+            "kind": "ClientUpdate"
+          },
+          "expected": {
+            "currentVersion": "",
+            "dismissedVersion": "",
+            "lastChecked": "",
+            "notes": [],
+            "notesStatus": {
+              "type": "loading"
+            },
+            "release": null,
+            "status": {
+              "type": "idle"
+            },
+            "whatsNew": null
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "notes": [
+                  {
+                    "blocks": [
+                      {
+                        "payload": {
+                          "level": 3,
+                          "text": "Features"
+                        },
+                        "type": "heading"
+                      },
+                      {
+                        "payload": {
+                          "items": [
+                            {
+                              "change": null,
+                              "children": [],
+                              "spans": [
+                                {
+                                  "payload": "New in 0.4.0.",
+                                  "type": "text"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        "type": "list"
+                      }
+                    ],
+                    "notesUrl": "https://example.invalid/releases/tag/v0.4.0",
+                    "preRelease": true,
+                    "publishedAt": "2026-02-01T00:00:00Z",
+                    "version": "0.4.0"
+                  },
+                  {
+                    "blocks": [
+                      {
+                        "payload": {
+                          "level": 3,
+                          "text": "Features"
+                        },
+                        "type": "heading"
+                      },
+                      {
+                        "payload": {
+                          "items": [
+                            {
+                              "change": null,
+                              "children": [],
+                              "spans": [
+                                {
+                                  "payload": "New in 0.3.0.",
+                                  "type": "text"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        "type": "list"
+                      }
+                    ],
+                    "notesUrl": "https://example.invalid/releases/tag/v0.3.0",
+                    "preRelease": true,
+                    "publishedAt": "2026-02-01T00:00:00Z",
+                    "version": "0.3.0"
+                  }
+                ]
+              },
+              "type": "notesLoaded"
+            },
+            "kind": "ClientUpdate"
+          },
+          "expected": {
+            "currentVersion": "",
+            "dismissedVersion": "",
+            "lastChecked": "",
+            "notes": [
+              {
+                "blocks": [
+                  {
+                    "payload": {
+                      "level": 3,
+                      "text": "Features"
+                    },
+                    "type": "heading"
+                  },
+                  {
+                    "payload": {
+                      "items": [
+                        {
+                          "change": null,
+                          "children": [],
+                          "spans": [
+                            {
+                              "payload": "New in 0.4.0.",
+                              "type": "text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "type": "list"
+                  }
+                ],
+                "notesUrl": "https://example.invalid/releases/tag/v0.4.0",
+                "preRelease": true,
+                "publishedAt": "2026-02-01T00:00:00Z",
+                "version": "0.4.0"
+              },
+              {
+                "blocks": [
+                  {
+                    "payload": {
+                      "level": 3,
+                      "text": "Features"
+                    },
+                    "type": "heading"
+                  },
+                  {
+                    "payload": {
+                      "items": [
+                        {
+                          "change": null,
+                          "children": [],
+                          "spans": [
+                            {
+                              "payload": "New in 0.3.0.",
+                              "type": "text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "type": "list"
+                  }
+                ],
+                "notesUrl": "https://example.invalid/releases/tag/v0.3.0",
+                "preRelease": true,
+                "publishedAt": "2026-02-01T00:00:00Z",
+                "version": "0.3.0"
+              }
+            ],
+            "notesStatus": {
+              "type": "ready"
+            },
+            "release": null,
+            "status": {
+              "type": "idle"
+            },
+            "whatsNew": null
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "notesLoading"
+            },
+            "kind": "ClientUpdate"
+          },
+          "expected": {
+            "currentVersion": "",
+            "dismissedVersion": "",
+            "lastChecked": "",
+            "notes": [
+              {
+                "blocks": [
+                  {
+                    "payload": {
+                      "level": 3,
+                      "text": "Features"
+                    },
+                    "type": "heading"
+                  },
+                  {
+                    "payload": {
+                      "items": [
+                        {
+                          "change": null,
+                          "children": [],
+                          "spans": [
+                            {
+                              "payload": "New in 0.4.0.",
+                              "type": "text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "type": "list"
+                  }
+                ],
+                "notesUrl": "https://example.invalid/releases/tag/v0.4.0",
+                "preRelease": true,
+                "publishedAt": "2026-02-01T00:00:00Z",
+                "version": "0.4.0"
+              },
+              {
+                "blocks": [
+                  {
+                    "payload": {
+                      "level": 3,
+                      "text": "Features"
+                    },
+                    "type": "heading"
+                  },
+                  {
+                    "payload": {
+                      "items": [
+                        {
+                          "change": null,
+                          "children": [],
+                          "spans": [
+                            {
+                              "payload": "New in 0.3.0.",
+                              "type": "text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "type": "list"
+                  }
+                ],
+                "notesUrl": "https://example.invalid/releases/tag/v0.3.0",
+                "preRelease": true,
+                "publishedAt": "2026-02-01T00:00:00Z",
+                "version": "0.3.0"
+              }
+            ],
+            "notesStatus": {
+              "type": "ready"
+            },
+            "release": null,
+            "status": {
+              "type": "idle"
+            },
+            "whatsNew": null
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "reason": "GitHub is unreachable"
+              },
+              "type": "notesFailed"
+            },
+            "kind": "ClientUpdate"
+          },
+          "expected": {
+            "currentVersion": "",
+            "dismissedVersion": "",
+            "lastChecked": "",
+            "notes": [
+              {
+                "blocks": [
+                  {
+                    "payload": {
+                      "level": 3,
+                      "text": "Features"
+                    },
+                    "type": "heading"
+                  },
+                  {
+                    "payload": {
+                      "items": [
+                        {
+                          "change": null,
+                          "children": [],
+                          "spans": [
+                            {
+                              "payload": "New in 0.4.0.",
+                              "type": "text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "type": "list"
+                  }
+                ],
+                "notesUrl": "https://example.invalid/releases/tag/v0.4.0",
+                "preRelease": true,
+                "publishedAt": "2026-02-01T00:00:00Z",
+                "version": "0.4.0"
+              },
+              {
+                "blocks": [
+                  {
+                    "payload": {
+                      "level": 3,
+                      "text": "Features"
+                    },
+                    "type": "heading"
+                  },
+                  {
+                    "payload": {
+                      "items": [
+                        {
+                          "change": null,
+                          "children": [],
+                          "spans": [
+                            {
+                              "payload": "New in 0.3.0.",
+                              "type": "text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "type": "list"
+                  }
+                ],
+                "notesUrl": "https://example.invalid/releases/tag/v0.3.0",
+                "preRelease": true,
+                "publishedAt": "2026-02-01T00:00:00Z",
+                "version": "0.3.0"
+              }
+            ],
+            "notesStatus": {
+              "type": "ready"
+            },
+            "release": null,
+            "status": {
+              "type": "idle"
+            },
+            "whatsNew": null
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "notes": [
+                  {
+                    "blocks": [
+                      {
+                        "payload": {
+                          "level": 3,
+                          "text": "Features"
+                        },
+                        "type": "heading"
+                      },
+                      {
+                        "payload": {
+                          "items": [
+                            {
+                              "change": null,
+                              "children": [],
+                              "spans": [
+                                {
+                                  "payload": "New in 0.4.0.",
+                                  "type": "text"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        "type": "list"
+                      }
+                    ],
+                    "notesUrl": "https://example.invalid/releases/tag/v0.4.0",
+                    "preRelease": true,
+                    "publishedAt": "2026-02-01T00:00:00Z",
+                    "version": "0.4.0"
+                  }
+                ]
+              },
+              "type": "notesLoaded"
+            },
+            "kind": "ClientUpdate"
+          },
+          "expected": {
+            "currentVersion": "",
+            "dismissedVersion": "",
+            "lastChecked": "",
+            "notes": [
+              {
+                "blocks": [
+                  {
+                    "payload": {
+                      "level": 3,
+                      "text": "Features"
+                    },
+                    "type": "heading"
+                  },
+                  {
+                    "payload": {
+                      "items": [
+                        {
+                          "change": null,
+                          "children": [],
+                          "spans": [
+                            {
+                              "payload": "New in 0.4.0.",
+                              "type": "text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "type": "list"
+                  }
+                ],
+                "notesUrl": "https://example.invalid/releases/tag/v0.4.0",
+                "preRelease": true,
+                "publishedAt": "2026-02-01T00:00:00Z",
+                "version": "0.4.0"
+              }
+            ],
+            "notesStatus": {
+              "type": "ready"
+            },
+            "release": null,
+            "status": {
+              "type": "idle"
+            },
+            "whatsNew": null
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "version": "0.4.0"
+              },
+              "type": "whatsNewPending"
+            },
+            "kind": "ClientUpdate"
+          },
+          "expected": {
+            "currentVersion": "",
+            "dismissedVersion": "",
+            "lastChecked": "",
+            "notes": [
+              {
+                "blocks": [
+                  {
+                    "payload": {
+                      "level": 3,
+                      "text": "Features"
+                    },
+                    "type": "heading"
+                  },
+                  {
+                    "payload": {
+                      "items": [
+                        {
+                          "change": null,
+                          "children": [],
+                          "spans": [
+                            {
+                              "payload": "New in 0.4.0.",
+                              "type": "text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "type": "list"
+                  }
+                ],
+                "notesUrl": "https://example.invalid/releases/tag/v0.4.0",
+                "preRelease": true,
+                "publishedAt": "2026-02-01T00:00:00Z",
+                "version": "0.4.0"
+              }
+            ],
+            "notesStatus": {
+              "type": "ready"
+            },
+            "release": null,
+            "status": {
+              "type": "idle"
+            },
+            "whatsNew": "0.4.0"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "whatsNewDismissed"
+            },
+            "kind": "ClientUpdate"
+          },
+          "expected": {
+            "currentVersion": "",
+            "dismissedVersion": "",
+            "lastChecked": "",
+            "notes": [
+              {
+                "blocks": [
+                  {
+                    "payload": {
+                      "level": 3,
+                      "text": "Features"
+                    },
+                    "type": "heading"
+                  },
+                  {
+                    "payload": {
+                      "items": [
+                        {
+                          "change": null,
+                          "children": [],
+                          "spans": [
+                            {
+                              "payload": "New in 0.4.0.",
+                              "type": "text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "type": "list"
+                  }
+                ],
+                "notesUrl": "https://example.invalid/releases/tag/v0.4.0",
+                "preRelease": true,
+                "publishedAt": "2026-02-01T00:00:00Z",
+                "version": "0.4.0"
+              }
+            ],
+            "notesStatus": {
+              "type": "ready"
+            },
+            "release": null,
+            "status": {
+              "type": "idle"
+            },
+            "whatsNew": null
           }
         }
       ]
@@ -53621,6 +54440,14 @@
         {
           "event": {
             "event": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "uid": 7
+                  },
+                  "type": "vault"
+                }
+              },
               "type": "connecting"
             },
             "kind": "Replays"
@@ -53653,6 +54480,14 @@
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
             "status": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "uid": 7
+                  },
+                  "type": "vault"
+                }
+              },
               "type": "connecting"
             },
             "vault": [],
@@ -53742,6 +54577,14 @@
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
             "status": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "uid": 7
+                  },
+                  "type": "vault"
+                }
+              },
               "type": "connecting"
             },
             "vault": [],
@@ -53882,6 +54725,18 @@
         {
           "event": {
             "event": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "target": {
+                      "map": "scmp_009",
+                      "modName": "faf",
+                      "uid": 9
+                    }
+                  },
+                  "type": "live"
+                }
+              },
               "type": "connecting"
             },
             "kind": "Replays"
@@ -53914,6 +54769,18 @@
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
             "status": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "target": {
+                      "map": "scmp_009",
+                      "modName": "faf",
+                      "uid": 9
+                    }
+                  },
+                  "type": "live"
+                }
+              },
               "type": "connecting"
             },
             "vault": [],
@@ -55365,6 +56232,14 @@
         {
           "event": {
             "event": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "uid": 7
+                  },
+                  "type": "vault"
+                }
+              },
               "type": "connecting"
             },
             "kind": "Replays"
@@ -55428,6 +56303,14 @@
               43
             ],
             "status": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "uid": 7
+                  },
+                  "type": "vault"
+                }
+              },
               "type": "connecting"
             },
             "vault": [],
@@ -55594,6 +56477,14 @@
         {
           "event": {
             "event": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "path": "C:/replays/7.fafreplay"
+                  },
+                  "type": "file"
+                }
+              },
               "type": "connecting"
             },
             "kind": "Replays"
@@ -55657,6 +56548,14 @@
               43
             ],
             "status": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "path": "C:/replays/7.fafreplay"
+                  },
+                  "type": "file"
+                }
+              },
               "type": "connecting"
             },
             "vault": [],
@@ -55822,6 +56721,14 @@
         {
           "event": {
             "event": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "uid": 8
+                  },
+                  "type": "vault"
+                }
+              },
               "type": "connecting"
             },
             "kind": "Replays"
@@ -55885,6 +56792,14 @@
               43
             ],
             "status": {
+              "payload": {
+                "launch": {
+                  "payload": {
+                    "uid": 8
+                  },
+                  "type": "vault"
+                }
+              },
               "type": "connecting"
             },
             "vault": [],
@@ -58166,12 +59081,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -58270,7 +59188,9 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -58450,12 +59370,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -58554,7 +59477,9 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -58744,12 +59669,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -58848,7 +59776,9 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -59032,12 +59962,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -59138,7 +60071,9 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -59320,12 +60255,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -59427,7 +60365,9 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -59618,12 +60558,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -59736,7 +60679,9 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -59922,12 +60867,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -60035,7 +60983,9 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -60223,12 +61173,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -60344,7 +61297,9 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -60532,12 +61487,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -60653,7 +61611,9 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -60924,12 +61884,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -61091,7 +62054,9 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -61278,12 +62243,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -61445,7 +62413,9 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -61634,12 +62604,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -61801,7 +62774,9 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -62127,12 +63102,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -62294,7 +63272,9 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         }
@@ -76216,12 +77196,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -76320,7 +77303,9 @@
             "theme": "forgeDark",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         }
@@ -76336,6 +77321,7 @@
                 "preferences": {
                   "autoLogin": false,
                   "filterMemory": "restart",
+                  "keepRunningDuringGame": false,
                   "rememberTypedEntries": true,
                   "startPage": "play"
                 }
@@ -76510,12 +77496,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -76614,7 +77603,9 @@
             "theme": "forgeDark",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -76834,12 +77825,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -76938,7 +77932,9 @@
             "theme": "forgeDark",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -77144,12 +78140,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -77248,7 +78247,9 @@
             "theme": "forgeDark",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -77268,6 +78269,8 @@
                   "keepGeneratedMapsLimit": 0,
                   "launchWrapper": "gamemoderun",
                   "pipeLiveReplay": false,
+                  "showJoinProgress": true,
+                  "showReplayProgress": true,
                   "steamPresence": false
                 }
               },
@@ -77441,12 +78444,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -77545,7 +78551,9 @@
             "theme": "forgeDark",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -77729,12 +78737,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -77833,7 +78844,9 @@
             "theme": "forgeDark",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -77843,7 +78856,9 @@
               "payload": {
                 "preferences": {
                   "automatic": false,
-                  "preRelease": true
+                  "lastSeenVersion": "0.4.0",
+                  "preRelease": true,
+                  "showWhatsNew": true
                 }
               },
               "type": "updatesChanged"
@@ -78016,12 +79031,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -78120,7 +79138,9 @@
             "theme": "forgeDark",
             "updates": {
               "automatic": false,
-              "preRelease": true
+              "lastSeenVersion": "0.4.0",
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -78331,12 +79351,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -78435,7 +79458,9 @@
             "theme": "forgeDark",
             "updates": {
               "automatic": false,
-              "preRelease": true
+              "lastSeenVersion": "0.4.0",
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -78615,12 +79640,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -78719,7 +79747,9 @@
             "theme": "forgeDark",
             "updates": {
               "automatic": false,
-              "preRelease": true
+              "lastSeenVersion": "0.4.0",
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -78919,12 +79949,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -79023,7 +80056,9 @@
             "theme": "forgeDark",
             "updates": {
               "automatic": false,
-              "preRelease": true
+              "lastSeenVersion": "0.4.0",
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -79213,12 +80248,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "",
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -79319,7 +80357,9 @@
             "theme": "forgeDark",
             "updates": {
               "automatic": false,
-              "preRelease": true
+              "lastSeenVersion": "0.4.0",
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         },
@@ -79493,12 +80533,15 @@
                     "keepGeneratedMapsLimit": 0,
                     "launchWrapper": "",
                     "pipeLiveReplay": false,
+                    "showJoinProgress": true,
+                    "showReplayProgress": true,
                     "steamPresence": false
                   },
                   "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
                   "general": {
                     "autoLogin": true,
                     "filterMemory": "session",
+                    "keepRunningDuringGame": true,
                     "rememberTypedEntries": false,
                     "startPage": "news"
                   },
@@ -79597,7 +80640,9 @@
                   "theme": "javaClient",
                   "updates": {
                     "automatic": true,
-                    "preRelease": true
+                    "lastSeenVersion": null,
+                    "preRelease": true,
+                    "showWhatsNew": true
                   }
                 }
               },
@@ -79771,12 +80816,15 @@
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false,
+              "showJoinProgress": true,
+              "showReplayProgress": true,
               "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -79875,7 +80923,9 @@
             "theme": "javaClient",
             "updates": {
               "automatic": true,
-              "preRelease": true
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
             }
           }
         }
@@ -80467,10 +81517,15 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
             "lastChecked": "",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": null,
             "status": {
               "type": "checking"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -80495,6 +81550,10 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
             "lastChecked": "",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -80506,7 +81565,8 @@
             },
             "status": {
               "type": "available"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -80524,6 +81584,10 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
             "lastChecked": "",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -80539,7 +81603,8 @@
                 "totalBytes": 4096
               },
               "type": "downloading"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -80556,6 +81621,10 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
             "lastChecked": "",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -80570,7 +81639,8 @@
                 "reason": "the connection was reset"
               },
               "type": "failed"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -80587,6 +81657,10 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
             "lastChecked": "",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -80598,7 +81672,8 @@
             },
             "status": {
               "type": "checking"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -80615,6 +81690,10 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
             "lastChecked": "",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -80629,7 +81708,8 @@
                 "reason": "GitHub is unreachable"
               },
               "type": "failed"
-            }
+            },
+            "whatsNew": null
           }
         },
         {
@@ -80646,6 +81726,10 @@
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
             "lastChecked": "2026-02-01T09:00:00Z",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -80660,7 +81744,8 @@
                 "reason": "GitHub is unreachable"
               },
               "type": "failed"
-            }
+            },
+            "whatsNew": null
           }
         }
       ]
@@ -88771,6 +89856,21 @@
         "title": "pioneer rush go-adapter"
       },
       {
+        "adapter": "dynamic",
+        "expected": "expJava",
+        "title": "Friday 4v4 [exp-java-adapter]"
+      },
+      {
+        "adapter": "dynamic",
+        "expected": "expJava",
+        "title": "Friday [EXP-JAVA-ADAPTER] 4v4"
+      },
+      {
+        "adapter": "dynamic",
+        "expected": "expJava",
+        "title": "[exp-java-adapter]"
+      },
+      {
         "adapter": "java",
         "expected": "java",
         "title": "Friday 4v4"
@@ -88796,6 +89896,61 @@
         "title": "pioneer rush go-adapter"
       },
       {
+        "adapter": "java",
+        "expected": "java",
+        "title": "Friday 4v4 [exp-java-adapter]"
+      },
+      {
+        "adapter": "java",
+        "expected": "java",
+        "title": "Friday [EXP-JAVA-ADAPTER] 4v4"
+      },
+      {
+        "adapter": "java",
+        "expected": "java",
+        "title": "[exp-java-adapter]"
+      },
+      {
+        "adapter": "expJava",
+        "expected": "expJava",
+        "title": "Friday 4v4"
+      },
+      {
+        "adapter": "expJava",
+        "expected": "expJava",
+        "title": "Friday 4v4 [go-adapter]"
+      },
+      {
+        "adapter": "expJava",
+        "expected": "expJava",
+        "title": "Friday [GO-Adapter] 4v4"
+      },
+      {
+        "adapter": "expJava",
+        "expected": "expJava",
+        "title": "[go-adapter]"
+      },
+      {
+        "adapter": "expJava",
+        "expected": "expJava",
+        "title": "pioneer rush go-adapter"
+      },
+      {
+        "adapter": "expJava",
+        "expected": "expJava",
+        "title": "Friday 4v4 [exp-java-adapter]"
+      },
+      {
+        "adapter": "expJava",
+        "expected": "expJava",
+        "title": "Friday [EXP-JAVA-ADAPTER] 4v4"
+      },
+      {
+        "adapter": "expJava",
+        "expected": "expJava",
+        "title": "[exp-java-adapter]"
+      },
+      {
         "adapter": "go",
         "expected": "go",
         "title": "Friday 4v4"
@@ -88819,6 +89974,21 @@
         "adapter": "go",
         "expected": "go",
         "title": "pioneer rush go-adapter"
+      },
+      {
+        "adapter": "go",
+        "expected": "go",
+        "title": "Friday 4v4 [exp-java-adapter]"
+      },
+      {
+        "adapter": "go",
+        "expected": "go",
+        "title": "Friday [EXP-JAVA-ADAPTER] 4v4"
+      },
+      {
+        "adapter": "go",
+        "expected": "go",
+        "title": "[exp-java-adapter]"
       }
     ],
     "playerNoteLookups": [
@@ -120213,10 +121383,15 @@
       "currentVersion": "",
       "dismissedVersion": "",
       "lastChecked": "",
+      "notes": [],
+      "notesStatus": {
+        "type": "idle"
+      },
       "release": null,
       "status": {
         "type": "idle"
-      }
+      },
+      "whatsNew": null
     },
     "connectivity": {
       "check": {
@@ -120614,6 +121789,8 @@
     },
     "nav": {
       "activeTab": "news",
+      "changelogClientVersion": null,
+      "changelogSection": "game",
       "mapsSection": "vault",
       "modsSection": "vault",
       "replaysSection": "online",
@@ -120926,12 +122103,15 @@
         "keepGeneratedMapsLimit": 0,
         "launchWrapper": "",
         "pipeLiveReplay": false,
+        "showJoinProgress": true,
+        "showReplayProgress": true,
         "steamPresence": false
       },
       "gamePath": "",
       "general": {
         "autoLogin": true,
         "filterMemory": "session",
+        "keepRunningDuringGame": true,
         "rememberTypedEntries": false,
         "startPage": "news"
       },
@@ -121030,7 +122210,9 @@
       "theme": "forgeDark",
       "updates": {
         "automatic": true,
-        "preRelease": true
+        "lastSeenVersion": null,
+        "preRelease": true,
+        "showWhatsNew": true
       }
     },
     "social": {

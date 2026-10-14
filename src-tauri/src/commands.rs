@@ -7,8 +7,8 @@
 //! * [`dispatch`], [`dispatch_and_wait`] and [`snapshot`] are the *only*
 //!   way state moves across the boundary (ARCHITECTURE.md §1).
 //! * The folder, log and sound commands are desktop plumbing with no state.
-//! * [`webview_engine`] and [`exit_app`] are facts about, and control over,
-//!   the shell process itself.
+//! * [`webview_engine`], [`exit_app`] and [`page_ready`] are facts about, and
+//!   control over, the shell process itself.
 
 use faf_app::VersionedSnapshot;
 use faf_domain::AppCommand;
@@ -132,10 +132,33 @@ pub(crate) fn import_background_image(path: String) -> Result<String, String> {
 
 /// The stored background's bytes, read here for the same reason the sounds
 /// are: see [`read_notification_sound`].
+///
+/// Handed over as raw bytes, an `ArrayBuffer` on the page. A `Vec<u8>` goes
+/// through JSON as an array of numbers, about four characters a byte, so a
+/// 20 MB picture became some 80 MB of JSON to build and parse on every start.
 #[tauri::command]
-pub(crate) fn read_background_image(name: String) -> Result<Vec<u8>, String> {
+pub(crate) fn read_background_image(name: String) -> Result<tauri::ipc::Response, String> {
     let path = faf_app::infra::backgrounds::background_path(&name)?;
-    std::fs::read(&path).map_err(|error| format!("could not read {}: {error}", path.display()))
+    std::fs::read(&path)
+        .map(tauri::ipc::Response::new)
+        .map_err(|error| format!("could not read {}: {error}", path.display()))
+}
+
+/// An installed map's clean picture and where its mass, hydros and spawns are,
+/// for the large map preview to draw FAF's icons on (see `infra::map_markers`).
+///
+/// Asked for by one open dialog at a time, so a plain request rather than a
+/// command and a cache in the shared state. Off the async workers, since it
+/// reads three files and encodes a PNG.
+#[tauri::command]
+pub(crate) async fn read_marked_map_preview(
+    folder_name: String,
+) -> Result<faf_app::infra::map_markers::MarkedMapPreview, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        faf_app::infra::map_markers::marked_map_preview(&folder_name)
+    })
+    .await
+    .map_err(|error| format!("could not read the map: {error}"))?
 }
 
 #[tauri::command]
@@ -289,6 +312,14 @@ pub(crate) fn snapshot(core: tauri::State<'_, Core>) -> VersionedSnapshot {
 #[tauri::command]
 pub(crate) fn exit_app(app: tauri::AppHandle) {
     app.exit(0);
+}
+
+/// The page has loaded and its close confirmation (`ExitGuard`) is listening.
+/// Until the shell hears this, closing during a game asks natively, and a
+/// window rebuilt after a crash is held open (`exit`, `webview_recovery`).
+#[tauri::command]
+pub(crate) fn page_ready(app: tauri::AppHandle) {
+    crate::exit::page_ready(&app);
 }
 
 /// Which rendering engine the client actually ended up in.

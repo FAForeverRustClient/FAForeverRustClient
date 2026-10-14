@@ -41,8 +41,8 @@ struct RecordingSettings {
 
 #[async_trait]
 impl SettingsPort for RecordingSettings {
-    async fn load(&self) -> SettingsState {
-        self.initial.clone()
+    async fn load(&self) -> Option<SettingsState> {
+        Some(self.initial.clone())
     }
 
     async fn save(&self, settings: &SettingsState) -> Result<(), String> {
@@ -258,8 +258,8 @@ struct FlakySettings {
 
 #[async_trait]
 impl SettingsPort for FlakySettings {
-    async fn load(&self) -> SettingsState {
-        self.initial.clone()
+    async fn load(&self) -> Option<SettingsState> {
+        Some(self.initial.clone())
     }
 
     async fn save(&self, _settings: &SettingsState) -> Result<(), String> {
@@ -296,8 +296,8 @@ struct HeldSettings {
 
 #[async_trait]
 impl SettingsPort for HeldSettings {
-    async fn load(&self) -> SettingsState {
-        self.initial.clone()
+    async fn load(&self) -> Option<SettingsState> {
+        Some(self.initial.clone())
     }
 
     async fn save(&self, _settings: &SettingsState) -> Result<(), String> {

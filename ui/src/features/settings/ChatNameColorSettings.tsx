@@ -65,12 +65,7 @@ export function ChatNameColorSettings({
   return (
     <div className="setting-block chat-name-color-settings">
       <div className="chat-name-color-header">
-        <div>
-          <span className="setting-label">{t("settings.nameColors.rules")}</span>
-          <span className="muted">
-            {t("settings.nameColors.rulesHint")}
-          </span>
-        </div>
+        <span className="setting-label">{t("settings.nameColors.rules")}</span>
         <Button
           variant="ghost"
           onClick={resetToStandardColors}

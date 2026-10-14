@@ -51,8 +51,10 @@ pub use clan::{
     ClanIdentity, ClanInvitation, ClanState, ClanStatus, MAX_CLAN_TAG,
 };
 pub use client_update::{
-    compare_versions, is_release_version, should_update, strip_version_prefix, ClientRelease,
+    compare_versions, is_release_version, should_update, strip_version_prefix,
+    whats_new_on_startup, ClientRelease, ClientReleaseNotes, ClientReleaseNotesStatus,
     ClientUpdateCommand, ClientUpdateEvent, ClientUpdateState, ClientUpdateStatus, ReleaseChannel,
+    WhatsNewOnStartup,
 };
 pub use connectivity::{
     CheckFinding, CheckOutcome, CheckStatus, CheckStep, ConnectivityCheck, ConnectivityCommand,
@@ -87,11 +89,12 @@ pub use leaderboard::{
     RatingLeaderboard, RatingPage, RatingQuery, SeasonLeaderboard,
 };
 pub use lobby::{
-    rating_for_game, rating_gate_blocks, reconcile_avatar, remember_avatar, title_marks_go_adapter,
+    rating_for_game, rating_gate_blocks, reconcile_avatar, remember_avatar,
+    title_marks_exp_java_adapter, title_marks_go_adapter, with_exp_java_adapter_tag,
     with_go_adapter_tag, AvailableAvatar, AvatarListStatus, AvatarReconciliation, Game, GameLaunch,
     HostGameConfig, JoinState, LobbyCommand, LobbyEvent, LobbyState, LobbyStatus, MatchmakerQueue,
     MatchmakingState, PartyMember, PartyState, PlayMode, PlayerVeto, PreparationPhase, RatingRange,
-    GLOBAL_LEADERBOARD, GO_ADAPTER_TITLE_TAG,
+    EXP_JAVA_ADAPTER_TITLE_TAG, GLOBAL_LEADERBOARD, GO_ADAPTER_TITLE_TAG,
 };
 pub use map_generator::{
     is_valid_preset_name, preset_file_name, DecodedMapName, DecodedStyle, GenerationType,
@@ -108,7 +111,8 @@ pub use mods::{
     ModToggleStatus, ModType, ModVersionConflict, ModsCommand, ModsEvent, ModsState, VaultMod,
 };
 pub use nav::{
-    MapsSection, ModsSection, NavCommand, NavEvent, NavState, ReplaysSection, SettingsSection, Tab,
+    ChangelogSection, MapsSection, ModsSection, NavCommand, NavEvent, NavState, ReplaysSection,
+    SettingsSection, Tab,
 };
 pub use notifications::{
     ClientNotification, NotificationAction, NotificationCommand, NotificationEvent,
@@ -128,11 +132,11 @@ pub use replays::{
     LiveReplayTarget, LiveReplayTracking, LiveReplayTrackingAction, LocalReplay, LocalReplayPlayer,
     LocalReplayStatus, LocalReplayTeam, ReplayActivity, ReplayAnalysis, ReplayArmy,
     ReplayChatMessage, ReplayCommand, ReplayCommandStats, ReplayDetails, ReplayEvent,
-    ReplayGameOption, ReplayNotice, ReplayOrder, ReplayPlayer, ReplayPlayerStats, ReplayPoint,
-    ReplayPreparation, ReplayQuery, ReplayReadError, ReplayResourceStat, ReplayScenario,
-    ReplaySortField, ReplayState, ReplayStatus, ReplayTeam, ReplayTotals, ReplayUnitStat,
-    ResolvedReplayMap, VaultReplay, VaultStatus, LIVE_REPLAY_DELAY_SECONDS, ONLINE_LOOKUPS_KEPT,
-    REPLAY_DETAILS_KEPT, RESOLVED_MAPS_KEPT,
+    ReplayGameOption, ReplayLaunch, ReplayNotice, ReplayOrder, ReplayPlayer, ReplayPlayerStats,
+    ReplayPoint, ReplayPreparation, ReplayQuery, ReplayReadError, ReplayResourceStat,
+    ReplayScenario, ReplaySortField, ReplayState, ReplayStatus, ReplayTeam, ReplayTotals,
+    ReplayUnitStat, ResolvedReplayMap, VaultReplay, VaultStatus, LIVE_REPLAY_DELAY_SECONDS,
+    ONLINE_LOOKUPS_KEPT, REPLAY_DETAILS_KEPT, RESOLVED_MAPS_KEPT,
 };
 pub use reporting::{
     ModerationReportSummary, ReportHistoryStatus, ReportLogAttachment, ReportLogExcerpt,

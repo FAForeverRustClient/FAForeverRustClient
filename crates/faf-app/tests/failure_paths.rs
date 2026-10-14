@@ -298,7 +298,10 @@ async fn cancel_watch_held_at(stage: &str) {
     }
     let watch = spawn_command(&h.app, ReplayCommand::WatchVault { uid: REPLAY }.into());
     h.gates.wait_entered(stage).await;
-    assert_eq!(h.app.snapshot().replays.status, ReplayStatus::Connecting);
+    assert!(matches!(
+        h.app.snapshot().replays.status,
+        ReplayStatus::Connecting { .. }
+    ));
 
     // Priority lane: done while the launch is still held, not queued behind it.
     run_promptly(&h.app, ReplayCommand::CancelWatch.into(), "CancelWatch").await;
@@ -406,9 +409,8 @@ async fn a_replaced_replay_launch_leaves_its_replacement_starting() {
     );
     finished(replaced, "the replaced WatchVault").await;
     let replays = h.app.snapshot().replays;
-    assert_eq!(
-        replays.status,
-        ReplayStatus::Connecting,
+    assert!(
+        matches!(replays.status, ReplayStatus::Connecting { .. }),
         "the replaced launch idled the one that replaced it"
     );
     // A watch's download is a step of its launch, narrated through
@@ -456,7 +458,7 @@ async fn watching_a_replay_that_is_already_starting_changes_nothing() {
     )
     .await;
     let replays = h.app.snapshot().replays;
-    assert_eq!(replays.status, ReplayStatus::Connecting);
+    assert!(matches!(replays.status, ReplayStatus::Connecting { .. }));
     assert_eq!(replays.download_status, ReplayDownloadStatus::Idle);
 
     h.gates.release("download");
@@ -493,9 +495,11 @@ async fn a_refused_live_replay_leaves_a_starting_replay_alone() {
         "the refused TrackLive",
     )
     .await;
-    assert_eq!(
-        h.app.snapshot().replays.status,
-        ReplayStatus::Connecting,
+    assert!(
+        matches!(
+            h.app.snapshot().replays.status,
+            ReplayStatus::Connecting { .. }
+        ),
         "a refusal that started nothing closed the dialog of a replay that is starting"
     );
     assert!(
@@ -686,6 +690,10 @@ impl MapGeneratorPort for GatedGenerator {
 
     async fn delete_preset(&self, name: &str) -> Result<(), String> {
         FakeMapGenerator.delete_preset(name).await
+    }
+
+    async fn rename_preset(&self, name: &str, new_name: &str) -> Result<(), String> {
+        FakeMapGenerator.rename_preset(name, new_name).await
     }
 
     async fn latest_version(&self) -> Result<String, String> {

@@ -126,9 +126,8 @@ pub const MAX_PRESET_NAME: usize = 80;
 
 /// Whether a name can be saved as a preset.
 ///
-/// The name has to survive becoming a file name, so the same constraints as
-/// [`crate::state::is_safe_folder_name`] apply: nothing that could climb out
-/// of the presets folder, nothing hidden, nothing empty.
+/// Non-ASCII names are encoded before becoming file names, so only letters,
+/// numbers and the supported separators are accepted from any writing system.
 pub fn is_valid_preset_name(name: &str) -> bool {
     let trimmed = name.trim();
     !trimmed.is_empty()
@@ -137,7 +136,7 @@ pub fn is_valid_preset_name(name: &str) -> bool {
         && !trimmed.contains("..")
         && trimmed
             .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | ' '))
+            .all(|c| c.is_alphanumeric() || matches!(c, '_' | '-' | ' '))
 }
 
 /// The file a preset is stored in, or `None` if the name is unusable.
@@ -147,6 +146,18 @@ pub fn is_valid_preset_name(name: &str) -> bool {
 pub fn preset_file_name(name: &str) -> Option<String> {
     if !is_valid_preset_name(name) {
         return None;
+    }
+    let trimmed_name = name.trim();
+    if !trimmed_name.is_ascii() {
+        let lowercase: String = trimmed_name.chars().flat_map(char::to_lowercase).collect();
+        let encoded: String = lowercase
+            .as_bytes()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect();
+        // `~` cannot appear in a valid preset name, so this cannot collide
+        // with the existing ASCII slug format.
+        return Some(format!("~{encoded}.json"));
     }
     let slug: String = name
         .trim()
@@ -531,6 +542,10 @@ pub enum MapGeneratorCommand {
     },
     /// Re-read the preset library from disk.
     LoadPresets,
+    RenamePreset {
+        name: String,
+        new_name: String,
+    },
     DeletePreset {
         name: String,
     },
@@ -760,6 +775,17 @@ mod tests {
             Some("team-ladder.json")
         );
         assert_eq!(preset_file_name("1v1").as_deref(), Some("1v1.json"));
+    }
+
+    #[test]
+    fn unicode_preset_names_are_safe_and_case_insensitive() {
+        let uppercase = preset_file_name("КАРТА").unwrap();
+        let lowercase = preset_file_name("карта").unwrap();
+        assert_eq!(uppercase, lowercase);
+        assert!(uppercase.starts_with('~'));
+        assert!(uppercase.ends_with(".json"));
+        assert!(uppercase.is_ascii());
+        assert!(is_valid_preset_name("Карта 2"));
     }
 
     #[test]

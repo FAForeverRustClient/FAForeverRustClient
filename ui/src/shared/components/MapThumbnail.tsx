@@ -8,8 +8,8 @@ import {
   isGeneratedMap,
   mapPresentation,
   mapThumbnailCandidates,
-  normalizeMapName,
 } from "../mapPresentation";
+import { useGeneratedMapArt } from "../markedMapPreview";
 import { firstLiveCandidate, markThumbnailMissing } from "../thumbnailCache";
 import { useGeneratedMapPreview } from "../hooks/useGeneratedMapPreview";
 import { useLocalMapPreview } from "../hooks/useLocalMapPreview";
@@ -60,14 +60,9 @@ export function MapThumbnail({
   const missions = useAppStore((state) => state.state.coop.missions);
   const presentation = mapPresentation(vault, mapName, missions);
   const isGenerated = isGeneratedMap(mapName);
-  const normalized = normalizeMapName(mapName);
-  const generatedPreview = useAppStore((state) =>
-    isGenerated
-      ? state.state.mapGenerator.previews?.[mapName] ||
-        state.state.mapGenerator.previews?.[normalized] ||
-        state.state.mapGenerator.previews?.[mapName.toLowerCase()]
-      : undefined,
-  );
+  // A generated map's picture: FAF's icons on its terrain once drawn, the
+  // generator's own preview until then (`useGeneratedMapArt`).
+  const generatedPreview = useGeneratedMapArt(isGenerated ? mapName : null);
   useGeneratedMapPreview(mapName, isGenerated, Boolean(generatedPreview));
   const candidates = useMemo(
     () => mapThumbnailCandidates(vault, mapName, large, missions, generatedPreview, ownUrl || undefined, preferCanonicalPreview),

@@ -1,0 +1,1 @@
+- The Tournaments tab uses tournaments.faforever.com, FAF's own host, which also stops it from signing you out.

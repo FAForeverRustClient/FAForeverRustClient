@@ -2,6 +2,7 @@
 
 import { Icon } from "../../../design-system/Icon";
 import { t } from "../../../i18n";
+import { boundsText } from "../../../shared/ratingBounds";
 
 /**
  * A lobby's rating range, as a tag.
@@ -15,20 +16,21 @@ import { t } from "../../../i18n";
  * The separator is hidden from assistive technology: the tooltip already says
  * "Rating range: {min} to {max}" in words, and a screen reader announcing a
  * lone hyphen between two numbers is noise.
+ *
+ * A range open at one end is that end in words, "From 1200" or "Up to 1800",
+ * rather than "1200 - Any" (#512).
  */
 export function RatingRangeTag(
   { min, max, enforced }: { min: number | null; max: number | null; enforced: boolean },
 ) {
-  const any = t("lobby.browser.any");
-  const from = min === null ? any : minusSign(min);
-  const to = max === null ? any : minusSign(max);
+  const range = boundsText(min, max, minusSign) ?? "";
   return (
     <i
       className={`game-rating-range${enforced ? " is-enforced" : ""}`}
       title={
         enforced
-          ? t("lobby.browser.ratingRangeEnforcedTooltip", { from, to })
-          : t("lobby.browser.ratingRangeTooltip", { from, to })
+          ? t("lobby.browser.ratingRangeEnforcedTooltip", { range })
+          : t("lobby.browser.ratingRangeTooltip", { range })
       }
     >
       {/* A shield is the difference between a range that keeps people out and
@@ -36,9 +38,15 @@ export function RatingRangeTag(
           of them was a rule. Not the padlock it was: that is a private game's
           mark, and on a tile the two read as one. */}
       {enforced && <Icon name="shield" size={12} />}
-      <span>{from}</span>
-      <span className="game-rating-range-separator" aria-hidden="true">-</span>
-      <span>{to}</span>
+      {min !== null && max !== null ? (
+        <>
+          <span>{minusSign(min)}</span>
+          <span className="game-rating-range-separator" aria-hidden="true">-</span>
+          <span>{minusSign(max)}</span>
+        </>
+      ) : (
+        <span>{range}</span>
+      )}
     </i>
   );
 }

@@ -1051,7 +1051,7 @@ fn parse_identity(doc: &JsonApiDoc, player: &Resource) -> Result<PlayerCardProfi
             change_time: text(record, "changeTime"),
         })
         .collect();
-    names.sort_by(|left, right| right.change_time.cmp(&left.change_time));
+    sort_newest_first(&mut names);
 
     Ok(PlayerCardProfile {
         player_id,
@@ -1069,6 +1069,28 @@ fn parse_identity(doc: &JsonApiDoc, player: &Resource) -> Result<PlayerCardProfi
         warnings: Vec::new(),
         matched_former_name: None,
     })
+}
+
+/// Most recent name change first, by the instant each record names.
+///
+/// Compared as instants, not as text. The API writes `changeTime` as an
+/// offset date-time, and the text only sorts like the instant while every
+/// record carries the same offset and the same precision; a record written
+/// with another offset, or with fractional seconds, lands out of place
+/// (#516). A time that cannot be read goes last, and records with the same
+/// instant keep the API's order.
+fn sort_newest_first(names: &mut [PlayerNameRecord]) {
+    let instant = |record: &PlayerNameRecord| {
+        chrono::DateTime::parse_from_rfc3339(record.change_time.trim())
+            .ok()
+            .map(|time| time.with_timezone(&chrono::Utc))
+    };
+    names.sort_by(|left, right| match (instant(left), instant(right)) {
+        (Some(left), Some(right)) => right.cmp(&left),
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => std::cmp::Ordering::Equal,
+    });
 }
 
 /// The clan out of a player document that included `clanMembership.clan`.
@@ -1923,6 +1945,25 @@ mod tests {
             .map(|entry| (entry.player_id, entry.former_name.as_deref()))
             .collect();
         assert_eq!(summary, [(3, None), (2, Some("yudi")), (1, Some("Yudi"))]);
+    }
+
+    #[test]
+    fn previous_names_read_newest_first_whatever_offset_they_were_written_in() {
+        let record = |name: &str, change_time: &str| PlayerNameRecord {
+            name: name.into(),
+            change_time: change_time.into(),
+        };
+        let mut names = vec![
+            record("Oldest", "2016-03-01T10:00:00Z"),
+            // 22:30 UTC on the 4th: the later date as text, the earlier
+            // instant of the two June records.
+            record("Second", "2021-06-05T00:30:00+02:00"),
+            record("Unreadable", ""),
+            record("Latest", "2021-06-04T23:00:00.5Z"),
+        ];
+        sort_newest_first(&mut names);
+        let order: Vec<&str> = names.iter().map(|record| record.name.as_str()).collect();
+        assert_eq!(order, ["Latest", "Second", "Oldest", "Unreadable"]);
     }
 
     #[test]

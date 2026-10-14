@@ -1,0 +1,3 @@
+- The private chat panel says whether the other player is online.
+- The host dialog lists active mods first again and shows how many mods are on in each tab.
+- The join dialog says when a game uses an ICE adapter other than Java.

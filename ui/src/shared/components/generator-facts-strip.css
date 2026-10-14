@@ -1,0 +1,7 @@
+/* Wrapped rather than cut to "...": these grids sit in narrow columns, and a
+   seed missing its last digits is a seed that rebuilds a different map. */
+.generator-facts-strip .facts-grid dt,
+.generator-facts-strip .facts-grid dd {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

@@ -332,6 +332,14 @@ pub(super) fn patch_exe_version(exe_path: &Path, version: i32) -> Result<(), Str
     }
 
     let bytes = version.to_le_bytes();
+    // Nearly every launch finds the stamp already there: the build has not
+    // changed since the last game. Rewriting it anyway copied twelve
+    // megabytes and flushed them to disk before every game, and gave the
+    // executable a new modification time, which made the next checksum pass
+    // read it again (see `checksums`).
+    if exe_carries_version(exe_path, bytes) {
+        return Ok(());
+    }
     content_store::rewrite(exe_path, |file| {
         for &addr in &VERSION_ADDRESSES {
             file.seek(SeekFrom::Start(addr))
@@ -507,6 +515,8 @@ fn write_fa_path_lua(
     featured_mod: &str,
     version: i32,
 ) -> Result<(), String> {
+    // Written inside a Lua string literal that FA executes on start.
+    super::require_featured_mod_name(featured_mod)?;
     let vault_path = documents_vault_dir().unwrap_or_else(|| target_dir.join("vault"));
     let content = format!(
         "fa_path = \"{}\"\ncustom_vault_path = \"{}\"\nGameType = \"{featured_mod}\"\nGameVersion = \"{version}\"\nClientVersion = \"{}\"\nForceAffinity = false\n",
@@ -529,6 +539,22 @@ pub(super) fn documents_vault_dir() -> Option<PathBuf> {
 
 fn slashed(path: &Path) -> String {
     path.display().to_string().replace('\\', "/")
+}
+
+/// Whether every one of the version offsets in `exe_path` already holds
+/// `bytes`. A file that cannot be read does not, so the caller goes on to
+/// patch it and reports whatever is wrong with it.
+fn exe_carries_version(exe_path: &Path, bytes: [u8; 4]) -> bool {
+    use std::io::Read as _;
+    let Ok(mut file) = std::fs::File::open(exe_path) else {
+        return false;
+    };
+    VERSION_ADDRESSES.iter().all(|&addr| {
+        let mut found = [0_u8; 4];
+        file.seek(SeekFrom::Start(addr)).is_ok()
+            && file.read_exact(&mut found).is_ok()
+            && found == bytes
+    })
 }
 
 /// Read the 4-byte engine version stamped into `ForgedAlliance.exe` at `0xd3d40`.
@@ -947,5 +973,29 @@ mod tests {
 
         assert_eq!(read_exe_version(&staged), Some(3838));
         assert_eq!(std::fs::read(&entry).unwrap(), exe);
+    }
+
+    /// The executable already carries the build, which is nearly every
+    /// launch: it is left exactly as it is. It used to be copied, patched
+    /// with the same bytes and flushed to disk before every game.
+    #[test]
+    fn an_executable_already_stamped_is_not_written_again() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("ForgedAlliance.exe");
+        std::fs::write(&path, vec![0u8; 0x476670]).unwrap();
+        patch_exe_version(&path, 3838).unwrap();
+        let stamped = std::fs::metadata(&path).unwrap().modified().unwrap();
+
+        // Long enough apart for any file system's timestamps to tell.
+        std::thread::sleep(std::time::Duration::from_millis(1_100));
+        patch_exe_version(&path, 3838).unwrap();
+        assert_eq!(
+            std::fs::metadata(&path).unwrap().modified().unwrap(),
+            stamped,
+            "the same stamp must not rewrite the file"
+        );
+
+        patch_exe_version(&path, 3839).unwrap();
+        assert_eq!(read_exe_version(&path), Some(3839), "a new build still is");
     }
 }

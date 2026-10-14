@@ -29,6 +29,8 @@
 //!   cache when it is there.
 //! - `cache`: the cache manifest and its upkeep (prune, expire, inspect,
 //!   clear).
+//! - `checksums`: what each installed file hashed to, so an unchanged file
+//!   is not read again on the next launch.
 //! - `maps`: staging a map from the vault CDN for a replay or a live game.
 //! - `content_store`: the content-addressed store underneath all of them.
 
@@ -37,6 +39,7 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 mod cache;
+mod checksums;
 mod content_store;
 mod install;
 mod maps;
@@ -57,6 +60,37 @@ pub use replay_version::{
     extract_game_version, extract_map_folder, resolve_and_stage_replay_version, ReplayVersionInfo,
 };
 pub use update::{clear_file_list_cache, ensure_game_version, ensure_latest_game_version};
+
+/// Whether `name` has the shape of a featured mod's technical name: ASCII
+/// letters, digits, `_` and `-`, at most 64 of them.
+///
+/// The name ends up in three places that each give some character a meaning:
+/// the `init_<mod>.lua` argument FA is started with, the RSQL filter that asks
+/// the API for the mod's id, and the `GameType = "<mod>"` line of the
+/// `fa_path.lua` FA runs on start. When it comes out of a replay header it is
+/// whatever the file's author wrote, and replay files are passed around
+/// freely. Every real mod is a short lowercase word (`faf`, `ladder1v1`,
+/// `fafdevelop`, `nomads`), so nothing that could close a quote, start a line
+/// or name another directory is ever a legitimate value.
+pub(crate) fn is_featured_mod_name(name: &str) -> bool {
+    (1..=64).contains(&name.len())
+        && name
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
+}
+
+/// [`is_featured_mod_name`], as the error a caller that writes the name
+/// somewhere returns.
+fn require_featured_mod_name(name: &str) -> Result<(), String> {
+    if is_featured_mod_name(name) {
+        Ok(())
+    } else {
+        Err(format!(
+            "\"{}\" is not a featured mod's name",
+            name.escape_debug()
+        ))
+    }
+}
 
 /// What a live preparation stopped by its caller ends with.
 ///

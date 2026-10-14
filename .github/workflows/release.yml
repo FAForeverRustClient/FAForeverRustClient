@@ -7,6 +7,19 @@ name: Release
 # Not a push trigger on purpose. A version bump rides along in ordinary pull
 # requests, and publishing to every user is not something a merge should do on
 # its own.
+#
+# The release notes are not typed in either: every pull request leaves a
+# snippet in `changelog/snippets`, and the ones added since the previous
+# release are combined here (see changelog/README.md). A form field could not
+# carry them anyway, because `workflow_dispatch` inputs are one line.
+#
+# The release is opened as a draft, the builds upload into it, and only when
+# every platform has succeeded is it published. Publishing is the moment two
+# things happen at once: clients are offered the update, and the release
+# webhook fires, which is what the changelog bridge on Discord listens for
+# (FAForeverRustClient/Client-Release-Changelog-Bridge, `action ==
+# "published"`). The notes therefore have to be on the release before that
+# moment; the bridge never sees an edit made afterwards.
 on:
   workflow_dispatch:
     inputs:
@@ -28,18 +41,29 @@ on:
         type: boolean
         default: true
       allow_existing_tag:
-        description: 'Add to the existing tag instead of refusing. For retrying one failed platform.'
+        # A failed build no longer needs this: nothing was published, so the
+        # draft is still there and a plain re-run picks it up. This is for
+        # adding to a release that is already out.
+        description: 'Add to an already published release instead of refusing.'
         type: boolean
         default: false
 
+# Every third-party action below is pinned to a commit, not a tag. These jobs
+# hold `contents: write` and build what every client installs, and a tag is a
+# pointer its owner (or whoever takes over their account) can move to any
+# commit at all. The comment after each pin names the release it was taken
+# from; moving to a newer one is a deliberate edit of both.
 jobs:
   prepare:
-    name: Check the version
+    name: Check the version and open the draft
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       version: ${{ steps.version.outputs.version }}
+      release_id: ${{ steps.draft.outputs.release_id }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0 # tags, so an existing release is noticed before four builds run
 
@@ -76,6 +100,68 @@ jobs:
           fi
           echo "$TAG is free"
 
+      # The previous release is the newest `v*` tag behind this commit, never
+      # this version's own: with allow_existing_tag that tag already exists,
+      # and taking it would leave nothing to combine. A release with no new
+      # snippets is refused rather than shipped with an empty post on Discord.
+      - name: Combine the changelog snippets
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          PREVIOUS=$(git describe --tags --abbrev=0 --match 'v*' --exclude "v$VERSION" HEAD 2>/dev/null || true)
+          echo "Snippets added since ${PREVIOUS:-the beginning}"
+          node scripts/changelog.mjs combine $PREVIOUS > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::No changelog snippets were added since ${PREVIOUS:-the beginning}. See changelog/README.md."
+            exit 1
+          fi
+          # No length limit here: the bridge posts the notes as the Discord
+          # message itself and splits anything over Discord's 2000 characters
+          # into follow-up messages in the same thread.
+          printf '\n\nDownload the installer for your platform from the assets below.\n' >> release-notes.md
+          cat release-notes.md
+
+      # Finds a draft left behind by a run whose builds failed and builds into
+      # it again, so a retry never leaves two drafts with the same tag. The
+      # releases list is the only place a draft shows up: it has no tag yet,
+      # so `releases/tags/<tag>` does not know it.
+      - name: Open the draft release
+        id: draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          REPO="$GITHUB_REPOSITORY"
+          EXISTING=$(gh api --paginate "repos/$REPO/releases?per_page=100" \
+            --jq ".[] | select(.tag_name == \"$TAG\") | \"\(.id) \(.draft)\"" | head -1)
+          if [ -z "$EXISTING" ]; then
+            ID=$(gh api "repos/$REPO/releases" \
+              -f tag_name="$TAG" \
+              -f target_commitish="$GITHUB_SHA" \
+              -f name="FAForever Client $TAG" \
+              -F body=@release-notes.md \
+              -F draft=true \
+              -F prerelease="$PRERELEASE" \
+              --jq .id)
+            echo "Opened draft $ID for $TAG"
+          else
+            ID=${EXISTING% *}
+            DRAFT=${EXISTING#* }
+            if [ "$DRAFT" = "true" ]; then
+              gh api -X PATCH "repos/$REPO/releases/$ID" \
+                -f target_commitish="$GITHUB_SHA" \
+                -F body=@release-notes.md \
+                -F prerelease="$PRERELEASE" > /dev/null
+              echo "Reusing draft $ID for $TAG, notes and commit refreshed"
+            else
+              # Only reachable with allow_existing_tag. Its notes already went
+              # to Discord and are left as they are.
+              echo "Adding to published release $ID for $TAG"
+            fi
+          fi
+          echo "release_id=$ID" >> "$GITHUB_OUTPUT"
+
   publish-tauri:
     name: Build ${{ matrix.platform }}
     needs: prepare
@@ -96,10 +182,14 @@ jobs:
             args: ''
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+        # Pinned, this action no longer reads the toolchain from its ref, so
+        # it is named.
+        uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable, 2026-10
+        with:
+          toolchain: stable
 
       - name: Install Linux build dependencies
         if: matrix.platform == 'ubuntu-22.04'
@@ -114,10 +204,10 @@ jobs:
       # No version here: package.json's `packageManager` field is the single
       # source, and passing both makes the action refuse to guess.
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: lts/*
           cache: 'pnpm'
@@ -133,7 +223,7 @@ jobs:
         run: pnpm run prepare:native
 
       - name: Build and publish release
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Baked into the binary by `option_env!`, because a player running a
@@ -146,12 +236,32 @@ jobs:
           TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
           TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
         with:
-          # `v<version>`, because `strip_version_prefix` in faf-domain strips a
-          # leading `v` and nothing else: a tag shaped any other way is invisible
-          # to the client's own update check.
-          tagName: v__VERSION__
-          releaseName: 'FAForever Client v__VERSION__'
-          releaseBody: 'Download the installer for your platform from the assets below.'
-          releaseDraft: false
-          prerelease: ${{ inputs.prerelease }}
+          # Upload into the draft `prepare` opened. Its tag is `v<version>`,
+          # because `strip_version_prefix` in faf-domain strips a leading `v`
+          # and nothing else: a tag shaped any other way is invisible to the
+          # client's own update check.
+          releaseId: ${{ needs.prepare.outputs.release_id }}
           args: ${{ matrix.args }}
+
+  publish:
+    name: Publish the release
+    # `needs` on a matrix job waits for every platform and fails if any did,
+    # so a release missing an installer is never offered to anybody.
+    needs: [prepare, publish-tauri]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # Publishing a draft creates the tag at the commit the draft points at,
+      # and fires the `published` webhook the Discord bridge posts from.
+      - name: Publish the draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.prepare.outputs.release_id }}
+        run: |
+          RELEASE="repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID"
+          if [ "$(gh api "$RELEASE" --jq .draft)" != "true" ]; then
+            echo "Already published; Discord was told the first time."
+            exit 0
+          fi
+          gh api -X PATCH "$RELEASE" -F draft=false --jq .html_url

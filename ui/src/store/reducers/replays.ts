@@ -93,7 +93,12 @@ function isDownloading(status: ReplayDownloadStatus, uid: number): boolean {
 export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplayState {
   switch (event.type) {
     case "connecting":
-      return { ...state, status: { type: "connecting" }, lastWarning: null, preparing: null };
+      return {
+        ...state,
+        status: { type: "connecting", payload: { launch: event.payload.launch } },
+        lastWarning: null,
+        preparing: null,
+      };
     case "preparing":
       return state.status.type === "connecting" ? { ...state, preparing: event.payload.step } : state;
     // None of the three touches `downloadStatus`, as in the Rust reducer. A

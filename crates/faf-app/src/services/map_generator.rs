@@ -306,6 +306,24 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             }
         }
         MapGeneratorCommand::LoadPresets => reload_presets(ctx, out).await,
+        MapGeneratorCommand::RenamePreset { name, new_name } => {
+            if let Err(reason) = ctx
+                .ports
+                .map_generator
+                .rename_preset(&name, &new_name)
+                .await
+            {
+                services::notifications::add_failure(
+                    out,
+                    services::notifications::Text::new(
+                        "notifications.msg.generatorPresetRenameFailed",
+                    ),
+                    "Could not rename the preset",
+                    reason,
+                );
+            }
+            reload_presets(ctx, out).await;
+        }
         MapGeneratorCommand::DeletePreset { name } => {
             if let Err(reason) = ctx.ports.map_generator.delete_preset(&name).await {
                 services::notifications::add_failure(
@@ -324,7 +342,7 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             crate::runtime::expect_admitted(crate::runtime::Key::MapGenerator);
             // Read the authoritative persisted setting here rather than
             // trusting the webview to supply the cleanup exclusion list.
-            let settings = ctx.ports.settings.load().await;
+            let settings = ctx.ports.settings.load().await.unwrap_or_default();
             let mut protected_maps = settings.browsing.favorite_maps;
             // Two ways to be spared, and they mean different things: a
             // favourite is a map somebody marked in the vault, a kept map is

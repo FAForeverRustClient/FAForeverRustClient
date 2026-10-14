@@ -9,7 +9,7 @@
 // replaces whatever the Replays tab was showing. Drawn as a table like the
 // live-replay one, with the same draggable, remembered column widths.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { ResizeHandle } from "../../../design-system/ResizeHandle";
@@ -288,24 +288,34 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
                 <td key={3} className="matchmaker-recent-opponents" title={side.opponents.join(", ")}>
                   {/* Each name as the rest of the client draws it: the
                       reader's friend, foe and custom colours, and the
-                      same right-click menu as a replay lineup. */}
-                  {side.opponents.map((name, index) => (
-                    <span
-                      key={name}
-                      onContextMenu={(event) => {
-                        setMenuGame(game.uid);
-                        openPlayerMenu(name, event);
-                      }}
-                    >
-                      {index > 0 && ", "}
-                      <PlayerName
-                        name={name}
-                        className={menuGameOpen === game.uid && playerMenuTarget === name
-                          ? "matchmaker-recent-opponent is-menu-open"
-                          : "matchmaker-recent-opponent"}
-                      />
-                    </span>
-                  ))}
+                      same player menu as a replay lineup, on a left click
+                      as well as a right one (#539). Inline rather than a
+                      `<button>`, which Chromium always draws inline-block:
+                      a team game's list of names would be clipped instead
+                      of ending in an ellipsis. */}
+                  {side.opponents.map((name, index) => {
+                    const openMenu = (event: MouseEvent) => {
+                      setMenuGame(game.uid);
+                      openPlayerMenu(name, event);
+                    };
+                    return (
+                      <span key={name}>
+                        {index > 0 && ", "}
+                        <span
+                          className="matchmaker-recent-opponent-link"
+                          onClick={openMenu}
+                          onContextMenu={openMenu}
+                        >
+                          <PlayerName
+                            name={name}
+                            className={menuGameOpen === game.uid && playerMenuTarget === name
+                              ? "matchmaker-recent-opponent is-menu-open"
+                              : "matchmaker-recent-opponent"}
+                          />
+                        </span>
+                      </span>
+                    );
+                  })}
                 </td>,
                 <td key={4} className="muted">{formatAgeOrDate(game.startTime)}</td>,
                 <td key={5} className={`matchmaker-recent-outcome${outcome ? ` is-${outcome}` : ""}`}>

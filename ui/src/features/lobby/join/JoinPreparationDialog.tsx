@@ -29,12 +29,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
-import { Modal } from "../../../design-system/Modal";
+import type { GameLaunch } from "../../../ipc/bindings";
 import { useAppStore } from "../../../store/store";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { ipc } from "../../../ipc/client";
-import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
-import { adapterNoteOf, joinProgressOf, nextStep } from "./joinProgress";
+import { lastJoinRequestId } from "../../../shared/joinGame";
+import { mapPresentation } from "../../../shared/mapPresentation";
+import { LaunchProgress } from "../../../shared/components/LaunchProgress";
+import { adapterNoteOf, contextOf, isInfoAdapterNote, joinProgressOf, nextStep } from "./joinProgress";
 import "../game-dialogs.css";
 
 /**
@@ -47,17 +49,31 @@ import "../game-dialogs.css";
  */
 const cancelJoin = () => ipc.send({ kind: "Lobby", command: { type: "cancelJoin" } });
 
+/** "Do not show again": the setting the Game settings row turns back on. */
+const stopShowing = () =>
+  ipc.send({ kind: "Settings", command: { type: "patchGame", payload: { patch: { showJoinProgress: false } } } });
+
 export function JoinPreparationDialog() {
   const { t } = useTranslation();
   const join = useAppStore((state) => state.state.lobby.join);
   const joinAdapter = useAppStore((state) => state.state.settings.connectivity.adapter);
+  // Off, the status bar narrates the join alone.
+  const enabled = useAppStore((state) => state.state.settings.game.showJoinProgress ?? true);
+  const games = useAppStore((state) => state.state.lobby.games);
+  const vault = useAppStore((state) => state.state.maps.vault);
+  const matchmakerLaunching = useAppStore((state) => state.state.lobby.matchmaking.type === "launching");
+  const launch = join.type === "launched" ? join.payload.launch : null;
+  // A matchmaker game is launched first and prepared after, and the launch
+  // order is the only thing that names its map. Kept for the preparation
+  // that follows it.
+  const launchSeen = useRef<GameLaunch | null>(null);
+  if (launch) launchSeen.current = launch;
   const progress = joinProgressOf(join);
   // The line the step log follows. While the game is starting there is no
   // detail to follow, so the log stops growing and keeps what it has.
   const detail = progress?.kind === "preparing" ? progress.detail : "";
 
   const [hidden, setHidden] = useState(false);
-  const [showSteps, setShowSteps] = useState(false);
   // The steps already done, which is the "Details" the report asked for. Held
   // here rather than in the domain: it is a log of what this dialog has seen,
   // it means nothing once the dialog is gone, and the alternative is a growing
@@ -74,6 +90,7 @@ export function JoinPreparationDialog() {
         wasPreparing.current = false;
         setHidden(false);
         setSteps([]);
+        launchSeen.current = null;
       }
       return;
     }
@@ -84,7 +101,7 @@ export function JoinPreparationDialog() {
     });
   }, [progress, detail]);
 
-  if (!progress || hidden) return null;
+  if (!progress || hidden || !enabled) return null;
 
   // Starting the game has nothing to measure: the client has handed off to a
   // process and is waiting for a window, so the bar runs rather than fills.
@@ -92,94 +109,84 @@ export function JoinPreparationDialog() {
   // Only once the launch order is in: its title is what the backend reads to
   // pick the adapter, and before it the dialog has no title to read.
   const adapterNote = progress.kind === "starting" ? adapterNoteOf(joinAdapter, progress.name) : null;
+  const starting = progress.kind === "starting";
+  const seating = progress.kind === "seating";
+  const stage = starting || seating ? 2 : progress.phase === "map" ? 1 : 0;
+  const shownLaunch = starting ? launch : launchSeen.current;
+  // The lobby the join is for: the launch order's game once there is one,
+  // else the lobby the last join was sent for. A matchmaker game is in no
+  // list until it has started.
+  const lobbyGame = matchmakerLaunching
+    ? null
+    : games.find((game) => game.id === (shownLaunch?.uid ?? lastJoinRequestId())) ?? null;
+  const context = contextOf(shownLaunch, lobbyGame, (map) => mapPresentation(vault, map).displayName);
+  const phase = starting
+    ? t("lobby.joinProgress.phase.starting")
+    : seating
+      ? t("lobby.joinProgress.phase.seating")
+      : t(`lobby.joinProgress.phase.${progress.phase}`);
 
   return (
-    <Modal className="confirm-modal join-preparing-modal" onClose={() => setHidden(true)}>
-      <div className="confirm-dialog-content">
-        <h2>
-          {t(progress.kind === "starting"
-            ? "lobby.joinProgress.startingTitle"
-            : "lobby.joinProgress.title")}
-        </h2>
-        {/* Which of the four kinds of waiting this is. The Python client gives
-            each its own bar; one bar plus the name of the phase driving it
-            says the same thing without four mostly-empty bars, and it is what
-            stops the long silent checksum pass reading as a hang. */}
-        <p className="join-preparing-phase">
-          {progress.kind === "starting"
-            ? t("lobby.joinProgress.phase.starting")
-            : t(`lobby.joinProgress.phase.${progress.phase}`)}
-        </p>
-        <p className="join-preparing-detail">
-          {progress.kind === "starting"
-            ? t("lobby.joinProgress.startingDetail", { name: splitGoAdapterTitle(progress.name).title })
-            : progress.detail}
-        </p>
-        {/* Says in words what the title's mark said, which is why the mark is
-            gone from the name above, as it is in the game browser. */}
-        {adapterNote && (
-          <p
-            className="join-preparing-adapter"
-            data-mismatch={adapterNote === "hostOnGo" ? undefined : "true"}
-          >
-            {t(`lobby.joinProgress.adapter.${adapterNote}`)}
-          </p>
-        )}
-        <div
-          className="join-preparing-bar"
-          data-indeterminate={percent === null ? "true" : undefined}
-          role="progressbar"
-          aria-label={t("lobby.joinProgress.title")}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={percent ?? undefined}
-          aria-valuetext={percent === null ? detail : `${detail}, ${percent}%`}
+    <LaunchProgress
+      className="join-preparing-modal"
+      onClose={() => setHidden(true)}
+      title={t(starting ? "lobby.joinProgress.startingTitle" : "lobby.joinProgress.title")}
+      context={context}
+      vault={vault}
+      // Which of the four kinds of waiting this is. The Python client gives
+      // each its own bar; one bar plus the name of the phase driving it says
+      // the same thing without four mostly-empty bars, and it is what stops
+      // the long silent checksum pass reading as a hang.
+      phase={phase}
+      percent={percent}
+      stages={{
+        labels: [
+          t("lobby.joinProgress.stage.files"),
+          t("lobby.joinProgress.stage.map"),
+          t("lobby.joinProgress.stage.game"),
+        ],
+        current: stage,
+      }}
+      progressLabel={t("lobby.joinProgress.title")}
+      progressText={percent === null ? detail || phase : `${detail || phase}, ${percent}%`}
+      detail={starting ? t("lobby.joinProgress.startingNote") : seating ? phase : progress.detail}
+      detailIsText={starting || seating}
+      // Says in words what the title's mark said, which is why the mark is
+      // gone from the name above, as it is in the game browser.
+      notice={adapterNote && {
+        tone: isInfoAdapterNote(adapterNote) ? "info" : "warn",
+        text: t(`lobby.joinProgress.adapter.${adapterNote}`),
+      }}
+      // The reference client's "Details" button: which file, which step, and
+      // how far through the list of them this is.
+      log={steps}
+      logLabels={{
+        show: (count) => t("lobby.joinProgress.showDetails", { count }),
+        hide: t("lobby.joinProgress.hideDetails"),
+      }}
+      footStart={
+        <Button
+          className="launch-progress-dismiss"
+          title={t("lobby.joinProgress.dontShowAgainHint")}
+          onClick={() => {
+            void stopShowing();
+            setHidden(true);
+          }}
         >
-          <span style={percent === null ? undefined : { transform: `scaleX(${percent / 100})` }} />
-        </div>
-        <p className="muted join-preparing-percent">
-          {percent === null
-            ? t(progress.kind === "starting"
-              ? "lobby.joinProgress.startingNote"
-              : "lobby.joinProgress.working")
-            : `${percent}%`}
-        </p>
-
-        {/* The reference client's "Details" button: which file, which step,
-            and how far through the list of them this is. */}
-        <button
-          type="button"
-          className="join-preparing-steps-toggle"
-          aria-expanded={showSteps}
-          onClick={() => setShowSteps((open) => !open)}
-        >
-          {t(showSteps ? "lobby.joinProgress.hideDetails" : "lobby.joinProgress.showDetails", {
-            count: steps.length,
-          })}
-        </button>
-        {showSteps && (
-          <ol className="join-preparing-steps">
-            {steps.map((step, index) => (
-              <li key={`${index}-${step}`} className={index === steps.length - 1 ? "is-current" : ""}>
-                {step}
-              </li>
-            ))}
-          </ol>
-        )}
-
-        <div className="confirm-dialog-actions">
+          {t("lobby.joinProgress.dontShowAgain")}
+        </Button>
+      }
+      actions={
+        <>
           {/* Stop, not just look away. Hiding leaves the join running, which
               is the right default for a five minute patch, and is no use at
               all to somebody who has changed their mind about the game. */}
           <Button onClick={cancelJoin}>
-            {t(progress.kind === "starting"
-              ? "lobby.joinProgress.cancelStarting"
-              : "lobby.joinProgress.cancel")}
+            {t(starting ? "lobby.joinProgress.cancelStarting" : "lobby.joinProgress.cancel")}
           </Button>
-          <Button onClick={() => setHidden(true)}>{t("lobby.joinProgress.hide")}</Button>
-        </div>
-        <p className="muted join-preparing-note">{t("lobby.joinProgress.hideNote")}</p>
-      </div>
-    </Modal>
+          <Button variant="primary" onClick={() => setHidden(true)}>{t("lobby.joinProgress.hide")}</Button>
+        </>
+      }
+    />
   );
 }

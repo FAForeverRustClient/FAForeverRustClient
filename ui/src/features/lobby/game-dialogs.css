@@ -339,7 +339,6 @@
 .host-password-input {
   width: 120px;
   height: 28px;
-  margin-left: 4px;
   padding: 0 8px;
   color: var(--color-text);
   background: var(--color-bg);
@@ -1583,9 +1582,15 @@
 /* Same four-column shape as the custom dialog, with campaigns where that one
    asks which featured mod to run: in co-op the answer is always `coop`, so the
    question was three disabled rows. The mission list is narrower than a map
-   list because it holds one campaign, not the vault. */
+   list because it holds one campaign, not the vault. It takes the width that
+   is left over; the chosen mission's column is fixed and wider than the
+   custom dialog's, and its picture fills it from side to side. */
 .host-coop-grid {
-  grid-template-columns: 220px minmax(260px, 1fr) 320px 360px;
+  grid-template-columns: 220px minmax(260px, 1fr) 390px 360px;
+}
+
+.host-coop-modal .host-preview-thumb-wrap {
+  max-width: none;
 }
 
 .host-coop-faction-badge {
@@ -1606,11 +1611,14 @@
   white-space: normal;
 }
 
-/* A campaign name too long to share its line with the badge puts the badge on
-   the next line, in any language: the row wraps instead of squeezing both.
-   A name that fits keeps the badge beside it, as before. */
+/* The campaign's name, then its badge under it, in every row: beside the name
+   the badge squeezed long names into three lines, and badges of different
+   widths left the names' right edges ragged. */
 .host-coop-modal .host-gametype-title-row {
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--space-1);
 }
 
 .host-coop-modal .host-gametype-name {
@@ -1718,9 +1726,13 @@
 /* The selected map in the host dialog is a control now: it opens the same
    enlarged, zoomable preview the Maps tab and the game preview have. Bare,
    because the column already places the square. */
+/* The whole picture's frame is the button, whatever the art inside it: a
+   co-op mission whose art has not loaded shows a fallback with no height of
+   its own, and the button was then a 40px strip at the top of the frame. */
 .host-preview-button {
   display: block;
   width: 100%;
+  height: 100%;
   padding: 0;
   background: transparent;
   border: 0;
@@ -1740,8 +1752,7 @@
 
 /* ── joining: what will be downloaded, and then what is ──────────────── */
 
-.join-download-modal,
-.join-preparing-modal {
+.join-download-modal {
   width: min(480px, 92vw);
 }
 
@@ -1783,114 +1794,6 @@
 }
 
 .join-download-remember {
-  font-size: 12px;
-}
-
-/* The phase leads and the file follows: which kind of waiting this is stays
-   still while the line under it changes once per file. */
-.join-preparing-phase {
-  margin: 0 0 var(--space-1);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.join-preparing-detail {
-  margin: 0 0 var(--space-2);
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--color-text-muted);
-}
-
-/* The ICE adapter, when it is not the usual one. Full text colour rather than
-   muted, since it is the one line here that changes how the game connects; a
-   setting that disagrees with the host does not connect at all, so it warns. */
-.join-preparing-adapter {
-  margin: 0 0 var(--space-2);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.join-preparing-adapter[data-mismatch="true"] {
-  color: var(--color-warn-text);
-}
-
-.join-preparing-bar {
-  height: 6px;
-  overflow: hidden;
-  background: var(--color-surface-raised);
-  border-radius: 999px;
-}
-
-/* Full width and scaled to the fraction done, so progress animates a
-   transform rather than relaying the dialog out on every step. The sweep
-   below drives `transform` through its keyframes and is not given a scale. */
-.join-preparing-bar > span {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background: var(--color-accent);
-  transform-origin: left center;
-  transition: transform 200ms ease;
-}
-
-/* No percentage to show: a sweep says "running" without implying a position. */
-.join-preparing-bar[data-indeterminate="true"] > span {
-  width: 35%;
-  animation: join-preparing-sweep 1.4s ease-in-out infinite;
-}
-
-@keyframes join-preparing-sweep {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(300%); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .join-preparing-bar[data-indeterminate="true"] > span {
-    animation: none;
-    width: 100%;
-    opacity: 0.4;
-  }
-}
-
-.join-preparing-percent {
-  margin: var(--space-1) 0 var(--space-3);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.join-preparing-steps-toggle {
-  padding: 0;
-  color: var(--color-muted);
-  font: inherit;
-  font-size: 12px;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.join-preparing-steps-toggle:hover {
-  color: var(--color-text);
-}
-
-.join-preparing-steps {
-  max-height: 180px;
-  margin: var(--space-2) 0 0;
-  padding-left: var(--space-4);
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-  color: var(--color-muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.join-preparing-steps > li.is-current {
-  color: var(--color-text);
-}
-
-.join-preparing-note {
-  margin: var(--space-2) 0 0;
   font-size: 12px;
 }
 

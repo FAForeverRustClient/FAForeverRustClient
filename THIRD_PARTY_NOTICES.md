@@ -10,6 +10,14 @@ The country flag images in `ui/public/flags/` come from the official
 distributed under the MIT License. Copyright (c) 2015 Michel Jung and its
 contributors.
 
+## FAF API map marker icons
+
+The mass, hydrocarbon and army icons in `ui/src/shared/assets/map-markers/`
+come from the [FAF API](https://github.com/FAForever/faf-java-api)
+(`src/main/resources/images/map_markers/`), which draws them on the vault's map
+previews. It is distributed under the MIT License. Copyright (c) 2016 Michel
+Jung and its contributors.
+
 ## FAF Java ICE adapter
 
 The release build downloads and redistributes the platform artifact from

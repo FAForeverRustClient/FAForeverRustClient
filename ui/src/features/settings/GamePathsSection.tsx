@@ -26,14 +26,12 @@ const setReplayGamePath = (path: string) =>
 
 function PathRow({
   label,
-  hint,
   path,
   ready,
   pending,
   onPick,
 }: {
   label: string;
-  hint: string;
   path: string;
   /** Whether the configured executable actually exists (checked by the backend). */
   ready: boolean;
@@ -62,7 +60,6 @@ function PathRow({
     <div className="settings-path-row">
       <div className="settings-path-info">
         <span className="settings-path-label">{label}</span>
-        <span className="muted">{hint}</span>
         <span className="settings-path-value">{path || t("settings.paths.unset")}</span>
         <span className={`settings-path-status is-${status}`}>{STATUS_LABEL[status]}</span>
       </div>
@@ -81,7 +78,6 @@ export function GamePathsSection() {
     <div>
       <PathRow
         label={t("settings.paths.gameInstall")}
-        hint={t("settings.paths.gameInstallHint")}
         path={gamePath}
         ready={install.gameReady}
         pending={install.gamePending}
@@ -89,13 +85,11 @@ export function GamePathsSection() {
       />
       <PathRow
         label={t("settings.paths.replayInstall")}
-        hint={t("settings.paths.replayInstallHint")}
         path={replayGamePath}
         ready={install.replayReady}
         pending={install.replayPending}
         onPick={() => pickExe(setReplayGamePath)}
       />
-      <p className="muted">{t("settings.paths.installNote")}</p>
     </div>
   );
 }

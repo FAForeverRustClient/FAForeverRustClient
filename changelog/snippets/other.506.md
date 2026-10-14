@@ -1,0 +1,1 @@
+- Settings drop descriptions that only repeated their labels.

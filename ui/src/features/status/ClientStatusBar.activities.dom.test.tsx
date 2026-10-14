@@ -67,7 +67,7 @@ describe("ClientStatusBar background activities", () => {
     const user = userEvent.setup();
     render(<ClientStatusBar />);
     apply(
-      { kind: "Replays", event: { type: "connecting" } },
+      { kind: "Replays", event: { type: "connecting", payload: { launch: { type: "vault", payload: { uid: 42 } } } } },
       {
         kind: "Replays",
         event: { type: "preparing", payload: { step: { detail: "Downloading replay 42", progress: 30 } } },

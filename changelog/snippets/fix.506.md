@@ -1,0 +1,1 @@
+- The "Your sounds" row stays in Settings after the last sound is removed.

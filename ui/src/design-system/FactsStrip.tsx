@@ -29,6 +29,7 @@ export interface FactGroup {
 const GRID_CLASS = {
   2: "facts-grid has-2-columns",
   3: "facts-grid has-3-columns",
+  4: "facts-grid has-4-columns",
 } as const;
 
 export function FactsStrip({
@@ -37,7 +38,7 @@ export function FactsStrip({
   className = "",
 }: {
   groups: FactGroup[];
-  columns?: 2 | 3;
+  columns?: 2 | 3 | 4;
   className?: string;
 }) {
   return (

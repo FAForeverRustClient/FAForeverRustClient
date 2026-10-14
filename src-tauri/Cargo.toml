@@ -37,6 +37,13 @@ faf-domain = { workspace = true }
 faf-app = { workspace = true }
 tauri-plugin-window-state = "2"
 
+# The WebView2 bindings Tauri's own `wry` already builds, at the versions it
+# uses, for the one event Tauri does not pass on: the window's page or its
+# browser process crashing (`webview_recovery`). Nothing new is downloaded.
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.38"
+windows-core = "0.61"
+
 [[bin]]
 name = "faforever-rust-client"
 path = "src/main.rs"

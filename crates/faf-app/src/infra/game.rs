@@ -445,6 +445,14 @@ impl ProcessPort for GameProcess {
         self.game_child.lock().unwrap().is_some()
     }
 
+    fn replay_upload_pending(&self) -> bool {
+        self.replay_recorder
+            .lock()
+            .unwrap()
+            .as_ref()
+            .is_some_and(|recorder| !recorder.is_finished())
+    }
+
     async fn launch_game(&self, params: GameLaunchParams) -> Result<(), String> {
         let path = self.config.lock().unwrap().game_path.clone();
         let log_path = crate::infra::game_logs::next_path("game", Some(params.game_id))?;

@@ -1,0 +1,2 @@
+- A new leaderboard page starts at the top.
+- The chat tab's dot lights up only for pings, replies to you and private messages.

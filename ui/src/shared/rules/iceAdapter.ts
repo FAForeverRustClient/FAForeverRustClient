@@ -1,6 +1,6 @@
 // Which ICE adapter a game starts on.
 //
-// Twin of `IceAdapter::for_game` in the domain's `state/settings.rs`, pinned by
+// Twin of `IceAdapter::for_game` in the domain's `state/settings/connectivity.rs`, pinned by
 // the `iceAdapterChoices` cases in the conformance fixture. The backend makes
 // the real choice when it starts the adapter (`SelectableIce::selected`, from
 // the launch order's title); this reads the same title and the same setting so
@@ -14,9 +14,13 @@ export type ResolvedIceAdapter = Exclude<IceAdapter, "dynamic">;
 
 /**
  * Twin of `IceAdapter::for_game`: `dynamic` follows the host's title mark, Go
- * when the title carries it and Java otherwise; a fixed choice stays as it is.
+ * when the title carries it, ExpJava when it carries exp-java, and Java otherwise;
+ * a fixed choice stays as it is.
  */
 export function adapterForGame(adapter: IceAdapter, title: string): ResolvedIceAdapter {
   if (adapter !== "dynamic") return adapter;
-  return splitGoAdapterTitle(title).goAdapter ? "go" : "java";
+  const split = splitGoAdapterTitle(title);
+  if (split.goAdapter) return "go";
+  if (split.expJavaAdapter) return "expJava";
+  return "java";
 }

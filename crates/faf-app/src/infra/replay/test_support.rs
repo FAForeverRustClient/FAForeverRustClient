@@ -76,6 +76,9 @@ impl crate::ports::MapGeneratorPort for StubGenerator {
     async fn delete_preset(&self, _name: &str) -> Result<(), String> {
         unimplemented!()
     }
+    async fn rename_preset(&self, _name: &str, _new_name: &str) -> Result<(), String> {
+        unimplemented!()
+    }
     async fn latest_version(&self) -> Result<String, String> {
         unimplemented!()
     }

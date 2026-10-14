@@ -1,0 +1,1 @@
+- The matchmaker cards and the leaderboard no longer jump once ratings arrive.

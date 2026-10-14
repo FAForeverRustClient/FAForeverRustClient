@@ -1,7 +1,7 @@
 // Private comments and tags on replays (#324).
 //
 // The twin of `normalized_replay_notes` in
-// crates/faf-domain/src/state/settings.rs, plus the two questions the UI asks
+// crates/faf-domain/src/state/settings/social.rs, plus the two questions the UI asks
 // of the list: what is written on this replay, and does it match a search.
 
 import type { ReplayNote } from "../../ipc/bindings";

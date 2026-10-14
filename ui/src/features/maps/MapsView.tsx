@@ -10,7 +10,7 @@ import { type InstallFilter, mapsByDownload, mapsMatchingQuery, visibleVaultMaps
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { localPage, vaultPageOutcome } from "../../shared/vaultResults";
 import { Button } from "../../design-system/Button";
-import { Icon } from "../../design-system/Icon";
+import { Icon, type IconName } from "../../design-system/Icon";
 import { EmptyState } from "../../design-system/EmptyState";
 import { SectionTabs, sectionPanelProps } from "../../design-system/SectionTabs";
 import { RangeSlider } from "../../design-system/RangeSlider";
@@ -20,8 +20,7 @@ import {
   SearchPanelSubmit,
   SearchPanelToggle,
 } from "../../design-system/SearchPanel";
-// Only the from-disk entry point: publishing an installed map moved into its own
-// modal on this branch, so `openUpload` is no longer called from here.
+// Only the from-disk entry point: publishing an installed map has its own modal.
 import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { Pagination } from "../../design-system/Pagination";
 import type { GeneratorStatus, InstalledMap, MapsSection, MapVaultQuery, VaultMap } from "../../ipc/bindings";
@@ -45,6 +44,7 @@ import {
 import { MapThumbnail } from "../../shared/components/MapThumbnail";
 import { MapCard, MapDetailPanel, MapHideDialog, MapRating, MapUninstallDialog } from "./MapVaultComponents";
 import { MapPreviewDialog } from "../../shared/components/MapPreviewZoom";
+import { hasMapVaultFocus, takeMapVaultFocus } from "../../shared/mapVaultFocus";
 import { GeneratorProgress, stillRunning } from "./GeneratorProgress";
 import { commandOfCurrentRun, startRun } from "./generatorCommands";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
@@ -88,6 +88,18 @@ const setMapVersionHidden = (versionId: number, hidden: boolean) =>
     command: { type: "setMapVersionHidden", payload: { versionId, hidden } },
   });
 
+/** The vault's presets, in the order the buttons are drawn. */
+const VAULT_PRESETS: Array<[VaultPreset, MessageKey]> = [
+  ["recommended", "maps.view.preset.recommended"],
+  ["favorites", "maps.view.preset.favorites"],
+  ["mine", "maps.view.preset.mine"],
+  // The unfiltered vault before the orderings of it.
+  ["all", "maps.view.preset.all"],
+  ["rating", "maps.view.preset.rating"],
+  ["newest", "maps.view.preset.newest"],
+  ["played", "maps.view.preset.played"],
+];
+
 /** Where the vault's and the library's filters are remembered (#447). */
 const MAP_VAULT_FILTERS = "maps.vault";
 const INSTALLED_MAP_FILTERS = "maps.installed";
@@ -102,6 +114,7 @@ function VaultView({ busy }: { busy: boolean }) {
   const browse = useAppStore((state) => state.state.maps.browse);
   const browseStatus = useAppStore((state) => state.state.maps.browseStatus);
   const browseTotalPages = useAppStore((state) => state.state.maps.browseTotalPages);
+  const browseTotalRecords = useAppStore((state) => state.state.maps.browseTotalRecords);
   // The query the page count in state was reported for. See `sameVaultSearch`.
   const browseQuery = useAppStore((state) => state.state.maps.browseQuery);
   const installed = useAppStore((state) => state.state.maps.installed);
@@ -131,7 +144,7 @@ function VaultView({ busy }: { busy: boolean }) {
       ? null
       : rememberedFilter<MapFilterState | null>(MAP_VAULT_FILTERS, null, isFilterRecord)
         ?? mapFilterFromQuery(browseQuery, preset));
-  const { draft, patchDraft: setFilter, setFilter: setField, applied, page, setPage, applySearch, applySort, reset } = useVaultFilters<MapFilterState, VaultPreset>({
+  const { draft, patchDraft: setFilter, setFilter: setField, applied, setApplied, page, setPage, applySearch, applySort, reset } = useVaultFilters<MapFilterState, VaultPreset>({
     initial: restored ?? {
       search: "",
       author: "",
@@ -228,6 +241,25 @@ function VaultView({ busy }: { busy: boolean }) {
     }
   };
 
+  // Someone opened a map's preview somewhere else and asked to see it in the
+  // vault. Only on mount: tabs are unmounted when they lose focus, so this
+  // runs once per visit, and the request is cleared as it is read. The vault
+  // is searched for the map's name and the version that was shown is
+  // selected, so its panel opens on it.
+  useEffect(() => {
+    const focused = takeMapVaultFocus();
+    if (!focused) return;
+    setField("search", focused.name);
+    setApplied((previous) => ({ ...previous, search: focused.name }));
+    setPage(1);
+    setSelectedFolder(focused.folderName || null);
+    // A preset that narrows the list (recommended, favourites, my uploads,
+    // played) could hide the very map that was asked for, so it gives way to
+    // the whole vault. The sorting presets keep their order.
+    if (preset !== "all" && preset !== "rating" && preset !== "newest") choosePreset("all");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const clearSearch = () => {
     reset({
       search: "",
@@ -314,11 +346,28 @@ function VaultView({ busy }: { busy: boolean }) {
     totalPages,
   });
   const selected = pageMaps.find((map) => map.folderName === selectedFolder) ?? pageMaps[0] ?? null;
-  const hiddenFilterCount = Number(installFilter !== "all")
+  // Everything behind "More filters" that is not at its default, so the
+  // button says how much it is hiding.
+  const hiddenFilterCount = Number(ranked !== "all")
+    + Number(minimumRating !== null || maximumRating !== null)
+    + Number(minimumPlayers !== null || maximumPlayers !== null)
+    + Number(installFilter !== "all")
     + Number(createdAfter !== "" || createdBefore !== "")
     + Number(width > 0)
     + Number(height > 0)
     + Number(showHidden);
+  // The whole result, not the page: the server's total for its own search,
+  // and the local lists counted after every filter. With the install filter
+  // on, the server's total counts maps this page then hid, so the summary
+  // falls back to what is on the page.
+  const serverTotal = sameVaultSearch(browseQuery, query) ? browseTotalRecords : null;
+  const totalLabel = localList
+    ? t("lobby.host.mapCount", { count: results.length })
+    : applied.installFilter === "all" && serverTotal !== null
+      ? t("lobby.host.mapCount", { count: serverTotal })
+      : t("maps.view.resultCount", { count: pageMaps.length });
+  const presetLabel = VAULT_PRESETS.find(([key]) => key === preset)?.[1];
+  const refresh = () => ipc.send({ kind: "Maps", command: { type: "searchVault", payload: { query } } });
 
   return (
     <>
@@ -330,44 +379,48 @@ function VaultView({ busy }: { busy: boolean }) {
         }}
         secondary={(
           <>
-            {([
-              ["recommended", t("maps.view.preset.recommended")],
-              ["favorites", t("maps.view.preset.favorites")],
-              // Only once there is an id to filter on: see `mapVaultQuery`.
-              ...(playerId === null ? [] : [["mine", t("maps.view.preset.mine")] as [VaultPreset, string]]),
-              ["rating", t("maps.view.preset.rating")],
-              ["newest", t("maps.view.preset.newest")],
-              ["played", t("maps.view.preset.played")],
-              ["all", t("maps.view.preset.all")],
-            ] as Array<[VaultPreset, string]>).map(([key, label]) => (
+            {/* "My maps" only once there is an id to filter on: see
+                `mapVaultQuery`. */}
+            {VAULT_PRESETS.filter(([key]) => key !== "mine" || playerId !== null).map(([key, label]) => (
             <Button key={key} className={preset === key ? "active" : ""} onClick={() => choosePreset(key)} title={key === "favorites" ? t("maps.view.preset.favoritesTitle", { count: favoriteFolders.size }) : key === "mine" ? t("maps.view.preset.mineTitle") : undefined}>
               {key === "favorites" && <Icon name="star" size={14} fill="currentColor" />}
-              {key === "mine" && <Icon name="maps" size={14} />} {label}
+              {key === "mine" && <Icon name="user" size={14} />} {t(label)}
             </Button>
             ))}
             <span className="spacer" />
             <SearchPanelToggle expanded={filtersOpen} count={hiddenFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
             <Button onClick={clearSearch}>{t("maps.view.clear")}</Button>
-            {/* Re-runs the current search. It used to re-crawl the catalogue,
-                which the service now refuses once that has succeeded, and this
-                tab no longer browses the catalogue anyway. */}
-            <Button
-              onClick={() => ipc.send({ kind: "Maps", command: { type: "searchVault", payload: { query } } })}
-              disabled={browseStatus.type === "loading"}
-            >
-              <Icon name="refresh" size={15} /> {t("maps.view.refresh")}
-            </Button>
-            <Button onClick={() => void openUploadFromDisk("map")}><Icon name="plus" size={15} /> {t("maps.view.uploadFromDisk")}</Button>
           </>
         )}
         advanced={filtersOpen ? (
           <div className="search-panel-advanced">
-            <div className="search-panel-advanced-grid">
+            <div className="search-panel-advanced-grid maps-advanced-grid">
+              <SearchField label={t("maps.view.ranking")}>
+                <select className="search-panel-control" value={ranked} onChange={(event) => setFilter({ ranked: event.target.value as RankedFilter })}><option value="all">{t("maps.view.any")}</option><option value="ranked">{t("maps.view.ranked")}</option><option value="unranked">{t("maps.view.unranked")}</option></select>
+              </SearchField>
               <SearchField label={t("maps.view.installation")}><select className="search-panel-control" value={installFilter} onChange={(event) => setInstallFilter(event.target.value as InstallFilter)}><option value="all">{t("maps.view.any")}</option><option value="installed">{t("maps.view.installed")}</option><option value="available">{t("maps.view.notInstalled")}</option></select></SearchField>
-              <SearchField label={t("maps.view.uploadedAfter")}><DateInput className="search-panel-control" value={createdAfter} onChange={setCreatedAfter} /></SearchField>
-              <SearchField label={t("maps.view.uploadedBefore")}><DateInput className="search-panel-control" value={createdBefore} onChange={setCreatedBefore} /></SearchField>
+              <RangeSlider
+                label={t("maps.view.reviewScore")}
+                min={0}
+                max={5}
+                step={0.5}
+                low={minimumRating}
+                high={maximumRating}
+                format={(value) => `${value}★`}
+                onChange={(low, high) => { setFilter({ minimumRating: low, maximumRating: high }); }}
+              />
+              <RangeSlider
+                label={t("maps.view.playerSlots")}
+                min={1}
+                max={16}
+                low={minimumPlayers}
+                high={maximumPlayers}
+                onChange={(low, high) => { setFilter({ minimumPlayers: low, maximumPlayers: high }); }}
+              />
               <SearchField label={t("maps.view.width")}><select className="search-panel-control" value={width} onChange={(event) => setFilter({ width: Number(event.target.value) })}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometres(kilometresLabel(value))}</option>)}</select></SearchField>
               <SearchField label={t("maps.view.height")}><select className="search-panel-control" value={height} onChange={(event) => setFilter({ height: Number(event.target.value) })}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometres(kilometresLabel(value))}</option>)}</select></SearchField>
+              <SearchField label={t("maps.view.uploadedAfter")}><DateInput className="search-panel-control" value={createdAfter} onChange={setCreatedAfter} /></SearchField>
+              <SearchField label={t("maps.view.uploadedBefore")}><DateInput className="search-panel-control" value={createdBefore} onChange={setCreatedBefore} /></SearchField>
               {/* "My maps" shows them regardless, so the control would be a
                   lie there: an author is meant to see what they withdrew. */}
               {preset !== "mine" && (
@@ -414,30 +467,9 @@ function VaultView({ busy }: { busy: boolean }) {
             placeholder={t("maps.view.anyAuthor")}
           />
         </SearchField>
-        <RangeSlider
-          label={t("maps.view.reviewScore")}
-          min={0}
-          max={5}
-          step={0.5}
-          low={minimumRating}
-          high={maximumRating}
-          format={(value) => `${value}★`}
-          onChange={(low, high) => { setFilter({ minimumRating: low, maximumRating: high }); }}
-        />
-        <RangeSlider
-          label={t("maps.view.playerSlots")}
-          min={1}
-          max={16}
-          low={minimumPlayers}
-          high={maximumPlayers}
-          onChange={(low, high) => { setFilter({ minimumPlayers: low, maximumPlayers: high }); }}
-        />
-        <SearchField label={t("maps.view.ranking")} className="search-panel-field-compact">
-          <select className="search-panel-control" value={ranked} onChange={(event) => setFilter({ ranked: event.target.value as RankedFilter })}><option value="all">{t("maps.view.any")}</option><option value="ranked">{t("maps.view.ranked")}</option><option value="unranked">{t("maps.view.unranked")}</option></select>
-        </SearchField>
-        <SearchField label={t("maps.view.sortBy")} className="search-panel-field-compact">
-          <select className="search-panel-control" value={sort} onChange={(event) => chooseSort(event.target.value as VaultSort)}><option value="rating">{t("maps.view.preset.rating")}</option><option value="newest">{t("maps.view.preset.newest")}</option><option value="played">{t("maps.view.preset.played")}</option><option value="name">{t("maps.view.sort.name")}</option><option value="size">{t("maps.view.sort.size")}</option><option value="downloaded">{t("maps.view.sort.downloaded")}</option></select>
-        </SearchField>
+        {/* The search row is the name, the author and the button. The rest
+            of the filters are behind "More filters", and the sort sits over
+            the results it orders. */}
         <SearchPanelSubmit />
       </SearchPanel>
 
@@ -453,7 +485,7 @@ function VaultView({ busy }: { busy: boolean }) {
         <LoadStatusNotice
           status={browseStatus}
           failed={t("maps.view.searchFailed")}
-          onRetry={() => ipc.send({ kind: "Maps", command: { type: "searchVault", payload: { query } } })}
+          onRetry={refresh}
         />
       )}
       {/* An install or uninstall that failed only turned its button back to
@@ -493,15 +525,48 @@ function VaultView({ busy }: { busy: boolean }) {
         )
       ) : outcome.kind !== "waiting" && (
         <>
-          <div className="vault-results-head">
-            <span>{t("maps.view.resultCount", { count: pageMaps.length })}</span>
-            <span>{t("maps.view.pageOf", { page: currentPage, total: totalPages })}</span>
-          </div>
           <div
-            className={!localList && browseStatus.type === "loading" ? "vault-layout is-stale-results" : "vault-layout"}
+            className={!localList && browseStatus.type === "loading" ? "maps-vault-layout is-stale-results" : "maps-vault-layout"}
             aria-busy={!localList && browseStatus.type === "loading"}
           >
-            <section className="vault-browser">
+            {/* Over the grid's column only, as the mods tab has it: what the
+                search found on the left, and at the grid's top right the order
+                it is in and the way to ask again. */}
+            <div className="maps-summary">
+              <div className="maps-summary-count">
+                <Icon name="maps" size={16} />
+                <strong>{totalLabel}</strong>
+                {presetLabel && <span className="muted">{t(presetLabel)}</span>}
+              </div>
+              <span className="spacer" />
+              <label className="maps-summary-sort">
+                <span className="muted">{t("maps.view.sortBy")}</span>
+                <select className="search-panel-control" value={sort} onChange={(event) => chooseSort(event.target.value as VaultSort)}>
+                  <option value="rating">{t("maps.view.preset.rating")}</option>
+                  <option value="newest">{t("maps.view.preset.newest")}</option>
+                  <option value="played">{t("maps.view.preset.played")}</option>
+                  <option value="name">{t("maps.view.sort.name")}</option>
+                  <option value="size">{t("maps.view.sort.size")}</option>
+                  <option value="downloaded">{t("maps.view.sort.downloaded")}</option>
+                </select>
+              </label>
+              {/* Re-runs the current search. It used to re-crawl the
+                  catalogue, which the service now refuses once that has
+                  succeeded. Nothing to ask again for a local list. */}
+              {!localList && (
+                <Button
+                  variant="ghost"
+                  className="maps-summary-icon"
+                  aria-label={t("maps.view.refresh")}
+                  title={t("maps.view.refresh")}
+                  onClick={refresh}
+                  disabled={browseStatus.type === "loading"}
+                >
+                  <Icon name="refresh" size={15} />
+                </Button>
+              )}
+            </div>
+            <section className="vault-browser maps-vault-browser">
               {/* Every map on this page fell to the install filter, which only
                   sees this page; the next one may well have some, so the pager
                   stays and the note points there. */}
@@ -568,6 +633,7 @@ function VaultView({ busy }: { busy: boolean }) {
       {pendingHide && <MapHideDialog mapName={pendingHide.displayName} onCancel={() => setPendingHide(null)} onConfirm={() => { setMapVersionHidden(pendingHide.versionId, true); setPendingHide(null); }} />}
       {previewMap && (
         <MapPreviewDialog
+          vaultLink={false}
           map={previewMap}
           onClose={() => setPreviewMap(null)}
           meta={<>
@@ -588,6 +654,16 @@ function VaultView({ busy }: { busy: boolean }) {
 }
 
 type InstalledPreset = "all" | "favorites" | "ranked" | "custom" | "builtin";
+
+const INSTALLED_PRESET_LABELS: Record<InstalledPreset, MessageKey> = {
+  all: "maps.view.preset.all",
+  favorites: "maps.view.preset.favorites",
+  ranked: "maps.view.ranked",
+  custom: "maps.view.preset.custom",
+  builtin: "maps.view.preset.builtin",
+};
+
+const presetLabelOf = (preset: InstalledPreset): MessageKey => INSTALLED_PRESET_LABELS[preset];
 type InstalledSort = "name" | "size" | "players" | "newest" | "rating" | "downloaded";
 
 interface InstalledMapFilters {
@@ -650,10 +726,13 @@ function InstalledView({ busy }: { busy: boolean }) {
     if (next === "all") setSort("name");
   };
 
-  // Only what the toggle actually hides: width and height. Ranked, rating and
-  // players sit on the always-visible row, and counting them here made the
-  // badge claim hidden filters that were in plain sight.
-  const hiddenFilterCount = Number(width > 0) + Number(height > 0);
+  // Only what the toggle actually hides, as on the vault: everything but the
+  // name and the author.
+  const hiddenFilterCount = Number(ranked !== "all")
+    + Number(minimumRating !== null || maximumRating !== null)
+    + Number(minimumPlayers !== null || maximumPlayers !== null)
+    + Number(width > 0)
+    + Number(height > 0);
 
   const clearSearch = () => {
     resetFilters();
@@ -780,21 +859,18 @@ function InstalledView({ busy }: { busy: boolean }) {
             <span className="spacer" />
             <SearchPanelToggle expanded={filtersOpen} count={hiddenFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
             <Button onClick={clearSearch}>{t("maps.view.clear")}</Button>
-            <Button onClick={loadInstalled} disabled={installedStatus.type === "loading"}>
-              <Icon name="refresh" size={15} /> {t("maps.view.rescan")}
-            </Button>
-            {/* Beside the other two things this row does to the library rather
-                than to the filter: clearing generated maps is housekeeping, and
-                it used to sit up on the tab bar's own line, where it read as a
-                tab. Generated maps are reproducible from their name, so
-                removing them costs nothing but reclaims the disk a season of
-                ladder accumulates. */}
-            <Button onClick={cleanUpGeneratedMaps}>{t("maps.view.clearGenerated")}</Button>
           </>
         )}
         advanced={filtersOpen ? (
           <div className="search-panel-advanced">
-            <div className="search-panel-advanced-grid">
+            <div className="search-panel-advanced-grid maps-advanced-grid">
+              <SearchField label={t("maps.view.ranking")}>
+                <select className="search-panel-control" value={ranked} onChange={(event) => { setFilter({ ranked: event.target.value as RankedFilter }); setPage(1); }}>
+                  <option value="all">{t("maps.view.any")}</option>
+                  <option value="ranked">{t("maps.view.ranked")}</option>
+                  <option value="unranked">{t("maps.view.unranked")}</option>
+                </select>
+              </SearchField>
               <SearchField label={t("maps.view.width")}>
                 <select className="search-panel-control" value={width} onChange={(event) => setFilter({ width: Number(event.target.value) })}>
                   <option value={0}>{t("maps.view.any")}</option>
@@ -807,6 +883,26 @@ function InstalledView({ busy }: { busy: boolean }) {
                   {MAP_SIZES.map((value) => <option key={value} value={value}>{kilometres(kilometresLabel(value))}</option>)}
                 </select>
               </SearchField>
+              <RangeSlider
+                label={t("maps.view.reviewScore")}
+                min={0}
+                max={5}
+                step={0.5}
+                low={minimumRating}
+                high={maximumRating}
+                format={(value) => `${value}★`}
+                onChange={(low, high) => { setFilter({ minimumRating: low, maximumRating: high }); setPage(1); }}
+              />
+              <RangeSlider
+                label={t("maps.view.playerSlots")}
+                min={1}
+                max={16}
+                step={1}
+                low={minimumPlayers}
+                high={maximumPlayers}
+                format={(value) => `${value}`}
+                onChange={(low, high) => { setFilter({ minimumPlayers: low, maximumPlayers: high }); setPage(1); }}
+              />
             </div>
           </div>
         ) : undefined}
@@ -833,43 +929,6 @@ function InstalledView({ busy }: { busy: boolean }) {
             placeholder={t("maps.view.anyAuthor")}
           />
         </SearchField>
-        <RangeSlider
-          label={t("maps.view.reviewScore")}
-          min={0}
-          max={5}
-          step={0.5}
-          low={minimumRating}
-          high={maximumRating}
-          format={(value) => `${value}★`}
-          onChange={(low, high) => { setFilter({ minimumRating: low, maximumRating: high }); setPage(1); }}
-        />
-        <RangeSlider
-          label={t("maps.view.playerSlots")}
-          min={1}
-          max={16}
-          step={1}
-          low={minimumPlayers}
-          high={maximumPlayers}
-          format={(value) => `${value}`}
-          onChange={(low, high) => { setFilter({ minimumPlayers: low, maximumPlayers: high }); setPage(1); }}
-        />
-        <SearchField label={t("maps.view.ranking")} className="search-panel-field-compact">
-          <select className="search-panel-control" value={ranked} onChange={(event) => { setFilter({ ranked: event.target.value as RankedFilter }); setPage(1); }}>
-            <option value="all">{t("maps.view.any")}</option>
-            <option value="ranked">{t("maps.view.ranked")}</option>
-            <option value="unranked">{t("maps.view.unranked")}</option>
-          </select>
-        </SearchField>
-        <SearchField label={t("maps.view.sortBy")} className="search-panel-field-compact">
-          <select className="search-panel-control" value={sort} onChange={(event) => setSort(event.target.value as InstalledSort)}>
-            <option value="name">{t("maps.view.sort.name")}</option>
-            <option value="size">{t("maps.view.sort.size")}</option>
-            <option value="players">{t("maps.view.sort.players")}</option>
-            <option value="rating">{t("maps.view.preset.rating")}</option>
-            <option value="newest">{t("maps.view.preset.newest")}</option>
-            <option value="downloaded">{t("maps.view.sort.downloaded")}</option>
-          </select>
-        </SearchField>
       </SearchPanel>
 
       <LoadStatusNotice
@@ -892,9 +951,42 @@ function InstalledView({ busy }: { busy: boolean }) {
         </EmptyState>
       ) : filtered.length > 0 && (
         <section className="installed-map-library">
-          <div className="vault-results-head">
-            <span>{t("maps.view.installedCount", { count: filtered.length })}</span>
-            <span>{t("maps.view.userMapsFolder")}</span>
+          {/* The vault's summary line: how many, then the order and the
+              library's own housekeeping at the right. */}
+          <div className="maps-summary installed-map-summary">
+            <div className="maps-summary-count">
+              <Icon name="folder" size={16} />
+              <strong>{t("lobby.host.mapCount", { count: filtered.length })}</strong>
+              {preset !== "all" && <span className="muted">{t(presetLabelOf(preset))}</span>}
+            </div>
+            <span className="spacer" />
+            <label className="maps-summary-sort">
+              <span className="muted">{t("maps.view.sortBy")}</span>
+              <select className="search-panel-control" value={sort} onChange={(event) => setSort(event.target.value as InstalledSort)}>
+                <option value="name">{t("maps.view.sort.name")}</option>
+                <option value="size">{t("maps.view.sort.size")}</option>
+                <option value="players">{t("maps.view.sort.players")}</option>
+                <option value="rating">{t("maps.view.preset.rating")}</option>
+                <option value="newest">{t("maps.view.preset.newest")}</option>
+                <option value="downloaded">{t("maps.view.sort.downloaded")}</option>
+              </select>
+            </label>
+            {/* Housekeeping for the library rather than a filter. Generated
+                maps are reproducible from their name, so removing them costs
+                nothing but reclaims the disk a season of ladder accumulates. */}
+            <Button variant="ghost" className="maps-summary-tool" onClick={cleanUpGeneratedMaps}>
+              {t("maps.view.clearGenerated")}
+            </Button>
+            <Button
+              variant="ghost"
+              className="maps-summary-icon"
+              aria-label={t("maps.view.rescan")}
+              title={t("maps.view.rescan")}
+              onClick={loadInstalled}
+              disabled={installedStatus.type === "loading"}
+            >
+              <Icon name="refresh" size={15} />
+            </Button>
           </div>
           <div className="installed-map-grid" ref={installedGrid}>
             {pageMaps.map((map) => {
@@ -979,6 +1071,7 @@ function InstalledView({ busy }: { busy: boolean }) {
       )}
       {previewMap && (
         <MapPreviewDialog
+          vaultLink={false}
           map={previewMap}
           onClose={() => setPreviewMap(null)}
           meta={<>{sizeLabel(previewMap)} · {t("maps.view.playerCount", { count: previewMap.maxPlayers ?? 2 })}</>}
@@ -998,9 +1091,9 @@ function InstalledView({ busy }: { busy: boolean }) {
   );
 }
 
-const SUB_VIEWS: Record<SubView, { label: MessageKey; Component: (props: { busy: boolean }) => JSX.Element }> = {
-  vault: { label: "maps.view.tab.vault", Component: VaultView },
-  installed: { label: "maps.view.tab.installed", Component: InstalledView },
+const SUB_VIEWS: Record<SubView, { label: MessageKey; icon: IconName; Component: (props: { busy: boolean }) => JSX.Element }> = {
+  vault: { label: "maps.view.tab.vault", icon: "globe", Component: VaultView },
+  installed: { label: "maps.view.tab.installed", icon: "folder", Component: InstalledView },
 };
 
 const cleanUpGeneratedMaps = () =>
@@ -1021,25 +1114,36 @@ export function MapsView() {
   const busy = installStatus.type === "installing";
   const { Component } = SUB_VIEWS[subView];
 
+  // A jump to a map from another tab lands on the vault, where the vault view
+  // then takes the request as it mounts.
+  useEffect(() => {
+    if (useAppStore.getState().state.nav.mapsSection === "vault") return;
+    if (hasMapVaultFocus()) selectSubView("vault");
+  }, []);
+
   return (
     <div className="maps-workspace">
-      <div className="vault-subnav">
+      {/* The two lists as tabs, as the mods tab and the leaderboard have
+          them, and at the end of the same line the one thing that is about
+          neither: publishing a map of your own. Quiet, so it does not read as
+          a third tab. Generating a map belongs to hosting a game, which is
+          where its dialog is reached from. */}
+      <header className="maps-header">
         <SectionTabs
+          className="maps-section-tabs"
           active={subView}
           ariaLabel={t("maps.view.mapLibraryViews")}
-          items={(Object.keys(SUB_VIEWS) as SubView[]).map((key) => ({ id: key, label: t(SUB_VIEWS[key].label) }))}
+          items={(Object.keys(SUB_VIEWS) as SubView[]).map((key) => ({
+            id: key,
+            label: <><Icon name={SUB_VIEWS[key].icon} size={15} /> {t(SUB_VIEWS[key].label)}</>,
+          }))}
           onChange={selectSubView}
           idPrefix="maps-section"
         />
-        {/* Nothing sits beside the tabs any more. Uploading a map has one
-            entry point, "Upload map" in the vault's own toolbar; clearing
-            generated maps has moved down into the installed list's action row
-            next to Clear and Rescan, where the rest of the library's
-            housekeeping already is; and generating one belongs to hosting a
-            game, which is where the dialog is reached from. Buttons resting on
-            the tab underline read as tabs, which is how this row was
-            reported. */}
-      </div>
+        <Button variant="ghost" className="maps-header-action" onClick={() => void openUploadFromDisk("map")}>
+          <Icon name="upload" size={15} /> {t("maps.view.uploadFromDisk")}
+        </Button>
+      </header>
       <div {...sectionPanelProps("maps-section", subView)}>
         <Component busy={busy} />
       </div>

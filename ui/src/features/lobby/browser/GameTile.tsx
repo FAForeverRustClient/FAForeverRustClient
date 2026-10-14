@@ -84,7 +84,7 @@ export const GameTile = memo(function GameTile({
     showSocial,
     hideSocial,
   } = useGameSocialPosition(game.id);
-  const { title: shownTitle, goAdapter } = splitGoAdapterTitle(game.title);
+  const { title: shownTitle, goAdapter, expJavaAdapter } = splitGoAdapterTitle(game.title);
   const age = formatAge(game.hostedAt, now);
   // Co-op is its tab's own mode as FAF is the Custom tab's.
   const otherMod = game.modName && !["faf", "coop"].includes(game.modName.toLowerCase()) ? game.modName : null;
@@ -230,6 +230,7 @@ export const GameTile = memo(function GameTile({
               it rather than as the `fafbeta` the server sends. */}
           {otherMod && <i title={featuredModLabel(otherMod)}>{featuredModLabel(otherMod)}</i>}
           {goAdapter && <i className="go-adapter" title={t("lobby.browser.goAdapterTitle")}>{t("lobby.browser.goAdapter")}</i>}
+          {expJavaAdapter && <i className="go-adapter" title={t("lobby.browser.expJavaAdapterTitle")}>{t("lobby.browser.expJavaAdapter")}</i>}
           {simModCount > 0 && (
             <i
               className={simModsRanked ? "modded is-ranked" : "modded"}

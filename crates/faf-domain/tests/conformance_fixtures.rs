@@ -3595,24 +3595,32 @@ fn helper_fixture() -> HelperFixture {
             .collect(),
         // Every setting against a plain title, the mark in another case and
         // position, a mark on its own, and a title that only resembles one.
-        ice_adapter_choices: [IceAdapter::Dynamic, IceAdapter::Java, IceAdapter::Go]
+        ice_adapter_choices: [
+            IceAdapter::Dynamic,
+            IceAdapter::Java,
+            IceAdapter::ExpJava,
+            IceAdapter::Go,
+        ]
+        .into_iter()
+        .flat_map(|adapter| {
+            [
+                "Friday 4v4",
+                "Friday 4v4 [go-adapter]",
+                "Friday [GO-Adapter] 4v4",
+                "[go-adapter]",
+                "pioneer rush go-adapter",
+                "Friday 4v4 [exp-java-adapter]",
+                "Friday [EXP-JAVA-ADAPTER] 4v4",
+                "[exp-java-adapter]",
+            ]
             .into_iter()
-            .flat_map(|adapter| {
-                [
-                    "Friday 4v4",
-                    "Friday 4v4 [go-adapter]",
-                    "Friday [GO-Adapter] 4v4",
-                    "[go-adapter]",
-                    "pioneer rush go-adapter",
-                ]
-                .into_iter()
-                .map(move |title| IceAdapterChoiceCase {
-                    adapter,
-                    title: title.into(),
-                    expected: adapter.for_game(title),
-                })
+            .map(move |title| IceAdapterChoiceCase {
+                adapter,
+                title: title.into(),
+                expected: adapter.for_game(title),
             })
-            .collect(),
+        })
+        .collect(),
         tourney_rules: tourney_rule_cases(),
         tourney_open_events: tourney_open_event_cases(),
         tourney_phase_legality: tourney_phase_legality_cases(),
@@ -4308,6 +4316,36 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
                 NavEvent::TabSelected { tab: Tab::Chat }.into(),
+            ],
+        ),
+        case(
+            "nav opens the client changelog on a chosen release and keeps it",
+            vec![
+                NavEvent::TabSelected {
+                    tab: Tab::Changelog,
+                }
+                .into(),
+                NavEvent::ChangelogSectionSelected {
+                    section: ChangelogSection::Client,
+                }
+                .into(),
+                NavEvent::ChangelogSectionSelected {
+                    section: ChangelogSection::Game,
+                }
+                .into(),
+                // Choosing a release opens the client section as well.
+                NavEvent::ChangelogClientReleaseSelected {
+                    version: "0.4.0".into(),
+                }
+                .into(),
+                NavEvent::ChangelogSectionSelected {
+                    section: ChangelogSection::Game,
+                }
+                .into(),
+                NavEvent::ChangelogClientReleaseSelected {
+                    version: "0.3.0".into(),
+                }
+                .into(),
             ],
         ),
         case(
@@ -5319,6 +5357,37 @@ fn cases() -> Vec<Case> {
                     at: "2026-02-01T09:05:00Z".into(),
                 }
                 .into(),
+            ],
+        ),
+        case(
+            "the client's release notes load, outlive a failed refresh, and what's new is dismissed",
+            vec![
+                ClientUpdateEvent::NotesLoading.into(),
+                // A first load that fails says so: there is nothing to keep.
+                ClientUpdateEvent::NotesFailed {
+                    reason: "GitHub is unreachable".into(),
+                }
+                .into(),
+                ClientUpdateEvent::NotesLoading.into(),
+                ClientUpdateEvent::NotesLoaded {
+                    notes: vec![client_release_notes("0.4.0"), client_release_notes("0.3.0")],
+                }
+                .into(),
+                // A refresh of a list on screen neither blanks it nor breaks it.
+                ClientUpdateEvent::NotesLoading.into(),
+                ClientUpdateEvent::NotesFailed {
+                    reason: "GitHub is unreachable".into(),
+                }
+                .into(),
+                ClientUpdateEvent::NotesLoaded {
+                    notes: vec![client_release_notes("0.4.0")],
+                }
+                .into(),
+                ClientUpdateEvent::WhatsNewPending {
+                    version: "0.4.0".into(),
+                }
+                .into(),
+                ClientUpdateEvent::WhatsNewDismissed.into(),
             ],
         ),
         // ── tournaments / tutorials ──────────────────────────────────────
@@ -7111,7 +7180,10 @@ fn cases() -> Vec<Case> {
                     },
                 }
                 .into(),
-                ReplayEvent::Connecting.into(),
+                ReplayEvent::Connecting {
+                    launch: ReplayLaunch::Vault { uid: 7 },
+                }
+                .into(),
                 ReplayEvent::Preparing {
                     step: ReplayPreparation {
                         detail: "Downloading ForgedAlliance.exe".into(),
@@ -7129,7 +7201,16 @@ fn cases() -> Vec<Case> {
         case(
             "a replay connects, fails, and is dismissed",
             vec![
-                ReplayEvent::Connecting.into(),
+                ReplayEvent::Connecting {
+                    launch: ReplayLaunch::Live {
+                        target: LiveReplayTarget {
+                            uid: 9,
+                            mod_name: "faf".into(),
+                            map: "scmp_009".into(),
+                        },
+                    },
+                }
+                .into(),
                 ReplayEvent::Failed {
                     reason: "delayed by five minutes".into(),
                 }
@@ -7210,18 +7291,29 @@ fn cases() -> Vec<Case> {
                 // real library download with it; a watch's download is a step
                 // of its launch now (`ReplayEvent::Preparing`).
                 ReplayEvent::VaultDownloadStarted { uid: 44 }.into(),
-                ReplayEvent::Connecting.into(),
+                ReplayEvent::Connecting {
+                    launch: ReplayLaunch::Vault { uid: 7 },
+                }
+                .into(),
                 ReplayEvent::Playing {
                     uid: Some(7),
                     warning: None,
                 }
                 .into(),
-                ReplayEvent::Connecting.into(),
+                ReplayEvent::Connecting {
+                    launch: ReplayLaunch::File {
+                        path: "C:/replays/7.fafreplay".into(),
+                    },
+                }
+                .into(),
                 ReplayEvent::Failed {
                     reason: "could not update game to version 3701".into(),
                 }
                 .into(),
-                ReplayEvent::Connecting.into(),
+                ReplayEvent::Connecting {
+                    launch: ReplayLaunch::Vault { uid: 8 },
+                }
+                .into(),
                 ReplayEvent::Closed.into(),
                 // Called off from the status bar: back to idle, no failure. A
                 // cancel for another replay changes nothing.
@@ -8723,6 +8815,7 @@ fn transition_cases() -> Vec<Case> {
                         auto_login: false,
                         remember_typed_entries: true,
                         filter_memory: FilterMemory::Restart,
+                        keep_running_during_game: false,
                     },
                 }
                 .into(),
@@ -8759,6 +8852,7 @@ fn transition_cases() -> Vec<Case> {
                 SettingsEvent::UpdatesChanged {
                     preferences: UpdatePreferences {
                         automatic: false,
+                        last_seen_version: Some("0.4.0".into()),
                         ..UpdatePreferences::default()
                     },
                 }
@@ -9334,6 +9428,31 @@ fn client_release(version: &str) -> ClientRelease {
         size_bytes: 4_096,
         pre_release: false,
         published_at: "2026-02-01T00:00:00Z".into(),
+    }
+}
+
+/// One client release's notes, shaped like a release body the changelog
+/// script wrote: a category heading and a line under it.
+fn client_release_notes(version: &str) -> ClientReleaseNotes {
+    use faf_domain::protocol::changelog::{ChangelogBlock, ChangelogListItem, ChangelogSpan};
+    ClientReleaseNotes {
+        version: version.into(),
+        published_at: Some("2026-02-01T00:00:00Z".into()),
+        pre_release: true,
+        notes_url: format!("https://example.invalid/releases/tag/v{version}"),
+        blocks: vec![
+            ChangelogBlock::Heading {
+                level: 3,
+                text: "Features".into(),
+            },
+            ChangelogBlock::List {
+                items: vec![ChangelogListItem {
+                    spans: vec![ChangelogSpan::Text(format!("New in {version}."))],
+                    change: None,
+                    children: vec![],
+                }],
+            },
+        ],
     }
 }
 
@@ -9973,7 +10092,8 @@ const EVENT_ENUM_SOURCES: &[(&str, &str, &str)] = &[
     (
         "Settings",
         "SettingsEvent",
-        include_str!("../src/state/settings.rs"),
+        // The settings slice is a directory; its events are declared in one file.
+        include_str!("../src/state/settings/messages.rs"),
     ),
     (
         "Social",

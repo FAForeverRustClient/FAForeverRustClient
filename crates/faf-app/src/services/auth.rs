@@ -7,6 +7,27 @@ use faf_domain::state::{AuthCommand, AuthEvent, Player};
 use tokio_util::sync::CancellationToken;
 
 use crate::runtime::{EventSink, LatestRequest, SerialMutation, ServiceCtx};
+use crate::services::notifications;
+
+/// Why an offline game did not start, said where the person who asked is.
+///
+/// From the login screen that is the login's own error line, which is what
+/// `LoginFailed` fills. A signed-in player can ask too now, from the menu on
+/// their own name in the sidebar (#514), and `LoginFailed` there would end
+/// the session it reports into: it clears the player. So a session that has
+/// a player gets a notification instead.
+fn offline_game_failed(out: &EventSink, message: String) {
+    if out.with_state(|state| state.auth.player.is_some()) {
+        notifications::add_failure(
+            out,
+            notifications::Text::new("notifications.msg.offlineGameFailed"),
+            "Could not start the game offline",
+            message,
+        );
+    } else {
+        out.emit(AuthEvent::LoginFailed { message });
+    }
+}
 
 /// The auth service's operational context: which sign-in or sign-out is
 /// current, how to call off a login in flight, and the lock that keeps them
@@ -111,18 +132,17 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
             // "game is running"; here it would have replaced the game, online
             // or not, because the game slot holds one process.
             if ctx.ports.process.game_running() || ctx.lobby.running_game_id().is_some() {
-                out.emit(AuthEvent::LoginFailed {
-                    message: "Forged Alliance is already running.".into(),
-                });
+                offline_game_failed(out, "Forged Alliance is already running.".into());
                 return;
             }
             if !ctx.ports.process.install_path_is_present(&game_path) {
-                out.emit(AuthEvent::LoginFailed {
-                    message: "Forged Alliance with FAF's files was not found. Sign in once and \
-                              play or watch a game, so the client can set the game up, then \
-                              playing offline works without an account."
+                offline_game_failed(
+                    out,
+                    "Forged Alliance with FAF's files was not found. Sign in once and \
+                     play or watch a game, so the client can set the game up, then \
+                     playing offline works without an account."
                         .into(),
-                });
+                );
                 return;
             }
             if let Err(reason) = ctx
@@ -131,9 +151,10 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
                 .launch_offline("faf".into(), String::new())
                 .await
             {
-                out.emit(AuthEvent::LoginFailed {
-                    message: format!("Forged Alliance could not be started: {reason}"),
-                });
+                offline_game_failed(
+                    out,
+                    format!("Forged Alliance could not be started: {reason}"),
+                );
             }
         }
         AuthCommand::LoginTest => {

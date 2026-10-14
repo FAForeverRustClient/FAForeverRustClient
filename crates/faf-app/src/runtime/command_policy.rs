@@ -69,6 +69,10 @@ pub(crate) enum Key {
     Upload,
     /// Checking for, downloading and installing a client update.
     ClientUpdate,
+    /// Reading the client's own release notes. Apart from `ClientUpdate`, so
+    /// the changelog is not refused while an installer downloads; a second
+    /// load while one asks GitHub would only ask again.
+    ClientReleaseNotes,
     /// Installing and launching Galactic War share a staging directory.
     GalacticWar,
     /// A GitHub device-flow sign-in: a second one would issue a second code
@@ -235,7 +239,9 @@ fn nav(command: &NavCommand) -> CommandPolicy {
         | NavCommand::SelectMapsSection { .. }
         | NavCommand::SelectModsSection { .. }
         | NavCommand::SelectReplaysSection { .. }
-        | NavCommand::SelectSettingsSection { .. } => PRIORITY,
+        | NavCommand::SelectSettingsSection { .. }
+        | NavCommand::SelectChangelogSection { .. }
+        | NavCommand::SelectChangelogClientRelease { .. } => PRIORITY,
     }
 }
 
@@ -368,6 +374,7 @@ fn map_generator(command: &MapGeneratorCommand) -> CommandPolicy {
         | MapGeneratorCommand::LoadHelp { .. }
         | MapGeneratorCommand::SavePreset { .. }
         | MapGeneratorCommand::LoadPresets
+        | MapGeneratorCommand::RenamePreset { .. }
         | MapGeneratorCommand::DeletePreset { .. } => ORDINARY,
         MapGeneratorCommand::Cancel => PRIORITY,
     }
@@ -578,7 +585,10 @@ fn client_update(command: &ClientUpdateCommand) -> CommandPolicy {
         ClientUpdateCommand::Check
         | ClientUpdateCommand::Download
         | ClientUpdateCommand::Install => single_flight(Key::ClientUpdate),
-        ClientUpdateCommand::Dismiss => ORDINARY,
+        ClientUpdateCommand::LoadNotes => single_flight(Key::ClientReleaseNotes),
+        // `DismissWhatsNew` writes one settings field, under the settings
+        // service's own locks (`ServiceGuard::Settings`).
+        ClientUpdateCommand::Dismiss | ClientUpdateCommand::DismissWhatsNew => ORDINARY,
         // Outside `ClientUpdate`, which the download it stops is holding.
         ClientUpdateCommand::CancelDownload => PRIORITY,
     }

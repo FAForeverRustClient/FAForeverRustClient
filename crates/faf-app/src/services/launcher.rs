@@ -13,6 +13,9 @@
 //! relay messages arriving on the same socket. On any setup failure we stop the
 //! adapter and emit `LaunchFailed`.
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
 use faf_domain::state::{
     Game, GameLaunch, HostGameConfig, LobbyEvent, NotificationKind, PlayerProfile,
     PreparationPhase as DomainPreparationPhase, ReplayEvent,
@@ -22,8 +25,8 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::ports::{
-    GameLaunchParams, GamePreparation, IceParams, ModPrepFailure, PreparationPhase, RelayMsg,
-    ReplayMetadata, UpdateProgress, DEFAULT_LOCAL_REPLAY_LIMIT,
+    GameLaunchParams, GamePreparation, IceParams, ModPrepFailure, Ports, PreparationPhase,
+    RelayMsg, ReplayMetadata, UpdateProgress, DEFAULT_LOCAL_REPLAY_LIMIT,
 };
 use crate::runtime::{EventSink, ServiceCtx};
 use crate::services::notifications;
@@ -41,6 +44,10 @@ impl LaunchSession {
         // apply backpressure instead of silently dropping the one candidate a
         // peer needs to connect.
         tracing::trace!(%command, "launcher: forwarding lobby relay message to adapter");
+        if is_handshake_order(&command) {
+            // Names only: the arguments carry peers' addresses and ids.
+            tracing::info!(%command, "server -> game: lobby handshake");
+        }
         if self
             .from_lobby
             .send(RelayMsg { command, args })
@@ -50,6 +57,16 @@ impl LaunchSession {
             tracing::warn!("launcher: connectivity adapter stopped accepting lobby messages");
         }
     }
+}
+
+/// The orders from the server that move the game out of its "Connecting"
+/// screen. Logged by name at the default level, together with the game's own
+/// `GameState` reports, because a game that stays on "Connecting" is the
+/// question they answer: the game said `Idle`, the server said `HostGame` or
+/// `JoinGame`, and which of the two never came (#499). Everything else in the
+/// relay stays at trace: it is per peer and per candidate.
+fn is_handshake_order(command: &str) -> bool {
+    matches!(command, "HostGame" | "JoinGame")
 }
 
 /// Run the launch chain. Emits `InGame` on success (returning the session) or
@@ -77,6 +94,24 @@ pub async fn start(
     // not been cancelled. Without this a cancelled custom join would silence
     // the progress of the next matchmaker or hosted game as well.
     ctx.lobby.clear_launch_cancellation();
+
+    // A game this client asked to host runs on the hosting preference, which
+    // is what its title's mark announced. Taken either way: the next launch
+    // is somebody else's game unless a new host request says otherwise.
+    //
+    // Its install and map were brought up to date before the host request
+    // went out (`prepare_host`), which this order answers moments later, so
+    // they are not checked again. That second pass is the one Java never
+    // makes: its `prepareAndLaunchGameWhenReady` prepares once, then goes
+    // straight to `startOnlineGame`.
+    let hosted_game = ctx
+        .lobby
+        .take_hosted()
+        .filter(|hosted| hosted.title == launch.name);
+    let already_prepared =
+        already_prepared || hosted_game.as_ref().is_some_and(|hosted| hosted.prepared);
+    let hosted = hosted_game.is_some();
+    let started = std::time::Instant::now();
 
     // 0. Reproduce a generated map before anything else.
     //
@@ -116,14 +151,14 @@ pub async fn start(
         }
     }
 
+    tracing::info!(
+        game_id = launch.uid,
+        already_prepared,
+        milliseconds = started.elapsed().as_millis() as u64,
+        "launch: the install is ready"
+    );
+
     // 2. Bring up the connectivity backend (it picks its own ports / control plane).
-    // A game this client asked to host runs on the hosting preference, which
-    // is what its title's mark announced. Taken either way: the next launch
-    // is somebody else's game unless a new host request says otherwise.
-    let hosted = ctx
-        .lobby
-        .take_hosted_title()
-        .is_some_and(|title| title == launch.name);
     let session = match ctx
         .ports
         .ice
@@ -165,6 +200,14 @@ pub async fn start(
         ctx.ports.ice.stop();
         return fail(ctx, out, format!("game launch: {e}"));
     }
+    // From the server's launch order to a running game, the number to compare
+    // with the other clients (#511).
+    tracing::info!(
+        game_id = launch.uid,
+        milliseconds = started.elapsed().as_millis() as u64,
+        "launch: the game is started"
+    );
+    let late_failure = session.late_failure;
     // Java cancels delayed replay actions as soon as GameRunner becomes active.
     // Do the same so auto-watch can never replace a game the user just launched.
     super::replays::cancel_live_tracking(out);
@@ -177,6 +220,10 @@ pub async fn start(
         tracing::debug!("launcher: adapter->lobby pump started");
         while let Some(msg) = to_lobby.recv().await {
             tracing::trace!(command = %msg.command, "launcher: adapter -> server lobby");
+            if msg.command == "GameState" {
+                let state = msg.args.first().and_then(Value::as_str).unwrap_or("?");
+                tracing::info!(state, "game -> server: game state");
+            }
             lobby.send_game_relay(msg.command, msg.args);
         }
         tracing::debug!("launcher: adapter->lobby pump ended (adapter session channel closed)");
@@ -195,6 +242,8 @@ pub async fn start(
     let exit_ports = ctx.ports.clone();
     let exit_sink = out.clone();
     let exit_running_game = ctx.lobby.running_game_handle();
+    let stopped_by_failure = Arc::new(AtomicBool::new(false));
+    let exit_stopped_by_failure = stopped_by_failure.clone();
     tokio::spawn(async move {
         tracing::debug!("launcher: game exit watcher started");
         exit_ports.process.wait_for_exit().await;
@@ -206,7 +255,11 @@ pub async fn start(
         tracing::debug!("stopping ICE adapter");
         exit_ports.ice.stop();
         exit_running_game.clear();
-        exit_sink.emit(LobbyEvent::GameTerminated);
+        // A game stopped because its ICE session failed already reported
+        // the failure, and "terminated" would take it off the screen.
+        if !exit_stopped_by_failure.load(Ordering::SeqCst) {
+            exit_sink.emit(LobbyEvent::GameTerminated);
+        }
 
         // The replay the game just streamed to the local recorder is on disk
         // now. Re-listing here is what makes it appear in the Local tab without
@@ -232,6 +285,36 @@ pub async fn start(
     ctx.lobby.set_running_game(launch.uid);
 
     out.emit(LobbyEvent::InGame);
+
+    // 6. Stop the game if the adapter or the ICE session it was started
+    //    without cannot be had after all (#511). Watched only from here,
+    //    after `InGame`, so the failure is the last word on this launch.
+    if let Some(late_failure) = late_failure {
+        let ports = ctx.ports.clone();
+        let sink = out.clone();
+        let running_game = ctx.lobby.running_game_handle();
+        let game_id = launch.uid;
+        tokio::spawn(async move {
+            // Closed without an answer: everything arrived, or the adapter
+            // was stopped with the game.
+            let Ok(reason) = late_failure.await else {
+                return;
+            };
+            if running_game.id() != Some(game_id) {
+                return;
+            }
+            tracing::warn!(
+                game_id,
+                %reason,
+                "the ICE adapter or session failed after the game started; stopping the game"
+            );
+            // The exit watcher then releases the seat and the running game.
+            stopped_by_failure.store(true, Ordering::SeqCst);
+            ports.process.kill();
+            report_failure_on(&ports, &sink, reason);
+        });
+    }
+
     Some(LaunchSession {
         from_lobby: session.from_lobby,
     })
@@ -364,7 +447,7 @@ async fn ensure_generated_map(
         return Ok(());
     }
 
-    let settings = ctx.ports.settings.load().await;
+    let settings = ctx.ports.settings.load().await.unwrap_or_default();
     if !settings.game.auto_generate_maps {
         return Err(format!(
             "map {map_name} is not installed and automatic map generation is disabled in settings"
@@ -729,11 +812,17 @@ fn preparation_phase(phase: PreparationPhase) -> DomainPreparationPhase {
 /// Stop the adapter and emit `LaunchFailed`. Always returns `None` so call sites
 /// can `return fail(..)`.
 pub(crate) fn report_failure(ctx: &ServiceCtx, out: &EventSink, reason: String) {
+    report_failure_on(&ctx.ports, out, reason);
+}
+
+/// [`report_failure`] for a task that outlives the launch and has the ports
+/// rather than the context.
+fn report_failure_on(ports: &Ports, out: &EventSink, reason: String) {
     // The reason too: "details were sent to the client" left a log that could
     // not say why any launch had failed, and the reason is an error message,
     // nothing private.
     tracing::warn!(%reason, "game launch failed");
-    ctx.ports.ice.stop();
+    ports.ice.stop();
     // Marked as the client's own failure reason, which the UI words plainly
     // with the original on hover (see `notifications::add_failure`).
     notifications::add_required_failure(

@@ -328,6 +328,96 @@ fn front_matter_value(front_matter: &str, key: &str) -> Option<String> {
     })
 }
 
+/// The sentence the Release workflow appends to every client release. It points
+/// at the assets on the GitHub page, which a reader inside the client cannot
+/// see, so it is dropped rather than shown as the last line of every release.
+const INSTALLER_TRAILER: &str = "Download the installer for your platform from the assets below";
+
+/// Parse the body of one of this client's own GitHub releases into blocks.
+///
+/// The same parser as a patch note, because the body is a simpler cousin of
+/// that dialect: `scripts/changelog.mjs combine` writes one `### Features`,
+/// `### Bug fixes`, `### Performance` or `### Other changes` heading per
+/// category with a dashed line per change under it, and the Release workflow
+/// appends one sentence about the installer. Three things differ, and are
+/// adjusted after parsing rather than threaded through it:
+///
+/// - The installer sentence is dropped; see [`INSTALLER_TRAILER`].
+/// - A `(#123)` cites this client's repository, not FAForever/fa, so its link
+///   is rebuilt on `issue_base` (`https://github.com/{owner}/{repo}/issues`).
+/// - A `Label: old -> new` line stays prose. The split exists for balance
+///   values, and a client note such as "Chat: tabs -> a sidebar" would
+///   otherwise be drawn as a stat diff.
+///
+/// Releases published before the snippets existed carry whatever was typed
+/// into GitHub's form, or nothing at all. GitHub's own generated notes list
+/// with `*` rather than `-`, so those bullets are read as list items too;
+/// anything else this dialect does not know becomes a paragraph rather than
+/// vanishing. An empty body is no blocks.
+pub fn parse_release_notes(markdown: &str, issue_base: &str) -> Vec<ChangelogBlock> {
+    let body = markdown
+        .lines()
+        .map(dash_bullet)
+        .collect::<Vec<_>>()
+        .join("\n");
+    let mut blocks = parse_blocks(&body);
+    blocks.retain(|block| !is_installer_trailer(block));
+    for block in &mut blocks {
+        match block {
+            ChangelogBlock::Paragraph { spans } => relink_issues(spans, issue_base),
+            ChangelogBlock::List { items } => as_release_items(items, issue_base),
+            ChangelogBlock::Heading { .. } | ChangelogBlock::Unit { .. } => {}
+        }
+    }
+    blocks
+}
+
+/// `* item` and `+ item` as `- item`, keeping the indentation that nests it.
+/// A bold run (`**`) is not a bullet: only a marker followed by a space is.
+fn dash_bullet(line: &str) -> std::borrow::Cow<'_, str> {
+    let indent = line.len() - line.trim_start().len();
+    let rest = &line[indent..];
+    match rest.strip_prefix("* ").or_else(|| rest.strip_prefix("+ ")) {
+        Some(item) => format!("{}- {item}", &line[..indent]).into(),
+        None => line.into(),
+    }
+}
+
+fn is_installer_trailer(block: &ChangelogBlock) -> bool {
+    let ChangelogBlock::Paragraph { spans } = block else {
+        return false;
+    };
+    let text: String = spans
+        .iter()
+        .map(|span| match span {
+            ChangelogSpan::Text(text) | ChangelogSpan::Strong(text) | ChangelogSpan::Code(text) => {
+                text.as_str()
+            }
+            ChangelogSpan::Link { text, .. } => text.as_str(),
+            ChangelogSpan::Issue { .. } => "",
+        })
+        .collect();
+    text.trim_start().starts_with(INSTALLER_TRAILER)
+}
+
+fn relink_issues(spans: &mut [ChangelogSpan], issue_base: &str) {
+    for span in spans {
+        if let ChangelogSpan::Issue { number, url } = span {
+            *url = format!("{issue_base}/{number}");
+        }
+    }
+}
+
+fn as_release_items(items: &mut [ChangelogListItem], issue_base: &str) {
+    for item in items {
+        // `spans` already carries the whole line, so dropping the split loses
+        // nothing: the item reads as the sentence it was written as.
+        item.change = None;
+        relink_issues(&mut item.spans, issue_base);
+        as_release_items(&mut item.children, issue_base);
+    }
+}
+
 fn parse_blocks(body: &str) -> Vec<ChangelogBlock> {
     let lines: Vec<&str> = body.lines().collect();
     let mut blocks = Vec::new();
@@ -1365,6 +1455,142 @@ mod tests {
                 ChangelogSpan::Text(".".into()),
             ]
         );
+    }
+
+    const CLIENT_ISSUES: &str = "https://github.com/Org/Repo/issues";
+
+    #[test]
+    fn a_client_release_body_reads_as_its_categories_without_the_installer_line() {
+        // What `scripts/changelog.mjs combine` writes, plus the sentence the
+        // Release workflow appends after it.
+        let body = "### Features\n\n\
+                    - Replays can be filtered by map.\n\
+                    - The Links tab fits on one screen (#507).\n\n\
+                    ### Bug fixes\n\n\
+                    - Chat: tabs -> a sidebar, as before.\n\n\
+                    Download the installer for your platform from the assets below.\n";
+        let blocks = parse_release_notes(body, CLIENT_ISSUES);
+
+        assert_eq!(blocks.len(), 4, "{blocks:#?}");
+        assert_eq!(
+            blocks[0],
+            ChangelogBlock::Heading {
+                level: 3,
+                text: "Features".into()
+            }
+        );
+        let ChangelogBlock::List { items } = &blocks[1] else {
+            panic!("expected the features list, got {:?}", blocks[1]);
+        };
+        assert_eq!(items.len(), 2);
+        assert_eq!(
+            items[0].spans,
+            vec![ChangelogSpan::Text(
+                "Replays can be filtered by map.".into()
+            )]
+        );
+        // This repository's pull request, not FAForever/fa's.
+        assert!(items[1].spans.contains(&ChangelogSpan::Issue {
+            number: "507".into(),
+            url: "https://github.com/Org/Repo/issues/507".into(),
+        }));
+        assert_eq!(
+            blocks[2],
+            ChangelogBlock::Heading {
+                level: 3,
+                text: "Bug fixes".into()
+            }
+        );
+        let ChangelogBlock::List { items } = &blocks[3] else {
+            panic!("expected the fixes list, got {:?}", blocks[3]);
+        };
+        // An arrow in a client note is prose, not a balance diff.
+        assert_eq!(items[0].change, None);
+        assert_eq!(
+            items[0].spans,
+            vec![ChangelogSpan::Text(
+                "Chat: tabs -> a sidebar, as before.".into()
+            )]
+        );
+    }
+
+    #[test]
+    fn an_older_free_form_release_body_still_parses() {
+        // The shape of GitHub's generated notes, which list with `*`, and a
+        // few constructs this dialect has no block for.
+        let body = "## What's Changed\r\n\
+                    * Add the replay filters by @someone in https://github.com/Org/Repo/pull/12\r\n\
+                    * Fix the login\r\n\
+                    \x20 * with a nested detail\r\n\
+                    \r\n\
+                    **Full Changelog**: https://github.com/Org/Repo/compare/v0.1.0...v0.2.0\r\n\
+                    \r\n\
+                    ```\r\n\
+                    some code\r\n\
+                    ```\r\n";
+        let blocks = parse_release_notes(body, CLIENT_ISSUES);
+
+        assert_eq!(
+            blocks[0],
+            ChangelogBlock::Heading {
+                level: 2,
+                text: "What's Changed".into()
+            }
+        );
+        let ChangelogBlock::List { items } = &blocks[1] else {
+            panic!(
+                "expected the starred bullets as a list, got {:?}",
+                blocks[1]
+            );
+        };
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[1].children.len(), 1, "the nested bullet nests");
+        let ChangelogBlock::Paragraph { spans } = &blocks[2] else {
+            panic!("expected the trailing line as prose, got {:?}", blocks[2]);
+        };
+        assert_eq!(spans[0], ChangelogSpan::Strong("Full Changelog".into()));
+        // The code fence is not understood, and is kept as text rather than
+        // dropped.
+        assert!(blocks.len() > 3);
+    }
+
+    #[test]
+    fn an_empty_release_body_has_no_blocks() {
+        assert_eq!(parse_release_notes("", CLIENT_ISSUES), vec![]);
+        assert_eq!(parse_release_notes(" \r\n\n\t\n", CLIENT_ISSUES), vec![]);
+        // Every release before the snippets existed said only this.
+        assert_eq!(
+            parse_release_notes(
+                "Download the installer for your platform from the assets below.",
+                CLIENT_ISSUES
+            ),
+            vec![]
+        );
+    }
+
+    #[test]
+    fn malformed_release_markdown_never_panics() {
+        for body in [
+            "#",
+            "########",
+            "-",
+            "- ",
+            "* ",
+            "+",
+            "  - indented first\n- then a root",
+            "[unclosed](",
+            "(#",
+            "(#)",
+            "**",
+            "`",
+            "{% unit %}",
+            "{% unit XRL0302 %}",
+            "**Name (ABC1234):**",
+            "Größe: 1 -> 2\n- Größe: 1 --> 2",
+            "\u{feff}---\ntitle: x\n---",
+        ] {
+            let _ = parse_release_notes(body, CLIENT_ISSUES);
+        }
     }
 
     #[test]

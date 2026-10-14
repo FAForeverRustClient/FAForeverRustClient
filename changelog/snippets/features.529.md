@@ -1,0 +1,1 @@
+- An experimental WebRTC connection adapter (Exp Java) can be chosen in Settings, Connectivity.

@@ -41,6 +41,7 @@ type Translate = Translation["t"];
 const ADAPTER: Record<IceAdapter, MessageKey> = {
   dynamic: "settings.connectivityCheck.adapter.dynamic",
   java: "settings.connectivityCheck.adapter.java",
+  expJava: "settings.connectivityCheck.adapter.expJava",
   go: "settings.connectivityCheck.adapter.go",
 };
 
@@ -468,7 +469,7 @@ export function ConnectivityDiagnosticsSection() {
 
   return (
     <>
-      <SettingRow label={t("settings.connectivityCheck.label")} hint={t("settings.connectivityCheck.hint")}>
+      <SettingRow label={t("settings.connectivityCheck.label")}>
         <Button
           onClick={() => ipc.send({ kind: "Connectivity", command: { type: "runCheck" } })}
           disabled={running}

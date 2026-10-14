@@ -378,6 +378,9 @@
   width: 40px;
   height: 20px;
   object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
 }
 
 /* The name takes the room under the image and sits in the middle of it, so a

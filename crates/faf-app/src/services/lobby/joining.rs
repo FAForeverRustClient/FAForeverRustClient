@@ -2,8 +2,8 @@
 //! the map before the server is asked, and calling a join off.
 
 use faf_domain::state::{
-    with_go_adapter_tag, HostGameConfig, HostGamePreferences, IceAdapter, JoinState, LobbyEvent,
-    SettingsEvent,
+    with_exp_java_adapter_tag, with_go_adapter_tag, HostGameConfig, HostGamePreferences,
+    IceAdapter, JoinState, LobbyEvent, SettingsEvent,
 };
 
 use crate::ports::ModPrepFailure;
@@ -138,8 +138,12 @@ pub(super) async fn host(config: HostGameConfig, ctx: &ServiceCtx, out: &EventSi
             // lobby, because its reply will not mention one: see
             // `launcher::prepare_host`. Guarded the way the join path is,
             // so an offline shell still exercises the request itself.
+            // Whether the install and the map were brought up to date here,
+            // so the launch order that answers this request does not do it a
+            // second time.
+            let mut prepared = false;
             if ctx.ports.process.supports_live_launch() {
-                let prepared = operations
+                let preparation = operations
                     .run(operation, launcher::prepare_host(&config, ctx, out))
                     .await;
                 // Cancelled while the files came down, which for a co-op
@@ -156,10 +160,11 @@ pub(super) async fn host(config: HostGameConfig, ctx: &ServiceCtx, out: &EventSi
                     );
                     return;
                 }
-                if let Err(reason) = prepared {
+                if let Err(reason) = preparation {
                     launcher::report_failure(ctx, out, reason);
                     return;
                 }
+                prepared = true;
             }
             // Co-op owns a separate launch surface in both references, so
             // it remembers into its own slot: one mission must not replace
@@ -195,18 +200,28 @@ pub(super) async fn host(config: HostGameConfig, ctx: &ServiceCtx, out: &EventSi
                     (),
                 )
             });
-            // Hosted on Go, the title says so, for everybody on Dynamic to
-            // join on Go as well; see `GO_ADAPTER_TITLE_TAG`. After the
+            // Hosted on Go or Exp Java, the title says so, for everybody on Dynamic to
+            // join on the corresponding adapter as well; see `GO_ADAPTER_TITLE_TAG`
+            // and `EXP_JAVA_ADAPTER_TITLE_TAG`. After the
             // remembered form above, which keeps the title as typed.
-            let config = if ctx.ports.ice.hosting_adapter() == IceAdapter::Go {
+            let host_adapter = ctx.ports.ice.hosting_adapter();
+            let config = if host_adapter == IceAdapter::Go {
                 HostGameConfig {
                     title: with_go_adapter_tag(&config.title),
+                    ..config
+                }
+            } else if host_adapter == IceAdapter::ExpJava {
+                HostGameConfig {
+                    title: with_exp_java_adapter_tag(&config.title),
                     ..config
                 }
             } else {
                 config
             };
-            *ctx.lobby.hosted_title.lock().unwrap() = Some(config.title.clone());
+            ctx.lobby.set_hosted(super::HostedGame {
+                title: config.title.clone(),
+                prepared,
+            });
             ctx.ports.lobby.host(config);
             crate::services::settings::persist(ctx, out).await;
         }

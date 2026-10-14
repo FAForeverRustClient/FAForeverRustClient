@@ -1,0 +1,3 @@
+- A connectivity check in Settings, Connectivity tests the ICE adapter and FAF's relays.
+- Downloads, installs and uploads show their progress in the status bar and can be cancelled.
+- Reports can include a short, cleaned-up excerpt of your game log.

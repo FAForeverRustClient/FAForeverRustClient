@@ -3,13 +3,16 @@
 // The fourth surface inside Play, beside Custom, Matchmaker and Co-op. Layout
 // follows Fichom's mockup: an info column on the left, the cycle and faction
 // boards in the middle with the launch button straddling their seam, and a
-// static explainer on the right.
+// static explainer on the right. Its parts are the client's shared ones: raised
+// heads, facts strips, and links one to a line.
 //
 // Everything it decides comes from the slice: the button's job is a function
 // of `galacticWarActions`, never of local component state, so the backend and
 // the button can never disagree about whether something is installed.
 
-import { useEffect } from "react";
+import { useEffect, type CSSProperties } from "react";
+import { Button } from "../../../design-system/Button";
+import { FactsStrip, type Fact } from "../../../design-system/FactsStrip";
 import { Icon } from "../../../design-system/Icon";
 import { StatusNotice } from "../../../design-system/StatusNotice";
 import { ipc } from "../../../ipc/client";
@@ -21,6 +24,7 @@ import { galacticWarFactionLabel } from "../../../shared/factions";
 import { openHttpsUrl } from "../../../shared/externalLinks";
 import { plainError } from "../../../shared/plainError";
 import { canLaunch, installTarget, isBusy, updateAvailable } from "../../../shared/rules/galacticWarActions";
+import { onlineCommanders } from "./galacticWarOnline";
 import { ringSegments, type RingSegment } from "./galacticWarRing";
 import type { PlayModePanelProps } from "../PlayModeTabs";
 import "./galactic-war.css";
@@ -113,6 +117,30 @@ function RingArc({ className, color, length, offset = 0, round = false }: ArcPro
   );
 }
 
+/**
+ * The galaxy as one bar, every faction's share in the gateway's order, with
+ * the card's own faction lit and the others dimmed: the share, and where it
+ * stands against the rest, in one line.
+ */
+function TerritoryShare({ segments, own }: { segments: RingSegment[]; own: number }) {
+  return (
+    <span className="gw-share-bar" aria-hidden="true">
+      {segments.map((segment, index) => (
+        <span
+          key={segment.name}
+          className={index === own ? "is-own" : undefined}
+          style={{ flexGrow: segment.share, background: segment.color }}
+        />
+      ))}
+    </span>
+  );
+}
+
+/** Every planet a faction holds, the ring's whole. */
+function planetsTotal(segments: readonly RingSegment[]): number {
+  return segments.reduce((total, segment) => total + segment.planets, 0);
+}
+
 function TerritoryArc({ segment }: { segment: RingSegment }) {
   return <RingArc color={segment.color} length={segment.share} offset={segment.offset} />;
 }
@@ -173,35 +201,60 @@ export function GalacticWarPanel({
                 ? t("lobby.galacticWar.action.update")
                 : t("lobby.galacticWar.action.launch");
 
-  const cycle: Array<{ key: string; label: string; value: string }> = [
-    { key: "name", label: t("lobby.galacticWar.cycle.name"), value: season?.name || NO_VALUE },
+  // The cycle's name and age are its head; the counts are the strip under it.
+  const cycleFacts: Fact[] = [
+    { id: "players", label: t("lobby.galacticWar.stat.players"), value: season?.numPlayers ?? 0 },
     {
-      key: "age",
-      label: t("lobby.galacticWar.cycle.age"),
-      value: cycleAge === null ? NO_VALUE : t("lobby.galacticWar.cycle.days", { count: cycleAge }),
+      id: "online",
+      label: t("lobby.galacticWar.stat.online"),
+      value: onlineCommanders(state.statistics),
+      emphasis: true,
     },
-    { key: "players", label: t("lobby.galacticWar.stat.players"), value: String(season?.numPlayers ?? 0) },
-    { key: "online", label: t("lobby.galacticWar.stat.online"), value: String(season?.numOnlinePlayers ?? 0) },
-    { key: "avatars", label: t("lobby.galacticWar.stat.avatars"), value: String(season?.numAvatars ?? 0) },
-    { key: "battles", label: t("lobby.galacticWar.stat.battles"), value: String(season?.numBattles ?? 0) },
-    { key: "planets", label: t("lobby.galacticWar.stat.planets"), value: String(season?.numPlanets ?? 0) },
-    { key: "attacks", label: t("lobby.galacticWar.stat.activeAttacks"), value: String(season?.numActiveAttacks ?? 0) },
+    { id: "avatars", label: t("lobby.galacticWar.stat.avatars"), value: season?.numAvatars ?? 0 },
+    { id: "battles", label: t("lobby.galacticWar.stat.battles"), value: season?.numBattles ?? 0 },
+    { id: "planets", label: t("lobby.galacticWar.stat.planets"), value: season?.numPlanets ?? 0 },
+    {
+      id: "attacks",
+      label: t("lobby.galacticWar.stat.activeAttacks"),
+      value: season?.numActiveAttacks ?? 0,
+    },
+  ];
+
+  const clientFacts: Fact[] = [
+    {
+      id: "installed",
+      label: t("lobby.galacticWar.client.installed"),
+      value: state.installedVersion ?? NO_VALUE,
+      unknown: state.installedVersion === null,
+    },
+    {
+      id: "available",
+      label: t("lobby.galacticWar.client.available"),
+      value: target || NO_VALUE,
+      unknown: target === "",
+    },
+    {
+      id: "minimum",
+      label: t("lobby.galacticWar.client.minimum"),
+      value: state.versions?.requiredVersion || NO_VALUE,
+      unknown: !state.versions?.requiredVersion,
+    },
   ];
 
   return (
     <div {...panelProps} className="gw-layout">
       <aside className="gw-column gw-column-info">
+        <header className="gw-column-head">
+          <h3>{t("lobby.galacticWar.client.title")}</h3>
+          {/* Said in words in the head: a third of the column is too narrow
+              for it as the strip's value. */}
+          {state.installedVersion === null ? (
+            <span className="gw-column-state">{t("lobby.galacticWar.notInstalled")}</span>
+          ) : null}
+        </header>
         <div className="gw-scroll">
           <section className="gw-section">
-            <h3 className="gw-section-title">{t("lobby.galacticWar.client.title")}</h3>
-            <dl className="gw-facts">
-              <dt>{t("lobby.galacticWar.client.installed")}</dt>
-              <dd>{state.installedVersion ?? t("lobby.galacticWar.notInstalled")}</dd>
-              <dt>{t("lobby.galacticWar.client.available")}</dt>
-              <dd>{target || NO_VALUE}</dd>
-              <dt>{t("lobby.galacticWar.client.minimum")}</dt>
-              <dd>{state.versions?.requiredVersion || NO_VALUE}</dd>
-            </dl>
+            <FactsStrip className="gw-client-facts" columns={3} groups={[{ facts: clientFacts }]} />
             {state.belowMinimum ? (
               <p className="gw-notice gw-notice-warn">{t("lobby.galacticWar.belowMinimum")}</p>
             ) : null}
@@ -221,7 +274,7 @@ export function GalacticWarPanel({
             ) : null}
           </section>
 
-          <section className="gw-section">
+          <section className="gw-section gw-news">
             <h3 className="gw-section-title">{t("lobby.galacticWar.news.title")}</h3>
             {/* The gateway publishes no news or patch-notes endpoint, so there
                 is deliberately nothing rendered here rather than filler. */}
@@ -229,42 +282,42 @@ export function GalacticWarPanel({
           </section>
         </div>
 
+        {/* One link to a line, icon first, as the vault panels list theirs. */}
         <div className="gw-links">
           {LINKS.map((link) => (
-            <button
-              className="gw-link"
+            <Button
               key={link.url}
               onClick={() => {
                 void openHttpsUrl(link.url);
               }}
-              type="button"
             >
-              <Icon name="external" />
+              <Icon name="external" size={15} />
               {t(link.key)}
-            </button>
+            </Button>
           ))}
         </div>
       </aside>
 
       <div className="gw-column gw-column-center">
         <section className="gw-board gw-world">
-          <header className="gw-board-header">
-            <h3>{t("lobby.galacticWar.cycle.title")}</h3>
+          <header className="gw-board-head">
+            <div className="gw-board-heading">
+              <h3>{t("lobby.galacticWar.cycle.title")}</h3>
+              <p className="gw-cycle-name">{season?.name || NO_VALUE}</p>
+            </div>
             {statsFailed ? (
               <span className="gw-offline">{t("lobby.galacticWar.statsUnavailable")}</span>
+            ) : cycleAge !== null ? (
+              <span className="gw-cycle-age">
+                {t("lobby.galacticWar.cycle.age")}{" "}
+                <strong>{t("lobby.galacticWar.cycle.days", { count: cycleAge })}</strong>
+              </span>
             ) : null}
           </header>
           {season ? (
-            <div className="gw-counters">
-              {cycle.map((entry) => (
-                <div className="gw-counter" key={entry.key}>
-                  <span className="gw-counter-value">{entry.value}</span>
-                  <span className="gw-counter-label">{entry.label}</span>
-                </div>
-              ))}
-            </div>
+            <FactsStrip className="gw-cycle-facts" columns={3} groups={[{ facts: cycleFacts }]} />
           ) : (
-            <p className="gw-muted">{t("lobby.galacticWar.noSeason")}</p>
+            <p className="gw-muted gw-board-pad">{t("lobby.galacticWar.noSeason")}</p>
           )}
         </section>
 
@@ -311,7 +364,7 @@ export function GalacticWarPanel({
         </div>
 
         <section className="gw-board gw-factions-board">
-          <header className="gw-board-header">
+          <header className="gw-factions-head">
             <h3>{t("lobby.galacticWar.factions.title")}</h3>
           </header>
           {segments.length > 0 ? (
@@ -327,9 +380,9 @@ export function GalacticWarPanel({
                 );
                 const figures: Array<{ key: string; label: string; value: number }> = [
                   {
-                    key: "planets",
-                    label: t("lobby.galacticWar.stat.planets"),
-                    value: faction.numPlanets ?? 0,
+                    key: "avatars",
+                    label: t("lobby.galacticWar.stat.avatars"),
+                    value: faction.numAvatars ?? 0,
                   },
                   {
                     key: "alive",
@@ -343,36 +396,41 @@ export function GalacticWarPanel({
                   },
                 ];
                 return (
-                  <li className="gw-faction" key={`${faction.name}-${index}`}>
-                    <div className="gw-faction-head" style={{ borderColor: segment.color }}>
-                      <FactionIcon faction={segment.faction} size={18} />
+                  <li
+                    className="gw-faction"
+                    key={`${faction.name}-${index}`}
+                    style={{ "--gw-faction-color": segment.color } as CSSProperties}
+                  >
+                    {/* The emblem faint in the top right corner, whole: the
+                        faction's mark, standing behind the head and the share. */}
+                    <FactionIcon
+                      faction={segment.faction}
+                      size={76}
+                      className="gw-faction-emblem"
+                      aria-hidden="true"
+                    />
+
+                    <div className="gw-faction-head">
                       <span className="gw-faction-name">{factionName}</span>
+                      <span className="gw-faction-planets">
+                        {faction.numPlanets ?? 0} / {planetsTotal(segments)}{" "}
+                        {t("lobby.galacticWar.stat.planets")}
+                      </span>
                     </div>
 
                     {/* Territory leads the card: it is the one figure that says
-                        who is winning, and the bar restates it at a glance
-                        without the reader comparing four numbers. */}
+                        who is winning. The field under it is the galaxy, a dot
+                        per planet, lit where this faction holds it. */}
                     <div className="gw-faction-territory">
                       <p className="gw-faction-share">
-                        <span
-                          className="gw-faction-share-value"
-                          style={{ color: segment.color }}
-                        >
+                        <span className="gw-faction-share-value">
                           {Math.round(segment.share * 100)}%
                         </span>
                         <span className="gw-faction-share-label">
                           {t("lobby.galacticWar.faction.territory")}
                         </span>
                       </p>
-                      <span className="gw-faction-bar" aria-hidden="true">
-                        <span
-                          className="gw-faction-bar-fill"
-                          style={{
-                            width: `${(segment.share * 100).toFixed(1)}%`,
-                            background: segment.color,
-                          }}
-                        />
-                      </span>
+                      <TerritoryShare segments={segments} own={index} />
                     </div>
 
                     <dl className="gw-faction-figures">
@@ -394,6 +452,9 @@ export function GalacticWarPanel({
       </div>
 
       <aside className="gw-column gw-column-how">
+        <header className="gw-column-head">
+          <h3>{t("lobby.galacticWar.how.title")}</h3>
+        </header>
         <div className="gw-scroll">
           {HOW_IT_WORKS.map((entry) => (
             <section className="gw-section" key={entry.title}>

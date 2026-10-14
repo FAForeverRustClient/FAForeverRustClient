@@ -3,8 +3,9 @@
 //! The real [`SettingsPort`]. Resolves a per-app config directory via the
 //! `directories` crate, so it needs no path injection from the shell and stays
 //! free of any Tauri coupling. All IO is best-effort: a missing file yields
-//! defaults, a damaged one yields everything in it that can still be read, and
-//! write failures are swallowed (logged to the dev console).
+//! nothing (and the caller runs on defaults), a damaged one yields everything
+//! in it that can still be read, and write failures are swallowed (logged to
+//! the dev console).
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -73,7 +74,7 @@ pub fn resolve_path() -> PathBuf {
 /// posture as the async version.
 pub fn load_sync(path: &std::path::Path) -> SettingsState {
     match std::fs::read(path) {
-        Ok(bytes) => read_document(path, &bytes).normalized(),
+        Ok(bytes) => read_document(path, &bytes).unwrap_or_default().normalized(),
         Err(_) => SettingsState::default(),
     }
 }
@@ -86,11 +87,14 @@ pub fn load_sync(path: &std::path::Path) -> SettingsState {
 /// wrote, a number that went out as `null`) cost the player every setting
 /// they had, on disk as well as on screen. Now the file is copied aside first,
 /// so nothing is lost for good, and every value that still fits is kept.
-fn read_document(path: &Path, bytes: &[u8]) -> SettingsState {
+///
+/// `None` only when nothing in it could be read at all ([`salvage`]): the
+/// session runs on defaults then, exactly as if there had been no file.
+fn read_document(path: &Path, bytes: &[u8]) -> Option<SettingsState> {
     match parse(bytes) {
         Ok(settings) => {
             keep_last_good_copy(path, bytes, &settings);
-            settings
+            Some(settings)
         }
         Err(error) => {
             let copy = keep_unreadable_copy(path, bytes);
@@ -170,17 +174,21 @@ fn keep_unreadable_copy(path: &Path, bytes: &[u8]) -> Option<PathBuf> {
 /// kept if the whole state still parses with it. A group that does not fit as
 /// a whole is taken apart and tried member by member, so an unknown value
 /// three levels down costs that one value and not its section.
-fn salvage(bytes: &[u8]) -> (SettingsState, Vec<String>) {
-    let Ok(stored) = serde_json::from_slice::<Value>(bytes) else {
-        return (SettingsState::default(), vec!["".into()]);
+///
+/// `None` when there is nothing to take values from: a file that is not JSON
+/// (cut off mid-write, say), or JSON that is not a settings object.
+fn salvage(bytes: &[u8]) -> (Option<SettingsState>, Vec<String>) {
+    let stored = match serde_json::from_slice::<Value>(bytes) {
+        Ok(stored) if stored.is_object() => stored,
+        _ => return (None, vec!["".into()]),
     };
     let Ok(mut accepted) = serde_json::to_value(SettingsState::default()) else {
-        return (SettingsState::default(), vec!["".into()]);
+        return (None, vec!["".into()]);
     };
     let mut dropped = Vec::new();
     adopt(&mut accepted, "", &migrated(stored), &mut dropped);
     let settings = serde_json::from_value(accepted).unwrap_or_default();
-    (settings, dropped)
+    (Some(settings), dropped)
 }
 
 fn adopt(accepted: &mut Value, pointer: &str, stored: &Value, dropped: &mut Vec<String>) {
@@ -237,7 +245,7 @@ fn migrated(mut document: serde_json::Value) -> serde_json::Value {
 
 #[async_trait]
 impl SettingsPort for FileSettings {
-    async fn load(&self) -> SettingsState {
+    async fn load(&self) -> Option<SettingsState> {
         let mut attempt = 1;
         loop {
             match tokio::fs::read(&self.path).await {
@@ -246,7 +254,8 @@ impl SettingsPort for FileSettings {
                     let path = self.path.clone();
                     return tokio::task::spawn_blocking(move || read_document(&path, &bytes))
                         .await
-                        .unwrap_or_default();
+                        .ok()
+                        .flatten();
                 }
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                     self.writable.store(true, Ordering::SeqCst);
@@ -259,9 +268,9 @@ impl SettingsPort for FileSettings {
                                 path = %copy.display(),
                                 "settings file missing; restored the last copy that read back cleanly"
                             );
-                            parse(&bytes).unwrap_or_else(|_| salvage(&bytes).0)
+                            parse(&bytes).ok().or_else(|| salvage(&bytes).0)
                         }
-                        Err(_) => SettingsState::default(),
+                        Err(_) => None,
                     };
                 }
                 Err(error) if attempt < READ_ATTEMPTS => {
@@ -276,7 +285,7 @@ impl SettingsPort for FileSettings {
                         path = %self.path.display(),
                         "could not read settings; running on defaults and leaving the file alone"
                     );
-                    return SettingsState::default();
+                    return None;
                 }
             }
         }
@@ -336,7 +345,7 @@ fn parent_directory(path: &Path) -> &Path {
 /// one filesystem operation. `NamedTempFile::persist` provides the platform-
 /// specific replacement semantics (including Windows) and removes the
 /// temporary file if any earlier step fails.
-fn write_atomically(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+pub(crate) fn write_atomically(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     let mut temporary = tempfile::NamedTempFile::new_in(parent_directory(path))?;
     temporary.write_all(bytes)?;
     temporary.as_file().sync_all()?;
@@ -357,8 +366,8 @@ mod tests {
         let path = dir.path().join("settings.json");
         let store = FileSettings::at(&path);
 
-        // Missing file → defaults.
-        assert_eq!(store.load().await, SettingsState::default());
+        // Missing file → nothing, and the caller runs on defaults.
+        assert_eq!(store.load().await, None);
 
         store
             .save(&SettingsState {
@@ -369,7 +378,7 @@ mod tests {
             })
             .await
             .expect("a writable temporary directory");
-        let loaded = store.load().await;
+        let loaded = store.load().await.expect("the file just written");
         assert_eq!(loaded.theme, Theme::PythonClient);
         assert_eq!(loaded.game_path, "C:/FA/bin/ForgedAlliance.exe");
     }
@@ -387,7 +396,10 @@ mod tests {
         )
         .expect("seed an older settings file");
 
-        let loaded = FileSettings::at(&path).load().await;
+        let loaded = FileSettings::at(&path)
+            .load()
+            .await
+            .expect("an older file is still found");
         assert_eq!(loaded.general.start_page, faf_domain::state::Tab::Training);
         assert_eq!(
             loaded.theme,
@@ -455,7 +467,10 @@ mod tests {
         }"#;
         std::fs::write(&path, stored).expect("seed a partly unreadable file");
 
-        let loaded = FileSettings::at(&path).load().await;
+        let loaded = FileSettings::at(&path)
+            .load()
+            .await
+            .expect("a partly readable file is still found");
 
         assert_eq!(loaded.theme, Theme::PythonClient);
         assert!(
@@ -480,10 +495,9 @@ mod tests {
         let path = dir.path().join("settings.json");
         std::fs::write(&path, b"{\"theme\": \"pythonCl").expect("seed a truncated file");
 
-        assert_eq!(
-            FileSettings::at(&path).load().await,
-            SettingsState::default()
-        );
+        // Nothing in it could be read, so it counts as no settings at all:
+        // the session runs on defaults, as on a first start.
+        assert_eq!(FileSettings::at(&path).load().await, None);
         assert_eq!(
             unreadable_copies(dir.path()),
             vec![b"{\"theme\": \"pythonCl".to_vec()]
@@ -512,7 +526,10 @@ mod tests {
             .await
             .expect_err("defaults over configured settings are refused, and say so");
 
-        assert_eq!(store.load().await.theme, Theme::PythonClient);
+        assert_eq!(
+            store.load().await.map(|settings| settings.theme),
+            Some(Theme::PythonClient)
+        );
     }
 
     #[tokio::test]
@@ -528,11 +545,19 @@ mod tests {
             .await
             .expect("save the settings");
         // A load that reads it back cleanly is what keeps the copy.
-        assert_eq!(store.load().await.theme, Theme::PythonClient);
+        assert_eq!(
+            store.load().await.map(|settings| settings.theme),
+            Some(Theme::PythonClient)
+        );
 
         std::fs::remove_file(&path).expect("lose the settings file");
 
-        assert_eq!(store.load().await.theme, Theme::PythonClient);
+        // Found rather than missing: these are a returning player's settings,
+        // not a first start's.
+        assert_eq!(
+            store.load().await.map(|settings| settings.theme),
+            Some(Theme::PythonClient)
+        );
     }
 
     #[tokio::test]

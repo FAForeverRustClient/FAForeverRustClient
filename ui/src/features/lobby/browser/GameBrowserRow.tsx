@@ -60,7 +60,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
     showSocial,
     hideSocial,
   } = useGameSocialPosition(game.id);
-  const { title: shownTitle, goAdapter } = splitGoAdapterTitle(game.title);
+  const { title: shownTitle, goAdapter, expJavaAdapter } = splitGoAdapterTitle(game.title);
   // Plain FAF is what nearly every game is, so a chip saying so told nobody
   // anything and took the room the chips that do differ needed (#378). Only
   // another featured mod (beta, develop, Nomads, ...) gets one.
@@ -126,6 +126,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
           <FittingChips className="game-browser-tags-col game-browser-tags" moreClassName="more">
             {otherMod && <i title={featuredModLabel(otherMod)}>{featuredModLabel(otherMod)}</i>}
             {goAdapter && <i className="go-adapter" title={t("lobby.browser.goAdapterTitle")}>{t("lobby.browser.goAdapter")}</i>}
+            {expJavaAdapter && <i className="go-adapter" title={t("lobby.browser.expJavaAdapterTitle")}>{t("lobby.browser.expJavaAdapter")}</i>}
             {simModCount > 0 && (
               <i
                 className={simModsRanked ? "modded is-ranked" : "modded"}

@@ -33,6 +33,19 @@ body {
   overscroll-behavior: none;
 }
 
+/* Country flags, everywhere, once. Every flag is a 16 px image from
+   `ui/public/flags/` (`flagSrc`), drawn at 16 px, so a screen scaled to 150 %
+   or 200 % stretches it over 24 or 32 device pixels. Smoothing that stretch is
+   what blurred the flags on a 4K monitor while they were sharp at 100 %;
+   nearest-neighbour keeps them as sharp as there, the way the avatars beside
+   them are drawn. One rule on the address rather than a class at each of the
+   dozen places a flag is shown, so a new one cannot miss it. */
+img[src^="/flags/"] {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
 /* Scrollbars, everywhere, once.
    The client drew the operating system's scrollbar in every list except the
    changelog, which had styled its own. On Windows that means a grey track with

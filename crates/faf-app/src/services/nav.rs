@@ -24,5 +24,11 @@ pub async fn handle(cmd: NavCommand, _ctx: &ServiceCtx, out: &EventSink) {
         NavCommand::SelectSettingsSection { section } => {
             out.emit(NavEvent::SettingsSectionSelected { section })
         }
+        NavCommand::SelectChangelogSection { section } => {
+            out.emit(NavEvent::ChangelogSectionSelected { section })
+        }
+        NavCommand::SelectChangelogClientRelease { version } => {
+            out.emit(NavEvent::ChangelogClientReleaseSelected { version })
+        }
     }
 }

@@ -51,10 +51,7 @@ export function GeneralSettingsSection() {
 
   return (
     <>
-      <SettingRow
-        label={t("settings.general.startPage.label")}
-        hint={t("settings.general.startPage.hint")}
-      >
+      <SettingRow label={t("settings.general.startPage.label")}>
         <select
           className="settings-select"
           value={preferences.startPage}
@@ -67,10 +64,7 @@ export function GeneralSettingsSection() {
         </select>
       </SettingRow>
 
-      <SettingRow
-        label={t("settings.general.autoLogin.label")}
-        hint={t("settings.general.autoLogin.hint")}
-      >
+      <SettingRow label={t("settings.general.autoLogin.label")}>
         <SettingsSwitch
           checked={preferences.autoLogin ?? true}
           onChange={(checked) => void save({ autoLogin: checked })}
@@ -78,10 +72,20 @@ export function GeneralSettingsSection() {
         />
       </SettingRow>
 
+      {/* What the close button and the tray's Quit do while a game runs:
+          hide to the tray and exit after the game, or ask first. */}
       <SettingRow
-        label={t("settings.general.rememberTypedEntries.label")}
-        hint={t("settings.general.rememberTypedEntries.hint")}
+        label={t("settings.general.keepRunningDuringGame.label")}
+        hint={t("settings.general.keepRunningDuringGame.hint")}
       >
+        <SettingsSwitch
+          checked={preferences.keepRunningDuringGame ?? true}
+          onChange={(checked) => void save({ keepRunningDuringGame: checked })}
+          label={t("settings.general.keepRunningDuringGame.label")}
+        />
+      </SettingRow>
+
+      <SettingRow label={t("settings.general.rememberTypedEntries.label")}>
         <SettingsSwitch
           checked={preferences.rememberTypedEntries ?? false}
           onChange={(checked) => void save({ rememberTypedEntries: checked })}
@@ -90,10 +94,7 @@ export function GeneralSettingsSection() {
       </SettingRow>
 
       {/* One answer for every list in the client (#447). */}
-      <SettingRow
-        label={t("settings.general.filterMemory.label")}
-        hint={t("settings.general.filterMemory.hint")}
-      >
+      <SettingRow label={t("settings.general.filterMemory.label")}>
         <select
           className="settings-select"
           value={preferences.filterMemory ?? "session"}
@@ -110,10 +111,7 @@ export function GeneralSettingsSection() {
         </select>
       </SettingRow>
 
-      <SettingRow
-        label={t("settings.events.weekStart.label")}
-        hint={t("settings.events.weekStart.hint")}
-      >
+      <SettingRow label={t("settings.events.weekStart.label")}>
         <select
           className="settings-select"
           value={events.weekStart}
@@ -127,10 +125,7 @@ export function GeneralSettingsSection() {
         </select>
       </SettingRow>
 
-      <SettingRow
-        label={t("settings.events.reminders.label")}
-        hint={t("settings.events.reminders.hint")}
-      >
+      <SettingRow label={t("settings.events.reminders.label")}>
         {events.reminders.length === 0 ? (
           <span className="muted">{t("settings.events.reminders.none")}</span>
         ) : (
@@ -148,10 +143,7 @@ export function GeneralSettingsSection() {
       {/* Frontend-only for now: the language is read back from localStorage on
           the next start. It moves into the backend Settings slice when the
           backend's own user-facing strings are keyed too. */}
-      <SettingRow
-        label={t("settings.general.language.label")}
-        hint={t("settings.general.language.hint")}
-      >
+      <SettingRow label={t("settings.general.language.label")}>
         <select
           className="settings-select"
           value={locale}
