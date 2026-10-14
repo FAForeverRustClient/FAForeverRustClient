@@ -1670,8 +1670,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "maps.view.noneInstalledHint": "Installiere eine Community-Karte aus dem Vault, damit sie hier erscheint.",
   "maps.view.noInstalledMatch": "Keine passenden installierten Karten",
   "maps.view.noInstalledMatchHint": "Suche breiter.",
-  "maps.view.installedCount": "{count} installiert",
-  "maps.view.userMapsFolder": "Ordner für Nutzerkarten",
   "maps.view.publish": "Veröffentlichen",
   "maps.view.removing": "Wird entfernt…",
   "maps.view.uninstall": "Deinstallieren",

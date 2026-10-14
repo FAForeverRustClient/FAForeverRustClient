@@ -770,8 +770,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "maps.view.noneInstalledHint": "Zainstaluj mapę społeczności z magazynu, aby zobaczyć ją tutaj.",
   "maps.view.noInstalledMatch": "Żadna zainstalowana mapa nie pasuje",
   "maps.view.noInstalledMatchHint": "Poszerz wyszukiwanie.",
-  "maps.view.installedCount": "{count} zainstalowanych",
-  "maps.view.userMapsFolder": "Folder map użytkownika",
   "maps.view.publish": "Opublikuj",
   "maps.view.removing": "Usuwanie…",
   "maps.view.uninstall": "Odinstaluj",

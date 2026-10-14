@@ -753,8 +753,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "maps.view.noneInstalledHint": "Instala un mapa de la comunidad desde el vault para verlo aquí.",
   "maps.view.noInstalledMatch": "Ningún mapa instalado coincide",
   "maps.view.noInstalledMatchHint": "Amplía la búsqueda.",
-  "maps.view.installedCount": "{count} instalados",
-  "maps.view.userMapsFolder": "Carpeta de mapas de usuario",
   "maps.view.publish": "Publicar",
   "maps.view.removing": "Eliminando…",
   "maps.view.uninstall": "Desinstalar",

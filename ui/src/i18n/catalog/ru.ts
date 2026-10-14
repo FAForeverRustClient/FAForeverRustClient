@@ -788,8 +788,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "maps.view.noneInstalledHint": "Установите карту сообщества из хранилища, чтобы увидеть её здесь.",
   "maps.view.noInstalledMatch": "Подходящих установленных карт нет",
   "maps.view.noInstalledMatchHint": "Расширьте поиск.",
-  "maps.view.installedCount": "{count} установлено",
-  "maps.view.userMapsFolder": "Папка пользовательских карт",
   "maps.view.publish": "Опубликовать",
   "maps.view.removing": "Удаление…",
   "maps.view.uninstall": "Удалить",

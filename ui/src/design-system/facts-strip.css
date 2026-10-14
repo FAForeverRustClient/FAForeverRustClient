@@ -1,0 +1,78 @@
+/* The training overview's facts strip (`.training-basis`), for a side panel
+   about one thing: a tinted band across the panel's full width, each value
+   under its label, and a hairline between the values of a row. The leaderboard
+   player and the mod detail draw it; a panel sets `--facts-strip-bleed` to its
+   own horizontal padding so the band reaches its edges. */
+.facts-strip {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 calc(-1 * var(--facts-strip-bleed, 0px));
+  padding: 14px var(--space-4);
+  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.facts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  row-gap: var(--space-3);
+  margin: 0;
+}
+
+.facts-grid.has-2-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.facts-grid + .facts-grid {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.facts-grid > div {
+  min-width: 0;
+  padding: 0 var(--space-3);
+  border-left: 1px solid var(--color-border);
+}
+
+/* No hairline and no indent at the start of a row. */
+.facts-grid.has-3-columns > div:nth-child(3n + 1),
+.facts-grid.has-2-columns > div:nth-child(2n + 1) {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.facts-grid dt {
+  margin-bottom: 3px;
+  overflow: hidden;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.facts-grid dd {
+  margin: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.facts-grid dd.is-unknown {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.facts-grid .is-emphasis dt {
+  color: var(--color-text);
+}
+
+.facts-grid .is-emphasis dd {
+  font-weight: 700;
+}
