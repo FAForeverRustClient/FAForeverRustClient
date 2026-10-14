@@ -1,1 +1,1 @@
-- Quit in the tray no longer ends the client in the middle of a game: it does what closing the window does.
+- Quit in the tray no longer cuts a running game's connection; it does what closing the window does.
