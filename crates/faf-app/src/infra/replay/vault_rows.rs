@@ -336,7 +336,9 @@ fn faction_value(value: &Value) -> Option<i32> {
             "AEON" => Some(2),
             "CYBRAN" => Some(3),
             "SERAPHIM" => Some(4),
-            "RANDOM" => Some(5),
+            // The game's 5, a Random pick in the lobby, is what the API's
+            // `Faction` enum calls NOMAD (`Faction.fromFaValue`).
+            "NOMAD" | "RANDOM" => Some(5),
             _ => None,
         })
 }
@@ -551,6 +553,14 @@ pub(super) fn parse_vault_replays(doc: &JsonApiDoc) -> Vec<VaultReplay> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn a_faction_is_read_by_the_api_s_enum_name() {
+        assert_eq!(faction_value(&json!("CYBRAN")), Some(3));
+        assert_eq!(faction_value(&json!("NOMAD")), Some(5));
+        assert_eq!(faction_value(&json!(2)), Some(2));
+        assert_eq!(faction_value(&json!("UNKNOWN")), None);
+    }
 
     #[test]
     fn an_average_of_large_ratings_does_not_wrap() {
