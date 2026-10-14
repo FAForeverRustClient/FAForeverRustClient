@@ -1,0 +1,1 @@
+- Searching replays by faction works again, and a player who picked Random shows it in an online replay.
