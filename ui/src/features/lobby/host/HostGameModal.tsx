@@ -82,7 +82,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
   // copy of each `useState` and each validation message.
   const settings = useHostLobbySettings(initialTitle, "hostGame");
   const {
-    title, setTitle, visibility, setVisibility, passwordEnabled, setPasswordEnabled,
+    title, setTitle, visibility, setVisibility,
     password, setPassword, ratingEnabled, setRatingEnabled, ratingMin, setRatingMin,
     ratingMax, setRatingMax, titleError, passwordError, ratingError,
   } = settings;
@@ -235,21 +235,13 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
         </div>
 
         <div className="host-top-options-row">
-        {/* Password */}
+        {/* Password: empty is an open lobby, so the field is its own switch. */}
         <div className="host-option-item">
-          <label className="check-field">
-            <input
-              type="checkbox"
-              checked={passwordEnabled}
-              onChange={(event) => setPasswordEnabled(event.target.checked)}
-            />
-            <span>{t("lobby.host.passwordProtected")}</span>
-          </label>
           <input
             className="compact-input host-password-input"
             type="password"
-            disabled={!passwordEnabled}
             value={password}
+            title={t("lobby.host.passwordHint")}
             maxLength={25}
             aria-invalid={Boolean(passwordError)}
             aria-describedby={passwordError ? "host-password-error" : undefined}

@@ -41,20 +41,13 @@ export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
       </div>
 
       <div className="host-top-options-row">
+        {/* Empty is an open lobby, so the field is its own switch. */}
         <div className="host-option-item">
-          <label className="check-field">
-            <input
-              type="checkbox"
-              checked={settings.passwordEnabled}
-              onChange={(event) => settings.setPasswordEnabled(event.target.checked)}
-            />
-            <span>{t("lobby.host.passwordProtected")}</span>
-          </label>
           <input
             className="compact-input host-password-input"
             type="password"
-            disabled={!settings.passwordEnabled}
             value={settings.password}
+            title={t("lobby.host.passwordHint")}
             maxLength={25}
             aria-invalid={Boolean(settings.passwordError)}
             aria-describedby={settings.passwordError ? "host-password-error" : undefined}

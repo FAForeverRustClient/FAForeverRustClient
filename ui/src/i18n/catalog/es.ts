@@ -2107,6 +2107,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.host.passwordProtected": "Protegida con contraseña",
   "lobby.host.password": "Contraseña",
   "lobby.host.passwordAria": "Contraseña de la partida",
+  "lobby.host.passwordHint": "Déjala vacía y cualquiera puede unirse; con contraseña, solo quien la conozca.",
   "lobby.host.enforceRating": "Exigir puntuación de los jugadores",
   "lobby.host.minRating": "Puntuación mínima",
   "lobby.host.maxRating": "Puntuación máxima",

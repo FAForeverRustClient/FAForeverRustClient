@@ -2442,6 +2442,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.host.passwordProtected": "Защищена паролем",
   "lobby.host.password": "Пароль",
   "lobby.host.passwordAria": "Пароль игры",
+  "lobby.host.passwordHint": "Оставьте пустым, и присоединиться сможет любой; с паролем только те, кто его знает.",
   "lobby.host.enforceRating": "Обязательный рейтинг",
   "lobby.host.minRating": "Минимальный рейтинг",
   "lobby.host.maxRating": "Максимальный рейтинг",

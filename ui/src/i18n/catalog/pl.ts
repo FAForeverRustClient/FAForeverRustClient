@@ -2086,6 +2086,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.host.passwordProtected": "Chroniona hasłem",
   "lobby.host.password": "Hasło",
   "lobby.host.passwordAria": "Hasło gry",
+  "lobby.host.passwordHint": "Zostaw puste, a każdy może dołączyć; z hasłem tylko ci, którzy je znają.",
   "lobby.host.enforceRating": "Wymuś ranking graczy",
   "lobby.host.minRating": "Ranking minimalny",
   "lobby.host.maxRating": "Ranking maksymalny",

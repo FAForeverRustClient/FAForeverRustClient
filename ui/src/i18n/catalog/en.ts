@@ -1096,6 +1096,7 @@ export const en = {
   "lobby.host.passwordProtected": "Password protected",
   "lobby.host.password": "Password",
   "lobby.host.passwordAria": "Game password",
+  "lobby.host.passwordHint": "Leave it empty and anyone can join; with a password, only players who know it.",
   "lobby.host.enforceRating": "Enforce player rating",
   "lobby.host.minRating": "Minimum rating",
   "lobby.host.maxRating": "Maximum rating",
