@@ -36,7 +36,7 @@ import { ipc } from "../../../ipc/client";
 import { lastJoinRequestId } from "../../../shared/joinGame";
 import { mapPresentation } from "../../../shared/mapPresentation";
 import { LaunchProgress } from "../../../shared/components/LaunchProgress";
-import { adapterNoteOf, contextOf, joinProgressOf, nextStep } from "./joinProgress";
+import { adapterNoteOf, contextOf, isInfoAdapterNote, joinProgressOf, nextStep } from "./joinProgress";
 import "../game-dialogs.css";
 
 /**
@@ -154,7 +154,7 @@ export function JoinPreparationDialog() {
       // Says in words what the title's mark said, which is why the mark is
       // gone from the name above, as it is in the game browser.
       notice={adapterNote && {
-        tone: adapterNote === "hostOnGo" ? "info" : "warn",
+        tone: isInfoAdapterNote(adapterNote) ? "info" : "warn",
         text: t(`lobby.joinProgress.adapter.${adapterNote}`),
       }}
       // The reference client's "Details" button: which file, which step, and

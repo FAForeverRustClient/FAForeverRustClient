@@ -74,6 +74,7 @@ pub mod game;
 pub mod game_cache;
 pub mod game_logs;
 pub mod game_updater;
+pub(crate) mod gpgnet_proxy;
 pub mod guides;
 pub(crate) mod http;
 pub mod ice_java;
@@ -843,11 +844,12 @@ pub fn real_ports() -> Ports {
 
 /// Build the connectivity backend.
 ///
-/// Both adapters are constructed and handed to [`SelectableIce`], so the
+/// All adapters are constructed and handed to [`SelectableIce`], so the
 /// Settings toggle changes which one starts the next game without a restart.
 fn select_ice_adapter(tokens: &TokenStore, sessions: &IceSessionMemory) -> Arc<dyn IcePort> {
     Arc::new(SelectableIce::new(
         Arc::new(JavaAdapter::faf(tokens.clone()).remembering(sessions.clone())),
+        Arc::new(JavaAdapter::exp_faf(tokens.clone()).remembering(sessions.clone())),
         Arc::new(PioneerAdapter::faf(tokens.clone()).remembering(sessions.clone())),
     ))
 }

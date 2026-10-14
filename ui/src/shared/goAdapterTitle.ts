@@ -9,13 +9,23 @@
 // the lobby needs Go.
 
 export const GO_ADAPTER_TITLE_TAG = "[go-adapter]";
+export const EXP_JAVA_ADAPTER_TITLE_TAG = "[exp-java-adapter]";
 
 /** The title as it should be shown, and whether it carried the mark. */
-export function splitGoAdapterTitle(title: string): { title: string; goAdapter: boolean } {
-  const at = title.toLowerCase().indexOf(GO_ADAPTER_TITLE_TAG);
-  if (at < 0) return { title, goAdapter: false };
-  const shown = `${title.slice(0, at)}${title.slice(at + GO_ADAPTER_TITLE_TAG.length)}`
-    .replace(/\s{2,}/g, " ")
-    .trim();
-  return { title: shown, goAdapter: true };
+export function splitGoAdapterTitle(title: string): { title: string; goAdapter: boolean; expJavaAdapter: boolean } {
+  const atGo = title.toLowerCase().indexOf(GO_ADAPTER_TITLE_TAG);
+  if (atGo >= 0) {
+    const shown = `${title.slice(0, atGo)}${title.slice(atGo + GO_ADAPTER_TITLE_TAG.length)}`
+      .replace(/\s{2,}/g, " ")
+      .trim();
+    return { title: shown, goAdapter: true, expJavaAdapter: false };
+  }
+  const atExp = title.toLowerCase().indexOf(EXP_JAVA_ADAPTER_TITLE_TAG);
+  if (atExp >= 0) {
+    const shown = `${title.slice(0, atExp)}${title.slice(atExp + EXP_JAVA_ADAPTER_TITLE_TAG.length)}`
+      .replace(/\s{2,}/g, " ")
+      .trim();
+    return { title: shown, goAdapter: false, expJavaAdapter: true };
+  }
+  return { title, goAdapter: false, expJavaAdapter: false };
 }

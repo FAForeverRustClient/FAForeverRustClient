@@ -14,9 +14,13 @@ export type ResolvedIceAdapter = Exclude<IceAdapter, "dynamic">;
 
 /**
  * Twin of `IceAdapter::for_game`: `dynamic` follows the host's title mark, Go
- * when the title carries it and Java otherwise; a fixed choice stays as it is.
+ * when the title carries it, ExpJava when it carries exp-java, and Java otherwise;
+ * a fixed choice stays as it is.
  */
 export function adapterForGame(adapter: IceAdapter, title: string): ResolvedIceAdapter {
   if (adapter !== "dynamic") return adapter;
-  return splitGoAdapterTitle(title).goAdapter ? "go" : "java";
+  const split = splitGoAdapterTitle(title);
+  if (split.goAdapter) return "go";
+  if (split.expJavaAdapter) return "expJava";
+  return "java";
 }

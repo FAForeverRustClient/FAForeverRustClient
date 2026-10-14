@@ -20,6 +20,7 @@ import { boundsText } from "../../../shared/ratingBounds";
 import { displayedRating, gameLeaderboard, ratingGateBlocks } from "../../../shared/playerRatings";
 import { toggleFavoriteMap, useIsFavoriteMap } from "../../../shared/favoriteMaps";
 import { SaveGeneratorPresetForm } from "../../../shared/components/SaveGeneratorPresetForm";
+import { GeneratorFactsStrip } from "../../../shared/components/GeneratorFactsStrip";
 
 export const GamePreviewDialog = memo(function GamePreviewDialog({
   game,
@@ -148,7 +149,7 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
   }
 
   return (
-    <div className="game-preview-dialog">
+    <div className={factRows.length > 0 ? "game-preview-dialog has-facts" : "game-preview-dialog"}>
       {/* The map's name alone: the lobby is the tile this was opened from,
           and "Map preview" over the name said what the picture already
           shows. */}
@@ -260,18 +261,11 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
           Any other map has no facts left here.
 
           A dozen settings run together as one wrapped line of label and value
-          pairs, which nobody could scan, so they are a grid: each label over
-          its value, in even columns. The seed is twenty digits and takes two. */}
-      {factRows.length > 0 && (
-        <dl className="game-preview-dialog-facts is-grid">
-          {factRows.map((row) => (
-            <div key={row.key} className={row.key === "seed" ? "is-wide" : undefined}>
-              <dt>{row.label}</dt>
-              <dd>{row.value}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
+          pairs, which nobody could scan, so they are the facts grid the
+          generator and the detail panels use: each label over its value, a
+          hairline between the values of a row. */}
+      <GeneratorFactsStrip rows={factRows} label={t("maps.generate.reproduceTitle")} columns={4} />
+
       <footer className="game-preview-dialog-actions play-dialog-actions">
         {!installed && !isGenerated && vaultMap && (
           <Button

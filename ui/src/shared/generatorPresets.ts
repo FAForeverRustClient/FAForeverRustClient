@@ -32,5 +32,7 @@ export const MAX_PRESET_NAME = 80;
  */
 export function isUsablePresetName(name: string): boolean {
   const trimmed = name.trim();
-  return trimmed !== "" && trimmed.length <= MAX_PRESET_NAME && /^[\w\- ]+$/.test(trimmed);
+  return trimmed !== ""
+    && new TextEncoder().encode(trimmed).length <= MAX_PRESET_NAME
+    && /^[\p{L}\p{N}_\- ]+$/u.test(trimmed);
 }

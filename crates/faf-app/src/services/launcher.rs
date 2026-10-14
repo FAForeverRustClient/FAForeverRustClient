@@ -13,6 +13,9 @@
 //! relay messages arriving on the same socket. On any setup failure we stop the
 //! adapter and emit `LaunchFailed`.
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
 use faf_domain::state::{
     Game, GameLaunch, HostGameConfig, LobbyEvent, NotificationKind, PlayerProfile,
     PreparationPhase as DomainPreparationPhase, ReplayEvent,
@@ -22,8 +25,8 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::ports::{
-    GameLaunchParams, GamePreparation, IceParams, ModPrepFailure, PreparationPhase, RelayMsg,
-    ReplayMetadata, UpdateProgress, DEFAULT_LOCAL_REPLAY_LIMIT,
+    GameLaunchParams, GamePreparation, IceParams, ModPrepFailure, Ports, PreparationPhase,
+    RelayMsg, ReplayMetadata, UpdateProgress, DEFAULT_LOCAL_REPLAY_LIMIT,
 };
 use crate::runtime::{EventSink, ServiceCtx};
 use crate::services::notifications;
@@ -204,6 +207,7 @@ pub async fn start(
         milliseconds = started.elapsed().as_millis() as u64,
         "launch: the game is started"
     );
+    let late_failure = session.late_failure;
     // Java cancels delayed replay actions as soon as GameRunner becomes active.
     // Do the same so auto-watch can never replace a game the user just launched.
     super::replays::cancel_live_tracking(out);
@@ -238,6 +242,8 @@ pub async fn start(
     let exit_ports = ctx.ports.clone();
     let exit_sink = out.clone();
     let exit_running_game = ctx.lobby.running_game_handle();
+    let stopped_by_failure = Arc::new(AtomicBool::new(false));
+    let exit_stopped_by_failure = stopped_by_failure.clone();
     tokio::spawn(async move {
         tracing::debug!("launcher: game exit watcher started");
         exit_ports.process.wait_for_exit().await;
@@ -249,7 +255,11 @@ pub async fn start(
         tracing::debug!("stopping ICE adapter");
         exit_ports.ice.stop();
         exit_running_game.clear();
-        exit_sink.emit(LobbyEvent::GameTerminated);
+        // A game stopped because its ICE session failed already reported
+        // the failure, and "terminated" would take it off the screen.
+        if !exit_stopped_by_failure.load(Ordering::SeqCst) {
+            exit_sink.emit(LobbyEvent::GameTerminated);
+        }
 
         // The replay the game just streamed to the local recorder is on disk
         // now. Re-listing here is what makes it appear in the Local tab without
@@ -275,6 +285,36 @@ pub async fn start(
     ctx.lobby.set_running_game(launch.uid);
 
     out.emit(LobbyEvent::InGame);
+
+    // 6. Stop the game if the adapter or the ICE session it was started
+    //    without cannot be had after all (#511). Watched only from here,
+    //    after `InGame`, so the failure is the last word on this launch.
+    if let Some(late_failure) = late_failure {
+        let ports = ctx.ports.clone();
+        let sink = out.clone();
+        let running_game = ctx.lobby.running_game_handle();
+        let game_id = launch.uid;
+        tokio::spawn(async move {
+            // Closed without an answer: everything arrived, or the adapter
+            // was stopped with the game.
+            let Ok(reason) = late_failure.await else {
+                return;
+            };
+            if running_game.id() != Some(game_id) {
+                return;
+            }
+            tracing::warn!(
+                game_id,
+                %reason,
+                "the ICE adapter or session failed after the game started; stopping the game"
+            );
+            // The exit watcher then releases the seat and the running game.
+            stopped_by_failure.store(true, Ordering::SeqCst);
+            ports.process.kill();
+            report_failure_on(&ports, &sink, reason);
+        });
+    }
+
     Some(LaunchSession {
         from_lobby: session.from_lobby,
     })
@@ -772,11 +812,17 @@ fn preparation_phase(phase: PreparationPhase) -> DomainPreparationPhase {
 /// Stop the adapter and emit `LaunchFailed`. Always returns `None` so call sites
 /// can `return fail(..)`.
 pub(crate) fn report_failure(ctx: &ServiceCtx, out: &EventSink, reason: String) {
+    report_failure_on(&ctx.ports, out, reason);
+}
+
+/// [`report_failure`] for a task that outlives the launch and has the ports
+/// rather than the context.
+fn report_failure_on(ports: &Ports, out: &EventSink, reason: String) {
     // The reason too: "details were sent to the client" left a log that could
     // not say why any launch had failed, and the reason is an error message,
     // nothing private.
     tracing::warn!(%reason, "game launch failed");
-    ctx.ports.ice.stop();
+    ports.ice.stop();
     // Marked as the client's own failure reason, which the UI words plainly
     // with the original on hover (see `notifications::add_failure`).
     notifications::add_required_failure(

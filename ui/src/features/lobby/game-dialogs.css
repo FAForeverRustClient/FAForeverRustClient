@@ -339,7 +339,6 @@
 .host-password-input {
   width: 120px;
   height: 28px;
-  margin-left: 4px;
   padding: 0 8px;
   color: var(--color-text);
   background: var(--color-bg);

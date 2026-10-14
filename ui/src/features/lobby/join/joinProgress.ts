@@ -88,8 +88,20 @@ export function nextStep(steps: readonly string[], line: string): string | null 
  * - `goAgainstHost`: the setting forces Go on a game whose title does not mark
  *   it as hosted on Go.
  * - `javaAgainstHost`: the setting forces Java on a game hosted on Go.
+ * - `hostOnExpJava`, `expJavaAgainstHost`, `javaAgainstExpJavaHost`: the same
+ *   three for the experimental Java adapter, which speaks WebRTC and so
+ *   cannot reach a peer on the ordinary Java adapter either.
  */
-export type AdapterNote = "hostOnGo" | "goAgainstHost" | "javaAgainstHost";
+export type AdapterNote =
+  | "hostOnGo"
+  | "goAgainstHost"
+  | "javaAgainstHost"
+  | "hostOnExpJava"
+  | "expJavaAgainstHost"
+  | "javaAgainstExpJavaHost";
+
+/** The notes that only say what happens, rather than warn that it will fail. */
+export const isInfoAdapterNote = (note: AdapterNote): boolean => note === "hostOnGo" || note === "hostOnExpJava";
 
 /**
  * The adapter line for a game with this title, or `null` for the usual case.
@@ -108,9 +120,12 @@ export type AdapterNote = "hostOnGo" | "goAgainstHost" | "javaAgainstHost";
  * the other, the line for a game you host describes the joining setting.
  */
 export function adapterNoteOf(adapter: IceAdapter, title: string): AdapterNote | null {
-  const hostOnGo = splitGoAdapterTitle(title).goAdapter;
-  if (adapterForGame(adapter, title) === "go") return hostOnGo ? "hostOnGo" : "goAgainstHost";
-  return hostOnGo ? "javaAgainstHost" : null;
+  const mark = splitGoAdapterTitle(title);
+  const joined = adapterForGame(adapter, title);
+  if (joined === "go") return mark.goAdapter ? "hostOnGo" : "goAgainstHost";
+  if (joined === "expJava") return mark.expJavaAdapter ? "hostOnExpJava" : "expJavaAgainstHost";
+  if (mark.goAdapter) return "javaAgainstHost";
+  return mark.expJavaAdapter ? "javaAgainstExpJavaHost" : null;
 }
 
 /**

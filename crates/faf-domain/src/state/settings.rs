@@ -1464,6 +1464,8 @@ pub enum IceAdapter {
     Dynamic,
     /// `faf-ice-adapter`, driven over JSON-RPC.
     Java,
+    /// Experimental Java adapter (v4.0.0).
+    ExpJava,
     /// Experimental faf-pioneer backend. Owns a local GPGNet relay the Java
     /// adapter has no equivalent of.
     Go,
@@ -1474,6 +1476,7 @@ impl IceAdapter {
         match self {
             Self::Dynamic => "Dynamic (follows the host)",
             Self::Java => "Java (faf-ice-adapter)",
+            Self::ExpJava => "Exp Java (faf-ice-adapter 4.0.0)",
             Self::Go => "Go (faf-pioneer)",
         }
     }
@@ -1482,6 +1485,9 @@ impl IceAdapter {
     pub fn for_game(self, title: &str) -> Self {
         match self {
             Self::Dynamic if crate::state::lobby::title_marks_go_adapter(title) => Self::Go,
+            Self::Dynamic if crate::state::lobby::title_marks_exp_java_adapter(title) => {
+                Self::ExpJava
+            }
             Self::Dynamic => Self::Java,
             chosen => chosen,
         }
@@ -1497,9 +1503,10 @@ impl IceAdapter {
 pub struct ConnectivityPreferences {
     /// The adapter games are joined on. `Dynamic` by default.
     pub adapter: IceAdapter,
-    /// The adapter games this client hosts run on: Java or Go, Java by
+    /// The adapter games this client hosts run on: Java, ExpJava, or Go, Java by
     /// default. Hosting on Go marks the title (see
-    /// `lobby::GO_ADAPTER_TITLE_TAG`) so a `Dynamic` joiner follows.
+    /// `lobby::GO_ADAPTER_TITLE_TAG`) and hosting on ExpJava marks the title (see
+    /// `lobby::EXP_JAVA_ADAPTER_TITLE_TAG`) so a `Dynamic` joiner follows.
     pub host_adapter: IceAdapter,
     /// Version of the explicit adapter choice. Version zero was written by
     /// builds where Pioneer was the implicit/default path, so a stored `go`
@@ -1528,6 +1535,7 @@ impl ConnectivityPreferences {
     pub fn hosting(&self) -> IceAdapter {
         match self.host_adapter {
             IceAdapter::Go => IceAdapter::Go,
+            IceAdapter::ExpJava => IceAdapter::ExpJava,
             _ => IceAdapter::Java,
         }
     }
@@ -1551,7 +1559,7 @@ impl<'de> Deserialize<'de> for ConnectivityPreferences {
             // Pioneer was the implicit path then, not a choice.
             (0, IceAdapter::Go) => IceAdapter::Dynamic,
             // Java was the default until version two; Dynamic is Java for
-            // every game that is not marked as hosted on Go.
+            // every game that is not marked as hosted on Go or ExpJava.
             (0 | 1, IceAdapter::Java) => IceAdapter::Dynamic,
             (_, adapter) => adapter,
         };
@@ -1559,8 +1567,10 @@ impl<'de> Deserialize<'de> for ConnectivityPreferences {
         // for everything meant hosting on it too.
         let host_adapter = match wire.host_adapter {
             Some(IceAdapter::Go) => IceAdapter::Go,
+            Some(IceAdapter::ExpJava) => IceAdapter::ExpJava,
             Some(_) => IceAdapter::Java,
             None if adapter == IceAdapter::Go => IceAdapter::Go,
+            None if adapter == IceAdapter::ExpJava => IceAdapter::ExpJava,
             None => IceAdapter::Java,
         };
         Ok(Self {
@@ -4434,11 +4444,23 @@ mod tests {
             IceAdapter::Dynamic.for_game("Friday 4v4 [GO-ADAPTER]"),
             IceAdapter::Go
         );
+        assert_eq!(
+            IceAdapter::Dynamic.for_game("Friday 4v4 [exp-java-adapter]"),
+            IceAdapter::ExpJava
+        );
+        assert_eq!(
+            IceAdapter::Dynamic.for_game("Friday 4v4 [EXP-JAVA-ADAPTER]"),
+            IceAdapter::ExpJava
+        );
         assert_eq!(IceAdapter::Dynamic.for_game("Friday 4v4"), IceAdapter::Java);
         // An explicit choice is never second-guessed by the title.
         assert_eq!(
             IceAdapter::Java.for_game("Friday 4v4 [go-adapter]"),
             IceAdapter::Java
+        );
+        assert_eq!(
+            IceAdapter::ExpJava.for_game("Friday 4v4 [go-adapter]"),
+            IceAdapter::ExpJava
         );
         assert_eq!(IceAdapter::Go.for_game("Friday 4v4"), IceAdapter::Go);
 

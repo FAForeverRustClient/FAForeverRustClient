@@ -15,7 +15,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { GeneratorStatus, InstalledMap } from "../../ipc/bindings";
+import type { GeneratorPreset, GeneratorStatus, InstalledMap } from "../../ipc/bindings";
 import { overlayStack } from "../../design-system/overlayStack";
 import { failOnConsoleError } from "../../testing/consoleGuard";
 import { applyEvent, clearSentCommands, initialState, seedStore, sentCommands } from "../../testing/mounted";
@@ -31,8 +31,12 @@ const installed: InstalledMap[] = [
 
 const GENERATED = "neroxis_map_generator_1.12.0_abcdefgh_aiea";
 
-function mountHost() {
-  seedStore((state) => ({ ...state, maps: { ...state.maps, installed } }));
+function mountHost(presets?: GeneratorPreset[]) {
+  seedStore((state) => ({
+    ...state,
+    maps: { ...state.maps, installed },
+    mapGenerator: presets ? { ...state.mapGenerator, presets } : state.mapGenerator,
+  }));
   const onClose = vi.fn();
   render(<HostGameModal onClose={onClose} />);
   clearSentCommands();
@@ -69,9 +73,16 @@ describe("Generate Map over Host Game, mounted", () => {
     expect(dialogs()).toEqual([host, generator]);
     expect(host.getAttribute("aria-label")).toBe("Host a custom game");
     expect(generator.getAttribute("aria-label")).toBe("Generate a map");
-    for (const name of ["Generator version", "Map size", "Teams", "Spawns", "Style of game", "Preset"]) {
+    for (const name of ["Generator version", "Map size", "Teams", "Spawns", "Style of game", "My presets"]) {
       expect(within(generator).getByRole("combobox", { name })).toBeDefined();
     }
+    expect(within(generator).queryByRole("button", {
+      name: "Must divide evenly between 2 teams.",
+    })).toBeNull();
+    expect(within(generator).getByRole("button", {
+      name: "Enter Neroxis command-line arguments here. If filled in, the settings above are ignored.",
+    })).toBeDefined();
+    expect(generator.querySelector("[role='tooltip']")).toBeNull();
     expect(overlayStack.size()).toBe(2);
     expect(generator.contains(document.activeElement)).toBe(true);
     expect(document.activeElement).toBe(within(generator).getByRole("textbox", { name: "Full map name" }));
@@ -82,6 +93,89 @@ describe("Generate Map over Host Game, mounted", () => {
         expect.objectContaining({ kind: "MapGenerator", command: expect.objectContaining({ type: "loadPresets" }) as unknown }),
       ]),
     );
+  });
+
+  it("shows advanced and diagnostic controls, keeping presets visible at the bottom", async () => {
+    const user = userEvent.setup();
+    const { opener } = mountHost();
+    await user.click(opener);
+    const generator = generatorDialog();
+
+    expect(within(generator).queryByRole("textbox", { name: "Seed" })).toBeDefined();
+    expect(within(generator).getByRole("textbox", { name: "Output folder" })).toBeDefined();
+    expect(within(generator).getByRole("textbox", { name: "Raw arguments" })).toBeDefined();
+    expect(within(generator).getByRole("checkbox", { name: "Generator viewer" })).toBeDefined();
+    expect(within(generator).getByRole("checkbox", { name: "Debug output" })).toBeDefined();
+    expect(within(generator).getByRole("button", { name: "Verify" })).toBeDefined();
+    expect(within(generator).getByRole("button", { name: "CLI help" })).toBeDefined();
+    expect(generator.querySelector("details")).toBeNull();
+
+    const preset = within(generator).getByRole("combobox", { name: "My presets" });
+    const presets = preset.closest(".generate-map-presets")!;
+    expect(presets.closest(".generate-map-scroll-content")).toBeNull();
+    const diagnosticControls = within(generator).getByRole("button", { name: "Verify" });
+    expect(diagnosticControls.compareDocumentPosition(presets) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    const presetName = within(generator).getByRole("textbox", { name: "Preset name" });
+    const presetNameField = presetName.closest(".generate-map-preset-name-field")!;
+    const saveButton = within(generator).getByText(/^(Save|Replace|Saved)$/).closest("button")!;
+    expect(presetNameField.contains(saveButton)).toBe(true);
+    expect(saveButton.disabled).toBe(true);
+    await user.type(presetName, "Map Preset");
+    expect(saveButton.disabled).toBe(false);
+    await user.click(saveButton);
+    expect(sentCommands().some((entry) =>
+      entry.kind === "MapGenerator"
+      && entry.command.type === "savePreset"
+      && entry.command.payload.name === "Map Preset"
+    )).toBe(true);
+    const actions = within(generator).getByRole("button", { name: "Generate" }).closest(".generate-map-actions")!;
+    expect(actions.closest(".generate-map-scroll-content")).toBeNull();
+    expect(presets.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+
+    await user.click(within(generator).getByRole("button", { name: "CLI help" }));
+    expect(within(generator).getByText("Loading the generator help…")).toBeDefined();
+  });
+
+  it("shows the select-preset prompt until a preset is chosen, then shows its name", async () => {
+    const user = userEvent.setup();
+    const { opener } = mountHost([
+      { name: "Team ladder", options: initialState().mapGenerator.options },
+    ]);
+    await user.click(opener);
+    const generator = generatorDialog();
+    const preset = within(generator).getByRole("combobox", { name: "My presets" });
+
+    expect(preset.textContent).toContain("Select a preset");
+    await user.click(preset);
+    await user.click(within(generator).getByRole("option", { name: "Team ladder" }));
+
+    expect(preset.textContent).toContain("Team ladder");
+  });
+
+  it("renames a saved preset from its menu without filling the new-preset name field", async () => {
+    const user = userEvent.setup();
+    const { opener } = mountHost([
+      { name: "Team ladder", options: initialState().mapGenerator.options },
+    ]);
+    await user.click(opener);
+    const generator = generatorDialog();
+    const preset = within(generator).getByRole("combobox", { name: "My presets" });
+    await user.click(preset);
+    await user.click(within(generator).getByRole("button", { name: "Rename template: Team ladder" }));
+
+    const renameInput = within(generator).getByRole("textbox", { name: "Rename template: Team ladder" });
+    await user.clear(renameInput);
+    await user.type(renameInput, "New ladder");
+    await user.click(within(within(generator).getByRole("listbox")).getByRole("button", { name: "Save" }));
+
+    expect(sentCommands().some((entry) =>
+      entry.kind === "MapGenerator"
+      && entry.command.type === "renamePreset"
+      && entry.command.payload.name === "Team ladder"
+      && entry.command.payload.newName === "New ladder"
+    )).toBe(true);
+    expect(within(generator).getByRole("textbox", { name: "Preset name" })).toHaveProperty("value", "");
+    expect(preset.getAttribute("aria-expanded")).toBe("true");
   });
 
   it("closes on Escape alone, gives focus back to the button that opened it, and leaves Escape to the host next", async () => {

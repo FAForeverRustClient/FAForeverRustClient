@@ -41,20 +41,13 @@ export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
       </div>
 
       <div className="host-top-options-row">
+        {/* Empty is an open lobby, so the field is its own switch. */}
         <div className="host-option-item">
-          <label className="check-field">
-            <input
-              type="checkbox"
-              checked={settings.passwordEnabled}
-              onChange={(event) => settings.setPasswordEnabled(event.target.checked)}
-            />
-            <span>{t("lobby.host.passwordProtected")}</span>
-          </label>
           <input
             className="compact-input host-password-input"
             type="password"
-            disabled={!settings.passwordEnabled}
             value={settings.password}
+            title={t("lobby.host.passwordHint")}
             maxLength={25}
             aria-invalid={Boolean(settings.passwordError)}
             aria-describedby={settings.passwordError ? "host-password-error" : undefined}
@@ -94,7 +87,7 @@ export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
           <div className="host-rating-inputs">
             <OptionalNumberInput
               className="number-input"
-              placeholder={t("common.any")}
+              placeholder={t("lobby.host.minRatingPlaceholder")}
               disabled={!settings.ratingEnabled}
               value={settings.ratingMin}
               min={-9999}
@@ -103,10 +96,9 @@ export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
               onChange={settings.setRatingMin}
               aria-label={t("lobby.host.minRating")}
             />
-            <span className="muted">to</span>
             <OptionalNumberInput
               className="number-input"
-              placeholder={t("common.any")}
+              placeholder={t("lobby.host.maxRatingPlaceholder")}
               disabled={!settings.ratingEnabled}
               value={settings.ratingMax}
               min={-9999}

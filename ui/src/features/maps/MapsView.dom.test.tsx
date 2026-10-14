@@ -131,7 +131,8 @@ describe("Map vault, mounted", () => {
         thumbnailUrlLarge: "",
       }),
     ]);
-    expect(screen.getByText("3 on this page")).toBeTruthy();
+    // The server's total for this search, not the count on the page.
+    expect(screen.getByText("3 maps")).toBeTruthy();
 
     // The listed art fails, then the CDN's: the card falls back to its icon.
     const broken = cardOf("Broken Art");
