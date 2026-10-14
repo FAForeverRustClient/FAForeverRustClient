@@ -43,8 +43,7 @@ export interface HostLobbySettings {
   setTitle: (title: string) => void;
   visibility: string;
   setVisibility: (visibility: string) => void;
-  passwordEnabled: boolean;
-  setPasswordEnabled: (enabled: boolean) => void;
+  /** Empty means an open lobby: there is no separate switch for it. */
   password: string;
   setPassword: (password: string) => void;
   ratingEnabled: boolean;
@@ -91,8 +90,9 @@ export function useHostLobbySettings(
   );
   const setTitle = (value: string) => setTitleState(value.slice(0, MAX_HOST_TITLE));
   const [visibility, setVisibility] = useState(remembered.visibility);
-  const [passwordEnabled, setPasswordEnabled] = useState(remembered.passwordEnabled);
-  const [password, setPassword] = useState(remembered.password);
+  // A password remembered while its old checkbox was off was not in use, and
+  // with the field as the only switch, putting it back would turn it on.
+  const [password, setPassword] = useState(remembered.passwordEnabled ? remembered.password : "");
   const [ratingEnabled, setRatingEnabled] = useState(remembered.enforceRatingRange);
   const [ratingMin, setRatingMin] = useState(remembered.ratingMin);
   const [ratingMax, setRatingMax] = useState(remembered.ratingMax);
@@ -102,8 +102,7 @@ export function useHostLobbySettings(
     : !PRINTABLE_ASCII.test(title.trim())
       ? t("lobby.host.error.titleAscii")
       : "";
-  const passwordError =
-    passwordEnabled && !PRINTABLE_ASCII.test(password) ? t("lobby.host.error.passwordAscii") : "";
+  const passwordError = !PRINTABLE_ASCII.test(password) ? t("lobby.host.error.passwordAscii") : "";
   // Checked whether or not the range is enforced: a back-to-front range is a
   // mistake worth pointing out while it is being typed, not only once the
   // checkbox is ticked.
@@ -126,8 +125,6 @@ export function useHostLobbySettings(
     setTitle,
     visibility,
     setVisibility,
-    passwordEnabled,
-    setPasswordEnabled,
     password,
     setPassword,
     ratingEnabled,
@@ -142,7 +139,7 @@ export function useHostLobbySettings(
     hostConfig: () => ({
       title: title.trim(),
       visibility,
-      password: passwordEnabled && password ? password : null,
+      password: password ? password : null,
       enforceRatingRange: ratingEnabled,
       ratingMin: ratingEnabled ? ratingMin : null,
       ratingMax: ratingEnabled ? ratingMax : null,
@@ -152,7 +149,9 @@ export function useHostLobbySettings(
       featuredMod,
       visibility,
       map,
-      passwordEnabled,
+      // Still stored, so settings written before the checkbox went read the
+      // same: it now only says whether the field held anything.
+      passwordEnabled: password !== "",
       password,
       enforceRatingRange: ratingEnabled,
       ratingMin,

@@ -914,6 +914,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.host.passwordProtected": "Passwortgeschützt",
   "lobby.host.password": "Passwort",
   "lobby.host.passwordAria": "Partie-Passwort",
+  "lobby.host.passwordHint": "Leer lassen, dann kann jeder beitreten; mit Passwort nur, wer es kennt.",
   "lobby.host.enforceRating": "Rating erzwingen",
   "lobby.host.minRating": "Mindestrating",
   "lobby.host.maxRating": "Höchstrating",
