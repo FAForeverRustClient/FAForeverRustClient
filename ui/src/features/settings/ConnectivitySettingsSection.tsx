@@ -13,17 +13,19 @@ const save = (patch: ConnectivityPreferencesPatch) =>
   });
 
 // Dynamic first: it is the default, and the one that is right for any game
-// whose host is on Java or hosts on Go in this client.
+// whose host is on Java, Exp Java or Go in this client.
 const JOIN_ADAPTERS: Record<IceAdapter, MessageKey> = {
   dynamic: "settings.connectivity.dynamic",
   java: "settings.connectivity.java",
+  expJava: "settings.connectivity.expJava",
   go: "settings.connectivity.go",
 };
 
-// Hosting has no host to follow, so it is a plain choice between the two.
+// Hosting has no host to follow, so it is a choice between the concrete adapters.
 type HostAdapter = Exclude<IceAdapter, "dynamic">;
 const HOST_ADAPTERS: Record<HostAdapter, MessageKey> = {
   java: "settings.connectivity.java",
+  expJava: "settings.connectivity.expJava",
   go: "settings.connectivity.go",
 };
 
@@ -58,8 +60,8 @@ export function ConnectivitySettingsSection() {
       >
         <select
           className="settings-select"
-          value={preferences.hostAdapter === "go" ? "go" : "java"}
-          onChange={(event) => change({ hostAdapter: event.target.value === "go" ? "go" : "java" })}
+          value={preferences.hostAdapter === "go" ? "go" : preferences.hostAdapter === "expJava" ? "expJava" : "java"}
+          onChange={(event) => change({ hostAdapter: event.target.value as HostAdapter })}
           aria-label={t("settings.connectivity.hostAdapter")}
         >
           {recordEntries(HOST_ADAPTERS).map(([value, label]) => (

@@ -91,6 +91,33 @@ pub fn with_go_adapter_tag(title: &str) -> String {
     }
 }
 
+/// The mark a lobby hosted on the Experimental Java adapter carries in its title.
+pub const EXP_JAVA_ADAPTER_TITLE_TAG: &str = "[exp-java-adapter]";
+
+/// Whether a lobby title carries [`EXP_JAVA_ADAPTER_TITLE_TAG`], in any letter case.
+pub fn title_marks_exp_java_adapter(title: &str) -> bool {
+    title
+        .to_ascii_lowercase()
+        .contains(&EXP_JAVA_ADAPTER_TITLE_TAG.to_ascii_lowercase())
+}
+
+/// The title with [`EXP_JAVA_ADAPTER_TITLE_TAG`] at its end, once, and shortened so the
+/// whole still fits [`HostGameConfig::MAX_TITLE_CHARS`].
+pub fn with_exp_java_adapter_tag(title: &str) -> String {
+    let title = title.trim();
+    if title_marks_exp_java_adapter(title) {
+        return title.to_owned();
+    }
+    let room = HostGameConfig::MAX_TITLE_CHARS - EXP_JAVA_ADAPTER_TITLE_TAG.chars().count() - 1;
+    let kept: String = title.chars().take(room).collect();
+    let kept = kept.trim_end();
+    if kept.is_empty() {
+        EXP_JAVA_ADAPTER_TITLE_TAG.to_owned()
+    } else {
+        format!("{kept} {EXP_JAVA_ADAPTER_TITLE_TAG}")
+    }
+}
+
 /// Configuration sent with `game_host`. This mirrors the reference client's host
 /// dialog without leaking UI-specific form state into the service layer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -1174,6 +1201,37 @@ mod tests {
 
         assert!(title_marks_go_adapter("gg [GO-ADAPTER]"));
         assert!(!title_marks_go_adapter("pioneer rush"));
+    }
+
+    #[test]
+    fn an_exp_java_adapter_title_is_marked_once_and_still_fits() {
+        use super::{
+            title_marks_exp_java_adapter, with_exp_java_adapter_tag, HostGameConfig,
+            EXP_JAVA_ADAPTER_TITLE_TAG,
+        };
+
+        assert_eq!(
+            with_exp_java_adapter_tag("Friday 4v4"),
+            "Friday 4v4 [exp-java-adapter]"
+        );
+        assert_eq!(
+            with_exp_java_adapter_tag("  Friday 4v4  "),
+            "Friday 4v4 [exp-java-adapter]"
+        );
+        // Idempotent, whatever case the mark was typed in.
+        assert_eq!(
+            with_exp_java_adapter_tag("Friday [Exp-Java-Adapter] 4v4"),
+            "Friday [Exp-Java-Adapter] 4v4"
+        );
+        assert_eq!(with_exp_java_adapter_tag(""), EXP_JAVA_ADAPTER_TITLE_TAG);
+
+        let long = "x".repeat(HostGameConfig::MAX_TITLE_CHARS);
+        let marked = with_exp_java_adapter_tag(&long);
+        assert_eq!(marked.chars().count(), HostGameConfig::MAX_TITLE_CHARS);
+        assert!(marked.ends_with(EXP_JAVA_ADAPTER_TITLE_TAG));
+
+        assert!(title_marks_exp_java_adapter("gg [EXP-JAVA-ADAPTER]"));
+        assert!(!title_marks_exp_java_adapter("pioneer rush"));
     }
 
     use super::*;

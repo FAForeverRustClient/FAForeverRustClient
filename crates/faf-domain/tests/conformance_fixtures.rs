@@ -3595,24 +3595,32 @@ fn helper_fixture() -> HelperFixture {
             .collect(),
         // Every setting against a plain title, the mark in another case and
         // position, a mark on its own, and a title that only resembles one.
-        ice_adapter_choices: [IceAdapter::Dynamic, IceAdapter::Java, IceAdapter::Go]
+        ice_adapter_choices: [
+            IceAdapter::Dynamic,
+            IceAdapter::Java,
+            IceAdapter::ExpJava,
+            IceAdapter::Go,
+        ]
+        .into_iter()
+        .flat_map(|adapter| {
+            [
+                "Friday 4v4",
+                "Friday 4v4 [go-adapter]",
+                "Friday [GO-Adapter] 4v4",
+                "[go-adapter]",
+                "pioneer rush go-adapter",
+                "Friday 4v4 [exp-java-adapter]",
+                "Friday [EXP-JAVA-ADAPTER] 4v4",
+                "[exp-java-adapter]",
+            ]
             .into_iter()
-            .flat_map(|adapter| {
-                [
-                    "Friday 4v4",
-                    "Friday 4v4 [go-adapter]",
-                    "Friday [GO-Adapter] 4v4",
-                    "[go-adapter]",
-                    "pioneer rush go-adapter",
-                ]
-                .into_iter()
-                .map(move |title| IceAdapterChoiceCase {
-                    adapter,
-                    title: title.into(),
-                    expected: adapter.for_game(title),
-                })
+            .map(move |title| IceAdapterChoiceCase {
+                adapter,
+                title: title.into(),
+                expected: adapter.for_game(title),
             })
-            .collect(),
+        })
+        .collect(),
         tourney_rules: tourney_rule_cases(),
         tourney_open_events: tourney_open_event_cases(),
         tourney_phase_legality: tourney_phase_legality_cases(),
