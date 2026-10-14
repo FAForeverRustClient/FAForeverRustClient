@@ -2003,8 +2003,6 @@ export const en = {
   "maps.view.noneInstalledHint": "Install a community map from the vault to see it here.",
   "maps.view.noInstalledMatch": "No installed maps match",
   "maps.view.noInstalledMatchHint": "Try a broader search.",
-  "maps.view.installedCount": "{count} installed",
-  "maps.view.userMapsFolder": "User maps folder",
   "maps.view.publish": "Publish",
   "maps.view.removing": "Removing…",
   "maps.view.showFavorites": { one: "Show your {count} favourite map", other: "Show your {count} favourite maps" },
