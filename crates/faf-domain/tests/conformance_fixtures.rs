@@ -4319,6 +4319,36 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "nav opens the client changelog on a chosen release and keeps it",
+            vec![
+                NavEvent::TabSelected {
+                    tab: Tab::Changelog,
+                }
+                .into(),
+                NavEvent::ChangelogSectionSelected {
+                    section: ChangelogSection::Client,
+                }
+                .into(),
+                NavEvent::ChangelogSectionSelected {
+                    section: ChangelogSection::Game,
+                }
+                .into(),
+                // Choosing a release opens the client section as well.
+                NavEvent::ChangelogClientReleaseSelected {
+                    version: "0.4.0".into(),
+                }
+                .into(),
+                NavEvent::ChangelogSectionSelected {
+                    section: ChangelogSection::Game,
+                }
+                .into(),
+                NavEvent::ChangelogClientReleaseSelected {
+                    version: "0.3.0".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
             "install check flips both flags and reports where paths resolve",
             vec![InstallEvent::Checked {
                 game_ready: true,
@@ -5327,6 +5357,37 @@ fn cases() -> Vec<Case> {
                     at: "2026-02-01T09:05:00Z".into(),
                 }
                 .into(),
+            ],
+        ),
+        case(
+            "the client's release notes load, outlive a failed refresh, and what's new is dismissed",
+            vec![
+                ClientUpdateEvent::NotesLoading.into(),
+                // A first load that fails says so: there is nothing to keep.
+                ClientUpdateEvent::NotesFailed {
+                    reason: "GitHub is unreachable".into(),
+                }
+                .into(),
+                ClientUpdateEvent::NotesLoading.into(),
+                ClientUpdateEvent::NotesLoaded {
+                    notes: vec![client_release_notes("0.4.0"), client_release_notes("0.3.0")],
+                }
+                .into(),
+                // A refresh of a list on screen neither blanks it nor breaks it.
+                ClientUpdateEvent::NotesLoading.into(),
+                ClientUpdateEvent::NotesFailed {
+                    reason: "GitHub is unreachable".into(),
+                }
+                .into(),
+                ClientUpdateEvent::NotesLoaded {
+                    notes: vec![client_release_notes("0.4.0")],
+                }
+                .into(),
+                ClientUpdateEvent::WhatsNewPending {
+                    version: "0.4.0".into(),
+                }
+                .into(),
+                ClientUpdateEvent::WhatsNewDismissed.into(),
             ],
         ),
         // ── tournaments / tutorials ──────────────────────────────────────
@@ -8791,6 +8852,7 @@ fn transition_cases() -> Vec<Case> {
                 SettingsEvent::UpdatesChanged {
                     preferences: UpdatePreferences {
                         automatic: false,
+                        last_seen_version: Some("0.4.0".into()),
                         ..UpdatePreferences::default()
                     },
                 }
@@ -9366,6 +9428,31 @@ fn client_release(version: &str) -> ClientRelease {
         size_bytes: 4_096,
         pre_release: false,
         published_at: "2026-02-01T00:00:00Z".into(),
+    }
+}
+
+/// One client release's notes, shaped like a release body the changelog
+/// script wrote: a category heading and a line under it.
+fn client_release_notes(version: &str) -> ClientReleaseNotes {
+    use faf_domain::protocol::changelog::{ChangelogBlock, ChangelogListItem, ChangelogSpan};
+    ClientReleaseNotes {
+        version: version.into(),
+        published_at: Some("2026-02-01T00:00:00Z".into()),
+        pre_release: true,
+        notes_url: format!("https://example.invalid/releases/tag/v{version}"),
+        blocks: vec![
+            ChangelogBlock::Heading {
+                level: 3,
+                text: "Features".into(),
+            },
+            ChangelogBlock::List {
+                items: vec![ChangelogListItem {
+                    spans: vec![ChangelogSpan::Text(format!("New in {version}."))],
+                    change: None,
+                    children: vec![],
+                }],
+            },
+        ],
     }
 }
 

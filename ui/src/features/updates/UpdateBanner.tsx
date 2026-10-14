@@ -16,6 +16,7 @@ import type { ClientRelease, ClientUpdateState } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { canOpenClientRelease, openClientRelease } from "../../shared/clientReleaseNotes";
 import { openHttpsUrl, optionalHttpsUrl } from "../../shared/externalLinks";
 import { plainError } from "../../shared/plainError";
 import { useAppStore } from "../../store/store";
@@ -42,6 +43,7 @@ export function UpdateBanner() {
   useLocale();
   const update = useAppStore((s) => s.state.clientUpdate);
   const announceOptional = useAppStore((s) => s.state.settings.updates.automatic);
+  const authMode = useAppStore((s) => s.state.auth.mode);
   const release = updateBannerRelease(update);
   if (release === null) return null;
 
@@ -58,6 +60,9 @@ export function UpdateBanner() {
   const percent = updatePercent(status);
   const size = formatSize(release.sizeBytes);
   const notesUrl = optionalHttpsUrl(release.notesUrl);
+  // The notes in the client's own changelog when it has read them, so the
+  // reader stays in the client; the release page on GitHub otherwise.
+  const notesInClient = canOpenClientRelease(update.notes, authMode, release.version);
 
   return (
     <div className="update-banner" role="status">
@@ -102,10 +107,16 @@ export function UpdateBanner() {
         )}
         {/* A release can be published without notes; an empty href would just
             open a blank tab. */}
-        {notesUrl && (
-          <Button onClick={() => void openHttpsUrl(notesUrl)}>
+        {notesInClient ? (
+          <Button onClick={() => openClientRelease(release.version)}>
             {t("updates.whatsNew")}
           </Button>
+        ) : (
+          notesUrl && (
+            <Button onClick={() => void openHttpsUrl(notesUrl)}>
+              {t("updates.whatsNew")}
+            </Button>
+          )
         )}
         <button
           type="button"

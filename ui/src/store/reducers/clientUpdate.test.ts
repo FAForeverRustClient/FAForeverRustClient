@@ -39,6 +39,9 @@ function state(overrides: Partial<ClientUpdateState> = {}): ClientUpdateState {
     currentVersion: "0.2.0",
     release: null,
     dismissedVersion: "",
+    notes: [],
+    notesStatus: { type: "idle" },
+    whatsNew: null,
     ...overrides,
   };
 }

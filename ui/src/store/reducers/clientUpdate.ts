@@ -103,5 +103,24 @@ export function reduceClientUpdate(
       return { ...state, dismissedVersion: event.payload.version };
     case "checkCompleted":
       return { ...state, lastChecked: event.payload.at };
+    // A refresh of notes already on screen neither blanks them nor replaces
+    // them with an error, as in `faf_domain::state::client_update`.
+    case "notesLoading":
+      return state.notesStatus.type === "ready"
+        ? state
+        : { ...state, notesStatus: { type: "loading" } };
+    case "notesLoaded":
+      return { ...state, notes: event.payload.notes, notesStatus: { type: "ready" } };
+    case "notesFailed":
+      return state.notesStatus.type === "ready"
+        ? state
+        : {
+            ...state,
+            notesStatus: { type: "failed", payload: { reason: event.payload.reason } },
+          };
+    case "whatsNewPending":
+      return { ...state, whatsNew: event.payload.version };
+    case "whatsNewDismissed":
+      return { ...state, whatsNew: null };
   }
 }

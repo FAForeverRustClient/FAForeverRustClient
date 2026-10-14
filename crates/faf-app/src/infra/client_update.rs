@@ -31,12 +31,15 @@
 //! client writes or what it runs.
 
 use async_trait::async_trait;
+use faf_domain::protocol::changelog::parse_release_notes;
 use faf_domain::state::{
-    compare_versions, is_release_version, strip_version_prefix, ClientRelease, ReleaseChannel,
+    compare_versions, is_release_version, strip_version_prefix, ClientRelease, ClientReleaseNotes,
+    ReleaseChannel,
 };
 use serde_json::Value;
 use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, PoisonError};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
@@ -111,6 +114,10 @@ impl ClientUpdateConfig {
 pub struct GitHubUpdates {
     config: ClientUpdateConfig,
     http: reqwest::Client,
+    /// The notes of the last release list that was read, newest first, or
+    /// `None` until one has been. Every check refreshes it and nothing else
+    /// has to: see [`ClientUpdatePort::release_notes`].
+    notes: Arc<Mutex<Option<Vec<ClientReleaseNotes>>>>,
 }
 
 impl GitHubUpdates {
@@ -121,6 +128,7 @@ impl GitHubUpdates {
             // that leaves HTTPS. `is_trusted` pins the first URL to the
             // release prefix; this is what stops a later hop undoing that.
             http: super::http::https_only_download_client(),
+            notes: Arc::default(),
         }
     }
 
@@ -204,6 +212,15 @@ impl GitHubUpdates {
             Ok(_) => Err("the release list was not a list".to_string()),
             Err(e) => Err(format!("the release list was not valid JSON: {e}")),
         }
+    }
+
+    /// Parse the notes out of a release list just read, and keep them for the
+    /// next [`ClientUpdatePort::release_notes`].
+    fn remember_notes(&self, releases: &[Value]) -> Vec<ClientReleaseNotes> {
+        let issue_base = format!("https://github.com/{}/issues", self.config.repo);
+        let notes = release_notes_from(releases, &issue_base);
+        *self.notes.lock().unwrap_or_else(PoisonError::into_inner) = Some(notes.clone());
+        notes
     }
 
     async fn run_download(
@@ -358,8 +375,26 @@ impl GitHubUpdates {
 #[async_trait]
 impl ClientUpdatePort for GitHubUpdates {
     async fn latest(&self, channel: ReleaseChannel) -> Result<Option<ClientRelease>, String> {
+        // Always read fresh: a check is the moment a new release is found.
+        // The notes come along for free, which is the point of keeping them.
         let releases = self.fetch_releases().await?;
+        self.remember_notes(&releases);
         Ok(pick_release(&releases, channel))
+    }
+
+    async fn release_notes(&self) -> Result<Vec<ClientReleaseNotes>, String> {
+        if let Some(notes) = self.cached_release_notes() {
+            return Ok(notes);
+        }
+        let releases = self.fetch_releases().await?;
+        Ok(self.remember_notes(&releases))
+    }
+
+    fn cached_release_notes(&self) -> Option<Vec<ClientReleaseNotes>> {
+        self.notes
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
     }
 
     async fn download(
@@ -370,8 +405,13 @@ impl ClientUpdatePort for GitHubUpdates {
         let (tx, rx) = mpsc::channel(32);
         let config = self.config.clone();
         let http = self.http.clone();
+        let notes = self.notes.clone();
         tokio::spawn(async move {
-            let client = GitHubUpdates { config, http };
+            let client = GitHubUpdates {
+                config,
+                http,
+                notes,
+            };
             let outcome = client.run_download(&release, &tx, &called_off).await;
             // The sender goes only after the partial file did: see the port.
             let _ = tx.send(DownloadProgress::Finished(outcome)).await;
@@ -391,13 +431,8 @@ impl ClientUpdatePort for GitHubUpdates {
 fn pick_release(releases: &[Value], channel: ReleaseChannel) -> Option<ClientRelease> {
     let mut best: Option<ClientRelease> = None;
     for release in releases {
-        // Drafts are visible to authenticated maintainers and are not
-        // published; offering one would hand out an unfinished build.
-        if release
-            .get("draft")
-            .and_then(Value::as_bool)
-            .unwrap_or(false)
-        {
+        // Offering a draft would hand out an unfinished build.
+        if is_draft(release) {
             continue;
         }
         let pre_release = release
@@ -453,6 +488,51 @@ fn pick_release(releases: &[Value], channel: ReleaseChannel) -> Option<ClientRel
         }
     }
     best
+}
+
+/// Drafts are visible to authenticated maintainers and are not published.
+fn is_draft(release: &Value) -> bool {
+    release
+        .get("draft")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+}
+
+/// Every published release's notes from a GitHub `/releases` response, newest
+/// first.
+///
+/// The releases [`pick_release`] would consider, without the channel: a draft
+/// is unpublished, and a tag that is not a version names nothing the client
+/// could have run. Ordered by version as the update check orders them, not as
+/// GitHub lists them, which is by creation. `issue_base` is where a `(#123)` in
+/// a body links to; see [`parse_release_notes`].
+fn release_notes_from(releases: &[Value], issue_base: &str) -> Vec<ClientReleaseNotes> {
+    let mut notes: Vec<ClientReleaseNotes> = releases
+        .iter()
+        .filter(|release| !is_draft(release))
+        .filter_map(|release| {
+            let tag = release.get("tag_name").and_then(Value::as_str)?;
+            if !is_release_version(tag) {
+                return None;
+            }
+            let text = |key: &str| release.get(key).and_then(Value::as_str).unwrap_or_default();
+            Some(ClientReleaseNotes {
+                version: strip_version_prefix(tag).to_string(),
+                published_at: Some(text("published_at"))
+                    .filter(|at| !at.is_empty())
+                    .map(str::to_string),
+                pre_release: release
+                    .get("prerelease")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+                notes_url: text("html_url").to_string(),
+                // `null` for a release published with no text at all.
+                blocks: parse_release_notes(text("body"), issue_base),
+            })
+        })
+        .collect();
+    notes.sort_by(|left, right| compare_versions(&right.version, &left.version));
+    notes
 }
 
 struct Asset {
@@ -539,6 +619,12 @@ pub struct FakeClientUpdates;
 impl ClientUpdatePort for FakeClientUpdates {
     async fn latest(&self, _channel: ReleaseChannel) -> Result<Option<ClientRelease>, String> {
         Ok(None)
+    }
+
+    /// Reports rather than inventing notes, as the offline changelog does: a
+    /// fabricated list of changes would be worse than an empty section.
+    async fn release_notes(&self) -> Result<Vec<ClientReleaseNotes>, String> {
+        Err("the client's release notes are unavailable in offline mode".into())
     }
 
     async fn download(
@@ -675,6 +761,141 @@ mod tests {
     }
 
     #[test]
+    fn the_notes_list_every_published_version_newest_first() {
+        use faf_domain::protocol::changelog::{ChangelogBlock, ChangelogSpan};
+
+        let mut draft = release_json("v9.0.0", false, true);
+        draft["draft"] = Value::Bool(true);
+        let mut newest = release_json("v0.10.0", true, true);
+        newest["body"] = Value::String(
+            "### Features\n\n- Replays can be filtered by map (#12).\n\n\
+             Download the installer for your platform from the assets below.\n"
+                .into(),
+        );
+        // A release published with nothing at all: GitHub sends `null`.
+        let mut bare = release_json("v0.9.0", false, false);
+        bare["published_at"] = Value::Null;
+        bare["body"] = Value::Null;
+        let releases = vec![bare, release_json("nightly", false, true), draft, newest];
+
+        let notes = release_notes_from(&releases, "https://github.com/Org/Repo/issues");
+
+        let versions: Vec<&str> = notes.iter().map(|n| n.version.as_str()).collect();
+        assert_eq!(versions, ["0.10.0", "0.9.0"], "by version, not list order");
+        assert!(notes[0].pre_release, "a prerelease is listed, and says so");
+        assert_eq!(
+            notes[0].notes_url,
+            "https://github.com/Org/Repo/releases/tag/v0.10.0"
+        );
+        assert_eq!(
+            notes[0].published_at.as_deref(),
+            Some("2026-02-01T00:00:00Z")
+        );
+        assert_eq!(notes[0].blocks.len(), 2, "{:?}", notes[0].blocks);
+        let ChangelogBlock::List { items } = &notes[0].blocks[1] else {
+            panic!("expected the features list, got {:?}", notes[0].blocks[1]);
+        };
+        assert!(items[0].spans.contains(&ChangelogSpan::Issue {
+            number: "12".into(),
+            url: "https://github.com/Org/Repo/issues/12".into(),
+        }));
+        assert_eq!(notes[1].published_at, None);
+        assert!(notes[1].blocks.is_empty());
+    }
+
+    /// A local release list that answers every request with `body` and counts
+    /// how often it was asked.
+    async fn serve_release_list(body: String) -> (String, Arc<std::sync::atomic::AtomicUsize>) {
+        use std::sync::atomic::{AtomicUsize, Ordering as Atomic};
+        use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind test server");
+        let base = format!("http://{}", listener.local_addr().expect("server address"));
+        let requests = Arc::new(AtomicUsize::new(0));
+        let counted = requests.clone();
+        tokio::spawn(async move {
+            while let Ok((mut socket, _)) = listener.accept().await {
+                let body = body.clone();
+                let counted = counted.clone();
+                tokio::spawn(async move {
+                    let mut head = Vec::new();
+                    let mut buffer = [0_u8; 1024];
+                    while !head.windows(4).any(|window| window == b"\r\n\r\n") {
+                        match socket.read(&mut buffer).await {
+                            Ok(0) | Err(_) => return,
+                            Ok(read) => head.extend_from_slice(&buffer[..read]),
+                        }
+                    }
+                    counted.fetch_add(1, Atomic::SeqCst);
+                    let reply = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\
+                         Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                        body.len()
+                    );
+                    let _ = socket.write_all(reply.as_bytes()).await;
+                });
+            }
+        });
+        (base, requests)
+    }
+
+    #[tokio::test]
+    async fn one_release_list_read_serves_the_check_and_the_notes() {
+        use std::sync::atomic::Ordering as Atomic;
+
+        let releases = serde_json::json!([
+            release_json("v0.4.0", true, true),
+            release_json("v0.3.0", true, true),
+        ]);
+        let (base, requests) = serve_release_list(releases.to_string()).await;
+        let client = GitHubUpdates::new(ClientUpdateConfig {
+            api_base: base.clone(),
+            ..config()
+        });
+
+        // A check always reads the list fresh...
+        let latest = client
+            .latest(ReleaseChannel::PreRelease)
+            .await
+            .expect("a check");
+        assert_eq!(
+            latest.map(|release| release.version).as_deref(),
+            Some("0.4.0")
+        );
+        assert_eq!(requests.load(Atomic::SeqCst), 1);
+        // ...and the notes after it cost nothing: the same response answers.
+        assert_eq!(
+            client.cached_release_notes().map(|notes| notes.len()),
+            Some(2)
+        );
+        let notes = client.release_notes().await.expect("notes");
+        assert_eq!(notes.len(), 2);
+        assert_eq!(requests.load(Atomic::SeqCst), 1, "no second request");
+
+        client
+            .latest(ReleaseChannel::PreRelease)
+            .await
+            .expect("a second check");
+        assert_eq!(requests.load(Atomic::SeqCst), 2, "a check is never cached");
+
+        // With nothing read yet, the notes ask for the list themselves, once.
+        let cold = GitHubUpdates::new(ClientUpdateConfig {
+            api_base: base,
+            ..config()
+        });
+        assert_eq!(cold.cached_release_notes(), None);
+        cold.release_notes().await.expect("notes");
+        cold.release_notes().await.expect("notes again");
+        assert_eq!(
+            requests.load(Atomic::SeqCst),
+            3,
+            "the second answered from memory"
+        );
+    }
+
+    #[test]
     fn only_release_assets_of_the_configured_repository_are_downloaded() {
         // The load-bearing check: whatever the API says, the installer has to
         // come from this repository over TLS.
@@ -745,5 +966,7 @@ mod tests {
         let fake = FakeClientUpdates;
         assert_eq!(fake.latest(ReleaseChannel::Stable).await, Ok(None));
         assert!(fake.install("whatever".into()).await.is_err());
+        assert!(fake.release_notes().await.is_err(), "no invented notes");
+        assert_eq!(fake.cached_release_notes(), None);
     }
 }

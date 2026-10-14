@@ -17,8 +17,8 @@ struct RecordingSettings {
 
 #[async_trait]
 impl SettingsPort for RecordingSettings {
-    async fn load(&self) -> SettingsState {
-        SettingsState {
+    async fn load(&self) -> Option<SettingsState> {
+        Some(SettingsState {
             // Off, so the startup cache pass this test has to run cannot sweep
             // the real game-files cache on whoever runs the suite. The
             // measuring half only reads. See `cache_dir` in `infra`, which is
@@ -28,7 +28,7 @@ impl SettingsPort for RecordingSettings {
                 ..faf_domain::state::GamePreferences::default()
             },
             ..SettingsState::default()
-        }
+        })
     }
 
     async fn save(&self, settings: &SettingsState) -> Result<(), String> {

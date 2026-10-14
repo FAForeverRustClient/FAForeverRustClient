@@ -342,7 +342,7 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             crate::runtime::expect_admitted(crate::runtime::Key::MapGenerator);
             // Read the authoritative persisted setting here rather than
             // trusting the webview to supply the cleanup exclusion list.
-            let settings = ctx.ports.settings.load().await;
+            let settings = ctx.ports.settings.load().await.unwrap_or_default();
             let mut protected_maps = settings.browsing.favorite_maps;
             // Two ways to be spared, and they mean different things: a
             // favourite is a map somebody marked in the vault, a kept map is

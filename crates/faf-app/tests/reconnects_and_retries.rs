@@ -652,16 +652,16 @@ struct FailingOnceSettings {
 
 #[async_trait]
 impl SettingsPort for FailingOnceSettings {
-    async fn load(&self) -> SettingsState {
+    async fn load(&self) -> Option<SettingsState> {
         // No cache lifetime, so loading cannot sweep the real game-files
         // cache of whoever runs the suite.
-        SettingsState {
+        Some(SettingsState {
             game: GamePreferences {
                 cache_lifetime_days: None,
                 ..GamePreferences::default()
             },
             ..SettingsState::default()
-        }
+        })
     }
 
     async fn save(&self, settings: &SettingsState) -> Result<(), String> {

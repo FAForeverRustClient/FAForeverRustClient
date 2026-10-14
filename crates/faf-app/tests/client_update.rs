@@ -3,18 +3,22 @@
 //! The domain owns the version comparison and has its own tests; what those
 //! cannot show is that the running build's version reaches it, that the
 //! channel preference reaches the port, and that "install" can only ever run
-//! the file this client downloaded.
+//! the file this client downloaded. Below those, the same for the release
+//! notes and the What's new popup: that the startup decision reads the stored
+//! version, that a fresh install has the running build recorded, and that a
+//! popup is recorded only once it is dismissed.
 
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use async_trait::async_trait;
-use faf_app::infra::fake_ports;
-use faf_app::ports::{ClientUpdatePort, DownloadProgress};
+use faf_app::infra::{fake_ports, FakeClientUpdates};
+use faf_app::ports::{ClientUpdatePort, DownloadProgress, SettingsPort};
 use faf_app::{App, Ports};
 use faf_domain::state::{
-    ClientRelease, ClientUpdateCommand, ClientUpdateState, ClientUpdateStatus, ReleaseChannel,
-    SettingsCommand, UpdatePreferences,
+    ClientRelease, ClientReleaseNotes, ClientReleaseNotesStatus, ClientUpdateCommand,
+    ClientUpdateState, ClientUpdateStatus, ReleaseChannel, SettingsCommand, SettingsState,
+    UpdatePreferences,
 };
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -436,6 +440,7 @@ async fn announcements_off(latest: Result<Option<ClientRelease>, String>) -> Har
         updates: UpdatePreferences {
             automatic: false,
             pre_release: false,
+            ..UpdatePreferences::default()
         },
         ..Default::default()
     };
@@ -534,6 +539,7 @@ async fn the_opt_out_is_a_preference_the_settings_page_can_change() {
                 patch: UpdatePreferences {
                     automatic: false,
                     pre_release: false,
+                    ..UpdatePreferences::default()
                 }
                 .into(),
             }
@@ -562,6 +568,7 @@ async fn the_prerelease_preference_selects_the_channel_the_port_is_asked_for() {
                 patch: UpdatePreferences {
                     automatic: true,
                     pre_release: true,
+                    ..UpdatePreferences::default()
                 }
                 .into(),
             }
@@ -591,4 +598,330 @@ async fn the_prerelease_preference_selects_the_channel_the_port_is_asked_for() {
         h.calls.lock().unwrap().channels,
         vec![ReleaseChannel::PreRelease]
     );
+}
+
+// ── Release notes and What's new ────────────────────────────────────────────
+
+/// What the notes stub was asked, in total.
+#[derive(Debug, Default)]
+struct NotesCalls {
+    checks: usize,
+    notes_loads: usize,
+}
+
+/// A release source that keeps the notes of the list it read, the way the
+/// real adapter does: after a check that reached the list they are in memory,
+/// and before one they are not.
+struct NotesUpdates {
+    latest: Result<Option<ClientRelease>, String>,
+    notes: Vec<ClientReleaseNotes>,
+    read: Mutex<bool>,
+    calls: Arc<Mutex<NotesCalls>>,
+}
+
+#[async_trait]
+impl ClientUpdatePort for NotesUpdates {
+    async fn latest(&self, _channel: ReleaseChannel) -> Result<Option<ClientRelease>, String> {
+        self.calls.lock().unwrap().checks += 1;
+        if self.latest.is_ok() {
+            *self.read.lock().unwrap() = true;
+        }
+        self.latest.clone()
+    }
+
+    async fn release_notes(&self) -> Result<Vec<ClientReleaseNotes>, String> {
+        self.calls.lock().unwrap().notes_loads += 1;
+        Ok(self.notes.clone())
+    }
+
+    fn cached_release_notes(&self) -> Option<Vec<ClientReleaseNotes>> {
+        (*self.read.lock().unwrap()).then(|| self.notes.clone())
+    }
+
+    async fn download(
+        &self,
+        release: ClientRelease,
+        called_off: CancellationToken,
+    ) -> mpsc::Receiver<DownloadProgress> {
+        FakeClientUpdates.download(release, called_off).await
+    }
+
+    async fn install(&self, path: String) -> Result<(), String> {
+        FakeClientUpdates.install(path).await
+    }
+}
+
+/// A settings file holding `updates`, which records every write. `None` is no
+/// settings file at all: a fresh install.
+struct RecordingSettings {
+    updates: Option<UpdatePreferences>,
+    saved: Arc<Mutex<Vec<SettingsState>>>,
+}
+
+#[async_trait]
+impl SettingsPort for RecordingSettings {
+    async fn load(&self) -> Option<SettingsState> {
+        Some(SettingsState {
+            updates: self.updates.clone()?,
+            // Off, so the startup cache pass these tests run cannot sweep the
+            // real game-files cache of whoever runs the suite.
+            game: faf_domain::state::GamePreferences {
+                cache_lifetime_days: None,
+                ..faf_domain::state::GamePreferences::default()
+            },
+            ..SettingsState::default()
+        })
+    }
+
+    async fn save(&self, settings: &SettingsState) -> Result<(), String> {
+        self.saved.lock().unwrap().push(settings.clone());
+        Ok(())
+    }
+}
+
+fn release_notes(version: &str) -> ClientReleaseNotes {
+    ClientReleaseNotes {
+        version: version.into(),
+        published_at: Some("2026-02-01T00:00:00Z".into()),
+        pre_release: true,
+        notes_url: format!("https://example.invalid/releases/tag/v{version}"),
+        blocks: vec![],
+    }
+}
+
+struct StartedHarness {
+    app: App,
+    calls: Arc<Mutex<NotesCalls>>,
+    saved: Arc<Mutex<Vec<SettingsState>>>,
+}
+
+impl StartedHarness {
+    /// The last-seen version each write so far stored, in order.
+    fn saved_last_seen(&self) -> Vec<Option<String>> {
+        self.saved
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|settings| settings.updates.last_seen_version.clone())
+            .collect()
+    }
+}
+
+/// A client running `version`, started with a settings file whose update
+/// preferences say `last_seen` and `show_whats_new`, and whose release check
+/// answers `latest`. Returns once the startup (the settings load, the What's
+/// new decision and the check) has finished.
+async fn started(
+    version: &str,
+    last_seen: Option<&str>,
+    show_whats_new: bool,
+    latest: Result<Option<ClientRelease>, String>,
+) -> StartedHarness {
+    let stored = UpdatePreferences {
+        show_whats_new,
+        last_seen_version: last_seen.map(str::to_string),
+        ..UpdatePreferences::default()
+    };
+    started_from(version, Some(stored), latest).await
+}
+
+/// [`started`], from the settings file `stored` describes: `None` for none.
+async fn started_from(
+    version: &str,
+    stored: Option<UpdatePreferences>,
+    latest: Result<Option<ClientRelease>, String>,
+) -> StartedHarness {
+    let calls = Arc::new(Mutex::new(NotesCalls::default()));
+    let saved = Arc::new(Mutex::new(Vec::new()));
+    let ports = Ports {
+        client_update: Arc::new(NotesUpdates {
+            latest,
+            notes: vec![release_notes("0.4.0"), release_notes("0.3.0")],
+            read: Mutex::new(false),
+            calls: calls.clone(),
+        }),
+        settings: Arc::new(RecordingSettings {
+            updates: stored,
+            saved: saved.clone(),
+        }),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new(version, ports);
+    tokio::spawn(app_loop.run());
+    app.dispatch_and_wait(SettingsCommand::Load.into())
+        .await
+        .unwrap();
+    StartedHarness { app, calls, saved }
+}
+
+#[tokio::test]
+async fn a_fresh_install_records_the_build_and_shows_nothing() {
+    // No settings file at all: everything is new, and a list of changes since
+    // some earlier build would be measured against nothing.
+    let h = started_from("0.4.0", None, Ok(None)).await;
+
+    let state = h.app.snapshot();
+    assert_eq!(state.client_update.whats_new, None);
+    assert_eq!(
+        state.settings.updates.last_seen_version.as_deref(),
+        Some("0.4.0")
+    );
+    // Written down at once, so the first update finds a file that says so
+    // even if nothing else is ever changed before it.
+    assert_eq!(h.saved_last_seen().last(), Some(&Some("0.4.0".into())));
+    assert_eq!(h.calls.lock().unwrap().notes_loads, 0);
+}
+
+#[tokio::test]
+async fn a_development_build_records_nothing_on_a_fresh_install() {
+    // `test` is not a release: recording it would make the first real build
+    // read as an update from a version that never existed.
+    let h = started_from("test", None, Ok(None)).await;
+
+    let state = h.app.snapshot();
+    assert_eq!(state.client_update.whats_new, None);
+    assert_eq!(state.settings.updates.last_seen_version, None);
+    let saved = h.saved_last_seen();
+    assert!(saved.iter().all(Option::is_none), "{saved:?}");
+}
+
+#[tokio::test]
+async fn a_settings_file_from_before_the_record_shows_whats_new() {
+    // The update from a build that never recorded anything (0.8.0) to the
+    // one that does: the update this popup ships in has to announce itself.
+    let h = started("0.4.0", None, true, Ok(None)).await;
+
+    let state = h.app.snapshot();
+    assert_eq!(state.client_update.whats_new.as_deref(), Some("0.4.0"));
+    assert_eq!(
+        state.client_update.notes_status,
+        ClientReleaseNotesStatus::Ready
+    );
+    // Recorded only once it is dismissed, as after any other update.
+    assert_eq!(state.settings.updates.last_seen_version, None);
+    let saved = h.saved_last_seen();
+    assert!(saved.iter().all(Option::is_none), "{saved:?}");
+}
+
+#[tokio::test]
+async fn the_first_start_after_an_update_shows_whats_new_with_the_checks_notes() {
+    let h = started("0.4.0", Some("0.3.0"), true, Ok(None)).await;
+
+    let state = h.app.snapshot();
+    assert_eq!(state.client_update.whats_new.as_deref(), Some("0.4.0"));
+    // The notes came with the check: one request, no second one for them.
+    assert_eq!(
+        state.client_update.notes_status,
+        ClientReleaseNotesStatus::Ready
+    );
+    assert_eq!(state.client_update.notes.len(), 2);
+    {
+        let calls = h.calls.lock().unwrap();
+        assert_eq!((calls.checks, calls.notes_loads), (1, 0));
+    }
+    // Nothing is recorded until the popup is dismissed.
+    assert_eq!(
+        state.settings.updates.last_seen_version.as_deref(),
+        Some("0.3.0")
+    );
+    let saved = h.saved_last_seen();
+    assert!(
+        saved.iter().all(|seen| seen.as_deref() == Some("0.3.0")),
+        "{saved:?}"
+    );
+}
+
+#[tokio::test]
+async fn dismissing_whats_new_remembers_the_running_build() {
+    let h = started("0.4.0", Some("0.3.0"), true, Ok(None)).await;
+    assert!(h.app.snapshot().client_update.whats_new.is_some());
+
+    h.app
+        .dispatch_and_wait(ClientUpdateCommand::DismissWhatsNew.into())
+        .await
+        .unwrap();
+
+    let state = h.app.snapshot();
+    assert_eq!(state.client_update.whats_new, None);
+    assert_eq!(
+        state.settings.updates.last_seen_version.as_deref(),
+        Some("0.4.0")
+    );
+    assert_eq!(h.saved_last_seen().last(), Some(&Some("0.4.0".into())));
+}
+
+#[tokio::test]
+async fn an_update_with_whats_new_turned_off_is_remembered_quietly() {
+    // Recorded rather than left alone, so switching the popup back on later
+    // announces the next update and not a backlog.
+    let h = started("0.4.0", Some("0.3.0"), false, Ok(None)).await;
+
+    assert_eq!(h.app.snapshot().client_update.whats_new, None);
+    assert_eq!(h.saved_last_seen().last(), Some(&Some("0.4.0".into())));
+}
+
+#[tokio::test]
+async fn the_same_build_again_changes_nothing() {
+    let h = started("0.4.0", Some("0.4.0"), true, Ok(None)).await;
+
+    assert_eq!(h.app.snapshot().client_update.whats_new, None);
+    let saved = h.saved_last_seen();
+    assert!(
+        saved.iter().all(|seen| seen.as_deref() == Some("0.4.0")),
+        "{saved:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_downgrade_is_remembered_without_a_popup() {
+    let h = started("0.4.0", Some("0.5.0"), true, Ok(None)).await;
+
+    let state = h.app.snapshot();
+    assert_eq!(state.client_update.whats_new, None);
+    assert_eq!(
+        state.settings.updates.last_seen_version.as_deref(),
+        Some("0.4.0")
+    );
+    assert_eq!(h.saved_last_seen().last(), Some(&Some("0.4.0".into())));
+}
+
+#[tokio::test]
+async fn a_pending_popup_loads_the_notes_itself_when_the_check_failed() {
+    // The check never reached the list, so it had nothing to hand on, and a
+    // popup without notes is an empty box.
+    let h = started(
+        "0.4.0",
+        Some("0.3.0"),
+        true,
+        Err("github unreachable".into()),
+    )
+    .await;
+
+    let state = h.app.snapshot();
+    assert_eq!(state.client_update.whats_new.as_deref(), Some("0.4.0"));
+    assert_eq!(
+        state.client_update.notes_status,
+        ClientReleaseNotesStatus::Ready
+    );
+    let calls = h.calls.lock().unwrap();
+    assert_eq!((calls.checks, calls.notes_loads), (1, 1));
+}
+
+#[tokio::test]
+async fn loading_notes_offline_says_they_are_unavailable() {
+    // The offline port invents nothing, and says so rather than showing an
+    // empty list as if there had never been a release.
+    let (app, app_loop) = App::new("0.4.0", fake_ports());
+    tokio::spawn(app_loop.run());
+
+    app.dispatch_and_wait(ClientUpdateCommand::LoadNotes.into())
+        .await
+        .unwrap();
+
+    match app.snapshot().client_update.notes_status {
+        ClientReleaseNotesStatus::Failed { reason } => {
+            assert!(reason.contains("offline"), "{reason}")
+        }
+        other => panic!("expected a failure, got {other:?}"),
+    }
 }
