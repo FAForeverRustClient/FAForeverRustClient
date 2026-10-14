@@ -629,6 +629,7 @@ export const en = {
   "lobby.galacticWar.news.empty": "Galactic War does not publish announcements to this client yet.",
   "lobby.galacticWar.link.site": "Galactic War website",
   "lobby.galacticWar.link.forum": "FAF forum",
+  "lobby.galacticWar.how.title": "How it works",
   "lobby.galacticWar.how.galaxy.title": "The galaxy",
   "lobby.galacticWar.how.galaxy.body": "Four factions contest a shared galaxy of planets. Territory changes hands as battles are won and lost, so what you see is one continuous cycle rather than a single match.",
   "lobby.galacticWar.how.avatar.title": "Your avatar",

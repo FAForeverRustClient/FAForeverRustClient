@@ -1,11 +1,12 @@
 /* Galactic War: info column, the cycle and faction boards with the launch
-   button straddling their seam, and the explainer column. */
+   button straddling their seam, and the explainer column. Each part wears the
+   client's shared shapes: a raised head, a facts strip, links one to a line. */
 .gw-layout {
   display: grid;
   flex: 1;
   min-height: 0;
   gap: var(--space-3);
-  grid-template-columns: minmax(220px, 1fr) minmax(360px, 1.6fr) minmax(220px, 1fr);
+  grid-template-columns: minmax(240px, 1fr) minmax(380px, 1.6fr) minmax(240px, 1fr);
 }
 
 /* Below three comfortable columns the side panels stack under the boards
@@ -25,12 +26,38 @@
   gap: var(--space-2);
 }
 
+/* ── side columns ──────────────────────────────────────────────────────── */
 .gw-column-info,
 .gw-column-how {
-  padding: 20px 22px;
+  gap: 0;
+  overflow: hidden;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+}
+
+/* The raised head the client's cards share. */
+.gw-column-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 48px;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.gw-column-head h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.gw-column-state {
+  color: var(--color-muted);
+  font-size: 12px;
 }
 
 .gw-scroll {
@@ -38,15 +65,16 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  gap: 22px;
+  gap: var(--space-4);
+  padding: var(--space-4);
   overflow-y: auto;
-  scrollbar-gutter: stable;
+  --facts-strip-bleed: var(--space-4);
 }
 
 .gw-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 6px;
 }
 
 .gw-section p {
@@ -56,14 +84,50 @@
   line-height: 1.6;
 }
 
+/* The facts strip's label style, so a section reads as part of the same set. */
 .gw-section-title {
   margin: 0;
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
+}
+
+/* The strip opens the column: the head already draws the rule above it. */
+.gw-client-facts {
+  margin-top: calc(-1 * var(--space-4));
+  border-top: 0;
+}
+
+/* A section with nothing to say yet: a quiet framed note, not a heading over
+   empty space. */
+.gw-news {
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.gw-news p {
+  color: var(--color-subtle);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Explainer entries: a hairline between them instead of a rule under each
+   title. */
+.gw-column-how .gw-section + .gw-section {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.gw-column-how .gw-section-title {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .gw-muted {
@@ -72,30 +136,11 @@
   font-size: 13px;
 }
 
-.gw-facts {
-  display: grid;
-  margin: 0;
-  gap: var(--space-1) var(--space-3);
-  grid-template-columns: auto 1fr;
-}
-
-.gw-facts dt {
-  color: var(--color-muted);
-  font-size: 13px;
-}
-
-.gw-facts dd {
-  margin: 0;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
 .gw-notice {
   margin: 0;
   padding: var(--space-2) var(--space-3);
   font-size: 12px;
-  background: var(--color-surface-raised);
+  line-height: 1.5;
   border-radius: var(--radius-sm);
 }
 
@@ -107,35 +152,30 @@
 
 .gw-notice-warn {
   color: var(--color-warn-text);
+  background: color-mix(in srgb, var(--color-warn) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warn-text) 35%, var(--color-border));
 }
 
+/* One link to a line, icon first, as the vault panels list their actions. */
 .gw-links {
-  display: flex;
-  flex: 0 0 auto;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding-top: var(--space-2);
+  display: grid;
+  flex: none;
+  gap: 2px;
+  padding: var(--space-2);
   border-top: 1px solid var(--color-border);
 }
 
-.gw-link {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  color: var(--color-muted);
-  font-family: inherit;
-  font-size: 13px;
-  text-align: left;
-  background: none;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
+.gw-links .btn-ghost {
+  width: 100%;
+  min-width: 0;
+  justify-content: flex-start;
+  padding: 7px var(--space-3);
+  color: var(--color-text);
+  border-color: transparent;
 }
 
-.gw-link:hover {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
+.gw-links .btn-ghost svg {
+  color: var(--color-muted);
 }
 
 /* ── centre column ─────────────────────────────────────────────────────── */
@@ -147,8 +187,6 @@
 .gw-board {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  padding: 20px 22px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -159,60 +197,88 @@
    board: these paddings are what it reaches into, never content. */
 .gw-world {
   flex: 0 0 auto;
+  overflow: hidden;
   padding-bottom: 68px;
 }
 
 .gw-factions-board {
   flex: 1 1 auto;
+  gap: var(--space-3);
   min-height: 0;
-  padding-top: 68px;
+  padding: 68px var(--space-4) var(--space-4);
   overflow-y: auto;
   scrollbar-gutter: stable;
 }
 
-.gw-board-header {
+/* The cycle's head: what this is, its name, and how long it has run. */
+.gw-board-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border);
 }
 
-.gw-board-header h3 {
+.gw-board-heading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gw-board-heading h3 {
   margin: 0;
-  font-size: 16px;
+  color: var(--color-muted);
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.gw-cycle-name {
+  margin: 0;
+  overflow: hidden;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gw-cycle-age {
+  flex: none;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.gw-cycle-age strong {
+  color: var(--color-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .gw-offline {
+  flex: none;
   color: var(--color-subtle);
   font-size: 12px;
 }
 
-.gw-counters {
-  display: grid;
-  gap: var(--space-2);
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+/* The band directly under the head, which already draws the rule above. */
+.gw-cycle-facts {
+  border-top: 0;
 }
 
-.gw-counter {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-md);
+.gw-board-pad {
+  padding: var(--space-4);
 }
 
-.gw-counter-value {
-  font-size: 24px;
+.gw-factions-head h3 {
+  margin: 0;
+  font-size: 14px;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-
-.gw-counter-label {
-  color: var(--color-muted);
-  font-size: 13px;
 }
 
 /* ── the launch button and its territory ring ──────────────────────────── */
@@ -372,7 +438,7 @@
   gap: var(--space-3);
   /* Equal rows so the four cards fill the board rather than leaving most of
      it empty, which is what a 1080p screen made obvious. */
-  grid-auto-rows: minmax(0, 1fr);
+  grid-auto-rows: minmax(min-content, 1fr);
   /* Two by two, as in the mockup: on a wide screen four across would leave the
      cards nearly empty and the board a thin strip. */
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -385,23 +451,68 @@
   }
 }
 
+/* A card per faction. Its colour is the rule along the top, the emblem in
+   the corner, the share and its segment of the galaxy bar, all from the one
+   `--gw-faction-color` the card sets. */
 .gw-faction {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   /* Head, territory, figures: three groups pushed apart, so a card that is
      taller than its content spreads its own structure instead of parking a
      block in the middle with a void above and below it. */
   justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-4);
+  gap: var(--space-3);
+  min-width: 0;
+  overflow: hidden;
   background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--gw-faction-color) 70%, transparent);
+}
+
+/* The emblem whole and faint in the top right corner, behind the head and
+   the share; the head keeps its text clear of it. */
+.gw-faction-emblem {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: -1;
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+/* Name over the planets held, both clear of the emblem. */
+.gw-faction-head {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px calc(76px + var(--space-3) * 2) 0 var(--space-3);
+}
+
+.gw-faction-planets {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gw-faction-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gw-faction-territory {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  padding: 0 var(--space-3);
 }
 
 .gw-faction-share {
@@ -412,69 +523,85 @@
 }
 
 .gw-faction-share-value {
-  font-size: 34px;
+  color: var(--gw-faction-color);
+  font-size: 26px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 
 .gw-faction-share-label {
-  color: var(--color-muted);
-  font-size: 13px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 
-.gw-faction-bar {
-  display: block;
-  height: 6px;
-  background: var(--color-surface);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
+/* The whole galaxy as one bar, a segment per faction in the gateway's order:
+   the card's own lit, the others dimmed, so the share is read against the
+   rest without leaving the card. */
+.gw-share-bar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
 }
 
-.gw-faction-bar-fill {
-  display: block;
-  height: 100%;
-  border-radius: var(--radius-sm);
+.gw-share-bar > span {
+  flex-basis: 0;
+  min-width: 2px;
+  opacity: 0.18;
+  border-radius: calc(var(--radius-sm) - 4px);
 }
 
+.gw-share-bar > .is-own {
+  opacity: 1;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--gw-faction-color) 60%, transparent);
+}
+
+/* The figures as a small facts strip: label over value, a hairline between
+   them, on the tinted band along the card's foot. */
 .gw-faction-figures {
   display: grid;
   margin: 0;
-  gap: var(--space-2);
+  padding: 8px var(--space-3);
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: color-mix(in srgb, var(--color-bg) 35%, var(--color-surface-raised));
+  border-top: 1px solid var(--color-border);
 }
 
-/* Value above label, while the markup keeps the term before its definition. */
 .gw-faction-figures > div {
   display: flex;
-  flex-direction: column-reverse;
-  gap: 2px;
   min-width: 0;
+  flex-direction: column;
+  /* Values on one line even when a label takes two. */
+  justify-content: flex-end;
+  gap: 3px;
+  padding: 0 var(--space-2);
+  border-left: 1px solid var(--color-border);
 }
 
+.gw-faction-figures > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+/* Wraps rather than being cut: a third of a card is too narrow for
+   "Gerade online" on one line. */
 .gw-faction-figures dt {
-  color: var(--color-muted);
-  font-size: 12px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  line-height: 1.25;
+  text-transform: uppercase;
   overflow-wrap: anywhere;
 }
 
 .gw-faction-figures dd {
   margin: 0;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  line-height: 1.1;
-}
-
-.gw-faction-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding-bottom: var(--space-2);
-  border-bottom: 2px solid var(--color-border-strong);
-}
-
-.gw-faction-name {
-  font-size: 15px;
-  font-weight: 600;
+  line-height: 1.2;
 }

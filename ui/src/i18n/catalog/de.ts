@@ -533,6 +533,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.galacticWar.news.empty": "Galactic War veröffentlicht noch keine Ankündigungen an diesen Client.",
   "lobby.galacticWar.link.site": "Galactic-War-Website",
   "lobby.galacticWar.link.forum": "FAF-Forum",
+  "lobby.galacticWar.how.title": "So funktioniert es",
   "lobby.galacticWar.how.galaxy.title": "Die Galaxie",
   "lobby.galacticWar.how.galaxy.body": "Vier Fraktionen kämpfen um eine gemeinsame Galaxie aus Planeten. Gebiete wechseln den Besitzer, wenn Schlachten gewonnen oder verloren werden. Es ist ein durchgehender Zyklus, keine einzelne Partie.",
   "lobby.galacticWar.how.avatar.title": "Dein Avatar",

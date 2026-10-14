@@ -2005,6 +2005,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.galacticWar.news.empty": "Galactic War пока не публикует объявления в этом клиенте.",
   "lobby.galacticWar.link.site": "Сайт Galactic War",
   "lobby.galacticWar.link.forum": "Форум FAF",
+  "lobby.galacticWar.how.title": "Как это устроено",
   "lobby.galacticWar.how.galaxy.title": "Галактика",
   "lobby.galacticWar.how.galaxy.body": "Четыре фракции ведут войну за контроль над галактикой. Территория переходит из рук в руки по итогам выигранных и проигранных сражений. Это один непрерывный сезон, а не отдельный матч.",
   "lobby.galacticWar.how.avatar.title": "Ваш аватар",
