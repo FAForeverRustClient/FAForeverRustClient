@@ -7,7 +7,25 @@
  * surface is wide, a row of jump links above it when it is not. Which one is
  * decided by the surface's own width (a container query), not the window's,
  * because the shell's sidebar takes a share of the window that varies.
+ *
+ * The game's patches and the client's own releases are two sections of the
+ * tab, under the vaults' row of section tabs, and are drawn by the same rules
+ * below: a client release is a row and a note the way a patch is.
  */
+
+/* The section tabs, then one panel holding the rest of the tab's height, so
+   the list and the note keep scrolling inside it rather than the page. */
+.changelog-workspace {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.changelog-panel {
+  min-width: 0;
+  min-height: 0;
+}
 
 .changelog-view {
   display: grid;
@@ -221,6 +239,46 @@
   color: var(--color-muted);
   line-height: 1.35;
   white-space: normal;
+}
+
+/* The client's releases: one list, with no years to group it by. */
+.changelog-client-releases {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A client release: its version and date on one line, and under them what
+   it is to this install (installed, on offer, a pre-release). Two lines, as
+   a branch has, because the tags are words and three of them do not fit
+   beside a version in the narrow list. */
+.changelog-release.is-client {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 6px var(--space-2);
+  color: var(--color-text);
+}
+
+.changelog-client-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.changelog-client-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.changelog-client-tags:empty {
+  display: none;
 }
 
 /* ── The reading surface ───────────────────────────────────────────────── */
@@ -525,180 +583,21 @@
   border-left-color: var(--color-text);
 }
 
-/* ── The note itself ───────────────────────────────────────────────────── */
+/* ── The note in its surface ───────────────────────────────────────────── */
 
-.changelog-heading {
-  margin: 32px 0 10px;
-  color: var(--color-text);
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  scroll-margin-top: 16px;
-}
-
+/* The blocks themselves are styled with their renderer
+   (`shared/components/changelog-blocks.css`); what is here is only the
+   spacing this surface gives them. Nothing sits above the first one, and the
+   jump row ends in a rule of its own. */
 .changelog-note-copy > .changelog-heading:first-child,
 .changelog-jump + .changelog-heading {
   margin-top: 0;
 }
 
-.changelog-heading-2 {
-  font-size: 20px;
-}
-
-.changelog-heading-3 {
-  margin-top: 24px;
-  font-size: 17px;
-}
-
-.changelog-heading-4 {
-  margin-top: 20px;
-  font-size: 14px;
-  color: var(--color-muted);
-}
-
-.changelog-paragraph,
-.changelog-list {
-  margin: 0 0 12px;
-  font-size: 14px;
-  line-height: 1.65;
-  color: var(--color-text);
-}
-
-.changelog-list {
-  padding-left: 20px;
-}
-
-.changelog-list .changelog-list {
-  margin: 4px 0 6px;
-}
-
-.changelog-list li {
-  margin-bottom: 3px;
-}
-
-.changelog-list li::marker {
-  color: var(--color-subtle);
-}
-
-/* The unit a block of balance changes is about: its icon, then its name, as
-   the site's Liquid tag renders it. A hairline above separates one unit from
-   the last unit's list. */
-.changelog-unit {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 24px 0 8px;
-  padding-top: 16px;
-  border-top: 1px solid var(--color-border);
-  scroll-margin-top: 16px;
-}
-
-.changelog-heading + .changelog-unit,
 .changelog-jump + .changelog-unit {
   margin-top: 8px;
   padding-top: 0;
   border-top: 0;
-}
-
-/* A header can name a whole unit family, so the icons wrap rather than
-   squeezing the name out of the row. */
-.changelog-unit-icons {
-  display: flex;
-  flex: none;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.changelog-unit-icon {
-  flex: none;
-  width: 48px;
-  height: 48px;
-  object-fit: contain;
-  border-radius: var(--radius-sm);
-  user-select: none;
-}
-
-.changelog-unit-icon.is-missing {
-  display: none;
-}
-
-.changelog-unit-name {
-  font-size: 17px;
-  font-weight: 650;
-}
-
-/* ── Balance changes read as a diff ────────────────────────────────────── */
-
-.changelog-change {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  font-variant-numeric: tabular-nums;
-}
-
-.changelog-change-label {
-  font-weight: 600;
-}
-
-.changelog-change-label::after {
-  content: ":";
-}
-
-.changelog-old {
-  color: var(--color-error-text);
-  text-decoration: line-through;
-  text-decoration-color: color-mix(in srgb, var(--color-error) 55%, transparent);
-}
-
-.changelog-new {
-  font-weight: 600;
-  color: var(--color-ok-text);
-}
-
-.changelog-change svg {
-  flex: none;
-  color: var(--color-subtle);
-}
-
-/* ── Inline runs ───────────────────────────────────────────────────────── */
-
-.changelog-link,
-.changelog-issue {
-  padding: 0;
-  font: inherit;
-  color: var(--color-text);
-  background: none;
-  border: 0;
-  cursor: pointer;
-  text-decoration: underline;
-  text-decoration-color: var(--color-subtle);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
-}
-
-.changelog-link:hover,
-.changelog-issue:hover {
-  text-decoration-color: var(--color-text);
-}
-
-.changelog-link:focus-visible,
-.changelog-issue:focus-visible {
-  border-radius: 2px;
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-.changelog-issue {
-  font-variant-numeric: tabular-nums;
-}
-
-.changelog-note-copy code {
-  padding: 1px 5px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
 }
 
 /* ── Waiting and failing ───────────────────────────────────────────────── */

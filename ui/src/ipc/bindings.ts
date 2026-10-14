@@ -854,6 +854,12 @@ export type ChangelogRelease = {
 	webUrl: string,
 };
 
+/**
+ *  The list open inside Changelog: FAForever's game patches, or this client's
+ *  own releases. See [`MapsSection`].
+ */
+export type ChangelogSection = "game" | "client";
+
 /**  An inline run inside a paragraph or list item. */
 export type ChangelogSpan = { type: "text"; payload: string } | { type: "strong"; payload: string } | { type: "code"; payload: string } | { type: "link"; payload: {
 	text: string,
@@ -1742,6 +1748,37 @@ export type ClientRelease = {
 	publishedAt: string,
 };
 
+/**
+ *  One published release of this client and what it changed: a row of the
+ *  Changelog tab's client section, and the body of the What's new popup.
+ *
+ *  Every published release rather than only the ones on the update channel.
+ *  Every release this project has published so far is marked as a prerelease,
+ *  so a list filtered by channel would be empty for anyone on the stable one;
+ *  the flag is carried so the view can say which is which instead.
+ */
+export type ClientReleaseNotes = {
+	/**  The tag with any `v` prefix removed, as on [`ClientRelease::version`]. */
+	version: string,
+	/**  When GitHub published it, RFC 3339. `None` when the release did not say. */
+	publishedAt: string | null,
+	preRelease: boolean,
+	/**  The release's page on GitHub. */
+	notesUrl: string,
+	/**
+	 *  The release body, parsed by
+	 *  [`crate::protocol::changelog::parse_release_notes`]. Empty for a release
+	 *  published without notes, which every release before the changelog
+	 *  snippets was.
+	 */
+	blocks: ChangelogBlock[],
+};
+
+/**  Status of the release-notes list. Mirrors `ChangelogStatus`. */
+export type ClientReleaseNotesStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
+	reason: string,
+} };
+
 export type ClientUpdateCommand =
 /**
  *  Ask the release source what the newest build is. Runs automatically at
@@ -1766,7 +1803,23 @@ export type ClientUpdateCommand =
  */
 { type: "install" } |
 /**  Hide the banner for the release currently offered. */
-{ type: "dismiss" };
+{ type: "dismiss" } |
+/**
+ *  Read every release's notes. Answered from the release list the last
+ *  check read when there is one, so opening the changelog after the
+ *  startup check costs no request; fetched only when nothing has been
+ *  read yet.
+ */
+{ type: "loadNotes" } |
+/**
+ *  Close the What's new popup, and remember the running version as seen so
+ *  it is not shown again.
+ *
+ *  Nothing is remembered before this: a popup that never reached the
+ *  screen (offline, or closed before the notes arrived) comes back on the
+ *  next start rather than being lost.
+ */
+{ type: "dismissWhatsNew" };
 
 export type ClientUpdateEvent =
 /**
@@ -1800,7 +1853,20 @@ export type ClientUpdateEvent =
 	reason: string,
 } } | { type: "dismissed"; payload: {
 	version: string,
-} };
+} } | { type: "notesLoading" } |
+/**  The whole list, replacing the one before: newest first. */
+{ type: "notesLoaded"; payload: {
+	notes: ClientReleaseNotes[],
+} } | { type: "notesFailed"; payload: {
+	reason: string,
+} } |
+/**
+ *  The running build is newer than the last one the user saw the notes
+ *  of, and they asked to be told.
+ */
+{ type: "whatsNewPending"; payload: {
+	version: string,
+} } | { type: "whatsNewDismissed" };
 
 export type ClientUpdateState = {
 	status: ClientUpdateStatus,
@@ -1825,6 +1891,20 @@ export type ClientUpdateState = {
 	 *  last found out.
 	 */
 	lastChecked?: string,
+	/**
+	 *  Every published release's notes, newest first. Filled by every check
+	 *  that reached the release list, from the same response: one request
+	 *  serves both the update banner and the changelog.
+	 */
+	notes: ClientReleaseNotes[],
+	notesStatus: ClientReleaseNotesStatus,
+	/**
+	 *  The version whose What's new popup is waiting to be seen: the running
+	 *  build, on its first start after an update. `None` when there is
+	 *  nothing to show, including on a fresh install, where everything is new
+	 *  and a list of changes would mean nothing.
+	 */
+	whatsNew: string | null,
 };
 
 /**  Where the update flow currently is. */
@@ -5913,6 +5993,15 @@ export type NavCommand = { type: "select"; payload: {
 	section: ReplaysSection,
 } } | { type: "selectSettingsSection"; payload: {
 	section: SettingsSection,
+} } | { type: "selectChangelogSection"; payload: {
+	section: ChangelogSection,
+} } |
+/**
+ *  Open one client release in Changelog's client section. Leaves the tab
+ *  alone; a caller outside the tab sends [`NavCommand::Select`] as well.
+ */
+{ type: "selectChangelogClientRelease"; payload: {
+	version: string,
 } };
 
 export type NavEvent = { type: "tabSelected"; payload: {
@@ -5925,6 +6014,15 @@ export type NavEvent = { type: "tabSelected"; payload: {
 	section: ReplaysSection,
 } } | { type: "settingsSectionSelected"; payload: {
 	section: SettingsSection,
+} } | { type: "changelogSectionSelected"; payload: {
+	section: ChangelogSection,
+} } |
+/**
+ *  A client release was chosen, which opens the client section too: the
+ *  release would not be on screen otherwise.
+ */
+{ type: "changelogClientReleaseSelected"; payload: {
+	version: string,
 } };
 
 export type NavState = {
@@ -5937,6 +6035,15 @@ export type NavState = {
 	modsSection: ModsSection,
 	replaysSection: ReplaysSection,
 	settingsSection: SettingsSection,
+	changelogSection: ChangelogSection,
+	/**
+	 *  The client release open in Changelog's client section, by version;
+	 *  `None` opens the newest. Here rather than in the view for the reason
+	 *  the sections are, and because this is how the rest of the client points
+	 *  at one release: the update banner and the What's new popup select the
+	 *  tab and then the release.
+	 */
+	changelogClientVersion: string | null,
 };
 
 /**  One announcement from the organiser. */
@@ -12695,12 +12802,31 @@ export type UpdatePreferences = {
 	 *  one. A settings file that already stores the choice keeps it.
 	 */
 	preRelease: boolean,
+	/**
+	 *  Show what changed, once, on the first start after the client was
+	 *  updated. See `whats_new_on_startup` in the client-update slice.
+	 */
+	showWhatsNew: boolean,
+	/**
+	 *  The newest version whose What's new popup was dismissed, or that was
+	 *  recorded without one: a fresh install, a downgrade, the popup turned
+	 *  off. A fresh install is recorded as the settings load finds no file,
+	 *  so `None` is a settings file written before this existed, and reads as
+	 *  an update from an older build.
+	 *
+	 *  Written when the popup is dismissed rather than when it opens, so a
+	 *  start that never got to show it (offline, notes not loaded) shows it
+	 *  again next time instead of losing it.
+	 */
+	lastSeenVersion: string | null,
 };
 
 /**  A change to [`UpdatePreferences`]. */
 export type UpdatePreferencesPatch = {
 	automatic?: boolean,
 	preRelease?: boolean,
+	showWhatsNew?: boolean,
+	lastSeenVersion?: string | null,
 };
 
 export type UploadKind = "map" | "mod";

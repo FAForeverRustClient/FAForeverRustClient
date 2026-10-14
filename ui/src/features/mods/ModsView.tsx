@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { SectionTabs, sectionPanelProps } from "../../design-system/SectionTabs";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
-import { Icon } from "../../design-system/Icon";
+import { Icon, type IconName } from "../../design-system/Icon";
 import { EmptyState } from "../../design-system/EmptyState";
 import { RangeSlider } from "../../design-system/RangeSlider";
 import {
@@ -65,15 +65,13 @@ const toggleMod = (uid: string, enabled: boolean) => ipc.send({ kind: "Mods", co
 const MOD_VAULT_FILTERS = "mods.vault";
 
 function VaultView({ busy }: { busy: boolean }) {
-  // The Upload button opens this first. Pressing it used to put an OS
-  // file browser on screen immediately, which for anyone streaming is
-  // their filesystem in front of an audience.
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.mods.vault);
   const vaultStatus = useAppStore((state) => state.state.mods.vaultStatus);
   const browse = useAppStore((state) => state.state.mods.browse);
   const browseStatus = useAppStore((state) => state.state.mods.browseStatus);
   const browseTotalPages = useAppStore((state) => state.state.mods.browseTotalPages);
+  const browseTotalRecords = useAppStore((state) => state.state.mods.browseTotalRecords);
   // The query the page count in state was reported for. See `sameVaultSearch`.
   const browseQuery = useAppStore((state) => state.state.mods.browseQuery);
   const installed = useAppStore((state) => state.state.mods.installed);
@@ -277,8 +275,25 @@ function VaultView({ busy }: { busy: boolean }) {
     totalPages,
   });
   const selected = pageMods.find((mod) => mod.uid === selectedUid) ?? pageMods[0] ?? null;
-  const hiddenFilterCount = Number(installFilter !== "all")
+  // Everything behind "More filters" that is not at its default, so the
+  // button says how much it is hiding.
+  const hiddenFilterCount = Number(modType !== "all")
+    + Number(ranked !== "all")
+    + Number(minimumRating !== null || maximumRating !== null)
+    + Number(installFilter !== "all")
     + Number(dateAfter !== "" || dateBefore !== "");
+  // The whole result, not the page: the server's total for its own search,
+  // and the favourites counted after every filter. With the install filter
+  // on, the server's total counts mods this page then hid, so the summary
+  // falls back to what is on the page.
+  const serverTotal = sameVaultSearch(browseQuery, query) ? browseTotalRecords : null;
+  const totalLabel = localFavorites
+    ? t("mods.view.resultCount", { count: results.length })
+    : applied.installFilter === "all" && serverTotal !== null
+      ? t("mods.view.resultCount", { count: serverTotal })
+      : t("maps.view.resultCount", { count: pageMods.length });
+  const presetLabel = MOD_PRESETS.find(([key]) => key === preset)?.[1];
+  const refresh = () => ipc.send({ kind: "Mods", command: { type: "searchVault", payload: { query } } });
 
   return (
     <>
@@ -304,25 +319,39 @@ function VaultView({ busy }: { busy: boolean }) {
                 }
               >
                 {key === "favorites" && <Icon name="star" size={14} fill="currentColor" />}
-                {key === "mine" && <Icon name="mods" size={14} />} {t(label)}
+                {key === "mine" && <Icon name="user" size={14} />} {t(label)}
               </Button>
             ))}
             <span className="spacer" />
             <SearchPanelToggle expanded={filtersOpen} count={hiddenFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
             <Button onClick={clearSearch}>{t("mods.view.clear")}</Button>
-            <Button
-              onClick={() => ipc.send({ kind: "Mods", command: { type: "searchVault", payload: { query } } })}
-              disabled={browseStatus.type === "loading"}
-            >
-              <Icon name="refresh" size={15} /> {t("mods.view.refresh")}
-            </Button>
-            <Button onClick={() => void openUploadFromDisk("mod")}><Icon name="plus" size={15} /> {t("mods.view.uploadFromDisk")}</Button>
           </>
         )}
         advanced={filtersOpen ? (
           <div className="search-panel-advanced">
-            <div className="search-panel-advanced-grid">
+            <div className="search-panel-advanced-grid mods-advanced-grid">
+              <SearchField label={t("mods.view.type")}>
+                <select className="search-panel-control" value={modType} onChange={(event) => {
+                  setModType(event.target.value as ModTypeFilter);
+                  // Leaving the preset is what stops the `ui` preset, itself a
+                  // type filter, from overriding the choice. Favourites answer
+                  // the type locally, so a type chosen there narrows them
+                  // instead of leaving them.
+                  if (preset !== "favorites") choosePreset("all");
+                }}><option value="all">{t("mods.view.any")}</option><option value="ui">{t("mods.view.uiMods")}</option><option value="sim">{t("mods.view.simMods")}</option></select>
+              </SearchField>
+              <SearchField label={t("mods.view.ranking")}><select className="search-panel-control" value={ranked} onChange={(event) => setRanked(event.target.value as RankedFilter)}><option value="all">{t("mods.view.any")}</option><option value="ranked">{t("mods.view.rankedSafe")}</option><option value="unranked">{t("mods.view.unranked")}</option></select></SearchField>
               <SearchField label={t("mods.view.installation")}><select className="search-panel-control" value={installFilter} onChange={(event) => setInstallFilter(event.target.value as InstallFilter)}><option value="all">{t("mods.view.any")}</option><option value="installed">{t("mods.view.installed")}</option><option value="available">{t("mods.view.notInstalled")}</option><option value="updates">{t("mods.view.updatesAvailable")}</option></select></SearchField>
+              <RangeSlider
+                label={t("mods.view.reviewScore")}
+                min={0}
+                max={5}
+                step={0.5}
+                low={minimumRating}
+                high={maximumRating}
+                format={(value) => `${value}★`}
+                onChange={(low, high) => { setMinimumRating(low); setMaximumRating(high); }}
+              />
               <SearchField label={t("mods.view.dateField")}><select className="search-panel-control" value={dateField} onChange={(event) => setDateField(event.target.value as DateField)}><option value="updated">{t("mods.view.lastUpdated")}</option><option value="uploaded">{t("mods.view.uploaded")}</option></select></SearchField>
               <SearchField label={t("mods.view.after")}><DateInput className="search-panel-control" value={dateAfter} onChange={setDateAfter} /></SearchField>
               <SearchField label={t("mods.view.before")}><DateInput className="search-panel-control" value={dateBefore} onChange={setDateBefore} /></SearchField>
@@ -330,6 +359,9 @@ function VaultView({ busy }: { busy: boolean }) {
           </div>
         ) : undefined}
       >
+        {/* The search row is the name, what it is matched against, the
+            creator and the button. The rest of the filters are behind "More
+            filters", and the sort sits over the results it orders. */}
         <SearchField label={t("mods.view.mod")} className="search-panel-field-grow">
           <input
             className="search-panel-control"
@@ -370,32 +402,6 @@ function VaultView({ busy }: { busy: boolean }) {
             }}
             placeholder={t("mods.view.anyCreatorUploader")}
           />
-        </SearchField>
-        <RangeSlider
-          label={t("mods.view.reviewScore")}
-          min={0}
-          max={5}
-          step={0.5}
-          low={minimumRating}
-          high={maximumRating}
-          format={(value) => `${value}★`}
-          onChange={(low, high) => { setMinimumRating(low); setMaximumRating(high); }}
-        />
-        <SearchField label={t("mods.view.type")} className="search-panel-field-compact">
-          <select className="search-panel-control" value={modType} onChange={(event) => {
-            setModType(event.target.value as ModTypeFilter);
-            // Leaving the preset is what stops the `ui` preset, itself a type
-            // filter, from overriding the choice. Favourites answer the type
-            // locally, so a type chosen there narrows them instead of
-            // leaving them.
-            if (preset !== "favorites") choosePreset("all");
-          }}><option value="all">{t("mods.view.any")}</option><option value="ui">{t("mods.view.uiMods")}</option><option value="sim">{t("mods.view.simMods")}</option></select>
-        </SearchField>
-        <SearchField label={t("mods.view.ranking")} className="search-panel-field-compact">
-          <select className="search-panel-control" value={ranked} onChange={(event) => setRanked(event.target.value as RankedFilter)}><option value="all">{t("mods.view.any")}</option><option value="ranked">{t("mods.view.rankedSafe")}</option><option value="unranked">{t("mods.view.unranked")}</option></select>
-        </SearchField>
-        <SearchField label={t("mods.view.sortBy")} className="search-panel-field-compact">
-          <select className="search-panel-control" value={sort} onChange={(event) => chooseSort(event.target.value as ModSort)}><option value="rating">{t("mods.view.preset.rating")}</option><option value="newest">{t("mods.view.preset.newest")}</option><option value="updated">{t("mods.view.recentlyUpdated")}</option><option value="name">{t("mods.view.name")}</option></select>
         </SearchField>
         <SearchPanelSubmit />
       </SearchPanel>
@@ -440,15 +446,43 @@ function VaultView({ busy }: { busy: boolean }) {
         )
       ) : outcome.kind !== "waiting" ? (
         <>
-          <div className="vault-results-head">
-            <span>{t("maps.view.resultCount", { count: pageMods.length })}</span>
-            <span>{t("maps.view.pageOf", { page: currentPage, total: totalPages })}</span>
-          </div>
           <div
-            className={!localFavorites && browseStatus.type === "loading" ? "vault-layout is-stale-results" : "vault-layout"}
+            className={!localFavorites && browseStatus.type === "loading" ? "mods-vault-layout is-stale-results" : "mods-vault-layout"}
             aria-busy={!localFavorites && browseStatus.type === "loading"}
           >
-            <section className="vault-browser">
+            {/* Over the grid's column only, as the leaderboard has it over its
+                table: what the search found on the left, and at the grid's top
+                right the order it is in and the way to ask again. */}
+            <div className="mods-summary">
+              <div className="mods-summary-count">
+                <Icon name="mods" size={16} />
+                <strong>{totalLabel}</strong>
+                {presetLabel && <span className="muted">{t(presetLabel)}</span>}
+              </div>
+              <span className="spacer" />
+              <label className="mods-summary-sort">
+                <span className="muted">{t("mods.view.sortBy")}</span>
+                <select className="search-panel-control" value={sort} onChange={(event) => chooseSort(event.target.value as ModSort)}>
+                  <option value="rating">{t("mods.view.preset.rating")}</option>
+                  <option value="newest">{t("mods.view.preset.newest")}</option>
+                  <option value="updated">{t("mods.view.recentlyUpdated")}</option>
+                  <option value="name">{t("mods.view.name")}</option>
+                </select>
+              </label>
+              {!localFavorites && (
+                <Button
+                  variant="ghost"
+                  className="mods-summary-icon"
+                  aria-label={t("mods.view.refresh")}
+                  title={t("mods.view.refresh")}
+                  onClick={refresh}
+                  disabled={browseStatus.type === "loading"}
+                >
+                  <Icon name="refresh" size={15} />
+                </Button>
+              )}
+            </div>
+            <section className="vault-browser mods-vault-browser">
               {/* Every mod on this page fell to the install filter, which only
                   sees this page; the next one may well have some, so the pager
                   stays and the note points there. */}
@@ -482,6 +516,7 @@ function VaultView({ busy }: { busy: boolean }) {
                       onSelect={() => setSelectedUid(mod.uid)}
                       onInstall={() => installMod(mod.uid, mod.downloadUrl)}
                       onUpdate={() => installedMod && updateMod(mod.uid, installedMod.folderName, mod.downloadUrl)}
+                      onToggle={() => installedMod && toggleMod(installedMod.uid, !installedMod.enabled)}
                       onUninstall={() => installedMod && setPendingUninstall(installedMod)}
                       onToggleFavorite={() => toggleFavorite(mod.uid)}
                     />
@@ -545,6 +580,10 @@ const SUB_VIEW_LABELS: Record<SubView, MessageKey> = {
   vault: "mods.view.tab.vault",
   installed: "mods.view.tab.installed",
 };
+const SUB_VIEW_ICONS: Record<SubView, IconName> = {
+  vault: "globe",
+  installed: "folder",
+};
 
 /**
  * The sub-view is the backend's, like the Play tab's mode, so it survives the
@@ -581,17 +620,26 @@ export function ModsView() {
   };
   return (
     <div className="mods-workspace">
-      <div className="vault-subnav">
+      {/* The two lists as tabs, as the leaderboard has its two boards, and
+          at the end of the same line the one thing that is about neither:
+          publishing a mod of your own. It sat at the end of the vault's
+          presets and wrapped onto a line by itself. */}
+      <header className="mods-header">
         <SectionTabs
+          className="mods-section-tabs"
           active={subView}
           ariaLabel={t("mods.view.modLibraryViews")}
-          items={(Object.keys(SUB_VIEW_LABELS) as SubView[]).map((key) => ({ id: key, label: t(SUB_VIEW_LABELS[key]) }))}
+          items={(Object.keys(SUB_VIEW_LABELS) as SubView[]).map((key) => ({
+            id: key,
+            label: <><Icon name={SUB_VIEW_ICONS[key]} size={15} /> {t(SUB_VIEW_LABELS[key])}</>,
+          }))}
           onChange={selectSubView}
           idPrefix="mods-section"
         />
-        {/* No publish button here. Uploading a mod is one action with one
-            entry point, which is "Upload mod" in the vault's own toolbar. */}
-      </div>
+        <Button variant="ghost" className="mods-header-action" onClick={() => void openUploadFromDisk("mod")}>
+          <Icon name="upload" size={15} /> {t("mods.view.uploadFromDisk")}
+        </Button>
+      </header>
       <div {...sectionPanelProps("mods-section", subView)}>
         {subView === "vault" ? (
           <VaultView busy={busy} />

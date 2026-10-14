@@ -234,3 +234,70 @@
   display: flex;
   gap: 8px;
 }
+
+/* What's new after an update (WhatsNewDialog.tsx): a heading, a few lines and
+   the way to the rest. The width of the gate rather than of a page, no art,
+   and the list in the text size of the dialog around it rather than at the
+   changelog's reading size: it is a glance, not the read. */
+.modal-panel.whats-new {
+  width: min(480px, calc(100vw - 32px));
+  max-width: 480px;
+  padding: 22px 24px 20px;
+}
+
+/* It arrives on its own rather than from a click, so it settles in rather
+   than appearing at once. Not at all when reduced motion is asked for. */
+@media (prefers-reduced-motion: no-preference) {
+  .modal-panel.whats-new {
+    animation: whats-new-in 160ms ease-out;
+  }
+}
+
+@keyframes whats-new-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Clear of the dialog's close button in the corner. */
+.whats-new-title {
+  margin: 0 0 var(--space-3);
+  padding-right: 24px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.whats-new-changes {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--color-text);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.whats-new-changes li + li {
+  margin-top: 4px;
+}
+
+.whats-new-changes li::marker {
+  color: var(--color-subtle);
+}
+
+.whats-new-more {
+  margin: var(--space-2) 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.whats-new-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}

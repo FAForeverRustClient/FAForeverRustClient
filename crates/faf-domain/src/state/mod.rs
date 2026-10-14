@@ -51,8 +51,10 @@ pub use clan::{
     ClanIdentity, ClanInvitation, ClanState, ClanStatus, MAX_CLAN_TAG,
 };
 pub use client_update::{
-    compare_versions, is_release_version, should_update, strip_version_prefix, ClientRelease,
+    compare_versions, is_release_version, should_update, strip_version_prefix,
+    whats_new_on_startup, ClientRelease, ClientReleaseNotes, ClientReleaseNotesStatus,
     ClientUpdateCommand, ClientUpdateEvent, ClientUpdateState, ClientUpdateStatus, ReleaseChannel,
+    WhatsNewOnStartup,
 };
 pub use connectivity::{
     CheckFinding, CheckOutcome, CheckStatus, CheckStep, ConnectivityCheck, ConnectivityCommand,
@@ -109,7 +111,8 @@ pub use mods::{
     ModToggleStatus, ModType, ModVersionConflict, ModsCommand, ModsEvent, ModsState, VaultMod,
 };
 pub use nav::{
-    MapsSection, ModsSection, NavCommand, NavEvent, NavState, ReplaysSection, SettingsSection, Tab,
+    ChangelogSection, MapsSection, ModsSection, NavCommand, NavEvent, NavState, ReplaysSection,
+    SettingsSection, Tab,
 };
 pub use notifications::{
     ClientNotification, NotificationAction, NotificationCommand, NotificationEvent,

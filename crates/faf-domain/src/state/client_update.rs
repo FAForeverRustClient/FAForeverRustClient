@@ -23,6 +23,8 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::cmp::Ordering;
 
+use crate::protocol::changelog::ChangelogBlock;
+
 /// Which releases to offer.
 ///
 /// Java splits this across two tasks (`CheckForUpdateTask` and
@@ -84,6 +86,48 @@ impl ClientRelease {
     pub fn is_required(&self) -> bool {
         self.is_installable()
     }
+}
+
+/// One published release of this client and what it changed: a row of the
+/// Changelog tab's client section, and the body of the What's new popup.
+///
+/// Every published release rather than only the ones on the update channel.
+/// Every release this project has published so far is marked as a prerelease,
+/// so a list filtered by channel would be empty for anyone on the stable one;
+/// the flag is carried so the view can say which is which instead.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ClientReleaseNotes {
+    /// The tag with any `v` prefix removed, as on [`ClientRelease::version`].
+    pub version: String,
+    /// When GitHub published it, RFC 3339. `None` when the release did not say.
+    pub published_at: Option<String>,
+    pub pre_release: bool,
+    /// The release's page on GitHub.
+    pub notes_url: String,
+    /// The release body, parsed by
+    /// [`crate::protocol::changelog::parse_release_notes`]. Empty for a release
+    /// published without notes, which every release before the changelog
+    /// snippets was.
+    pub blocks: Vec<ChangelogBlock>,
+}
+
+/// Status of the release-notes list. Mirrors `ChangelogStatus`.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(
+    tag = "type",
+    content = "payload",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum ClientReleaseNotesStatus {
+    #[default]
+    Idle,
+    Loading,
+    Ready,
+    Failed {
+        reason: String,
+    },
 }
 
 /// Where the update flow currently is.
@@ -163,6 +207,16 @@ pub struct ClientUpdateState {
     /// last found out.
     #[serde(default)]
     pub last_checked: String,
+    /// Every published release's notes, newest first. Filled by every check
+    /// that reached the release list, from the same response: one request
+    /// serves both the update banner and the changelog.
+    pub notes: Vec<ClientReleaseNotes>,
+    pub notes_status: ClientReleaseNotesStatus,
+    /// The version whose What's new popup is waiting to be seen: the running
+    /// build, on its first start after an update. `None` when there is
+    /// nothing to show, including on a fresh install, where everything is new
+    /// and a list of changes would mean nothing.
+    pub whats_new: Option<String>,
 }
 
 impl ClientUpdateState {
@@ -271,6 +325,20 @@ pub enum ClientUpdateEvent {
     Dismissed {
         version: String,
     },
+    NotesLoading,
+    /// The whole list, replacing the one before: newest first.
+    NotesLoaded {
+        notes: Vec<ClientReleaseNotes>,
+    },
+    NotesFailed {
+        reason: String,
+    },
+    /// The running build is newer than the last one the user saw the notes
+    /// of, and they asked to be told.
+    WhatsNewPending {
+        version: String,
+    },
+    WhatsNewDismissed,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -294,6 +362,18 @@ pub enum ClientUpdateCommand {
     Install,
     /// Hide the banner for the release currently offered.
     Dismiss,
+    /// Read every release's notes. Answered from the release list the last
+    /// check read when there is one, so opening the changelog after the
+    /// startup check costs no request; fetched only when nothing has been
+    /// read yet.
+    LoadNotes,
+    /// Close the What's new popup, and remember the running version as seen so
+    /// it is not shown again.
+    ///
+    /// Nothing is remembered before this: a popup that never reached the
+    /// screen (offline, or closed before the notes arrived) comes back on the
+    /// next start rather than being lost.
+    DismissWhatsNew,
 }
 
 pub fn reduce(state: &mut ClientUpdateState, event: &ClientUpdateEvent) {
@@ -344,6 +424,29 @@ pub fn reduce(state: &mut ClientUpdateState, event: &ClientUpdateEvent) {
         }
         ClientUpdateEvent::Dismissed { version } => state.dismissed_version = version.clone(),
         ClientUpdateEvent::CheckCompleted { at } => state.last_checked = at.clone(),
+        // A refresh of a list that is already on screen is not shown as one:
+        // `Loading` blanks the section, and there is nothing to blank it for.
+        ClientUpdateEvent::NotesLoading => {
+            if state.notes_status != ClientReleaseNotesStatus::Ready {
+                state.notes_status = ClientReleaseNotesStatus::Loading;
+            }
+        }
+        ClientUpdateEvent::NotesLoaded { notes } => {
+            state.notes = notes.clone();
+            state.notes_status = ClientReleaseNotesStatus::Ready;
+        }
+        // Likewise a refresh that fails leaves what is on screen alone, as the
+        // game changelog does: the list is still the list, and an error page in
+        // its place would make a flaky connection destroy a working tab.
+        ClientUpdateEvent::NotesFailed { reason } => {
+            if state.notes_status != ClientReleaseNotesStatus::Ready {
+                state.notes_status = ClientReleaseNotesStatus::Failed {
+                    reason: reason.clone(),
+                };
+            }
+        }
+        ClientUpdateEvent::WhatsNewPending { version } => state.whats_new = Some(version.clone()),
+        ClientUpdateEvent::WhatsNewDismissed => state.whats_new = None,
     }
 }
 
@@ -453,6 +556,66 @@ pub fn should_update(current: &str, candidate: &str) -> bool {
         return false;
     }
     compare_versions(candidate, current) == Ordering::Greater
+}
+
+/// What a start of the client does about the What's new popup.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WhatsNewOnStartup {
+    /// The running build is the one last seen, or not a release at all.
+    Nothing,
+    /// Record the running build as seen, and show nothing.
+    Remember,
+    /// Show the popup. The build is recorded as seen only once it is
+    /// dismissed, so a popup that never reached the screen comes back.
+    Show,
+}
+
+/// Decide [`WhatsNewOnStartup`] from the last version whose notes were seen,
+/// the running version, and the user's preference.
+///
+/// Compared as versions, the way [`should_update`] compares them, so `0.10.0`
+/// counts as newer than `0.9.0`. Every case that is not "this client was
+/// updated" stays quiet:
+///
+/// - **Nothing recorded** is a settings file written by a build from before
+///   the record existed (0.8.0 and older), so it is an update like any other:
+///   from a build older than every one that reads the record. That is what
+///   makes the popup appear on the update that ships it. A fresh install is
+///   not this case and never reaches it: there a list of changes would be
+///   measured against nothing, so the settings load records the running build
+///   when it finds no settings file at all (`SettingsCommand::Load`), and this
+///   sees the same build again.
+/// - **A record that is not a version** is recorded over, and shows nothing:
+///   there is no telling what the client was updated from.
+/// - **A downgrade** shows nothing either; the notes of a build that came
+///   *before* the last one seen are not news. The running version is
+///   recorded, so the record describes the build that is actually installed.
+/// - **The preference off** records the version too, so turning it back on
+///   later announces the next update rather than a backlog.
+/// - **A development build** (`test`, `snapshot`, an empty version) does
+///   nothing at all, and in particular does not overwrite what a real build
+///   recorded.
+pub fn whats_new_on_startup(
+    last_seen: Option<&str>,
+    current: &str,
+    enabled: bool,
+) -> WhatsNewOnStartup {
+    if !is_release_version(current) {
+        return WhatsNewOnStartup::Nothing;
+    }
+    let last_seen_against_current = match last_seen {
+        // Written before the record existed: older than any build reading it.
+        None => Ordering::Less,
+        Some(seen) if is_release_version(seen) => compare_versions(seen, current),
+        // Comparing against a value that is not a version would read as
+        // "equal" forever and never show anything, so it is replaced.
+        Some(_) => return WhatsNewOnStartup::Remember,
+    };
+    match last_seen_against_current {
+        Ordering::Equal => WhatsNewOnStartup::Nothing,
+        Ordering::Less if enabled => WhatsNewOnStartup::Show,
+        Ordering::Less | Ordering::Greater => WhatsNewOnStartup::Remember,
+    }
 }
 
 #[cfg(test)]
@@ -892,6 +1055,136 @@ mod tests {
             },
         );
         assert!(state.required_release().is_some());
+    }
+
+    fn notes(version: &str) -> ClientReleaseNotes {
+        ClientReleaseNotes {
+            version: version.into(),
+            published_at: Some("2026-02-01T00:00:00Z".into()),
+            pre_release: true,
+            notes_url: format!("https://example.invalid/releases/{version}"),
+            blocks: vec![ChangelogBlock::Heading {
+                level: 3,
+                text: "Features".into(),
+            }],
+        }
+    }
+
+    #[test]
+    fn loaded_notes_replace_the_list_wholesale() {
+        let mut state = ClientUpdateState::default();
+        reduce(&mut state, &ClientUpdateEvent::NotesLoading);
+        assert_eq!(state.notes_status, ClientReleaseNotesStatus::Loading);
+
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::NotesLoaded {
+                notes: vec![notes("0.3.0"), notes("0.2.0")],
+            },
+        );
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::NotesLoaded {
+                notes: vec![notes("0.4.0")],
+            },
+        );
+        assert_eq!(state.notes_status, ClientReleaseNotesStatus::Ready);
+        assert_eq!(state.notes, vec![notes("0.4.0")]);
+    }
+
+    #[test]
+    fn a_failed_first_load_is_reported() {
+        let mut state = ClientUpdateState::default();
+        reduce(&mut state, &ClientUpdateEvent::NotesLoading);
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::NotesFailed {
+                reason: "github unreachable".into(),
+            },
+        );
+        assert_eq!(
+            state.notes_status,
+            ClientReleaseNotesStatus::Failed {
+                reason: "github unreachable".into()
+            }
+        );
+    }
+
+    #[test]
+    fn a_refresh_of_notes_on_screen_neither_blanks_nor_breaks_them() {
+        // The game changelog's rule: a list that is already showing is still
+        // the list, and a flaky connection must not replace it with an error.
+        let mut state = ClientUpdateState::default();
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::NotesLoaded {
+                notes: vec![notes("0.3.0")],
+            },
+        );
+        reduce(&mut state, &ClientUpdateEvent::NotesLoading);
+        assert_eq!(state.notes_status, ClientReleaseNotesStatus::Ready);
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::NotesFailed {
+                reason: "github unreachable".into(),
+            },
+        );
+        assert_eq!(state.notes_status, ClientReleaseNotesStatus::Ready);
+        assert_eq!(state.notes, vec![notes("0.3.0")]);
+    }
+
+    #[test]
+    fn whats_new_is_pending_until_dismissed() {
+        let mut state = ClientUpdateState::default();
+        assert_eq!(state.whats_new, None);
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::WhatsNewPending {
+                version: "0.4.0".into(),
+            },
+        );
+        assert_eq!(state.whats_new.as_deref(), Some("0.4.0"));
+        reduce(&mut state, &ClientUpdateEvent::WhatsNewDismissed);
+        assert_eq!(state.whats_new, None);
+    }
+
+    #[test]
+    fn whats_new_shows_only_after_an_update() {
+        use WhatsNewOnStartup::*;
+        // (last seen, running, preference) -> decision
+        for (last_seen, current, enabled, expected) in [
+            // A settings file from before the record: updated from an older
+            // build, so the same as any update. (A fresh install has the
+            // running build recorded by the settings load, and is the same
+            // build again by the time this is asked.)
+            (None, "0.4.0", true, Show),
+            (None, "0.4.0", false, Remember),
+            // Updated: shown when wanted, quietly recorded when not.
+            (Some("0.3.0"), "0.4.0", true, Show),
+            (Some("0.3.0"), "0.4.0", false, Remember),
+            // Compared as versions, not as text.
+            (Some("0.9.0"), "0.10.0", true, Show),
+            (Some("v0.3.0"), "0.4.0", true, Show),
+            // The same build again.
+            (Some("0.4.0"), "0.4.0", true, Nothing),
+            (Some("0.4"), "0.4.0", true, Nothing),
+            // A downgrade is not news.
+            (Some("0.5.0"), "0.4.0", true, Remember),
+            // A record that is not a version says nothing about what came
+            // before, so it is recorded over and nothing is shown.
+            (Some("garbage"), "0.4.0", true, Remember),
+            (Some(""), "0.4.0", true, Remember),
+            // A development build leaves the record alone.
+            (Some("0.3.0"), "test", true, Nothing),
+            (None, "test", true, Nothing),
+            (None, "", true, Nothing),
+        ] {
+            assert_eq!(
+                whats_new_on_startup(last_seen, current, enabled),
+                expected,
+                "{last_seen:?} -> {current} (enabled: {enabled})"
+            );
+        }
     }
 
     #[test]

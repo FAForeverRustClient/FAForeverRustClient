@@ -6,7 +6,9 @@
 // its own, named after the pull request, never does.
 //
 // A snippet is `changelog/snippets/<category>.<pr>.md`, holding one short line
-// for players: `- Replays can be filtered by map`. See `changelog/README.md`.
+// for players: `- Replays can be filtered by map`. The version-bump pull
+// request also carries `highlights.<pr>.md`, the few lines that lead the
+// release. See `changelog/README.md`.
 //
 // Usage:
 //   node scripts/changelog.mjs verify            every snippet is well named
@@ -23,8 +25,18 @@ import { basename, join, resolve } from "node:path";
 
 export const SNIPPET_DIR = "changelog/snippets";
 
-/** File name prefix and the heading it is listed under, in release order. */
+/**
+ * File name prefix and the heading it is listed under, in release order.
+ *
+ * `highlights` is the release's own summary rather than a kind of change: a
+ * few lines written in the version-bump pull request's snippet, ahead of
+ * everything else. Its heading is also a contract with the client, whose
+ * What's new window looks for it by name (`HIGHLIGHTS_HEADING` in
+ * `ui/src/features/updates/whatsNewChanges.ts`) to show those lines instead
+ * of the oldest pull requests' first few.
+ */
 export const CATEGORIES = [
+  ["highlights", "Highlights"],
   ["features", "Features"],
   ["fix", "Bug fixes"],
   ["performance", "Performance"],

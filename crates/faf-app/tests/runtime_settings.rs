@@ -47,8 +47,8 @@ struct StoredSettings(SettingsState);
 
 #[async_trait]
 impl SettingsPort for StoredSettings {
-    async fn load(&self) -> SettingsState {
-        self.0.clone()
+    async fn load(&self) -> Option<SettingsState> {
+        Some(self.0.clone())
     }
 
     async fn save(&self, _settings: &SettingsState) -> Result<(), String> {
@@ -63,8 +63,8 @@ struct RecordingSettings {
 
 #[async_trait]
 impl SettingsPort for RecordingSettings {
-    async fn load(&self) -> SettingsState {
-        self.loaded.clone()
+    async fn load(&self) -> Option<SettingsState> {
+        Some(self.loaded.clone())
     }
 
     async fn save(&self, settings: &SettingsState) -> Result<(), String> {

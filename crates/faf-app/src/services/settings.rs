@@ -15,8 +15,8 @@
 
 use faf_domain::state::settings as domain;
 use faf_domain::state::{
-    ChatEvent, ClientNotification, InstallEvent, MapGeneratorEvent, NavEvent, NotificationAction,
-    NotificationEvent, NotificationKind, SettingsCommand, SettingsEvent,
+    is_release_version, ChatEvent, ClientNotification, InstallEvent, MapGeneratorEvent, NavEvent,
+    NotificationAction, NotificationEvent, NotificationKind, SettingsCommand, SettingsEvent,
 };
 
 use crate::runtime::{EventSink, LoadedFromDisk, SerialMutation, ServiceCtx};
@@ -116,7 +116,13 @@ impl SettingsMerge {
 pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         SettingsCommand::Load => {
-            let mut settings = ctx.ports.settings.load().await.normalized();
+            let stored = ctx.ports.settings.load().await;
+            // No settings at all is the one sure sign of a fresh install: a
+            // player who has run any build of this client before has a file.
+            // A file nothing could be read from counts too, since the session
+            // starts from defaults either way.
+            let first_start = stored.is_none();
+            let mut settings = stored.unwrap_or_default().normalized();
             // Filters outlive a restart only when the player asked for that
             // (#447); otherwise every list starts unfiltered. Only in state:
             // the file is written over with the cleared filters on the next
@@ -188,6 +194,17 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
                     tracing::error!(%reason, "could not save the discovered install paths");
                 }
             }
+            // On a fresh install the running build counts as seen: everything
+            // is new to it, and a list of what changed since some earlier build
+            // would be measured against nothing. Recorded here, where "fresh"
+            // is known, so that the What's new decision can read a missing
+            // record as a settings file from a build that predates the record,
+            // which is an update (`whats_new_on_startup`). Not for a
+            // development build, which records nothing there either.
+            let record_running_build = first_start && is_release_version(&ctx.backend_version);
+            if record_running_build {
+                settings.updates.last_seen_version = Some(ctx.backend_version.clone());
+            }
             let start_page = settings.general.start_page;
             let show_joins_parts = settings.chat.show_joins_parts;
             // The map generator keeps its own working copy of these options,
@@ -219,6 +236,14 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             });
             out.emit(NavEvent::TabSelected { tab: start_page });
             sync_runtime_preferences(ctx, out);
+            // Written now rather than whenever something next changes, through
+            // the guarded write (the load has just finished, so it goes
+            // ahead). A fresh install the player never configures might
+            // otherwise have no file by its first update, and that update
+            // would read as a fresh install of its own: no popup for it.
+            if record_running_build {
+                persist(ctx, out).await;
+            }
             expire_and_measure_game_cache(ctx, out).await;
             // Last, and deliberately here rather than in the session handshake:
             // the release channel is a preference, so a check that ran any
@@ -398,7 +423,7 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             // not fire a network request the user did not ask for. The Settings
             // section has an explicit "Check now" for that.
             merge(ctx, out, |settings| {
-                let preferences = patch.apply_to(settings.updates);
+                let preferences = patch.apply_to(settings.updates.clone());
                 (SettingsEvent::UpdatesChanged { preferences }, ())
             });
             persist(ctx, out).await;

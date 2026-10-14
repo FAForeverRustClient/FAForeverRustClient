@@ -1,112 +1,163 @@
-.reviews-modal {
-  width: min(680px, 92vw);
+/* The reviews overlay, built from the theme's tokens: a head, the verdict on
+   the facts strip's tinted band across the full width, and the reviews
+   below. The panel's own padding is taken off so the band can reach both
+   edges; each part pads itself. */
+.modal-panel.reviews-modal {
+  width: min(720px, 92vw);
+  max-width: 720px;
   max-height: 84vh;
+  padding: 0;
   overflow-y: auto;
-  scrollbar-gutter: stable;
+  /* No scrollbar gutter: a dialog sized to its content, as `.modal-panel` says,
+     and a reserved strip would stop the verdict's band short of the right
+     edge whenever the list is short enough not to scroll. */
 }
 
 .reviews-head {
-  margin-bottom: var(--space-4);
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4) calc(var(--space-4) * 2.5) var(--space-3) var(--space-4);
 }
 
 .reviews-head h2 {
-  margin: var(--space-1) 0 0;
-  font-size: 18px;
-  letter-spacing: -0.02em;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.25;
 }
 
-.reviews-eyebrow {
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.reviews-pad {
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-4);
 }
 
-/* ── Distribution ────────────────────────────────────────────────────────── */
-
-.reviews-summary {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--space-4);
-  align-items: center;
-  margin-bottom: var(--space-4);
-}
-
-.reviews-average {
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-}
-
-.reviews-average strong {
-  font-size: 30px;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.reviews-bars {
-  display: grid;
-  gap: 3px;
-}
-
-.reviews-bar {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) 28px;
-  gap: var(--space-2);
-  align-items: center;
-  font-size: 11px;
-}
-
-.reviews-bar-label,
-.reviews-bar-count {
-  color: var(--color-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.reviews-bar-count {
-  text-align: right;
-}
-
-.reviews-bar-track {
-  height: 6px;
-  background: var(--color-surface-raised);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.reviews-bar-fill {
-  display: block;
-  height: 100%;
-  background: var(--color-accent);
-  border-radius: 999px;
-}
-
-/* Stars are a rating, not a status, so they use the accent rather than
-   `--color-ok`/`--color-warn`. */
+/* Stars are a rating, so they take the rating colour the mod cards' star
+   uses, rather than the accent, which is the text colour in the default
+   theme. */
 .review-stars {
-  color: var(--color-subtle);
+  color: color-mix(in srgb, var(--color-subtle) 60%, transparent);
   letter-spacing: 1px;
   white-space: nowrap;
 }
 
 .review-stars .is-filled {
-  color: var(--color-accent);
+  color: var(--color-rating);
 }
 
-/* ── Your own review ─────────────────────────────────────────────────────── */
+/* ── The verdict ─────────────────────────────────────────────────────────── */
 
+.reviews-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: calc(var(--space-4) * 1.5);
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.reviews-average {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  min-width: 96px;
+}
+
+.reviews-average strong {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.reviews-average .review-stars {
+  font-size: 15px;
+}
+
+.reviews-average small {
+  font-size: 12px;
+}
+
+.reviews-bars {
+  display: grid;
+  gap: 5px;
+}
+
+.reviews-bar {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+}
+
+.reviews-bar-label {
+  display: inline-flex;
+  gap: 3px;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.reviews-bar-label span {
+  color: var(--color-rating);
+}
+
+.reviews-bar-count {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Square-ended bars, no capsules. */
+.reviews-bar-track {
+  height: 8px;
+  overflow: hidden;
+  background: var(--color-surface-raised);
+  border-radius: 2px;
+}
+
+.reviews-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-rating);
+  border-radius: 2px;
+}
+
+/* ── Below the band ──────────────────────────────────────────────────────── */
+
+.reviews-body {
+  display: grid;
+  gap: calc(var(--space-4) * 1.5);
+  padding: var(--space-4);
+}
+
+.reviews-sign-in {
+  margin: 0;
+}
+
+.reviews-section-title {
+  margin: 0;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+/* Your own review. */
 .reviews-own {
   display: grid;
   gap: var(--space-3);
-  padding: var(--space-3);
-  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-4);
 }
 
-.reviews-own h3,
-.reviews-list h3 {
-  margin: 0;
-  font-size: 13px;
+.reviews-own-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .reviews-score-picker {
@@ -116,16 +167,17 @@
 
 .reviews-score {
   padding: 0 2px;
-  color: var(--color-subtle);
+  color: color-mix(in srgb, var(--color-subtle) 60%, transparent);
+  font-size: 24px;
+  line-height: 1;
   background: none;
   border: 0;
-  font-size: 22px;
-  line-height: 1;
   cursor: pointer;
+  transition: color var(--transition-fast);
 }
 
 .reviews-score.is-on {
-  color: var(--color-accent);
+  color: var(--color-rating);
 }
 
 .reviews-score:focus-visible {
@@ -136,24 +188,34 @@
 
 .reviews-text {
   width: 100%;
-  padding: var(--space-2);
+  min-height: 96px;
+  padding: var(--space-2) var(--space-3);
   color: var(--color-text);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
   font: inherit;
   font-size: 13px;
+  line-height: 1.5;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   resize: vertical;
+  transition: border-color var(--transition-fast);
+}
+
+.reviews-text:focus-visible {
+  border-color: var(--color-border-strong);
+  outline: none;
 }
 
 .reviews-own-actions {
   display: flex;
-  gap: var(--space-2);
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
 }
 
 .reviews-submit {
-  margin: 0;
+  margin: 0 auto 0 0;
   font-size: 12px;
 }
 
@@ -161,28 +223,70 @@
   color: var(--color-ok-text);
 }
 
-/* ── Everyone else ───────────────────────────────────────────────────────── */
-
+/* Everyone else's. */
 .reviews-list {
   display: grid;
   gap: var(--space-2);
 }
 
+.reviews-list-items {
+  overflow: hidden;
+}
+
 .review-row {
-  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+}
+
+.review-row + .review-row {
+  border-top: 1px solid var(--color-border);
 }
 
 .review-row header {
   display: flex;
-  align-items: baseline;
+  min-width: 0;
+  align-items: center;
   gap: var(--space-2);
-  flex-wrap: wrap;
-  margin-bottom: var(--space-1);
+}
+
+.review-row header strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The version reviewed, as a square tag (the mods tab's type badge). */
+.reviews-version {
+  flex: none;
+  padding: 1px 5px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.review-row header .review-stars {
+  margin-left: auto;
+  font-size: 13px;
 }
 
 .review-row p {
   margin: 0;
-  white-space: pre-line;
-  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-text) 88%, var(--color-muted));
   font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+@media (max-width: 560px) {
+  .reviews-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

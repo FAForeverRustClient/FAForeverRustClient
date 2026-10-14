@@ -1,0 +1,3 @@
+- The Changelog tab has a Client updates section with this client's own release notes.
+- After an update, a short What's new window lists the main changes (Settings, Updates, "Show what's new after an update").
+- The update banner's What's new opens the release notes in the client.

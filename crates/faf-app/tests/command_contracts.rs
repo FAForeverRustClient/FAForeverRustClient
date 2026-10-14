@@ -48,7 +48,7 @@ use faf_domain::protocol::vault_query::{MapVaultQuery, ModVaultQuery};
 use faf_domain::state::settings::{BrowsingPreferencesPatch, GamePreferencesPatch};
 use faf_domain::state::{
     AuthCommand, AuthEvent, AuthMode, AuthStatus, BracketConfig, ChangelogCommand, ChatCommand,
-    ChatEvent, ChatStatus, ClanCommand, ClanDraft, ClanIdentity, ClientRelease,
+    ChatEvent, ChatStatus, ClanCommand, ClanDraft, ClanIdentity, ClientRelease, ClientReleaseNotes,
     ClientUpdateCommand, ClientVersions, FfaReport, GalacticWarCommand, GalacticWarStatistics,
     GamePreferences, GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus,
     GuideSubmission, GuidesCommand, GuidesIdentity, HostGameConfig, InstalledMap, InstalledMod,
@@ -409,6 +409,10 @@ impl ClientUpdatePort for GatedClientUpdates {
     async fn latest(&self, _channel: ReleaseChannel) -> Result<Option<ClientRelease>, String> {
         self.0.pass("client-update-check").await;
         Ok(None)
+    }
+    async fn release_notes(&self) -> Result<Vec<ClientReleaseNotes>, String> {
+        self.0.pass("client-release-notes").await;
+        Ok(vec![])
     }
     async fn download(
         &self,
@@ -792,6 +796,17 @@ fn single_flight_cases() -> Vec<SingleFlightCase> {
             again: ClientUpdateCommand::Check.into(),
             again_gate: "client-update-check".into(),
             probe: changelog_probe(),
+        },
+        SingleFlightCase {
+            key: "ClientReleaseNotes",
+            setup: vec![],
+            first: ClientUpdateCommand::LoadNotes.into(),
+            first_gate: "client-release-notes".into(),
+            again: ClientUpdateCommand::LoadNotes.into(),
+            again_gate: "client-release-notes".into(),
+            // The check reads the same port, under a key of its own: a notes
+            // load in flight must not hold it up.
+            probe: client_update_probe(),
         },
         SingleFlightCase {
             key: "GalacticWar",
@@ -1550,16 +1565,16 @@ struct HeldSettings {
 
 #[async_trait]
 impl SettingsPort for HeldSettings {
-    async fn load(&self) -> SettingsState {
+    async fn load(&self) -> Option<SettingsState> {
         // No cache lifetime, so loading cannot sweep the real game-files
         // cache of whoever runs the suite.
-        SettingsState {
+        Some(SettingsState {
             game: GamePreferences {
                 cache_lifetime_days: None,
                 ..GamePreferences::default()
             },
             ..SettingsState::default()
-        }
+        })
     }
 
     async fn save(&self, settings: &SettingsState) -> Result<(), String> {
