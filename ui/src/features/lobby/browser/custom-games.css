@@ -983,14 +983,14 @@
   background: var(--color-surface);
 }
 
-/* Top right, the picture's inner corner beside the title, where the vault
-   cards keep their Featured badge. Top left put a square into the tile's
-   rounded outer corner. A light plate, as the vault badge's: a solid block
-   with a strong border round a small lock was the heaviest thing on the tile. */
+/* Top left, where the eye enters the tile. The tile clips its picture to
+   its rounded corner, so the plate sits inside the curve rather than over
+   it. A light plate, as the vault badge's: a solid block with a strong
+   border round a small lock was the heaviest thing on the tile. */
 .game-tile-private {
   position: absolute;
   top: 6px;
-  right: 6px;
+  left: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
