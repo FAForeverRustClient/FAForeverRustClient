@@ -207,7 +207,7 @@
   min-width: 0;
   min-height: 0;
   height: 100%;
-  /* No scrollbar room kept: the pane keeps one height and scrolls only in a
+  /* No scrollbar gutter: the pane keeps one height and scrolls only in a
      window too short for it, and a reserved strip stopped the facts band
      11px short of the pane's right edge. */
   overflow-y: auto;
