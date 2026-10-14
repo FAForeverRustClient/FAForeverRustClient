@@ -3254,6 +3254,7 @@
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -58272,6 +58273,7 @@
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -58558,6 +58560,7 @@
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -58854,6 +58857,7 @@
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -59144,6 +59148,7 @@
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -59434,6 +59439,7 @@
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -59734,6 +59740,7 @@
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -60040,6 +60047,7 @@
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -60343,6 +60351,7 @@
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -60654,6 +60663,7 @@
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -61048,6 +61058,7 @@
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -61404,6 +61415,7 @@
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -61762,6 +61774,7 @@
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -62257,6 +62270,7 @@
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -76348,6 +76362,7 @@
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -76462,6 +76477,7 @@
                 "preferences": {
                   "autoLogin": false,
                   "filterMemory": "restart",
+                  "keepRunningDuringGame": false,
                   "rememberTypedEntries": true,
                   "startPage": "play"
                 }
@@ -76644,6 +76660,7 @@
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -76970,6 +76987,7 @@
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -77282,6 +77300,7 @@
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -77583,6 +77602,7 @@
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -77873,6 +77893,7 @@
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -78162,6 +78183,7 @@
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -78479,6 +78501,7 @@
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -78765,6 +78788,7 @@
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -79071,6 +79095,7 @@
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -79367,6 +79392,7 @@
             "general": {
               "autoLogin": false,
               "filterMemory": "restart",
+              "keepRunningDuringGame": false,
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -79649,6 +79675,7 @@
                   "general": {
                     "autoLogin": true,
                     "filterMemory": "session",
+                    "keepRunningDuringGame": true,
                     "rememberTypedEntries": false,
                     "startPage": "news"
                   },
@@ -79929,6 +79956,7 @@
             "general": {
               "autoLogin": true,
               "filterMemory": "session",
+              "keepRunningDuringGame": true,
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -88923,6 +88951,21 @@
         "title": "pioneer rush go-adapter"
       },
       {
+        "adapter": "dynamic",
+        "expected": "expJava",
+        "title": "Friday 4v4 [exp-java-adapter]"
+      },
+      {
+        "adapter": "dynamic",
+        "expected": "expJava",
+        "title": "Friday [EXP-JAVA-ADAPTER] 4v4"
+      },
+      {
+        "adapter": "dynamic",
+        "expected": "expJava",
+        "title": "[exp-java-adapter]"
+      },
+      {
         "adapter": "java",
         "expected": "java",
         "title": "Friday 4v4"
@@ -88948,6 +88991,61 @@
         "title": "pioneer rush go-adapter"
       },
       {
+        "adapter": "java",
+        "expected": "java",
+        "title": "Friday 4v4 [exp-java-adapter]"
+      },
+      {
+        "adapter": "java",
+        "expected": "java",
+        "title": "Friday [EXP-JAVA-ADAPTER] 4v4"
+      },
+      {
+        "adapter": "java",
+        "expected": "java",
+        "title": "[exp-java-adapter]"
+      },
+      {
+        "adapter": "expJava",
+        "expected": "expJava",
+        "title": "Friday 4v4"
+      },
+      {
+        "adapter": "expJava",
+        "expected": "expJava",
+        "title": "Friday 4v4 [go-adapter]"
+      },
+      {
+        "adapter": "expJava",
+        "expected": "expJava",
+        "title": "Friday [GO-Adapter] 4v4"
+      },
+      {
+        "adapter": "expJava",
+        "expected": "expJava",
+        "title": "[go-adapter]"
+      },
+      {
+        "adapter": "expJava",
+        "expected": "expJava",
+        "title": "pioneer rush go-adapter"
+      },
+      {
+        "adapter": "expJava",
+        "expected": "expJava",
+        "title": "Friday 4v4 [exp-java-adapter]"
+      },
+      {
+        "adapter": "expJava",
+        "expected": "expJava",
+        "title": "Friday [EXP-JAVA-ADAPTER] 4v4"
+      },
+      {
+        "adapter": "expJava",
+        "expected": "expJava",
+        "title": "[exp-java-adapter]"
+      },
+      {
         "adapter": "go",
         "expected": "go",
         "title": "Friday 4v4"
@@ -88971,6 +89069,21 @@
         "adapter": "go",
         "expected": "go",
         "title": "pioneer rush go-adapter"
+      },
+      {
+        "adapter": "go",
+        "expected": "go",
+        "title": "Friday 4v4 [exp-java-adapter]"
+      },
+      {
+        "adapter": "go",
+        "expected": "go",
+        "title": "Friday [EXP-JAVA-ADAPTER] 4v4"
+      },
+      {
+        "adapter": "go",
+        "expected": "go",
+        "title": "[exp-java-adapter]"
       }
     ],
     "playerNoteLookups": [
@@ -121086,6 +121199,7 @@
       "general": {
         "autoLogin": true,
         "filterMemory": "session",
+        "keepRunningDuringGame": true,
         "rememberTypedEntries": false,
         "startPage": "news"
       },

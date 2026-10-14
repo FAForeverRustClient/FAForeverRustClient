@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { ConfirmDialog } from "../../design-system/ConfirmDialog";
+import { FactsStrip } from "../../design-system/FactsStrip";
 import { VaultFeaturedBadge } from "../../design-system/VaultFeaturedBadge";
 import type { VaultMap } from "../../ipc/bindings";
 import { clientIntlTag, formatShortDate } from "../../shared/format/dates";
@@ -68,9 +69,18 @@ export function MapCard({
   onToggleFavorite: () => void;
 }) {
   useLocale();
+  const builtIn = installed && isOfficialMap(map.folderName);
 
   return (
-    <article className={active ? "map-vault-card surface-panel active" : "map-vault-card surface-panel"}>
+    <article
+      className={[
+        "map-vault-card surface-panel",
+        // On disk already: the mods tab's "in use" tint, quieter, so a page of
+        // results says at a glance which of them need no download.
+        installed && "is-installed",
+        active && "active",
+      ].filter(Boolean).join(" ")}
+    >
       <button
         className="map-vault-card-main"
         onClick={onSelect}
@@ -78,16 +88,18 @@ export function MapCard({
       >
         <span className="map-vault-image-wrap">
           <MapPreview map={map} />
-          {/* Only the endorsement rides on the art, as on a mod card. The
-              rating stacked above it made two plates in one corner; it sits
-              with the other facts below now. */}
+          {/* Only the endorsement rides on the art, as on a mod card. */}
           {map.recommended && <VaultFeaturedBadge />}
         </span>
+        {/* The name with its version at the line's end, and who made it under
+            them: the mod card's order. */}
         <span className="map-vault-card-copy">
-          <strong title={map.displayName}>{map.displayName}</strong>
-          <small>
+          <span className="map-vault-name-row">
+            <strong className="map-vault-name" title={map.displayName}>{map.displayName}</strong>
+            {map.version && <span className="map-vault-version">{t("common.version", { version: map.version })}</span>}
+          </span>
+          <small className="map-vault-author">
             {map.author ? t("maps.vault.byAuthor", { author: map.author }) : t("maps.vault.unknownAuthor")}
-            {map.version ? ` · ${t("common.version", { version: map.version })}` : ""}
           </small>
         </span>
         <span className="map-vault-card-facts">
@@ -106,13 +118,19 @@ export function MapCard({
             <Icon name="users" size={13} /> {map.maxPlayers || t("common.notAvailable")}
           </span>
           <span className="map-vault-fact" title={t("maps.vault.dimensionsTitle", { size: sizeLabel(map) })}>
-            {sizeLabel(map).replace(" km", "")}
+            {sizeLabel(map)}
           </span>
-          <MapRating map={map} />
+          <span className="map-vault-fact-end">
+            <MapRating map={map} />
+          </span>
         </span>
       </button>
+      {/* The star at the start, the one thing to do with the map at the end:
+          install it, or remove it again as an icon. "Uninstall" in red words
+          was the loudest thing on a card whose subject is the map. */}
       <div className="map-vault-card-action">
-        <Button
+        <button
+          type="button"
           className={favorite ? "map-favorite-button active" : "map-favorite-button"}
           aria-label={t(favorite ? "maps.vault.removeFavoriteAria" : "maps.vault.addFavoriteAria", {
             name: map.displayName,
@@ -121,21 +139,26 @@ export function MapCard({
           title={t(favorite ? "maps.vault.removeFavorite" : "maps.vault.addFavorite")}
           onClick={onToggleFavorite}
         >
-          <Icon name="star" size={14} fill={favorite ? "currentColor" : "none"} />
-        </Button>
+          <Icon name="star" size={15} fill={favorite ? "currentColor" : "none"} />
+        </button>
         <span className="map-vault-card-buttons">
-          {installed ? (
-            isOfficialMap(map.folderName) ? (
-              <span className="map-vault-state is-ok">{t("maps.vault.builtIn")}</span>
-            ) : (
+          {builtIn ? (
+            <span className="map-vault-state">{t("maps.vault.builtIn")}</span>
+          ) : installed ? (
+            <>
+              <span className="map-vault-state is-ok">
+                <Icon name="check" size={13} /> {t("maps.vault.installed")}
+              </span>
               <Button
-                className="map-vault-uninstall"
+                className="map-vault-uninstall is-icon"
                 disabled={busy}
+                aria-label={t("maps.view.uninstallNamed", { name: map.displayName })}
+                title={t(busy ? "maps.view.removing" : "maps.view.uninstall")}
                 onClick={onUninstall}
               >
-                {t(busy ? "maps.view.removing" : "maps.view.uninstall")}
+                <Icon name="trash" size={14} />
               </Button>
-            )
+            </>
           ) : (
             <Button variant="primary" disabled={busy || !map.downloadUrl} onClick={onInstall}>
               {t(busy ? "maps.vault.installing" : "maps.vault.install")}
@@ -177,10 +200,11 @@ export function MapDetailPanel({
 }) {
   useLocale();
   const description = cleanDescription(map.description);
-  const removable = installed && !isOfficialMap(map.folderName);
+  const builtIn = installed && isOfficialMap(map.folderName);
+  const removable = installed && !builtIn;
   const [reporting, setReporting] = useState(false);
   return (
-    <aside className="vault-detail-panel map-vault-details surface-panel">
+    <aside className="map-detail-panel surface-panel">
       {reporting && (
         <ReportDialog
           kind={t("maps.vault.reportKind")}
@@ -194,70 +218,88 @@ export function MapDetailPanel({
         />
       )}
       <button
-        className="vault-detail-preview map-vault-detail-preview"
+        className="map-detail-preview"
         onClick={onPreview}
         aria-label={t("maps.preview.enlarge", { name: map.displayName })}
       >
         <MapPreview map={map} large />
         {(map.thumbnailUrlLarge || map.thumbnailUrl) && (
-          <span className="vault-detail-preview-badge">{t("maps.vault.openPreview")}</span>
+          <span className="map-detail-preview-hint">
+            <Icon name="search" size={13} /> {t("maps.vault.openPreview")}
+          </span>
         )}
       </button>
-      <div className="vault-detail-body map-vault-detail-body">
-        <div className="vault-detail-header">
-          <div className="vault-detail-kicker map-vault-detail-kicker">
-            <span className="vault-badge">{map.mapType || t("maps.vault.mapType")}</span>
-            <span className={`vault-badge is-${map.ranked ? "ok" : "neutral"} ${map.ranked ? "ranked" : "unranked"}`}>
+      <div className="map-detail-body">
+        {/* The name large, the way the mod panel and the leaderboard's player
+            panel open, who made it under it, then what kind of map it is. */}
+        <header className="map-detail-head">
+          <div className="map-detail-name-row">
+            <h2 className="map-detail-name">{map.displayName}</h2>
+            {/* Beside the name and icon-only: reporting something is rare,
+                and a full-size button would sit in front of everybody for the
+                sake of the few who ever press it. */}
+            <button
+              type="button"
+              className="map-detail-report"
+              aria-label={t("vault.report.action")}
+              title={t("vault.report.action")}
+              onClick={() => setReporting(true)}
+            >
+              <Icon name="flag" size={13} />
+            </button>
+          </div>
+          <p className="map-detail-byline">
+            {map.author ? t("maps.vault.createdBy", { author: map.author }) : t("maps.vault.unknownAuthor")}
+          </p>
+          <div className="map-detail-tags">
+            <span className="map-vault-type">{map.mapType || t("maps.vault.mapType")}</span>
+            <span className={map.ranked ? "map-vault-type ranked" : "map-vault-type unranked"}>
               {t(map.ranked ? "maps.vault.ranked" : "maps.vault.unranked")}
             </span>
-            {map.recommended && <span className="vault-badge is-accent">{t("maps.vault.featured")}</span>}
-          </div>
-          <h2 className="vault-detail-title">{map.displayName}</h2>
-          <p className="vault-detail-byline map-vault-byline">
-            <span className="vault-detail-author">
-              {map.author ? t("maps.vault.createdBy", { author: map.author }) : t("maps.vault.unknownAuthor")}
-            </span>
-            {map.version ? (
-              <>
-                <span className="vault-detail-dot">·</span>
-                <span className="vault-detail-version">v{map.version}</span>
-              </>
-            ) : null}
-          </p>
-        </div>
-
-        <div className="vault-detail-props">
-          <div className="vault-prop-row">
-            <span className="vault-prop-label">{t("maps.vault.dimensions")}</span>
-            <span className="vault-prop-value">{sizeLabel(map)}</span>
-          </div>
-          <div className="vault-prop-row">
-            <span className="vault-prop-label">{t("maps.vault.maxPlayers")}</span>
-            <span className="vault-prop-value">{map.maxPlayers || t("common.notAvailable")}</span>
-          </div>
-          <div className="vault-prop-row">
-            <span className="vault-prop-label">{t("maps.vault.allTimePlays")}</span>
-            <span className="vault-prop-value">{formatCount(map.gamesPlayed)}</span>
-          </div>
-          <div className="vault-prop-row">
-            <span className="vault-prop-label">{t("maps.vault.communityRating")}</span>
-            <span className="vault-prop-value">{ratingLabel(map)}</span>
-          </div>
-          <div className="vault-prop-row">
-            <span className="vault-prop-label">{t("maps.vault.uploaded")}</span>
-            <span className="vault-prop-value">{formatShortDate(map.createdAt)}</span>
-          </div>
-          {/* Shown to the author only, the way both reference clients do it:
-              to anyone else every listed version is visible by definition. */}
-          {mine && (
-            <div className="vault-prop-row">
-              <span className="vault-prop-label">{t("maps.vault.inVault")}</span>
-              <span className="vault-prop-value">
+            {map.recommended && <span className="map-vault-type featured">{t("maps.vault.featured")}</span>}
+            {/* To the author only, the way both reference clients do it: to
+                anyone else every listed version is visible by definition. */}
+            {mine && (
+              <span className={map.hidden ? "map-vault-type is-hidden" : "map-vault-type"} title={t("maps.vault.inVault")}>
                 {t(map.hidden ? "maps.vault.withdrawn" : "maps.vault.listed")}
               </span>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </header>
+
+        {/* What the map is, then how it has fared: the training overview's
+            facts strip, two to a row as the mod panel has it, because three
+            cut the longer labels short. */}
+        <FactsStrip
+          className="map-detail-facts"
+          columns={2}
+          groups={[
+            {
+              facts: [
+                { label: t("maps.vault.dimensions"), value: sizeLabel(map) },
+                {
+                  label: t("maps.vault.maxPlayers"),
+                  value: map.maxPlayers || t("common.notAvailable"),
+                  unknown: !map.maxPlayers,
+                },
+              ],
+            },
+            {
+              facts: [
+                // "Reviews", as the mod panel labels its rating: "Community
+                // rating" did not fit the column in German.
+                { label: t("maps.vault.reviews"), value: ratingLabel(map), unknown: map.reviews <= 0 },
+                { label: t("maps.vault.allTimePlays"), value: formatCount(map.gamesPlayed) },
+                {
+                  label: t("maps.vault.reportVersion"),
+                  value: map.version ? t("common.version", { version: map.version }) : t("common.notAvailable"),
+                  unknown: !map.version,
+                },
+                { label: t("maps.vault.uploaded"), value: formatShortDate(map.createdAt) },
+              ],
+            },
+          ]}
+        />
 
         <VaultDescription
           className="map-vault-description"
@@ -266,70 +308,68 @@ export function MapDetailPanel({
           empty={t("maps.vault.noDescription")}
         />
 
-        <div className="vault-detail-actions map-vault-detail-actions">
-          <div className="vault-detail-actions-left">
+        {/* One action to a line, icon first, and the one the panel is for
+            last: installing the map, or what its state is once it is here. */}
+        <div className="map-detail-actions">
+          <div className="map-detail-action-list">
             <Button
-              className={favorite ? "vault-action-favorite is-active map-favorite-button active" : "vault-action-favorite map-favorite-button"}
+              variant="ghost"
+              className={favorite ? "map-detail-favorite is-active" : "map-detail-favorite"}
               aria-pressed={favorite}
               onClick={onToggleFavorite}
             >
-              <Icon name="star" size={14} fill={favorite ? "currentColor" : "none"} />
+              <Icon name="star" size={15} fill={favorite ? "currentColor" : "none"} />
               {t(favorite ? "maps.vault.favorited" : "maps.vault.favorite")}
             </Button>
-            <Button onClick={() => void openReviews("map", map.mapId, map.displayName)}>
+            <Button variant="ghost" onClick={() => void openReviews("map", map.mapId, map.displayName)}>
+              <Icon name="chat" size={15} />
               {t("maps.vault.reviews")}
             </Button>
-            {/* Last in the row and icon-only: reporting something is rare, and
-                a full-width button would sit in front of everybody for the
-                sake of the few who ever press it. */}
-            <Button
-              className="vault-action-report"
-              aria-label={t("vault.report.action")}
-              title={t("vault.report.action")}
-              onClick={() => setReporting(true)}
-            >
-              <Icon name="flag" size={14} />
-            </Button>
-          </div>
-
-          <div className="vault-detail-actions-right">
             {mine && (
               map.hidden ? (
                 <Button
-                  className="map-vault-unhide"
+                  variant="ghost"
                   disabled={visibilityBusy}
                   title={t("maps.vault.unhideTitle")}
                   onClick={onUnhide}
                 >
+                  <Icon name="eye" size={15} />
                   {t(visibilityBusy ? "maps.vault.visibilityWorking" : "maps.vault.unhide")}
                 </Button>
               ) : (
+                // Withdrawing a version is the one the author cannot undo, so
+                // it reads like uninstalling rather than like a toggle.
                 <Button
-                  className="map-vault-hide"
+                  variant="ghost"
+                  className="map-detail-danger"
                   disabled={visibilityBusy}
                   title={t("maps.vault.hideTitle")}
                   onClick={onHide}
                 >
+                  <Icon name="lock" size={15} />
                   {t(visibilityBusy ? "maps.vault.visibilityWorking" : "maps.vault.hide")}
                 </Button>
               )
             )}
-            {removable ? (
-              <Button className="map-vault-uninstall" disabled={busy} onClick={onUninstall}>
+            {removable && (
+              <Button variant="ghost" className="map-detail-danger" disabled={busy} onClick={onUninstall}>
+                <Icon name="trash" size={15} />
                 {t("maps.vault.uninstall")}
-              </Button>
-            ) : (
-              <Button variant="primary" disabled={busy || installed || !map.downloadUrl} onClick={onInstall}>
-                {busy
-                  ? t("maps.vault.installing")
-                  : installed
-                    ? isOfficialMap(map.folderName)
-                      ? t("maps.vault.builtIn")
-                      : t("maps.vault.installed")
-                    : t("maps.vault.installMap")}
               </Button>
             )}
           </div>
+
+          {installed ? (
+            <Button variant="ghost" className="map-detail-state" disabled>
+              <Icon name="check" size={15} />
+              {t(builtIn ? "maps.vault.builtIn" : "maps.vault.installed")}
+            </Button>
+          ) : (
+            <Button variant="primary" disabled={busy || !map.downloadUrl} onClick={onInstall}>
+              <Icon name="download" size={15} />
+              {t(busy ? "maps.vault.installing" : "maps.vault.installMap")}
+            </Button>
+          )}
         </div>
       </div>
     </aside>

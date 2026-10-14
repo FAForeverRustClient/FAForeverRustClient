@@ -218,6 +218,10 @@ pub async fn clean_expired_cache_files(
 /// Remove all files from the game files cache and clear in-memory caches.
 pub async fn clear_game_cache(cache_dir: &Path) -> Result<(), String> {
     clear_file_list_cache();
+    // The record of what each installed file hashed to goes with the files
+    // below; this is the copy in memory. Clearing the cache is also how a
+    // player asks for every file to be read again on the next launch.
+    super::checksums::forget(cache_dir);
     if let Some(parent) = cache_dir.parent() {
         let versions_dir = parent.join("versions");
         if versions_dir.is_dir() {
@@ -346,7 +350,11 @@ pub async fn inspect_game_cache(
                 if metadata.is_dir() {
                     stack.push(path);
                 } else if metadata.is_file() {
-                    if path.file_name().and_then(|n| n.to_str()) == Some("cache_manifest.json") {
+                    // The two records kept beside the store, not entries in it.
+                    let name = path.file_name().and_then(|n| n.to_str());
+                    if name == Some("cache_manifest.json")
+                        || name == Some(super::checksums::FILE_NAME)
+                    {
                         continue;
                     }
                     let len = metadata.len();

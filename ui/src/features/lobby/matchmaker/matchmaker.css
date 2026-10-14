@@ -520,7 +520,9 @@
   height: 20px;
   margin-left: 4px;
   object-fit: contain;
-  image-rendering: auto;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
 }
 
 .matchmaker-player-meta {
@@ -1926,6 +1928,20 @@
 .matchmaker-recent-row:hover td,
 .matchmaker-recent-row.is-menu-open td {
   background: var(--color-surface-raised);
+}
+
+/* An opponent's name opens the player menu on either click, so it looks like
+   something to click: the pointer and an underline, as a leaderboard name
+   has (#539). It keeps its own colour, so a friend or foe still reads as
+   one. */
+.matchmaker-recent-opponent-link {
+  cursor: pointer;
+}
+
+.matchmaker-recent-opponent-link:hover .matchmaker-recent-opponent,
+.matchmaker-recent-opponent.is-menu-open {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* The opponent that menu is about, marked as a chat name is while its menu is

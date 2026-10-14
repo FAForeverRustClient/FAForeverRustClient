@@ -42,6 +42,7 @@ import { hourCycleOptions } from "../../../shared/format/clock";
 import { clientIntlTag } from "../../../shared/format/dates";
 import { formatRelativeDuration, zeroMinutes } from "../../../shared/format/durations";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { boundsText } from "../../../shared/ratingBounds";
 
 export function LiveReplayDetail({
   game,
@@ -173,11 +174,8 @@ export function LiveReplayDetail({
   });
   // Only where the host set one, worded the way the Play tab words the same
   // pair, open ends included.
-  if (game.ratingMin !== null || game.ratingMax !== null) {
-    const range = t("lobby.details.ratingRangeValue", {
-      from: game.ratingMin ?? t("lobby.details.any"),
-      to: game.ratingMax ?? t("lobby.details.any"),
-    });
+  const range = boundsText(game.ratingMin, game.ratingMax);
+  if (range !== null) {
     facts.push({
       label: t("lobby.details.ratingRange"),
       value: game.enforceRatingRange ? `${range} \u00b7 ${t("replays.live.ratingEnforced")}` : range,

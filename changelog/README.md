@@ -1,7 +1,7 @@
 # Changelog snippets
 
-Every pull request that changes something players will notice adds one small
-file to `snippets/`, named after its category and its pull request number:
+Every pull request adds a small file to `snippets/`, named after its category
+and its pull request number:
 
 ```
 changelog/snippets/features.507.md
@@ -15,16 +15,27 @@ changelog/snippets/fix.512.md
 | `performance` | Performance |
 | `other` | Other changes |
 
-The file holds one short line, written for players and in English: what they
-will see, not how it was built.
+The file holds one short line per change, written for players and in English:
+what they will see, not how it was built. A pull request with several changes
+lists them, one line each; changes of different categories go in one file per
+category, since the release groups lines by category.
 
 ```markdown
 - Replays can be filtered by map.
+- The replay list remembers its sort order.
 ```
 
-Nothing for refactors, CI, tests or docs. The pull request number is only
-known once the pull request is open, so the snippet is usually its second
-commit.
+Refactors, CI, tests and docs get a snippet too, under `other`, saying plainly
+that nothing changes in use and naming the area:
+
+```markdown
+- No visible changes: the settings code is split into smaller files.
+```
+
+The snippet follows its pull request: when review fixes or a rebase change
+what the pull request does, change the snippet with it. The pull request
+number is only known once the pull request is open, so the snippet is usually
+its second commit.
 
 ## At release
 

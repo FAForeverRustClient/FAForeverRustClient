@@ -124,6 +124,13 @@ impl ReplayRecorder {
             self.port, game_id, player
         )
     }
+
+    /// Whether the game's replay is done with: written, and its upload
+    /// acknowledged or given up on ([`UPLOAD_FLUSH_TIMEOUT`]). Until then a
+    /// client exiting by itself after the game would cut the upload short.
+    pub(crate) fn is_finished(&self) -> bool {
+        self.task.is_finished()
+    }
 }
 
 impl Drop for ReplayRecorder {
@@ -503,6 +510,45 @@ mod tests {
         let (header, body) = parse(&std::fs::read(&path).unwrap());
         assert_eq!(body, b"hello replay");
         assert_eq!(header["uid"], 4711);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn is_finished_only_once_the_game_has_sent_everything_and_it_is_written() {
+        use tokio::io::AsyncWriteExt as _;
+
+        // The shell waits on this before exiting by itself after a game, so it
+        // must not read as done while the game is still streaming.
+        let dir = std::env::temp_dir().join(format!("faf-rec-done-{}", std::process::id()));
+        let recorder = ReplayRecorder::start(dir.clone(), metadata(), None)
+            .await
+            .unwrap();
+        assert!(!recorder.is_finished(), "listening for the game");
+
+        let port = recorder.port;
+        let mut client = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .unwrap();
+        client
+            .write_all(b"P/4711/Nory\0still playing")
+            .await
+            .unwrap();
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        assert!(!recorder.is_finished(), "the game is still streaming");
+
+        client.shutdown().await.unwrap();
+        drop(client);
+        for _ in 0..100 {
+            if recorder.is_finished() {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        }
+        assert!(
+            recorder.is_finished(),
+            "the stream ended and the file was written"
+        );
 
         let _ = std::fs::remove_dir_all(&dir);
     }

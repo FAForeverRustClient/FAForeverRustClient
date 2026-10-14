@@ -78,6 +78,17 @@
   gap: 2px;
 }
 
+.select-popover.is-above {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.select-option-row {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+}
+
 .select-option {
   display: flex;
   align-items: center;
@@ -94,6 +105,69 @@
   text-align: left;
   box-sizing: border-box;
   transition: background 80ms ease, color 80ms ease;
+}
+
+.select-option-main {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+}
+
+.select-option-edit {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  padding: 2px 4px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+}
+
+.select-option-edit-input {
+  width: 100%;
+  min-width: 0;
+  padding: 2px 4px;
+  color: var(--color-text);
+  font: inherit;
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
+
+.select-option-action {
+  display: inline-grid;
+  width: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.select-option-action:hover:not(:disabled),
+.select-option-action:focus-visible:not(:disabled) {
+  color: var(--color-error-text);
+  background: color-mix(in srgb, var(--color-error) 14%, transparent);
+}
+
+.select-option-action:not(.is-danger):hover:not(:disabled),
+.select-option-action:not(.is-danger):focus-visible:not(:disabled) {
+  color: var(--color-accent);
+  background: var(--color-surface-hover);
+}
+
+.select-option-action:focus-visible {
+  outline: 2px solid var(--color-error);
+  outline-offset: -2px;
+}
+
+.select-option-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .select-option:hover,

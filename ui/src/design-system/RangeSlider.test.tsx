@@ -89,8 +89,16 @@ describe("RangeSlider", () => {
       expect(rangeReadout({ ...base, low: 34, high: null, closedScale: true }, between)).toBe("34% to 100%");
     });
 
-    it("still says any for an open side of an open scale", () => {
+    it("still says any for an open side of an open scale when not told how to name one end", () => {
       expect(rangeReadout({ ...base, low: 34, high: null, closedScale: false }, between)).toBe("34% to any");
+    });
+
+    it("names the one end set on an open scale (#512)", () => {
+      const open = { from: (low: string) => `From ${low}`, upTo: (high: string) => `Up to ${high}` };
+      expect(rangeReadout({ ...base, low: 34, high: null, closedScale: false }, between, open)).toBe("From 34%");
+      expect(rangeReadout({ ...base, low: null, high: 65, closedScale: false }, between, open)).toBe("Up to 65%");
+      expect(rangeReadout({ ...base, low: 34, high: 65, closedScale: false }, between, open)).toBe("34% to 65%");
+      expect(rangeReadout({ ...base, low: 34, high: null, closedScale: true }, between, open)).toBe("34% to 100%");
     });
 
     it("shows one value when both handles sit on it", () => {

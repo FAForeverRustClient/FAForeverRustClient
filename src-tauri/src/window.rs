@@ -1,10 +1,70 @@
 //! The main window: how it is built, and what happens when it loses focus or
 //! is asked to close.
 
-use tauri::{Emitter, Manager};
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Mutex;
+
+use tauri::Manager;
 
 use crate::navigation::{is_internal_navigation, open_externally, NEWS_EXTERNAL_LINK_SCRIPT};
-use crate::Core;
+
+/// The first main window's label.
+pub(crate) const MAIN_LABEL: &str = "main";
+
+/// Which window is the main one.
+///
+/// "main" at a start, and a fresh label for each window built again after a
+/// crash (`webview_recovery`): `main-2`, `main-3`. Fresh because Tauri
+/// registers a window's label before its native window exists, and when that
+/// native creation fails the label stays registered with nothing behind it,
+/// so a second window by the same label could never be built.
+pub(crate) struct MainWindow {
+    label: Mutex<String>,
+    built: AtomicU32,
+}
+
+impl Default for MainWindow {
+    fn default() -> Self {
+        Self {
+            label: Mutex::new(MAIN_LABEL.to_string()),
+            built: AtomicU32::new(0),
+        }
+    }
+}
+
+/// The label for the `built`-th main window, counted from zero.
+fn label_for(built: u32) -> String {
+    if built == 0 {
+        MAIN_LABEL.to_string()
+    } else {
+        format!("{MAIN_LABEL}-{}", built + 1)
+    }
+}
+
+fn current_label(app: &tauri::AppHandle) -> String {
+    app.try_state::<MainWindow>().map_or_else(
+        || MAIN_LABEL.to_string(),
+        |main| {
+            main.label
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .clone()
+        },
+    )
+}
+
+/// The main window, if one is registered. Registered is not the same as
+/// standing: see `webview_recovery::window_ready`.
+pub(crate) fn main_window(app: &tauri::AppHandle) -> Option<tauri::WebviewWindow> {
+    app.get_webview_window(&current_label(app))
+}
+
+/// Whether `label` is the main window's. Only the crash recovery
+/// (`webview_recovery`, Windows only) has more than one.
+#[cfg(windows)]
+pub(crate) fn is_main(app: &tauri::AppHandle, label: &str) -> bool {
+    current_label(app) == label
+}
 
 #[cfg(windows)]
 fn trim_working_set() {
@@ -17,27 +77,37 @@ fn trim_working_set() {
     }
 }
 
-/// Process-level window events: memory trimming on blur, and the close
-/// confirmation while a game is running.
+/// Process-level window events: memory trimming on blur, and what closing
+/// does while a game is running ([`crate::exit`]).
 pub(crate) fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
     #[cfg(windows)]
     if matches!(event, tauri::WindowEvent::Focused(false)) {
         trim_working_set();
     }
 
+    // The player focused the main window: the moment a rebuilt window may
+    // take its predecessor's maximised state (`webview_recovery`).
+    #[cfg(windows)]
+    if matches!(event, tauri::WindowEvent::Focused(true))
+        && is_main(window.app_handle(), window.label())
+    {
+        crate::webview_recovery::on_activated(window.app_handle());
+    }
+
+    #[cfg(windows)]
+    if matches!(event, tauri::WindowEvent::Destroyed)
+        && is_main(window.app_handle(), window.label())
+    {
+        crate::webview_recovery::on_main_destroyed(window.app_handle());
+    }
+
     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-        if let Some(core) = window.try_state::<Core>() {
-            // One field, not a clone of the whole state to read it.
-            let is_in_game = core.0.with_state(|state| {
-                matches!(state.lobby.join, faf_domain::state::JoinState::InGame)
-            });
-            if is_in_game {
-                api.prevent_close();
-                let _ = window.emit("app://request-exit-confirm", ());
-                return;
-            }
+        match crate::exit::on_close_request(window.app_handle(), crate::exit::Origin::Window) {
+            crate::exit::Decision::Exit => window.app_handle().exit(0),
+            // Hidden to the tray, or asking first: either way the window
+            // stays, and the decision has already acted on it.
+            crate::exit::Decision::Hide | crate::exit::Decision::Ask => api.prevent_close(),
         }
-        window.app_handle().exit(0);
     }
 }
 
@@ -103,21 +173,54 @@ fn wait_for_previous_browser_process(profile: &std::path::Path) {
     }
 }
 
+/// Which main window is being built.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Build {
+    /// The one a start opens: shown and focused.
+    First,
+    /// One built again after its web view's browser process exited: hidden
+    /// and unfocused, until the recovery decides once it stands.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    Recovery,
+}
+
 /// Create the main window programmatically so we can attach `on_navigation`
 /// and `on_new_window` hooks. These intercept external links that bubble up
 /// from the embedded news/unit iframe via `allow-popups-to-escape-sandbox` and
 /// `allow-top-navigation-by-user-activation`, routing them to the OS default
 /// browser via the opener plugin.
-pub(crate) fn build_main(app: &tauri::App) -> tauri::Result<()> {
+///
+/// Also what builds it again when its web view's browser process has exited
+/// (`webview_recovery`), which is why it takes a handle rather than the app
+/// being set up. Each build takes the next label ([`MainWindow`]).
+///
+/// Returning is not standing: off the main thread, Tauri queues the native
+/// window and returns its handle at once. The page starting to load is the
+/// sign it stands ([`on_page_load`]).
+pub(crate) fn build_main(
+    app: &tauri::AppHandle,
+    build: Build,
+) -> tauri::Result<tauri::WebviewWindow> {
     // Where Tauri puts the profile when none is given (`LocalData` joined with
     // the identifier); WebView2 adds the `EBWebView` folder itself.
     #[cfg(windows)]
     if let Ok(profile) = app.path().app_local_data_dir() {
         wait_for_previous_browser_process(&profile);
     }
-    let nav_handle = app.handle().clone();
-    let new_win_handle = app.handle().clone();
-    tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::default())
+    let label = app.try_state::<MainWindow>().map_or_else(
+        || MAIN_LABEL.to_string(),
+        |main| {
+            let label = label_for(main.built.fetch_add(1, Ordering::SeqCst));
+            *main
+                .label
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner()) = label.clone();
+            label
+        },
+    );
+    let nav_handle = app.clone();
+    let new_win_handle = app.clone();
+    tauri::WebviewWindowBuilder::new(app, label, tauri::WebviewUrl::default())
         .title("FAForever Client")
         // First run only: the window-state plugin replaces this with the
         // remembered geometry when there is one.
@@ -129,6 +232,12 @@ pub(crate) fn build_main(app: &tauri::App) -> tauri::Result<()> {
         // interface cannot be used at.
         .min_inner_size(560.0, 480.0)
         .resizable(true)
+        .visible(build == Build::First)
+        // Not focused when built again: a crash can come mid-game, and taking
+        // the focus would pull the player out of it. Tao shows a window built
+        // this way without activating it the first time, the one time a
+        // recovery shows it (`webview_recovery`).
+        .focused(build == Build::First)
         .initialization_script_for_all_frames(NEWS_EXTERNAL_LINK_SCRIPT)
         // The only navigation hook. A plugin carrying a second copy of
         // this used to be registered as well, and never ran: Tauri asks
@@ -150,6 +259,27 @@ pub(crate) fn build_main(app: &tauri::App) -> tauri::Result<()> {
             open_externally(&new_win_handle, &url);
             tauri::webview::NewWindowResponse::Deny
         })
-        .build()?;
-    Ok(())
+        .on_page_load(|window, _payload| on_page_load(&window))
+        .build()
+}
+
+/// The main window's page has started or finished loading, so its native
+/// window and web view stand.
+fn on_page_load(window: &tauri::WebviewWindow) {
+    #[cfg(windows)]
+    crate::webview_recovery::on_main_page_load(window);
+    #[cfg(not(windows))]
+    let _ = window;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::label_for;
+
+    #[test]
+    fn each_main_window_built_takes_a_fresh_label() {
+        assert_eq!(label_for(0), "main");
+        assert_eq!(label_for(1), "main-2");
+        assert_eq!(label_for(2), "main-3");
+    }
 }

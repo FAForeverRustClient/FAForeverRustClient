@@ -147,8 +147,13 @@ export function RangeSlider({
           {label}
         </span>
         <span className={`range-slider-value${unbounded ? " is-any" : ""}`}>
-          {rangeReadout({ low, high, min, max, format, closedScale, any: t("common.any") }, (lowText, highText) =>
-            t("common.rangeBetween", { low: lowText, high: highText }),
+          {rangeReadout(
+            { low, high, min, max, format, closedScale, any: t("common.any") },
+            (lowText, highText) => t("common.rangeBetween", { low: lowText, high: highText }),
+            {
+              from: (lowText) => t("common.rangeFrom", { low: lowText }),
+              upTo: (highText) => t("common.rangeUpTo", { high: highText }),
+            },
           )}
         </span>
       </div>
@@ -216,7 +221,9 @@ export function RangeSlider({
 /**
  * The text above the track. "Any" when neither side is set; one value when
  * both handles sit on the same one, rather than "76% to 76%" (#459); else
- * "low to high", where an open side says "any" unless the scale is closed.
+ * "low to high". On an open scale a side left open is not named at all:
+ * "From 1200" or "Up to 1800" when `open` says how, rather than "1200 to
+ * Any" (#512). A closed scale names its end instead.
  */
 export function rangeReadout(
   {
@@ -237,11 +244,16 @@ export function rangeReadout(
     any: string;
   },
   between: (low: string, high: string) => string,
+  open?: { from: (low: string) => string; upTo: (high: string) => string },
 ): string {
   if (low === null && high === null) return any;
   const lowValue = low ?? min;
   const highValue = high ?? max;
   if (lowValue === highValue) return format(lowValue);
+  if (open && !closedScale) {
+    if (high === null) return open.from(format(lowValue));
+    if (low === null) return open.upTo(format(highValue));
+  }
   const side = (value: number | null, end: number) =>
     value !== null ? format(value) : closedScale ? format(end) : any;
   return between(side(low, min), side(high, max));

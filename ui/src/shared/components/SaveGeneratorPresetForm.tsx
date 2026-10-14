@@ -66,8 +66,8 @@ export function SaveGeneratorPresetForm({
         value={name}
         maxLength={MAX_PRESET_NAME}
         autoFocus
-        aria-label={t("maps.generate.presetName")}
-        placeholder={t("maps.generate.presetName")}
+        aria-label={t("maps.generate.presetNamePlaceholder")}
+        placeholder={t("maps.generate.presetNamePlaceholder")}
         onChange={(event) => setName(event.target.value)}
       />
       <Button type="submit" variant="primary" disabled={!usable || pending !== null}>

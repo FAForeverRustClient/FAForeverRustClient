@@ -1,0 +1,1 @@
+- Opponent names in Recent results open the player menu on a left click and look clickable.

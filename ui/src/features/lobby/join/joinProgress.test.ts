@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { GameLaunch, IceAdapter, JoinState } from "../../../ipc/bindings";
-import { adapterNoteOf, joinProgressOf, nextStep } from "./joinProgress";
+import type { Game, GameLaunch, IceAdapter, JoinState } from "../../../ipc/bindings";
+import { adapterNoteOf, contextOf, joinProgressOf, nextStep } from "./joinProgress";
 
 const launch: GameLaunch = {
   uid: 7,
@@ -48,9 +48,16 @@ describe("what the join dialog shows", () => {
     })).toMatchObject({ progress: null });
   });
 
+  it("stays up while the join waits, before its files and after them", () => {
+    // It closed in both and opened again a moment later, its log gone.
+    expect(joinProgressOf({ type: "joining", payload: { id: 7, prepared: false } }))
+      .toMatchObject({ kind: "preparing", phase: "asking", progress: null });
+    expect(joinProgressOf({ type: "joining", payload: { id: 7, prepared: true } }))
+      .toEqual({ kind: "seating" });
+  });
+
   it.each<JoinState>([
     { type: "idle" },
-    { type: "joining", payload: { id: 7, prepared: false } },
     { type: "inGame" },
     { type: "failed", payload: { id: 7, reason: "game_full" } },
     { type: "launchFailed", payload: { reason: "adapter did not start" } },
@@ -92,7 +99,38 @@ describe("the adapter line", () => {
     ["go", "Friday 4v4", "goAgainstHost"],
     ["dynamic", "Friday 4v4", null],
     ["java", "Friday 4v4", null],
+    // The same against a game hosted on the experimental Java adapter.
+    ["dynamic", "Friday 4v4 [exp-java-adapter]", "hostOnExpJava"],
+    ["expJava", "Friday 4v4 [EXP-JAVA-ADAPTER]", "hostOnExpJava"],
+    ["java", "Friday 4v4 [exp-java-adapter]", "javaAgainstExpJavaHost"],
+    ["expJava", "Friday 4v4", "expJavaAgainstHost"],
+    ["expJava", "Friday 4v4 [go-adapter]", "expJavaAgainstHost"],
+    ["go", "Friday 4v4 [exp-java-adapter]", "goAgainstHost"],
   ])("%s joining \"%s\" is %s", (adapter, title, note) => {
     expect(adapterNoteOf(adapter, title)).toBe(note);
+  });
+});
+
+describe("what the dialog's head names", () => {
+  const label = (map: string) => `label of ${map}`;
+  const lobby = { id: 7, title: "Friday 4v4", map: "setons_clutch" } as Game;
+  const order = (mapname: string) => ({ uid: 7, name: "Friday 4v4", mapname }) as GameLaunch;
+
+  it("keeps the lobby's map once a custom game's launch order is in, which names none", () => {
+    // The head lost its map picture the moment the game started.
+    expect(contextOf(order(""), lobby, label)).toEqual({
+      name: "Friday 4v4",
+      mapName: "setons_clutch",
+      detail: "label of setons_clutch",
+    });
+  });
+
+  it("takes the map a matchmaker launch order names", () => {
+    expect(contextOf(order("dualgap"), null, label)?.mapName).toBe("dualgap");
+  });
+
+  it("names the lobby before there is a launch order", () => {
+    expect(contextOf(null, lobby, label)?.mapName).toBe("setons_clutch");
+    expect(contextOf(null, null, label)).toBeNull();
   });
 });

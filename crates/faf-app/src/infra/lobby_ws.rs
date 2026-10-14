@@ -738,7 +738,9 @@ async fn run_session(
                     }
                     "player_info" => {
                         if let Some(players) = value.get("players").and_then(Value::as_array) {
-                            let unresolved_before = directory.unresolved_relation_ids();
+                            // The lists as names, before this frame renames or
+                            // introduces anybody: see below.
+                            let relations_before = directory.relations();
                             let mut newly_seen = Vec::new();
                             let mut removed = Vec::new();
                             for player in players {
@@ -778,23 +780,30 @@ async fn run_session(
                             {
                                 break 'connection;
                             }
-                            if !newly_seen.is_empty() {
-                                let resolved_any = !unresolved_before.is_empty()
-                                    && newly_seen.iter().any(|p| unresolved_before.contains(&(p.id as i64)));
-                                if tx.send(LobbyUpdate::PlayersSeen(newly_seen)).await.is_err() {
+                            if !newly_seen.is_empty()
+                                && tx.send(LobbyUpdate::PlayersSeen(newly_seen)).await.is_err()
+                            {
+                                break 'connection;
+                            }
+                            // Sent again whenever this frame changed what the
+                            // lists say. Two ways it does: an account the
+                            // `social` message named only by id has a name now,
+                            // and a friend or foe has been renamed (#516). The
+                            // server keeps the lists by id, but they cross to
+                            // the UI as names, and only the first case used to
+                            // re-send them. A friend who changed their name then
+                            // stayed listed under the old one, and the new one
+                            // looked like a stranger: "the rename removed them
+                            // from my friends".
+                            let relations = directory.relations();
+                            if relations != relations_before {
+                                let (friends, foes) = relations;
+                                if tx
+                                    .send(LobbyUpdate::Relations { friends, foes })
+                                    .await
+                                    .is_err()
+                                {
                                     break 'connection;
-                                }
-                                // Newly named accounts may be the friends whose
-                                // ids we couldn't resolve when `social` arrived.
-                                if resolved_any {
-                                    let (friends, foes) = directory.relations();
-                                    if tx
-                                        .send(LobbyUpdate::Relations { friends, foes })
-                                        .await
-                                        .is_err()
-                                    {
-                                        break 'connection;
-                                    }
                                 }
                             }
                             // Almost always nothing: the player this frame
@@ -2787,6 +2796,31 @@ mod tests {
             directory.relations().0,
             vec!["Stormlord".to_string(), "Sheikah".to_string()]
         );
+    }
+
+    /// A friend renamed while this client runs: the lists are kept by id, so
+    /// the next `player_info` moves the friend to the new name, and the lists
+    /// read differently afterwards, which is what has them sent again (#516).
+    #[test]
+    fn a_renamed_friend_stays_a_friend_under_the_new_name() {
+        let mut directory = PlayerDirectory::default();
+        directory.set_relations(&json!({ "friends": [2], "foes": [4] }));
+        directory.observe(&json!({ "id": 2, "login": "Stormlord" }));
+        directory.observe(&json!({ "id": 4, "login": "Griefer" }));
+        let before = directory.relations();
+
+        directory.observe(&json!({ "id": 2, "login": "StormlordTheSecond" }));
+        directory.observe(&json!({ "id": 4, "login": "Reformed" }));
+        let after = directory.relations();
+
+        assert_eq!(
+            after,
+            (
+                vec!["StormlordTheSecond".to_string()],
+                vec!["Reformed".to_string()]
+            )
+        );
+        assert_ne!(after, before, "a rename has to re-send the lists");
     }
 
     #[test]

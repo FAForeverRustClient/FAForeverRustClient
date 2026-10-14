@@ -548,7 +548,8 @@ fn common_clauses(query: &ReplayQuery, fallback_after: Option<&str>) -> Vec<Stri
         &query
             .factions
             .iter()
-            .map(i32::to_string)
+            .filter_map(|&faction| faction_name(faction))
+            .map(str::to_string)
             .collect::<Vec<_>>(),
     ) {
         clauses.push(clause);
@@ -718,6 +719,24 @@ fn in_clause(property: &str, values: &[String]) -> Option<String> {
         return None;
     }
     Some(format!("{property}=in=({})", values.join(",")))
+}
+
+/// The name the API's `Faction` enum answers to in a filter.
+///
+/// The client counts factions the way the game does (1=UEF … 4=Seraphim,
+/// 5=Random), but Elide reads a filter value as the enum constant's name, so a
+/// number is rejected outright: `Could not load vault: Invalid value: 3`
+/// (#526). The py-client's faction filter sends these same names. The game's
+/// 5 is the API's NOMAD (`Faction.fromFaValue`), so Random filters by that.
+fn faction_name(faction: i32) -> Option<&'static str> {
+    match faction {
+        1 => Some("UEF"),
+        2 => Some("AEON"),
+        3 => Some("CYBRAN"),
+        4 => Some("SERAPHIM"),
+        5 => Some("NOMAD"),
+        _ => None,
+    }
 }
 
 /// Map edge length in km to the pixel width the API stores.
@@ -1160,6 +1179,19 @@ mod tests {
     }
 
     #[test]
+    fn factions_are_filtered_by_the_api_s_enum_names() {
+        let q = ReplayQuery {
+            factions: vec![1, 2, 3, 4, 5, 9],
+            ..query()
+        };
+        let filter = build_filter(&q, None, None).unwrap();
+        assert!(
+            filter.contains(r#"playerStats.faction=in=("UEF","AEON","CYBRAN","SERAPHIM","NOMAD")"#),
+            "{filter}"
+        );
+    }
+
+    #[test]
     fn multi_select_filters_become_in_clauses() {
         let q = ReplayQuery {
             featured_mods: vec!["faf".into(), "ladder1v1".into()],
@@ -1172,7 +1204,7 @@ mod tests {
         for expected in [
             r#"featuredMod.technicalName=in=("faf","ladder1v1")"#,
             r#"playerStats.ratingChanges.leaderboard.technicalName=in=("global")"#,
-            r#"playerStats.faction=in=("1","3")"#,
+            r#"playerStats.faction=in=("UEF","CYBRAN")"#,
             r#"victoryCondition=in=("DEMORALIZATION")"#,
         ] {
             assert!(filter.contains(expected), "missing {expected} in {filter}");

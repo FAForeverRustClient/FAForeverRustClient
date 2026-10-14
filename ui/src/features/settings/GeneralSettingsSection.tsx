@@ -72,6 +72,19 @@ export function GeneralSettingsSection() {
         />
       </SettingRow>
 
+      {/* What the close button and the tray's Quit do while a game runs:
+          hide to the tray and exit after the game, or ask first. */}
+      <SettingRow
+        label={t("settings.general.keepRunningDuringGame.label")}
+        hint={t("settings.general.keepRunningDuringGame.hint")}
+      >
+        <SettingsSwitch
+          checked={preferences.keepRunningDuringGame ?? true}
+          onChange={(checked) => void save({ keepRunningDuringGame: checked })}
+          label={t("settings.general.keepRunningDuringGame.label")}
+        />
+      </SettingRow>
+
       <SettingRow label={t("settings.general.rememberTypedEntries.label")}>
         <SettingsSwitch
           checked={preferences.rememberTypedEntries ?? false}

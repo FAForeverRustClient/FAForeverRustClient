@@ -29,7 +29,7 @@
 //! minutes.
 
 use std::collections::HashMap;
-use std::io::{Cursor, Read};
+use std::io::{BufReader, Cursor, Read};
 
 use faf_domain::state::{
     ReplayActivity, ReplayAnalysis, ReplayArmy, ReplayGameOption, ReplayNotice, ReplayOrder,
@@ -38,7 +38,9 @@ use faf_domain::state::{
 };
 use serde_json::Value;
 
-use crate::infra::replay::{parse_replay_lua, replay_string, replay_u32, replay_u8};
+use crate::infra::replay::{
+    next_command_record, parse_replay_lua, read_head, replay_string, replay_u32, replay_u8,
+};
 
 /// `CMDST_*`, the command stream's own opcodes.
 const ADVANCE: u8 = 0;
@@ -84,48 +86,62 @@ const JSON_STATS_MARKER: &str = "JsonStats";
 /// an error where a game's options would be.
 #[cfg(test)]
 fn analyse_replay_body(uid: i32, body: &[u8]) -> ReplayAnalysis {
-    analyse_replay_body_checked(uid, body, &|| false).expect("uncancelled analysis")
+    analyse_replay_body_checked(uid, body, &|| false)
+        .expect("a slice reads")
+        .expect("uncancelled analysis")
 }
 
-pub(crate) fn analyse_replay_body_cancellable(
+/// The same, from the command stream as it is decompressed, which is how a
+/// replay file is read: only its head is held in memory, and the records are
+/// walked one at a time. An error is a stream that could not be read up to
+/// the end of its head.
+pub(crate) fn analyse_replay_stream_cancellable(
     uid: i32,
-    body: &[u8],
+    stream: impl Read,
     cancel: &tokio_util::sync::CancellationToken,
-) -> Option<ReplayAnalysis> {
-    analyse_replay_body_checked(uid, body, &|| cancel.is_cancelled())
+) -> Result<ReplayAnalysis, String> {
+    analyse_replay_body_checked(uid, stream, &|| cancel.is_cancelled())?
+        .ok_or_else(|| "analysis cancelled".to_string())
 }
 
 fn analyse_replay_body_checked(
     uid: i32,
-    body: &[u8],
+    mut body: impl Read,
     cancelled: &impl Fn() -> bool,
-) -> Option<ReplayAnalysis> {
+) -> Result<Option<ReplayAnalysis>, String> {
     if cancelled() {
-        return None;
+        return Ok(None);
     }
-    let mut cursor = Cursor::new(body);
-    let game_version = replay_string(&mut cursor).unwrap_or_default();
+    let ((game_version, header), rest) = read_head(&mut body, |bytes, last| {
+        let mut cursor = Cursor::new(bytes);
+        let game_version = replay_string(&mut cursor).unwrap_or_default();
+        let header = parse_header(&mut cursor);
+        (header.is_some() || last).then(|| ((game_version, header), cursor.position() as usize))
+    })?;
     let mut analysis = ReplayAnalysis {
         uid,
         game_version,
         ..ReplayAnalysis::default()
     };
 
-    let Some(header) = parse_header(&mut cursor) else {
-        return (!cancelled()).then_some(analysis);
+    let Some(header) = header else {
+        return Ok((!cancelled()).then_some(analysis));
     };
     analysis.scenario = header.scenario;
     analysis.armies = header.armies;
     analysis.observers = header.observers;
 
-    let walked = walk(&mut cursor, &analysis.armies, cancelled)?;
+    let mut records = BufReader::new(Cursor::new(rest).chain(body));
+    let Some(walked) = walk(&mut records, &analysis.armies, cancelled) else {
+        return Ok(None);
+    };
     analysis.ticks = walked.ticks;
     analysis.orders = walked.orders;
     analysis.points = walked.points;
     analysis.notices = walked.notices;
     analysis.stats = walked.stats;
     analysis.activity = walked.activity;
-    (!cancelled()).then_some(analysis)
+    Ok((!cancelled()).then_some(analysis))
 }
 
 /// What the header carries, once the scenario and the army tables are read.
@@ -315,12 +331,10 @@ struct Walked {
 }
 
 fn walk(
-    cursor: &mut Cursor<&[u8]>,
+    stream: &mut impl Read,
     armies: &[ReplayArmy],
     cancelled: &impl Fn() -> bool,
 ) -> Option<Walked> {
-    let body = *cursor.get_ref();
-    let len = body.len();
     let mut ticks: u32 = 0;
     let mut source: i32 = -1;
     let mut orders = Vec::new();
@@ -337,26 +351,16 @@ fn walk(
     // tick had just given the same kind, which took real orders off the count
     // and left the graph's axis below the read-out under it.
     let mut previous: HashMap<i32, (u32, i32)> = HashMap::new();
+    let mut buffer = Vec::new();
 
-    while cursor.position() + 3 <= len as u64 {
+    loop {
         if cancelled() {
             return None;
         }
-        let Some(op) = replay_u8(cursor) else { break };
-        let mut length = [0u8; 2];
-        if Read::read_exact(cursor, &mut length).is_err() {
+        let Some(op) = next_command_record(stream, &mut buffer) else {
             break;
-        }
-        let record_len = u16::from_le_bytes(length) as usize;
-        if record_len < 3 {
-            break;
-        }
-        let start = cursor.position() as usize;
-        let end = start + record_len - 3;
-        if end > len {
-            break;
-        }
-        let payload = &body[start..end];
+        };
+        let payload = buffer.as_slice();
 
         match op {
             ADVANCE => {
@@ -423,7 +427,6 @@ fn walk(
             }
             _ => {}
         }
-        cursor.set_position(end as u64);
     }
 
     // Observers give the handful of orders a camera makes; the Python client

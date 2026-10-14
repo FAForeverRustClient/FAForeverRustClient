@@ -42,6 +42,20 @@ use crate::runtime::{
 
 pub use connection::reconnect;
 
+/// A game this client asked the server to host, as the launch order that
+/// answers the request needs to know it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HostedGame {
+    /// The title sent, which the launch order repeats: how a launch is told
+    /// apart from one for somebody else's game.
+    pub title: String,
+    /// Whether the featured mod and the map were brought up to date before
+    /// the request went out. The launch order follows within moments, and
+    /// checking the whole install a second time was most of the wait between
+    /// pressing Host and the game window (#511).
+    pub prepared: bool,
+}
+
 /// The lobby connection's operational context: its single-flight guard, the
 /// joins, hosts and launch orders in progress, and what this session remembers
 /// about the game being played.
@@ -66,10 +80,11 @@ pub struct LobbyContext {
     /// match that was cancelled must not call off the next one found on the
     /// same queue; see `watch_for_match_start`.
     match_generation: LatestRequest,
-    /// The title of the game this client last asked the server to host, so
-    /// the launch order that answers it starts on the hosting preference.
-    /// Taken by that launch; see `launcher::launch`.
-    hosted_title: std::sync::Mutex<Option<String>>,
+    /// The game this client last asked the server to host, so the launch
+    /// order that answers it starts on the hosting preference and skips the
+    /// preparation the host request already did. Taken by that launch; see
+    /// `launcher::start`.
+    hosted: std::sync::Mutex<Option<HostedGame>>,
     /// The game this client is currently playing, if any. Read when the lobby
     /// socket comes back, so the server can be told to restore the game
     /// session it dropped along with the connection.
@@ -110,12 +125,16 @@ impl LobbyContext {
         self.operations.clear();
     }
 
-    /// Take the title of the game this client last asked to host, so the
-    /// launch can tell whether it is starting that game. Taken either way:
-    /// the next launch is somebody else's game unless a new host request says
-    /// otherwise.
-    pub fn take_hosted_title(&self) -> Option<String> {
-        self.hosted_title.lock().unwrap().take()
+    /// Take the game this client last asked to host, so the launch can tell
+    /// whether it is starting that game. Taken either way: the next launch is
+    /// somebody else's game unless a new host request says otherwise.
+    pub fn take_hosted(&self) -> Option<HostedGame> {
+        self.hosted.lock().unwrap().take()
+    }
+
+    /// Record the game about to be asked for; see [`Self::take_hosted`].
+    pub(crate) fn set_hosted(&self, hosted: HostedGame) {
+        *self.hosted.lock().unwrap() = Some(hosted);
     }
 
     /// The game this client is playing, if any. Auth reads it so an offline

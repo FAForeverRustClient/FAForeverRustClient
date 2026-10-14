@@ -168,10 +168,11 @@ describe("RangeSlider keyboard, mounted", () => {
 
     focus(low);
     await user.keyboard("{Home}");
-    // The bottom of the scale is "no lower limit", not a limit of 0.
+    // The bottom of the scale is "no lower limit", not a limit of 0, and an
+    // open side is not named at all (#512).
     expect(onChange).toHaveBeenLastCalledWith(null, 80);
     expect(thumb(low).value).toBe("0");
-    expect(readout()).toBe("Any to 80");
+    expect(readout()).toBe("Up to 80");
 
     focus(high);
     await user.keyboard("{End}");
@@ -182,7 +183,7 @@ describe("RangeSlider keyboard, mounted", () => {
     // And back in from an open end, one step at a time.
     await user.keyboard("{ArrowLeft}");
     expect(onChange).toHaveBeenLastCalledWith(null, 95);
-    expect(readout()).toBe("Any to 95");
+    expect(readout()).toBe("Up to 95");
   });
 
   it("stops each thumb at the other, whichever key pushes it", async () => {

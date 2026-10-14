@@ -1915,9 +1915,10 @@ export type ConnectivityPreferences = {
 	/**  The adapter games are joined on. `Dynamic` by default. */
 	adapter: IceAdapter,
 	/**
-	 *  The adapter games this client hosts run on: Java or Go, Java by
+	 *  The adapter games this client hosts run on: Java, ExpJava, or Go, Java by
 	 *  default. Hosting on Go marks the title (see
-	 *  `lobby::GO_ADAPTER_TITLE_TAG`) so a `Dynamic` joiner follows.
+	 *  `lobby::GO_ADAPTER_TITLE_TAG`) and hosting on ExpJava marks the title (see
+	 *  `lobby::EXP_JAVA_ADAPTER_TITLE_TAG`) so a `Dynamic` joiner follows.
 	 */
 	hostAdapter: IceAdapter,
 	/**
@@ -3276,6 +3277,19 @@ export type GeneralPreferences = {
 	 *  the default rather than failing.
 	 */
 	filterMemory?: FilterMemory,
+	/**
+	 *  Closing the client during a game hides it to the tray instead.
+	 *
+	 *  The window's close button and the tray's Quit both: the client keeps
+	 *  the lobby connection, the ICE adapter and the replay relay up until the
+	 *  game has ended, then exits by itself, unless it was brought back from
+	 *  the tray in the meantime. An accidental click on the close button in the
+	 *  middle of a game used to cost that game's connection; the Java and
+	 *  Python clients only ask first. Off, the client asks before closing, as
+	 *  it did before this existed. `default_true` so a settings file written
+	 *  before it reads as on.
+	 */
+	keepRunningDuringGame?: boolean,
 };
 
 /**  A change to [`GeneralPreferences`]; see `preference_patch!`. */
@@ -3284,6 +3298,7 @@ export type GeneralPreferencesPatch = {
 	autoLogin?: boolean,
 	rememberTypedEntries?: boolean,
 	filterMemory?: FilterMemory,
+	keepRunningDuringGame?: boolean,
 };
 
 /**
@@ -3798,6 +3813,8 @@ export type IceAdapter =
 "dynamic" |
 /**  `faf-ice-adapter`, driven over JSON-RPC. */
 "java" |
+/**  Experimental Java adapter (v4.0.0). */
+"expJava" |
 /**
  *  Experimental faf-pioneer backend. Owns a local GPGNet relay the Java
  *  adapter has no equivalent of.
@@ -4710,7 +4727,10 @@ export type MapGeneratorCommand =
 	requestId?: number,
 } } |
 /**  Re-read the preset library from disk. */
-{ type: "loadPresets" } | { type: "deletePreset"; payload: {
+{ type: "loadPresets" } | { type: "renamePreset"; payload: {
+	name: string,
+	newName: string,
+} } | { type: "deletePreset"; payload: {
 	name: string,
 } } |
 /**

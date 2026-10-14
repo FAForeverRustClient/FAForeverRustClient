@@ -99,6 +99,80 @@ describe("Select keyboard, mounted", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it("keeps the menu open after an option action and omits actions from disabled options", async () => {
+    const user = userEvent.setup();
+    const onAction = vi.fn();
+    const onChange = vi.fn();
+    render(
+      <Select
+        label="Preset"
+        value=""
+        options={[
+          { value: "", label: "Choose a preset", disabled: true },
+          { value: "saved", label: "Saved preset" },
+        ]}
+        onChange={onChange}
+        placement="top"
+        optionAction={{
+          icon: "trash",
+          label: (option) => `Delete ${option.label}`,
+          onSelect: onAction,
+          danger: true,
+        }}
+      />,
+    );
+
+    const trigger = screen.getByRole("combobox", { name: "Preset" });
+    await user.click(trigger);
+    expect(screen.getByRole("listbox").classList.contains("is-above")).toBe(true);
+    const placeholder = screen.getByRole("option", { name: "Choose a preset" });
+    expect(placeholder.getAttribute("aria-selected")).toBe("false");
+    expect(placeholder.querySelector(".select-option-check")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete Choose a preset" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Delete Saved preset" }));
+
+    expect(onAction).toHaveBeenCalledWith({ value: "saved", label: "Saved preset" });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("listbox")).toBeDefined();
+  });
+
+  it("renames an option inline without selecting it or closing the menu", async () => {
+    const user = userEvent.setup();
+    const onRename = vi.fn();
+    render(
+      <Select
+        label="Preset"
+        value=""
+        options={[{ value: "saved", label: "Saved preset" }]}
+        onChange={vi.fn()}
+        optionRename={{
+          label: (option) => `Rename ${option.label}`,
+          placeholder: (option) => option.label,
+          confirmLabel: () => "Save name",
+          cancelLabel: () => "Cancel rename",
+          onRename,
+          isValid: (_option, name) => name.trim().length > 0,
+        }}
+      />,
+    );
+
+    const trigger = screen.getByRole("combobox", { name: "Preset" });
+    await user.click(trigger);
+    await user.click(screen.getByRole("button", { name: "Rename Saved preset" }));
+    const input = screen.getByRole("textbox", { name: "Rename Saved preset" });
+    await user.clear(input);
+    await user.type(input, "New preset");
+    await user.click(screen.getByRole("button", { name: "Save name" }));
+
+    expect(onRename).toHaveBeenCalledWith(
+      { value: "saved", label: "Saved preset" },
+      "New preset",
+    );
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("listbox")).toBeDefined();
+  });
+
   it("walks the enabled options with the arrows, Home and End, stopping at the ends", async () => {
     const user = userEvent.setup();
     const { trigger } = mount();

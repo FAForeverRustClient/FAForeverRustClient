@@ -1,0 +1,1 @@
+- The Generate map dialog is tidier: saved presets can be renamed and take names in any script, a run of several maps gives each map its own random options, and a generated map's settings read as a labelled grid.

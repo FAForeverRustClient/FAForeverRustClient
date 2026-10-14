@@ -28,6 +28,7 @@ import { openPlayerCard } from "../../shared/playerCardActions";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ReportPlayerModal } from "../reporting/ReportPlayerModal";
 import { NotificationCenter } from "../notifications/NotificationCenter";
+import { ProfileMenu, type ProfileMenuTarget } from "./ProfileMenu";
 import { partyChatChannel } from "../../shared/partyChat";
 import { PlayerName } from "../../shared/components/nameColors";
 import "./shell.css";
@@ -84,6 +85,11 @@ export function AppShell() {
   // real login, which only the live directory has. See `partyChatChannel`.
   const social = useAppStore((s) => s.state.social);
   const player = auth.player;
+  // The menu on the player's own name (#514): sign out and play offline,
+  // which otherwise live in Settings only.
+  const [profileMenu, setProfileMenu] = useState<ProfileMenuTarget | null>(null);
+  const logOut = () =>
+    ipc.send({ kind: "Auth", command: { type: auth.mode === "account" ? "logout" : "logoutTest" } });
   // The signed-in account's own entry in the live player directory, which is
   // where the avatar the lobby knows about lives.
   const ownProfile = player ? findPlayer(social, player.name) : null;
@@ -222,6 +228,17 @@ export function AppShell() {
             className="sidebar-profile-button"
             disabled={!player}
             onClick={() => player && void openPlayerCard(player.id, player.name)}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              if (!player) return;
+              const rect = event.currentTarget.getBoundingClientRect();
+              setProfileMenu({
+                x: event.clientX || rect.left,
+                y: event.clientY || rect.top,
+                anchor: { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom },
+              });
+            }}
+            aria-haspopup="menu"
             aria-label={player ? t("shell.sidebar.openProfile", { name: player.name }) : t("shell.sidebar.profileUnavailable")}
           >
             <ProfileAvatar
@@ -241,6 +258,16 @@ export function AppShell() {
             </span>
           </button>
           <NotificationCenter />
+          {profileMenu && player && (
+            <ProfileMenu
+              target={profileMenu}
+              name={player.name}
+              onCopyName={() => void navigator.clipboard?.writeText(player.name)}
+              onPlayOffline={() => ipc.send({ kind: "Auth", command: { type: "launchOfflineGame" } })}
+              onLogOut={logOut}
+              onClose={() => setProfileMenu(null)}
+            />
+          )}
         </div>
 
         <div
