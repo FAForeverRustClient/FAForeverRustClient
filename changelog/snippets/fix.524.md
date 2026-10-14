@@ -1,1 +1,0 @@
-- The lobby's rating limit fields are labelled Min and Max.
