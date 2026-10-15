@@ -224,7 +224,7 @@ describe("Escape ownership in real overlays", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("cancels choosing a shortcut before closing display settings", async () => {
+  it("cancels choosing a shortcut before closing the shortcuts dialog", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     const keys = Object.fromEntries(HOTKEY_ACTIONS.map((action, index) => [action.id, String(index)])) as Record<HotkeyAction, string>;
