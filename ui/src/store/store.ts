@@ -12,7 +12,7 @@ import { applyEvent } from "./reducer";
 
 const INITIAL: AppState = {
   session: { backendVersion: "", status: "disconnected", offlineAuth: false },
-  auth: { status: "loggedOut", player: null, error: null, mode: "account" },
+  auth: { status: "loggedOut", player: null, error: null, mode: "account", signInLink: null },
   nav: {
     activeTab: "news",
     mapsSection: "vault",

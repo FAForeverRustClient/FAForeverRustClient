@@ -4276,6 +4276,24 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a sign-in link shows while the browser sign-in waits and goes with it",
+            vec![
+                AuthEvent::SignInLinkReady {
+                    url: "https://hydra.example/ignored".into(),
+                }
+                .into(),
+                AuthEvent::LoginStarted.into(),
+                AuthEvent::SignInLinkReady {
+                    url: "https://hydra.example/oauth2/auth?state=x".into(),
+                }
+                .into(),
+                AuthEvent::LoginFailed {
+                    message: "Login timed out waiting for the browser.".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
             "auth failure keeps the error",
             vec![
                 AuthEvent::LoginStarted.into(),

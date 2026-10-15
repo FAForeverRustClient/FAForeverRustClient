@@ -367,7 +367,11 @@ impl OAuthAuth {
 
 #[async_trait]
 impl AuthPort for OAuthAuth {
-    async fn login(&self, remember: bool) -> AuthResult<Player> {
+    async fn login(
+        &self,
+        remember: bool,
+        link: &(dyn Fn(String) + Send + Sync),
+    ) -> AuthResult<Player> {
         // A session an earlier attempt staged and nobody committed belongs to
         // that attempt, never to this one.
         self.discard_pending_session();
@@ -393,14 +397,21 @@ impl AuthPort for OAuthAuth {
         let state = random_token(16);
         let auth_url = build_authorize_url(&self.config, &state, &challenge, &redirect_uri);
 
-        // 3. Hand the URL to the system browser. spawn_blocking: it shells out,
-        //    and on Linux waits a moment for the launcher's verdict.
+        // 3. Offer the address to the login screen first, then hand it to the
+        //    system browser. A browser that never appears (no default browser,
+        //    a launcher that fails quietly) still leaves the player a way in:
+        //    the link, opened by hand in any browser on this machine, ends at
+        //    the same loopback listener. So a launcher that fails is logged and
+        //    the wait goes on; the link on screen is the way on from there.
+        //    spawn_blocking: it shells out, and on Linux waits a moment for the
+        //    launcher's verdict.
+        link(auth_url.clone());
         let opened =
             tokio::task::spawn_blocking(move || crate::infra::browser::open_url(&auth_url)).await;
         match opened {
             Ok(Ok(())) => {}
-            Ok(Err(e)) => return Err(AuthError::new(format!("Could not open browser: {e}"))),
-            Err(e) => return Err(AuthError::new(format!("Browser task failed: {e}"))),
+            Ok(Err(error)) => tracing::warn!(%error, "could not open the browser for sign-in"),
+            Err(error) => tracing::warn!(%error, "the browser task for sign-in failed"),
         }
 
         // 4. Wait for the browser redirect (bounded so we never hang forever).
