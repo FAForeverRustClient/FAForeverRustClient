@@ -4,3 +4,4 @@
 - On a wide window all columns of the game list widen with it, so tags show instead of only "+2 more".
 - Galactic War shows its cycle and faction figures larger.
 - The tournament tab's settings button and dialog are now called Keyboard shortcuts, which is all they hold.
+- The version band at the top of the Galactic War tab reaches across the whole column again.
