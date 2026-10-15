@@ -3258,6 +3258,179 @@ div.training-detail-guide-problem p {
   line-height: 1.6;
 }
 
+/* ── lessons ───────────────────────────────────────────────────────── */
+
+/* One row per lesson: its picture, what it teaches, and the way in with the
+   best run under it. Rows rather than cards, because a lesson is played
+   again and again, so the start button belongs on the surface. */
+.training-lessons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) clamp(16px, 2.5vw, 28px);
+}
+
+.training-lessons-lead {
+  margin: 0;
+  max-width: 72ch;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.training-lessons-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.training-lesson-row {
+  display: grid;
+  /* A fixed launcher column, so the start buttons line up from row to row
+     whatever each one has written under it. */
+  grid-template-columns: 200px minmax(0, 1fr) 260px;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.training-lesson-art {
+  width: 100%;
+}
+
+.training-lesson-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.training-lesson-copy h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 16px;
+}
+
+.training-lesson-copy p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.training-lesson-launcher {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.training-lesson-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.training-lesson-status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.training-lesson-status > svg {
+  color: var(--color-muted);
+}
+
+.training-lesson-status small {
+  width: 100%;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.training-lesson-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  max-width: 40ch;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.training-lesson-note.is-error {
+  color: var(--color-error-text);
+}
+
+.training-lesson-note > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.training-lesson-record {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.training-lesson-record p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.training-lesson-record > p > svg {
+  color: var(--color-rating);
+}
+
+.training-lesson-record .is-secondary,
+.training-lesson-unplayed {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.training-lesson-unplayed {
+  margin: 0;
+}
+
+/* On a lesson's own page the launcher stands where the hero's action does,
+   with a button the same size. */
+.training-detail-lesson {
+  max-width: 280px;
+}
+
+.training-detail-lesson .training-lesson-actions > button {
+  min-width: 180px;
+  min-height: 48px;
+  font-size: 15px;
+}
+
+@media (max-width: 1000px) {
+  .training-lesson-row {
+    grid-template-columns: 160px minmax(0, 1fr);
+  }
+
+  .training-lesson-row > .training-lesson-launcher {
+    grid-column: 1 / -1;
+  }
+
+  .training-detail-lesson {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
 /* ── submission queue ──────────────────────────────────────────────── */
 
 .training-queue {

@@ -184,6 +184,10 @@ pub struct TrainingResource {
     /// is honest and still scannable.
     pub image_url: String,
     pub tutorial_id: Option<i32>,
+    /// The map folder of a lesson the catalogue repository holds itself, which
+    /// the client downloads and starts. Kept only when its names are safe to
+    /// put in a path and an address; see [`LessonPackage::is_safe`].
+    pub lesson: Option<LessonPackage>,
     pub author: String,
     pub rating_min: Option<i32>,
     pub rating_max: Option<i32>,
@@ -227,6 +231,164 @@ pub struct TrainingResource {
     pub readable: bool,
 }
 
+/// A lesson the catalogue repository holds: a map folder under `lessons/`.
+///
+/// The client downloads the listed files into the player's maps folder and
+/// starts the game with `/map <folder>`. Addresses are never stated: the
+/// client builds them from these names, next to the catalogue it already
+/// trusts, so an entry can choose which lesson but not where it comes from.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LessonPackage {
+    /// The map folder, which is also the name `/map` is given.
+    pub folder: String,
+    /// Every file of the folder, by name.
+    pub files: Vec<String>,
+}
+
+impl LessonPackage {
+    /// Whether every name can be joined onto a path and an address as it is.
+    ///
+    /// Letters, digits and underscores for the folder; those plus dots and
+    /// hyphens for a file, which must also belong to the folder by name. That
+    /// rules out a separator, a `..`, a drive letter and anything a URL would
+    /// need escaped, so nothing a manifest says can write outside the folder.
+    pub fn is_safe(&self) -> bool {
+        let folder_ok = !self.folder.is_empty()
+            && self
+                .folder
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_');
+        let prefix = format!("{}_", self.folder);
+        folder_ok
+            && !self.files.is_empty()
+            && self.files.iter().all(|file| {
+                file.starts_with(&prefix)
+                    && !file.contains("..")
+                    && file
+                        .chars()
+                        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '-'))
+            })
+    }
+}
+
+/// One finished run of a lesson, as its debrief wrote it to the game log.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LessonScore {
+    /// Stages passed.
+    pub stars: i32,
+    /// Stages in the lesson.
+    pub max_stars: i32,
+    pub seconds: i32,
+}
+
+impl LessonScore {
+    /// More stars wins; between equal stars, the quicker run.
+    pub fn beats(&self, other: &LessonScore) -> bool {
+        self.stars > other.stars || (self.stars == other.stars && self.seconds < other.seconds)
+    }
+}
+
+/// What this machine remembers of one lesson. Kept locally and nowhere else:
+/// an offline game's result is whatever its own log says, which is fine for a
+/// personal best and worthless for a leaderboard.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LessonRecord {
+    pub best: LessonScore,
+    pub last: LessonScore,
+    /// Finished runs, not starts: a run quit before its debrief wrote nothing.
+    pub runs: i32,
+}
+
+/// The record after one more finished run.
+pub fn record_run(previous: Option<&LessonRecord>, score: LessonScore) -> LessonRecord {
+    match previous {
+        None => LessonRecord {
+            best: score,
+            last: score,
+            runs: 1,
+        },
+        Some(previous) => LessonRecord {
+            best: if score.beats(&previous.best) {
+                score
+            } else {
+                previous.best
+            },
+            last: score,
+            runs: previous.runs.saturating_add(1),
+        },
+    }
+}
+
+/// The prefix of the one line a lesson's debrief writes to the game log.
+pub const LESSON_RESULT_MARKER: &str = "FAF_LESSON_RESULT";
+
+/// The result a lesson wrote to the game log, if it wrote one.
+///
+/// The line is `FAF_LESSON_RESULT lesson=<folder> stars=<n> max=<n>
+/// seconds=<n>`, after whatever the engine puts in front of a `LOG`. The last
+/// one for `folder` wins, so a log that somehow holds two runs reports the
+/// later. A line for another folder, or one missing a number, is not a result:
+/// a lesson that cannot be read is better recorded as unfinished than as zero
+/// stars.
+pub fn lesson_score_from_log(log: &str, folder: &str) -> Option<LessonScore> {
+    log.lines().rev().find_map(|line| {
+        let start = line.find(LESSON_RESULT_MARKER)?;
+        let mut lesson = None;
+        let mut stars = None;
+        let mut max_stars = None;
+        let mut seconds = None;
+        for pair in line[start + LESSON_RESULT_MARKER.len()..].split_whitespace() {
+            let Some((key, value)) = pair.split_once('=') else {
+                continue;
+            };
+            match key {
+                "lesson" => lesson = Some(value),
+                "stars" => stars = value.parse::<i32>().ok(),
+                "max" => max_stars = value.parse::<i32>().ok(),
+                "seconds" => seconds = value.parse::<i32>().ok(),
+                _ => {}
+            }
+        }
+        if !lesson?.eq_ignore_ascii_case(folder) {
+            return None;
+        }
+        let (stars, max_stars, seconds) = (stars?, max_stars?, seconds?);
+        (max_stars > 0 && (0..=max_stars).contains(&stars) && seconds >= 0).then_some(LessonScore {
+            stars,
+            max_stars,
+            seconds,
+        })
+    })
+}
+
+/// Where starting a catalogue lesson has got to.
+///
+/// One at a time, because the game slot holds one process. Every state names
+/// the lesson it belongs to, so the outcome is drawn on that lesson's card and
+/// not on whichever one the player opens next.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(tag = "type", content = "payload", rename_all = "camelCase")]
+pub enum LessonLaunch {
+    #[default]
+    Idle,
+    #[serde(rename_all = "camelCase")]
+    Preparing { resource_id: String, detail: String },
+    #[serde(rename_all = "camelCase")]
+    Playing { resource_id: String },
+    #[serde(rename_all = "camelCase")]
+    Failed { resource_id: String, reason: String },
+    /// The game closed. `score` is absent when the run ended before its
+    /// debrief, which is a quit rather than a result.
+    #[serde(rename_all = "camelCase")]
+    Finished {
+        resource_id: String,
+        score: Option<LessonScore>,
+    },
+}
+
 /// Whether `rating` falls inside `[min, max]`.
 ///
 /// An unstated bound is open, and a band with neither bound is everyone's:
@@ -257,7 +419,16 @@ impl TrainingResource {
 
     /// Whether this is a lesson the client can start rather than a link.
     pub fn is_lesson(&self) -> bool {
-        self.tutorial_id.is_some() && self.kind == TrainingKind::Lesson
+        self.kind == TrainingKind::Lesson && (self.tutorial_id.is_some() || self.lesson.is_some())
+    }
+
+    /// The catalogue's own lesson, when this entry is one the client can
+    /// download and start.
+    pub fn lesson_package(&self) -> Option<&LessonPackage> {
+        if self.kind != TrainingKind::Lesson {
+            return None;
+        }
+        self.lesson.as_ref()
     }
 
     /// Whether `needle` (already lowercased) appears in the text of the entry.
@@ -881,6 +1052,11 @@ pub struct TrainingState {
     pub contribution_post: Option<ForumPost>,
     /// The guide being read in the tab, when one is.
     pub document: TrainingDocument,
+    /// Starting a catalogue lesson, and how the last one ended.
+    pub lesson_launch: LessonLaunch,
+    /// The player's own lesson results, by resource id. Read from this machine
+    /// when the hub loads, and written back after every finished run.
+    pub lesson_records: BTreeMap<String, LessonRecord>,
 }
 
 /// One guide's text, as the reader has it open.
@@ -1746,6 +1922,15 @@ pub enum TrainingCommand {
         draft: Box<ContributionDraft>,
     },
     CloseContribution,
+    /// Download a catalogue lesson and start it.
+    ///
+    /// By resource id, like [`Self::ReadGuide`]: the service looks the entry
+    /// up and builds every address itself.
+    #[serde(rename_all = "camelCase")]
+    LaunchLesson {
+        resource_id: String,
+    },
+    CancelLessonLaunch,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -1821,6 +2006,29 @@ pub enum TrainingEvent {
         post: Box<ForumPost>,
     },
     ContributionClosed,
+    LessonRecordsLoaded {
+        records: BTreeMap<String, LessonRecord>,
+    },
+    #[serde(rename_all = "camelCase")]
+    LessonPreparing {
+        resource_id: String,
+        detail: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    LessonPlaying {
+        resource_id: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    LessonLaunchFailed {
+        resource_id: String,
+        reason: String,
+    },
+    LessonLaunchCancelled,
+    #[serde(rename_all = "camelCase")]
+    LessonFinished {
+        resource_id: String,
+        score: Option<LessonScore>,
+    },
 }
 
 pub fn reduce(state: &mut TrainingState, event: &TrainingEvent) {
@@ -1959,6 +2167,43 @@ pub fn reduce(state: &mut TrainingState, event: &TrainingEvent) {
         TrainingEvent::ContributionClosed => {
             state.contribution = None;
             state.contribution_post = None;
+        }
+        TrainingEvent::LessonRecordsLoaded { records } => {
+            state.lesson_records = records.clone();
+        }
+        TrainingEvent::LessonPreparing {
+            resource_id,
+            detail,
+        } => {
+            state.lesson_launch = LessonLaunch::Preparing {
+                resource_id: resource_id.clone(),
+                detail: detail.clone(),
+            };
+        }
+        TrainingEvent::LessonPlaying { resource_id } => {
+            state.lesson_launch = LessonLaunch::Playing {
+                resource_id: resource_id.clone(),
+            };
+        }
+        TrainingEvent::LessonLaunchFailed {
+            resource_id,
+            reason,
+        } => {
+            state.lesson_launch = LessonLaunch::Failed {
+                resource_id: resource_id.clone(),
+                reason: reason.clone(),
+            };
+        }
+        TrainingEvent::LessonLaunchCancelled => state.lesson_launch = LessonLaunch::Idle,
+        TrainingEvent::LessonFinished { resource_id, score } => {
+            state.lesson_launch = LessonLaunch::Finished {
+                resource_id: resource_id.clone(),
+                score: *score,
+            };
+            if let Some(score) = score {
+                let record = record_run(state.lesson_records.get(resource_id), *score);
+                state.lesson_records.insert(resource_id.clone(), record);
+            }
         }
     }
 }
@@ -3142,6 +3387,169 @@ mod tests {
                 .unwrap()
                 .1,
             0
+        );
+    }
+
+    fn lesson_package() -> LessonPackage {
+        LessonPackage {
+            folder: "FAF_Lesson_Gunships_01".into(),
+            files: vec![
+                "FAF_Lesson_Gunships_01_scenario.lua".into(),
+                "FAF_Lesson_Gunships_01_script.lua".into(),
+            ],
+        }
+    }
+
+    #[test]
+    fn a_lesson_package_with_plain_names_is_safe() {
+        assert!(lesson_package().is_safe());
+    }
+
+    #[test]
+    fn a_lesson_package_cannot_name_a_path_outside_its_folder() {
+        let escape = |file: &str| LessonPackage {
+            files: vec![file.into()],
+            ..lesson_package()
+        };
+        assert!(!escape("FAF_Lesson_Gunships_01_../../x.lua").is_safe());
+        assert!(!escape("FAF_Lesson_Gunships_01_a/b.lua").is_safe());
+        assert!(!escape(r"FAF_Lesson_Gunships_01_a\b.lua").is_safe());
+        // Every file belongs to the folder by name.
+        assert!(!escape("init_faf.lua").is_safe());
+        let folder = |folder: &str| LessonPackage {
+            folder: folder.into(),
+            ..lesson_package()
+        };
+        assert!(!folder("../maps").is_safe());
+        assert!(!folder("C:").is_safe());
+        assert!(!folder("").is_safe());
+        assert!(!LessonPackage {
+            files: vec![],
+            ..lesson_package()
+        }
+        .is_safe());
+    }
+
+    #[test]
+    fn only_a_lesson_kind_entry_carries_a_package() {
+        let entry = TrainingResource {
+            kind: TrainingKind::Lesson,
+            lesson: Some(lesson_package()),
+            ..TrainingResource::default()
+        };
+        assert!(entry.is_lesson());
+        assert!(entry.lesson_package().is_some());
+        let guide = TrainingResource {
+            kind: TrainingKind::Guide,
+            ..entry
+        };
+        assert!(!guide.is_lesson());
+        assert!(guide.lesson_package().is_none());
+    }
+
+    #[test]
+    fn the_result_line_is_read_after_the_engine_prefix() {
+        let log = "info: something\n\
+                   INFO: FAF_LESSON_RESULT lesson=FAF_Lesson_Gunships_01 stars=2 max=3 seconds=431\n\
+                   info: Exiting";
+        assert_eq!(
+            lesson_score_from_log(log, "FAF_Lesson_Gunships_01"),
+            Some(LessonScore {
+                stars: 2,
+                max_stars: 3,
+                seconds: 431
+            })
+        );
+    }
+
+    #[test]
+    fn the_last_result_line_wins() {
+        let log = "INFO: FAF_LESSON_RESULT lesson=L stars=1 max=3 seconds=500\n\
+                   INFO: FAF_LESSON_RESULT lesson=L stars=3 max=3 seconds=420";
+        assert_eq!(
+            lesson_score_from_log(log, "L").map(|score| score.stars),
+            Some(3)
+        );
+    }
+
+    #[test]
+    fn a_run_without_a_readable_result_is_no_result() {
+        assert_eq!(lesson_score_from_log("INFO: Exiting", "L"), None);
+        // Another lesson's line is not this lesson's result.
+        assert_eq!(
+            lesson_score_from_log(
+                "INFO: FAF_LESSON_RESULT lesson=M stars=1 max=3 seconds=9",
+                "L"
+            ),
+            None
+        );
+        // A missing or impossible number is not zero stars.
+        assert_eq!(
+            lesson_score_from_log("INFO: FAF_LESSON_RESULT lesson=L stars=1 max=3", "L"),
+            None
+        );
+        assert_eq!(
+            lesson_score_from_log(
+                "INFO: FAF_LESSON_RESULT lesson=L stars=4 max=3 seconds=9",
+                "L"
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn the_best_run_keeps_more_stars_then_the_quicker_time() {
+        let run = |stars, seconds| LessonScore {
+            stars,
+            max_stars: 3,
+            seconds,
+        };
+        let first = record_run(None, run(2, 400));
+        assert_eq!((first.best, first.runs), (run(2, 400), 1));
+        // Fewer stars is never better, however quick.
+        let second = record_run(Some(&first), run(1, 100));
+        assert_eq!(
+            (second.best, second.last, second.runs),
+            (run(2, 400), run(1, 100), 2)
+        );
+        // Same stars, quicker: better.
+        let third = record_run(Some(&second), run(2, 350));
+        assert_eq!(third.best, run(2, 350));
+        // More stars beats a quicker time.
+        let fourth = record_run(Some(&third), run(3, 600));
+        assert_eq!(fourth.best, run(3, 600));
+    }
+
+    #[test]
+    fn a_finished_run_updates_the_record_and_a_quit_does_not() {
+        let mut state = TrainingState::default();
+        let score = LessonScore {
+            stars: 1,
+            max_stars: 3,
+            seconds: 300,
+        };
+        reduce(
+            &mut state,
+            &TrainingEvent::LessonFinished {
+                resource_id: "lesson".into(),
+                score: None,
+            },
+        );
+        assert!(state.lesson_records.is_empty());
+        reduce(
+            &mut state,
+            &TrainingEvent::LessonFinished {
+                resource_id: "lesson".into(),
+                score: Some(score),
+            },
+        );
+        assert_eq!(state.lesson_records["lesson"].best, score);
+        assert_eq!(
+            state.lesson_launch,
+            LessonLaunch::Finished {
+                resource_id: "lesson".into(),
+                score: Some(score),
+            }
         );
     }
 }

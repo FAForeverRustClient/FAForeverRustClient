@@ -37875,6 +37875,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -37939,6 +37943,7 @@
                     "id": "eco",
                     "imageUrl": "",
                     "kind": "guide",
+                    "lesson": null,
                     "level": "beginner",
                     "maps": [
                       "Setons Clutch"
@@ -37968,6 +37973,7 @@
                     "id": "setons",
                     "imageUrl": "",
                     "kind": "guide",
+                    "lesson": null,
                     "level": "beginner",
                     "maps": [
                       "Setons Clutch"
@@ -38031,6 +38037,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -38071,6 +38081,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -38100,6 +38111,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -38184,6 +38196,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -38224,6 +38240,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -38253,6 +38270,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -38329,6 +38347,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -38369,6 +38391,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -38398,6 +38421,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -38495,6 +38519,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -38547,6 +38575,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -38576,6 +38605,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -38653,6 +38683,7 @@
                     "id": "eco",
                     "imageUrl": "",
                     "kind": "guide",
+                    "lesson": null,
                     "level": "beginner",
                     "maps": [
                       "Setons Clutch"
@@ -38693,6 +38724,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -38745,6 +38780,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -38798,6 +38834,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -38850,6 +38890,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -38912,6 +38953,7 @@
                     "id": "eco",
                     "imageUrl": "",
                     "kind": "guide",
+                    "lesson": null,
                     "level": "beginner",
                     "maps": [
                       "Setons Clutch"
@@ -38941,6 +38983,7 @@
                     "id": "setons",
                     "imageUrl": "",
                     "kind": "guide",
+                    "lesson": null,
                     "level": "beginner",
                     "maps": [
                       "Setons Clutch"
@@ -38981,6 +39024,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -39021,6 +39068,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -39050,6 +39098,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -39103,6 +39152,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -39143,6 +39196,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -39172,6 +39226,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -39225,6 +39280,10 @@
                 "type": "loading"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -39265,6 +39324,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -39294,6 +39354,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -39348,6 +39409,10 @@
                 "type": "ready"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -39388,6 +39453,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -39417,6 +39483,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -39470,6 +39537,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -39510,6 +39581,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -39539,6 +39611,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -39593,6 +39666,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -39633,6 +39710,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -39662,6 +39740,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -39715,6 +39794,10 @@
                 "type": "loading"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -39755,6 +39838,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -39784,6 +39868,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -39841,6 +39926,10 @@
                 "type": "failed"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -39881,6 +39970,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -39910,6 +40000,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -39963,6 +40054,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -40003,6 +40098,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -40032,6 +40128,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -40086,6 +40183,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -40126,6 +40227,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -40155,6 +40257,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -40214,6 +40317,7 @@
                     "id": "eco",
                     "imageUrl": "",
                     "kind": "guide",
+                    "lesson": null,
                     "level": "beginner",
                     "maps": [
                       "Setons Clutch"
@@ -40243,6 +40347,7 @@
                     "id": "setons",
                     "imageUrl": "",
                     "kind": "guide",
+                    "lesson": null,
                     "level": "beginner",
                     "maps": [
                       "Setons Clutch"
@@ -40283,6 +40388,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -40323,6 +40432,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -40352,6 +40462,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -40405,6 +40516,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -40445,6 +40560,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -40474,6 +40590,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -40527,6 +40644,10 @@
                 "type": "loading"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -40567,6 +40688,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -40596,6 +40718,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -40649,6 +40772,10 @@
                 "type": "loading"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -40689,6 +40816,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -40718,6 +40846,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -40775,6 +40904,10 @@
                 "type": "failed"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -40815,6 +40948,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -40844,6 +40978,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -40901,6 +41036,10 @@
                 "type": "failed"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -40941,6 +41080,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -40970,6 +41110,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -41023,6 +41164,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -41063,6 +41208,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -41092,6 +41238,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -41145,6 +41292,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -41185,6 +41336,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -41214,6 +41366,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -41271,6 +41424,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -41311,6 +41468,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -41340,6 +41498,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -41393,6 +41552,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -41433,6 +41596,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -41462,6 +41626,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -41516,6 +41681,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -41556,6 +41725,7 @@
                 "id": "eco",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -41585,6 +41755,7 @@
                 "id": "setons",
                 "imageUrl": "",
                 "kind": "guide",
+                "lesson": null,
                 "level": "beginner",
                 "maps": [
                   "Setons Clutch"
@@ -41655,6 +41826,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -41734,6 +41909,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -41825,6 +42004,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -41897,6 +42080,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -42100,6 +42287,7 @@
                       "id": "guide-11",
                       "imageUrl": "",
                       "kind": "guide",
+                      "lesson": null,
                       "level": "beginner",
                       "maps": [
                         "Setons Clutch"
@@ -42140,6 +42328,7 @@
                       "id": "guide-12",
                       "imageUrl": "",
                       "kind": "guide",
+                      "lesson": null,
                       "level": "beginner",
                       "maps": [
                         "Setons Clutch"
@@ -42203,6 +42392,7 @@
                   "id": "guide-11",
                   "imageUrl": "",
                   "kind": "guide",
+                  "lesson": null,
                   "level": "beginner",
                   "maps": [
                     "Setons Clutch"
@@ -42243,6 +42433,7 @@
                   "id": "guide-12",
                   "imageUrl": "",
                   "kind": "guide",
+                  "lesson": null,
                   "level": "beginner",
                   "maps": [
                     "Setons Clutch"
@@ -42319,6 +42510,7 @@
                   "id": "guide-11",
                   "imageUrl": "",
                   "kind": "guide",
+                  "lesson": null,
                   "level": "beginner",
                   "maps": [
                     "Setons Clutch"
@@ -42359,6 +42551,7 @@
                   "id": "guide-12",
                   "imageUrl": "",
                   "kind": "guide",
+                  "lesson": null,
                   "level": "beginner",
                   "maps": [
                     "Setons Clutch"
@@ -42440,6 +42633,7 @@
                   "id": "guide-12",
                   "imageUrl": "",
                   "kind": "guide",
+                  "lesson": null,
                   "level": "beginner",
                   "maps": [
                     "Setons Clutch"
@@ -42521,6 +42715,7 @@
                   "id": "guide-12",
                   "imageUrl": "",
                   "kind": "guide",
+                  "lesson": null,
                   "level": "beginner",
                   "maps": [
                     "Setons Clutch"
@@ -42603,6 +42798,7 @@
                   "id": "guide-12",
                   "imageUrl": "",
                   "kind": "guide",
+                  "lesson": null,
                   "level": "beginner",
                   "maps": [
                     "Setons Clutch"
@@ -42685,6 +42881,7 @@
                   "id": "guide-12",
                   "imageUrl": "",
                   "kind": "guide",
+                  "lesson": null,
                   "level": "beginner",
                   "maps": [
                     "Setons Clutch"
@@ -42821,6 +43018,7 @@
                       "id": "guide-11",
                       "imageUrl": "",
                       "kind": "guide",
+                      "lesson": null,
                       "level": "beginner",
                       "maps": [
                         "Setons Clutch"
@@ -42861,6 +43059,7 @@
                       "id": "guide-12",
                       "imageUrl": "",
                       "kind": "guide",
+                      "lesson": null,
                       "level": "beginner",
                       "maps": [
                         "Setons Clutch"
@@ -43295,6 +43494,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -43392,6 +43595,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -43480,6 +43687,10 @@
                 "type": "idle"
               }
             },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -43538,6 +43749,882 @@
               "resourceId": "",
               "status": {
                 "type": "idle"
+              }
+            },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {},
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "a catalogue lesson is started, finished twice, and keeps its best run",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "records": {
+                  "lesson-reclaim": {
+                    "best": {
+                      "maxStars": 3,
+                      "seconds": 410,
+                      "stars": 3
+                    },
+                    "last": {
+                      "maxStars": 3,
+                      "seconds": 380,
+                      "stars": 2
+                    },
+                    "runs": 4
+                  }
+                }
+              },
+              "type": "lessonRecordsLoaded"
+            },
+            "kind": "Training"
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "recording": "",
+              "recordingStatus": {
+                "type": "idle"
+              },
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {
+              "lesson-reclaim": {
+                "best": {
+                  "maxStars": 3,
+                  "seconds": 410,
+                  "stars": 3
+                },
+                "last": {
+                  "maxStars": 3,
+                  "seconds": 380,
+                  "stars": 2
+                },
+                "runs": 4
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "detail": "Downloading the lesson",
+                "resourceId": "lesson-gunships"
+              },
+              "type": "lessonPreparing"
+            },
+            "kind": "Training"
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "recording": "",
+              "recordingStatus": {
+                "type": "idle"
+              },
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "lessonLaunch": {
+              "payload": {
+                "detail": "Downloading the lesson",
+                "resourceId": "lesson-gunships"
+              },
+              "type": "preparing"
+            },
+            "lessonRecords": {
+              "lesson-reclaim": {
+                "best": {
+                  "maxStars": 3,
+                  "seconds": 410,
+                  "stars": 3
+                },
+                "last": {
+                  "maxStars": 3,
+                  "seconds": 380,
+                  "stars": 2
+                },
+                "runs": 4
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "resourceId": "lesson-gunships"
+              },
+              "type": "lessonPlaying"
+            },
+            "kind": "Training"
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "recording": "",
+              "recordingStatus": {
+                "type": "idle"
+              },
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "lessonLaunch": {
+              "payload": {
+                "resourceId": "lesson-gunships"
+              },
+              "type": "playing"
+            },
+            "lessonRecords": {
+              "lesson-reclaim": {
+                "best": {
+                  "maxStars": 3,
+                  "seconds": 410,
+                  "stars": 3
+                },
+                "last": {
+                  "maxStars": 3,
+                  "seconds": 380,
+                  "stars": 2
+                },
+                "runs": 4
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "resourceId": "lesson-gunships",
+                "score": {
+                  "maxStars": 3,
+                  "seconds": 431,
+                  "stars": 2
+                }
+              },
+              "type": "lessonFinished"
+            },
+            "kind": "Training"
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "recording": "",
+              "recordingStatus": {
+                "type": "idle"
+              },
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "lessonLaunch": {
+              "payload": {
+                "resourceId": "lesson-gunships",
+                "score": {
+                  "maxStars": 3,
+                  "seconds": 431,
+                  "stars": 2
+                }
+              },
+              "type": "finished"
+            },
+            "lessonRecords": {
+              "lesson-gunships": {
+                "best": {
+                  "maxStars": 3,
+                  "seconds": 431,
+                  "stars": 2
+                },
+                "last": {
+                  "maxStars": 3,
+                  "seconds": 431,
+                  "stars": 2
+                },
+                "runs": 1
+              },
+              "lesson-reclaim": {
+                "best": {
+                  "maxStars": 3,
+                  "seconds": 410,
+                  "stars": 3
+                },
+                "last": {
+                  "maxStars": 3,
+                  "seconds": 380,
+                  "stars": 2
+                },
+                "runs": 4
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "resourceId": "lesson-gunships",
+                "score": {
+                  "maxStars": 3,
+                  "seconds": 200,
+                  "stars": 1
+                }
+              },
+              "type": "lessonFinished"
+            },
+            "kind": "Training"
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "recording": "",
+              "recordingStatus": {
+                "type": "idle"
+              },
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "lessonLaunch": {
+              "payload": {
+                "resourceId": "lesson-gunships",
+                "score": {
+                  "maxStars": 3,
+                  "seconds": 200,
+                  "stars": 1
+                }
+              },
+              "type": "finished"
+            },
+            "lessonRecords": {
+              "lesson-gunships": {
+                "best": {
+                  "maxStars": 3,
+                  "seconds": 431,
+                  "stars": 2
+                },
+                "last": {
+                  "maxStars": 3,
+                  "seconds": 200,
+                  "stars": 1
+                },
+                "runs": 2
+              },
+              "lesson-reclaim": {
+                "best": {
+                  "maxStars": 3,
+                  "seconds": 410,
+                  "stars": 3
+                },
+                "last": {
+                  "maxStars": 3,
+                  "seconds": 380,
+                  "stars": 2
+                },
+                "runs": 4
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "detail": "Updating the game",
+                "resourceId": "lesson-reclaim"
+              },
+              "type": "lessonPreparing"
+            },
+            "kind": "Training"
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "recording": "",
+              "recordingStatus": {
+                "type": "idle"
+              },
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "lessonLaunch": {
+              "payload": {
+                "detail": "Updating the game",
+                "resourceId": "lesson-reclaim"
+              },
+              "type": "preparing"
+            },
+            "lessonRecords": {
+              "lesson-gunships": {
+                "best": {
+                  "maxStars": 3,
+                  "seconds": 431,
+                  "stars": 2
+                },
+                "last": {
+                  "maxStars": 3,
+                  "seconds": 200,
+                  "stars": 1
+                },
+                "runs": 2
+              },
+              "lesson-reclaim": {
+                "best": {
+                  "maxStars": 3,
+                  "seconds": 410,
+                  "stars": 3
+                },
+                "last": {
+                  "maxStars": 3,
+                  "seconds": 380,
+                  "stars": 2
+                },
+                "runs": 4
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "reason": "Forged Alliance is already running.",
+                "resourceId": "lesson-reclaim"
+              },
+              "type": "lessonLaunchFailed"
+            },
+            "kind": "Training"
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "recording": "",
+              "recordingStatus": {
+                "type": "idle"
+              },
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "lessonLaunch": {
+              "payload": {
+                "reason": "Forged Alliance is already running.",
+                "resourceId": "lesson-reclaim"
+              },
+              "type": "failed"
+            },
+            "lessonRecords": {
+              "lesson-gunships": {
+                "best": {
+                  "maxStars": 3,
+                  "seconds": 431,
+                  "stars": 2
+                },
+                "last": {
+                  "maxStars": 3,
+                  "seconds": 200,
+                  "stars": 1
+                },
+                "runs": 2
+              },
+              "lesson-reclaim": {
+                "best": {
+                  "maxStars": 3,
+                  "seconds": 410,
+                  "stars": 3
+                },
+                "last": {
+                  "maxStars": 3,
+                  "seconds": 380,
+                  "stars": 2
+                },
+                "runs": 4
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "lessonLaunchCancelled"
+            },
+            "kind": "Training"
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "recording": "",
+              "recordingStatus": {
+                "type": "idle"
+              },
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "lessonLaunch": {
+              "type": "idle"
+            },
+            "lessonRecords": {
+              "lesson-gunships": {
+                "best": {
+                  "maxStars": 3,
+                  "seconds": 431,
+                  "stars": 2
+                },
+                "last": {
+                  "maxStars": 3,
+                  "seconds": 200,
+                  "stars": 1
+                },
+                "runs": 2
+              },
+              "lesson-reclaim": {
+                "best": {
+                  "maxStars": 3,
+                  "seconds": 410,
+                  "stars": 3
+                },
+                "last": {
+                  "maxStars": 3,
+                  "seconds": 380,
+                  "stars": 2
+                },
+                "runs": 4
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "resourceId": "lesson-reclaim",
+                "score": null
+              },
+              "type": "lessonFinished"
+            },
+            "kind": "Training"
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "recording": "",
+              "recordingStatus": {
+                "type": "idle"
+              },
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "lessonLaunch": {
+              "payload": {
+                "resourceId": "lesson-reclaim",
+                "score": null
+              },
+              "type": "finished"
+            },
+            "lessonRecords": {
+              "lesson-gunships": {
+                "best": {
+                  "maxStars": 3,
+                  "seconds": 431,
+                  "stars": 2
+                },
+                "last": {
+                  "maxStars": 3,
+                  "seconds": 200,
+                  "stars": 1
+                },
+                "runs": 2
+              },
+              "lesson-reclaim": {
+                "best": {
+                  "maxStars": 3,
+                  "seconds": 410,
+                  "stars": 3
+                },
+                "last": {
+                  "maxStars": 3,
+                  "seconds": 380,
+                  "stars": 2
+                },
+                "runs": 4
               }
             },
             "links": {
@@ -120933,6 +122020,7 @@
           "id": "untagged",
           "imageUrl": "",
           "kind": "guide",
+          "lesson": null,
           "level": null,
           "maps": [],
           "ratingMax": null,
@@ -120958,6 +122046,7 @@
           "id": "eco-beginner",
           "imageUrl": "",
           "kind": "video",
+          "lesson": null,
           "level": "beginner",
           "maps": [],
           "ratingMax": null,
@@ -120985,6 +122074,7 @@
           "id": "setons-4v4",
           "imageUrl": "",
           "kind": "buildOrder",
+          "lesson": null,
           "level": "beginner",
           "maps": [
             "Setons Clutch"
@@ -121013,6 +122103,7 @@
           "id": "advanced-micro",
           "imageUrl": "",
           "kind": "guide",
+          "lesson": null,
           "level": "advanced",
           "maps": [],
           "ratingMax": null,
@@ -122352,6 +123443,10 @@
           "type": "idle"
         }
       },
+      "lessonLaunch": {
+        "type": "idle"
+      },
+      "lessonRecords": {},
       "links": {
         "contributeCategory": null,
         "contributeUrl": "",

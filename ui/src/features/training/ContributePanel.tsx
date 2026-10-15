@@ -259,6 +259,7 @@ export function ContributePanel({
     url: draft.url,
     imageUrl: "",
     tutorialId: null,
+    lesson: null,
     author,
     ratingMin: null,
     ratingMax: null,

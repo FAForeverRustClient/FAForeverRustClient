@@ -144,6 +144,19 @@ pub trait ProcessPort: Send + Sync {
     /// client's `launchOfflineGame`.
     async fn launch_offline(&self, featured_mod: String, map: String) -> Result<(), String>;
 
+    /// [`Self::launch_offline`], and where the game was told to write its log.
+    ///
+    /// For a lesson, whose result is a line in that log. The default launches
+    /// the same way and reports no log, which a caller reads as "the result
+    /// cannot be known" rather than as a failure to start.
+    async fn launch_offline_logged(
+        &self,
+        featured_mod: String,
+        map: String,
+    ) -> Result<Option<PathBuf>, String> {
+        self.launch_offline(featured_mod, map).await.map(|()| None)
+    }
+
     /// Launch the game with an exact argument list: used for replay playback,
     /// which needs neither `/gpgnet` nor the other live-join arguments
     /// [`Self::launch_game`] adds. The caller (see `infra/replay.rs`) builds the
