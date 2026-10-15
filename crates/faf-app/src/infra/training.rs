@@ -720,9 +720,9 @@ impl TrainingPort for TrainingCatalogueClient {
         // copy on disk already has the listed hash is taken from there.
         std::fs::create_dir_all(&maps)
             .map_err(|error| format!("could not create the maps folder: {error}"))?;
-        let staging = tempfile::Builder::new()
-            .prefix(".lesson-")
-            .tempdir_in(&maps)
+        let staging = super::vault_install::DirectoryReplacement::new(&maps)?;
+        let incoming = staging.path().join("incoming");
+        std::fs::create_dir(&incoming)
             .map_err(|error| format!("could not prepare the lesson folder: {error}"))?;
         for file in &remote {
             let bytes = match local_file_matches(&target, file) {
@@ -732,24 +732,15 @@ impl TrainingPort for TrainingCatalogueClient {
                         .await?
                 }
             };
-            std::fs::write(staging.path().join(&file.name), bytes)
+            std::fs::write(incoming.join(&file.name), bytes)
                 .map_err(|error| format!("could not write the lesson: {error}"))?;
         }
         if let Some(terrain) = placeholder {
-            std::fs::write(staging.path().join(terrain), b"")
+            std::fs::write(incoming.join(terrain), b"")
                 .map_err(|error| format!("could not write the lesson: {error}"))?;
         }
 
-        if target.exists() {
-            std::fs::remove_dir_all(&target).map_err(|error| {
-                format!("could not replace the old copy of the lesson: {error}")
-            })?;
-        }
-        let staged = staging.keep();
-        std::fs::rename(&staged, &target).map_err(|error| {
-            let _ = std::fs::remove_dir_all(&staged);
-            format!("could not put the lesson in the maps folder: {error}")
-        })
+        staging.commit(&incoming, &target, &target).map(|_| ())
     }
 
     async fn lesson_records(&self) -> Result<BTreeMap<String, LessonRecord>, String> {

@@ -478,6 +478,82 @@ pub(crate) fn is_install_staging_name(name: &str) -> bool {
     })
 }
 
+/// An owned staging folder recognised by startup recovery. A failed rollback
+/// retains the previous directory and its restore record instead of deleting it.
+pub(crate) struct DirectoryReplacement {
+    path: PathBuf,
+    committed: bool,
+}
+
+impl DirectoryReplacement {
+    pub(crate) fn new(destination: &Path) -> Result<Self, String> {
+        let path = unique_staging_path(destination);
+        std::fs::create_dir(&path)
+            .map_err(|error| format!("could not create replacement staging folder: {error}"))?;
+        Ok(Self {
+            path,
+            committed: false,
+        })
+    }
+
+    pub(crate) fn path(&self) -> &Path {
+        &self.path
+    }
+
+    pub(crate) fn commit(
+        mut self,
+        staged: &Path,
+        previous: &Path,
+        target: &Path,
+    ) -> Result<PathBuf, String> {
+        let destination = self
+            .path
+            .parent()
+            .ok_or("replacement has no install folder")?;
+        let relative = previous
+            .strip_prefix(destination)
+            .map_err(|_| "replacement is outside the install folder")?;
+        let target_relative = target
+            .strip_prefix(destination)
+            .map_err(|_| "replacement target is outside the install folder")?;
+        let same_target = target == previous
+            || (cfg!(windows)
+                && target
+                    .to_string_lossy()
+                    .eq_ignore_ascii_case(&previous.to_string_lossy()));
+        if !same_target && target.exists() {
+            return Err("the replacement folder is already occupied".into());
+        }
+        let record = serde_json::json!({ "previous": relative, "target": target_relative });
+        std::fs::write(self.path.join("restore.json"), record.to_string())
+            .map_err(|error| format!("could not record replacement recovery: {error}"))?;
+        let backup = self.path.join("previous");
+        let had_previous = previous.exists();
+        if had_previous {
+            std::fs::rename(previous, &backup)
+                .map_err(|error| format!("could not move the installed folder aside: {error}"))?;
+        }
+        if let Err(error) = std::fs::rename(staged, target) {
+            if had_previous {
+                std::fs::rename(&backup, previous).map_err(|restore| {
+                    format!("could not install the replacement: {error}; could not restore the old folder: {restore}")
+                })?;
+            }
+            return Err(format!("could not install the replacement: {error}"));
+        }
+        self.committed = true;
+        Ok(target.to_path_buf())
+    }
+}
+
+impl Drop for DirectoryReplacement {
+    fn drop(&mut self) {
+        if self.committed || !self.path.join("previous").exists() {
+            let _ = std::fs::remove_dir_all(&self.path);
+        }
+    }
+}
+
 /// Stage and validate a replacement before moving the installed directory.
 /// The recovery record lets startup restore the old copy after a hard kill
 /// between the two renames. Failed extraction never touches the old copy.
@@ -492,9 +568,6 @@ where
 {
     let root = inspect_archive(std::io::Cursor::new(bytes), None)?;
     let target = destination.join(root);
-    let relative = previous
-        .strip_prefix(destination)
-        .map_err(|_| "replacement is outside the install folder".to_string())?;
     let same_target = target == previous
         || (cfg!(windows)
             && target
@@ -503,41 +576,12 @@ where
     if !same_target && target.exists() {
         return Err("the replacement folder is already occupied".into());
     }
-    let staging = unique_staging_path(destination);
-    std::fs::create_dir_all(&staging)
-        .map_err(|error| format!("could not create replacement staging folder: {error}"))?;
-    let outcome = (|| {
-        let incoming = staging.join("incoming");
-        extract_archive(std::io::Cursor::new(bytes), &incoming, "mod archive")?;
-        let staged = incoming.join(target.file_name().unwrap());
-        validate_contents(&staged)?;
-        let record = serde_json::json!({
-            "previous": relative,
-            "target": target.strip_prefix(destination).unwrap(),
-        });
-        std::fs::write(staging.join("restore.json"), record.to_string())
-            .map_err(|error| format!("could not record replacement recovery: {error}"))?;
-        let backup = staging.join("previous");
-        let had_previous = previous.exists();
-        if had_previous {
-            std::fs::rename(previous, &backup)
-                .map_err(|error| format!("could not move the installed mod aside: {error}"))?;
-        }
-        if let Err(error) = std::fs::rename(&staged, &target) {
-            if had_previous {
-                std::fs::rename(&backup, previous).map_err(|restore| {
-                    format!("could not install the replacement: {error}; could not restore the old mod: {restore}")
-                })?;
-            }
-            return Err(format!("could not install the replacement: {error}"));
-        }
-        Ok(target)
-    })();
-    // A failed rollback must retain the only remaining copy for startup recovery.
-    if !staging.join("previous").exists() || outcome.is_ok() {
-        let _ = std::fs::remove_dir_all(&staging);
-    }
-    outcome
+    let staging = DirectoryReplacement::new(destination)?;
+    let incoming = staging.path().join("incoming");
+    let staged = incoming.join(target.file_name().unwrap());
+    extract_archive(std::io::Cursor::new(bytes), &incoming, "mod archive")?;
+    validate_contents(&staged)?;
+    staging.commit(&staged, previous, &target)
 }
 
 /// Bounds every archive must respect before a single entry is read.
@@ -746,6 +790,25 @@ fn extract_archive_checked<R: std::io::Read + std::io::Seek>(
 mod tests {
     use super::*;
     use std::io::Cursor;
+
+    #[test]
+    fn a_failed_directory_swap_restores_the_working_lesson() {
+        let root = tempfile::tempdir().unwrap();
+        let target = root.path().join("lesson");
+        std::fs::create_dir(&target).unwrap();
+        std::fs::write(target.join("script.lua"), b"working lesson").unwrap();
+        let staging = DirectoryReplacement::new(root.path()).unwrap();
+        assert!(is_install_staging_name(
+            staging.path().file_name().unwrap().to_str().unwrap()
+        ));
+        let missing = staging.path().join("missing");
+        assert!(staging.commit(&missing, &target, &target).is_err());
+        assert_eq!(
+            std::fs::read(target.join("script.lua")).unwrap(),
+            b"working lesson"
+        );
+        assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 1);
+    }
 
     /// An archive whose headers understate an entry, byte for byte the shape
     /// the review demonstrated: the declared size is patched in both the local
