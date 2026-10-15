@@ -95,9 +95,12 @@
   text-transform: uppercase;
 }
 
-/* The strip opens the column: the head already draws the rule above it. */
+/* The strip opens the column, right under the head, which already draws the
+   rule above it. It sits outside `.gw-scroll`, so it spans the column from
+   edge to edge whatever the scrollbar's kept room takes. */
 .gw-client-facts {
-  margin-top: calc(-1 * var(--space-4));
+  flex: none;
+  margin: 0;
   border-top: 0;
 }
 

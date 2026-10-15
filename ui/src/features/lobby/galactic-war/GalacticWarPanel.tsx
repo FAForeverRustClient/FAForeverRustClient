@@ -282,27 +282,31 @@ export function GalacticWarPanel({
             <span className="gw-column-state">{t("lobby.galacticWar.notInstalled")}</span>
           ) : null}
         </header>
+        {/* Outside the scrolling part, so the band runs edge to edge: inside
+            it, the scrollbar's kept room cut it short on the right. */}
+        <FactsStrip className="gw-client-facts" columns={3} groups={[{ facts: clientFacts }]} />
         <div className="gw-scroll">
-          <section className="gw-section">
-            <FactsStrip className="gw-client-facts" columns={3} groups={[{ facts: clientFacts }]} />
-            {state.belowMinimum ? (
-              <p className="gw-notice gw-notice-warn">{t("lobby.galacticWar.belowMinimum")}</p>
-            ) : null}
-            {/* Retry asks the gateway again, which is the one step every
-                failure here shares: a failed version check is answered by it,
-                and after a failed install or launch it clears the line and
-                leaves the launch button to say what comes next. */}
-            {status.type === "failed" ? (
-              <StatusNotice
-                tone="error"
-                className="gw-failure"
-                action={{ label: t("common.retry"), onClick: refresh }}
-                detail={status.payload.reason}
-              >
-                {plainError(status.payload.reason)}
-              </StatusNotice>
-            ) : null}
-          </section>
+          {state.belowMinimum || status.type === "failed" ? (
+            <section className="gw-section">
+              {state.belowMinimum ? (
+                <p className="gw-notice gw-notice-warn">{t("lobby.galacticWar.belowMinimum")}</p>
+              ) : null}
+              {/* Retry asks the gateway again, which is the one step every
+                  failure here shares: a failed version check is answered by it,
+                  and after a failed install or launch it clears the line and
+                  leaves the launch button to say what comes next. */}
+              {status.type === "failed" ? (
+                <StatusNotice
+                  tone="error"
+                  className="gw-failure"
+                  action={{ label: t("common.retry"), onClick: refresh }}
+                  detail={status.payload.reason}
+                >
+                  {plainError(status.payload.reason)}
+                </StatusNotice>
+              ) : null}
+            </section>
+          ) : null}
 
           <section className="gw-section gw-news">
             <h3 className="gw-section-title">{t("lobby.galacticWar.news.title")}</h3>
