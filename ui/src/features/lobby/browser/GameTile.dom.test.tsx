@@ -67,15 +67,16 @@ describe("GameTile", () => {
     expect(caption?.getAttribute("aria-hidden")).toBe("true");
     expect(part(".game-tile-body")?.textContent).not.toContain(caption?.textContent ?? "");
     // The host is the line straight under the title, captioned as the host.
-    expect(part(".game-tile-host-label")?.textContent).toBe("Host");
-    expect(part(".game-tile-host")?.textContent).toBe("HostSui");
+    expect(part(".game-tile-host-label")?.textContent).toBe("Host:");
+    expect(part(".game-tile-host")?.textContent).toBe("Host:Sui");
     expect(part(".game-tile-title")?.nextElementSibling?.classList.contains("game-tile-host")).toBe(true);
     expect(part(".game-tile-stats")?.textContent).toContain("1/4");
     expect(part(".game-tile-stats")?.textContent).toContain("Ø 1829");
     // The title has its line to itself; the age ends the bottom row.
     expect(part(".game-tile-stats > .game-tile-age")).not.toBeNull();
     expect(part(".game-tile-title")?.parentElement?.classList.contains("game-tile-body")).toBe(true);
-    for (const caption of ["Host:", "Version", "Ø Rating", "player"]) {
+    // The host's is the one caption the tile keeps.
+    for (const caption of ["Version", "Ø Rating", "player"]) {
       expect(container.textContent).not.toContain(caption);
     }
   });

@@ -797,7 +797,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.privateGame": "Private Partie",
   "lobby.browser.host": "Host:",
   "lobby.browser.hostedBy": "Gehostet von",
-  "lobby.browser.tileHost": "Host",
   "lobby.browser.mapPreview": "Kartenvorschau",
   "lobby.browser.addFavoriteMap": "Zu Favoriten hinzufügen",
   "lobby.browser.removeFavoriteMap": "Aus Favoriten entfernen",

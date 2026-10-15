@@ -907,7 +907,6 @@ export const en = {
   "lobby.browser.privateGame": "Private game",
   "lobby.browser.host": "Host:",
   "lobby.browser.hostedBy": "Hosted by",
-  "lobby.browser.tileHost": "Host",
   "lobby.browser.mapPreview": "Map preview",
   "lobby.browser.addFavoriteMap": "Add to favourites",
   "lobby.browser.removeFavoriteMap": "Remove from favourites",

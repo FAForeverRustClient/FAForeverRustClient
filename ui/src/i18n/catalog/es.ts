@@ -2004,7 +2004,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.private": "Privada",
   "lobby.browser.host": "Anfitrión:",
   "lobby.browser.hostedBy": "Alojada por",
-  "lobby.browser.tileHost": "Anfitrión",
   "lobby.browser.tileAge": "Abierta hace {age}",
   "lobby.browser.tilePlayers": "Jugadores: {players} de {max}",
   "lobby.browser.tileRating": "Ø {rating}",
