@@ -1,0 +1,1 @@
+- Galactic War shows who you are signed in as and your faction, and marks your faction's card.

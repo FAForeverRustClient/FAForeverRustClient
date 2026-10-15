@@ -419,6 +419,7 @@ const INITIAL: AppState = {
     belowMinimum: false,
     statistics: null,
     statisticsStatus: { type: "idle" },
+    playerFaction: { type: "unknown" },
   },
   clientUpdate: {
     status: { type: "idle" },

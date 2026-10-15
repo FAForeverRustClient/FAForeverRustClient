@@ -7553,6 +7553,35 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        case(
+            "galactic war learns the player's faction, or that there is none",
+            vec![
+                GalacticWarEvent::PlayerFactionChanged {
+                    status: PlayerFactionStatus::Loading,
+                }
+                .into(),
+                GalacticWarEvent::PlayerFactionChanged {
+                    status: PlayerFactionStatus::Loaded {
+                        faction: Some(GalacticWarPlayerFaction {
+                            id: 1,
+                            name: "UEF".into(),
+                            long_name: "United Earth Federation".into(),
+                        }),
+                    },
+                }
+                .into(),
+                GalacticWarEvent::PlayerFactionChanged {
+                    status: PlayerFactionStatus::Loaded { faction: None },
+                }
+                .into(),
+                GalacticWarEvent::PlayerFactionChanged {
+                    status: PlayerFactionStatus::Failed {
+                        reason: "the Galactic War gateway did not accept your sign-in (401)".into(),
+                    },
+                }
+                .into(),
+            ],
+        ),
         // ── settings ─────────────────────────────────────────────────────
         case(
             "settings apply each group",

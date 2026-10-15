@@ -48,8 +48,8 @@ use specta::Type;
 use crate::state::client_update::{compare_versions, is_release_version};
 
 pub use crate::protocol::galactic_war::{
-    ClientVersions, GalacticWarAlltime, GalacticWarFaction, GalacticWarSeason,
-    GalacticWarStatistics,
+    ClientVersions, GalacticWarAlltime, GalacticWarFaction, GalacticWarPlayerFaction,
+    GalacticWarSeason, GalacticWarStatistics,
 };
 
 /// What the client is currently *doing* about the Galactic War installation.
@@ -117,6 +117,28 @@ pub enum StatisticsStatus {
     },
 }
 
+/// The signed-in player's faction, as the gateway knows it.
+///
+/// Decoration like the statistics, with its own status for the same reason:
+/// a gateway that cannot answer for the player must never take the Play
+/// button with it.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(tag = "type", content = "payload", rename_all = "camelCase")]
+pub enum PlayerFactionStatus {
+    /// Not asked: nobody is signed in, or the tab has not been opened.
+    #[default]
+    Unknown,
+    Loading,
+    /// The gateway answered. `None` is a player without a faction: never in
+    /// Galactic War, or none since a galaxy reset.
+    Loaded {
+        faction: Option<GalacticWarPlayerFaction>,
+    },
+    Failed {
+        reason: String,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct GalacticWarState {
@@ -137,6 +159,8 @@ pub struct GalacticWarState {
     /// flaky gateway blanks the panel for no longer than it has to.
     pub statistics: Option<GalacticWarStatistics>,
     pub statistics_status: StatisticsStatus,
+    /// Which faction the signed-in player fights for.
+    pub player_faction: PlayerFactionStatus,
 }
 
 /// Whether `installed` is older than the gateway's `required` minimum.
@@ -243,6 +267,9 @@ pub enum GalacticWarEvent {
     StatisticsLoaded {
         statistics: GalacticWarStatistics,
     },
+    PlayerFactionChanged {
+        status: PlayerFactionStatus,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -290,6 +317,7 @@ pub fn reduce(state: &mut GalacticWarState, event: &GalacticWarEvent) {
             state.statistics = Some(statistics.clone());
             state.statistics_status = StatisticsStatus::Loaded;
         }
+        GalacticWarEvent::PlayerFactionChanged { status } => state.player_faction = status.clone(),
     }
 }
 

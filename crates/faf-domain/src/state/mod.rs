@@ -71,8 +71,8 @@ pub use events::{
 pub use failure::RequestFailureKind;
 pub use galactic_war::{
     ClientVersions, GalacticWarAlltime, GalacticWarCommand, GalacticWarEvent, GalacticWarFaction,
-    GalacticWarSeason, GalacticWarState, GalacticWarStatistics, GalacticWarStatus,
-    StatisticsStatus,
+    GalacticWarPlayerFaction, GalacticWarSeason, GalacticWarState, GalacticWarStatistics,
+    GalacticWarStatus, PlayerFactionStatus, StatisticsStatus,
 };
 pub use guides::{
     accept_commit_message, catalogue_with, compose_submission, entry_from_body, entry_from_draft,

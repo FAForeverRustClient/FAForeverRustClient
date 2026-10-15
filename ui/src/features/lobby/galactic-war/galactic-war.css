@@ -101,6 +101,51 @@
   border-top: 0;
 }
 
+/* The signed-in player: name over faction, the faction's emblem beside them
+   and its colour along the left edge once the gateway has named one. */
+.gw-player-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.gw-player-card.has-faction {
+  box-shadow: inset 3px 0 0 var(--gw-faction-color);
+}
+
+.gw-player-emblem {
+  flex: none;
+}
+
+.gw-player-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gw-player-name {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gw-section .gw-player-faction {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.gw-player-card.has-faction .gw-player-faction {
+  color: var(--gw-faction-color);
+  font-weight: 600;
+}
+
 /* A section with nothing to say yet: a quiet framed note, not a heading over
    empty space. */
 .gw-news {
@@ -513,6 +558,35 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: inset 0 2px 0 color-mix(in srgb, var(--gw-faction-color) 70%, transparent);
+}
+
+/* The player's own faction: its colour around the whole card, the top rule
+   stronger, and a tag above the name saying so. */
+.gw-faction.is-own {
+  border-color: color-mix(in srgb, var(--gw-faction-color) 70%, transparent);
+  box-shadow:
+    inset 0 3px 0 var(--gw-faction-color),
+    0 0 0 1px color-mix(in srgb, var(--gw-faction-color) 35%, transparent);
+}
+
+.gw-faction-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--space-2);
+}
+
+/* Square-cornered, like every tag in the client. */
+.gw-faction-yours {
+  padding: 0 6px;
+  color: var(--gw-faction-color);
+  background: color-mix(in srgb, var(--gw-faction-color) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gw-faction-color) 45%, transparent);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 /* The emblem whole and faint in the top right corner, behind the head and

@@ -2977,6 +2977,8 @@ export type GalacticWarEvent = { type: "statusChanged"; payload: {
 	status: StatisticsStatus,
 } } | { type: "statisticsLoaded"; payload: {
 	statistics: GalacticWarStatistics,
+} } | { type: "playerFactionChanged"; payload: {
+	status: PlayerFactionStatus,
 } };
 
 /**  One faction's standing this season. */
@@ -2992,6 +2994,20 @@ export type GalacticWarFaction = {
 	numAliveAvatars?: number,
 	numOnlineAvatars?: number,
 	numPlanets?: number,
+};
+
+/**
+ *  A faction as `GET /player/:fafId/faction` names it: which one, no counts.
+ *
+ *  Its own type rather than [`GalacticWarFaction`], whose counts this
+ *  document does not carry. Matched against the statistics' factions by
+ *  `name`, never by `id`: the two documents number factions differently (the
+ *  module doc), and the name is what both agree on, apart from case.
+ */
+export type GalacticWarPlayerFaction = {
+	id?: number,
+	name?: string,
+	longName?: string,
 };
 
 /**
@@ -3043,6 +3059,8 @@ export type GalacticWarState = {
 	 */
 	statistics: GalacticWarStatistics | null,
 	statisticsStatus: StatisticsStatus,
+	/**  Which faction the signed-in player fights for. */
+	playerFaction: PlayerFactionStatus,
 };
 
 /**  The whole `GET /statistics` document. */
@@ -7030,6 +7048,26 @@ export type PlayerEventCount = {
 	eventId: string,
 	count: number,
 };
+
+/**
+ *  The signed-in player's faction, as the gateway knows it.
+ *
+ *  Decoration like the statistics, with its own status for the same reason:
+ *  a gateway that cannot answer for the player must never take the Play
+ *  button with it.
+ */
+export type PlayerFactionStatus =
+/**  Not asked: nobody is signed in, or the tab has not been opened. */
+{ type: "unknown" } | { type: "loading" } |
+/**
+ *  The gateway answered. `None` is a player without a faction: never in
+ *  Galactic War, or none since a galaxy reset.
+ */
+{ type: "loaded"; payload: {
+	faction: GalacticWarPlayerFaction | null,
+} } | { type: "failed"; payload: {
+	reason: string,
+} };
 
 /**
  *  One game of a player's results list (#344), newest first.
