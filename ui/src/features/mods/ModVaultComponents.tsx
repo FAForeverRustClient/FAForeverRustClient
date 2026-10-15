@@ -125,6 +125,64 @@ export function ModIcon({
   );
 }
 
+/**
+ * A mod's rating as the Maps tab draws a map's: the star in the reviews'
+ * colour, the average, the count. A mod nobody has reviewed keeps the place,
+ * as a quiet outlined star and a dash, so every card has its rating at the
+ * same spot; one the vault does not list has nothing to rate and shows none.
+ */
+export function ModRating({ mod }: { mod: Pick<VaultMod, "ratingTenths" | "reviews"> | undefined }) {
+  const { t } = useTranslation();
+  if (!mod) return null;
+  if (mod.reviews <= 0) {
+    return (
+      <span className="mod-rating is-empty" title={t("mods.vault.noReviews")} aria-label={t("mods.vault.noReviews")}>
+        <Icon name="star" size={12} />
+        <span>{"\u2013"}</span>
+      </span>
+    );
+  }
+  const score = (mod.ratingTenths / 10).toFixed(1);
+  const label = t("mods.vault.ratingTooltip", { rating: score, reviews: mod.reviews });
+  return (
+    <span className="mod-rating" title={label} aria-label={label}>
+      <Icon name="star" size={12} fill="currentColor" />
+      <span>{score}</span>
+      <span className="mod-rating-count">({mod.reviews})</span>
+    </span>
+  );
+}
+
+/**
+ * On or off, for a mod that is installed: an ordinary button that says what a
+ * press does, the same on a vault card and in the installed list. The card's
+ * tint says which state the mod is in.
+ */
+export function ModToggleButton({
+  mod,
+  enabled,
+  disabled,
+  onToggle,
+}: {
+  mod: { displayName: string };
+  enabled: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslation();
+  const label = t(enabled ? "mods.vault.disable" : "mods.vault.enable");
+  return (
+    <Button
+      className="mod-toggle-button"
+      disabled={disabled}
+      aria-label={`${label}: ${mod.displayName}`}
+      onClick={onToggle}
+    >
+      {label}
+    </Button>
+  );
+}
+
 export function ModCard({
   mod,
   installed,
@@ -188,11 +246,16 @@ export function ModCard({
           </small>
         </span>
 
-        {/* At the card's foot: what kind of mod it is, then when it was last
-            published and how it is rated. */}
+        {/* Two rows of a fixed height each, so they sit at the same place on
+            every card: the tags (what kind of mod, whether a simulation mod
+            keeps a game ranked, and whether it is on), then when it was last
+            published and the rating at the end. A row that has less to say
+            keeps its height rather than pulling the foot up. */}
         <span className="mod-vault-card-facts">
-          <span className="mod-vault-facts-row">
-            <span className={`mod-vault-type ${mod.modType}`}>{t(mod.modType === "ui" ? "mods.vault.typeBadge.ui" : "mods.vault.typeBadge.sim")}</span>
+          <span className="mod-vault-tags">
+            <span className={`mod-vault-type ${mod.modType}`} title={t(mod.modType === "ui" ? "mods.vault.uiMod" : "mods.vault.simMod")}>
+              {t(mod.modType === "ui" ? "mods.vault.typeBadge.ui" : "mods.vault.typeBadge.sim")}
+            </span>
             {mod.modType === "sim" && (
               <span className={`mod-vault-type ${mod.ranked ? "ranked" : "unranked"}`}>
                 {t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}
@@ -206,26 +269,21 @@ export function ModCard({
               </span>
             )}
           </span>
-          <span className="mod-vault-facts-row mod-vault-facts-sub">
+          <span className="mod-vault-facts-line">
             <span className="mod-vault-fact is-date" title={t("mods.vault.lastUpdated")}>
               {formatShortDate(mod.updatedAt || mod.createdAt)}
             </span>
-            <span
-              className="mod-vault-fact is-rating"
-              title={mod.reviews
-                ? t("mods.vault.ratingTooltip", { rating: (mod.ratingTenths / 10).toFixed(1), reviews: mod.reviews })
-                : t("mods.vault.noReviews")}
-            >
-              <Icon name="star" size={12} />
-              {mod.reviews ? t("mods.vault.ratingSummary", { rating: (mod.ratingTenths / 10).toFixed(1), reviews: mod.reviews }) : t("common.notAvailable")}
+            <span className="mod-vault-fact-end">
+              <ModRating mod={mod} />
             </span>
           </span>
         </span>
       </button>
 
-      {/* The installed list's row of controls, in the same order: the star,
-          the switch or the update, and remove as an icon. "Uninstall" in red
-          words was the loudest thing on a card whose subject is the mod. */}
+      {/* The map card's foot: the star at the start, and at the end the one
+          thing to do with the mod: install it, or enable or disable it with
+          remove beside it as an icon. "Uninstall" in red words was the
+          loudest thing on a card whose subject is the mod. */}
       <div className="mod-vault-card-action">
         {onToggleFavorite && (
           <button
@@ -249,9 +307,7 @@ export function ModCard({
                   {t(working ? "mods.vault.busy" : "mods.vault.update")}
                 </Button>
               ) : onToggle ? (
-                <Button disabled={busy} onClick={onToggle}>
-                  {t(working ? "mods.vault.busy" : installed.enabled ? "mods.vault.disable" : "mods.vault.enable")}
-                </Button>
+                <ModToggleButton mod={mod} enabled={installed.enabled} disabled={busy} onToggle={onToggle} />
               ) : null}
               <Button
                 className="mod-vault-uninstall is-icon"

@@ -2392,7 +2392,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "mods.view.preset.all": "Alle Mods",
   "mods.view.loadingVault": "Mod-Vault wird geladen…",
   "mods.view.vaultFailed": "Der Mod-Vault konnte nicht geladen werden",
-  "mods.view.clear": "Leeren",
+  "mods.view.clear": "Zurücksetzen",
   "mods.view.refresh": "Aktualisieren",
   "mods.view.uploadFromDisk": "Mod hochladen",
   "mods.view.any": "Beliebig",
