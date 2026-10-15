@@ -126,6 +126,28 @@ const UNITS: Array<[MessageKey, string, string]> = [
   ["playerCard.stats.unit.experimentals", EVENTS.experimentalsBuilt, EVENTS.experimentalsLost],
 ];
 
+export interface FactionRecord {
+  /** The game's faction id: its emblem, colour and name. */
+  faction: number;
+  games: number;
+  wins: number;
+}
+
+/**
+ * Games and wins per faction, from the profile's event counters, in the
+ * statistics' own order. The overview's faction strip reads the same numbers
+ * as the chart here, so the two cannot disagree.
+ */
+export function factionRecords(profile: PlayerCardProfile): FactionRecord[] {
+  const counts = new Map(profile.events.map((event) => [event.eventId, event.count]));
+  const count = (id: string) => counts.get(id) ?? 0;
+  return FACTIONS.map(([faction, plays, wins]) => ({
+    faction,
+    games: count(plays),
+    wins: Math.min(count(wins), count(plays)),
+  }));
+}
+
 export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
   const { t } = useTranslation();
   const counts = new Map(profile.events.map((event) => [event.eventId, event.count]));

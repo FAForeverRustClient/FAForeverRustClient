@@ -64,6 +64,11 @@ export interface PlayerMenuOptions {
    * password first when the lobby has one.
    */
   joinGame?: (game: Game) => void;
+  /**
+   * Opened from the player card: "View profile" would only reopen the page
+   * the menu was opened on, so it is left out.
+   */
+  fromProfile?: boolean;
 }
 
 export function usePlayerMenu(options: PlayerMenuOptions = {}): {
@@ -158,7 +163,7 @@ export function usePlayerMenu(options: PlayerMenuOptions = {}): {
           nameColor={menuNameColor}
           actions={{
             privateMessage: openConversation,
-            viewProfile: (playerId, nickname) => void openPlayerCard(playerId, nickname),
+            viewProfile: options.fromProfile ? undefined : (playerId, nickname) => void openPlayerCard(playerId, nickname),
             copyUsername: (nickname) => void navigator.clipboard?.writeText(nickname),
             joinGame: (game) => void (options.joinGame ?? joinGame)(game),
             watchGame: (game) => void watchGame(game),
