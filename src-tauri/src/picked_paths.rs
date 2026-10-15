@@ -299,7 +299,7 @@ async fn confirm_launch_change(window: &tauri::Window, change: LaunchChange) -> 
     }
     message.push_str("Allow this only if you entered it yourself in Settings.");
 
-    let mut dialog = window
+    let dialog = window
         .dialog()
         .message(message)
         .title("Change how the game is started?")
@@ -308,10 +308,10 @@ async fn confirm_launch_change(window: &tauri::Window, change: LaunchChange) -> 
             "Allow".to_string(),
             "Keep the old setting".to_string(),
         ));
+    // Shadowed rather than `mut`: on Linux there is no parent to set, and an
+    // unused `mut` fails the build there.
     #[cfg(any(windows, target_os = "macos"))]
-    {
-        dialog = dialog.parent(window);
-    }
+    let dialog = dialog.parent(window);
     let allowed = tauri::async_runtime::spawn_blocking(move || dialog.blocking_show())
         .await
         .map_err(|error| format!("the confirmation could not be shown: {error}"))?;
