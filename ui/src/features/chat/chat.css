@@ -1943,11 +1943,16 @@ img.chat-game-map {
 /* And it starts where the conversation's card starts, below the channel tabs
    and the row of controls, not level with the tabs: `--chat-card-top` is
    measured by `ChatView`. */
+/* Its height already follows its content in the shell's column, so its width
+   is the column's: `align-self: flex-start` here sized it to its content
+   across, and a long lobby title, which never wraps, pushed the card and its
+   Join button past the window's edge instead of being cut short (issue 558). */
 .chat-conversation-aside {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  align-self: flex-start;
+  align-self: stretch;
+  min-width: 0;
   margin-top: var(--chat-card-top, 0px);
   max-height: calc(100% - var(--chat-card-top, 0px));
   min-height: 0;
