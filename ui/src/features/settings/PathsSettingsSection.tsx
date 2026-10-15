@@ -121,14 +121,17 @@ export function PathsSettingsSection() {
         paths={paths}
         resolved={resolved.gamePrefsPath}
         pick={() =>
-          native.selectFile({ filters: [{ name: "game.prefs", extensions: ["prefs"] }] })
+          native.selectFile({
+            filters: [{ name: "game.prefs", extensions: ["prefs"] }],
+            defaultPath: paths.gamePrefsPath || resolved.gamePrefsPath || undefined,
+          })
         }
       />
       <ContentPathRow
         field="javaPath"
         paths={paths}
         resolved={resolved.javaPath}
-        pick={() => native.selectFile({})}
+        pick={() => native.selectFile({ defaultPath: paths.javaPath || resolved.javaPath || undefined })}
       />
       {/* Only where the game needs one. On Windows FA runs directly and a
           prefix is not a thing that exists, so the row would be a question

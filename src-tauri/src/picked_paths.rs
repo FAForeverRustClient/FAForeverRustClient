@@ -104,8 +104,8 @@ pub(crate) struct PickRequest {
 /// or `None` when they cancelled.
 ///
 /// The same dialog the page used to open through the dialog plugin, built the
-/// way that plugin's own `open` builds it, so the picker looks and starts
-/// where it always did.
+/// way that plugin's own `open` builds it, except where it starts: see
+/// [`start_of`].
 #[tauri::command]
 pub(crate) async fn pick_path(
     request: PickRequest,
@@ -124,20 +124,13 @@ pub(crate) async fn pick_path(
         let extensions: Vec<&str> = filter.extensions.iter().map(String::as_str).collect();
         dialog = dialog.add_filter(&filter.name, &extensions);
     }
-    if let Some(start) = request
-        .default_path
-        .filter(|start| !start.trim().is_empty())
-    {
-        // Windows wants its own separator here (tauri-apps/tauri#8074), and a
-        // file names the folder to open in plus the name to preselect.
-        let start: PathBuf = Path::new(start.trim()).components().collect();
-        if start.is_dir() {
-            dialog = dialog.set_directory(start);
-        } else if let (Some(parent), Some(name)) = (start.parent(), start.file_name()) {
-            if parent.components().count() > 0 {
-                dialog = dialog.set_directory(parent);
-            }
-            dialog = dialog.set_file_name(name.to_string_lossy());
+    if let Some(start) = request.default_path.as_deref() {
+        let (folder, name) = start_of(start);
+        if let Some(folder) = folder {
+            dialog = dialog.set_directory(folder);
+        }
+        if let Some(name) = name {
+            dialog = dialog.set_file_name(name);
         }
     }
     let chosen = if request.directory {
@@ -156,6 +149,40 @@ pub(crate) async fn pick_path(
         .into_owned();
     picked.remember(&path);
     Ok(Some(path))
+}
+
+/// Where a dialog asked to start at `start` should open, and which file name it
+/// should preselect.
+///
+/// A folder opens itself. A file opens its folder with the file selected. A
+/// path that does not exist yet (a default folder nobody has created, an
+/// install still to be downloaded) opens the nearest folder above it that
+/// does: Windows silently ignores a start folder that is missing and opens
+/// wherever it was last, which is the one place that is never right.
+fn start_of(start: &str) -> (Option<PathBuf>, Option<String>) {
+    let start = start.trim();
+    if start.is_empty() {
+        return (None, None);
+    }
+    // Windows wants its own separator here (tauri-apps/tauri#8074).
+    let start: PathBuf = Path::new(start).components().collect();
+    if start.is_dir() {
+        return (Some(start), None);
+    }
+    if start.is_file() {
+        let name = start
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned());
+        let folder = start
+            .parent()
+            .filter(|parent| parent.components().count() > 0);
+        return (folder.map(Path::to_path_buf), name);
+    }
+    let existing = start
+        .ancestors()
+        .skip(1)
+        .find(|folder| folder.components().count() > 0 && folder.is_dir());
+    (existing.map(Path::to_path_buf), None)
 }
 
 /// Refuse a command that names a path the player did not pick, and ask before
@@ -341,6 +368,33 @@ mod tests {
         assert!(picked.admits("", "D:/stored.exe"));
         assert!(!picked.admits("C:/Windows/System32/cmd.exe", "D:/stored.exe"));
         assert!(picked.require("C:/Windows/System32/cmd.exe").is_err());
+    }
+
+    #[test]
+    fn a_dialog_starts_in_the_nearest_folder_that_exists() {
+        let root = std::env::temp_dir().join(format!("picked-start-{}", std::process::id()));
+        let folder = root.join("bin");
+        std::fs::create_dir_all(&folder).unwrap();
+        let exe = folder.join("ForgedAlliance.exe");
+        std::fs::write(&exe, b"").unwrap();
+
+        assert_eq!(
+            start_of(&folder.to_string_lossy()),
+            (Some(folder.clone()), None)
+        );
+        assert_eq!(
+            start_of(&exe.to_string_lossy()),
+            (Some(folder.clone()), Some("ForgedAlliance.exe".into()))
+        );
+        // Not created yet, two levels deep: the folder that is there.
+        let missing = folder.join("maps").join("generated");
+        assert_eq!(
+            start_of(&missing.to_string_lossy()),
+            (Some(folder.clone()), None)
+        );
+        assert_eq!(start_of("  "), (None, None));
+
+        std::fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]
