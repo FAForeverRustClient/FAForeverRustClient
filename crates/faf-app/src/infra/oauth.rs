@@ -415,7 +415,7 @@ impl AuthPort for OAuthAuth {
         }
 
         // 4. Wait for the browser redirect (bounded so we never hang forever).
-        let redirect = tokio::time::timeout(LOGIN_TIMEOUT, accept_redirect(&listener))
+        let redirect = tokio::time::timeout(LOGIN_TIMEOUT, accept_redirect(&listener, &state))
             .await
             .map_err(|_| AuthError::new("Login timed out waiting for the browser."))??;
 
@@ -712,9 +712,9 @@ const MAX_REDIRECT_REQUEST_BYTES: u64 = 8 * 1024;
 /// decide whether the login worked. The state check below is what stops a
 /// stranger's request being *believed*; this is what stops it being the only
 /// one heard. The caller's `LOGIN_TIMEOUT` still bounds the whole wait.
-async fn accept_redirect(listener: &TcpListener) -> AuthResult<Redirect> {
+async fn accept_redirect(listener: &TcpListener, state: &str) -> AuthResult<Redirect> {
     loop {
-        match accept_one_redirect(listener).await {
+        match accept_one_redirect(listener, state).await {
             Ok(redirect) => return Ok(redirect),
             // A connection that said nothing useful is not the browser. Keep
             // listening; the timeout is the thing that gives up.
@@ -723,7 +723,7 @@ async fn accept_redirect(listener: &TcpListener) -> AuthResult<Redirect> {
     }
 }
 
-async fn accept_one_redirect(listener: &TcpListener) -> AuthResult<Redirect> {
+async fn accept_one_redirect(listener: &TcpListener, state: &str) -> AuthResult<Redirect> {
     let (mut stream, _) = listener
         .accept()
         .await
@@ -741,6 +741,22 @@ async fn accept_one_redirect(listener: &TcpListener) -> AuthResult<Redirect> {
     };
 
     let redirect = parse_redirect_request(&request_line)?;
+    // Only the redirect of this sign-in carries its state. Anything else on
+    // the port (a port scan, another program, a stray `GET /`) is turned
+    // away and the wait goes on: taking it as the redirect failed the
+    // sign-in with a state mismatch before the browser ever answered.
+    if redirect.state.as_deref() != Some(state) {
+        let _ = stream
+            .write_all(
+                b"HTTP/1.1 404 Not Found
+Content-Length: 0
+Connection: close
+
+",
+            )
+            .await;
+        return Err(AuthError::new("not the redirect of this sign-in"));
+    }
     let success = redirect.error.is_none() && redirect.code.is_some();
 
     let body = response_html(success);
@@ -1251,6 +1267,46 @@ mod tests {
         fn clear(&self) {
             self.saved.lock().unwrap().clear();
         }
+    }
+
+    #[tokio::test]
+    async fn a_stray_request_on_the_port_does_not_end_the_sign_in() {
+        use tokio::io::AsyncReadExt;
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let send = |line: &'static str| async move {
+            let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+                .await
+                .unwrap();
+            stream.write_all(line.as_bytes()).await.unwrap();
+            let mut answer = String::new();
+            let _ = stream.read_to_string(&mut answer).await;
+            answer
+        };
+        let waiting = tokio::spawn(async move { accept_redirect(&listener, "expected").await });
+        let stray = send(
+            "GET / HTTP/1.1
+
+",
+        )
+        .await;
+        assert!(stray.starts_with("HTTP/1.1 404"), "{stray}");
+        let wrong = send(
+            "GET /?code=x&state=other HTTP/1.1
+
+",
+        )
+        .await;
+        assert!(wrong.starts_with("HTTP/1.1 404"), "{wrong}");
+        let real = send(
+            "GET /?code=abc&state=expected HTTP/1.1
+
+",
+        )
+        .await;
+        assert!(real.starts_with("HTTP/1.1 200"), "{real}");
+        let redirect = waiting.await.unwrap().unwrap();
+        assert_eq!(redirect.code.as_deref(), Some("abc"));
     }
 
     fn adapter() -> Arc<OAuthAuth> {
