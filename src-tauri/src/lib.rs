@@ -24,6 +24,7 @@ mod commands;
 mod diagnostics;
 mod exit;
 mod navigation;
+mod picked_paths;
 mod startup;
 mod tray;
 #[cfg(windows)]
@@ -139,6 +140,7 @@ pub fn run() {
             let core = startup::start_core(app, backend_version);
             app.manage(exit::ExitAfterGame::default());
             app.manage(exit::PageReady::default());
+            app.manage(picked_paths::PickedPaths::default());
             exit::watch(app, core.clone());
             app.manage(Core(core));
 
@@ -186,7 +188,8 @@ pub fn run() {
             commands::report_webview_stall,
             commands::report_event_cost,
             commands::exit_app,
-            commands::page_ready
+            commands::page_ready,
+            picked_paths::pick_path
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -474,6 +477,24 @@ mod tests {
                 "{hostile} must never reach the OS opener"
             );
         }
+    }
+
+    #[test]
+    fn the_page_cannot_open_a_file_dialog_of_its_own() {
+        // A path is only trusted when the shell's own dialog returned it
+        // (`picked_paths`). The plugin's `open` would hand the page paths the
+        // shell never saw.
+        let capabilities = capabilities();
+        let permissions = capabilities["permissions"]
+            .as_array()
+            .expect("permissions list");
+        assert!(permissions.iter().all(|permission| {
+            let identifier = permission
+                .as_str()
+                .or_else(|| permission["identifier"].as_str())
+                .unwrap_or_default();
+            !identifier.starts_with("dialog:")
+        }));
     }
 
     #[test]

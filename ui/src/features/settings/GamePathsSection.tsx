@@ -10,9 +10,11 @@ import { Button } from "../../design-system/Button";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 
-function pickExe(onPicked: (path: string) => void): void {
+/** Opens on the executable already set, so a fix is one click away from it. */
+function pickExe(current: string, onPicked: (path: string) => void): void {
   ipc.run(native.selectFile({
     filters: [{ name: "ForgedAlliance.exe", extensions: ["exe"] }],
+    defaultPath: current || undefined,
   }).then((path) => {
     if (path) onPicked(path);
   }));
@@ -63,7 +65,7 @@ function PathRow({
         <span className="settings-path-value">{path || t("settings.paths.unset")}</span>
         <span className={`settings-path-status is-${status}`}>{STATUS_LABEL[status]}</span>
       </div>
-      <Button onClick={onPick}>Browse…</Button>
+      <Button onClick={onPick}>{t("settings.paths.browse")}</Button>
     </div>
   );
 }
@@ -81,14 +83,14 @@ export function GamePathsSection() {
         path={gamePath}
         ready={install.gameReady}
         pending={install.gamePending}
-        onPick={() => pickExe(setGamePath)}
+        onPick={() => pickExe(gamePath, setGamePath)}
       />
       <PathRow
         label={t("settings.paths.replayInstall")}
         path={replayGamePath}
         ready={install.replayReady}
         pending={install.replayPending}
-        onPick={() => pickExe(setReplayGamePath)}
+        onPick={() => pickExe(replayGamePath, setReplayGamePath)}
       />
     </div>
   );

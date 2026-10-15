@@ -72,12 +72,17 @@ const loadLocal = (limit: number) =>
 const deleteLocal = (path: string) =>
   ipc.send({ kind: "Replays", command: { type: "deleteLocal", payload: { path } } });
 
+/** Starts in the client's replay folder; a folder that cannot be made is no reason not to open. */
 function pickReplayFile(): void {
-  ipc.run(native.selectFile({
-    filters: [{ name: "FAF Replay", extensions: ["fafreplay", "scfareplay"] }],
-  }).then((path) => {
-    if (path) openFile(path);
-  }));
+  ipc.run(native.clientFolderPath("replays")
+    .catch(() => undefined)
+    .then((replays) => native.selectFile({
+      filters: [{ name: "FAF Replay", extensions: ["fafreplay", "scfareplay"] }],
+      defaultPath: replays,
+    }))
+    .then((path) => {
+      if (path) openFile(path);
+    }));
 }
 
 const LOCAL_STATUS_LABELS: Record<LocalReplay["status"], MessageKey> = {
