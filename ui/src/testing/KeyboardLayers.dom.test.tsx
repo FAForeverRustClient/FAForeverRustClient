@@ -85,7 +85,8 @@ describe("Escape ownership in real overlays", () => {
     const input = screen.getByRole("textbox");
     await user.click(input);
     fireEvent.contextMenu(screen.getByText("Player menu source"));
-    expect(document.activeElement).toBe(input);
+    // The menu takes focus when it opens; Escape hands it back to the input.
+    expect(screen.getByRole("menu").contains(document.activeElement)).toBe(true);
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("menu")).toBeNull();
     expect(onCancelReply).not.toHaveBeenCalled();
