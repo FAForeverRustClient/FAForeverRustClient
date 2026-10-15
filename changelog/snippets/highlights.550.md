@@ -1,0 +1,5 @@
+- Games start a few seconds sooner: Forged Alliance launches while the connection is still being set up.
+- Closing the client during a game hides it to the tray, so your game stays connected.
+- The Play, Maps and Mods tabs, the player card and Tournaments have a new look.
+- The Changelog tab shows the client's own release notes, and a short What's new follows each update.
+- A connectivity check in Settings, Connectivity tests your connection to FAF's relays.
