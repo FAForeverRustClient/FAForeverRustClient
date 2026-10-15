@@ -93,6 +93,16 @@ describe("buildHostCatalogue", () => {
     const entry = buildHostCatalogue(installed, buildVaultIndex([]), "official").get("homebrew");
     expect(entry).toMatchObject({ maxPlayers: 2, width: 256, height: 256, ranked: false });
   });
+
+  it("rates an installed generated map as ranked when it has no vault metadata", () => {
+    const installed: InstalledMap[] = [
+      { folderName: "neroxis_map_generator_1.0.0_abc", displayName: "Generated map" },
+    ];
+    const entry = buildHostCatalogue(installed, buildVaultIndex([]), "official").get(
+      "neroxis_map_generator_1.0.0_abc",
+    );
+    expect(entry).toMatchObject({ ranked: true });
+  });
 });
 
 describe("withUncataloguedMaps", () => {
@@ -101,7 +111,12 @@ describe("withUncataloguedMaps", () => {
   it("appends a selected map the catalogue does not hold", () => {
     const all = withUncataloguedMaps(catalogue, "neroxis_map_generator_1.0.0_abc", [], "generated");
     expect(all.map((map) => map.folderName)).toEqual(["known", "neroxis_map_generator_1.0.0_abc"]);
-    expect(all[1]).toMatchObject({ ranked: false, description: "generated" });
+    expect(all[1]).toMatchObject({ ranked: true, description: "generated" });
+  });
+
+  it("keeps an unknown non-generated selected map unranked", () => {
+    const all = withUncataloguedMaps(catalogue, "unknown_map", [], "generated");
+    expect(all[1]).toMatchObject({ folderName: "unknown_map", ranked: false });
   });
 
   it("lists starred generated maps once, and skips starred ordinary maps", () => {
