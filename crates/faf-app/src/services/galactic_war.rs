@@ -10,7 +10,8 @@
 //! and a gateway that is down leaves the Play button exactly as it was.
 
 use faf_domain::state::{
-    GalacticWarCommand, GalacticWarEvent, GalacticWarStatus, StatisticsStatus,
+    AuthMode, GalacticWarCommand, GalacticWarEvent, GalacticWarStatus, PlayerFactionStatus,
+    StatisticsStatus,
 };
 
 use crate::ports::InstallProgress;
@@ -66,6 +67,34 @@ async fn refresh(ctx: &ServiceCtx, out: &EventSink) {
     }
 
     refresh_statistics(ctx, out).await;
+    refresh_player_faction(ctx, out).await;
+}
+
+/// Ask the gateway which faction the signed-in player fights for.
+///
+/// Only with a FAF account: the gateway answers for the token's owner alone,
+/// and an offline or test session has no token to send. Asked on entering
+/// the tab, not on the statistics poll: a faction changes once a cycle.
+async fn refresh_player_faction(ctx: &ServiceCtx, out: &EventSink) {
+    let player_id = out.with_state(|state| {
+        (state.auth.mode == AuthMode::Account)
+            .then(|| state.auth.player.as_ref().map(|player| player.id))
+            .flatten()
+    });
+    let Some(player_id) = player_id else {
+        out.emit(GalacticWarEvent::PlayerFactionChanged {
+            status: PlayerFactionStatus::Unknown,
+        });
+        return;
+    };
+    out.emit(GalacticWarEvent::PlayerFactionChanged {
+        status: PlayerFactionStatus::Loading,
+    });
+    let status = match ctx.ports.galactic_war.player_faction(player_id).await {
+        Ok(faction) => PlayerFactionStatus::Loaded { faction },
+        Err(reason) => PlayerFactionStatus::Failed { reason },
+    };
+    out.emit(GalacticWarEvent::PlayerFactionChanged { status });
 }
 
 /// Recompute whether the installed build is below the gateway's minimum, and

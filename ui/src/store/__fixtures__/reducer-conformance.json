@@ -59567,6 +59567,9 @@
           "expected": {
             "belowMinimum": false,
             "installedVersion": "v2026.03.01.1",
+            "playerFaction": {
+              "type": "unknown"
+            },
             "statistics": null,
             "statisticsStatus": {
               "type": "idle"
@@ -59592,6 +59595,9 @@
           "expected": {
             "belowMinimum": false,
             "installedVersion": "v2026.03.01.1",
+            "playerFaction": {
+              "type": "unknown"
+            },
             "statistics": null,
             "statisticsStatus": {
               "type": "idle"
@@ -59618,6 +59624,9 @@
           "expected": {
             "belowMinimum": false,
             "installedVersion": "v2026.03.01.1",
+            "playerFaction": {
+              "type": "unknown"
+            },
             "statistics": null,
             "statisticsStatus": {
               "type": "idle"
@@ -59644,6 +59653,9 @@
           "expected": {
             "belowMinimum": true,
             "installedVersion": "v2026.03.01.1",
+            "playerFaction": {
+              "type": "unknown"
+            },
             "statistics": null,
             "statisticsStatus": {
               "type": "idle"
@@ -59677,6 +59689,9 @@
           "expected": {
             "belowMinimum": true,
             "installedVersion": "v2026.03.01.1",
+            "playerFaction": {
+              "type": "unknown"
+            },
             "statistics": null,
             "statisticsStatus": {
               "type": "idle"
@@ -59713,6 +59728,9 @@
           "expected": {
             "belowMinimum": true,
             "installedVersion": "v2026.03.01.1",
+            "playerFaction": {
+              "type": "unknown"
+            },
             "statistics": null,
             "statisticsStatus": {
               "type": "idle"
@@ -59742,6 +59760,9 @@
           "expected": {
             "belowMinimum": true,
             "installedVersion": "v2026.04.04.1",
+            "playerFaction": {
+              "type": "unknown"
+            },
             "statistics": null,
             "statisticsStatus": {
               "type": "idle"
@@ -59771,6 +59792,9 @@
           "expected": {
             "belowMinimum": false,
             "installedVersion": "v2026.04.04.1",
+            "playerFaction": {
+              "type": "unknown"
+            },
             "statistics": null,
             "statisticsStatus": {
               "type": "idle"
@@ -59802,6 +59826,9 @@
           "expected": {
             "belowMinimum": false,
             "installedVersion": "v2026.04.04.1",
+            "playerFaction": {
+              "type": "unknown"
+            },
             "statistics": null,
             "statisticsStatus": {
               "type": "idle"
@@ -59830,6 +59857,9 @@
           "expected": {
             "belowMinimum": false,
             "installedVersion": "v2026.04.04.1",
+            "playerFaction": {
+              "type": "unknown"
+            },
             "statistics": null,
             "statisticsStatus": {
               "type": "loading"
@@ -59884,6 +59914,9 @@
           "expected": {
             "belowMinimum": false,
             "installedVersion": "v2026.04.04.1",
+            "playerFaction": {
+              "type": "unknown"
+            },
             "statistics": {
               "alltime": {
                 "numPlayers": 82
@@ -59943,6 +59976,9 @@
           "expected": {
             "belowMinimum": false,
             "installedVersion": "v2026.04.04.1",
+            "playerFaction": {
+              "type": "unknown"
+            },
             "statistics": {
               "alltime": {
                 "numPlayers": 82
@@ -59985,6 +60021,149 @@
               "latestVersion": null,
               "requiredVersion": "v2026.04.04.1"
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "galactic war learns the player's faction, or that there is none",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "status": {
+                  "type": "loading"
+                }
+              },
+              "type": "playerFactionChanged"
+            },
+            "kind": "GalacticWar"
+          },
+          "expected": {
+            "belowMinimum": false,
+            "installedVersion": null,
+            "playerFaction": {
+              "type": "loading"
+            },
+            "statistics": null,
+            "statisticsStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "versions": null
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "status": {
+                  "payload": {
+                    "faction": {
+                      "id": 1,
+                      "longName": "United Earth Federation",
+                      "name": "UEF"
+                    }
+                  },
+                  "type": "loaded"
+                }
+              },
+              "type": "playerFactionChanged"
+            },
+            "kind": "GalacticWar"
+          },
+          "expected": {
+            "belowMinimum": false,
+            "installedVersion": null,
+            "playerFaction": {
+              "payload": {
+                "faction": {
+                  "id": 1,
+                  "longName": "United Earth Federation",
+                  "name": "UEF"
+                }
+              },
+              "type": "loaded"
+            },
+            "statistics": null,
+            "statisticsStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "versions": null
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "status": {
+                  "payload": {
+                    "faction": null
+                  },
+                  "type": "loaded"
+                }
+              },
+              "type": "playerFactionChanged"
+            },
+            "kind": "GalacticWar"
+          },
+          "expected": {
+            "belowMinimum": false,
+            "installedVersion": null,
+            "playerFaction": {
+              "payload": {
+                "faction": null
+              },
+              "type": "loaded"
+            },
+            "statistics": null,
+            "statisticsStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "versions": null
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "status": {
+                  "payload": {
+                    "reason": "the Galactic War gateway did not accept your sign-in (401)"
+                  },
+                  "type": "failed"
+                }
+              },
+              "type": "playerFactionChanged"
+            },
+            "kind": "GalacticWar"
+          },
+          "expected": {
+            "belowMinimum": false,
+            "installedVersion": null,
+            "playerFaction": {
+              "payload": {
+                "reason": "the Galactic War gateway did not accept your sign-in (401)"
+              },
+              "type": "failed"
+            },
+            "statistics": null,
+            "statisticsStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "versions": null
           }
         }
       ]
@@ -90736,6 +90915,9 @@
         "state": {
           "belowMinimum": false,
           "installedVersion": null,
+          "playerFaction": {
+            "type": "unknown"
+          },
           "statistics": null,
           "statisticsStatus": {
             "type": "idle"
@@ -90753,6 +90935,9 @@
         "state": {
           "belowMinimum": false,
           "installedVersion": null,
+          "playerFaction": {
+            "type": "unknown"
+          },
           "statistics": null,
           "statisticsStatus": {
             "type": "idle"
@@ -90773,6 +90958,9 @@
         "state": {
           "belowMinimum": false,
           "installedVersion": "v2026.04.04.1",
+          "playerFaction": {
+            "type": "unknown"
+          },
           "statistics": null,
           "statisticsStatus": {
             "type": "idle"
@@ -90793,6 +90981,9 @@
         "state": {
           "belowMinimum": false,
           "installedVersion": "v2026.03.01.1",
+          "playerFaction": {
+            "type": "unknown"
+          },
           "statistics": null,
           "statisticsStatus": {
             "type": "idle"
@@ -90813,6 +91004,9 @@
         "state": {
           "belowMinimum": true,
           "installedVersion": "v2026.03.01.1",
+          "playerFaction": {
+            "type": "unknown"
+          },
           "statistics": null,
           "statisticsStatus": {
             "type": "idle"
@@ -90833,6 +91027,9 @@
         "state": {
           "belowMinimum": false,
           "installedVersion": "build-41",
+          "playerFaction": {
+            "type": "unknown"
+          },
           "statistics": null,
           "statisticsStatus": {
             "type": "idle"
@@ -90853,6 +91050,9 @@
         "state": {
           "belowMinimum": false,
           "installedVersion": "v1",
+          "playerFaction": {
+            "type": "unknown"
+          },
           "statistics": null,
           "statisticsStatus": {
             "type": "idle"
@@ -90878,6 +91078,9 @@
         "state": {
           "belowMinimum": false,
           "installedVersion": "v1",
+          "playerFaction": {
+            "type": "unknown"
+          },
           "statistics": null,
           "statisticsStatus": {
             "type": "idle"
@@ -90898,6 +91101,9 @@
         "state": {
           "belowMinimum": false,
           "installedVersion": "v1",
+          "playerFaction": {
+            "type": "unknown"
+          },
           "statistics": null,
           "statisticsStatus": {
             "type": "idle"
@@ -122529,6 +122735,9 @@
     "galacticWar": {
       "belowMinimum": false,
       "installedVersion": null,
+      "playerFaction": {
+        "type": "unknown"
+      },
       "statistics": null,
       "statisticsStatus": {
         "type": "idle"

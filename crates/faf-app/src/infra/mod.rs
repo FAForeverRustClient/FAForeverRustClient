@@ -778,12 +778,14 @@ pub fn real_ports() -> Ports {
     // offline-ish session, which is when a broken client most needs replacing.
     let client_update: Arc<dyn crate::ports::ClientUpdatePort> = Arc::new(GitHubUpdates::faf());
 
-    // Also never gated and never authenticated: Galactic War has its own
-    // login, so downloading and starting it needs nothing from this session.
-    // Falls back to the inert port only when no data directory can be
-    // resolved, which is the one case where installing anywhere is wrong.
+    // Also never gated: Galactic War has its own login, so downloading and
+    // starting it needs nothing from this session. The token store is only
+    // for the player's own faction, which the gateway answers for the token's
+    // owner alone. Falls back to the inert port only when no data directory
+    // can be resolved, which is the one case where installing anywhere is
+    // wrong.
     let galactic_war: Arc<dyn crate::ports::GalacticWarPort> = match GalacticWarGateway::faf() {
-        Ok(gateway) => Arc::new(gateway),
+        Ok(gateway) => Arc::new(gateway.with_tokens(tokens.clone())),
         Err(_) => Arc::new(FakeGalacticWar),
     };
 

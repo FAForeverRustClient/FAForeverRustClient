@@ -20,12 +20,12 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import type { MessageKey } from "../../../i18n";
 import { useAppStore } from "../../../store/store";
 import { FactionIcon } from "../../../shared/components/FactionIcon";
-import { galacticWarFactionLabel } from "../../../shared/factions";
+import { FACTION_COLORS, galacticWarFactionLabel } from "../../../shared/factions";
 import { openHttpsUrl } from "../../../shared/externalLinks";
 import { plainError } from "../../../shared/plainError";
 import { canLaunch, installTarget, isBusy, updateAvailable } from "../../../shared/rules/galacticWarActions";
 import { onlineCommanders } from "./galacticWarOnline";
-import { ringSegments, type RingSegment } from "./galacticWarRing";
+import { factionNumber, ringSegments, type RingSegment } from "./galacticWarRing";
 import type { PlayModePanelProps } from "../PlayModeTabs";
 import "./galactic-war.css";
 
@@ -153,6 +153,7 @@ export function GalacticWarPanel({
 } = {}) {
   const { t } = useTranslation();
   const state = useAppStore((store) => store.state.galacticWar);
+  const playerName = useAppStore((store) => store.state.auth.player?.name ?? null);
 
   useEffect(() => {
     // Entering the surface is the only trigger: the gateway is a service
@@ -170,6 +171,16 @@ export function GalacticWarPanel({
   const factions = state.statistics?.factions ?? [];
   const segments = ringSegments(factions);
   const statsFailed = state.statisticsStatus.type === "failed";
+  // The signed-in player's faction, by the number the cards and the ring use.
+  const playerFaction = state.playerFaction;
+  const ownFaction =
+    playerFaction.type === "loaded" && playerFaction.payload.faction
+      ? playerFaction.payload.faction
+      : null;
+  // A name the client does not know marks no card: every unknown faction
+  // shares one number, so it would mark the wrong one.
+  const ownGuess = ownFaction ? factionNumber(ownFaction.name ?? "") : null;
+  const ownNumber = ownGuess === factionNumber("") ? null : ownGuess;
   const cycleAge = cycleAgeInDays(season?.startedAt ?? "");
 
   // While something is in flight the ring reports that instead of territory:
@@ -273,6 +284,39 @@ export function GalacticWarPanel({
               </StatusNotice>
             ) : null}
           </section>
+
+          {/* Who is signed in, and for which faction: the gateway answers for
+              the token's owner alone, so this is always the player at the
+              keyboard. Absent without an account. */}
+          {playerName !== null && playerFaction.type !== "unknown" ? (
+            <section className="gw-section gw-player">
+              <h3 className="gw-section-title">{t("lobby.galacticWar.player.title")}</h3>
+              <div
+                className={ownNumber === null ? "gw-player-card" : "gw-player-card has-faction"}
+                style={
+                  ownNumber === null
+                    ? undefined
+                    : ({ "--gw-faction-color": FACTION_COLORS[ownNumber] } as CSSProperties)
+                }
+              >
+                {ownNumber !== null ? (
+                  <FactionIcon faction={ownNumber} size={36} className="gw-player-emblem" aria-hidden="true" />
+                ) : null}
+                <div className="gw-player-text">
+                  <strong className="gw-player-name">{playerName}</strong>
+                  <span className="gw-player-faction">
+                    {playerFaction.type === "loading"
+                      ? t("lobby.galacticWar.player.loading")
+                      : playerFaction.type === "failed"
+                        ? t("lobby.galacticWar.player.unavailable")
+                        : ownFaction
+                          ? galacticWarFactionLabel(ownFaction.name ?? "", ownFaction.longName || ownFaction.name || "")
+                          : t("lobby.galacticWar.player.noFaction")}
+                  </span>
+                </div>
+              </div>
+            </section>
+          ) : null}
 
           <section className="gw-section gw-news">
             <h3 className="gw-section-title">{t("lobby.galacticWar.news.title")}</h3>
@@ -397,7 +441,7 @@ export function GalacticWarPanel({
                 ];
                 return (
                   <li
-                    className="gw-faction"
+                    className={segment.faction === ownNumber ? "gw-faction is-own" : "gw-faction"}
                     key={`${faction.name}-${index}`}
                     style={{ "--gw-faction-color": segment.color } as CSSProperties}
                   >
@@ -412,9 +456,17 @@ export function GalacticWarPanel({
 
                     <div className="gw-faction-head">
                       <span className="gw-faction-name">{factionName}</span>
-                      <span className="gw-faction-planets">
-                        {faction.numPlanets ?? 0} / {planetsTotal(segments)}{" "}
-                        {t("lobby.galacticWar.stat.planets")}
+                      {/* The player's own faction says so beside the planets,
+                          on a line the card already has: a line of its own
+                          pushed the lower cards out of a 1080p window. */}
+                      <span className="gw-faction-sub">
+                        <span className="gw-faction-planets">
+                          {faction.numPlanets ?? 0} / {planetsTotal(segments)}{" "}
+                          {t("lobby.galacticWar.stat.planets")}
+                        </span>
+                        {segment.faction === ownNumber ? (
+                          <span className="gw-faction-yours">{t("lobby.galacticWar.faction.yours")}</span>
+                        ) : null}
                       </span>
                     </div>
 

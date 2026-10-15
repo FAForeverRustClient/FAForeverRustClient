@@ -1,8 +1,9 @@
-//! Galactic War gateway payloads: season statistics and the client version pointer.
+//! Galactic War gateway payloads: season statistics, the client version
+//! pointer and the signed-in player's faction.
 //!
-//! Two plain-JSON documents over HTTP, `GET /statistics` and
-//! `GET /client/<name>/version`, plus the naming rules for the published
-//! client archive. Pure decode and pure URL construction live here; `infra`
+//! Plain-JSON documents over HTTP, `GET /statistics`,
+//! `GET /client/<name>/version` and `GET /player/<fafId>/faction`, plus the
+//! naming rules for the published client archive. Pure decode and pure URL construction live here; `infra`
 //! does the request.
 //!
 //! ## Why every field is optional
@@ -132,6 +133,47 @@ pub struct GalacticWarStatistics {
     pub factions: Vec<GalacticWarFaction>,
 }
 
+/// A faction as `GET /player/:fafId/faction` names it: which one, no counts.
+///
+/// Its own type rather than [`GalacticWarFaction`], whose counts this
+/// document does not carry. Matched against the statistics' factions by
+/// `name`, never by `id`: the two documents number factions differently (the
+/// module doc), and the name is what both agree on, apart from case.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct GalacticWarPlayerFaction {
+    #[serde(default)]
+    pub id: i32,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub long_name: String,
+}
+
+/// The whole `GET /player/:fafId/faction` document.
+#[derive(Debug, Deserialize)]
+struct PlayerFactionDocument {
+    /// `null` for a player who never joined Galactic War, or has no faction
+    /// since a galaxy reset.
+    #[serde(default)]
+    faction: Option<GalacticWarPlayerFaction>,
+}
+
+/// The path of the player faction endpoint, relative to the API root.
+pub fn player_faction_path(faf_id: i32) -> String {
+    format!("player/{faf_id}/faction")
+}
+
+/// Decode the player faction document: the faction, or `None` for a player
+/// without one.
+pub fn parse_player_faction(body: &str) -> Result<Option<GalacticWarPlayerFaction>, String> {
+    let document: PlayerFactionDocument = serde_json::from_str(body)
+        .map_err(|error| format!("could not read the Galactic War faction: {error}"))?;
+    Ok(document
+        .faction
+        .filter(|faction| !faction.name.trim().is_empty()))
+}
+
 /// What the gateway says about client versions.
 ///
 /// `requiredVersion` is a **minimum**: the oldest build the server still
@@ -226,6 +268,24 @@ pub fn parse_client_versions(body: &str) -> Result<ClientVersions, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_the_player_faction_and_its_absence() {
+        // The example from the gateway's spec for the endpoint.
+        let faction = parse_player_faction(
+            r#"{"fafId": 12345, "faction": { "id": 1, "name": "UEF", "longName": "United Earth Federation" }}"#,
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(faction.name, "UEF");
+        assert_eq!(faction.long_name, "United Earth Federation");
+        assert_eq!(
+            parse_player_faction(r#"{"fafId": 12345, "faction": null}"#).unwrap(),
+            None
+        );
+        assert!(parse_player_faction("not json").is_err());
+        assert_eq!(player_faction_path(12345), "player/12345/faction");
+    }
 
     /// The example from the gateway's published API spec.
     const SPEC_STATISTICS: &str = r#"{
