@@ -10,6 +10,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { InstalledMap } from "../../../ipc/bindings";
 import { applyEvent, initialState, seedStore, sentCommands } from "../../../testing/mounted";
+import * as hostMapCatalogue from "./hostMapCatalogue";
 import { HostGameModal } from "./HostGameModal";
 
 vi.mock("../../../ipc/client");
@@ -107,6 +108,28 @@ describe("HostGameModal map picker, mounted", () => {
     await user.keyboard("{Home}");
     expect(options[0].getAttribute("aria-selected")).toBe("true");
     expect(document.activeElement).toBe(options[0]);
+  });
+
+  it("only rerenders the old and new map rows while moving the selection", async () => {
+    const user = userEvent.setup();
+    const formatMeta = vi.spyOn(hostMapCatalogue, "formatMapMeta");
+    const filterMaps = vi.spyOn(hostMapCatalogue, "filterHostMaps");
+    try {
+      mountDialog();
+      const options = await showSeededMaps(user);
+      await user.click(options[0]);
+      formatMeta.mockClear();
+      filterMaps.mockClear();
+
+      await user.keyboard("{ArrowDown}");
+
+      expect(formatMeta).toHaveBeenCalledTimes(2);
+      expect(filterMaps).not.toHaveBeenCalled();
+      expect(options[1].getAttribute("aria-selected")).toBe("true");
+    } finally {
+      formatMeta.mockRestore();
+      filterMaps.mockRestore();
+    }
   });
 
   it("closes the filter popover on a click outside it, and lets go of its listener", async () => {
