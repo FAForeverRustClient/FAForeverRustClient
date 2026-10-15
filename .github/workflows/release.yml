@@ -26,18 +26,17 @@ on:
       prerelease:
         # This flag is the client's update policy, not a label. `pick_release`
         # in `infra/client_update.rs` skips a prerelease for anyone on the
-        # stable channel, which is the default, and `ClientRelease::is_required`
+        # stable channel, and `ClientRelease::is_required`
         # refuses to gate on one. So:
         #
-        #   checked   - only players who turned prereleases on are told, with a
-        #               banner they can dismiss. Everybody else is never
-        #               offered it and their client reports "up to date".
+        #   checked   - players whose settings allow prereleases are told, with
+        #               a banner they can dismiss. Players who opted out are
+        #               not offered it. Since 0.8.0, allowing prereleases is the
+        #               default; an existing explicit choice is preserved.
         #   unchecked - every client is told, and a client that can install it
         #               must: the update gate stands until it is.
         #
-        # Every release so far has been checked, which is why nobody has ever
-        # been offered one.
-        description: 'Mark as a prerelease: only opted-in testers are offered it, and nobody is forced to update'
+        description: 'Mark as a prerelease: offered when prereleases are enabled, without forcing an update'
         type: boolean
         default: true
       allow_existing_tag:
@@ -47,6 +46,12 @@ on:
         description: 'Add to an already published release instead of refusing.'
         type: boolean
         default: false
+
+# One release at a time: two runs share one draft, so a second run waits
+# for the first to publish rather than mixing its assets into the same release.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 # Every third-party action below is pinned to a commit, not a tag. These jobs
 # hold `contents: write` and build what every client installs, and a tag is a
@@ -273,5 +278,10 @@ jobs:
           if [ "$(gh api "$RELEASE" --jq .draft)" != "true" ]; then
             echo "Already published; Discord was told the first time."
             exit 0
+          fi
+          TARGET=$(gh api "$RELEASE" --jq .target_commitish)
+          if [ "$TARGET" != "$GITHUB_SHA" ]; then
+            echo "::error::The release draft belongs to a different commit. Refusing to publish."
+            exit 1
           fi
           gh api -X PATCH "$RELEASE" -F draft=false --jq .html_url
