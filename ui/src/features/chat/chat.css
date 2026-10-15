@@ -270,26 +270,26 @@ html.is-resizing-chat-roster * {
   white-space: nowrap;
 }
 
-/* The head count, drawn as the leaderboard's player count is
-   (`.leaderboard-summary-count`): the people icon muted, the count in the
-   text colour and weight. */
+/* The head count, at the size of the "Joins & parts" toggle on the same row:
+   a status line for the room rather than a heading over it. */
 .chat-online-count {
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  gap: var(--space-2);
+  gap: 6px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 500;
   white-space: nowrap;
 }
 
 .chat-online-count svg {
   flex: none;
-  color: var(--color-muted);
+  color: var(--color-subtle);
 }
 
-.chat-online-count strong {
+.chat-online-count span {
   overflow: hidden;
-  font-size: 14px;
-  font-weight: 650;
   font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
 }
@@ -402,47 +402,75 @@ html.is-resizing-chat-roster * {
   outline-offset: 1px;
 }
 
-.chat-conversation-search {
+/* A browser's find bar: a small box over the log's top right corner, clear of
+   the scrollbar and above the message action toolbars (z-index 10). A match
+   is scrolled to the middle of the log, so the box never covers it. */
+.chat-find {
+  position: absolute;
+  top: var(--space-2);
+  right: calc(var(--space-2) + var(--scrollbar-size));
+  z-index: 20;
   display: flex;
   align-items: center;
-  flex: none;
-  gap: 6px;
-  min-height: 36px;
-  padding: 4px 6px 4px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  gap: 2px;
+  width: min(380px, calc(100% - 2 * var(--space-2) - var(--scrollbar-size)));
+  padding: 5px;
+  box-shadow: var(--shadow-md);
 }
 
-.chat-conversation-search > svg {
-  flex: none;
-  color: var(--color-subtle);
-}
-
-.chat-conversation-search input {
-  min-width: 120px;
+/* The field as the player list's search draws it (`.chat-roster-search-field`),
+   with the match count inside, where a browser puts it. */
+.chat-find-field {
+  display: flex;
   flex: 1;
-  padding: 4px 2px;
+  min-width: 0;
+  height: 30px;
+  align-items: center;
+  gap: 6px;
+  margin-right: 2px;
+  padding: 0 8px;
+  color: var(--color-subtle);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: text;
+}
+
+.chat-find-field:focus-within {
+  border-color: var(--color-accent);
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+.chat-find-field input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
   color: var(--color-text);
   background: transparent;
   border: 0;
-  font: inherit;
-}
-
-.chat-conversation-search input:focus-visible {
   outline: none;
+  font: inherit;
+  font-size: 13px;
 }
 
-.chat-conversation-search > span {
-  min-width: 64px;
+.chat-find-field input::placeholder {
+  color: var(--color-subtle);
+}
+
+.chat-find-count {
+  flex: none;
   color: var(--color-subtle);
   font-size: 12px;
-  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.chat-conversation-search button {
+.chat-find > button {
   display: grid;
-  width: 26px;
-  height: 26px;
+  flex: none;
+  width: 28px;
+  height: 28px;
   padding: 0;
   place-items: center;
   color: var(--color-muted);
@@ -452,20 +480,28 @@ html.is-resizing-chat-roster * {
   cursor: pointer;
 }
 
-.chat-conversation-search button:hover:not(:disabled),
-.chat-conversation-search button:focus-visible {
+.chat-find > button:hover:not(:disabled) {
   color: var(--color-text);
   background: var(--color-surface-hover);
-  outline: none;
 }
 
-.chat-conversation-search button:disabled {
+.chat-find > button:focus-visible {
+  color: var(--color-text);
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.chat-find > button:disabled {
   opacity: .35;
   cursor: default;
 }
 
-.chat-conversation-search .is-previous {
-  transform: rotate(180deg);
+.chat-find-divider {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: var(--color-border);
 }
 
 .chat-empty {

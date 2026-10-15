@@ -321,12 +321,12 @@ export function ChatView() {
         <header className="chat-head">
           {(() => {
             const context = channelContext(active, chatStatus);
-            // The head count as the leaderboard shows its players: the people
-            // icon and the count in the text colour, not a grey line of text.
+            // The head count, at the size of the controls beside it: a status
+            // line for the room, not a heading.
             return typeof context === "number" ? (
               <span className="chat-online-count">
-                <Icon name="users" size={16} />
-                <strong>{t("chat.header.online", { count: context })}</strong>
+                <Icon name="users" size={14} />
+                <span>{t("chat.header.online", { count: context })}</span>
               </span>
             ) : (
               <p className="chat-topic" title={active?.topic || undefined}>
@@ -338,7 +338,11 @@ export function ChatView() {
           {gameLinkNotice && <span className="chat-link-notice" role="status">{gameLinkNotice}</span>}
           {/* A button that looks like one, as "More filters" does elsewhere:
               as bare text with an icon it read as a label. */}
-          <Button className="chat-search-button" onClick={() => setSearchRequest((request) => request + 1)}>
+          <Button
+            className="chat-search-button"
+            title={t("chat.search.shortcut")}
+            onClick={() => setSearchRequest((request) => request + 1)}
+          >
             <Icon name="search" size={14} /> {t("chat.search.open")}
           </Button>
           <label className="chat-toggle">

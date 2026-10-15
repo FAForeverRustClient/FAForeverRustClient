@@ -287,28 +287,35 @@ export const MessageList = memo(function MessageList({
   return (
     <div className="chat-scroll-wrap">
       {searchOpen && (
-        <div className="chat-conversation-search surface-raised" role="search">
-          <Icon name="search" size={15} />
-          <input
-            ref={searchInputRef}
-            value={search}
-            placeholder={t("chat.search.placeholder")}
-            aria-label={t("chat.search.placeholder")}
-            onChange={(event) => { setSearch(event.target.value); setActiveMatch(0); }}
-            onKeyDown={(event) => {
-              if (event.nativeEvent.isComposing) return;
-              if (event.key === "Enter") { event.preventDefault(); navigateSearch(event.shiftKey ? -1 : 1); }
-            }}
-          />
-          <span aria-live="polite">
-            {search.trim() ? (matchingIds.length > 0 ? t("chat.search.counter", { current: normalizedMatch + 1, total: matchingIds.length }) : t("chat.search.noMatches")) : t("chat.search.shortcut")}
-          </span>
+        // A browser's find bar: a small box over the log's top right corner,
+        // not a strip across it. The field is drawn as the player list's
+        // search is, with the match count inside it.
+        <div className="chat-find surface-raised" role="search">
+          <label className="chat-find-field">
+            <Icon name="search" size={14} />
+            <input
+              ref={searchInputRef}
+              value={search}
+              placeholder={t("chat.search.placeholder")}
+              aria-label={t("chat.search.placeholder")}
+              onChange={(event) => { setSearch(event.target.value); setActiveMatch(0); }}
+              onKeyDown={(event) => {
+                if (event.nativeEvent.isComposing) return;
+                if (event.key === "Enter") { event.preventDefault(); navigateSearch(event.shiftKey ? -1 : 1); }
+              }}
+            />
+            <span className="chat-find-count" aria-live="polite">
+              {search.trim() ? (matchingIds.length > 0 ? t("chat.search.counter", { current: normalizedMatch + 1, total: matchingIds.length }) : t("chat.search.noMatches")) : ""}
+            </span>
+          </label>
+          {/* Up for the older match, down for the newer one, as the log runs. */}
           <button type="button" aria-label={t("chat.search.previous")} title={t("chat.search.previous")} disabled={matchingIds.length === 0} onClick={() => navigateSearch(-1)}>
-            <Icon className="is-previous" name="arrowRight" size={14} />
+            <Icon name="chevronUp" size={16} />
           </button>
           <button type="button" aria-label={t("chat.search.next")} title={t("chat.search.next")} disabled={matchingIds.length === 0} onClick={() => navigateSearch(1)}>
-            <Icon name="arrowRight" size={14} />
+            <Icon name="chevronDown" size={16} />
           </button>
+          <span className="chat-find-divider" aria-hidden="true" />
           <button type="button" aria-label={t("chat.search.close")} title={t("chat.search.close")} onClick={closeSearch}>
             <Icon name="close" size={14} />
           </button>
