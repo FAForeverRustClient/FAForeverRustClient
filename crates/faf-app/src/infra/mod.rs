@@ -60,6 +60,7 @@ pub const OFFLINE_FAF_NAME: &str = "Nuggets";
 pub mod auth;
 pub mod backgrounds;
 pub mod borderless;
+pub(crate) mod browser;
 pub mod changelog;
 pub mod chat_fake;
 pub mod clan;
