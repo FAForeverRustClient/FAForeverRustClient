@@ -1,0 +1,1 @@
+- The experimental Java ICE adapter and faf-pioneer now start on Linux.

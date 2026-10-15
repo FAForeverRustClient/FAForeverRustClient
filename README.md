@@ -78,7 +78,7 @@ Env toggles for local dev:
   prepares the official helper in `natives/` automatically (<https://github.com/FAForever/uid/releases>);
   `FAF_UID_VERSION` can select a different release.
 - `FAF_ICE_ADAPTER_JAR`: override the checksum-verified Java ICE adapter bundled by `pnpm tauri`
-- `FAF_JAVA_PATH`: override the Java 21+ executable. The client otherwise checks a bundled runtime, the official FAF Client installation, `JAVA_HOME`, then `PATH`.
+- `FAF_JAVA_PATH`: override the Java 25+ executable. The client otherwise checks a bundled runtime, the official FAF Client installation, `JAVA_HOME`, then `PATH`.
 - `FAF_ICE_ADAPTER_VERSION` and `FAF_ICE_ADAPTER_SHA256`: override the pinned official adapter release together
 - `FAF_ICE_ADAPTER_PATH`: optional path override for the bundled `faf-pioneer`
 - `FAF_GAME_PATH`: path to `ForgedAlliance.exe` (its folder must hold `init_<mod>.lua`)

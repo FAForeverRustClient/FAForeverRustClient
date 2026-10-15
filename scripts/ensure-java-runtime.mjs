@@ -3,13 +3,10 @@ import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promise
 import { join } from "node:path";
 
 import { downloadVerified } from "./download-verified.mjs";
+import { JAVA_RUNTIME_VERSION as version, JAVA_RUNTIMES } from "./java-runtime.mjs";
 
 // Neroxis 1.22.x is compiled for class-file version 69, so Java 21 (sufficient
 // for the ICE adapter) is no longer sufficient for the complete client.
-const version = "25.0.3+9";
-const archiveName = "OpenJDK25U-jre_x64_windows_hotspot_25.0.3_9.zip";
-const expectedSha256 = "a183e7280220ad5f6fe94ecbf025a5f10fc5797a0b18c600ed8f813c8158c530";
-const url = `https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.3%2B9/${archiveName}`;
 
 if (process.env.FAF_JAVA_PATH || process.env.FAF_SKIP_JAVA_RUNTIME_DOWNLOAD === "1") {
   process.exit(0);
@@ -17,16 +14,19 @@ if (process.env.FAF_JAVA_PATH || process.env.FAF_SKIP_JAVA_RUNTIME_DOWNLOAD === 
 if (process.env.FAF_FAKE_AUTH && !process.env.FAF_REAL_LOBBY) {
   process.exit(0);
 }
-if (process.platform !== "win32" || process.arch !== "x64") {
+const platformRuntime = JAVA_RUNTIMES[`${process.platform}/${process.arch}`];
+if (!platformRuntime) {
   console.warn(`[java-runtime] No bundled runtime is configured for ${process.platform}/${process.arch}; use FAF_JAVA_PATH.`);
   process.exit(0);
 }
+const { archive: archiveName, sha256: expectedSha256, executable } = platformRuntime;
+const url = `https://github.com/adoptium/temurin25-binaries/releases/download/jdk-${encodeURIComponent(version)}/${archiveName}`;
 
 const nativeDir = join(process.cwd(), "natives");
 const archive = join(nativeDir, "downloads", archiveName);
 const runtime = join(nativeDir, "jre");
 const marker = join(runtime, ".temurin-version");
-const java = join(runtime, "bin", "java.exe");
+const java = join(runtime, "bin", executable);
 
 try {
   const downloaded = await downloadVerified({

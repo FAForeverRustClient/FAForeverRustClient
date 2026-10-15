@@ -27,7 +27,7 @@ pinned and verified with the SHA-256 digest published by GitHub Releases.
 
 ## Eclipse Temurin Java runtime
 
-Windows release builds download and redistribute the Eclipse Temurin 25 JRE
+Windows and Linux release builds download and redistribute the Eclipse Temurin 25 JRE
 from [Eclipse Adoptium](https://adoptium.net/). The archive is pinned and
 verified against the SHA-256 digest published with the official GitHub release.
 Temurin binaries are distributed under the GNU General Public License version 2
