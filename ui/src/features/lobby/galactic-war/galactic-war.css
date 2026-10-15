@@ -101,51 +101,6 @@
   border-top: 0;
 }
 
-/* The signed-in player: name over faction, the faction's emblem beside them
-   and its colour along the left edge once the gateway has named one. */
-.gw-player-card {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.gw-player-card.has-faction {
-  box-shadow: inset 3px 0 0 var(--gw-faction-color);
-}
-
-.gw-player-emblem {
-  flex: none;
-}
-
-.gw-player-text {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.gw-player-name {
-  overflow: hidden;
-  font-size: 15px;
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.gw-section .gw-player-faction {
-  color: var(--color-muted);
-  font-size: 13px;
-}
-
-.gw-player-card.has-faction .gw-player-faction {
-  color: var(--gw-faction-color);
-  font-weight: 600;
-}
-
 /* A section with nothing to say yet: a quiet framed note, not a heading over
    empty space. */
 .gw-news {
@@ -363,11 +318,6 @@
   padding: var(--space-4);
 }
 
-.gw-factions-head h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-}
 
 /* ── the launch button and its territory ring ──────────────────────────── */
 .gw-launch {
@@ -555,38 +505,32 @@
   min-width: 0;
   overflow: hidden;
   background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
+  /* Framed all round in the faction's colour, so the four read as the four
+     sides of the war at a glance; the player's own is lit besides. */
+  border: 1px solid color-mix(in srgb, var(--gw-faction-color) 60%, transparent);
   border-radius: var(--radius-md);
   box-shadow: inset 0 2px 0 color-mix(in srgb, var(--gw-faction-color) 70%, transparent);
 }
 
-/* The player's own faction: its colour around the whole card, the top rule
-   stronger, and a tag above the name saying so. */
+/* The player's own faction: the card washed in its colour from the top,
+   its colour around the whole card and a stronger rule along the top. The
+   name says which it is; the tooltip says it is yours. */
 .gw-faction.is-own {
-  border-color: color-mix(in srgb, var(--gw-faction-color) 70%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--gw-faction-color) 20%, var(--color-surface-raised)) 0%,
+    color-mix(in srgb, var(--gw-faction-color) 7%, var(--color-surface-raised)) 55%,
+    var(--color-surface-raised) 100%
+  );
+  border-color: var(--gw-faction-color);
   box-shadow:
     inset 0 3px 0 var(--gw-faction-color),
-    0 0 0 1px color-mix(in srgb, var(--gw-faction-color) 35%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--gw-faction-color) 35%, transparent),
+    0 0 28px color-mix(in srgb, var(--gw-faction-color) 22%, transparent);
 }
 
-.gw-faction-sub {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px var(--space-2);
-}
-
-/* Square-cornered, like every tag in the client. */
-.gw-faction-yours {
-  padding: 0 6px;
-  color: var(--gw-faction-color);
-  background: color-mix(in srgb, var(--gw-faction-color) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--gw-faction-color) 45%, transparent);
-  border-radius: var(--radius-sm);
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.gw-faction.is-own .gw-faction-figures {
+  background: color-mix(in srgb, var(--gw-faction-color) 8%, var(--color-surface-raised));
 }
 
 /* The emblem whole and faint in the top right corner, behind the head and
@@ -721,4 +665,335 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
+}
+
+/* -- the player's faction as the tab's theme ------------------------------ */
+/* With a faction known, the tab is drawn in it: a glow from above, the
+   faction's own texture and emblem behind the boards, a vignette, and its
+   colour wherever the tab had the client's accent. Everything reads
+   `--gw-theme`, which the panel sets from the faction; without one these
+   rules do not apply and the tab keeps the client's look. */
+.gw-layout {
+  position: relative;
+  isolation: isolate;
+}
+
+.gw-layout > .gw-column {
+  position: relative;
+  z-index: 1;
+}
+
+.gw-backdrop {
+  position: absolute;
+  inset: calc(-1 * var(--space-3));
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% -8%, color-mix(in srgb, var(--gw-theme) 26%, transparent), transparent 70%),
+    radial-gradient(ellipse 120% 90% at 50% 50%, transparent 55%, color-mix(in srgb, var(--color-bg) 70%, transparent) 100%);
+}
+
+/* The texture: each faction its own, at a strength that stays behind the
+   boards. On a layer of its own, so the glow above is not repeated. */
+.gw-backdrop::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  opacity: 0.8;
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, black, transparent 85%);
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, black, transparent 85%);
+}
+
+/* UEF: a surveyor's grid. */
+.gw-layout[data-faction="uef"] .gw-backdrop::before {
+  background:
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--gw-theme) 14%, transparent) 0 1px, transparent 1px 48px),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--gw-theme) 14%, transparent) 0 1px, transparent 1px 48px);
+}
+
+/* Aeon: wide, soft rings, as from a light source above. */
+.gw-layout[data-faction="aeon"] .gw-backdrop::before {
+  background: repeating-radial-gradient(
+    circle at 50% 0%,
+    color-mix(in srgb, var(--gw-theme) 13%, transparent) 0 2px,
+    transparent 2px 64px
+  );
+}
+
+/* Cybran: circuit traces at an angle. */
+.gw-layout[data-faction="cybran"] .gw-backdrop::before {
+  background:
+    repeating-linear-gradient(45deg, color-mix(in srgb, var(--gw-theme) 13%, transparent) 0 1px, transparent 1px 22px),
+    repeating-linear-gradient(-45deg, color-mix(in srgb, var(--gw-theme) 7%, transparent) 0 1px, transparent 1px 66px);
+}
+
+/* Seraphim: tight glyph rings around the centre. */
+.gw-layout[data-faction="seraphim"] .gw-backdrop::before {
+  background: repeating-radial-gradient(
+    circle at 50% 42%,
+    color-mix(in srgb, var(--gw-theme) 15%, transparent) 0 1px,
+    transparent 1px 18px
+  );
+}
+
+/* The emblem, large and faint behind the launch dial. */
+.gw-backdrop-emblem {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  width: 520px;
+  height: 520px;
+  margin-left: -260px;
+  color: var(--gw-theme);
+  opacity: 0.16;
+}
+
+/* The boards and columns let the scenery through a little. Their outlines
+   stay the client's own: the faction's colour is for the scenery, the dial
+   and the cards, and on every panel edge it was too much of it. */
+.gw-layout.is-themed .gw-board,
+.gw-layout.is-themed .gw-column-info,
+.gw-layout.is-themed .gw-column-how {
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+/* The raised heads take a faint wash of the faction's colour, no line. */
+.gw-layout.is-themed .gw-column-head,
+.gw-layout.is-themed .gw-board-head {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--gw-theme) 8%, var(--color-surface-raised)),
+    var(--color-surface-raised)
+  );
+}
+
+.gw-layout.is-themed .gw-column-head h3 {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gw-layout.is-themed .gw-board-heading h3,
+.gw-layout.is-themed .gw-section-title {
+  color: color-mix(in srgb, var(--gw-theme) 75%, var(--color-text));
+}
+
+.gw-layout.is-themed .gw-cycle-name {
+  font-size: 20px;
+}
+
+/* The cycle's tiles: washed in the faction's colour inside a plain outline,
+   and the one figure that says who is here now lit in it. */
+.gw-layout.is-themed .gw-world .gw-cycle-facts .facts-grid.has-3-columns > div {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--gw-theme) 9%, var(--color-surface-raised)),
+    var(--color-surface-raised)
+  );
+}
+
+.gw-layout.is-themed .gw-world .gw-cycle-facts .is-emphasis dd {
+  color: color-mix(in srgb, var(--gw-theme) 70%, var(--color-text));
+}
+
+/* The launch dial: the faction's glow around the ring, its colour on the
+   button when it is pointed at, and a slow breath while it waits. */
+.gw-layout.is-themed .gw-ring {
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--gw-theme) 40%, transparent));
+}
+
+.gw-layout.is-themed .gw-launch-bezel {
+  border-color: color-mix(in srgb, var(--gw-theme) 45%, var(--color-border));
+  animation: gw-breathe 4.8s ease-in-out infinite;
+}
+
+.gw-layout.is-themed .gw-launch-button {
+  background: radial-gradient(
+    circle at 50% 24%,
+    color-mix(in srgb, var(--gw-theme) 16%, var(--color-surface-hover)),
+    var(--color-surface-raised) 58%,
+    var(--color-surface) 100%
+  );
+}
+
+.gw-layout.is-themed .gw-launch-button:hover:not(:disabled) {
+  border-color: var(--gw-theme);
+  box-shadow:
+    var(--shadow-popover),
+    0 0 0 4px color-mix(in srgb, var(--gw-theme) 30%, transparent),
+    0 0 36px color-mix(in srgb, var(--gw-theme) 35%, transparent);
+}
+
+.gw-layout.is-themed .gw-launch-verb {
+  color: color-mix(in srgb, var(--gw-theme) 70%, var(--color-text));
+}
+
+.gw-layout.is-themed .gw-ring-busy {
+  stroke: var(--gw-theme);
+}
+
+@keyframes gw-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--gw-theme) 18%, transparent),
+      0 0 12px color-mix(in srgb, var(--gw-theme) 12%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--gw-theme) 34%, transparent),
+      0 0 30px color-mix(in srgb, var(--gw-theme) 30%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gw-layout.is-themed .gw-launch-bezel {
+    animation: none;
+  }
+}
+
+/* -- the hero: emblem, cycle and commander, open to the scenery ----------- */
+.gw-hero {
+  display: grid;
+  flex: none;
+  align-items: center;
+  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  padding: 0 var(--space-3);
+}
+
+.gw-hero-side {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.gw-hero-cycle {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.gw-hero-commander {
+  align-items: flex-start;
+}
+
+.gw-hero-label {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.gw-hero-title {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gw-hero-faction {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.gw-hero.has-faction .gw-hero-faction {
+  color: var(--gw-theme);
+}
+
+/* The cycle board is its tiles alone now; they open it. */
+.gw-world .gw-cycle-facts {
+  padding-top: var(--space-4);
+}
+
+/* The dial in the hero: no seam to straddle any more, so its row is as tall
+   as the ring, and neither board keeps a clear band for it. */
+.gw-hero .gw-launch {
+  width: 236px;
+  height: 288px;
+}
+
+.gw-world {
+  padding-bottom: 0;
+}
+
+.gw-world .gw-cycle-facts {
+  padding-bottom: var(--space-4);
+}
+
+.gw-factions-board {
+  padding-top: var(--space-4);
+}
+
+/* A dashed ring turning slowly outside the territory ring, like a seal's. */
+.gw-hero .gw-launch::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 252px;
+  height: 252px;
+  margin: -126px 0 0 -126px;
+  border: 1px dashed color-mix(in srgb, var(--gw-theme, var(--color-muted)) 28%, transparent);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+  animation: gw-hero-turn 90s linear infinite;
+}
+
+@keyframes gw-hero-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gw-hero .gw-launch::after {
+    animation: none;
+  }
+}
+
+.gw-launch-emblem {
+  margin-bottom: 2px;
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--gw-theme) 70%, transparent));
+}
+
+/* The large faint emblem behind the boards sits behind the hero now, filling
+   the open space either side of the dial. */
+.gw-layout .gw-backdrop-emblem {
+  top: -40px;
+}
+
+/* The four faction cards held flat, so the dial above keeps room around its
+   turning ring on a 1080p window: closer groups, a lower foot, a slightly
+   smaller share. */
+.gw-faction {
+  gap: var(--space-2);
+}
+
+.gw-faction-head {
+  padding-top: var(--space-3);
+}
+
+.gw-faction-share-value {
+  font-size: 30px;
+}
+
+.gw-faction-figures {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+
+.gw-faction-emblem {
+  top: var(--space-3);
 }
