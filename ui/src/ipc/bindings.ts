@@ -3893,7 +3893,7 @@ export type IceAdapter =
 "dynamic" |
 /**  `faf-ice-adapter`, driven over JSON-RPC. */
 "java" |
-/**  Experimental Java adapter (v4.0.0). */
+/**  Experimental Java adapter (v4.0.1). */
 "expJava" |
 /**
  *  Experimental faf-pioneer backend. Owns a local GPGNet relay the Java
