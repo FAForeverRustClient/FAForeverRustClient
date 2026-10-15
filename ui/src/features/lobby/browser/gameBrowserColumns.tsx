@@ -135,9 +135,7 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
   const fit = fitColumns(widths, COLUMN_FLOORS, space);
   const { scale } = fit;
   // Spare room tops the tags column up before the game column takes the rest.
-  // Only with every column at its full width: a narrowed list has none, apart
-  // from the odd pixel the rounding leaves.
-  const drawn = scale >= 1 && !fit.overflow ? withTagsRoom(fit.drawn, space) : fit.drawn;
+  const drawn = withTagsRoom(fit, space);
   const template = columnTemplate(order.map((column) => drawn[column]), gamePosition);
   // Only when every column is at its floor and the floors are wider than the
   // list: the header and every row are then as wide as the floors, so the
