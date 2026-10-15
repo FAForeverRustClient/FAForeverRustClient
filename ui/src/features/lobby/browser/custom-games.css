@@ -1059,6 +1059,12 @@
   white-space: nowrap;
 }
 
+/* "Host" before the name, in the muted colour so the name still leads. */
+.game-tile-host-label {
+  margin-right: 4px;
+  color: var(--color-muted);
+}
+
 /* The map's name on its picture: small, along the foot, on a fade that starts
    as nothing at the top of the text, so it reads on bright terrain and dark
    alike without a box laid over the map. The tournaments' map tiles carry

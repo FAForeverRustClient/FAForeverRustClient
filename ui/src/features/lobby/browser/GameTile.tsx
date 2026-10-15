@@ -158,8 +158,11 @@ export const GameTile = memo(function GameTile({
         <span className="game-tile-title" title={shownTitle}>{shownTitle}</span>
         {/* The host has the line under the title to themselves, a step
             brighter than the rest of the tile's small print: sharing a line
-            with the map cut both short. The map's name is on its picture. */}
+            with the map cut both short. The map's name is on its picture.
+            The one caption the tile keeps, muted and without a colon: a bare
+            name under the title read as part of it, or as one of the players. */}
         <span className="game-tile-host" title={`${t("lobby.browser.hostedBy")} ${game.host}`}>
+          <span className="game-tile-host-label">{t("lobby.browser.tileHost")}</span>
           <PlayerName name={game.host} />
         </span>
         <span className="game-tile-flags">

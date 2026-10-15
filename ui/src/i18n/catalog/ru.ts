@@ -2249,6 +2249,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.private": "Приватная",
   "lobby.browser.host": "Хост:",
   "lobby.browser.hostedBy": "Создал",
+  "lobby.browser.tileHost": "Хост",
   "lobby.browser.tileAge": "Открыта {age}",
   "lobby.browser.tilePlayers": "Игроки: {players} из {max}",
   "lobby.browser.tileRating": "Ø {rating}",

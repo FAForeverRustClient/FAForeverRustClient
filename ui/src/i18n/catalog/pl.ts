@@ -2006,6 +2006,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.privateGame": "Gra prywatna",
   "lobby.browser.host": "Host:",
   "lobby.browser.hostedBy": "Hostuje",
+  "lobby.browser.tileHost": "Host",
   "lobby.browser.tileAge": "Otwarta od {age}",
   "lobby.browser.tilePlayers": "Gracze: {players} z {max}",
   "lobby.browser.tileRating": "Ø {rating}",

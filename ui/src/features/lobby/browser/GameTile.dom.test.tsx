@@ -66,8 +66,9 @@ describe("GameTile", () => {
     expect(caption?.textContent).toBeTruthy();
     expect(caption?.getAttribute("aria-hidden")).toBe("true");
     expect(part(".game-tile-body")?.textContent).not.toContain(caption?.textContent ?? "");
-    // The host is the line straight under the title.
-    expect(part(".game-tile-host")?.textContent).toBe("Sui");
+    // The host is the line straight under the title, captioned as the host.
+    expect(part(".game-tile-host-label")?.textContent).toBe("Host");
+    expect(part(".game-tile-host")?.textContent).toBe("HostSui");
     expect(part(".game-tile-title")?.nextElementSibling?.classList.contains("game-tile-host")).toBe(true);
     expect(part(".game-tile-stats")?.textContent).toContain("1/4");
     expect(part(".game-tile-stats")?.textContent).toContain("Ø 1829");
