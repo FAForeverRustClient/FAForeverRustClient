@@ -911,40 +911,32 @@
   position: relative;
   display: grid;
   min-width: 0;
-  height: 128px;
+  height: 120px;
   /* The browser renders every open game, and a busy evening is 100+ of them.
      The row height is fixed, so the engine can be told exactly how much space
      an off-screen tile needs and skip laying it out until it scrolls in,
      without the scrollbar moving. */
   content-visibility: auto;
-  contain-intrinsic-size: auto 128px;
+  contain-intrinsic-size: auto 120px;
   /* Its own width decides what a narrow tile does, not the window's: the
      column count in the settings makes tiles narrow in a wide window. */
   container: game-tile / inline-size;
-  grid-template-columns: 128px minmax(0, 1fr);
-  /* The facts band's ground reaches the tile's rounded corner. */
-  overflow: hidden;
+  grid-template-columns: 120px minmax(0, 1fr);
   color: var(--color-text);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 
-/* Hover and selection the way the mods tab's cards draw them: the raised
-   surface and a stronger edge, and for the selected tile a second, inner
-   pixel of that edge, so the selection reads at a glance without a colour of
-   its own competing with the friend tint and the tags. */
 .game-tile:hover,
 .game-tile:focus-within {
-  background: var(--color-surface-raised);
-  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+  border-color: color-mix(in srgb, var(--color-border-strong) 75%, var(--color-text));
 }
 
 .game-tile.active {
-  --tile-selected-edge: color-mix(in srgb, var(--color-border-strong) 45%, var(--color-text));
   background: var(--color-surface-raised);
-  border-color: var(--tile-selected-edge);
-  box-shadow: inset 0 0 0 1px var(--tile-selected-edge);
+  border-color: color-mix(in srgb, var(--color-border-strong) 50%, var(--color-text));
 }
 
 .game-tile-map,
@@ -983,14 +975,14 @@
   background: var(--color-surface);
 }
 
-/* Top left, where the eye enters the tile. The tile clips its picture to
-   its rounded corner, so the plate sits inside the curve rather than over
-   it. A light plate, as the vault badge's: a solid block with a strong
-   border round a small lock was the heaviest thing on the tile. */
+/* Top right, the picture's inner corner beside the title, where the vault
+   cards keep their Featured badge. Top left put a square into the tile's
+   rounded outer corner. A light plate, as the vault badge's: a solid block
+   with a strong border round a small lock was the heaviest thing on the tile. */
 .game-tile-private {
   position: absolute;
   top: 6px;
-  left: 6px;
+  right: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1012,20 +1004,15 @@
   top: -1px;
 }
 
-/* The title, the map, the tags, and at the foot the facts band with the age
-   over its far end. The tags line is left out when a game has none, and the
-   band stays at the foot either way. */
+/* Four lines: the title, the host, the tags, and at the bottom who can still
+   get in and how long the lobby has been open. The map's name is on its
+   picture. The tags line is left out when a game has none, and the bottom
+   line stays at the bottom either way. */
 .game-tile-body {
   display: flex;
   flex-direction: column;
-}
-
-.game-tile-head {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 3px;
-  padding: 10px 12px 0;
+  gap: 4px;
+  padding: 9px 12px;
 }
 
 /* A line of its own: the age that shared it now ends the bottom row. */
@@ -1041,29 +1028,77 @@
   white-space: nowrap;
 }
 
-/* The map's name under the title, the line to itself. */
-.game-tile-map-name {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
+/* The quietest fact, at the far end of the bottom row: how long the lobby
+   has been open, beside who is in it. */
+.game-tile-age {
+  flex: none;
+  margin-left: auto;
+  /* The row clips what does not fit, and a last glyph that leans past its
+     box (the "w" of "Now") lost its edge to it. */
+  padding-right: 1px;
   color: var(--color-muted);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The host, a step above the tile's other small print and well below the
+   title: between the text colour and the muted one, at regular weight. In
+   the full text colour at 500 it competed with the title it sits under. */
+.game-tile-host {
+  display: block;
+  min-width: 0;
+  /* A little apart from the title, and a touch smaller than the other small
+     print, so it reads as the title's caption rather than its second line. */
+  margin-top: 2px;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--color-text) 72%, var(--color-muted));
+  font-size: 11.5px;
+  font-weight: 400;
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* The quietest fact, on the band's top edge at the right, over the host: it
-   takes the free room above the band, so the band starts right under it. */
-.game-tile-age {
-  align-self: flex-end;
-  margin-top: auto;
-  padding: 0 12px 3px;
+/* "Host" before the name, in the muted colour so the name still leads. */
+.game-tile-host-label {
+  margin-right: 4px;
   color: var(--color-muted);
+}
+
+/* The map's name on its picture: small, along the foot, on a fade that starts
+   as nothing at the top of the text, so it reads on bright terrain and dark
+   alike without a box laid over the map. The tournaments' map tiles carry
+   their names the same way, lighter here for a small tile. The picture tokens
+   are the same in every theme: a light theme does not make terrain light.
+   Two lines at most; the details panel has the rest of a long name. */
+.game-tile-map-caption {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 18px 8px 6px;
+  color: var(--color-on-picture);
   font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-  white-space: nowrap;
+  font-weight: 500;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--color-picture-backdrop) 80%, transparent);
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--color-picture-backdrop) 78%, transparent),
+    color-mix(in srgb, var(--color-picture-backdrop) 45%, transparent) 60%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* The two-line limit on the text itself: on the caption, whose padding the
+   clipping does not cover, a third line showed through under the "...". */
+.game-tile-map-caption-text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 /* One line of whole tags: one that does not fit wraps to a second line,
@@ -1076,7 +1111,9 @@
   height: 20px;
   align-items: center;
   gap: 8px 4px;
-  margin-top: 2px;
+  /* Centred in the room between the host and the bottom row, rather than
+     hanging under the host with the room all below it. */
+  margin-block: auto;
   overflow: hidden;
   line-height: 14px;
 }
@@ -1085,8 +1122,12 @@
   display: none;
 }
 
-/* The mods tab's type badge: square corners, small caps, a neutral fill that
-   the states below tint. */
+/* With the tags taking the free room on both sides, the bottom row needs no
+   push of its own; without tags it keeps it, and stays at the bottom. */
+.game-tile-flags:not(:empty) + .game-tile-stats {
+  margin-top: 0;
+}
+
 .game-tile-flags i {
   display: inline-flex;
   flex-shrink: 0;
@@ -1094,11 +1135,10 @@
   max-width: 120px;
   padding: 2px 6px;
   overflow: hidden;
-  color: var(--color-muted);
+  color: var(--color-text);
   font-size: 11px;
   font-style: normal;
-  font-weight: 650;
-  letter-spacing: 0.04em;
+  font-weight: 600;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
@@ -1107,79 +1147,45 @@
   border-radius: var(--radius-sm);
 }
 
-/* Another featured mod than the tab's own: a property of the game rather
-   than a warning, so a neutral tag, raised a step above the plain ones. */
-.game-tile-flags i.featured {
-  color: var(--color-text);
-  border-color: var(--color-border-strong);
-  background: color-mix(in srgb, var(--color-text) 8%, transparent);
-}
-
 .game-tile-flags i.modded {
   color: var(--color-text);
-  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
-  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
 }
 
 .game-tile-flags i.modded.is-ranked {
   color: var(--color-ok-text);
-  border-color: color-mix(in srgb, var(--color-ok) 25%, transparent);
-  background: color-mix(in srgb, var(--color-ok) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-ok) 35%, transparent);
+  background: color-mix(in srgb, var(--color-ok) 12%, var(--color-surface));
 }
 
 .game-tile-flags i.unranked {
   color: var(--color-error-text);
-  border-color: color-mix(in srgb, var(--color-error) 30%, transparent);
-  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-error) 35%, transparent);
+  background: color-mix(in srgb, var(--color-error) 12%, var(--color-surface));
 }
 
-/* The facts band: the facts strip's tinted ground and hairline, at the height
-   of one line. Values in the text colour, the icons quieter. */
-.game-tile-facts {
+.game-tile-stats {
   display: flex;
   min-width: 0;
-  height: 32px;
-  flex: none;
   align-items: center;
-  gap: 14px;
-  padding: 0 12px;
+  gap: 10px;
+  margin-top: auto;
   overflow: hidden;
   color: var(--color-muted);
   font-size: 12px;
   white-space: nowrap;
-  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
-  border-top: 1px solid var(--color-border);
 }
 
-.game-tile-facts b {
+/* Regular weight: the full text colour and a size above the muted line around
+   them are enough to make these the line's values. At 600, and still at 500,
+   they outweighed the title they sit under. */
+.game-tile-stats b {
   flex: none;
   color: var(--color-text);
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
-}
-
-/* The host at the band's far end, with the crown. Their name is the one fact
-   of any length, so the one that shrinks. */
-.game-tile-host {
-  display: inline-flex;
-  min-width: 0;
-  flex: 0 1 auto;
-  align-items: center;
-  gap: 5px;
-  margin-left: auto;
-}
-
-.game-tile-host svg {
-  flex: none;
-  color: var(--color-subtle);
-}
-
-.game-tile-facts .game-tile-host b {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  font-weight: 550;
-  text-overflow: ellipsis;
 }
 
 .game-tile-players {
@@ -1226,17 +1232,13 @@
   }
 }
 
-/* Narrower still (a high column count in the appearance settings, or a
-   narrow window), the count stays and the seat map goes, and the band's gaps
-   close up, so the host's name keeps its room. */
-@container game-tile (max-width: 340px) {
-  .game-tile-facts {
-    gap: 10px;
-  }
-
-  .game-tile-slots,
-  .game-tile-slots.is-dense {
-    display: none;
+/* Narrower still, any lobby's dots go into two rows: eight in one took the
+   room the age needs at the end of the line, and clipped it to a letter. */
+@container game-tile (max-width: 380px) {
+  .game-tile-slots {
+    display: inline-grid;
+    grid-template-columns: repeat(var(--slot-columns), 8px);
+    gap: 2px 3px;
   }
 }
 
@@ -1823,22 +1825,6 @@
     contain-intrinsic-size: auto 102px;
     grid-template-columns: 102px minmax(0, 1fr);
   }
-
-  .game-tile-head {
-    gap: 2px;
-    padding-top: 6px;
-  }
-
-  .game-tile-facts {
-    height: 28px;
-    margin-top: auto;
-  }
-
-  /* No slack left above the band at this height, so the age gives way; the
-     list view still has it in a column. */
-  .game-tile-age {
-    display: none;
-  }
 }
 
 /* A lobby with a friend in it: the same wash the grid view's tile gets.
@@ -1874,10 +1860,10 @@
    which is worse the more friends somebody has. Half that leaves the tile
    plainly tinted and plainly still a tile; the border carries the rest.
 
-   The edge is the friend colour at the strength the mods tab gives a mod in
-   use, so a tinted card means "yours" the same way in both tabs. Tint and
-   edge are two signals for one fact, and the tint is the one that survives
-   being glanced at.
+   The outline stays at full strength, and the 1 px box-shadow with it: it
+   feathers the subpixel antialiasing at the rounded corners, so the edge
+   follows the curve without tangent notches. Tint and edge are two signals for
+   one fact, and the tint is the one that survives being glanced at.
 
    A foe does not get the same treatment (issue 280). A tile washed and ringed in red
    read as a lobby "marked for hell" rather than one with somebody in it you
@@ -1891,24 +1877,25 @@
 
 .game-tile.has-friend {
   background: color-mix(in srgb, var(--tile-social) 7%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--tile-social) 55%, transparent);
+  border-color: var(--tile-social);
+  box-shadow: 0 0 1px 0 var(--tile-social);
 }
 
-/* The same steps the mods tab's "in use" card takes on hover, so a tinted
-   card answers the pointer the same way in both tabs. */
 .game-tile.has-friend:hover,
 .game-tile.has-friend:focus-within {
-  background: color-mix(in srgb, var(--tile-social) 12%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--tile-social) 75%, transparent);
+  background: color-mix(in srgb, var(--tile-social) 11%, var(--color-surface-hover));
+  border-color: var(--tile-social);
+  box-shadow: 0 0 1px 0 var(--tile-social);
 }
 
 /* Selected has to win over friendly, not blend with it: a selected tile that
-   looked the same as an unselected one was the complaint. The selection's
-   double edge takes the border back, the same one an untinted tile wears. */
+   looked the same as an unselected one was the complaint. The accent takes the
+   border back, so the feathering shadow goes with it rather than ringing an
+   accent edge in green. */
 .game-tile.has-friend.active {
   background: color-mix(in srgb, var(--tile-social) 11%, var(--color-surface-raised));
-  border-color: var(--tile-selected-edge);
-  box-shadow: inset 0 0 0 1px var(--tile-selected-edge);
+  border-color: var(--color-accent);
+  box-shadow: none;
 }
 
 /* The friend tag, in the colour the reader chose for friends in chat rather

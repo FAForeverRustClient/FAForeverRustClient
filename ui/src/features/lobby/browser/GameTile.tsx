@@ -25,7 +25,8 @@ const MAX_SLOT_DOTS = 16;
  * One dot per slot, filled for each player in it. Smaller from nine slots on,
  * so a 16-player lobby still leaves room for the rating beside it, and on a
  * narrow tile in two rows (`--slot-columns` dots to a row, the first row the
- * first half of the lobby).
+ * first half of the lobby): a big lobby from 420 px down, any lobby from
+ * 380 px down.
  */
 function SlotDots({ taken, slots }: { taken: number; slots: number }) {
   if (slots < 1 || slots > MAX_SLOT_DOTS) return null;
@@ -33,7 +34,7 @@ function SlotDots({ taken, slots }: { taken: number; slots: number }) {
   return (
     <span
       className={`game-tile-slots${dense ? " is-dense" : ""}`}
-      style={dense ? ({ "--slot-columns": Math.ceil(slots / 2) } as CSSProperties) : undefined}
+      style={{ "--slot-columns": Math.ceil(slots / 2) } as CSSProperties}
       aria-hidden="true"
     >
       {Array.from({ length: slots }, (_, index) => (
@@ -126,9 +127,14 @@ export const GameTile = memo(function GameTile({
           className="game-tile-map-image"
           placeholderClassName="game-tile-map-placeholder"
         />
-        {/* The picture carries nothing but the lock. The map's name sat on it
-            in a plate of its own, which covered the terrain and looked stuck
-            on; it is in the line under the title now. */}
+        {/* The map's name along the foot of its picture, on a fade into the
+            tile's ground rather than a plate: the plate it once had covered the
+            terrain and looked stuck on. On the picture, so the text beside it
+            keeps its room at five columns. The button already names the map
+            to a screen reader. */}
+        <span className="game-tile-map-caption" aria-hidden="true">
+          <span className="game-tile-map-caption-text">{presentation.displayName}</span>
+        </span>
         {game.passwordProtected && (
           <span className="game-tile-private" role="img" aria-label={t("lobby.browser.privateGame")} title={t("lobby.browser.privateGame")}>
             <Icon name="lock" size={14} />
@@ -147,109 +153,106 @@ export const GameTile = memo(function GameTile({
         {/* Facts without a caption over each. "PLAYER", "Ø RATING", "VERSION",
             "AGE" and "HOST:" on every tile made it read as a form; the values
             say what they are, and the words are on hover. */}
-        <span className="game-tile-head">
-          {/* The title has its line to itself: the age beside it took about
-              55 px of a line that is the first thing to run out of room. */}
-          <span className="game-tile-title" title={shownTitle}>{shownTitle}</span>
-          {/* The map's name has the line under the title to itself. Sharing
-              it with the host cut both short on most tiles; the host closes
-              the facts band instead. */}
-          <span className="game-tile-map-name" title={presentation.displayName}>{presentation.displayName}</span>
-          <span className="game-tile-flags">
-            {/* Only a mode other than the tab's own, and the first tag when
-                there is one: "FAF" on nearly every tile said nothing, and a rare
-                one stands out because it is rare. Spelled the way the Host Game
-                dialog spells it rather than as the `fafbeta` the server sends. */}
-            {otherMod && <i className="featured" title={featuredModLabel(otherMod)}>{featuredModLabel(otherMod)}</i>}
-            {/* A tag among the tags, and the first of them after a rare mode.
-                It is a condition of the lobby as "unranked" is: as bare numbers
-                after the rating it did not read as a range at all. Early,
-                because this line clips what does not fit, and the range is the
-                tag that decides whether the reader can join. */}
-            {(game.ratingMin !== null || game.ratingMax !== null) && (
-              <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
-            )}
-            {/* Among the tags, and straight after the range: who is in the lobby
-                is what a narrow tile can least afford to clip, and the tags
-                about the game itself follow. A count is a property of the lobby
-                the way "unranked" and "3 SIM" are, so it belongs with them and
-                not off in the footer beside the host's name. Who they are is
-                the popover's job, which the tag carries exactly as the list
-                row's does. */}
-            {friends.length > 0 && (
-              <i
-                className="friend"
-                onMouseEnter={(e) => {
-                  e.stopPropagation();
-                  showSocial(e.currentTarget, "friends");
-                }}
-                onMouseLeave={hideSocial}
-                onFocus={(e) => {
-                  e.stopPropagation();
-                  showSocial(e.currentTarget, "friends");
-                }}
-                onBlur={hideSocial}
-                tabIndex={0}
-                role="button"
-                aria-label={t("lobby.browser.friendCount", { count: friends.length })}
-                aria-describedby={socialPosition && socialCategory === "friends" ? socialPopoverId : undefined}
-                onClick={(e) => {
-                  e.stopPropagation();
-                }}
-              >
-                {friendLabel}
-              </i>
-            )}
-            {foes.length > 0 && (
-              <i
-                className="foe"
-                onMouseEnter={(e) => {
-                  e.stopPropagation();
-                  showSocial(e.currentTarget, "foes");
-                }}
-                onMouseLeave={hideSocial}
-                onFocus={(e) => {
-                  e.stopPropagation();
-                  showSocial(e.currentTarget, "foes");
-                }}
-                onBlur={hideSocial}
-                tabIndex={0}
-                role="button"
-                aria-label={t("lobby.browser.foeCount", { count: foes.length })}
-                aria-describedby={socialPosition && socialCategory === "foes" ? socialPopoverId : undefined}
-                onClick={(e) => {
-                  e.stopPropagation();
-                }}
-              >
-                {foeLabel}
-              </i>
-            )}
-            {/* Whether the game counts, before what it is played with: on a
-                narrow tile the tags at the end are the ones left out. */}
-            {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
-            {goAdapter && <i className="go-adapter" title={t("lobby.browser.goAdapterTitle")}>{t("lobby.browser.goAdapter")}</i>}
-            {expJavaAdapter && <i className="go-adapter" title={t("lobby.browser.expJavaAdapterTitle")}>{t("lobby.browser.expJavaAdapter")}</i>}
-            {simModCount > 0 && (
-              <i
-                className={simModsRanked ? "modded is-ranked" : "modded"}
-                title={t(simModsRanked ? "lobby.browser.simModsRanked" : "lobby.browser.simModsUnranked", { count: simModCount })}
-              >
-                {t("lobby.browser.simModBadge", { count: simModCount })}
-              </i>
-            )}
-          </span>
+        {/* The title has its line to itself: the age beside it took about
+            55 px of a line that is the first thing to run out of room. */}
+        <span className="game-tile-title" title={shownTitle}>{shownTitle}</span>
+        {/* The host has the line under the title to themselves, a step
+            brighter than the rest of the tile's small print: sharing a line
+            with the map cut both short. The map's name is on its picture.
+            The one caption the tile keeps, muted: a bare name under the title
+            read as part of it, or as one of the players. */}
+        <span className="game-tile-host" title={`${t("lobby.browser.hostedBy")} ${game.host}`}>
+          <span className="game-tile-host-label">{t("lobby.browser.host")}</span>
+          <PlayerName name={game.host} />
         </span>
-        {/* How long the lobby has been open, right-aligned on the band's top
-            edge, straight over the host. It takes the slack between the tags
-            and the band, so the tile is no taller for it. */}
-        <span className="game-tile-age" title={game.hostedAt ? t("lobby.browser.tileAge", { age }) : undefined}>{age}</span>
-        {/* The facts as one tinted band along the foot of the tile, the way
-            the mods tab's cards carry theirs. Who can still get in first:
-            whether there is room reads from the dots before the numbers are
-            read, and the rating beside them says who is in. The host closes
-            the band at its far end, the one fact of any length, so the one
-            that gives way. */}
-        <span className="game-tile-facts">
+        <span className="game-tile-flags">
+          {/* A tag among the tags, and the first of them. It is a condition of
+              the lobby as "unranked" is: as bare numbers after the rating it
+              did not read as a range at all. First, because this line clips
+              what does not fit, and the range is the tag that decides whether
+              the reader can join. */}
+          {(game.ratingMin !== null || game.ratingMax !== null) && (
+            <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
+          )}
+          {/* Among the tags, and straight after the range: who is in the lobby
+              is what a narrow tile can least afford to clip, and the tags
+              about the game itself follow. A count is a property of the lobby
+              the way "unranked" and "3 SIM" are, so it belongs with them and
+              not off in the footer beside the host's name. Who they are is
+              the popover's job, which the tag carries exactly as the list
+              row's does. */}
+          {friends.length > 0 && (
+            <i
+              className="friend"
+              onMouseEnter={(e) => {
+                e.stopPropagation();
+                showSocial(e.currentTarget, "friends");
+              }}
+              onMouseLeave={hideSocial}
+              onFocus={(e) => {
+                e.stopPropagation();
+                showSocial(e.currentTarget, "friends");
+              }}
+              onBlur={hideSocial}
+              tabIndex={0}
+              role="button"
+              aria-label={t("lobby.browser.friendCount", { count: friends.length })}
+              aria-describedby={socialPosition && socialCategory === "friends" ? socialPopoverId : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              {friendLabel}
+            </i>
+          )}
+          {foes.length > 0 && (
+            <i
+              className="foe"
+              onMouseEnter={(e) => {
+                e.stopPropagation();
+                showSocial(e.currentTarget, "foes");
+              }}
+              onMouseLeave={hideSocial}
+              onFocus={(e) => {
+                e.stopPropagation();
+                showSocial(e.currentTarget, "foes");
+              }}
+              onBlur={hideSocial}
+              tabIndex={0}
+              role="button"
+              aria-label={t("lobby.browser.foeCount", { count: foes.length })}
+              aria-describedby={socialPosition && socialCategory === "foes" ? socialPopoverId : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              {foeLabel}
+            </i>
+          )}
+          {/* Whether the game counts, before what it is played with: on a
+              narrow tile the tags at the end are the ones left out. */}
+          {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
+          {/* Only a mode other than the tab's own: "FAF" on nearly every tile
+              said nothing, and a rare one stands out because it is rare. As
+              in the list row, and spelled the way the Host Game dialog spells
+              it rather than as the `fafbeta` the server sends. */}
+          {otherMod && <i title={featuredModLabel(otherMod)}>{featuredModLabel(otherMod)}</i>}
+          {goAdapter && <i className="go-adapter" title={t("lobby.browser.goAdapterTitle")}>{t("lobby.browser.goAdapter")}</i>}
+          {expJavaAdapter && <i className="go-adapter" title={t("lobby.browser.expJavaAdapterTitle")}>{t("lobby.browser.expJavaAdapter")}</i>}
+          {simModCount > 0 && (
+            <i
+              className={simModsRanked ? "modded is-ranked" : "modded"}
+              title={t(simModsRanked ? "lobby.browser.simModsRanked" : "lobby.browser.simModsUnranked", { count: simModCount })}
+            >
+              {t("lobby.browser.simModBadge", { count: simModCount })}
+            </i>
+          )}
+        </span>
+        {/* Who can still get in, at the bottom: whether there is room reads
+            from the dots before the numbers are read, and the rating beside
+            them says who is in. How long the lobby has been open closes the
+            row, at its far end. */}
+        <span className="game-tile-stats">
           <span className="game-tile-players" title={t("lobby.browser.tilePlayers", { players, max: game.maxPlayers })}>
             <SlotDots taken={players} slots={game.maxPlayers} />
             <b>{players}/{game.maxPlayers}</b>
@@ -257,10 +260,7 @@ export const GameTile = memo(function GameTile({
           <b title={t("lobby.browser.tileRatingTitle")}>
             {game.averageRating ? t("lobby.browser.tileRating", { rating: game.averageRating }) : t("common.notAvailable")}
           </b>
-          <span className="game-tile-host" title={`${t("lobby.browser.hostedBy")} ${game.host}`}>
-            <Icon name="crown" size={12} />
-            <b><PlayerName name={game.host} /></b>
-          </span>
+          <span className="game-tile-age" title={game.hostedAt ? t("lobby.browser.tileAge", { age }) : undefined}>{age}</span>
         </span>
       </button>
       {tooltipPosition && !socialPosition && createPortal(
