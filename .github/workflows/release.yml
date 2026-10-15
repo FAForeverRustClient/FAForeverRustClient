@@ -229,6 +229,9 @@ jobs:
       - name: Prepare bundled helpers
         run: pnpm run prepare:native
 
+      - name: Verify bundled Java runtime
+        run: node scripts/check-java-runtime.mjs
+
       - name: Build and publish release
         uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0.6.2
         env:
