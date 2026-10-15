@@ -7382,32 +7382,198 @@ button.tournament-chat-author:hover {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-warn) 25%, transparent);
 }
 
-.tournament-display-dialog {
+/* -- the keyboard shortcuts dialog -------------------------------------
+   Three bands, as LaunchProgress has them: a raised head naming the dialog,
+   the shortcuts as rows in the body, the way out in the foot. The panel
+   carries no padding of its own so head and foot run edge to edge. */
+.modal-panel.hotkeys-modal {
+  width: min(480px, calc(100vw - 32px));
+  max-width: 480px;
+  padding: 0;
+  overflow: hidden auto;
+}
+
+.hotkeys-modal > .modal-close {
+  top: var(--space-3);
+  right: var(--space-3);
+}
+
+.hotkeys-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 64px;
+  padding: var(--space-3) calc(var(--space-4) + 28px) var(--space-3) var(--space-4);
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.hotkeys-head-icon {
+  display: grid;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface-hover));
+  border: 1px solid color-mix(in srgb, var(--color-accent) 30%, var(--color-border));
+  border-radius: var(--radius-sm);
+}
+
+.hotkeys-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.hotkeys-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.hotkeys-hint {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.hotkeys-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  width: min(460px, 92vw);
-}
-
-.tournament-hotkeys {
-  list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  list-style: none;
 }
 
-.tournament-hotkeys li {
+/* A row per shortcut: what it does, then its key cap and the way to switch
+   it off at the end. */
+.hotkeys-row {
   display: grid;
-  grid-template-columns: 5em minmax(0, 1fr) auto;
-  gap: var(--space-2);
   align-items: center;
+  gap: var(--space-2);
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color 120ms ease, background 120ms ease;
 }
 
-.tournament-hotkey.is-arming {
-  border-color: var(--color-accent);
+.hotkeys-row.is-arming {
+  background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface-raised));
+  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+
+.hotkeys-label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hotkeys-note {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* The key itself, drawn as a key cap: a lighter top, a darker lip along the
+   bottom, as the training guides draw keys. */
+.hotkeys-key {
+  min-width: 44px;
+  height: 34px;
+  padding: 0 var(--space-3);
   color: var(--color-text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: linear-gradient(
+    180deg,
+    var(--color-surface-hover),
+    color-mix(in oklab, var(--color-surface-raised) 70%, var(--color-bg))
+  );
+  border: 1px solid var(--color-border-strong);
+  border-bottom-width: 3px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 120ms ease, transform 80ms ease;
+}
+
+.hotkeys-key:hover {
+  border-color: var(--color-accent);
+}
+
+.hotkeys-key:active {
+  transform: translateY(1px);
+}
+
+.hotkeys-key.is-off {
+  color: var(--color-muted);
+  font-weight: 500;
+  letter-spacing: 0;
+  background: transparent;
+  border-style: dashed;
+  border-bottom-width: 1px;
+}
+
+/* Waiting for a key: lit, and breathing so it is plain the next key press
+   is taken. */
+.hotkeys-key.is-arming {
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
+  animation: hotkeys-wait 1.4s ease-in-out infinite;
+}
+
+@keyframes hotkeys-wait {
+  50% {
+    box-shadow: 0 0 0 5px var(--color-accent-glow);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hotkeys-key.is-arming {
+    animation: none;
+  }
+}
+
+.hotkeys-clear {
+  color: var(--color-muted);
+}
+
+.hotkeys-clear:hover:not(:disabled) {
+  color: var(--color-text);
+}
+
+.hotkeys-warning {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-error-text);
+  font-size: 13px;
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-error) 35%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.hotkeys-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
 }
 
 /* A chat pinned beside the sections. */
