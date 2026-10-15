@@ -131,9 +131,35 @@ impl TrainingConfig {
 /// The player's lesson results, under the data directory.
 const RECORDS_FILE: &str = "lesson-records.json";
 
-/// The branch lessons are downloaded from: the one the catalogue is read
-/// from, for the reason [`DEFAULT_MANIFEST`] names it rather than `HEAD`.
+/// The branch lessons are downloaded from when the catalogue's own address
+/// does not name one: `main`, for the reason [`DEFAULT_MANIFEST`] names it
+/// rather than `HEAD`.
 const LESSON_BRANCH: &str = "main";
+
+/// The branch lessons come from: the one the catalogue is read from.
+///
+/// A catalogue read off a branch of the guides repository (a lesson under
+/// review, through `FAF_TRAINING_CATALOGUE_URL`) gets that branch's lesson
+/// files too, so a lesson can be played before it is merged. The address is
+/// configuration rather than manifest content, and a ref with anything but
+/// plain branch characters in it falls back to `main` rather than being put
+/// in an address.
+fn lesson_branch(manifest_url: &str, repo: &str) -> String {
+    let prefix = format!("https://raw.githubusercontent.com/{repo}/");
+    let branch = manifest_url
+        .strip_prefix(&prefix)
+        .and_then(|rest| rest.strip_suffix("/catalogue.json"))
+        .filter(|branch| {
+            !branch.is_empty()
+                && !branch.contains("..")
+                && !branch.starts_with('/')
+                && !branch.ends_with('/')
+                && branch
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.' | '/'))
+        });
+    branch.unwrap_or(LESSON_BRANCH).to_string()
+}
 
 /// A lesson file is Lua somebody wrote by hand. Anything past this is not one.
 const MAX_LESSON_FILE_BYTES: usize = 1024 * 1024;
@@ -157,13 +183,14 @@ fn plain_repository(repo: &str) -> bool {
     })
 }
 
-/// The raw address of one lesson file in `repo`.
+/// The raw address of one lesson file in `repo` on `branch`.
 ///
-/// Built here from names [`LessonPackage::is_safe`] has already passed and a
-/// repository [`plain_repository`] has, so nothing in it needs escaping and
-/// nothing a manifest says can move it out of `lessons/<folder>/`.
-fn lesson_file_address(repo: &str, folder: &str, file: &str) -> String {
-    format!("https://raw.githubusercontent.com/{repo}/{LESSON_BRANCH}/lessons/{folder}/{file}")
+/// Built here from names [`LessonPackage::is_safe`] has already passed, a
+/// repository [`plain_repository`] has and a branch [`lesson_branch`] has, so
+/// nothing in it needs escaping and nothing a manifest says can move it out of
+/// `lessons/<folder>/`.
+fn lesson_file_address(repo: &str, branch: &str, folder: &str, file: &str) -> String {
+    format!("https://raw.githubusercontent.com/{repo}/{branch}/lessons/{folder}/{file}")
 }
 
 /// A URL with a value on it that changes, so the request is not answered from
@@ -452,8 +479,9 @@ impl TrainingPort for TrainingCatalogueClient {
             .prefix(".lesson-")
             .tempdir_in(&maps)
             .map_err(|error| format!("could not prepare the lesson folder: {error}"))?;
+        let branch = lesson_branch(&self.config.manifest_url, repo);
         for file in &lesson.files {
-            let address = lesson_file_address(repo, &lesson.folder, file);
+            let address = lesson_file_address(repo, &branch, &lesson.folder, file);
             let response = self
                 .http
                 .get(uncached(&address))
@@ -1234,12 +1262,31 @@ mod tests {
         assert_eq!(
             lesson_file_address(
                 "FAForeverRustClient/guides",
+                "main",
                 "FAF_Lesson_A",
                 "FAF_Lesson_A_script.lua"
             ),
             "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/lessons/FAF_Lesson_A/FAF_Lesson_A_script.lua"
         );
         assert!(plain_repository("FAForeverRustClient/guides"));
+        // The branch follows the catalogue's address, and anything odd in it
+        // falls back to main rather than reaching an address.
+        let repo = "FAForeverRustClient/guides";
+        let on = |branch: &str| {
+            format!("https://raw.githubusercontent.com/{repo}/{branch}/catalogue.json")
+        };
+        assert_eq!(lesson_branch(&on("main"), repo), "main");
+        assert_eq!(
+            lesson_branch(&on("lessons/gunships-vs-flak"), repo),
+            "lessons/gunships-vs-flak"
+        );
+        assert_eq!(lesson_branch(&on("a/../../evil"), repo), "main");
+        assert_eq!(lesson_branch(&on("a b"), repo), "main");
+        assert_eq!(
+            lesson_branch("https://catalogue.invalid/x.json", repo),
+            "main"
+        );
+        assert_eq!(lesson_branch("", repo), "main");
         assert!(!plain_repository("FAForeverRustClient/guides/../x"));
         assert!(!plain_repository("guides"));
         assert!(!plain_repository("owner/../name"));

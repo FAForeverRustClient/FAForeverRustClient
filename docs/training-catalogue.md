@@ -341,9 +341,11 @@ Starting one:
 2. patches the `faf` featured mod. Not `tutorials`: a lesson is written against
    the base game's Lua, which every install has;
 3. downloads every listed file from
-   `raw.githubusercontent.com/<FAF_GUIDES_REPO>/main/lessons/<folder>/<file>`
+   `raw.githubusercontent.com/<FAF_GUIDES_REPO>/<branch>/lessons/<folder>/<file>`
    into the player's maps folder, fresh each time, and swaps the folder in
-   only once all of them arrived;
+   only once all of them arrived. `<branch>` is the one the catalogue is read
+   from, `main` by default, so a lesson under review can be played by pointing
+   `FAF_TRAINING_CATALOGUE_URL` at its branch's `catalogue.json`;
 4. starts the game offline with `/map <folder>`.
 
 **Addresses are never stated.** The client builds them from the folder and file
