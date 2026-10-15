@@ -1,0 +1,1 @@
+- Linux players no longer need to install Java 25 themselves to connect to games and generate maps.
