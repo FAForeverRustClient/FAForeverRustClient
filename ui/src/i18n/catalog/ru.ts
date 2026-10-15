@@ -338,6 +338,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "common.rangeBetween": "от {low} до {high}",
   "common.rangeFrom": "От {low}",
   "common.rangeUpTo": "До {high}",
+  "common.kilometres": "{size} км",
+  "common.kilometresArea": "{width} × {height} км",
 
   "designSystem.multiSelect.empty": "Пока не из чего выбирать.",
   "designSystem.multiSelect.loading": "Загрузка вариантов…",
