@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { ipc } from "../../../ipc/client";
-import { focusListboxOption, nextListboxIndex } from "../../../shared/listboxNavigation";
+import { nextListboxIndex } from "../../../shared/listboxNavigation";
 import { isFilterRecord, rememberedFilter, useRememberFilter } from "../../../shared/filterMemory";
 import {
   activeFilterCount as countActiveFilters,
@@ -63,6 +63,25 @@ export function useHostMapPicker({ catalogueMaps, favoriteMaps, selectedMap, set
 
   const filterRef = useRef<HTMLDivElement>(null);
   const mapListRef = useRef<HTMLDivElement>(null);
+  const mapOptionRefs = useRef(new Map<string, HTMLButtonElement>());
+  const mapOptionRefCallbacks = useRef(
+    new Map<string, (option: HTMLButtonElement | null) => void>(),
+  );
+  const mapOptionRef = useCallback((folderName: string) => {
+    let callback = mapOptionRefCallbacks.current.get(folderName);
+    if (!callback) {
+      callback = (option) => {
+        if (option) {
+          mapOptionRefs.current.set(folderName, option);
+        } else {
+          mapOptionRefs.current.delete(folderName);
+          mapOptionRefCallbacks.current.delete(folderName);
+        }
+      };
+      mapOptionRefCallbacks.current.set(folderName, callback);
+    }
+    return callback;
+  }, []);
 
   useEffect(() => {
     if (!filtersOpen) return;
@@ -117,6 +136,10 @@ export function useHostMapPicker({ catalogueMaps, favoriteMaps, selectedMap, set
       : availableMaps),
     [availableMaps, favoriteFolders, mapTab],
   );
+  const visibleMapIndexes = useMemo(
+    () => new Map(visibleMaps.map((map, index) => [map.folderName, index])),
+    [visibleMaps],
+  );
 
   const chosen = resolveChosenMap(availableMaps, visibleMaps, selectedMap);
 
@@ -135,21 +158,24 @@ export function useHostMapPicker({ catalogueMaps, favoriteMaps, selectedMap, set
     setSelectedMap(visibleMaps[index].folderName);
   }, [visibleMaps, setSelectedMap]);
 
+  const chosenFolderName = chosen?.folderName;
+
   /// Walk the map list from the keyboard, selecting as it goes: the preview,
   /// the size and the player count all hang off the selection, so moving only
   /// focus - which is all the browser did - showed none of them.
   const onMapListKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
-      const current = visibleMaps.findIndex((map) => map.folderName === chosen?.folderName);
+      const current = chosenFolderName ? visibleMapIndexes.get(chosenFolderName) ?? -1 : -1;
       const next = nextListboxIndex(event.key, current, visibleMaps.length);
       if (next === null) return;
       // Otherwise the arrow key also scrolls the column, away from the row it
       // just moved to.
       event.preventDefault();
-      setSelectedMap(visibleMaps[next].folderName);
-      focusListboxOption(mapListRef.current, next);
+      const folderName = visibleMaps[next].folderName;
+      setSelectedMap(folderName);
+      mapOptionRefs.current.get(folderName)?.focus();
     },
-    [visibleMaps, chosen, setSelectedMap],
+    [visibleMaps, visibleMapIndexes, chosenFolderName, setSelectedMap],
   );
 
   return useMemo(
@@ -159,6 +185,7 @@ export function useHostMapPicker({ catalogueMaps, favoriteMaps, selectedMap, set
       toggleFilters,
       filterRef,
       mapListRef,
+      mapOptionRef,
       availableMaps,
       visibleMaps,
       favoriteFolders,
@@ -175,6 +202,7 @@ export function useHostMapPicker({ catalogueMaps, favoriteMaps, selectedMap, set
     [
       picker, filter, toggleFilters, availableMaps, visibleMaps, favoriteFolders, isFavorite, toggleFavorite,
       chosen, setSelectedMap, activeFilterCount, chooseRandom, onMapListKeyDown, previewOpen,
+      mapOptionRef,
     ],
   );
 }

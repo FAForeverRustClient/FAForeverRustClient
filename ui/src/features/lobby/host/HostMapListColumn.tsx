@@ -15,8 +15,56 @@ import {
   MAX_MAP_PLAYERS,
   NO_RANGE,
   type RankedFilter,
+  type HostMap,
 } from "./hostMapCatalogue";
 import type { HostMapPicker } from "./useHostMapPicker";
+
+const HostMapRow = memo(function HostMapRow({
+  map,
+  selected,
+  starred,
+  mapOptionRef,
+  onSelect,
+  onToggleFavorite,
+}: {
+  map: HostMap;
+  selected: boolean;
+  starred: boolean;
+  mapOptionRef: (folderName: string) => (option: HTMLButtonElement | null) => void;
+  onSelect: (folderName: string) => void;
+  onToggleFavorite: (folderName: string) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="host-map-row-wrap" role="presentation">
+      <button
+        ref={mapOptionRef(map.folderName)}
+        type="button"
+        role="option"
+        aria-selected={selected}
+        className={`host-map-row${selected ? " active" : ""}`}
+        onClick={() => onSelect(map.folderName)}
+      >
+        <span className="host-map-name" title={map.displayName}>
+          {map.displayName}
+        </span>
+        <span className="host-map-meta">
+          {formatMapMeta(map) || t("lobby.host.playersUnstated")}
+        </span>
+      </button>
+      <button
+        type="button"
+        className={starred ? "host-map-favorite is-on" : "host-map-favorite"}
+        aria-pressed={starred}
+        title={t(starred ? "lobby.host.unfavorite" : "lobby.host.favorite", { name: map.displayName })}
+        aria-label={t(starred ? "lobby.host.unfavorite" : "lobby.host.favorite", { name: map.displayName })}
+        onClick={() => onToggleFavorite(map.folderName)}
+      >
+        <Icon name="star" size={13} />
+      </button>
+    </div>
+  );
+});
 
 /**
  * Memoised on a memoised picker: this is the column with every installed map
@@ -31,7 +79,7 @@ export const HostMapListColumn = memo(function HostMapListColumn({
 }) {
   const { t } = useTranslation();
   const {
-    filters, filter, toggleFilters, filterRef, mapListRef, availableMaps, visibleMaps, favoriteFolders,
+    filters, filter, toggleFilters, filterRef, mapListRef, mapOptionRef, availableMaps, visibleMaps, favoriteFolders,
     isFavorite, toggleFavorite, chosen, selectMap, activeFilterCount, chooseRandom, onMapListKeyDown,
   } = picker;
   const { mapSearch, rankedFilter, widthKm, heightKm, playerCount, filtersOpen, mapTab } = filters;
@@ -173,41 +221,17 @@ export const HostMapListColumn = memo(function HostMapListColumn({
             {t(mapTab === "favorites" ? "lobby.host.noFavoriteMaps" : "lobby.host.noMaps")}
           </p>
         ) : (
-          visibleMaps.map((map) => {
-            const starred = isFavorite(map.folderName);
-            return (
-              // A wrapper, because the star is a second action on the row
-              // and a button inside a button is neither valid nor
-              // clickable. `presentation` keeps the listbox owning its
-              // options across it.
-              <div className="host-map-row-wrap" key={map.folderName} role="presentation">
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={chosen?.folderName === map.folderName}
-                  className={`host-map-row${chosen?.folderName === map.folderName ? " active" : ""}`}
-                  onClick={() => selectMap(map.folderName)}
-                >
-                  <span className="host-map-name" title={map.displayName}>
-                    {map.displayName}
-                  </span>
-                  <span className="host-map-meta">
-                    {formatMapMeta(map) || t("lobby.host.playersUnstated")}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className={starred ? "host-map-favorite is-on" : "host-map-favorite"}
-                  aria-pressed={starred}
-                  title={t(starred ? "lobby.host.unfavorite" : "lobby.host.favorite", { name: map.displayName })}
-                  aria-label={t(starred ? "lobby.host.unfavorite" : "lobby.host.favorite", { name: map.displayName })}
-                  onClick={() => toggleFavorite(map.folderName)}
-                >
-                  <Icon name="star" size={13} />
-                </button>
-              </div>
-            );
-          })
+          visibleMaps.map((map) => (
+            <HostMapRow
+              key={map.folderName}
+              map={map}
+              selected={chosen?.folderName === map.folderName}
+              starred={isFavorite(map.folderName)}
+              mapOptionRef={mapOptionRef}
+              onSelect={selectMap}
+              onToggleFavorite={toggleFavorite}
+            />
+          ))
         )}
         </div>
       </div>
