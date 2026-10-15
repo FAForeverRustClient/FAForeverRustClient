@@ -772,7 +772,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "maps.view.installed": "Установлена",
   "maps.view.notInstalled": "Не установлена",
   "maps.view.ranked": "Рейтинговая",
-  "maps.view.unranked": "Без рейтинга",
+  "maps.view.unranked": "Нерейтинговая",
   "maps.view.sort.name": "Название",
   "maps.view.sort.size": "Самые большие",
   "maps.view.sort.downloaded": "Недавно скачанные",
