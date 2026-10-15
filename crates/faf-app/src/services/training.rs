@@ -24,14 +24,15 @@ use std::time::Duration;
 
 use faf_domain::state::{
     compose_contribution, compose_review_request, compose_submission, contribution_problem,
-    official_map_name, own_row, profile_from, recommend, AppState, AuthEvent, ContributionDraft,
-    GuidesEvent, JoinState, LocalReplay, MatchmakerPlayerProfile, PlayerCardEvent, ReplayCommand,
-    ReplayEvent, ReviewRequestDraft, Trainer, TrainingCommand, TrainingEvent, TrainingProfile,
-    TrainingStatus, VaultReplay, VaultStatus, RECOMMENDED_LIMIT,
+    lesson_score_from_log, official_map_name, own_row, profile_from, recommend, AppState,
+    AuthEvent, ContributionDraft, GuidesEvent, JoinState, LocalReplay, MatchmakerPlayerProfile,
+    PlayerCardEvent, ReplayCommand, ReplayEvent, ReviewRequestDraft, Trainer, TrainingCommand,
+    TrainingEvent, TrainingProfile, TrainingStatus, VaultReplay, VaultStatus, RECOMMENDED_LIMIT,
 };
 use faf_domain::AppEvent;
 
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::ports::{GamePreparation, UpdateProgress};
+use crate::runtime::{CancellationSlot, EventSink, ServiceCtx};
 
 /// The training service's own state. Owned by this service.
 #[derive(Default)]
@@ -41,7 +42,17 @@ pub struct TrainingContext {
     /// shared slot: loading this account into it replaced whatever card the
     /// player had open from chat.
     own_profile: std::sync::Mutex<Option<MatchmakerPlayerProfile>>,
+    /// The lesson being prepared, so the player can call it off.
+    lesson_launch: CancellationSlot,
 }
+
+/// The featured mod a catalogue lesson runs on.
+///
+/// `faf`, not `tutorials`: a lesson is written against the base game's Lua
+/// (`ScenarioFramework`, `SimObjectives`), which every FAF install has
+/// patched already, and the tutorials mod is one more download that may not
+/// even be served any more.
+const LESSON_FEATURED_MOD: &str = "faf";
 
 /// How many local replays the profile is read from, and therefore how many the
 /// scan is asked for when nobody has asked yet.
@@ -68,6 +79,8 @@ pub async fn handle(cmd: TrainingCommand, ctx: &ServiceCtx, out: &EventSink) {
             out.emit(TrainingEvent::Selected { resource_id });
         }
         TrainingCommand::ReadGuide { resource_id } => read_guide(resource_id, ctx, out).await,
+        TrainingCommand::LaunchLesson { resource_id } => launch_lesson(resource_id, ctx, out).await,
+        TrainingCommand::CancelLessonLaunch => ctx.training.lesson_launch.cancel(),
         TrainingCommand::OpenReview {
             replay_uid,
             local_path,
@@ -365,10 +378,11 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
     // used to ask for, so opening training first left the profile with one
     // number standing in for five. The map previews are what a build order's
     // card shows.
-    let (loaded, (), ()) = tokio::join!(
+    let (loaded, (), (), ()) = tokio::join!(
         publish_catalogue(refresh, ctx, out),
         ask_for_own_ratings(refresh, ctx, out),
         ask_for_map_previews(ctx, out),
+        read_lesson_records(refresh, ctx, out),
     );
     if !loaded {
         return;
@@ -397,6 +411,168 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
     // Last, so the ids it names are ids the state now holds and the profile it
     // ranks against is the one the scan just produced.
     recompute_recommendations(ctx, out, true);
+}
+
+/// The player's kept lesson results, once per session.
+///
+/// Only on the first load: after that the state is the newer copy, because
+/// every finished run is recorded there before it is written to disk.
+async fn read_lesson_records(refresh: bool, ctx: &ServiceCtx, out: &EventSink) {
+    if refresh {
+        return;
+    }
+    match ctx.ports.training.lesson_records().await {
+        Ok(records) => out.emit(TrainingEvent::LessonRecordsLoaded { records }),
+        Err(reason) => tracing::warn!(%reason, "could not read the kept lesson results"),
+    }
+}
+
+/// Download a catalogue lesson, start it, and record how it went.
+///
+/// Mirrors the tutorial launch: refuse while a game runs, patch the featured
+/// mod, put the map in place, start offline. Then one more step a tutorial
+/// never had: when the game closes, read the result line the lesson wrote to
+/// its log and keep the player's best run.
+async fn launch_lesson(resource_id: String, ctx: &ServiceCtx, out: &EventSink) {
+    // One launch at a time, under the key a tutorial uses: both start a game
+    // in the one game slot, so a lesson and a tutorial exclude each other too.
+    crate::runtime::expect_admitted(crate::runtime::Key::TutorialLaunch);
+    let cancel = ctx.training.lesson_launch.begin();
+    let fail = |reason: String| {
+        out.emit(TrainingEvent::LessonLaunchFailed {
+            resource_id: resource_id.clone(),
+            reason,
+        })
+    };
+
+    let Some(lesson) = out.with_state(|state| {
+        state
+            .training
+            .resource(&resource_id)
+            .and_then(|resource| resource.lesson_package().cloned())
+    }) else {
+        fail("That lesson is no longer in the catalogue.".into());
+        return;
+    };
+
+    // Before anything is patched, for the reason the tutorial launch gives:
+    // starting now would end the game in progress.
+    if super::tutorials::game_is_running(ctx, out) {
+        fail("Forged Alliance is already running. Close it before starting a lesson.".into());
+        return;
+    }
+
+    out.emit(TrainingEvent::LessonPreparing {
+        resource_id: resource_id.clone(),
+        detail: "Updating the game".into(),
+    });
+    let mut updates = ctx
+        .ports
+        .updater
+        .prepare_cancellable(
+            GamePreparation {
+                featured_mod: LESSON_FEATURED_MOD.to_string(),
+                // The map is not in the vault: it comes from the catalogue
+                // repository, below.
+                map_folder: None,
+                cache_rolling_branches: false,
+            },
+            cancel.clone(),
+        )
+        .await;
+    let mut outcome = Err("the game updater stopped without finishing".to_string());
+    loop {
+        let update = tokio::select! {
+            biased;
+            () = cancel.cancelled() => {
+                out.emit(TrainingEvent::LessonLaunchCancelled);
+                return;
+            }
+            update = updates.recv() => update,
+        };
+        let Some(update) = update else {
+            break;
+        };
+        match update {
+            UpdateProgress::Step(step) => out.emit(TrainingEvent::LessonPreparing {
+                resource_id: resource_id.clone(),
+                detail: step.detail,
+            }),
+            UpdateProgress::Finished(result) => outcome = result,
+        }
+    }
+    if cancel.is_cancelled() {
+        out.emit(TrainingEvent::LessonLaunchCancelled);
+        return;
+    }
+    if let Err(reason) = outcome {
+        fail(reason);
+        return;
+    }
+
+    out.emit(TrainingEvent::LessonPreparing {
+        resource_id: resource_id.clone(),
+        detail: "Downloading the lesson".into(),
+    });
+    let installed = tokio::select! {
+        biased;
+        () = cancel.cancelled() => {
+            out.emit(TrainingEvent::LessonLaunchCancelled);
+            return;
+        }
+        installed = ctx.ports.training.install_lesson(lesson.clone()) => installed,
+    };
+    if let Err(reason) = installed {
+        fail(reason);
+        return;
+    }
+
+    let log = match ctx
+        .ports
+        .process
+        .launch_offline_logged(LESSON_FEATURED_MOD.to_string(), lesson.folder.clone())
+        .await
+    {
+        Ok(log) => log,
+        Err(reason) => {
+            fail(reason);
+            return;
+        }
+    };
+    super::replays::cancel_live_tracking(out);
+    out.emit(TrainingEvent::LessonPlaying {
+        resource_id: resource_id.clone(),
+    });
+
+    // The result arrives when the game closes, which is minutes from now and
+    // long after this command has finished: a task of its own, holding no key.
+    let ports = ctx.ports.clone();
+    let sink = out.clone();
+    tokio::spawn(async move {
+        ports.process.wait_for_exit().await;
+        let score = match log {
+            Some(path) => match ports.training.read_lesson_log(path).await {
+                Ok(text) => lesson_score_from_log(&text, &lesson.folder),
+                Err(reason) => {
+                    tracing::warn!(%reason, "could not read the lesson's game log");
+                    None
+                }
+            },
+            None => None,
+        };
+        sink.emit(TrainingEvent::LessonFinished {
+            resource_id: resource_id.clone(),
+            score,
+        });
+        if score.is_some() {
+            // From the post-reduce state, which is where the best run is
+            // decided: the service never computes a record of its own.
+            let records = sink.with_state(|state| state.training.lesson_records.clone());
+            if let Err(reason) = ports.training.save_lesson_records(records).await {
+                tracing::warn!(%reason, "could not keep the lesson result");
+            }
+        }
+    });
 }
 
 /// Fetch the catalogue and put it on screen. `false` when it could not be had.

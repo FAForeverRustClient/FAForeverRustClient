@@ -498,6 +498,16 @@ impl ProcessPort for GameProcess {
     }
 
     async fn launch_offline(&self, featured_mod: String, map: String) -> Result<(), String> {
+        self.launch_offline_logged(featured_mod, map)
+            .await
+            .map(|_| ())
+    }
+
+    async fn launch_offline_logged(
+        &self,
+        featured_mod: String,
+        map: String,
+    ) -> Result<Option<PathBuf>, String> {
         let path = self.config.lock().unwrap().game_path.clone();
         let log_path = crate::infra::game_logs::next_path("offline", None)?;
         self.spawn(
@@ -505,7 +515,10 @@ impl ProcessPort for GameProcess {
             &path,
             &offline_arguments(&featured_mod, &map, &self.game_argument_path(&log_path)),
             "game",
-        )
+        )?;
+        // The path this side of any Wine translation: the client reads it, the
+        // game only writes it.
+        Ok(Some(log_path))
     }
 
     async fn launch_replay(&self, args: Vec<String>) -> Result<(), String> {

@@ -6363,6 +6363,75 @@ fn cases() -> Vec<Case> {
                 TrainingEvent::ContributionClosed.into(),
             ],
         ),
+        case(
+            "a catalogue lesson is started, finished twice, and keeps its best run",
+            vec![
+                TrainingEvent::LessonRecordsLoaded {
+                    records: std::collections::BTreeMap::from([(
+                        "lesson-reclaim".to_string(),
+                        LessonRecord {
+                            best: LessonScore {
+                                stars: 3,
+                                max_stars: 3,
+                                seconds: 410,
+                            },
+                            last: LessonScore {
+                                stars: 2,
+                                max_stars: 3,
+                                seconds: 380,
+                            },
+                            runs: 4,
+                        },
+                    )]),
+                }
+                .into(),
+                TrainingEvent::LessonPreparing {
+                    resource_id: "lesson-gunships".into(),
+                    detail: "Downloading the lesson".into(),
+                }
+                .into(),
+                TrainingEvent::LessonPlaying {
+                    resource_id: "lesson-gunships".into(),
+                }
+                .into(),
+                TrainingEvent::LessonFinished {
+                    resource_id: "lesson-gunships".into(),
+                    score: Some(LessonScore {
+                        stars: 2,
+                        max_stars: 3,
+                        seconds: 431,
+                    }),
+                }
+                .into(),
+                // A worse run is the last one, not the best one.
+                TrainingEvent::LessonFinished {
+                    resource_id: "lesson-gunships".into(),
+                    score: Some(LessonScore {
+                        stars: 1,
+                        max_stars: 3,
+                        seconds: 200,
+                    }),
+                }
+                .into(),
+                TrainingEvent::LessonPreparing {
+                    resource_id: "lesson-reclaim".into(),
+                    detail: "Updating the game".into(),
+                }
+                .into(),
+                TrainingEvent::LessonLaunchFailed {
+                    resource_id: "lesson-reclaim".into(),
+                    reason: "Forged Alliance is already running.".into(),
+                }
+                .into(),
+                TrainingEvent::LessonLaunchCancelled.into(),
+                // A quit before the debrief changes nothing but the status.
+                TrainingEvent::LessonFinished {
+                    resource_id: "lesson-reclaim".into(),
+                    score: None,
+                }
+                .into(),
+            ],
+        ),
         // ── notifications / reporting / social ───────────────────────────
         case(
             "notifications are added and dismissed",
@@ -9527,6 +9596,7 @@ fn training_catalogue() -> Vec<TrainingResource> {
         level: None,
         url: String::new(),
         tutorial_id: None,
+        lesson: None,
         author: String::new(),
         rating_min: None,
         rating_max: None,
@@ -9858,6 +9928,7 @@ fn training_resource(id: &str) -> TrainingResource {
         level: Some(TrainingLevel::Beginner),
         url: "https://wiki.faforever.com".into(),
         tutorial_id: None,
+        lesson: None,
         author: "A trainer".into(),
         rating_min: Some(800),
         rating_max: Some(1200),

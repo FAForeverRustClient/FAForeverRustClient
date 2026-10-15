@@ -30,12 +30,14 @@
 //!    body when nothing changed, and a load that cannot reach the manifest at
 //!    all shows that copy rather than the seed.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
 use faf_domain::state::{
-    hosted_guide, hosted_recording, video_still, Trainer, TrainingCatalogue, TrainingKind,
-    TrainingLevel, TrainingLinks, TrainingResource, TrainingSource, TrainingTopic, GUIDES_REPO,
+    hosted_guide, hosted_recording, video_still, LessonPackage, LessonRecord, Trainer,
+    TrainingCatalogue, TrainingKind, TrainingLevel, TrainingLinks, TrainingResource,
+    TrainingSource, TrainingTopic, GUIDES_REPO,
 };
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -105,6 +107,10 @@ pub struct TrainingConfig {
     /// Where the last good manifest is kept, so the tab is not empty offline.
     /// `None` keeps nothing, which is what a test wants.
     pub cache_dir: Option<PathBuf>,
+    /// Where the player's lesson results are kept. Under the data directory
+    /// rather than the cache: a personal best is not something a cache cleaner
+    /// should be allowed to take. `None` keeps nothing.
+    pub records_path: Option<PathBuf>,
 }
 
 impl TrainingConfig {
@@ -115,8 +121,49 @@ impl TrainingConfig {
             manifest_url: env_or_disabled("FAF_TRAINING_CATALOGUE_URL", DEFAULT_MANIFEST),
             guides_repo: env_or("FAF_GUIDES_REPO", GUIDES_REPO),
             cache_dir: super::cache_dir().ok().map(|root| root.join("training")),
+            records_path: super::data_dir()
+                .ok()
+                .map(|root| root.join("training").join(RECORDS_FILE)),
         }
     }
+}
+
+/// The player's lesson results, under the data directory.
+const RECORDS_FILE: &str = "lesson-records.json";
+
+/// The branch lessons are downloaded from: the one the catalogue is read
+/// from, for the reason [`DEFAULT_MANIFEST`] names it rather than `HEAD`.
+const LESSON_BRANCH: &str = "main";
+
+/// A lesson file is Lua somebody wrote by hand. Anything past this is not one.
+const MAX_LESSON_FILE_BYTES: usize = 1024 * 1024;
+
+/// A game log can grow long in a long session; the result line is near the
+/// end, and nothing before the last few megabytes is read.
+const MAX_LESSON_LOG_BYTES: u64 = 8 * 1024 * 1024;
+
+/// Whether `repo` is a plain `owner/name`, safe to put in an address as is.
+fn plain_repository(repo: &str) -> bool {
+    let mut parts = repo.split('/');
+    let (Some(owner), Some(name), None) = (parts.next(), parts.next(), parts.next()) else {
+        return false;
+    };
+    [owner, name].iter().all(|part| {
+        !part.is_empty()
+            && !part.starts_with('.')
+            && part
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+    })
+}
+
+/// The raw address of one lesson file in `repo`.
+///
+/// Built here from names [`LessonPackage::is_safe`] has already passed and a
+/// repository [`plain_repository`] has, so nothing in it needs escaping and
+/// nothing a manifest says can move it out of `lessons/<folder>/`.
+fn lesson_file_address(repo: &str, folder: &str, file: &str) -> String {
+    format!("https://raw.githubusercontent.com/{repo}/{LESSON_BRANCH}/lessons/{folder}/{file}")
 }
 
 /// A URL with a value on it that changes, so the request is not answered from
@@ -380,6 +427,123 @@ impl TrainingPort for TrainingCatalogueClient {
         )
         .await
     }
+
+    async fn install_lesson(&self, lesson: LessonPackage) -> Result<(), String> {
+        let repo = self.config.guides_repo.trim();
+        if repo.is_empty() {
+            return Err("this build installs no lessons of its own".into());
+        }
+        if !plain_repository(repo) {
+            return Err(format!("{repo} is not a repository this client can read"));
+        }
+        // Checked again here although the parser already dropped an unsafe
+        // package: this is the function that turns the names into paths.
+        if !lesson.is_safe() {
+            return Err("that lesson's files are not named the way a lesson's are".into());
+        }
+
+        // Every file first, then one swap: a lesson that downloads half its
+        // files must not replace a working copy, and the game must never load
+        // a script from one commit with strings from another.
+        let maps = crate::infra::maps::maps_dir();
+        std::fs::create_dir_all(&maps)
+            .map_err(|error| format!("could not create the maps folder: {error}"))?;
+        let staging = tempfile::Builder::new()
+            .prefix(".lesson-")
+            .tempdir_in(&maps)
+            .map_err(|error| format!("could not prepare the lesson folder: {error}"))?;
+        for file in &lesson.files {
+            let address = lesson_file_address(repo, &lesson.folder, file);
+            let response = self
+                .http
+                .get(uncached(&address))
+                .timeout(REQUEST_DEADLINE)
+                .send()
+                .await
+                .map_err(|error| format!("could not download the lesson: {error}"))?;
+            let status = response.status();
+            if !status.is_success() {
+                return Err(format!("the lesson file {file} responded with {status}"));
+            }
+            let bytes =
+                bounded_body(response, "that lesson file", MAX_LESSON_FILE_BYTES as u64).await?;
+            std::fs::write(staging.path().join(file), bytes)
+                .map_err(|error| format!("could not write the lesson: {error}"))?;
+        }
+
+        let target = maps.join(&lesson.folder);
+        if target.exists() {
+            std::fs::remove_dir_all(&target).map_err(|error| {
+                format!("could not replace the old copy of the lesson: {error}")
+            })?;
+        }
+        let staged = staging.keep();
+        std::fs::rename(&staged, &target).map_err(|error| {
+            let _ = std::fs::remove_dir_all(&staged);
+            format!("could not put the lesson in the maps folder: {error}")
+        })
+    }
+
+    async fn lesson_records(&self) -> Result<BTreeMap<String, LessonRecord>, String> {
+        let Some(path) = self.config.records_path.as_deref() else {
+            return Ok(BTreeMap::new());
+        };
+        match std::fs::read(path) {
+            Ok(bytes) => serde_json::from_slice(&bytes)
+                .map_err(|error| format!("the kept lesson results do not parse: {error}")),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(BTreeMap::new()),
+            Err(error) => Err(format!("could not read the kept lesson results: {error}")),
+        }
+    }
+
+    async fn save_lesson_records(
+        &self,
+        records: BTreeMap<String, LessonRecord>,
+    ) -> Result<(), String> {
+        let Some(path) = self.config.records_path.as_deref() else {
+            return Ok(());
+        };
+        write_atomically(path, &records)
+    }
+
+    async fn read_lesson_log(&self, path: PathBuf) -> Result<String, String> {
+        use std::io::{Read as _, Seek as _, SeekFrom};
+        let mut file = std::fs::File::open(&path)
+            .map_err(|error| format!("could not open the game log: {error}"))?;
+        let length = file
+            .metadata()
+            .map_err(|error| format!("could not read the game log: {error}"))?
+            .len();
+        // The tail only: the result line is written at the very end of a run.
+        if length > MAX_LESSON_LOG_BYTES {
+            file.seek(SeekFrom::Start(length - MAX_LESSON_LOG_BYTES))
+                .map_err(|error| format!("could not read the game log: {error}"))?;
+        }
+        let mut bytes = Vec::new();
+        file.read_to_end(&mut bytes)
+            .map_err(|error| format!("could not read the game log: {error}"))?;
+        // Lossy: the engine writes whatever bytes a mod or a map name holds,
+        // and one odd character must not cost the result line.
+        Ok(String::from_utf8_lossy(&bytes).into_owned())
+    }
+}
+
+/// Replace `path` with `value` as JSON in one filesystem operation.
+fn write_atomically<T: Serialize>(path: &Path, value: &T) -> Result<(), String> {
+    use std::io::Write as _;
+    let dir = path
+        .parent()
+        .ok_or_else(|| "the path has no directory".to_string())?;
+    std::fs::create_dir_all(dir).map_err(|error| error.to_string())?;
+    let bytes = serde_json::to_vec_pretty(value).map_err(|error| error.to_string())?;
+    let mut temporary = tempfile::NamedTempFile::new_in(dir).map_err(|error| error.to_string())?;
+    temporary
+        .write_all(&bytes)
+        .map_err(|error| error.to_string())?;
+    temporary
+        .persist(path)
+        .map(|_| ())
+        .map_err(|error| error.error.to_string())
 }
 
 impl TrainingCatalogueClient {
@@ -674,6 +838,7 @@ struct ResourceDoc {
     url: String,
     recording_url: String,
     tutorial_id: Option<i32>,
+    lesson: Option<LessonDoc>,
     author: String,
     rating_min: Option<i32>,
     rating_max: Option<i32>,
@@ -720,6 +885,22 @@ impl ResourceDoc {
         } else {
             self.image_url
         };
+        // A lesson whose names could not be used as they stand is dropped
+        // here, the way an untrusted recording is: what reaches the UI is
+        // either a lesson the client will install or nothing.
+        let lesson = self
+            .lesson
+            .map(|lesson| LessonPackage {
+                folder: lesson.folder,
+                files: lesson.files,
+            })
+            .filter(|lesson| {
+                let safe = lesson.is_safe();
+                if !safe {
+                    tracing::warn!(folder = %lesson.folder, "ignoring a lesson with unsafe file names");
+                }
+                safe
+            });
         Some(TrainingResource {
             id: self.id,
             title: self.title,
@@ -731,6 +912,7 @@ impl ResourceDoc {
             image_url,
             url: self.url,
             tutorial_id: self.tutorial_id,
+            lesson,
             author: self.author,
             rating_min: self.rating_min,
             rating_max: self.rating_max,
@@ -746,6 +928,14 @@ impl ResourceDoc {
             readable,
         })
     }
+}
+
+/// A lesson as the manifest states it.
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+struct LessonDoc {
+    folder: String,
+    files: Vec<String>,
 }
 
 fn fill_missing_links(catalogue: &mut TrainingCatalogue, seed: TrainingCatalogue) {
@@ -1015,6 +1205,48 @@ mod tests {
     }
 
     #[test]
+    fn a_lesson_keeps_its_package_only_when_the_names_are_safe() {
+        let catalogue = parse_manifest(
+            br#"{"resources":[
+                {"id":"good","title":"Good","kind":"lesson","lesson":{
+                    "folder":"FAF_Lesson_A","files":["FAF_Lesson_A_scenario.lua"]}},
+                {"id":"escape","title":"Escape","kind":"lesson","lesson":{
+                    "folder":"FAF_Lesson_A","files":["../../init_faf.lua"]}}
+            ]}"#,
+            GUIDES_REPO,
+        )
+        .expect("the document loads");
+        assert_eq!(
+            catalogue.resources[0].lesson,
+            Some(LessonPackage {
+                folder: "FAF_Lesson_A".into(),
+                files: vec!["FAF_Lesson_A_scenario.lua".into()],
+            })
+        );
+        // The entry stays, the package does not: it reads as a lesson that
+        // cannot be started, never as one that writes outside its folder.
+        assert_eq!(catalogue.resources[1].id, "escape");
+        assert_eq!(catalogue.resources[1].lesson, None);
+    }
+
+    #[test]
+    fn a_lesson_file_is_addressed_inside_the_trusted_repository() {
+        assert_eq!(
+            lesson_file_address(
+                "FAForeverRustClient/guides",
+                "FAF_Lesson_A",
+                "FAF_Lesson_A_script.lua"
+            ),
+            "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/lessons/FAF_Lesson_A/FAF_Lesson_A_script.lua"
+        );
+        assert!(plain_repository("FAForeverRustClient/guides"));
+        assert!(!plain_repository("FAForeverRustClient/guides/../x"));
+        assert!(!plain_repository("guides"));
+        assert!(!plain_repository("owner/../name"));
+        assert!(!plain_repository("owner/na me"));
+    }
+
+    #[test]
     fn an_entry_that_cannot_be_read_is_skipped_and_the_rest_still_loads() {
         let catalogue = parse_manifest(
             br#"{"resources":[
@@ -1084,6 +1316,7 @@ mod tests {
             manifest_url: manifest_url.into(),
             guides_repo: GUIDES_REPO.into(),
             cache_dir,
+            records_path: None,
         })
     }
 

@@ -932,6 +932,7 @@ pub fn entry_from_body(issue_title: &str, body: &str) -> Option<TrainingResource
         level: section_of(body, field::LEVEL).and_then(|value| level_from_label(&value)),
         url,
         tutorial_id: None,
+        lesson: None,
         author: section_of(body, field::AUTHOR).unwrap_or_default(),
         rating_min: number(field::RATING_MIN),
         rating_max: number(field::RATING_MAX),
@@ -1057,6 +1058,12 @@ pub fn catalogue_with(current: &str, entry: &TrainingResource) -> Result<String,
     // editor cannot act on in front of them, in a file edited by hand.
     if let Some(object) = value.as_object_mut() {
         object.remove("readable");
+        // A submission is never a lesson, and a lesson is a folder committed
+        // by hand. An empty `lesson` key on every accepted guide would only
+        // suggest otherwise to whoever edits the file next.
+        if object.get("lesson").is_some_and(serde_json::Value::is_null) {
+            object.remove("lesson");
+        }
     }
 
     let object = document
@@ -1417,6 +1424,7 @@ pub fn entry_from_draft(draft: &ContributionDraft, author: &str) -> TrainingReso
         recording_url: String::new(),
         url: draft.url.trim().to_string(),
         tutorial_id: None,
+        lesson: None,
         author: author.trim().to_string(),
         rating_min: parse(&draft.rating_min),
         rating_max: parse(&draft.rating_max),
@@ -1664,6 +1672,7 @@ mod tests {
             level: Some(TrainingLevel::Beginner),
             url: "https://example.invalid/guide".into(),
             tutorial_id: None,
+            lesson: None,
             author: "Someone".into(),
             rating_min: Some(700),
             rating_max: Some(1200),
