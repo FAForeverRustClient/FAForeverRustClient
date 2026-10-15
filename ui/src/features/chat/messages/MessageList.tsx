@@ -231,8 +231,12 @@ export const MessageList = memo(function MessageList({
     return () => window.removeEventListener("keydown", onFind);
   }, []);
 
+  // Only a request made while this conversation is shown opens its search.
+  // The list is mounted afresh for every conversation, and the count it was
+  // mounted with is an earlier conversation's click, not this one's.
+  const searchRequestAtMount = useRef(searchRequest);
   useEffect(() => {
-    if (searchRequest === 0) return;
+    if (searchRequest === searchRequestAtMount.current) return;
     setSearchOpen(true);
     requestAnimationFrame(() => searchInputRef.current?.focus());
   }, [searchRequest]);
@@ -241,7 +245,10 @@ export const MessageList = memo(function MessageList({
     if (activeMessageId) rowRefs.current.get(activeMessageId)?.scrollIntoView({ block: "center" });
   }, [activeMessageId]);
 
-  // Layout effect so the jump happens before paint: no visible flick.
+  // Layout effect so the jump happens before paint: no visible flick. Keyed
+  // on the newest message as well as the count: a full channel drops its
+  // oldest line for every new one, so from then on the count stays the same.
+  const newestMessageId = messages[messages.length - 1]?.id;
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -252,7 +259,7 @@ export const MessageList = memo(function MessageList({
     } else {
       setMissed(true);
     }
-  }, [messages.length]);
+  }, [messages.length, newestMessageId]);
 
   const onScroll = () => {
     const el = scrollRef.current;

@@ -19,7 +19,7 @@ import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import type { ChatChannel, ChatStatus, Game, Reaction } from "../../ipc/bindings";
+import type { ChatChannel, ChatMessage, ChatStatus, Game, Reaction } from "../../ipc/bindings";
 import { isPrivateChannel } from "../../store/reducer";
 import { typistsAt } from "../../store/reducers/chat";
 import { CHAT_TABS_ID, ChannelTabs } from "./ChannelTabs";
@@ -240,6 +240,22 @@ export function ChatView() {
     return () => window.clearInterval(timer);
   }, [inPrivateConversation]);
 
+  // Stable across renders, as the list's other handlers are: `MessageList`
+  // and every line in it are memoised, and a fresh function each render
+  // re-rendered all of them on every lobby, social or typing update.
+  const reactInActive = useCallback(
+    (msgid: string, emoji: string) => void react(activeName, msgid, emoji),
+    [activeName],
+  );
+  const unreactInActive = useCallback(
+    (msgid: string, emoji: string) => void unreact(activeName, msgid, emoji),
+    [activeName],
+  );
+  const replyToMessage = useCallback(
+    (message: ChatMessage) => setReplyTo({ msgid: message.msgid ?? "", sender: message.sender }),
+    [],
+  );
+
   const openConversation = useCallback((nick: string) => {
     if (!nick || nick === self) return;
     void joinChannel(nick);
@@ -382,9 +398,9 @@ export function ChatView() {
             social={social}
             preferences={chatPreferences}
             reactions={reactionsByMessage}
-            onReact={(msgid, emoji) => void react(active.name, msgid, emoji)}
-            onUnreact={(msgid, emoji) => void unreact(active.name, msgid, emoji)}
-            onReply={(message) => setReplyTo({ msgid: message.msgid ?? "", sender: message.sender })}
+            onReact={reactInActive}
+            onUnreact={unreactInActive}
+            onReply={replyToMessage}
             findByMsgid={findByMsgid}
             conversationLabel={partyChannelLabel(active.name)}
             searchRequest={searchRequest}
