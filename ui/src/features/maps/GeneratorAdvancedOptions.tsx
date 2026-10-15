@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { GeneratorStyleOptions } from "./GeneratorStyleOptions";
 import type { GeneratorDialogModel } from "./useGeneratorDialog";
 import { Row } from "./GenerateMapControls";
@@ -7,6 +7,39 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { isUsablePresetName, MAX_PRESET_NAME } from "../../shared/generatorPresets";
 import { GENERATION_TYPES, deletePreset, preflight, loadHelp } from "./generatorCommands";
+
+/**
+ * The width the tools' two buttons take with each label on one line, set on
+ * the dialog as `--generate-map-tools-width`.
+ *
+ * Every two-column grid of the form takes it as the least either column may
+ * be (`generate-map.css`), so the columns stay equal and in line with each
+ * other and the dialog grows by what a long label needs. Neither can be said
+ * in CSS alone: a grid sizes its columns from its own cells, and the tools are
+ * in one grid of several. Measured again whenever the buttons change size,
+ * which they do when "Show generator help" becomes "Hide generator help" or
+ * the language changes.
+ */
+function useToolsWidth() {
+  const ref = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const buttons = ref.current;
+    const dialog = buttons?.closest<HTMLElement>(".generate-map-modal");
+    if (!buttons || !dialog) return;
+    const measure = () => dialog.style.setProperty("--generate-map-tools-width", `${buttons.offsetWidth}px`);
+    measure();
+    if (typeof ResizeObserver === "undefined") {
+      return () => dialog.style.removeProperty("--generate-map-tools-width");
+    }
+    const observer = new ResizeObserver(measure);
+    observer.observe(buttons);
+    return () => {
+      observer.disconnect();
+      dialog.style.removeProperty("--generate-map-tools-width");
+    };
+  }, []);
+  return ref;
+}
 
 type PresetsModel = Pick<GeneratorDialogModel,
   | "t"
@@ -47,6 +80,7 @@ export function GeneratorAdvancedOptions({ model }: {
   useEffect(() => {
     if (busy) setChecked(false);
   }, [busy]);
+  const toolsRef = useToolsWidth();
   return (
     <fieldset className="generate-map-fieldset" disabled={reproducing}>
       {typeOverrides && (
@@ -113,11 +147,8 @@ export function GeneratorAdvancedOptions({ model }: {
 
       <hr className="generate-map-divider" />
 
-      {/* A line each, across both columns: at half the column the tools'
-          buttons had about 150 px, and "Show generator help" broke over two
-          lines in every language longer than English. */}
       <div className="generate-map-grid-2col">
-        <Row label={t("maps.generate.diagnostics")} className="generate-map-row-full">
+        <Row label={t("maps.generate.diagnostics")}>
           <div className="generate-map-checks-group">
             <label className="generate-map-check">
               <input
@@ -140,33 +171,38 @@ export function GeneratorAdvancedOptions({ model }: {
           </div>
         </Row>
 
-        <Row label={t("maps.generate.tools")} className="generate-map-row-full">
+        <Row label={t("maps.generate.tools")}>
           <div className="generate-map-tools-group">
-            <Button
-              type="button"
-              onClick={() => {
-                setChecked(true);
-                void preflight(form);
-              }}
-              disabled={busy}
-            >
-              {t("maps.generate.checkOptions")}
-            </Button>
-            {/* What the press answered. The backend clears it on
-                the next edit, so it can never name the options
+            {/* The two buttons on one line, each label on one line: the
+                dialog grows to fit them rather than breaking a label in
+                two (see `.generate-map-tools-buttons`). */}
+            <span className="generate-map-tools-buttons" ref={toolsRef}>
+              <Button
+                type="button"
+                onClick={() => {
+                  setChecked(true);
+                  void preflight(form);
+                }}
+                disabled={busy}
+              >
+                {t("maps.generate.checkOptions")}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setShowHelp((open) => !open);
+                  if (!state.helpText) void loadHelp(form.version);
+                }}
+              >
+                {showHelp ? t("maps.generate.hideHelp") : t("maps.generate.showHelp")}
+              </Button>
+            </span>
+            {/* What the press answered, under the buttons. The backend
+                clears it on the next edit, so it can never name the options
                 that are no longer on screen. */}
             {checked && state.predictedName && !reproducing ? (
               <code className="generate-map-name-code">{state.predictedName}</code>
             ) : null}
-            <Button
-              type="button"
-              onClick={() => {
-                setShowHelp((open) => !open);
-                if (!state.helpText) void loadHelp(form.version);
-              }}
-            >
-              {showHelp ? t("maps.generate.hideHelp") : t("maps.generate.showHelp")}
-            </Button>
           </div>
         </Row>
       </div>

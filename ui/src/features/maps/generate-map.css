@@ -3,6 +3,10 @@
 .generate-map-modal {
   width: min(1344px, calc(100vw - 48px));
   max-width: 1344px;
+  /* Wider than that when the form needs it: a label that must stay on one
+     line (`--generate-map-tools-width`) widens the dialog rather than
+     breaking. min-width wins over max-width, as it should here. */
+  min-width: min-content;
   /* As tall as its content, centred by the backdrop, and only capped by the
      window: a fixed height left a band of nothing under a short form. */
   max-height: 92vh;
@@ -178,7 +182,7 @@
 /* Unified side-by-side layout */
 .generate-map-unified-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(400px, 1fr);
+  grid-template-columns: minmax(min-content, 1.35fr) minmax(400px, 1fr);
   grid-template-rows: minmax(0, 1fr);
   gap: 24px;
   align-items: stretch;
@@ -570,10 +574,16 @@
   gap: 14px;
 }
 
+/* Two equal columns, each at least as wide as the tools' row needs with its
+   buttons' labels on one line: the 154 px label, the row's 6 px gap and the
+   buttons (`--generate-map-tools-width`, measured by GeneratorAdvancedOptions).
+   Every grid of the form takes the same least width, so the columns stay in
+   line from the top of the form to the bottom. */
 .generate-map-grid-2col {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px 20px;
+  min-width: calc(2 * (154px + 6px + var(--generate-map-tools-width, 0px)) + 20px);
 }
 
 /* A pair of cells whose contents differ in height -- here a single dropdown
@@ -731,6 +741,16 @@
   min-height: 34px;
 }
 
+/* The two buttons on one line, each label on one line: as wide as they
+   need, never squeezed (see `.generate-map-grid-2col`). */
+.generate-map-tools-buttons {
+  display: inline-flex;
+  flex: none;
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+  width: max-content;
+}
+
 /* The name "Check options" resolved, on its own line under the two buttons. A
    generated map name is fifty-odd characters and would otherwise squeeze them
    both out of the column. */
@@ -741,14 +761,9 @@
 /* Each button as wide as its label, on one line: "Show generator help" is
    the longest of them in German and broke over two lines when the buttons
    shared out a narrow cell. */
-.generate-map-tools-group button {
+.generate-map-tools-buttons button {
   flex: none;
   white-space: nowrap;
-}
-
-/* A row across both columns of the grid. */
-.generate-map-grid-2col > .generate-map-row-full {
-  grid-column: 1 / -1;
 }
 
 .generate-map-preset-save-group {
@@ -1073,5 +1088,20 @@
 
   .generate-map-row-density .generate-map-row-label {
     transform: none;
+  }
+}
+
+/* The tools' least width once each label sits over its control: two columns
+   of the buttons alone. After the block above, which it narrows. */
+@media (max-width: 1399px) {
+  .generate-map-grid-2col {
+    min-width: calc(2 * var(--generate-map-tools-width, 0px) + 20px);
+  }
+}
+
+/* One column (see the 720px block further up): the buttons alone. */
+@media (max-width: 720px) {
+  .generate-map-grid-2col {
+    min-width: var(--generate-map-tools-width, 0px);
   }
 }
