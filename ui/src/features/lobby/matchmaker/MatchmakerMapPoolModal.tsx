@@ -1,5 +1,5 @@
 import { SectionTabs, sectionPanelProps } from "../../../design-system/SectionTabs";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
 import { ipc } from "../../../ipc/client";
@@ -9,6 +9,7 @@ import { t } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
 import { kilometresArea, kilometresLabel } from "../../../shared/mapPresentation";
+import { useMapPoolLayout } from "./mapPoolLayout";
 
 function formatMapSize(width: number, height: number) {
   // A pool may state either units or kilometres; anything above 64 is units.
@@ -138,6 +139,13 @@ export function MatchmakerMapPoolModal({
     [activePool],
   );
 
+  // Sized for the largest bracket, as Java's `resizeToContent` is, so the
+  // dialog keeps its size when the player looks through the other brackets.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const largestPool = sortedPools.reduce((most, pool) => Math.max(most, pool.maps.length), 0);
+  const layout = useMapPoolLayout(largestPool, gridRef);
+  const showsMaps = status.type !== "failed" && !(status.type === "loading" && pools.length === 0) && activeMaps.length > 0;
+
   const tokensUsed = activePool
     ? Object.entries(vetoes)
         .filter(([key]) => key.startsWith(`${activePool.id}:`))
@@ -186,7 +194,7 @@ export function MatchmakerMapPoolModal({
   };
 
   return (
-    <Modal onClose={onClose}>
+    <Modal onClose={onClose} className="matchmaker-map-pool-modal">
       <div className="play-dialog-head matchmaker-map-pool-head">
         <div>
           <h2>{t("lobby.mapPool.title", { queue: queueTitle })}</h2>
@@ -237,7 +245,12 @@ export function MatchmakerMapPoolModal({
         )}
       </div>
 
-      <div className="map-pool-grid" {...(sortedPools.length > 1 && activePool ? sectionPanelProps("matchmaker-pool", activePool.id) : {})}>
+      <div
+        ref={gridRef}
+        className={`map-pool-grid${showsMaps && layout.compact ? " compact" : ""}`}
+        style={showsMaps ? { gridTemplateColumns: `repeat(${layout.columns}, ${layout.tile}px)` } : undefined}
+        {...(sortedPools.length > 1 && activePool ? sectionPanelProps("matchmaker-pool", activePool.id) : {})}
+      >
         {status.type === "loading" && pools.length === 0 ? (
           <p className="play-empty">{t("lobby.mapPool.loading")}</p>
         ) : status.type === "failed" ? (
@@ -269,7 +282,9 @@ export function MatchmakerMapPoolModal({
                 aria-pressed={vetoing ? tokens > 0 : undefined}
                 className={`map-pool-card surface surface-interactive${fullBan ? " vetoed" : tokens > 0 ? " partly-vetoed" : ""}`}
                 onClick={() => (vetoing && canVeto ? toggleVeto(map.assignmentId) : setPreview(map))}
-                title={cardTitle}
+                // The name first: a small tile cuts it short.
+                title={`${map.displayName}
+${cardTitle}`}
               >
                 <span className="map-pool-card-art">
                   <GameMapImage
