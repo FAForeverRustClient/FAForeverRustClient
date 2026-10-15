@@ -113,8 +113,11 @@ export function GeneratorAdvancedOptions({ model }: {
 
       <hr className="generate-map-divider" />
 
+      {/* A line each, across both columns: at half the column the tools'
+          buttons had about 150 px, and "Show generator help" broke over two
+          lines in every language longer than English. */}
       <div className="generate-map-grid-2col">
-        <Row label={t("maps.generate.diagnostics")}>
+        <Row label={t("maps.generate.diagnostics")} className="generate-map-row-full">
           <div className="generate-map-checks-group">
             <label className="generate-map-check">
               <input
@@ -137,7 +140,7 @@ export function GeneratorAdvancedOptions({ model }: {
           </div>
         </Row>
 
-        <Row label={t("maps.generate.tools")}>
+        <Row label={t("maps.generate.tools")} className="generate-map-row-full">
           <div className="generate-map-tools-group">
             <Button
               type="button"
