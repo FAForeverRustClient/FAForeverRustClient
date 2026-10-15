@@ -17,7 +17,7 @@
 //! Native FAF protocol values are taken from the reference clients; everything is
 //! overridable via [`OAuthConfig::from_env`] so a partner dev can point at staging.
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
 use async_trait::async_trait;
@@ -106,9 +106,12 @@ pub struct OAuthAuth {
     /// The running background refresh, so a second login replaces it rather
     /// than leaving two loops refreshing the same store.
     refresh_task: Mutex<Option<tokio::task::JoinHandle<()>>>,
+    /// Serialises publication with replacing or closing a session.
+    refresh_epoch: Arc<Mutex<u64>>,
     /// The session the last login or restore obtained but nobody has
     /// committed yet. See [`AuthPort::commit_session`].
     pending: Mutex<Option<PendingSession>>,
+    credentials: Arc<dyn RefreshCredentials>,
 }
 
 /// A signed-in session that is not visible to the rest of the client yet.
@@ -122,11 +125,9 @@ pub struct OAuthAuth {
 #[derive(Debug)]
 struct PendingSession {
     access_token: String,
-    /// Written to the keyring on commit. `None` when the user did not ask to
-    /// be remembered, or when a restore has already persisted the rotated one.
+    /// Kept in memory for renewal, regardless of the persistence preference.
     refresh_token: Option<StoredRefresh>,
-    /// Whether the committed session is kept valid by the background refresh.
-    renew: bool,
+    persist_refresh: bool,
     expires_in: Option<u64>,
 }
 
@@ -172,6 +173,28 @@ impl StoredRefresh {
     }
 }
 
+trait RefreshCredentials: Send + Sync {
+    fn load(&self) -> Option<StoredRefresh>;
+    fn store(&self, token: &StoredRefresh);
+    fn clear(&self);
+}
+
+struct KeyringCredentials(OAuthConfig);
+
+impl RefreshCredentials for KeyringCredentials {
+    fn load(&self) -> Option<StoredRefresh> {
+        load_refresh_token(&self.0)
+    }
+    fn store(&self, token: &StoredRefresh) {
+        store_refresh_token(&self.0, token);
+    }
+    fn clear(&self) {
+        if let Ok(entry) = keyring::Entry::new(&self.0.keyring_service, "refresh_token") {
+            let _ = entry.delete_credential();
+        }
+    }
+}
+
 /// Refresh this far before the access token actually expires.
 ///
 /// Hydra issues short-lived access tokens (an hour is typical). Renewing at the
@@ -201,10 +224,12 @@ const REFRESH_TICK: Duration = Duration::from_secs(30);
 impl OAuthAuth {
     pub fn new(config: OAuthConfig, tokens: TokenStore) -> Self {
         Self {
+            credentials: Arc::new(KeyringCredentials(config.clone())),
             config,
             http: super::http::shared_http_client(),
             tokens,
             refresh_task: Mutex::new(None),
+            refresh_epoch: Arc::new(Mutex::new(0)),
             pending: Mutex::new(None),
         }
     }
@@ -226,24 +251,25 @@ impl OAuthAuth {
         &self,
         tokens: TokenResponse,
         persist_refresh: bool,
-        renew: bool,
+        previous_refresh: Option<StoredRefresh>,
         profile: impl std::future::Future<Output = AuthResult<Player>>,
     ) -> AuthResult<Player> {
         let mut player = profile.await?;
         player.roles = session_roles(&tokens);
-        // Only a login persists its token through here, and a login always
-        // runs under the configured client.
         let refresh_token = tokens
             .refresh_token
-            .filter(|_| persist_refresh)
             .map(|refresh_token| StoredRefresh {
-                client_id: self.config.client_id.clone(),
+                client_id: previous_refresh.as_ref().map_or_else(
+                    || self.config.client_id.clone(),
+                    |stored| stored.client_id.clone(),
+                ),
                 refresh_token,
-            });
+            })
+            .or(previous_refresh);
         *self.pending_slot() = Some(PendingSession {
             access_token: tokens.access_token,
             refresh_token,
-            renew,
+            persist_refresh,
             expires_in: tokens.expires_in,
         });
         Ok(player)
@@ -263,29 +289,36 @@ impl OAuthAuth {
     /// and this way it simply never hands out a stale token. A token revoked
     /// server-side still yields a 401, and there the existing message is
     /// accurate.
-    fn schedule_refresh(&self, expires_in: Option<u64>) {
+    fn schedule_refresh(&self, mut stored: StoredRefresh, persist: bool, expires_in: Option<u64>) {
         let lifetime = expires_in
             .map(Duration::from_secs)
             .unwrap_or(DEFAULT_TOKEN_LIFETIME);
         let config = self.config.clone();
         let http = self.http.clone();
         let tokens = self.tokens.clone();
+        let credentials = self.credentials.clone();
+        let refresh_epoch = self.refresh_epoch.clone();
+        let epoch = *refresh_epoch.lock().unwrap();
 
         let handle = tokio::spawn(async move {
             let mut due = SystemTime::now() + refresh_delay(lifetime);
             loop {
                 sleep_until(due).await;
 
-                let Some(stored) = load_refresh_token(&config) else {
-                    // Nothing persisted (the user did not ask to be remembered),
-                    // so there is nothing to renew with. Stop rather than spin.
-                    return;
-                };
                 match exchange_refresh_token(&http, &config, &stored).await {
                     Ok(response) => {
-                        tokens.set(&response.access_token);
-                        if let Some(refresh) = &response.refresh_token {
-                            store_refresh_token(&config, &stored.rotated(refresh));
+                        {
+                            let current_epoch = refresh_epoch.lock().unwrap();
+                            if *current_epoch != epoch {
+                                return;
+                            }
+                            tokens.set(&response.access_token);
+                            if let Some(refresh) = &response.refresh_token {
+                                stored = stored.rotated(refresh);
+                                if persist {
+                                    credentials.store(&stored);
+                                }
+                            }
                         }
                         let wait = refresh_delay(
                             response
@@ -316,6 +349,8 @@ impl OAuthAuth {
     }
 
     fn cancel_refresh(&self) {
+        let mut epoch = self.refresh_epoch.lock().unwrap();
+        *epoch = epoch.wrapping_add(1);
         if let Ok(mut slot) = self.refresh_task.lock() {
             if let Some(task) = slot.take() {
                 task.abort();
@@ -386,12 +421,10 @@ impl AuthPort for OAuthAuth {
         // 5. Exchange the code for tokens.
         let tokens = self.exchange_code(&code, &verifier, &redirect_uri).await?;
 
-        // 6. Resolve the player, then stage the session. The refresh token is
-        //    kept only when the user asked to be remembered, and only then is
-        //    there something to renew with: without it the session lasts as
-        //    long as the access token does.
+        // 6. Keep this session renewable in memory. Remembering only controls
+        //    whether it can be restored after the client closes.
         let access_token = tokens.access_token.clone();
-        self.stage_session(tokens, remember, remember, self.fetch_me(&access_token))
+        self.stage_session(tokens, remember, None, self.fetch_me(&access_token))
             .await
     }
 
@@ -422,7 +455,7 @@ impl AuthPort for OAuthAuth {
         // The access token and the renewal loop wait for the commit, like a
         // login's do. A failed profile lookup therefore has nothing to undo.
         let access_token = tokens.access_token.clone();
-        self.stage_session(tokens, false, true, self.fetch_me(&access_token))
+        self.stage_session(tokens, true, Some(stored), self.fetch_me(&access_token))
             .await
             .map(Some)
     }
@@ -431,17 +464,14 @@ impl AuthPort for OAuthAuth {
         let Some(session) = self.pending_slot().take() else {
             return false;
         };
+        self.cancel_refresh();
         self.tokens.set(&session.access_token);
         // Keyring failures must not block an otherwise successful login.
-        if let Some(refresh) = &session.refresh_token {
-            self.store_refresh_token(refresh);
-        }
-        if session.renew {
-            self.schedule_refresh(session.expires_in);
-        } else {
-            // A loop left over from an earlier session would renew a token
-            // this session replaced.
-            self.cancel_refresh();
+        if let Some(refresh) = session.refresh_token {
+            if session.persist_refresh {
+                self.store_refresh_token(&refresh);
+            }
+            self.schedule_refresh(refresh, session.persist_refresh, session.expires_in);
         }
         true
     }
@@ -534,17 +564,15 @@ impl OAuthAuth {
     }
 
     fn store_refresh_token(&self, stored: &StoredRefresh) {
-        store_refresh_token(&self.config, stored);
+        self.credentials.store(stored);
     }
 
     fn load_refresh_token(&self) -> Option<StoredRefresh> {
-        load_refresh_token(&self.config)
+        self.credentials.load()
     }
 
     fn clear_refresh_token(&self) {
-        if let Ok(entry) = keyring::Entry::new(&self.config.keyring_service, "refresh_token") {
-            let _ = entry.delete_credential();
-        }
+        self.credentials.clear();
     }
 }
 
@@ -1191,17 +1219,37 @@ mod tests {
 
     // The staging tests drive the real adapter from the token exchange's
     // answer onwards, with the `/me` request replaced by a future the test
-    // controls. No refresh token is ever staged for persisting, so none of
-    // them touches the OS keyring of whoever runs the suite.
+    // controls. Credentials are injected, so these never touch the OS keyring.
+
+    #[derive(Default)]
+    struct TestCredentials {
+        saved: Mutex<Vec<StoredRefresh>>,
+        reads: std::sync::atomic::AtomicUsize,
+    }
+
+    impl RefreshCredentials for TestCredentials {
+        fn load(&self) -> Option<StoredRefresh> {
+            self.reads.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            self.saved.lock().unwrap().last().cloned()
+        }
+        fn store(&self, token: &StoredRefresh) {
+            self.saved.lock().unwrap().push(token.clone());
+        }
+        fn clear(&self) {
+            self.saved.lock().unwrap().clear();
+        }
+    }
 
     fn adapter() -> Arc<OAuthAuth> {
-        Arc::new(OAuthAuth::new(OAuthConfig::faf(), TokenStore::new()))
+        let mut auth = OAuthAuth::new(OAuthConfig::faf(), TokenStore::new());
+        auth.credentials = Arc::new(TestCredentials::default());
+        Arc::new(auth)
     }
 
     fn exchanged() -> TokenResponse {
         TokenResponse {
             access_token: "at".into(),
-            refresh_token: None,
+            refresh_token: Some("session-refresh".into()),
             expires_in: Some(3600),
             id_token: None,
         }
@@ -1226,7 +1274,7 @@ mod tests {
                 Ok(Player::new(7, "Ada"))
             };
             staging
-                .stage_session(exchanged(), true, true, profile)
+                .stage_session(exchanged(), true, None, profile)
                 .await
         });
 
@@ -1252,7 +1300,7 @@ mod tests {
     async fn a_failed_profile_lookup_publishes_and_stages_nothing() {
         let auth = adapter();
         let result = auth
-            .stage_session(exchanged(), true, true, async {
+            .stage_session(exchanged(), true, None, async {
                 Err(AuthError::new("Could not load profile (/me returned 500)"))
             })
             .await;
@@ -1266,7 +1314,7 @@ mod tests {
     async fn a_successful_sign_in_is_published_only_by_the_commit() {
         let auth = adapter();
         let player = auth
-            .stage_session(exchanged(), true, true, async { Ok(Player::new(7, "Ada")) })
+            .stage_session(exchanged(), true, None, async { Ok(Player::new(7, "Ada")) })
             .await
             .unwrap();
         assert_eq!(player.id, 7);
@@ -1280,21 +1328,29 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_session_without_remember_me_is_published_without_renewal() {
-        let auth = adapter();
-        auth.stage_session(exchanged(), false, false, async {
+    async fn a_session_without_remember_me_renews_without_using_the_keyring() {
+        let credentials = Arc::new(TestCredentials::default());
+        let mut auth = OAuthAuth::new(OAuthConfig::faf(), TokenStore::new());
+        auth.credentials = credentials.clone();
+        auth.stage_session(exchanged(), false, None, async {
             Ok(Player::new(7, "Ada"))
         })
         .await
         .unwrap();
         assert!(auth.commit_session());
-        assert_eq!(published(&auth), (Some("at".into()), false));
+        assert_eq!(published(&auth), (Some("at".into()), true));
+        assert!(credentials.saved.lock().unwrap().is_empty());
+        assert_eq!(
+            credentials.reads.load(std::sync::atomic::Ordering::SeqCst),
+            0
+        );
+        auth.cancel_refresh();
     }
 
     #[tokio::test]
     async fn a_discarded_session_can_no_longer_be_committed() {
         let auth = adapter();
-        auth.stage_session(exchanged(), true, true, async { Ok(Player::new(7, "Ada")) })
+        auth.stage_session(exchanged(), true, None, async { Ok(Player::new(7, "Ada")) })
             .await
             .unwrap();
         auth.discard_pending_session();

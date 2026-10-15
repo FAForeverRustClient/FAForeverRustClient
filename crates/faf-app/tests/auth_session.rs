@@ -90,7 +90,7 @@ impl AuthPort for StagingAuth {
         if self.profile_fails {
             return Err(AuthError::new("Could not load profile (/me returned 500)"));
         }
-        self.session.lock().unwrap().staged = Some((remember, remember));
+        self.session.lock().unwrap().staged = Some((remember, true));
         Ok(Player::new(7, "Ada"))
     }
 
@@ -289,7 +289,7 @@ async fn a_successful_sign_in_is_published_and_remembered_as_before() {
                 staged: None,
                 access_token: true,
                 refresh_token_saved: remember,
-                renewing: remember,
+                renewing: true,
                 logouts: 0,
             },
             "remember: {remember}"
