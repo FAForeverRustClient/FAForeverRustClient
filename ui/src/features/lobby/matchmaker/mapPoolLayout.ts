@@ -85,9 +85,12 @@ function largestTile(maps: number, width: number, height: number, compact: boole
   return { columns: best.columns, tile: best.tile, compact };
 }
 
-/** Distance the dialog keeps from every edge of the window; the 48px in
- *  `.matchmaker-map-pool-modal`'s `max-width` and `max-height` is twice this. */
-const WINDOW_MARGIN = 24;
+/** Distance the dialog keeps from the window's left and right edges, and from
+ *  its top and bottom. Wider at the sides, so the dialog never runs edge to
+ *  edge. `.matchmaker-map-pool-modal`'s `max-width` and `max-height` are
+ *  twice these. */
+const WINDOW_MARGIN_X = 64;
+const WINDOW_MARGIN_Y = 24;
 
 /**
  * The layout for a pool of `count` maps whose tile grid is `gridRef`, a
@@ -121,8 +124,8 @@ export function useMapPoolLayout(count: number, gridRef: RefObject<HTMLElement |
       // `scrollHeight` is the panel's padding and everything in it, so taking
       // the grid away leaves the chrome around it.
       const chrome = panel.scrollHeight - grid.offsetHeight + borderY;
-      const width = window.innerWidth - 2 * WINDOW_MARGIN - paddingX - borderX;
-      const height = window.innerHeight - 2 * WINDOW_MARGIN - chrome;
+      const width = window.innerWidth - 2 * WINDOW_MARGIN_X - paddingX - borderX;
+      const height = window.innerHeight - 2 * WINDOW_MARGIN_Y - chrome;
       const next = fitMapPool(count, width, height);
       setLayout((current) =>
         current.columns === next.columns && current.tile === next.tile && current.compact === next.compact

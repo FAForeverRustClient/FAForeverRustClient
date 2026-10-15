@@ -335,13 +335,13 @@
 
 /* The dialog is as large as the pool needs and no larger: the grid's tracks
    come from `mapPoolLayout.ts`, sized so every map shows at once, and the
-   panel shrinks around them. It keeps 24px from the window's edges
-   (`WINDOW_MARGIN`), and its own scrollbar is only for a pool too large for
-   even the smallest tiles. */
+   panel shrinks around them. It keeps 64px from the window's sides and 24px
+   from its top and bottom (`WINDOW_MARGIN_X`, `WINDOW_MARGIN_Y`), and its own
+   scrollbar is only for a pool too large for even the smallest tiles. */
 .modal-panel.matchmaker-map-pool-modal {
   width: auto;
-  min-width: min(640px, calc(100vw - 48px));
-  max-width: calc(100vw - 48px);
+  min-width: min(640px, calc(100vw - 128px));
+  max-width: calc(100vw - 128px);
   max-height: calc(100vh - 48px);
 }
 
