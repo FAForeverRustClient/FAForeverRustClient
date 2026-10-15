@@ -454,6 +454,7 @@ impl ProcessPort for GameProcess {
     }
 
     async fn launch_game(&self, params: GameLaunchParams) -> Result<(), String> {
+        require_init_name(&params.featured_mod)?;
         let path = self.config.lock().unwrap().game_path.clone();
         let log_path = crate::infra::game_logs::next_path("game", Some(params.game_id))?;
 
@@ -508,6 +509,7 @@ impl ProcessPort for GameProcess {
         featured_mod: String,
         map: String,
     ) -> Result<Option<PathBuf>, String> {
+        require_init_name(&featured_mod)?;
         let path = self.config.lock().unwrap().game_path.clone();
         let log_path = crate::infra::game_logs::next_path("offline", None)?;
         self.spawn(
@@ -1023,6 +1025,23 @@ fn is_original_game_executable(exe: &Path) -> bool {
         .is_some_and(|root| root.join("gamedata").join("lua.scd").is_file())
 }
 
+/// Refuse a featured mod that is not a mod's name before it becomes
+/// `init_<mod>.lua` on the command line.
+///
+/// The name arrives from the lobby server (`game_launch`'s `mod`) or from a
+/// replay or lesson. The updater already refuses such a name before it writes
+/// `fa_path.lua`, but this is the line that reaches the game, so it is checked
+/// here too rather than trusted to have passed through the updater first.
+fn require_init_name(featured_mod: &str) -> Result<(), String> {
+    if crate::infra::game_updater::is_featured_mod_name(featured_mod) {
+        Ok(())
+    } else {
+        Err(format!(
+            "refusing to start the game with the featured mod {featured_mod:?}"
+        ))
+    }
+}
+
 /// Build the FA argument list: server args first, then init/bugreport/gpgnet.
 ///
 /// Mirrors `fa/play.py:build_argument_list`. `savereplay` is the address of the
@@ -1230,6 +1249,23 @@ mod tests {
             .position(|argument| argument == "/map")
             .unwrap();
         assert_eq!(tutorial[at + 1], "SCMP_001");
+    }
+
+    #[test]
+    fn only_a_mod_name_becomes_an_init_file() {
+        for name in ["faf", "ladder1v1", "fafdevelop", "tutorials", "coop"] {
+            assert!(require_init_name(name).is_ok(), "{name}");
+        }
+        for name in [
+            "",
+            "../faf",
+            "faf.lua /log x",
+            "faf\\..\\x",
+            "faf\"",
+            "fa f",
+        ] {
+            assert!(require_init_name(name).is_err(), "{name:?}");
+        }
     }
 
     #[test]

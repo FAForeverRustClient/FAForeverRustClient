@@ -1,0 +1,1 @@
+- Changing the launch wrapper or the extra game arguments now asks you to confirm it.

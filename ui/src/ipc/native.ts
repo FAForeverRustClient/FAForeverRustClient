@@ -6,13 +6,26 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { open, type OpenDialogOptions } from "@tauri-apps/plugin-dialog";
 import {
   isPermissionGranted,
   requestPermission,
   sendNotification,
 } from "@tauri-apps/plugin-notification";
 import { openUrl } from "@tauri-apps/plugin-opener";
+
+/**
+ * What a file dialog looks like. Mirrors `PickRequest` in the shell's
+ * `picked_paths`: the dialog opens there, so a path the page sends back later
+ * can be checked against what the player actually picked.
+ */
+export interface PickOptions {
+  title?: string;
+  filters?: { name: string; extensions: string[] }[];
+  /** Pick a folder rather than a file. */
+  directory?: boolean;
+  /** Where the dialog starts: a folder, or a file to preselect. */
+  defaultPath?: string;
+}
 
 /** Mirrors the arms of `log_directory` in the Tauri shell. `ice` is the adapters' own log folder. */
 export type LogKind = "game" | "client" | "ice";
@@ -133,15 +146,17 @@ export const native = {
     return invoke("reveal_replay", { path });
   },
 
-  async selectFile(options: OpenDialogOptions): Promise<string | null> {
-    const selected = await open({ ...options, multiple: false });
-    return typeof selected === "string" ? selected : null;
+  /**
+   * Let the player pick a file (or, with `directory`, a folder). Null when
+   * they cancelled. The only way to get a path the backend will accept.
+   */
+  selectFile(options: PickOptions): Promise<string | null> {
+    return invoke<string | null>("pick_path", { request: options });
   },
 
   /** Pick a folder rather than a file. Same dialog, `directory` mode. */
-  async selectDirectory(defaultPath?: string): Promise<string | null> {
-    const selected = await open({ directory: true, multiple: false, defaultPath });
-    return typeof selected === "string" ? selected : null;
+  selectDirectory(defaultPath?: string): Promise<string | null> {
+    return invoke<string | null>("pick_path", { request: { directory: true, defaultPath } });
   },
 
   openUrl(url: string): Promise<void> {

@@ -10,6 +10,22 @@ import { gameNeedsALaunchWrapper, runsOnWindows } from "../../shared/platform";
 const save = (patch: GamePreferencesPatch) =>
   ipc.send({ kind: "Settings", command: { type: "patchGame", payload: { patch } } });
 
+/**
+ * Save a change to what the game is started with. The shell asks the player
+ * to confirm it in a native dialog first (`picked_paths` in src-tauri), so it
+ * can be refused: the field then goes back to what is stored, and the refusal
+ * is reported like any other failed command.
+ */
+const saveLaunch = (patch: GamePreferencesPatch, restore: () => void) =>
+  ipc.run(
+    ipc
+      .settle({ kind: "Settings", command: { type: "patchGame", payload: { patch } } })
+      .catch((error: unknown) => {
+        restore();
+        throw error;
+      }),
+  );
+
 export function GameSettingsSection() {
   const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.game);
@@ -21,9 +37,12 @@ export function GameSettingsSection() {
 
   const commitArguments = () => {
     if (argumentsText === persistedText) return;
-    void save({
-      additionalArguments: argumentsText.split(/\r?\n/).map((argument) => argument.trim()).filter(Boolean),
-    });
+    saveLaunch(
+      {
+        additionalArguments: argumentsText.split(/\r?\n/).map((argument) => argument.trim()).filter(Boolean),
+      },
+      () => setArgumentsText(persistedText),
+    );
   };
 
   const setAutoGenerate = (autoGenerateMaps: boolean) => {
@@ -39,7 +58,7 @@ export function GameSettingsSection() {
   useEffect(() => setWrapperText(persistedWrapper), [persistedWrapper]);
   const commitWrapper = () => {
     if (wrapperText.trim() === persistedWrapper) return;
-    void save({ launchWrapper: wrapperText.trim() });
+    saveLaunch({ launchWrapper: wrapperText.trim() }, () => setWrapperText(persistedWrapper));
   };
 
   const setPipeLiveReplay = (pipeLiveReplay: boolean) => {
