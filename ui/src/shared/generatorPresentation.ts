@@ -293,9 +293,9 @@ export function formatSymmetry(value: string): string {
   return /^[XYZ]{1,2}$/.test(value) ? value : titleCase(value);
 }
 
-/** A density bin as the percentage the user is really choosing. */
-export function densityPercent(bin: number): number {
-  return Math.round((bin / DENSITY_BINS) * 100);
+/** A density value (0-1 fraction) as the percentage the user is really choosing. */
+export function densityPercent(fraction: number): number {
+  return Math.round(fraction * 100);
 }
 
 /**
