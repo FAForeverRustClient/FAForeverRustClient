@@ -1,0 +1,1 @@
+- The experimental Exp Java connection adapter uses much less CPU and network.
