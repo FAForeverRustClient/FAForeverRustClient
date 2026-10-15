@@ -1,1 +1,0 @@
-- The game tiles on the Play tab show the map under the title and the players, rating and host in a band along the bottom.

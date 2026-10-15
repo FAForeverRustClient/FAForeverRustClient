@@ -1,9 +1,8 @@
 // @vitest-environment happy-dom
 //
-// One game as a tile: facts without a caption over each, the map under the
-// title, the tags on the third line with a rare mode and then the rating range
-// first, and the slots, rating and host in the band at the bottom with the age
-// over it.
+// One game as a tile: facts without a caption over each, the map's name on its
+// picture, the host on the line under the title, the tags after it with the
+// rating range first, and the slots and rating at the bottom.
 
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -58,19 +57,23 @@ function mountTile(changes: Partial<Game> = {}) {
 }
 
 describe("GameTile", () => {
-  it("shows its facts without a caption over each, the map under the title and the host in the band", () => {
+  it("shows its facts without a caption over each, with the map on its picture and the host under the title", () => {
     const { container, part } = mountTile();
 
-    // The picture carries no plate: the map's name is in the line under the title.
-    expect(part(".game-tile-map")?.textContent).toBe("");
-    expect(part(".game-tile-head > .game-tile-map-name")?.textContent).toBeTruthy();
-    expect(part(".game-tile-facts")?.textContent).toContain("1/4");
-    expect(part(".game-tile-facts")?.textContent).toContain("Ø 1829");
-    // The host closes the band, after the players and the rating.
-    expect(part(".game-tile-facts > .game-tile-host:last-child")?.textContent).toBe("Sui");
-    // The title has its line to itself; the age sits straight over the band.
-    expect(part(".game-tile-title")?.parentElement?.classList.contains("game-tile-head")).toBe(true);
-    expect(part(".game-tile-body > .game-tile-age + .game-tile-facts")).not.toBeNull();
+    // The map's name is on the picture, hidden from screen readers because
+    // the picture's button already names the map.
+    const caption = part(".game-tile-map .game-tile-map-caption");
+    expect(caption?.textContent).toBeTruthy();
+    expect(caption?.getAttribute("aria-hidden")).toBe("true");
+    expect(part(".game-tile-body")?.textContent).not.toContain(caption?.textContent ?? "");
+    // The host is the line straight under the title.
+    expect(part(".game-tile-host")?.textContent).toBe("Sui");
+    expect(part(".game-tile-title")?.nextElementSibling?.classList.contains("game-tile-host")).toBe(true);
+    expect(part(".game-tile-stats")?.textContent).toContain("1/4");
+    expect(part(".game-tile-stats")?.textContent).toContain("Ø 1829");
+    // The title has its line to itself; the age ends the bottom row.
+    expect(part(".game-tile-stats > .game-tile-age")).not.toBeNull();
+    expect(part(".game-tile-title")?.parentElement?.classList.contains("game-tile-body")).toBe(true);
     for (const caption of ["Host:", "Version", "Ø Rating", "player"]) {
       expect(container.textContent).not.toContain(caption);
     }
@@ -96,11 +99,10 @@ describe("GameTile", () => {
     expect(mountTile({ id: 4, modName: "fafbeta" }).part(".game-tile-flags")?.textContent).toBe("FAF Beta Balance");
   });
 
-  it("puts a rare mode and then the rating range first among the tags, where the line's clipping cannot take them", () => {
+  it("puts the rating range first among the tags, where the line's clipping cannot take it", () => {
     const { part } = mountTile({ ratingMin: 1600, ratingMax: 3200, enforceRatingRange: true, modName: "fafbeta" });
-    expect(part(".game-tile-facts .game-rating-range")).toBeNull();
-    expect(part(".game-tile-flags > :first-child")?.classList.contains("featured")).toBe(true);
-    const range = part(".game-tile-flags > :nth-child(2)");
+    expect(part(".game-tile-stats .game-rating-range")).toBeNull();
+    const range = part(".game-tile-flags > :first-child");
     expect(range?.classList.contains("game-rating-range")).toBe(true);
     expect(range?.textContent).toBe("1600-3200");
     expect(range?.classList.contains("is-enforced")).toBe(true);
