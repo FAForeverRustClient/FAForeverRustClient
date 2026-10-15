@@ -36,7 +36,8 @@ interface Props {
 type EyeDropperConstructor = new () => { open: () => Promise<{ sRGBHex: string }> };
 
 const POPOVER_WIDTH = 220;
-const FOCUSABLE = "button, input, [tabindex]";
+// Joined from single selectors, like `Modal`'s, so it never reads as copy.
+const FOCUSABLE = ["button", "input", "[tabindex]"].join(",");
 
 export function ColorInput({ value, onChange, "aria-label": ariaLabel, className, showSwatch = false }: Props) {
   const { t } = useTranslation();

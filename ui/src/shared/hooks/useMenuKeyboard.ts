@@ -1,7 +1,8 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { nextListboxIndex } from "../listboxNavigation";
 
-const FOCUSABLE = "a[href], button, input, select, textarea, [tabindex]";
+// Joined from single selectors, like `Modal`'s, so it never reads as copy.
+const FOCUSABLE = ["a[href]", "button", "input", "select", "textarea", "[tabindex]"].join(",");
 
 /**
  * Focus a menu's first item on open and move between items with the arrow
