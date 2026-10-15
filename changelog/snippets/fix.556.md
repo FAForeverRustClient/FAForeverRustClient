@@ -1,0 +1,1 @@
+- Tab no longer skips the Game folders, player and replay menus, and arrow keys move between their entries.
