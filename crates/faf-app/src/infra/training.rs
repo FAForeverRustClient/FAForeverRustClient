@@ -104,6 +104,10 @@ pub struct TrainingConfig {
     /// is willing to fetch. Empty turns the reader off, and every entry then
     /// opens in a browser.
     pub guides_repo: String,
+    /// GitHub's REST API, asked for a lesson folder's listing and the hash of
+    /// every file in it. The same `FAF_GUIDES_API_BASE` the submission queue
+    /// uses.
+    pub api_base: String,
     /// Where the last good manifest is kept, so the tab is not empty offline.
     /// `None` keeps nothing, which is what a test wants.
     pub cache_dir: Option<PathBuf>,
@@ -120,6 +124,7 @@ impl TrainingConfig {
             // here: it turns the remote catalogue off.
             manifest_url: env_or_disabled("FAF_TRAINING_CATALOGUE_URL", DEFAULT_MANIFEST),
             guides_repo: env_or("FAF_GUIDES_REPO", GUIDES_REPO),
+            api_base: env_or("FAF_GUIDES_API_BASE", GITHUB_API),
             cache_dir: super::cache_dir().ok().map(|root| root.join("training")),
             records_path: super::data_dir()
                 .ok()
@@ -207,6 +212,137 @@ fn lesson_placeholder_terrain(lesson: &LessonPackage) -> Option<String> {
     (!brings_terrain).then(|| format!("{}.scmap", lesson.folder))
 }
 
+/// Where a lesson folder's listing is asked for when nothing overrides it.
+const GITHUB_API: &str = "https://api.github.com";
+
+/// A folder listing names a handful of files; anything past this is not one.
+const MAX_LISTING_BYTES: u64 = 256 * 1024;
+
+/// One file of a lesson folder as the repository holds it right now.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RemoteLessonFile {
+    name: String,
+    /// Git's blob id: SHA-1 over `blob <length>\0` and the content. The
+    /// listing states it for every file, so a copy on disk is compared
+    /// without downloading anything.
+    sha: String,
+}
+
+/// One entry of GitHub's contents listing, as far as a lesson needs it.
+#[derive(Deserialize)]
+struct ListingEntry {
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    sha: String,
+    #[serde(default, rename = "type")]
+    kind: String,
+    #[serde(default)]
+    size: u64,
+}
+
+/// The contents listing of `lessons/<folder>/` on `branch`.
+///
+/// Built from the same checked repository, branch and folder as
+/// [`lesson_file_address`]; the branch goes in the query, where its slashes
+/// are plain characters.
+fn lesson_listing_address(api_base: &str, repo: &str, branch: &str, folder: &str) -> String {
+    format!(
+        "{}/repos/{repo}/contents/lessons/{folder}?ref={branch}",
+        api_base.trim_end_matches('/')
+    )
+}
+
+/// The lesson's files out of a contents listing, sorted by name.
+///
+/// The listing, not the catalogue's `files`, decides what a lesson is made
+/// of: the catalogue can come from a cache minutes or days old, the listing is
+/// read at the moment of the launch, so a file deleted or added since is never
+/// asked for or missed. Anything in the folder not named for the lesson (its
+/// README) is not part of it, and a name that would not pass
+/// [`LessonPackage::is_safe`] refuses the whole lesson.
+fn parse_lesson_listing(body: &str, folder: &str) -> Result<Vec<RemoteLessonFile>, String> {
+    let entries: Vec<ListingEntry> = serde_json::from_str(body)
+        .map_err(|error| format!("the lesson folder listing does not parse: {error}"))?;
+    let prefix = format!("{folder}_");
+    let mut files: Vec<RemoteLessonFile> = entries
+        .into_iter()
+        .filter(|entry| entry.kind == "file" && entry.name.starts_with(&prefix))
+        .map(|entry| {
+            if entry.size > MAX_LESSON_FILE_BYTES as u64 {
+                return Err(format!("the lesson file {} is too large", entry.name));
+            }
+            let sha_ok = entry.sha.len() == 40 && entry.sha.chars().all(|c| c.is_ascii_hexdigit());
+            if !sha_ok {
+                return Err(format!("the lesson file {} has no usable hash", entry.name));
+            }
+            Ok(RemoteLessonFile {
+                name: entry.name,
+                sha: entry.sha.to_ascii_lowercase(),
+            })
+        })
+        .collect::<Result<_, _>>()?;
+    files.sort_by(|a, b| a.name.cmp(&b.name));
+
+    let package = LessonPackage {
+        folder: folder.to_string(),
+        files: files.iter().map(|file| file.name.clone()).collect(),
+    };
+    if !package.is_safe() {
+        return Err("that lesson's files are not named the way a lesson's are".into());
+    }
+    let scenario = format!("{folder}_scenario.lua");
+    if !files.iter().any(|file| file.name == scenario) {
+        return Err(format!("the lesson folder has no {scenario}"));
+    }
+    Ok(files)
+}
+
+/// Git's blob id of `bytes`, the hash a contents listing states.
+fn git_blob_sha1(bytes: &[u8]) -> String {
+    use sha1::{Digest, Sha1};
+    let mut hasher = Sha1::new();
+    hasher.update(format!("blob {}\0", bytes.len()).as_bytes());
+    hasher.update(bytes);
+    hasher
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
+/// Whether `file` is on disk in `dir` with exactly the repository's content.
+fn local_file_matches(dir: &Path, file: &RemoteLessonFile) -> Option<Vec<u8>> {
+    let bytes = std::fs::read(dir.join(&file.name)).ok()?;
+    (git_blob_sha1(&bytes) == file.sha).then_some(bytes)
+}
+
+/// Whether the copy in `dir` is the repository's lesson as it stands: every
+/// file there with the listed hash, the placeholder terrain beside them, and
+/// nothing else. A file the lesson has since dropped counts as a change, so
+/// the folder is rebuilt without it.
+fn local_copy_is_current(
+    dir: &Path,
+    files: &[RemoteLessonFile],
+    placeholder: Option<&str>,
+) -> bool {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return false;
+    };
+    let mut on_disk: Vec<String> = entries
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .collect();
+    on_disk.sort();
+    let mut expected: Vec<String> = files.iter().map(|file| file.name.clone()).collect();
+    expected.extend(placeholder.map(str::to_string));
+    expected.sort();
+    on_disk == expected
+        && files
+            .iter()
+            .all(|file| local_file_matches(dir, file).is_some())
+}
+
 /// A URL with a value on it that changes, so the request is not answered from
 /// a CDN cache.
 ///
@@ -258,6 +394,69 @@ impl TrainingCatalogueClient {
 
     pub fn faf() -> Self {
         Self::new(TrainingConfig::faf())
+    }
+
+    /// The files of `lessons/<folder>/` on `branch`, each with its hash.
+    async fn lesson_listing(
+        &self,
+        repo: &str,
+        branch: &str,
+        folder: &str,
+    ) -> Result<Vec<RemoteLessonFile>, String> {
+        let address = lesson_listing_address(&self.config.api_base, repo, branch, folder);
+        let response = self
+            .http
+            .get(&address)
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .timeout(REQUEST_DEADLINE)
+            .send()
+            .await
+            .map_err(|error| format!("could not check the lesson for changes: {error}"))?;
+        let status = response.status();
+        if !status.is_success() {
+            return Err(format!("the lesson folder responded with {status}"));
+        }
+        let body = bounded_body(response, "the lesson folder listing", MAX_LISTING_BYTES).await?;
+        parse_lesson_listing(&String::from_utf8_lossy(&body), folder)
+    }
+
+    /// One lesson file, refused unless it hashes to what the listing said.
+    ///
+    /// The raw host's CDN is bypassed, but a commit can still land between
+    /// the listing and the download; the check turns that into a retry rather
+    /// than a lesson put together from two commits.
+    async fn download_lesson_file(
+        &self,
+        repo: &str,
+        branch: &str,
+        folder: &str,
+        file: &RemoteLessonFile,
+    ) -> Result<Vec<u8>, String> {
+        let address = lesson_file_address(repo, branch, folder, &file.name);
+        let response = self
+            .http
+            .get(uncached(&address))
+            .timeout(REQUEST_DEADLINE)
+            .send()
+            .await
+            .map_err(|error| format!("could not download the lesson: {error}"))?;
+        let status = response.status();
+        if !status.is_success() {
+            return Err(format!(
+                "the lesson file {} responded with {status}",
+                file.name
+            ));
+        }
+        let bytes =
+            bounded_body(response, "that lesson file", MAX_LESSON_FILE_BYTES as u64).await?;
+        if git_blob_sha1(&bytes) != file.sha {
+            return Err(format!(
+                "the lesson file {} changed while it was downloading; start the lesson again",
+                file.name
+            ));
+        }
+        Ok(bytes)
     }
 
     /// Ask for the manifest, conditionally when a cached copy names an `ETag`.
@@ -483,41 +682,64 @@ impl TrainingPort for TrainingCatalogueClient {
             return Err("that lesson's files are not named the way a lesson's are".into());
         }
 
+        let maps = crate::infra::maps::maps_dir();
+        let target = maps.join(&lesson.folder);
+        let branch = lesson_branch(&self.config.manifest_url, repo);
+
+        // What the repository holds right now, with a hash per file. Without
+        // it (offline, or GitHub's hourly limit for anonymous requests) a copy
+        // already on disk is played as it is: an older lesson is better than
+        // none, and nothing about it can be checked anyway.
+        let remote = match self.lesson_listing(repo, &branch, &lesson.folder).await {
+            Ok(remote) => remote,
+            Err(reason) => {
+                let scenario = target.join(format!("{}_scenario.lua", lesson.folder));
+                if scenario.is_file() {
+                    tracing::warn!(
+                        folder = %lesson.folder,
+                        %reason,
+                        "could not check the lesson for changes; starting the copy on disk"
+                    );
+                    return Ok(());
+                }
+                return Err(reason);
+            }
+        };
+        let current = LessonPackage {
+            folder: lesson.folder.clone(),
+            files: remote.iter().map(|file| file.name.clone()).collect(),
+        };
+        let placeholder = lesson_placeholder_terrain(&current);
+        if local_copy_is_current(&target, &remote, placeholder.as_deref()) {
+            return Ok(());
+        }
+
         // Every file first, then one swap: a lesson that downloads half its
         // files must not replace a working copy, and the game must never load
-        // a script from one commit with strings from another.
-        let maps = crate::infra::maps::maps_dir();
+        // a script from one commit with strings from another. A file whose
+        // copy on disk already has the listed hash is taken from there.
         std::fs::create_dir_all(&maps)
             .map_err(|error| format!("could not create the maps folder: {error}"))?;
         let staging = tempfile::Builder::new()
             .prefix(".lesson-")
             .tempdir_in(&maps)
             .map_err(|error| format!("could not prepare the lesson folder: {error}"))?;
-        let branch = lesson_branch(&self.config.manifest_url, repo);
-        for file in &lesson.files {
-            let address = lesson_file_address(repo, &branch, &lesson.folder, file);
-            let response = self
-                .http
-                .get(uncached(&address))
-                .timeout(REQUEST_DEADLINE)
-                .send()
-                .await
-                .map_err(|error| format!("could not download the lesson: {error}"))?;
-            let status = response.status();
-            if !status.is_success() {
-                return Err(format!("the lesson file {file} responded with {status}"));
-            }
-            let bytes =
-                bounded_body(response, "that lesson file", MAX_LESSON_FILE_BYTES as u64).await?;
-            std::fs::write(staging.path().join(file), bytes)
+        for file in &remote {
+            let bytes = match local_file_matches(&target, file) {
+                Some(bytes) => bytes,
+                None => {
+                    self.download_lesson_file(repo, &branch, &lesson.folder, file)
+                        .await?
+                }
+            };
+            std::fs::write(staging.path().join(&file.name), bytes)
                 .map_err(|error| format!("could not write the lesson: {error}"))?;
         }
-        if let Some(terrain) = lesson_placeholder_terrain(&lesson) {
+        if let Some(terrain) = placeholder {
             std::fs::write(staging.path().join(terrain), b"")
                 .map_err(|error| format!("could not write the lesson: {error}"))?;
         }
 
-        let target = maps.join(&lesson.folder);
         if target.exists() {
             std::fs::remove_dir_all(&target).map_err(|error| {
                 format!("could not replace the old copy of the lesson: {error}")
@@ -1299,6 +1521,115 @@ mod tests {
     }
 
     #[test]
+    fn a_blob_hash_is_the_one_git_states() {
+        // `git hash-object` of an empty file and of "hello\n".
+        assert_eq!(
+            git_blob_sha1(b""),
+            "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+        );
+        assert_eq!(
+            git_blob_sha1(b"hello\n"),
+            "ce013625030ba8dba906f756967f9e9ca394464a"
+        );
+    }
+
+    const SHA_A: &str = "ce013625030ba8dba906f756967f9e9ca394464a";
+    const SHA_B: &str = "E69DE29BB2D1D6434B8B29AE775AD8C2E48C5391";
+
+    #[test]
+    fn the_listing_decides_which_files_make_the_lesson() {
+        let body = format!(
+            r#"[
+                {{"name":"FAF_Lesson_A_script.lua","sha":"{SHA_A}","type":"file","size":6}},
+                {{"name":"README.md","sha":"{SHA_A}","type":"file","size":6}},
+                {{"name":"FAF_Lesson_A_scenario.lua","sha":"{SHA_B}","type":"file","size":0}},
+                {{"name":"FAF_Lesson_A_extras","sha":"{SHA_A}","type":"dir","size":0}}
+            ]"#
+        );
+        assert_eq!(
+            parse_lesson_listing(&body, "FAF_Lesson_A").unwrap(),
+            vec![
+                RemoteLessonFile {
+                    name: "FAF_Lesson_A_scenario.lua".into(),
+                    sha: SHA_B.to_ascii_lowercase(),
+                },
+                RemoteLessonFile {
+                    name: "FAF_Lesson_A_script.lua".into(),
+                    sha: SHA_A.into(),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn a_listing_without_a_scenario_or_with_an_odd_name_is_refused() {
+        let no_scenario = format!(
+            r#"[{{"name":"FAF_Lesson_A_script.lua","sha":"{SHA_A}","type":"file","size":6}}]"#
+        );
+        assert!(parse_lesson_listing(&no_scenario, "FAF_Lesson_A").is_err());
+        let odd_name = format!(
+            r#"[{{"name":"FAF_Lesson_A_scenario.lua","sha":"{SHA_A}","type":"file","size":6}},
+                {{"name":"FAF_Lesson_A_a b.lua","sha":"{SHA_A}","type":"file","size":6}}]"#
+        );
+        assert!(parse_lesson_listing(&odd_name, "FAF_Lesson_A").is_err());
+        let no_hash = r#"[{"name":"FAF_Lesson_A_scenario.lua","sha":"","type":"file","size":6}]"#;
+        assert!(parse_lesson_listing(no_hash, "FAF_Lesson_A").is_err());
+    }
+
+    #[test]
+    fn a_lesson_folder_is_listed_through_the_api_on_its_branch() {
+        assert_eq!(
+            lesson_listing_address(
+                "https://api.github.com/",
+                "FAForeverRustClient/guides",
+                "lessons/gunships",
+                "FAF_Lesson_A"
+            ),
+            "https://api.github.com/repos/FAForeverRustClient/guides/contents/lessons/FAF_Lesson_A?ref=lessons/gunships"
+        );
+    }
+
+    #[test]
+    fn only_an_exact_copy_on_disk_skips_the_download() {
+        let dir = tempfile::tempdir().unwrap();
+        let files = vec![
+            RemoteLessonFile {
+                name: "FAF_Lesson_A_scenario.lua".into(),
+                sha: SHA_A.into(),
+            },
+            RemoteLessonFile {
+                name: "FAF_Lesson_A_script.lua".into(),
+                sha: SHA_B.to_ascii_lowercase(),
+            },
+        ];
+        let placeholder = Some("FAF_Lesson_A.scmap");
+        std::fs::write(dir.path().join("FAF_Lesson_A_scenario.lua"), b"hello\n").unwrap();
+        std::fs::write(dir.path().join("FAF_Lesson_A_script.lua"), b"").unwrap();
+        // The placeholder terrain is part of a complete copy.
+        assert!(!local_copy_is_current(dir.path(), &files, placeholder));
+        std::fs::write(dir.path().join("FAF_Lesson_A.scmap"), b"").unwrap();
+        assert!(local_copy_is_current(dir.path(), &files, placeholder));
+
+        // A file the lesson has dropped since is a change.
+        let stale = dir.path().join("FAF_Lesson_A_operation.lua");
+        std::fs::write(&stale, b"old").unwrap();
+        assert!(!local_copy_is_current(dir.path(), &files, placeholder));
+        std::fs::remove_file(&stale).unwrap();
+
+        // So is a file whose content differs from the repository's.
+        std::fs::write(dir.path().join("FAF_Lesson_A_script.lua"), b"edited").unwrap();
+        assert!(!local_copy_is_current(dir.path(), &files, placeholder));
+        assert!(local_file_matches(dir.path(), &files[0]).is_some());
+        assert!(local_file_matches(dir.path(), &files[1]).is_none());
+
+        assert!(!local_copy_is_current(
+            &dir.path().join("missing"),
+            &files,
+            placeholder
+        ));
+    }
+
+    #[test]
     fn a_lesson_file_is_addressed_inside_the_trusted_repository() {
         assert_eq!(
             lesson_file_address(
@@ -1403,6 +1734,7 @@ mod tests {
         TrainingCatalogueClient::new(TrainingConfig {
             manifest_url: manifest_url.into(),
             guides_repo: GUIDES_REPO.into(),
+            api_base: GITHUB_API.into(),
             cache_dir,
             records_path: None,
         })

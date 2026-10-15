@@ -29,6 +29,10 @@ keyring = { version = "3", features = ["apple-native", "windows-native", "sync-s
 open = "5"
 url = "2"
 sha2 = "0.10"
+# Git's blob ids, which GitHub's contents listing states per file: a lesson
+# on disk is compared with the repository without downloading it (see
+# infra/training.rs). Already in the tree through tungstenite and zip.
+sha1 = "0.10"
 base64 = "0.22"
 rand = "0.8"
 # Decompresses `.fafreplay` bodies (see infra/replay.rs): "zstd" for

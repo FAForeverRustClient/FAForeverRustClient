@@ -512,7 +512,7 @@ async fn launch_lesson(resource_id: String, ctx: &ServiceCtx, out: &EventSink) {
 
     out.emit(TrainingEvent::LessonPreparing {
         resource_id: resource_id.clone(),
-        detail: "Downloading the lesson".into(),
+        detail: "Checking the lesson for updates".into(),
     });
     let installed = tokio::select! {
         biased;
