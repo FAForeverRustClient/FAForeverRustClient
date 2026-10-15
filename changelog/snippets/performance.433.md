@@ -1,1 +1,0 @@
-- The Live replays tab no longer blocks switching tabs, and a tab switch never waits behind background work.

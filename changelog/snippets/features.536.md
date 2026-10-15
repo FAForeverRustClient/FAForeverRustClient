@@ -1,1 +1,0 @@
-- The Galactic War tab has a cleaner look: each faction card shows its share of the galaxy against the other factions.

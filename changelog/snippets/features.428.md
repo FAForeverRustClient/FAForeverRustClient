@@ -1,1 +1,0 @@
-- Fifty more face emoji in the chat emoji picker.

@@ -1,2 +1,0 @@
-- A calmer large map preview, with "Open in the map vault".
-- Generated map previews show FAF's mass, hydro and spawn icons.

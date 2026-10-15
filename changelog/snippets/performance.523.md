@@ -1,1 +1,0 @@
-- Games start a few seconds sooner: Forged Alliance now launches right away, while the connection adapter starts and the relay servers are fetched in the background.

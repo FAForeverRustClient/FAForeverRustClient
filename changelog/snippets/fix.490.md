@@ -1,1 +1,0 @@
-- A game launch retries when FAF's relay server briefly answers with an error, and the message says what failed.

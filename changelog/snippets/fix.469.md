@@ -1,3 +1,0 @@
-- After a crash the client cleans up interrupted work, and a mod update can no longer lose the installed version.
-- Error messages are written in plain words.
-- Escape closes only the topmost window, and the keyboard works in dropdowns, sliders and the chat.

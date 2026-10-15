@@ -1,1 +1,0 @@
-- The matchmaker invite window sorts and filters players by name, clan, country, friends and rating, and shows flags and ratings.

@@ -1,1 +1,0 @@
-- The co-op Host dialog shows a larger mission picture that opens enlarged.

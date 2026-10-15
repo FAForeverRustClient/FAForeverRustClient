@@ -1,1 +1,0 @@
-- Opening the details or analysis of a large replay uses far less memory.

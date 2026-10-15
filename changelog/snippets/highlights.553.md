@@ -1,0 +1,5 @@
+- Help us test Exp Java, a new experimental connection adapter built on WebRTC. Host a game on it in Settings, Connectivity: players of this client on the default Dynamic setting join on it by themselves, players of other clients cannot connect to it. Reports from games with many players help most, good or bad.
+- Games start several seconds sooner: Forged Alliance launches while the connection is still being set up.
+- A new look for the Play, Maps, Mods, Leaderboard and Tournaments tabs and the player card.
+- Playable lessons in the Training tab, and written guides that read as chapters with pictures and videos.
+- Closing the client during a game no longer drops you from it: the client hides in the tray and quits when the game ends.

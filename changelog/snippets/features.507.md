@@ -1,1 +1,0 @@
-- The External links tab is laid out as four cards with an icon for every site, and fits on one screen.

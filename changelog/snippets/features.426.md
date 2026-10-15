@@ -1,6 +1,0 @@
-- The 24-hour clock setting applies everywhere, not only in chat.
-- The leaderboard remembers "Include previous names".
-- Generating several maps at once rolls new settings for every map, not only a new seed.
-- A generated map in a hosted game can be saved as a generator preset.
-- Replays can be searched by lobby title.
-- Tournament match chat looks like the Chat tab, and organisers can add themselves.

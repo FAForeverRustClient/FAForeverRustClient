@@ -1,3 +1,0 @@
-- Tournament dates, countdowns and prizes follow the client language.
-- Reconnecting or rejoining a channel no longer repeats its history.
-- A new player's first game no longer stops at a missing BugSplat.dll.
