@@ -21,8 +21,7 @@ import {
   columnTemplate,
   columnWidths,
   FLEXIBLE_COLUMN,
-  TAGS_COLUMN,
-  withTagsRoom,
+  withSpareRoom,
 } from "./browserLayout";
 
 /**
@@ -134,8 +133,8 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
   }, [enabled]);
   const fit = fitColumns(widths, COLUMN_FLOORS, space);
   const { scale } = fit;
-  // Spare room tops the tags column up before the game column takes the rest.
-  const drawn = withTagsRoom(fit, space);
+  // Spare room is shared by every column before the game column takes the rest.
+  const drawn = withSpareRoom(fit, space);
   const template = columnTemplate(order.map((column) => drawn[column]), gamePosition);
   // Only when every column is at its floor and the floors are wider than the
   // list: the header and every row are then as wide as the floors, so the
@@ -163,16 +162,16 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
   // its columns the game column is drawn wider than its stored width, and a
   // drag starts from what is on screen, or the divider would jump.
   const drawnGame = useRef<number | null>(null);
-  // The same for the tags column, which spare room can draw wider than its
-  // stored width (`withTagsRoom`).
-  const drawnTags = useRef<number | null>(null);
+  // The same for every other column, which spare room draws wider than its
+  // stored width (`withSpareRoom`).
+  const drawnColumns = useRef<number[] | null>(null);
   // The scale the drag started at. It holds for the whole drag, since a trade
   // keeps the total, and a re-render part way through must not change it.
   const dragScale = useRef(1);
   const onStart = () => {
     const cell = headerRef.current?.children[FLEXIBLE_COLUMN];
     drawnGame.current = scale >= 1 && cell ? Math.round(cell.getBoundingClientRect().width) : null;
-    drawnTags.current = scale >= 1 ? drawn[TAGS_COLUMN] : null;
+    drawnColumns.current = scale >= 1 ? drawn : null;
     dragScale.current = scale;
     setResizing(true);
   };
@@ -181,9 +180,7 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
     dragOrigin.current ??= widths.map((width, index) =>
       index === FLEXIBLE_COLUMN
         ? drawnGame.current ?? width
-        : index === TAGS_COLUMN
-          ? drawnTags.current ?? width
-          : width,
+        : drawnColumns.current?.[index] ?? width,
     );
     // The pointer moves in drawn pixels and the widths are stored unscaled:
     // at half scale a stored width changes twice as far, which is what keeps
@@ -209,7 +206,7 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
     const committed = latestWidths.current ?? localWidths;
     dragOrigin.current = null;
     drawnGame.current = null;
-    drawnTags.current = null;
+    drawnColumns.current = null;
     latestWidths.current = null;
     setResizing(false);
     if (committed) saveBrowser({ columnWidths: committed });
