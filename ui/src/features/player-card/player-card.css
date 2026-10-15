@@ -1,29 +1,731 @@
-/* The cap used to be 820px, which is shorter than the panel's own content on
-   every screen, so the scrollbar in the report was there at 1080p and 1440p
-   alike: it was not a resolution bug, it was a cap that never moved. 1120px
-   fits the densest profile, and the viewport still wins on a laptop, where the
-   panel is as tall as the window allows and scrolls inside. */
+/* As tall as the tab it shows, up to a cap. The cap used to be 820px, which
+   is shorter than the panel's own content on every screen, so the scrollbar
+   in the report was there at 1080p and 1440p alike. 1120px fits the densest
+   profile, and the viewport still wins on a laptop, where the panel is as
+   tall as the window allows and scrolls inside. It was that tall always,
+   whatever the tab, which left a short overview standing over empty space. */
 .modal-panel.player-card-modal {
   display: flex;
   flex-direction: column;
   width: min(1180px, calc(100vw - 48px));
-  height: min(1120px, calc(100vh - 32px));
+  height: auto;
   max-width: none;
-  max-height: none;
+  max-height: min(1120px, calc(100vh - 32px));
   padding: 0;
   overflow: hidden;
 }
 
-.player-card-header {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(260px, 420px);
+/* ── Header ───────────────────────────────────────────────────────────── */
+/* Who on the left, what to do with them on the right, on the raised ground
+   the launch overlays and the links cards use for a head. The right padding
+   leaves the modal's close button its corner. */
+.player-card-hero {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-3) var(--space-4);
-  padding: var(--space-4) 52px var(--space-3) var(--space-4);
+  padding: 20px 56px 16px var(--space-4);
+  background: var(--color-surface-raised);
   border-bottom: 1px solid var(--color-border);
 }
 
-.player-card-identity,
-.player-card-actions,
+.player-card-identity {
+  display: flex;
+  flex: 1 1 320px;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.player-card-name-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.player-card-avatar {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 20px;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+.player-card-name-row h2 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The tag reads as part of the name, a shade quieter, and opens the clan. */
+.player-card-clan-tag {
+  flex: 0 0 auto;
+  padding: 0;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.player-card-clan-tag:hover {
+  color: var(--color-text);
+}
+
+.player-card-copy {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: var(--color-subtle);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.player-card-copy:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.player-card-clan-tag:focus-visible,
+.player-card-copy:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Facts about the person, one quiet line, a hairline between each. */
+.player-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 4px;
+  margin: 0;
+  padding: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  list-style: none;
+}
+
+.player-card-meta li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 var(--space-3);
+  border-left: 1px solid var(--color-border-strong);
+  line-height: 1.2;
+}
+
+.player-card-meta li:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.player-card-meta img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.player-card-presence {
+  color: var(--color-text);
+}
+
+.player-card-presence-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--color-ok);
+  border-radius: 50%;
+}
+
+.player-card-presence.is-lobby .player-card-presence-dot {
+  background: var(--color-warn);
+}
+
+.player-card-you {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.player-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.player-card-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Sections and search ──────────────────────────────────────────────── */
+/* The section tabs with the lookup at the end of the same line, on the rule
+   the tabs' underline sits on. */
+.player-card-nav {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.player-card-nav > .player-card-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-self: stretch;
+  border-bottom: 0;
+}
+
+.player-card-nav > .player-card-lookup-wrap {
+  flex: 0 1 260px;
+  min-width: 180px;
+}
+
+.player-card-nav .player-card-lookup-field {
+  min-height: 30px;
+}
+
+/* ── Overview ─────────────────────────────────────────────────────────── */
+/* The ratings across the card, everything else as cards under them. */
+.player-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: calc(var(--space-4) + var(--space-2));
+}
+
+.player-overview-notices {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.player-overview-section {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.player-overview-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 28px;
+}
+
+.player-overview-section-head h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.player-card-head-action,
+.player-overview-more button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.player-overview-more {
+  display: flex;
+}
+
+.player-overview-empty {
+  margin: 0;
+  padding: var(--space-4);
+  text-align: center;
+}
+
+/* One tile per queue, all in one row across the card (see
+   `queueTileColumns`), so five queues are five equal tiles rather than a row
+   of three and a row of two. */
+.player-queue-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--queue-columns, 3), minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.player-queue-tile {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow: hidden;
+  padding: var(--space-3) var(--space-4) 0;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+}
+
+.player-queue-tile.is-link {
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.player-queue-tile.is-link:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.player-queue-tile.is-link:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.player-queue-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-2);
+  min-height: 26px;
+}
+
+/* The queue's name in the rating colour, as on the tiles before. */
+.player-queue-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-rating);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* The number somebody opened the card for. */
+.player-queue-rating {
+  color: var(--color-rating);
+  font-size: 28px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.player-queue-rating.is-empty {
+  color: var(--color-subtle);
+}
+
+.player-queue-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.player-queue-skill {
+  overflow: hidden;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The games and the way to the graph, on the facts strip's tinted ground
+   across the tile's foot. */
+.player-queue-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: auto calc(-1 * var(--space-4)) 0;
+  padding: 8px var(--space-4);
+  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
+  border-top: 1px solid var(--color-border);
+}
+
+.player-queue-games {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-queue-graph {
+  display: inline-flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-queue-tile.is-link:hover .player-queue-graph {
+  color: var(--color-text);
+}
+
+/* The league as its emblem alone, large in the tile's top corner. Laid over
+   the head and the rating rather than in the head's line, so the emblem's
+   size does not push the rating down or make tiles with one taller than
+   tiles without. */
+.player-queue-tile {
+  position: relative;
+}
+
+.player-queue-league {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.player-queue-tile:has(.player-queue-league) .player-queue-name {
+  padding-right: 52px;
+}
+
+.player-queue-league.is-text {
+  position: static;
+  width: auto;
+  height: auto;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Factions: one bar split by games, a line per faction under it. */
+.player-faction-summary {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.player-faction-bar {
+  display: flex;
+  height: 8px;
+  overflow: hidden;
+  gap: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.player-faction-bar > span {
+  min-width: 2px;
+}
+
+.player-faction-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.player-faction-list li {
+  display: grid;
+  grid-template-columns: 16px auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+}
+
+.player-faction-name {
+  font-weight: 600;
+}
+
+.player-faction-share {
+  font-variant-numeric: tabular-nums;
+}
+
+.player-faction-detail {
+  overflow: hidden;
+  font-size: 12px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Overview cards ───────────────────────────────────────────────────── */
+/* Two columns the browser balances by height, so whichever cards a profile
+   has, neither side runs on with empty space beside it. A card never breaks
+   across the two. */
+.player-overview-cards {
+  column-count: 2;
+  column-gap: var(--space-4);
+}
+
+.player-overview-card,
+.player-overview-cards > .player-note-card {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 14px var(--space-4) var(--space-4);
+  break-inside: avoid;
+}
+
+/* The note keeps its own component; here it is a card like the others, its
+   text over its button. */
+.player-overview-cards > .player-note-card {
+  align-items: start;
+  justify-items: start;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.player-overview-cards > .player-note-card.is-editing {
+  justify-items: stretch;
+}
+
+.player-overview-cards > .player-note-card .player-card-eyebrow,
+.player-overview-card-head h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.player-overview-cards > .player-note-card p {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.player-overview-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 26px;
+}
+
+/* A counter after a heading, square-cornered on a raised ground. */
+.player-overview-count {
+  padding: 1px 6px;
+  color: var(--color-text);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-sm) - 2px);
+}
+
+.player-overview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 13px;
+}
+
+/* The clan as one row that opens its tab. */
+.player-overview-clan {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px var(--space-2);
+  margin: 0 calc(-1 * var(--space-2));
+  padding: var(--space-2);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.player-overview-clan:hover {
+  background: var(--color-surface-hover);
+}
+
+.player-overview-clan:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.player-overview-clan-name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-overview-clan-tag {
+  margin-right: 6px;
+  color: var(--color-muted);
+}
+
+.player-overview-clan > .muted {
+  grid-column: 1;
+  font-size: 12px;
+}
+
+.player-overview-clan-go {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  color: var(--color-subtle);
+}
+
+/* The account's facts band runs to the card's edges and ends on its foot. */
+.player-overview-card.is-facts {
+  --facts-strip-bleed: var(--space-4);
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.player-overview-card.is-facts .facts-strip {
+  margin-top: var(--space-1);
+  border-bottom: 0;
+}
+
+.player-former-names {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.player-former-names li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 13px;
+}
+
+.player-former-names li > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-former-names li > .muted {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+/* Avatars as their pictures, the names on hover and the worn one named
+   under them. */
+.player-avatar-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.player-avatar-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 34px;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.player-avatar-tile img {
+  width: 40px;
+  height: 20px;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+.player-avatar-tile.is-selected {
+  border-color: var(--color-accent);
+}
+
+button.player-avatar-tile {
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+button.player-avatar-tile:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+button.player-avatar-tile.is-selected,
+button.player-avatar-tile.is-selected:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  cursor: default;
+}
+
+button.player-avatar-tile:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+button.player-avatar-tile:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+/* "No avatar": the empty slot an avatar would fill. */
+.player-avatar-empty {
+  width: 40px;
+  height: 20px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.player-avatar-caption,
+.player-avatar-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .player-overview-cards {
+    column-count: 1;
+  }
+}
+
+@media (max-width: 720px) {
+  /* A narrow card fills by width instead of by count. */
+  .player-queue-grid {
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  }
+
+  .player-card-nav {
+    flex-wrap: wrap;
+    padding-bottom: var(--space-2);
+  }
+
+  .player-card-nav > .player-card-lookup-wrap {
+    flex-basis: 100%;
+  }
+}
+
 .player-card-section-heading,
 .player-history-toolbar,
 .player-history-paging,
@@ -33,31 +735,11 @@
   align-items: center;
 }
 
-.player-card-identity {
-  min-width: 0;
-  gap: var(--space-3);
-}
-
-.player-card-identity img {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-}
-
-.player-card-identity h2,
 .player-card-section-heading h3,
 .player-achievements-view h3,
 .player-clan-overview h3,
 .player-stats-chart h3 {
   margin: 0;
-}
-
-.player-card-identity h2 {
-  overflow: hidden;
-  font-size: 22px;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .player-card-eyebrow {
@@ -213,12 +895,6 @@
   outline: 2px solid var(--color-accent-glow);
 }
 
-.player-card-actions {
-  grid-column: 1 / -1;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
 /* `SectionTabs` brings the strip's own layout, gap, overflow and underline.
    Only the modal's horizontal inset is added here: vertical padding would lift
    the active marker off the rule it is supposed to sit on. */
@@ -228,7 +904,7 @@
 }
 
 .player-card-content {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
   padding: var(--space-4);
   /* The scrollbar's kept room counts as part of the right padding, so the
@@ -255,6 +931,9 @@
 }
 
 .player-card-former-name {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
   margin: 0;
   padding: var(--space-3);
   color: var(--color-muted);
@@ -283,13 +962,6 @@
   gap: var(--space-4);
 }
 
-.player-account-card {
-  display: grid;
-  grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr);
-  gap: var(--space-4);
-  padding: var(--space-4);
-}
-
 .player-account-details {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -305,113 +977,15 @@
   background: var(--color-bg);
 }
 
-.player-account-details dt,
-.player-rating-summary dt {
+.player-account-details dt {
   color: var(--color-muted);
   font-size: 11px;
 }
 
-.player-account-details dd,
-.player-rating-summary dd {
+.player-account-details dd {
   margin: 2px 0 0;
   overflow-wrap: anywhere;
   font-size: 12px;
-}
-
-.player-avatar-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-}
-
-.player-avatar {
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-height: 72px;
-  padding: 6px;
-  color: var(--color-muted);
-  background: var(--color-bg);
-  font-size: 11px;
-  text-align: center;
-}
-
-.player-avatar.is-selected {
-  color: var(--color-text);
-  border-color: var(--color-border-strong);
-}
-
-/* Your own avatars are buttons: the tile reacts like any other control, and
-   the one you wear is marked in the accent rather than a slightly lighter
-   border. */
-.player-avatar.is-selectable {
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
-}
-
-.player-avatar.is-selectable:hover:not(:disabled) {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
-  border-color: var(--color-border-strong);
-}
-
-.player-avatar.is-selectable:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-.player-avatar.is-selectable.is-selected {
-  border-color: var(--color-accent);
-  cursor: default;
-}
-
-.player-avatar.is-selectable:disabled {
-  cursor: wait;
-  opacity: 0.65;
-}
-
-.player-avatar img {
-  width: 40px;
-  height: 20px;
-  object-fit: contain;
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
-  image-rendering: pixelated;
-}
-
-/* The name takes the room under the image and sits in the middle of it, so a
-   one-line name and a two-line one share a midline while every image stays
-   on the same top line. Stacked from the top, "No avatar" sat a line higher
-   than its neighbours. */
-.player-avatar-name {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  line-height: 1.3;
-}
-
-.player-avatar small {
-  color: var(--color-subtle);
-}
-
-/* "No avatar": the empty slot an avatar would fill. */
-.player-avatar-empty {
-  width: 40px;
-  height: 20px;
-  border: 1px dashed var(--color-border-strong);
-  border-radius: var(--radius-sm);
-}
-
-/* The avatar fallback, said once under the list it acts on. */
-.player-avatar-hint {
-  margin: var(--space-2) 0 0;
-  font-size: 12px;
-  line-height: 1.45;
 }
 
 .player-card-section-heading {
@@ -427,128 +1001,16 @@
   font-size: 15px;
 }
 
-.player-rating-grid,
-.player-placement-grid,
 .player-achievement-grid,
 .player-statistics-grid {
   display: grid;
   gap: var(--space-3);
 }
 
-.player-rating-grid {
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-}
-
-.player-rating-summary {
-  display: flex;
-  min-height: 176px;
-  flex-direction: column;
-  padding: var(--space-3);
-  color: var(--color-text);
-  text-align: left;
-  transition: background-color 120ms ease, border-color 120ms ease, transform 120ms ease;
-}
-
-.player-rating-summary:hover {
-  background: var(--color-surface-hover);
-  border-color: var(--color-border-strong);
-  transform: translateY(-1px);
-}
-
-.player-rating-summary:focus-visible,
 .player-clan-members button:focus-visible,
 .player-rating-selection button:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
-}
-
-.player-rating-value {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin: var(--space-1) 0;
-}
-
-/* The rating, and the queue it belongs to, in the theme's rating colour.
-   Everything else on the card is text, muted or subtle; these two are what
-   somebody opened a player card to read, and they were the same white as the
-   games count next to them. The queue name keeps the eyebrow's size and
-   spacing and only changes colour, so the card's shape is unchanged. */
-.player-rating-value > strong {
-  color: var(--color-rating);
-  font-size: 27px;
-  font-weight: 600;
-}
-
-.player-rating-summary > .player-card-eyebrow {
-  color: var(--color-rating);
-}
-
-.player-rating-value > span {
-  display: flex;
-  align-items: flex-end;
-  flex-direction: column;
-  color: var(--color-muted);
-  font-size: 11px;
-}
-
-.player-rating-value small {
-  color: var(--color-subtle);
-  font-size: 11px;
-  text-transform: uppercase;
-}
-
-.player-rating-summary dl {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-2);
-  margin: var(--space-3) 0;
-}
-
-.player-rating-link {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin-top: auto;
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.player-rating-summary dl div {
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--color-border);
-}
-
-.player-placement-grid {
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-}
-
-.player-placement-grid article {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3);
-}
-
-.player-placement-grid img {
-  width: 58px;
-  height: 58px;
-  object-fit: contain;
-}
-
-.player-placement-grid article div {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.player-placement-grid span,
-.player-placement-grid small {
-  color: var(--color-muted);
-  font-size: 11px;
 }
 
 .player-history-toolbar {
@@ -1267,15 +1729,6 @@
     height: calc(100vh - 24px);
   }
 
-  .player-card-header {
-    grid-template-columns: 1fr;
-  }
-
-  .player-card-actions {
-    grid-column: auto;
-  }
-
-  .player-account-card,
   .player-statistics-grid {
     grid-template-columns: 1fr;
   }
@@ -1291,13 +1744,8 @@
 }
 
 @media (max-width: 620px) {
-  .player-card-content,
-  .player-card-header {
+  .player-card-content {
     padding: var(--space-3);
-  }
-
-  .player-card-header {
-    padding-right: 46px;
   }
 
   .player-account-details,
