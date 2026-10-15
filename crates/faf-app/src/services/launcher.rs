@@ -77,6 +77,13 @@ pub async fn start(
     out: &EventSink,
     already_prepared: bool,
 ) -> Option<LaunchSession> {
+    if ctx.ports.process.game_running() {
+        return fail(
+            ctx,
+            out,
+            "Forged Alliance is already running. Close it before starting another game.".into(),
+        );
+    }
     let Some(player) = out.with_state(|state| state.auth.player.clone()) else {
         return fail(ctx, out, "not logged in".into());
     };

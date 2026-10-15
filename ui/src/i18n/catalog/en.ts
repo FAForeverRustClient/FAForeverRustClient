@@ -238,7 +238,7 @@ export const en = {
   "lobby.host.mapGeneratedDescription": "Generated Neroxis map.",
   "playerCard.clearSearch": "Clear search",
   "shell.exitGuard.title": "Forged Alliance is still running",
-  "shell.exitGuard.body": "Closing the client now also shuts down the connection to the game, so you would drop out of the match. Quit the game first if it is still in progress.",
+  "shell.exitGuard.body": "Closing the client now also shuts down the connection to the game, so you would drop out of the match, and a lesson would lose its result. Quit the game first if it is still in progress.",
   "shell.exitGuard.keepOpen": "Keep the client open",
   "shell.exitGuard.closeAnyway": "Close anyway",
   "clan.loading": "Reading your clan…",

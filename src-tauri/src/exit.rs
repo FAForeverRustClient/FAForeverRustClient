@@ -134,7 +134,15 @@ pub(crate) fn prompt_for(origin: Origin, page_ready: bool) -> Prompt {
 }
 
 fn in_game(core: &App) -> bool {
-    core.with_state(|state| matches!(state.lobby.join, JoinState::InGame))
+    game_activity(
+        core.with_state(|state| matches!(state.lobby.join, JoinState::InGame)),
+        core.game_running(),
+        core.lesson_result_pending(),
+    )
+}
+
+fn game_activity(online: bool, process_running: bool, lesson_result_pending: bool) -> bool {
+    online || process_running || lesson_result_pending
 }
 
 fn page_is_ready(app: &tauri::AppHandle) -> bool {
@@ -149,13 +157,10 @@ pub(crate) fn on_close_request(app: &tauri::AppHandle, origin: Origin) -> Decisi
     let Some(core) = app.try_state::<Core>() else {
         return Decision::Exit;
     };
-    let (in_game, keep_running) = core.0.with_state(|state| {
-        (
-            matches!(state.lobby.join, JoinState::InGame),
-            state.settings.general.keep_running_during_game,
-        )
-    });
-    let decision = decide(in_game, keep_running, waiting(app));
+    let keep_running = core
+        .0
+        .with_state(|state| state.settings.general.keep_running_during_game);
+    let decision = decide(in_game(&core.0), keep_running, waiting(app));
     match decision {
         Decision::Exit => {}
         Decision::Hide => {
@@ -189,7 +194,8 @@ fn ask_natively(app: &tauri::AppHandle) {
     app.dialog()
         .message(
             "Closing the client now also shuts down the connection to the game, so you would \
-             drop out of the match. Quit the game first if it is still in progress.",
+             drop out of the match, and a lesson would lose its result. Quit the game first if \
+             it is still in progress.",
         )
         .title("Forged Alliance is still running")
         .kind(MessageDialogKind::Warning)
@@ -238,17 +244,22 @@ pub(crate) fn may_exit(since_game_ended: Duration, replay_pending: bool) -> bool
 /// Exit once the game a hidden client is waiting on has ended and its replay
 /// is uploaded.
 ///
-/// Every event the core sends is a moment the game may have ended at, so this
-/// checks then rather than on a timer. From there it polls the replay upload,
-/// and stays if the client is brought back from the tray or a game starts.
+/// Check backend events and poll for offline exits and lesson saves, which
+/// need not emit a lobby event. From there, poll the replay upload and stay
+/// if the client is brought back from the tray or another game starts.
 pub(crate) fn watch(app: &tauri::App, core: Arc<App>) {
     let handle = app.handle().clone();
     let mut events = core.subscribe();
     tauri::async_runtime::spawn(async move {
         loop {
-            match events.recv().await {
-                Ok(_) | Err(RecvError::Lagged(_)) => {}
-                Err(RecvError::Closed) => break,
+            tokio::select! {
+                event = events.recv() => match event {
+                    Ok(_) | Err(RecvError::Lagged(_)) => {}
+                    Err(RecvError::Closed) => break,
+                },
+                // A lesson save and an offline game exit need not emit a lobby
+                // event. Observe their completion even when the client is quiet.
+                () = tokio::time::sleep(POLL) => {}
             }
             if !waiting(&handle) || in_game(&core) {
                 continue;
@@ -277,7 +288,18 @@ pub(crate) fn watch(app: &tauri::App, core: Arc<App>) {
 mod tests {
     use std::time::Duration;
 
-    use super::{decide, may_exit, prompt_for, Decision, Origin, Prompt, MAX_GRACE, MIN_GRACE};
+    use super::{
+        decide, game_activity, may_exit, prompt_for, Decision, Origin, Prompt, MAX_GRACE, MIN_GRACE,
+    };
+
+    #[test]
+    fn offline_games_and_lesson_results_get_the_same_close_protection() {
+        for (running, saving) in [(true, false), (false, true)] {
+            let active = game_activity(false, running, saving);
+            assert_eq!(decide(active, true, false), Decision::Hide);
+            assert_eq!(decide(active, false, false), Decision::Ask);
+        }
+    }
 
     #[test]
     fn outside_a_game_closing_exits_whatever_the_setting() {

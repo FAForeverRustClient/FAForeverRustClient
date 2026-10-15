@@ -216,6 +216,7 @@ pub struct App {
     /// The game port, for [`Self::replay_upload_pending`]: the one thing about
     /// a game's end the state does not record.
     process: Arc<dyn crate::ports::ProcessPort>,
+    lesson_results: Arc<std::sync::atomic::AtomicUsize>,
 }
 
 /// The command-processing loop. Spawn `run()` on any async runtime.
@@ -503,6 +504,7 @@ impl App {
             versioned_event_tx,
             revision,
             process,
+            lesson_results: ctx.training.lesson_results.clone(),
         };
         let app_loop = AppLoop {
             cmd_rx,
@@ -650,6 +652,18 @@ impl App {
     /// must not cut the upload short.
     pub fn replay_upload_pending(&self) -> bool {
         self.process.replay_upload_pending()
+    }
+
+    /// Includes offline games, lessons and tutorials, which have no lobby join.
+    pub fn game_running(&self) -> bool {
+        self.process.game_running()
+    }
+
+    /// A completed lesson has not finished reading or saving its result yet.
+    pub fn lesson_result_pending(&self) -> bool {
+        self.lesson_results
+            .load(std::sync::atomic::Ordering::SeqCst)
+            != 0
     }
 }
 

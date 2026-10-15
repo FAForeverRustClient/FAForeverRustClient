@@ -116,6 +116,8 @@ enum Slot {
 }
 
 pub struct GameProcess {
+    /// Check both process slots and publish a new child as one operation.
+    launching: Mutex<()>,
     /// Behind a lock because Settings can repoint the installs at runtime
     /// (`ProcessPort::set_paths`): the paths are no longer startup-only.
     config: Mutex<GameConfig>,
@@ -149,6 +151,7 @@ pub struct GameProcess {
 impl GameProcess {
     pub fn new(config: GameConfig) -> Self {
         Self {
+            launching: Mutex::new(()),
             config: Mutex::new(config),
             game_child: Arc::new(Mutex::new(None)),
             replay_child: Arc::new(Mutex::new(None)),
@@ -263,6 +266,17 @@ impl GameProcess {
         args: &[String],
         what: &str,
     ) -> Result<(), String> {
+        let _launch = self.launching.lock().unwrap();
+        let mut current = self.slot(slot).lock().unwrap();
+        if slot == Slot::Game {
+            if let Some(running) = current.as_mut() {
+                match running.child.try_wait() {
+                    Ok(Some(_)) => {}
+                    Ok(None) => return Err("Forged Alliance is already running. Close it before starting another game.".into()),
+                    Err(error) => return Err(format!("could not check the running game: {error}")),
+                }
+            }
+        }
         if game_path.is_empty() {
             return Err(format!(
                 "no {what} install configured: set it in Settings → Paths"
@@ -340,27 +354,17 @@ impl GameProcess {
             None => format!("could not start '{}': {e}", exe.display()),
         })?;
 
-        // The replay slot is normally empty by now: a replay launch ends the
-        // previous occupant through `end_previous` first, and waits for it,
-        // because two copies of one install must never be alive at the same
-        // time. This is the backstop for that, and for the game slot, which
-        // does not go through it. It is deliberately not a `drop(prev)` (the
-        // bug this replaces): dropping the handle sends no signal, so the old
-        // FA process kept running as an orphan. Confirmed live: relaunching a
-        // replay left two
-        // `ForgedAlliance.exe` processes alive simultaneously, fighting over
-        // the same install's shader cache/lock files, and the previous process
-        // froze on a blank post-shader-compile screen with zero further disk
-        // activity, no crash, no error. `start_kill()` mirrors
-        // `ProcessPort::kill`'s own termination call.
+        // Only replay launches may replace a running child. The game slot was
+        // checked under this same lock, so a concurrent launch cannot take it.
         let game_pid = child.id();
         let running = Running {
             child,
             exe: install_key(&exe),
         };
-        if let Some(mut prev) = self.slot(slot).lock().unwrap().replace(running) {
+        if let Some(mut prev) = current.replace(running) {
             let _ = prev.child.start_kill();
         }
+        drop(current);
         self.watch_for_exit(slot);
 
         // The game slot only: a live game or a tutorial is Forged Alliance
@@ -492,7 +496,7 @@ impl ProcessPort for GameProcess {
 
         // Held for the game's lifetime: dropping the recorder aborts its
         // listener, and FA connects seconds after launch.
-        if let Some(recorder) = recorder {
+        if let (Ok(()), Some(recorder)) = (&result, recorder) {
             *self.replay_recorder.lock().unwrap() = Some(recorder);
         }
         result
@@ -540,7 +544,15 @@ impl ProcessPort for GameProcess {
     }
 
     async fn wait_for_exit(&self) {
-        self.exited.notified().await
+        // Register before checking the slot: an exit may already have been
+        // announced, or arrive between the check and awaiting the notification.
+        let exited = self.exited.notified();
+        tokio::pin!(exited);
+        exited.as_mut().enable();
+        if self.game_child.lock().unwrap().is_none() {
+            return;
+        }
+        exited.await;
     }
 
     fn set_paths(&self, game_path: String, replay_game_path: String) {
@@ -1441,14 +1453,16 @@ mod tests {
     /// is developed on and the one CI runs.
     fn a_process_that_keeps_running() -> Child {
         let mut command = if cfg!(windows) {
-            let mut command = Command::new("cmd");
-            command.args(["/c", "ping", "-n", "60", "127.0.0.1"]);
+            let mut command = Command::new("ping");
+            command.args(["-n", "60", "127.0.0.1"]);
             command
         } else {
             let mut command = Command::new("sleep");
             command.arg("60");
             command
         };
+        #[cfg(windows)]
+        command.creation_flags(0x08000000);
         command
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::null())
@@ -1456,6 +1470,38 @@ mod tests {
             .kill_on_drop(true)
             .spawn()
             .expect("a long-running child")
+    }
+
+    #[tokio::test]
+    async fn an_exit_observed_before_waiting_is_not_lost() {
+        let process = GameProcess::new(GameConfig::default());
+        process.exited.notify_waiters();
+        tokio::time::timeout(Duration::from_millis(100), process.wait_for_exit())
+            .await
+            .expect("a finished lesson must not keep shutdown waiting forever");
+    }
+
+    #[tokio::test]
+    async fn a_second_game_launch_preserves_the_running_child() {
+        let process = GameProcess::new(GameConfig::default());
+        let child = a_process_that_keeps_running();
+        let original_pid = child.id();
+        *process.game_child.lock().unwrap() = Some(Running {
+            child,
+            exe: PathBuf::from("managed-game"),
+        });
+
+        // A valid executable ensures refusal happens before any second spawn.
+        let executable = std::env::current_exe().unwrap();
+        let error = process
+            .spawn(Slot::Game, executable.to_str().unwrap(), &[], "game")
+            .unwrap_err();
+        assert!(error.contains("already running"));
+        let mut slot = process.game_child.lock().unwrap();
+        let running = slot.as_mut().expect("the first child is still tracked");
+        assert_eq!(running.child.id(), original_pid);
+        assert!(running.child.try_wait().unwrap().is_none());
+        running.child.start_kill().unwrap();
     }
 
     #[test]

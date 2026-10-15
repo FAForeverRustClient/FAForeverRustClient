@@ -180,7 +180,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.mapPool.failed": "Kartenpools konnten nicht geladen werden: {reason}",
   "playerCard.clearSearch": "Suche zurücksetzen",
   "shell.exitGuard.title": "Forged Alliance läuft noch",
-  "shell.exitGuard.body": "Wenn du den Client jetzt schließt, wird auch die Verbindung zum Spiel getrennt, und du fliegst aus der Partie. Beende zuerst das Spiel, falls es noch läuft.",
+  "shell.exitGuard.body": "Wenn du den Client jetzt schließt, wird auch die Verbindung zum Spiel getrennt: Du fliegst aus der Partie, und eine Lektion verliert ihr Ergebnis. Beende zuerst das Spiel, falls es noch läuft.",
   "shell.exitGuard.keepOpen": "Client geöffnet lassen",
   "shell.exitGuard.closeAnyway": "Trotzdem schließen",
   "clan.loading": "Clan wird gelesen…",
