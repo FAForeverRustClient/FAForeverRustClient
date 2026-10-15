@@ -135,6 +135,12 @@ const LOCAL_REPLAY_READ_CONCURRENCY: usize = 16;
 /// client's `APPDATA_DIR` (`%ALLUSERSPROFILE%\FAForever` on Windows, falling
 /// back to `~/FAForever` elsewhere) plus `/replays`. `FAF_REPLAYS_DIR`
 /// overrides it (tests, alternate installs).
+///
+/// The Java client agrees on Windows but not elsewhere: its data directory is
+/// `~/.faforever` on Linux (`OsPosix.getDefaultDataDirectory`), or whatever
+/// its settings name as `data.baseDataDirectory`. So the folder used is the
+/// first of those that already holds replays, then the first that exists,
+/// and the Python client's when there is none yet (issue 564).
 pub(crate) fn local_replays_dir() -> PathBuf {
     if let Some(dir) = crate::infra::paths::replays_dir() {
         return dir;
@@ -149,7 +155,32 @@ pub(crate) fn local_replays_dir() -> PathBuf {
     } else {
         std::env::var("HOME").unwrap_or_default()
     };
-    PathBuf::from(base).join("FAForever").join("replays")
+    let mut candidates = vec![PathBuf::from(&base).join("FAForever").join("replays")];
+    if let Some(java) = crate::infra::faf_content::java_client_prefs_dir("/data/baseDataDirectory")
+    {
+        candidates.push(java.join("replays"));
+    }
+    if !cfg!(windows) && !base.is_empty() {
+        candidates.push(PathBuf::from(&base).join(".faforever").join("replays"));
+    }
+    pick_replays_dir(candidates)
+}
+
+/// The first candidate with anything in it, else the first that exists, else
+/// the first. An empty folder does not win over a full one: this client may
+/// have made its own before the player's Java replays were looked for.
+fn pick_replays_dir(mut candidates: Vec<PathBuf>) -> PathBuf {
+    let mut seen = std::collections::HashSet::new();
+    candidates.retain(|dir| seen.insert(dir.clone()));
+    let holds_entries =
+        |dir: &PathBuf| std::fs::read_dir(dir).is_ok_and(|mut entries| entries.next().is_some());
+    candidates
+        .iter()
+        .find(|dir| holds_entries(dir))
+        .or_else(|| candidates.iter().find(|dir| dir.is_dir()))
+        .or_else(|| candidates.first())
+        .cloned()
+        .unwrap_or_default()
 }
 
 fn unix_seconds(time: std::time::SystemTime) -> u32 {
@@ -536,6 +567,32 @@ pub(super) async fn delete_local_file(
 mod tests {
     use super::*;
     use crate::infra::replay::test_support::qcompressed_body;
+
+    /// Issue 564: a Linux player's Java replays in `~/.faforever/replays`
+    /// are found even when this client already made its own empty folder.
+    #[test]
+    fn the_replay_folder_is_the_first_one_holding_replays() {
+        let root = tempfile::tempdir().unwrap();
+        let ours = root.path().join("FAForever").join("replays");
+        let java = root.path().join(".faforever").join("replays");
+        let candidates = || vec![ours.clone(), java.clone()];
+
+        // Neither exists yet: the first, where a new one is made.
+        assert_eq!(pick_replays_dir(candidates()), ours);
+
+        // Only the Java folder exists.
+        std::fs::create_dir_all(&java).unwrap();
+        assert_eq!(pick_replays_dir(candidates()), java);
+
+        // Ours exists too, but empty: the one with replays in it wins.
+        std::fs::create_dir_all(&ours).unwrap();
+        std::fs::write(java.join("1.fafreplay"), b"replay").unwrap();
+        assert_eq!(pick_replays_dir(candidates()), java);
+
+        // Both hold replays: the first.
+        std::fs::write(ours.join("2.fafreplay"), b"replay").unwrap();
+        assert_eq!(pick_replays_dir(candidates()), ours);
+    }
 
     #[tokio::test]
     async fn list_local_dir_reads_metadata_and_keeps_problem_files_visible() {

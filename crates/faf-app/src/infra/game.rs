@@ -699,9 +699,7 @@ fn discover_reference_install_paths() -> DiscoveredInstallPaths {
             .or_else(|| std::env::var_os("ALLUSERSPROFILE"))
             .map(PathBuf::from);
 
-        let java_prefs = app_data
-            .as_ref()
-            .map(|root| root.join("Forged Alliance Forever").join("client.prefs"));
+        let java_prefs = crate::infra::faf_content::java_client_prefs_path();
         let python_ini = app_data
             .as_ref()
             .map(|root| root.join("ForgedAllianceForever").join("FA Lobby.ini"));
@@ -716,7 +714,6 @@ fn discover_reference_install_paths() -> DiscoveredInstallPaths {
 
     let (java_prefs, python_ini, roots) = linux_reference_config_paths(
         directories::BaseDirs::new().map(|dirs| dirs.home_dir().to_path_buf()),
-        std::env::var_os("XDG_DATA_HOME").map(PathBuf::from),
         std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from),
     );
     discover_from_reference_configs(java_prefs.as_deref(), python_ini.as_deref(), None, &roots)
@@ -727,11 +724,11 @@ fn discover_reference_install_paths() -> DiscoveredInstallPaths {
 ///
 /// `APPDATA` and `PROGRAMDATA` are Windows variables and are unset here, so
 /// the Windows version of this finds nothing at all and every path has to be
-/// typed by hand. The Linux locations are not guesses: the Java client is a
-/// Java application and follows the XDG base directories, which is
-/// `~/.local/share/Forged Alliance Forever` (its data directory is
-/// `~/.faforever` when it has been told to use the legacy layout, so both are
-/// offered), and the Python client writes `~/.config/ForgedAllianceForever`.
+/// typed by hand. The Linux locations are read off the reference clients'
+/// sources: the Java client keeps `client.prefs` in `~/.faforever`
+/// (`OsPosix.getPreferencesDirectory`, not an XDG directory, which is where
+/// this looked until issue 564), and the Python client writes
+/// `~/.config/ForgedAllianceForever`.
 ///
 /// There is no per-machine equivalent of `%PROGRAMDATA%\FAForever`, because
 /// nothing on Linux installs a game for every user. `~/.faforever` takes its
@@ -742,13 +739,13 @@ fn discover_reference_install_paths() -> DiscoveredInstallPaths {
 /// is written on, which is not the machine it describes.
 fn linux_reference_config_paths(
     home: Option<PathBuf>,
-    xdg_data_home: Option<PathBuf>,
     xdg_config_home: Option<PathBuf>,
 ) -> (Option<PathBuf>, Option<PathBuf>, Vec<PathBuf>) {
-    let data_home = xdg_data_home.or_else(|| home.as_ref().map(|home| home.join(".local/share")));
     let config_home = xdg_config_home.or_else(|| home.as_ref().map(|home| home.join(".config")));
 
-    let java_prefs = data_home.map(|root| root.join("Forged Alliance Forever/client.prefs"));
+    let java_prefs = home
+        .as_deref()
+        .map(crate::infra::faf_content::posix_java_client_prefs);
     let python_ini = config_home.map(|root| root.join("ForgedAllianceForever/FA Lobby.ini"));
     let roots = home
         .map(|home| vec![home.join(".faforever")])
@@ -796,15 +793,25 @@ fn discover_from_reference_configs(
 /// uses. Nothing here is validated: the caller decides what counts as a usable
 /// install, and importing the path is safe precisely because it is only ever
 /// read from, never an update target.
+///
+/// Asked on every system: the Python client's `FA Lobby.ini` is below the
+/// configuration directory on both (`%APPDATA%` on Windows, `~/.config`
+/// elsewhere), and the Java client's `client.prefs` is wherever
+/// [`crate::infra::faf_content::java_client_prefs_path`] says. Before issue
+/// 564 this read `%APPDATA%` alone, which Linux does not set.
 pub fn reference_retail_install_paths() -> Vec<PathBuf> {
-    let Some(app_data) = std::env::var_os("APPDATA").map(PathBuf::from) else {
+    let (Some(java_prefs), Some(dirs)) = (
+        crate::infra::faf_content::java_client_prefs_path(),
+        directories::BaseDirs::new(),
+    ) else {
         return Vec::new();
     };
     reference_retail_install_paths_from(
-        &app_data
-            .join("Forged Alliance Forever")
-            .join("client.prefs"),
-        &app_data.join("ForgedAllianceForever").join("FA Lobby.ini"),
+        &java_prefs,
+        &dirs
+            .config_dir()
+            .join("ForgedAllianceForever")
+            .join("FA Lobby.ini"),
     )
 }
 
@@ -1193,10 +1200,10 @@ mod tests {
     #[test]
     fn linux_discovery_looks_where_each_reference_client_actually_writes() {
         let (java, python, roots) =
-            linux_reference_config_paths(Some(PathBuf::from("/home/player")), None, None);
+            linux_reference_config_paths(Some(PathBuf::from("/home/player")), None);
         assert_eq!(
             java.unwrap(),
-            PathBuf::from("/home/player/.local/share/Forged Alliance Forever/client.prefs")
+            PathBuf::from("/home/player/.faforever/client.prefs")
         );
         assert_eq!(
             python.unwrap(),
@@ -1208,15 +1215,15 @@ mod tests {
     }
 
     #[test]
-    fn the_xdg_variables_win_over_the_home_directory_defaults() {
+    fn the_xdg_config_variable_moves_the_python_client_only() {
+        // The Java client does not follow XDG at all: `~/.faforever` stays.
         let (java, python, _) = linux_reference_config_paths(
             Some(PathBuf::from("/home/player")),
-            Some(PathBuf::from("/data")),
             Some(PathBuf::from("/conf")),
         );
         assert_eq!(
             java.unwrap(),
-            PathBuf::from("/data/Forged Alliance Forever/client.prefs")
+            PathBuf::from("/home/player/.faforever/client.prefs")
         );
         assert_eq!(
             python.unwrap(),
