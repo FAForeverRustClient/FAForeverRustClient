@@ -358,8 +358,10 @@ impl AuthPort for OAuthAuth {
         let state = random_token(16);
         let auth_url = build_authorize_url(&self.config, &state, &challenge, &redirect_uri);
 
-        // 3. Hand the URL to the system browser. spawn_blocking: `open` shells out.
-        let opened = tokio::task::spawn_blocking(move || open::that(&auth_url)).await;
+        // 3. Hand the URL to the system browser. spawn_blocking: it shells out,
+        //    and on Linux waits a moment for the launcher's verdict.
+        let opened =
+            tokio::task::spawn_blocking(move || crate::infra::browser::open_url(&auth_url)).await;
         match opened {
             Ok(Ok(())) => {}
             Ok(Err(e)) => return Err(AuthError::new(format!("Could not open browser: {e}"))),

@@ -1,8 +1,9 @@
-// The tournament tab's keyboard shortcuts, the website's "Display settings".
+// The tournament tab's keyboard shortcuts, cut from the website's "Display
+// settings".
 //
 // Only the shortcuts: the website's same dialog also holds the time zone, the
 // date and time format and the interface scale, which the client keeps in its
-// own settings. A key is chosen by pressing it, a single letter or digit with
+// own settings, so the dialog is named for what is left in it (issue 565). A key is chosen by pressing it, a single letter or digit with
 // no modifier, and a key already in use moves from its old action.
 
 import { overlayStack } from "../../../design-system/overlayStack";
@@ -47,9 +48,8 @@ export function DisplaySettingsDialog({ keys, onChange, onClose }: DisplaySettin
   }, [arming, armingLayer, keys, onChange]);
 
   return (
-    <Modal onClose={onClose} className="tournament-display-dialog" ariaLabel={t("tournaments.display.title")}>
-      <h3>{t("tournaments.display.title")}</h3>
-      <h5>{t("tournaments.display.shortcuts")}</h5>
+    <Modal onClose={onClose} className="tournament-display-dialog" ariaLabel={t("tournaments.display.shortcuts")}>
+      <h3>{t("tournaments.display.shortcuts")}</h3>
       <p className="muted">{t("tournaments.display.shortcutsHint")}</p>
       <ul className="tournament-hotkeys">
         {HOTKEY_ACTIONS.map((action) => (

@@ -431,11 +431,11 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
             <button
               type="button"
               className="tournaments-icon-button"
-              title={t("tournaments.display.title")}
-              aria-label={t("tournaments.display.title")}
+              title={t("tournaments.display.shortcuts")}
+              aria-label={t("tournaments.display.shortcuts")}
               onClick={() => setDisplaySettings(true)}
             >
-              <Icon name="settings" size={15} />
+              <Icon name="keyboard" size={15} />
             </button>
           </div>,
           toolsSlot,

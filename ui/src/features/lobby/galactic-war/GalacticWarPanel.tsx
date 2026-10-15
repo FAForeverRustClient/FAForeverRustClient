@@ -405,7 +405,7 @@ export function GalacticWarPanel({
                         faction's mark, standing behind the head and the share. */}
                     <FactionIcon
                       faction={segment.faction}
-                      size={76}
+                      size={96}
                       className="gw-faction-emblem"
                       aria-hidden="true"
                     />
