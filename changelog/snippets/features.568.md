@@ -1,0 +1,1 @@
+- The map pool in the matchmaker tab shows every map at once, sized to your window, without scrolling.
