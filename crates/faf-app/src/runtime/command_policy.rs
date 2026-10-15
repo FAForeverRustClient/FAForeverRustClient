@@ -81,7 +81,7 @@ pub(crate) enum Key {
     /// Accepting and rejecting guide submissions, which each read and patch
     /// the catalogue.
     GuidesVerdict,
-    /// Launching a tutorial.
+    /// Launching a tutorial or a catalogue lesson.
     TutorialLaunch,
     /// Loading the training hub: one at a time, since a second load repeats
     /// every request and the replay scan.
@@ -510,6 +510,10 @@ fn tourney_read(command: &TourneyRead) -> CommandPolicy {
 fn training(command: &TrainingCommand) -> CommandPolicy {
     match command {
         TrainingCommand::Load => single_flight(Key::TrainingLoad),
+        // A lesson starts a game in the slot a tutorial uses, so the two share
+        // one key: one launch at a time, whichever kind it is.
+        TrainingCommand::LaunchLesson { .. } => single_flight(Key::TutorialLaunch),
+        TrainingCommand::CancelLessonLaunch => PRIORITY,
         TrainingCommand::SetQuery { .. }
         | TrainingCommand::Select { .. }
         | TrainingCommand::ReadGuide { .. }

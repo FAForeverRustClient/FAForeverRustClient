@@ -14,6 +14,7 @@ const base: TrainingResource = {
   recordingUrl: "",
   readable: false,
   tutorialId: null,
+  lesson: null,
   author: "",
   ratingMin: null,
   ratingMax: null,

@@ -16,6 +16,7 @@ import { factionLabelFromName } from "../../shared/factions";
 import { relatedResources } from "../../shared/rules/trainingRules";
 import { useAppStore } from "../../store/store";
 import { GuideReader, guideOutline, type GuideOutline } from "./GuideReader";
+import { LessonLauncher } from "./LessonLauncher";
 import { GuideLinks } from "./markdown";
 import { RunAnalysis } from "./RunAnalysis";
 import { TrainingArt, TrainingCard } from "./TrainingCard";
@@ -26,6 +27,7 @@ import {
   actionLabel,
   bandKey,
   entryForLink,
+  isCatalogueLesson,
   isPlayableLesson,
   kindIcon,
   kindLabel,
@@ -218,6 +220,11 @@ export function ResourceDetail({
             >
               <Icon name="external" size={17} /> {t(actionLabel(resource))}
             </Button>
+          )}
+          {/* A lesson of the catalogue's own is started, not opened: the way
+              in is the launcher, with the best run under it. */}
+          {isCatalogueLesson(resource) && (
+            <LessonLauncher resource={resource} className="training-detail-lesson" />
           )}
         </header>
 

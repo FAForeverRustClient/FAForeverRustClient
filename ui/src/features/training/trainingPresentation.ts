@@ -9,6 +9,7 @@ import type { MessageKey } from "../../i18n";
 import type { IconName } from "../../design-system/Icon";
 import type {
   ContributionProblem,
+  LessonLaunch,
   ReviewProblem,
   TrainingKind,
   TrainingLevel,
@@ -345,6 +346,42 @@ export function bandKey(
 /** Whether this entry is something the client itself can start. */
 export function isPlayableLesson(resource: TrainingResource): boolean {
   return resource.kind === "lesson" && resource.tutorialId !== null;
+}
+
+/**
+ * Whether this entry is a lesson the catalogue holds itself, which the client
+ * downloads and starts from the Training tab. Twin of
+ * `TrainingResource::lesson_package`.
+ */
+export function isCatalogueLesson(resource: TrainingResource): boolean {
+  return resource.kind === "lesson" && resource.lesson !== null;
+}
+
+/**
+ * The launch state, when it belongs to this lesson.
+ *
+ * There is one launch at a time and every state names its lesson, so another
+ * lesson's preparing or failure is never drawn on this one's card.
+ */
+export function lessonLaunchFor(
+  launch: LessonLaunch,
+  resourceId: string,
+): Exclude<LessonLaunch, { type: "idle" }> | null {
+  if (launch.type === "idle") return null;
+  return launch.payload.resourceId === resourceId ? launch : null;
+}
+
+/** Whether any lesson is being prepared or played, which holds every start button. */
+export function lessonBusy(launch: LessonLaunch): boolean {
+  return launch.type === "preparing" || launch.type === "playing";
+}
+
+/** A run's length as minutes and seconds, the way a game clock reads. */
+export function lessonTime(seconds: number): string {
+  const whole = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(whole / 60);
+  const rest = whole % 60;
+  return `${minutes}:${rest.toString().padStart(2, "0")}`;
 }
 
 /** How a refused review request is worded. */

@@ -158,7 +158,10 @@ async fn launch(tutorial_id: i32, ctx: &ServiceCtx, out: &EventSink) {
 /// Whether Forged Alliance is running for this client, or about to be: a
 /// process the port started, a game the lobby is tracking, or a launch the
 /// lobby has already ordered.
-fn game_is_running(ctx: &ServiceCtx, out: &EventSink) -> bool {
+///
+/// Shared with the training tab's lessons, which start a game in the same
+/// slot and must refuse for the same reason.
+pub(crate) fn game_is_running(ctx: &ServiceCtx, out: &EventSink) -> bool {
     ctx.ports.process.game_running()
         || ctx.lobby.running_game_id().is_some()
         || out.with_state(|state| {

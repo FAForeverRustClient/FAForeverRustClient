@@ -4253,6 +4253,67 @@ export type LeagueSeason = {
 };
 
 /**
+ *  Where starting a catalogue lesson has got to.
+ *
+ *  One at a time, because the game slot holds one process. Every state names
+ *  the lesson it belongs to, so the outcome is drawn on that lesson's card and
+ *  not on whichever one the player opens next.
+ */
+export type LessonLaunch = { type: "idle" } | { type: "preparing"; payload: {
+	resourceId: string,
+	detail: string,
+} } | { type: "playing"; payload: {
+	resourceId: string,
+} } | { type: "failed"; payload: {
+	resourceId: string,
+	reason: string,
+} } |
+/**
+ *  The game closed. `score` is absent when the run ended before its
+ *  debrief, which is a quit rather than a result.
+ */
+{ type: "finished"; payload: {
+	resourceId: string,
+	score: LessonScore | null,
+} };
+
+/**
+ *  A lesson the catalogue repository holds: a map folder under `lessons/`.
+ *
+ *  The client downloads the listed files into the player's maps folder and
+ *  starts the game with `/map <folder>`. Addresses are never stated: the
+ *  client builds them from these names, next to the catalogue it already
+ *  trusts, so an entry can choose which lesson but not where it comes from.
+ */
+export type LessonPackage = {
+	/**  The map folder, which is also the name `/map` is given. */
+	folder: string,
+	/**  Every file of the folder, by name. */
+	files: string[],
+};
+
+/**
+ *  What this machine remembers of one lesson. Kept locally and nowhere else:
+ *  an offline game's result is whatever its own log says, which is fine for a
+ *  personal best and worthless for a leaderboard.
+ */
+export type LessonRecord = {
+	best: LessonScore,
+	last: LessonScore,
+	/**  Finished runs, not starts: a run quit before its debrief wrote nothing. */
+	runs: number,
+};
+
+/**  One finished run of a lesson, as its debrief wrote it to the game log. */
+export type LessonScore = {
+	/**  Stages passed. */
+	stars: number,
+	/**  Stages in the lesson. */
+	maxStars: number,
+	seconds: number,
+};
+
+/**
  *  An account on one of the console's lists: allowed to host, an editor, an
  *  importer, a director or a site admin.
  */
@@ -12328,7 +12389,16 @@ export type TrainingCommand =
 	draft: ContributionDraft,
 } } | { type: "composeContribution"; payload: {
 	draft: ContributionDraft,
-} } | { type: "closeContribution" };
+} } | { type: "closeContribution" } |
+/**
+ *  Download a catalogue lesson and start it.
+ *
+ *  By resource id, like [`Self::ReadGuide`]: the service looks the entry
+ *  up and builds every address itself.
+ */
+{ type: "launchLesson"; payload: {
+	resourceId: string,
+} } | { type: "cancelLessonLaunch" };
 
 /**
  *  One guide's text, as the reader has it open.
@@ -12400,7 +12470,20 @@ export type TrainingEvent = { type: "loading" } | { type: "loaded"; payload: {
 	draft: ContributionDraft,
 } } | { type: "contributionComposed"; payload: {
 	post: ForumPost,
-} } | { type: "contributionClosed" };
+} } | { type: "contributionClosed" } | { type: "lessonRecordsLoaded"; payload: {
+	records: { [key in string]: LessonRecord },
+} } | { type: "lessonPreparing"; payload: {
+	resourceId: string,
+	detail: string,
+} } | { type: "lessonPlaying"; payload: {
+	resourceId: string,
+} } | { type: "lessonLaunchFailed"; payload: {
+	resourceId: string,
+	reason: string,
+} } | { type: "lessonLaunchCancelled" } | { type: "lessonFinished"; payload: {
+	resourceId: string,
+	score: LessonScore | null,
+} };
 
 /**
  *  What kind of thing a resource is, as the reader experiences it.
@@ -12554,6 +12637,12 @@ export type TrainingResource = {
 	 */
 	imageUrl: string,
 	tutorialId: number | null,
+	/**
+	 *  The map folder of a lesson the catalogue repository holds itself, which
+	 *  the client downloads and starts. Kept only when its names are safe to
+	 *  put in a path and an address; see [`LessonPackage::is_safe`].
+	 */
+	lesson: LessonPackage | null,
 	author: string,
 	ratingMin: number | null,
 	ratingMax: number | null,
@@ -12654,6 +12743,13 @@ export type TrainingState = {
 	contributionPost: ForumPost | null,
 	/**  The guide being read in the tab, when one is. */
 	document: TrainingDocument,
+	/**  Starting a catalogue lesson, and how the last one ended. */
+	lessonLaunch: LessonLaunch,
+	/**
+	 *  The player's own lesson results, by resource id. Read from this machine
+	 *  when the hub loads, and written back after every finished run.
+	 */
+	lessonRecords: { [key in string]: LessonRecord },
 };
 
 export type TrainingStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {

@@ -18,11 +18,11 @@
 //   HUB        hero (replay review, the community) + recommended for you +
 //              learn the basics
 //   LIBRARY    the whole catalogue, with filters
-//   LESSONS    scenarios played inside the game, which the client can start.
-//              Empty today: FAF's tutorial API carries links rather than
-//              playable maps, and authoring real ones is design work nobody
-//              has done yet. The tab stays and says so, because "coming" is
-//              information and an absent tab is not.
+//   LESSONS    scenarios played inside the game, which the client can start:
+//              map folders held in the catalogue repository, downloaded and
+//              started from here, with the player's best run kept locally.
+//              A catalogue with none says so rather than hiding the tab,
+//              because "coming" is information and an absent tab is not.
 //   TRAINERS   the training team, as tiles
 //   CONTRIBUTE writing a submission, editor beside a live preview
 //   PENDING    the submission queue, for whoever maintains the catalogue
@@ -56,6 +56,8 @@ import { TrainingHero } from "./TrainingHero";
 import { TrainingLibrary } from "./TrainingLibrary";
 import { TrainerTiles } from "./TrainerTiles";
 import { GuidesQueue } from "./GuidesQueue";
+import { LessonsPanel } from "./LessonLauncher";
+import { isCatalogueLesson } from "./trainingPresentation";
 import { modeOptions } from "./libraryGroups";
 import {
   BASIC_TOPICS,
@@ -216,6 +218,8 @@ export function TrainingView() {
     void openHttpsUrl(renderedPage(resource.url));
   };
 
+  const lessonCount = state.resources.filter(isCatalogueLesson).length;
+
   const sections: SectionTab<TrainingSection>[] = [
     { id: "hub", label: t("training.section.hub") },
     {
@@ -226,9 +230,9 @@ export function TrainingView() {
     {
       id: "lessons",
       label: t("training.section.lessons"),
-      // No count: there is nothing to count, and a zero beside a tab reads as
-      // a bug rather than as an answer.
-      count: undefined,
+      // No zero: an empty tab gets its own explanation, and a zero beside a
+      // tab reads as a bug rather than as an answer.
+      count: lessonCount > 0 ? lessonCount : undefined,
     },
     {
       id: "trainers",
@@ -496,12 +500,15 @@ export function TrainingView() {
           />
         )}
 
+        {section === "lessons" && lessonCount > 0 && (
+          <LessonsPanel resources={state.resources} onSelect={select} />
+        )}
+
         {/* Empty, and honestly so. FAF's tutorial API is no longer read here: it
             flags entries playable whose maps no longer start anything, and its
-            link categories are not lessons at all. A lesson is something the
-            client can launch and nobody has authored one, so the text says
-            that and promises no date. */}
-        {section === "lessons" && (
+            link categories are not lessons at all. A catalogue that holds no
+            lesson of its own says that and promises no date. */}
+        {section === "lessons" && lessonCount === 0 && (
           <section className="surface-panel training-soon">
             <Icon name="play" size={26} />
             <h3>{t("training.lessons.soon")}</h3>
