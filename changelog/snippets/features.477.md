@@ -1,1 +1,0 @@
-- The Tournaments tab is redesigned: event banners, stage progress, reward placements, a cleaner bracket and whole-map tiles.

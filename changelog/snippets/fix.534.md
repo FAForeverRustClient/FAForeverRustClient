@@ -1,2 +1,0 @@
-- Security fixes for encrypted connections.
-- The map details panel no longer shifts sideways when its scrollbar appears.

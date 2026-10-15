@@ -1,3 +1,0 @@
-- A match cancelled before its game started no longer hangs the client.
-- A banned account is told once instead of reconnecting over and over.
-- The live replay countdown button no longer jitters.

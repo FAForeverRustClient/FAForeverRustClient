@@ -1,0 +1,2 @@
+- Switching tabs no longer waits for the Live replays tab or for background work.
+- Large replays open their details and analysis with far less memory, and the profile's Maps and Results tabs load faster.

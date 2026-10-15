@@ -1,0 +1,10 @@
+- After a cancelled match you can search again right away, and a match cancelled before its game started no longer hangs the client.
+- Queue ratings update after every game.
+- A game launch retries when FAF's relay server briefly fails, and a new player's first game no longer stops at a missing BugSplat.dll.
+- Quit in the tray no longer cuts a running game's connection.
+- Chat messages no longer vanish in busy channels, and rejoining a channel no longer repeats its history.
+- Searching replays by faction works again.
+- Escape closes only the topmost window, and the keyboard works in dropdowns, sliders and the chat.
+- Flags and avatars are sharp on scaled displays.
+- Security fixes in the guide reader, for encrypted connections and for the game settings: changing the launch wrapper or the extra game arguments now asks you to confirm.
+- Many smaller fixes in Training, co-op, Galactic War, the map vault and the settings.

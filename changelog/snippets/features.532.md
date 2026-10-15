@@ -1,1 +1,0 @@
-- The Maps tab is redesigned: a tidier search with the rarer filters behind More filters, the total number of results, installed maps marked green, and a clearer map panel.

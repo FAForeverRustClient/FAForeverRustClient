@@ -1,1 +1,0 @@
-- The leaderboard search is laid out on two lines.

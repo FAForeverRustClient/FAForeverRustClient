@@ -1,3 +1,0 @@
-- Right-click your own name in the sidebar to play offline, log out or copy your name.
-- Players you wrote a note about carry a note mark in the chat list and in a lobby's lineup on the Play tab; hover it to read the note.
-- A filter button beside the chat list's search box filters players by a rating range on Global, 1v1, 2v2, 3v3 or 4v4, and orders them by that rating.

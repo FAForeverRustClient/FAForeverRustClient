@@ -1,1 +1,0 @@
-- The sidebar's Game folders menu has an icon for each folder and larger, brighter labels.

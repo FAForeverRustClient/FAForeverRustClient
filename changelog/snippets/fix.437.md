@@ -1,2 +1,0 @@
-- Cancelling or retrying replays, sign-in and other long tasks no longer leaves stale results behind.
-- A replay that cannot be found no longer shows its error under every other replay.

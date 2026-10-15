@@ -1,3 +1,0 @@
-- A friend or foe who changes their name stays on your list, and previous names are listed newest first.
-- Rating ranges open at one end read "From 1200" or "Up to 1800" instead of "1200 to Any".
-- The Galactic War online count matches the game: players online with an avatar, not open connections.

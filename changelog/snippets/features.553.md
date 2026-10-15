@@ -1,0 +1,14 @@
+- The Tournaments tab is redesigned, with event banners, stage progress and a cleaner bracket, and runs on FAF's own server, tournaments.faforever.com.
+- The Play tab has new game tiles, and a password game is hosted by just filling in the password.
+- The Maps and Mods tabs are redesigned around a calmer search with More filters, and the map generator dialog is tidier, with presets you can save and rename.
+- The Leaderboard and the player card are redesigned: rating tiles for every board with league emblems, and a profile laid out as cards.
+- Chat: filter the player list by rating, see the notes you wrote about players, and see in a private chat whether the other player is online or in a game.
+- The matchmaker's invite window sorts and filters players by name, clan, country, friends and rating.
+- Replays can be searched by lobby title, and the vault can show game results, off by default against spoilers.
+- A connectivity check in Settings, Connectivity tests the connection adapter and FAF's relays.
+- Downloads, installs and uploads show their progress in the status bar and can be cancelled.
+- Joining a game or starting a replay shows a progress window with the map.
+- The Changelog tab shows this client's own release notes, and a short What's new follows each update.
+- A custom background picture, and a borderless window option for the game (Windows).
+- More of the client follows your language: notifications, co-op missions, league names and tournament dates.
+- On Windows the client recovers by itself when its window crashes, without pulling you out of your game.
