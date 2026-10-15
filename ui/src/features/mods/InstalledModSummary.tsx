@@ -1,7 +1,7 @@
 // The installed library's summary row, over the grid's column only, the way
 // the leaderboard has one over its table: what the filters left and how many
 // of them the next game loads, then at the list's top right what is done to
-// the library as a whole: look for updates, read the folder again, the order,
+// the library as a whole: look for updates, the order, read the folder again,
 // and switching the starred mods on, last because it is the one that changes
 // a game.
 
@@ -65,15 +65,6 @@ export function InstalledModSummary({
         <Icon name="download" size={15} />
         {t(checking ? "mods.installed.checking" : "mods.installed.checkUpdates")}
       </Button>
-      <Button
-        variant="ghost"
-        className="mods-summary-tool"
-        onClick={onRescan}
-        disabled={installedStatus.type === "loading"}
-      >
-        <Icon name="refresh" size={15} />
-        {t("mods.installed.rescan")}
-      </Button>
       <label className="mods-summary-sort">
         <span className="muted">{t("mods.view.sortBy")}</span>
         <select
@@ -88,6 +79,18 @@ export function InstalledModSummary({
           <option value="author">{t("mods.view.creator")}</option>
         </select>
       </label>
+      {/* Reads the folder again: the icon at the sort's end, as the Maps
+          tab's refresh sits beside its sort. */}
+      <Button
+        variant="ghost"
+        className="mods-summary-icon"
+        aria-label={t("mods.installed.rescan")}
+        title={t("mods.installed.rescan")}
+        onClick={onRescan}
+        disabled={installedStatus.type === "loading"}
+      >
+        <Icon name="refresh" size={15} />
+      </Button>
       {favoriteCount > 0 && (
         <Button
           variant="primary"
