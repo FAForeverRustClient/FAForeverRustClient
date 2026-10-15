@@ -1,0 +1,1 @@
+- The Changelog tab now lists the changes of versions 0.5.5 to 0.8.0, which had no release notes.

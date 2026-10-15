@@ -1,0 +1,909 @@
+[
+  {
+    "version": "v0.5.5",
+    "base": "v0.5.2",
+    "sections": [
+      [
+        "Playing and matchmaking",
+        [
+          [
+            "Choose game, replay, map and mod folders in Settings, Paths.",
+            "c105d437"
+          ],
+          [
+            "Choose whether generated maps are kept after use.",
+            "c105d437"
+          ],
+          [
+            "See how many queued players could match your rating.",
+            "a44bdf79"
+          ],
+          [
+            "Use the redesigned matchmaking cards and open party chat from the party panel.",
+            "aad34c40"
+          ],
+          [
+            "Browse map pools as map cards and adjust vetoes from the pool.",
+            "26eb9314"
+          ],
+          [
+            "Invite the same player again after an earlier party invitation.",
+            "ebbca6c1"
+          ]
+        ]
+      ],
+      [
+        "Replays, chat and vaults",
+        [
+          [
+            "Find replays that two players played together.",
+            "8ad11684"
+          ],
+          [
+            "Replay player searches match the exact name by default.",
+            "717569e7"
+          ],
+          [
+            "Vault sorting now follows the selected sort order.",
+            "4ff0ad6a"
+          ],
+          [
+            "Place foes at the bottom of the chat roster.",
+            "84cc6570"
+          ],
+          [
+            "Large chat rooms and vault lists update faster, and map previews use a bounded amount of memory.",
+            "0c7fd97f"
+          ]
+        ]
+      ],
+      [
+        "Fixes",
+        [
+          [
+            "The packaged client opens its own window instead of handing it to the browser.",
+            "90101f0e"
+          ],
+          [
+            "Joining downloads the host's map before requesting entry to the lobby.",
+            "e1a4da9f"
+          ],
+          [
+            "Arrow keys move selection through the host dialog's lists.",
+            "18a6d07c"
+          ],
+          [
+            "Co-op hosting retains its draft when switching tabs.",
+            "4f43a3e0"
+          ],
+          [
+            "Selecting text and releasing outside a dialog no longer closes it.",
+            "f27da6c9"
+          ],
+          [
+            "Account links open the FAF account service.",
+            "950ba642"
+          ],
+          [
+            "Tooltips left behind by switching windows are dismissed.",
+            "a7dd9f25"
+          ]
+        ]
+      ]
+    ]
+  },
+  {
+    "version": "v0.5.6",
+    "base": "v0.5.5",
+    "sections": [
+      [
+        "Settings",
+        [
+          [
+            "Choose whether helper processes show their diagnostic windows.",
+            "4587ca16"
+          ]
+        ]
+      ],
+      [
+        "Fixes",
+        [
+          [
+            "The sidebar and party lists display player avatars without cropping their banner shape.",
+            "3ca8667b"
+          ],
+          [
+            "Map-generator previews show the whole map.",
+            "3ca8667b"
+          ],
+          [
+            "Co-op missions follow their campaign order.",
+            "3ca8667b"
+          ],
+          [
+            "The co-op records panel has room for its date and replay controls.",
+            "3ca8667b"
+          ],
+          [
+            "A refused sign-in now says why, instead of reporting an unnamed invalid command.",
+            "3ca8667b"
+          ],
+          [
+            "Number fields can be emptied while entering a new value.",
+            "cf2b5451"
+          ]
+        ]
+      ]
+    ]
+  },
+  {
+    "version": "v0.5.7",
+    "base": "v0.5.6",
+    "sections": [
+      [
+        "Training",
+        [
+          [
+            "Browse a community-maintained catalogue of guides, videos and trainers in the new Training hub.",
+            "d9ccb134"
+          ],
+          [
+            "Get training recommendations using the rating for each resource's game mode.",
+            "d9ccb134"
+          ],
+          [
+            "Submit training resources and request replay reviews from the client.",
+            "d9ccb134"
+          ]
+        ]
+      ],
+      [
+        "Replays and mods",
+        [
+          [
+            "Settings, Game includes an optional Windows live-replay workaround using a named pipe.",
+            "5d9bf6d4"
+          ],
+          [
+            "Joining asks before replacing an installed simulation-mod version that conflicts with the host's version.",
+            "5d9bf6d4"
+          ],
+          [
+            "Replay lineups show rating changes from the rating journal.",
+            "bf83f78a"
+          ],
+          [
+            "Unrated replays explain why they were not rated.",
+            "71acc263"
+          ],
+          [
+            "Replay details list simulation mods recorded in the replay header.",
+            "bf83f78a"
+          ]
+        ]
+      ],
+      [
+        "Fixes",
+        [
+          [
+            "Hosting without a password no longer advertises a locked game.",
+            "bf83f78a"
+          ],
+          [
+            "Opening a private conversation selects it even when its channel is still joining.",
+            "bf83f78a"
+          ],
+          [
+            "Nickname completion no longer inserts an extra colon.",
+            "bf83f78a"
+          ],
+          [
+            "Generated-map previews can be opened at full size.",
+            "bf83f78a"
+          ]
+        ]
+      ]
+    ]
+  },
+  {
+    "version": "v0.6.0",
+    "base": "v0.5.7",
+    "sections": [
+      [
+        "Training and community",
+        [
+          [
+            "Read training guides and watch videos inside the Training tab.",
+            "bfbbf379"
+          ],
+          [
+            "Recorded build orders show a build timeline, a map path and a written summary.",
+            "a8b63f57"
+          ],
+          [
+            "The training library groups resources by kind and purpose.",
+            "a8b63f57"
+          ],
+          [
+            "Manage your clan from the client.",
+            "854ddb14"
+          ],
+          [
+            "Browse a community calendar combining FAF events, tournaments and scheduled Discord events.",
+            "4189abfa"
+          ],
+          [
+            "Submit community events from the calendar.",
+            "e2cc9b19"
+          ],
+          [
+            "Browse the external-link directory.",
+            "0bacf3ba"
+          ]
+        ]
+      ],
+      [
+        "Playing, maps and replays",
+        [
+          [
+            "Browse local replays without signing in and sign in from the offline workspace.",
+            "b92b5dcc"
+          ],
+          [
+            "Open game folders from a button in the sidebar.",
+            "6aedec8d"
+          ],
+          [
+            "Replay launches reproduce generated maps before starting playback.",
+            "b9d6fed2"
+          ],
+          [
+            "Map previews show the full map name and provide a copy button.",
+            "45257017"
+          ],
+          [
+            "Generated-map previews show the generator settings.",
+            "d097a778"
+          ],
+          [
+            "Keeping generated maps is controlled by one persistent setting.",
+            "be8ad4e0"
+          ],
+          [
+            "Replay details distinguish damaged recordings from recordings that ended early.",
+            "ae76d933"
+          ],
+          [
+            "Co-op replays display their recorded mission name.",
+            "1d362f56"
+          ]
+        ]
+      ],
+      [
+        "Mods and client behaviour",
+        [
+          [
+            "Search mods by words in their name, description or UID, or choose an exact-name search.",
+            "3987489f"
+          ],
+          [
+            "Installed mods show whether they are enabled for the next game.",
+            "3987489f"
+          ],
+          [
+            "Mod descriptions provide usable links and a copy action.",
+            "3987489f"
+          ],
+          [
+            "Publish a renamed copy of a mod without changing its original local folder.",
+            "3987489f"
+          ],
+          [
+            "The window remembers its monitor, position, size and maximised state.",
+            "3bbd9187"
+          ],
+          [
+            "Stable releases require installation before continuing when the client can install them.",
+            "46613985"
+          ],
+          [
+            "Desktop notifications follow the notification settings instead of mirroring every notice.",
+            "349f9828"
+          ],
+          [
+            "A searched player's leaderboard rank is measured against the complete board.",
+            "d09e5b1d"
+          ],
+          [
+            "Retail Forged Alliance installations can be located through the reference clients' configuration.",
+            "cebb3dc6"
+          ]
+        ]
+      ]
+    ]
+  },
+  {
+    "version": "v0.6.2",
+    "base": "v0.6.0",
+    "sections": [
+      [
+        "Maps, mods and playing",
+        [
+          [
+            "Zoom and pan large map previews throughout the client.",
+            "ffc87239"
+          ],
+          [
+            "Copy a map preview image, with a link fallback when image copying is unavailable.",
+            "3cf214a2"
+          ],
+          [
+            "Update an installed mod in one action.",
+            "d6089768"
+          ],
+          [
+            "Find maps in the host dialog's Favourites tab.",
+            "381eabd8"
+          ],
+          [
+            "Open games indicate which ones contain your friends.",
+            "da5ae42f"
+          ],
+          [
+            "Joining shows required simulation mods and asks before downloading them.",
+            "8ebd889b"
+          ],
+          [
+            "Join preparation shows the download size and describes its current work.",
+            "3505b4fc"
+          ],
+          [
+            "Map-generator options are remembered automatically, and map names can be edited.",
+            "4360e1eb"
+          ],
+          [
+            "Saved matchmaking vetoes are restored when the server does not retain them.",
+            "d2e0964f"
+          ],
+          [
+            "The client reconnects to the lobby after a lost connection.",
+            "4e180d24"
+          ],
+          [
+            "A match that never starts eventually releases the matchmaking controls.",
+            "ff7c0a93"
+          ]
+        ]
+      ],
+      [
+        "Replays, ratings and chat",
+        [
+          [
+            "Mark replays as watched, undo that mark and filter by watched status.",
+            "02401610"
+          ],
+          [
+            "Filter online replays by the number of players.",
+            "51c75a38"
+          ],
+          [
+            "Filtered replay pages fill with matching results instead of stopping at an internal page-size limit.",
+            "f277b0fa"
+          ],
+          [
+            "Jumping to a later page of a large local replay archive shows the replays, not only file names.",
+            "9c322efc"
+          ],
+          [
+            "The leaderboard includes a rating explanation based on the FAF wiki.",
+            "9253dbc3"
+          ],
+          [
+            "Game lineups use the rating for the game mode being played.",
+            "7faccd0b"
+          ],
+          [
+            "Negative ratings are displayed as ratings rather than replaced with zero.",
+            "ddd887f6"
+          ],
+          [
+            "Right-click a chat message to quote it in a reply.",
+            "c1b828e1"
+          ],
+          [
+            "Replay chat identifies each speaker without duplicating their lines.",
+            "deb4ca9f"
+          ]
+        ]
+      ],
+      [
+        "Notifications and desktop support",
+        [
+          [
+            "Notifications can appear as corner toasts with selectable tones and volume previews.",
+            "4813d8fd"
+          ],
+          [
+            "Set the sidebar width in Appearance settings.",
+            "122b83d8"
+          ],
+          [
+            "Linux support adds a Wine launch wrapper and Linux game-folder discovery.",
+            "10e73854"
+          ],
+          [
+            "Watching a replay no longer closes the game running in the separate game install.",
+            "6c626f82"
+          ],
+          [
+            "Map and mod reporting links provide a route to report offensive content.",
+            "e33a3d34"
+          ],
+          [
+            "Narrow windows can scroll content that no longer fits.",
+            "f55221e6"
+          ]
+        ]
+      ]
+    ]
+  },
+  {
+    "version": "v0.6.5",
+    "base": "v0.6.2",
+    "sections": [
+      [
+        "Playing and installation",
+        [
+          [
+            "Linux releases include AppImage, Debian and RPM installers.",
+            "68e52a65"
+          ],
+          [
+            "One client instance handles additional launches and replay-file associations.",
+            "60317735"
+          ],
+          [
+            "Keep the join progress dialog open until the game starts, with a Cancel action.",
+            "2de9c2d0"
+          ],
+          [
+            "Enforced host rating ranges reject players outside the configured range.",
+            "e392fc20"
+          ],
+          [
+            "Resize the game list and its details panel.",
+            "951614fa"
+          ],
+          [
+            "Sort the game list using its column headers.",
+            "ffa7ed7c"
+          ],
+          [
+            "Column resizing no longer imposes an upper width limit.",
+            "6fce61a7"
+          ],
+          [
+            "A completed game uploads its replay to FAF instead of keeping it only on disk.",
+            "9f32f6e9"
+          ],
+          [
+            "Replay uploads survive a dropped connection without truncating the replay.",
+            "c411418a"
+          ]
+        ]
+      ],
+      [
+        "Replays",
+        [
+          [
+            "Browse live replays in a grid or a list, with a separate remembered view choice.",
+            "42d9c381"
+          ],
+          [
+            "Replay analysis shows army details, activity graphs and recorded statistics.",
+            "47723791"
+          ],
+          [
+            "Search replay chat and filter it by channel.",
+            "5062b71a"
+          ],
+          [
+            "Watch or download a replay directly from its grid card.",
+            "6ab2cb22"
+          ],
+          [
+            "Replay startup shows progress and can be cancelled.",
+            "a5d5c0d9"
+          ],
+          [
+            "The local replay archive refreshes when opened and shows recorded game duration.",
+            "635d0913"
+          ],
+          [
+            "Filter local replays by game mode.",
+            "9c9cef48"
+          ],
+          [
+            "Live replay details can enlarge the map and load the players' profiles.",
+            "4e1e2b47"
+          ],
+          [
+            "Replay launches close the previous replay before starting another copy of that install.",
+            "62122168"
+          ]
+        ]
+      ],
+      [
+        "Settings, maps, mods and chat",
+        [
+          [
+            "Settings are divided into navigable sections.",
+            "8e66cc46"
+          ],
+          [
+            "Set a delay for hover panels or disable them.",
+            "49a573ae"
+          ],
+          [
+            "Choose custom notification sounds and the built-in FAF match-found sound.",
+            "e171e02c"
+          ],
+          [
+            "Limit the number of generated maps retained on disk.",
+            "84aa6b33"
+          ],
+          [
+            "Favourite installed mods and enable the selected set together.",
+            "b295f588"
+          ],
+          [
+            "Mod searches prioritise matches in the mod name.",
+            "de7761ef"
+          ],
+          [
+            "Group clanmates in the chat roster.",
+            "77048500"
+          ],
+          [
+            "Mentions are shown to the sender and recipient rather than colouring the entire room.",
+            "8016bc68"
+          ],
+          [
+            "Game tiles indicate friends and foes in their lobbies.",
+            "92e1858f"
+          ],
+          [
+            "The leaderboards combine queue ratings in one table.",
+            "19fa1cbb"
+          ],
+          [
+            "German, Russian, French, Spanish and Polish translation catalogues were completed.",
+            "49f3a031"
+          ]
+        ]
+      ]
+    ]
+  },
+  {
+    "version": "v0.7.0",
+    "base": "v0.6.5",
+    "sections": [
+      [
+        "Playing and matchmaking",
+        [
+          [
+            "Dynamic connectivity selects the adapter used by the host.",
+            "d0819cbf"
+          ],
+          [
+            "Choose separate connectivity preferences for joining and hosting.",
+            "b1c949bc"
+          ],
+          [
+            "Recent matchmaking games are available in a table with adjustable columns.",
+            "dd85e90c"
+          ],
+          [
+            "Party seats display every faction selected by each player.",
+            "846cf142"
+          ],
+          [
+            "The party leader can leave the party.",
+            "7fbc6fef"
+          ],
+          [
+            "An optional notification announces a suitable opponent joining a matchmaking queue.",
+            "9138704b"
+          ],
+          [
+            "The matchmaking panel no longer remains stuck on Starting your match.",
+            "343682df"
+          ],
+          [
+            "Cancelling host preparation stops the pending host request.",
+            "4e815654"
+          ],
+          [
+            "First-time FAF game setup includes the required BugSplat library.",
+            "0a4f2d65"
+          ]
+        ]
+      ],
+      [
+        "Replays and player profiles",
+        [
+          [
+            "Keep private notes and tags on replays.",
+            "f376e5ea"
+          ],
+          [
+            "Manage replay tags and filter the archive by them.",
+            "efb91f7b"
+          ],
+          [
+            "Choose friends from a list when filtering replays.",
+            "992bbfba"
+          ],
+          [
+            "Replay lineups can show country flags.",
+            "c0cd7140"
+          ],
+          [
+            "Player searches and leaderboard searches can find former account names.",
+            "680b245f"
+          ],
+          [
+            "Player profiles include a Results tab listing their games.",
+            "37f05748"
+          ],
+          [
+            "Report a player who is currently offline.",
+            "6429d3cb"
+          ],
+          [
+            "Unrated replays can show a winner when the recorded outcome is decisive.",
+            "d66e33db"
+          ],
+          [
+            "Watching a modded replay restores your previous enabled-mod selection afterwards.",
+            "0b357dc4"
+          ],
+          [
+            "Rate a replay directly from its stars.",
+            "6d80e095"
+          ],
+          [
+            "Generate a missing map preview from the live replay list.",
+            "f11ed224"
+          ]
+        ]
+      ],
+      [
+        "Reliability and interface",
+        [
+          [
+            "Fresh installations start in the system language when a translation is available.",
+            "67b20535"
+          ],
+          [
+            "An unreadable settings value no longer resets every setting.",
+            "17b10590"
+          ],
+          [
+            "Generated maps use the configured maps folder.",
+            "d8d67b14"
+          ],
+          [
+            "Linked mod folders and nested mod folders are detected.",
+            "20b43594"
+          ],
+          [
+            "League seasons include every placed player rather than only the first hundred.",
+            "db596d66"
+          ],
+          [
+            "Review counts and ratings include the submitted review.",
+            "02db93d7"
+          ],
+          [
+            "Linux finds co-op maps and game preferences regardless of filename case.",
+            "0856fcd6"
+          ],
+          [
+            "Dates use the Windows regional format.",
+            "24b50361"
+          ],
+          [
+            "Adjustable-column lists retain their columns while fitting the available width.",
+            "8cf884d0"
+          ],
+          [
+            "Chat game cards provide Join game and Watch live actions.",
+            "bba96120"
+          ]
+        ]
+      ]
+    ]
+  },
+  {
+    "version": "v0.8.0",
+    "base": "v0.7.0",
+    "sections": [
+      [
+        "Tournaments",
+        [
+          [
+            "Tournament creation includes format presets.",
+            "085dfe7d"
+          ],
+          [
+            "Swiss formats include playoff cuts and opponent picking.",
+            "6b6526eb"
+          ],
+          [
+            "Organisers can arrange the first Swiss round manually.",
+            "d68c912c"
+          ],
+          [
+            "Free-for-all team events support premade team names.",
+            "28e4934c"
+          ],
+          [
+            "Manage map pools and faction-veto rules from the tournament window.",
+            "de7bedab"
+          ],
+          [
+            "Tournament details have separate Matches, Vetoes and Maps tabs.",
+            "5264a821"
+          ],
+          [
+            "Players can submit their own match scores.",
+            "fd913b36"
+          ],
+          [
+            "Organiser result edits retain replay IDs and correctly submit forfeits and declared winners.",
+            "7372d3cd"
+          ],
+          [
+            "Configure third-place matches and best-of lengths by round or match.",
+            "cb95b6ce"
+          ],
+          [
+            "Manage entrants and teams using the organiser tools.",
+            "987f4daa"
+          ],
+          [
+            "Tournament overview shows schedules, recent results and import information.",
+            "7824298d"
+          ],
+          [
+            "Imported tournaments can display group tables, final placings and a Stats tab.",
+            "b7679344"
+          ],
+          [
+            "Use player views, streamer mode and their keyboard shortcuts.",
+            "dd31d008"
+          ],
+          [
+            "Pin tournament chat beside the other sections.",
+            "d1c29ecd"
+          ],
+          [
+            "Paste pictures into tournament text.",
+            "5d0bb1a4"
+          ],
+          [
+            "Request editor or importer access from the client.",
+            "89ae2e53"
+          ]
+        ]
+      ],
+      [
+        "Playing, maps and replays",
+        [
+          [
+            "Play offline starts the installed FAF game from the login screen.",
+            "a54c5b2d"
+          ],
+          [
+            "Optionally show a running game on Steam, on Windows and Linux.",
+            "38ccd0ce"
+          ],
+          [
+            "Reorder columns in list views using the shared column controls.",
+            "1be64073"
+          ],
+          [
+            "Fold away the custom-game details panel.",
+            "3c7193ec"
+          ],
+          [
+            "Host-map filters and vault searches retain their values when revisiting them.",
+            "886292cd"
+          ],
+          [
+            "Favourite maps from a game's large map preview.",
+            "fdf6ef80"
+          ],
+          [
+            "Map-pool previews open large, with a dedicated veto mode.",
+            "5f2f22fd"
+          ],
+          [
+            "A map veto is sent immediately when it is changed.",
+            "3711cf4e"
+          ],
+          [
+            "Live replay lists can hide unranked games.",
+            "7e939805"
+          ],
+          [
+            "Games still in progress are excluded from the online replay archive.",
+            "a8f93025"
+          ],
+          [
+            "Opening an online replay no longer creates an extra local copy.",
+            "3ea192f3"
+          ],
+          [
+            "Generating many maps at once no longer times out after three minutes.",
+            "02104972"
+          ],
+          [
+            "A missing favourited map is downloaded before use.",
+            "c2128258"
+          ]
+        ]
+      ],
+      [
+        "Reliability and notifications",
+        [
+          [
+            "Your settings are no longer reset to the defaults when the client saves right after starting.",
+            "ef547da7"
+          ],
+          [
+            "Vault searches typed quickly no longer show the results of an older search.",
+            "a33fb599"
+          ],
+          [
+            "A message in the conversation you have open no longer shows a notification.",
+            "7652e2d5"
+          ],
+          [
+            "Repeated notifications have a cooldown, and a full lobby is announced once.",
+            "b8f3d082"
+          ],
+          [
+            "Get a notification when a matchmaking queue's map pool changes.",
+            "b288ce77"
+          ],
+          [
+            "Reviews include every version's reviews, ordered newest first.",
+            "e5c2829a"
+          ],
+          [
+            "Player search finds offline players from the first few letters of their name.",
+            "a138f68c"
+          ],
+          [
+            "At interface scales above 100%, map previews and lobby popovers are no longer misplaced.",
+            "f8fe7e4e"
+          ],
+          [
+            "The client's WebView2 processes always appear under the client in Task Manager.",
+            "e8fcccff"
+          ],
+          [
+            "Update checks offer pre-releases by default.",
+            "2ca4de55"
+          ],
+          [
+            "Russian localisation received additional corrections.",
+            "4ca5e4e7"
+          ]
+        ]
+      ]
+    ]
+  }
+]
