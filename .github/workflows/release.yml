@@ -56,6 +56,13 @@ on:
 jobs:
   prepare:
     name: Check the version and open the draft
+    # The gate for the whole release: every later job needs this one. With a
+    # required reviewer on the `release` environment (repository settings,
+    # Environments), a dispatched run waits here until that person approves,
+    # so write access to the repository alone no longer ships a client.
+    # GitHub creates the environment on the first run that names it; until it
+    # has a protection rule, this line changes nothing.
+    environment: release
     runs-on: ubuntu-latest
     permissions:
       contents: write
