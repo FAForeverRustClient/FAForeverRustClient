@@ -202,13 +202,13 @@ describe("the tags column's spare room", () => {
   it("leaves the default window as it is", () => {
     // The columns do not fit there as stored, so there is nothing to spare.
     const fit = fitColumns(DEFAULT_COLUMN_WIDTHS, COLUMN_FLOORS, LAYOUT_AT_1100 - LIST_CHROME);
-    expect(withTagsRoom(fit.drawn, LAYOUT_AT_1100 - LIST_CHROME)).toEqual(fit.drawn);
+    expect(withTagsRoom(fit, LAYOUT_AT_1100 - LIST_CHROME)).toEqual(fit.drawn);
   });
 
   it("widens the tags to two tags' width on a wider list, and no further (#559)", () => {
     const space = LAYOUT_AT_1600 - LIST_CHROME;
     const fit = fitColumns(DEFAULT_COLUMN_WIDTHS, COLUMN_FLOORS, space);
-    const drawn = withTagsRoom(fit.drawn, space);
+    const drawn = withTagsRoom(fit, space);
     expect(drawn[TAGS_COLUMN]).toBe(TAGS_COMFORT_PX);
     // Every other column as it was; the game column takes what is left.
     drawn.forEach((width, index) => {
@@ -218,13 +218,14 @@ describe("the tags column's spare room", () => {
 
   it("takes only what the columns leave", () => {
     const total = DEFAULT_COLUMN_WIDTHS.reduce((sum, width) => sum + width, 0);
-    expect(withTagsRoom(DEFAULT_COLUMN_WIDTHS, total + 10)[TAGS_COLUMN]).toBe(DEFAULT_COLUMN_WIDTHS[TAGS_COLUMN] + 10);
+    const fit = fitColumns(DEFAULT_COLUMN_WIDTHS, COLUMN_FLOORS, total + 10);
+    expect(withTagsRoom(fit, total + 10)[TAGS_COLUMN]).toBe(DEFAULT_COLUMN_WIDTHS[TAGS_COLUMN] + 10);
   });
 
   it("never narrows a tags column dragged wider", () => {
     const widths = [...DEFAULT_COLUMN_WIDTHS];
     widths[TAGS_COLUMN] = 220;
-    expect(withTagsRoom(widths, 5000)[TAGS_COLUMN]).toBe(220);
+    expect(withTagsRoom(fitColumns(widths, COLUMN_FLOORS, 5000), 5000)[TAGS_COLUMN]).toBe(220);
   });
 });
 

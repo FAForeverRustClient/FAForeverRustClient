@@ -16,6 +16,7 @@ import {
 import {
   columnTemplate as templateFor,
   resolveColumnWidths,
+  type ColumnFit,
 } from "../../../shared/tableColumns";
 
 /**
@@ -170,17 +171,19 @@ export function detailWidth(stored: number | undefined): number {
 }
 
 /**
- * `drawn` with the tags column widened toward [`TAGS_COMFORT_PX`] out of the
- * room the columns leave in `space`.
+ * The fitted widths with the tags column widened toward [`TAGS_COMFORT_PX`]
+ * out of the room the columns leave in `space`.
  *
- * Only room the game column would otherwise take beyond its own width: where
- * the columns do not fit as they are, nothing changes, so the default window
- * is drawn exactly as before. Unmeasured (zero), nothing changes either.
+ * Only room the game column would otherwise take beyond its own width, and
+ * only with every column at its full width: where the columns do not fit as
+ * stored (the default window), the widths are as fitted, including the odd
+ * pixel the rounding leaves over. Unmeasured (zero), nothing changes either.
  */
-export function withTagsRoom(drawn: readonly number[], space: number): number[] {
-  const result = [...drawn];
-  const spare = space - drawn.reduce((total, width) => total + width, 0);
-  const wanted = TAGS_COMFORT_PX - (drawn[TAGS_COLUMN] ?? TAGS_COMFORT_PX);
+export function withTagsRoom(fit: ColumnFit, space: number): number[] {
+  const result = [...fit.drawn];
+  if (fit.overflow || fit.scale < 1) return result;
+  const spare = space - result.reduce((total, width) => total + width, 0);
+  const wanted = TAGS_COMFORT_PX - (result[TAGS_COLUMN] ?? TAGS_COMFORT_PX);
   if (spare > 0 && wanted > 0) result[TAGS_COLUMN] += Math.min(spare, wanted);
   return result;
 }
