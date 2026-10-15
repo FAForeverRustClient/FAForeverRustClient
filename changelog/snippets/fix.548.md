@@ -1,0 +1,1 @@
+- The tool buttons in the map generator's advanced options no longer break over two lines; the dialog grows to fit them instead.
