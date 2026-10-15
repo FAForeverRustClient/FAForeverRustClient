@@ -45,6 +45,22 @@ export const DEFAULT_COLUMN_WIDTHS: readonly number[] = [254, 96, 150, 74, 80, 8
  */
 export const COLUMN_FLOORS: readonly number[] = [160, 40, 96, 36, 36, 36];
 
+/** The tags column, by its designed position. */
+export const TAGS_COLUMN = 1;
+
+/**
+ * How wide the tags column is drawn when the list has room to spare: two
+ * ordinary tags side by side ("3 SIM" and "Unranked" take 119 pixels in
+ * German), or one of them and its "+N more".
+ *
+ * Its designed width of 96 is what the default window can afford, and on a
+ * wider one every spare pixel went to the game column, so a list with half a
+ * screen of title room showed "+2 more" and no tag at all (#559). The width
+ * a reader dragged it to is kept as the least it gets; this is only what the
+ * spare room tops it up to.
+ */
+export const TAGS_COMFORT_PX = 150;
+
 /** How many columns the list had before the tags got one of their own. */
 const COLUMNS_BEFORE_TAGS = 5;
 
@@ -151,4 +167,20 @@ export function detailWidth(stored: number | undefined): number {
   return stored && stored > 0
     ? Math.min(MAX_DETAIL_PX, Math.max(MIN_DETAIL_PX, stored))
     : DEFAULT_DETAIL_WIDTH;
+}
+
+/**
+ * `drawn` with the tags column widened toward [`TAGS_COMFORT_PX`] out of the
+ * room the columns leave in `space`.
+ *
+ * Only room the game column would otherwise take beyond its own width: where
+ * the columns do not fit as they are, nothing changes, so the default window
+ * is drawn exactly as before. Unmeasured (zero), nothing changes either.
+ */
+export function withTagsRoom(drawn: readonly number[], space: number): number[] {
+  const result = [...drawn];
+  const spare = space - drawn.reduce((total, width) => total + width, 0);
+  const wanted = TAGS_COMFORT_PX - (drawn[TAGS_COLUMN] ?? TAGS_COMFORT_PX);
+  if (spare > 0 && wanted > 0) result[TAGS_COLUMN] += Math.min(spare, wanted);
+  return result;
 }
