@@ -112,23 +112,28 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
     [installed, vaultIndex, t],
   );
 
-  // A map generated a moment ago is not in the installed list yet, and has to
-  // be selectable anyway. One appended entry rather than a reason to rebuild
-  // the merge above every time the selection moves.
+  // Keep the available list stable while the selected row moves. Rebuilding
+  // and re-filtering every map on each held arrow key made navigation scale
+  // with the entire installed catalogue.
+  const generatedDescription = t("lobby.host.mapGeneratedDescription");
   const catalogueMaps = useMemo(
-    () => withUncataloguedMaps(
-      catalogue,
-      selectedMap,
-      favoriteMaps,
-      t("lobby.host.mapGeneratedDescription"),
-    ),
-    [favoriteMaps, catalogue, selectedMap, t],
+    () => withUncataloguedMaps(catalogue, null, favoriteMaps, generatedDescription),
+    [favoriteMaps, catalogue, generatedDescription],
   );
+  const catalogueFolders = useMemo(
+    () => new Set(catalogueMaps.map((map) => map.folderName.toLowerCase())),
+    [catalogueMaps],
+  );
+  const mapsWithSelection = useMemo(() => {
+    if (!selectedMap || catalogueFolders.has(selectedMap.toLowerCase())) return catalogueMaps;
+    const [selected] = withUncataloguedMaps(new Map(), selectedMap, [], generatedDescription);
+    return selected ? [...catalogueMaps, selected] : catalogueMaps;
+  }, [catalogueMaps, catalogueFolders, generatedDescription, selectedMap]);
 
   // Filters, favourites, keyboard selection and the enlarged preview. Called
   // here, ahead of the loads below, so its effects keep their original order.
   const mapPicker = useHostMapPicker({
-    catalogueMaps,
+    catalogueMaps: mapsWithSelection,
     favoriteMaps,
     selectedMap,
     setSelectedMap,
