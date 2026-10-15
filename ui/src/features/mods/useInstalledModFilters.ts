@@ -88,7 +88,15 @@ export function useInstalledModFilters({
     setMaximumRating(null);
   };
 
-  const hiddenFilterCount = Number(ranked !== "all")
+  // What "More filters" holds that is not at its default. The type and the
+  // state count only where they differ from what the chosen preset set them
+  // to: the UI preset is a type filter already, and saying so twice would
+  // send the reader looking for a filter they did not set.
+  const presetType: ModTypeFilter = preset === "ui" || preset === "sim" ? preset : "all";
+  const presetEnabled: EnabledFilter = preset === "enabled" || preset === "disabled" ? preset : "all";
+  const hiddenFilterCount = Number(modType !== presetType)
+    + Number(enabled !== presetEnabled)
+    + Number(ranked !== "all")
     + Number(minimumRating !== null || maximumRating !== null);
 
   const filtered = useMemo(() => {

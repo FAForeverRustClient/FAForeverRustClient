@@ -1,0 +1,2 @@
+- The Mods tab is redesigned to match the Maps tab, with a quieter search, tidier mod cards and a wider mod panel.
+- The reviews window for maps, mods and replays has a new layout.

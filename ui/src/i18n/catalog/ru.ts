@@ -685,7 +685,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "mods.vault.simMod": "Мод симуляции",
   "mods.vault.featured": "Рекомендуем",
   "mods.vault.version": "Версия",
-  "mods.vault.communityRating": "Оценка сообщества",
   "mods.vault.published": "Опубликован",
   "mods.vault.updated": "Обновлён",
   "mods.vault.modId": "ID мода",

@@ -642,74 +642,10 @@
   object-fit: contain;
 }
 
-/* The training overview's facts strip (`.training-basis`), for one player: a
-   tinted band across the panel's full width, each value under its label, and
-   a hairline between the values of a row. */
+/* The shared facts strip (design-system/FactsStrip), reaching the panel's
+   edges through its padding. */
 .leaderboard-player-facts {
-  display: grid;
-  gap: var(--space-3);
-  margin: 0 calc(-1 * var(--space-4));
-  padding: 14px var(--space-4);
-  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.leaderboard-facts {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  row-gap: var(--space-3);
-  margin: 0;
-}
-
-.leaderboard-facts + .leaderboard-facts {
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--color-border);
-}
-
-.leaderboard-facts > div {
-  min-width: 0;
-  padding: 0 var(--space-3);
-  border-left: 1px solid var(--color-border);
-}
-
-.leaderboard-facts > div:nth-child(3n + 1) {
-  padding-left: 0;
-  border-left: 0;
-}
-
-.leaderboard-facts dt {
-  margin-bottom: 3px;
-  overflow: hidden;
-  color: var(--color-subtle);
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.07em;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.leaderboard-facts dd {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.leaderboard-facts dd.is-unknown {
-  color: var(--color-muted);
-  font-weight: 500;
-}
-
-/* The board the page is ranked by, marked as its column header is. */
-.leaderboard-facts .is-ranked dt {
-  color: var(--color-text);
-}
-
-.leaderboard-facts .is-ranked dd {
-  font-weight: 700;
+  --facts-strip-bleed: var(--space-4);
 }
 
 /* The replay detail's small icon button beside its id. */

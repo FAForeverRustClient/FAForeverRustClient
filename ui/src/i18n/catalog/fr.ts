@@ -654,7 +654,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "mods.vault.simMod": "Mod de simulation",
   "mods.vault.featured": "En vedette",
   "mods.vault.version": "Version",
-  "mods.vault.communityRating": "Note de la communauté",
   "mods.vault.published": "Publié",
   "mods.vault.updated": "Mis à jour",
   "mods.vault.modId": "ID du mod",

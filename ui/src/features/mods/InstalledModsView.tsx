@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { EmptyState } from "../../design-system/EmptyState";
 import { InstalledModSearchPanel } from "./InstalledModSearchPanel";
+import { InstalledModSummary } from "./InstalledModSummary";
 import type { InstalledMod } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { FailureNotice, LoadStatusNotice } from "../../shared/components/LoadNotices";
@@ -123,15 +124,8 @@ export function InstalledModsView({
     <>
       <InstalledModSearchPanel
         filters={filters}
-        updateCheck={updateCheck}
-        busy={busy}
-        installedStatus={installedStatus}
-        vaultStatus={vaultStatus}
         favoriteCount={favoriteCount}
-        favoritesToEnable={favoritesToEnable}
         updatesCount={updatesCount}
-        onEnableFavorites={enableFavorites}
-        onRescan={loadInstalled}
       />
 
       <LoadStatusNotice
@@ -143,6 +137,18 @@ export function InstalledModsView({
           reason, the screen only had a button that went back to normal. */}
       <FailureNotice status={installStatus} message={installNote(installStatus)} />
       <FailureNotice status={toggleStatus} message={toggleNote(toggleStatus)} />
+      <InstalledModSummary
+        installed={installed}
+        filters={filters}
+        updateCheck={updateCheck}
+        busy={busy}
+        installedStatus={installedStatus}
+        vaultStatus={vaultStatus}
+        favoriteCount={favoriteCount}
+        favoritesToEnable={favoritesToEnable}
+        onEnableFavorites={enableFavorites}
+        onRescan={loadInstalled}
+      />
       {installedStatus.type === "ready" && filtered.length === 0 ? (
         <EmptyState
           bordered
@@ -154,10 +160,6 @@ export function InstalledModsView({
         </EmptyState>
       ) : filtered.length > 0 ? (
         <section className="installed-mod-library">
-          <div className="vault-results-head">
-            <span>{t("mods.installed.installedCount", { count: filtered.length })}</span>
-            <span>{t("mods.installed.activeCount", { count: installed.filter((mod) => mod.enabled).length })}</span>
-          </div>
           <div className="installed-mod-grid">
             {filtered.map((mod) => (
               <InstalledModCard

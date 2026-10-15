@@ -4,6 +4,7 @@ import { ReportDialog } from "../../shared/components/ReportDialog";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { ConfirmDialog } from "../../design-system/ConfirmDialog";
+import { FactsStrip } from "../../design-system/FactsStrip";
 import { VaultFeaturedBadge } from "../../design-system/VaultFeaturedBadge";
 import { openReviews } from "../../shared/openReviews";
 import { plainError } from "../../shared/plainError";
@@ -69,10 +70,117 @@ function ratingLabel(mod: VaultMod): string {
 export function ModPreview({ mod, large = false }: { mod: VaultMod; large?: boolean }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [mod.thumbnailUrl]);
-  if (!mod.thumbnailUrl || failed) {
-    return <span className={large ? "mod-vault-preview mod-vault-preview-empty" : "mod-vault-thumb mod-vault-preview-empty"} aria-hidden="true"><Icon name="mods" size={large ? 34 : 25} /></span>;
-  }
+  if (!mod.thumbnailUrl || failed) return <ModIcon large={large} />;
   return <img className={large ? "mod-vault-preview" : "mod-vault-thumb"} src={mod.thumbnailUrl} alt={t("mods.vault.preview", { name: mod.displayName })} loading="lazy" decoding="async" onError={() => setFailed(true)} />;
+}
+
+/**
+ * A mod's icon: its art in a square frame, or the mods placeholder for the
+ * half of the vault that ships none.
+ */
+const ICON_CLASS = {
+  small: "mod-icon",
+  large: "mod-icon is-large",
+  cover: "mod-icon is-cover",
+} as const;
+
+const PLACEHOLDER_CLASS = {
+  small: "mod-icon is-placeholder",
+  large: "mod-icon is-large is-placeholder",
+  cover: "mod-icon is-cover is-placeholder",
+} as const;
+
+const PLACEHOLDER_SIZE = { small: 25, large: 34, cover: 40 } as const;
+
+export function ModIcon({
+  url,
+  large = false,
+  cover = false,
+}: {
+  url?: string | null;
+  large?: boolean;
+  /** Fill a card's picture rather than sit in a frame of its own. */
+  cover?: boolean;
+}) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [url]);
+  const kind = cover ? "cover" : large ? "large" : "small";
+  if (url && !failed) {
+    return (
+      <>
+        {/* On a card, the sides of the band are a blurred, dimmed copy of
+            the logo, as the training tab frames a square map preview: the
+            mod's own colours rather than an empty border. */}
+        {cover && <img className="mod-vault-cover-backdrop" src={url} alt="" aria-hidden="true" loading="lazy" decoding="async" />}
+        <span className={ICON_CLASS[kind]}>
+          <img src={url} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
+        </span>
+      </>
+    );
+  }
+  return (
+    <span className={PLACEHOLDER_CLASS[kind]} aria-hidden="true">
+      <Icon name="mods" size={PLACEHOLDER_SIZE[kind]} />
+    </span>
+  );
+}
+
+/**
+ * A mod's rating as the Maps tab draws a map's: the star in the reviews'
+ * colour, the average, the count. A mod nobody has reviewed keeps the place,
+ * as a quiet outlined star and a dash, so every card has its rating at the
+ * same spot; one the vault does not list has nothing to rate and shows none.
+ */
+export function ModRating({ mod }: { mod: Pick<VaultMod, "ratingTenths" | "reviews"> | undefined }) {
+  const { t } = useTranslation();
+  if (!mod) return null;
+  if (mod.reviews <= 0) {
+    return (
+      <span className="mod-rating is-empty" title={t("mods.vault.noReviews")} aria-label={t("mods.vault.noReviews")}>
+        <Icon name="star" size={12} />
+        <span>{"\u2013"}</span>
+      </span>
+    );
+  }
+  const score = (mod.ratingTenths / 10).toFixed(1);
+  const label = t("mods.vault.ratingTooltip", { rating: score, reviews: mod.reviews });
+  return (
+    <span className="mod-rating" title={label} aria-label={label}>
+      <Icon name="star" size={12} fill="currentColor" />
+      <span>{score}</span>
+      <span className="mod-rating-count">({mod.reviews})</span>
+    </span>
+  );
+}
+
+/**
+ * On or off, for a mod that is installed: an ordinary button that says what a
+ * press does, the same on a vault card and in the installed list. The card's
+ * tint says which state the mod is in.
+ */
+export function ModToggleButton({
+  mod,
+  enabled,
+  disabled,
+  onToggle,
+}: {
+  mod: { displayName: string };
+  enabled: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslation();
+  const label = t(enabled ? "mods.vault.disable" : "mods.vault.enable");
+  return (
+    <Button
+      className="mod-toggle-button"
+      disabled={disabled}
+      aria-label={`${label}: ${mod.displayName}`}
+      onClick={onToggle}
+    >
+      {label}
+    </Button>
+  );
 }
 
 export function ModCard({
@@ -85,6 +193,7 @@ export function ModCard({
   onSelect,
   onInstall,
   onUpdate,
+  onToggle,
   onUninstall,
   onToggleFavorite,
 }: {
@@ -99,6 +208,8 @@ export function ModCard({
   /// Replace the installed copy in one step. Separate from `onInstall`
   /// because an install refuses a folder that already exists.
   onUpdate?: () => void;
+  /// Switch the installed copy on or off, as the installed list's card does.
+  onToggle?: () => void;
   onUninstall?: () => void;
   onToggleFavorite?: () => void;
 }) {
@@ -116,59 +227,67 @@ export function ModCard({
       ].filter(Boolean).join(" ")}
     >
       <button className="mod-vault-card-main" onClick={onSelect} aria-label={t("mods.vault.view", { name: mod.displayName })}>
-        <span className="mod-vault-image-wrap">
-          <ModPreview mod={mod} />
-          {/* Only the endorsement rides on the art now. The mod type moved down
-              to the facts line, where it sits beside the other things you
-              compare between cards rather than covering the logo. */}
+        {/* The logo whole and square, in the middle of a band of the picture
+            backdrop. */}
+        <span className="mod-vault-cover">
+          <ModIcon url={mod.thumbnailUrl} cover />
           {mod.recommended && <VaultFeaturedBadge />}
         </span>
 
+        {/* The name with its version at the line's end, and who made it under
+            them. */}
         <span className="mod-vault-card-copy">
-          <strong title={mod.displayName}>{mod.displayName}</strong>
-          <small>{mod.author ? t("mods.vault.byAuthor", { author: mod.author }) : t("mods.vault.unknownAuthor")}{mod.version ? ` · ${t("common.version", { version: mod.version })}` : ""}</small>
+          <span className="mod-vault-name-row">
+            <strong className="mod-vault-name" title={mod.displayName}>{mod.displayName}</strong>
+            {mod.version && <span className="mod-vault-version">{t("common.version", { version: mod.version })}</span>}
+          </span>
+          <small className="mod-vault-author">
+            {mod.author ? t("mods.vault.byAuthor", { author: mod.author }) : t("mods.vault.unknownAuthor")}
+          </small>
         </span>
 
-        {/* One line instead of a three-column ruled table: the values are a
-            number, a count and a date, and the rules cost more attention than
-            the facts did. */}
+        {/* Two rows of a fixed height each, so they sit at the same place on
+            every card: the tags (what kind of mod, whether a simulation mod
+            keeps a game ranked, and whether it is on), then when it was last
+            published and the rating at the end. A row that has less to say
+            keeps its height rather than pulling the foot up. */}
         <span className="mod-vault-card-facts">
-          <span className="mod-vault-facts-row">
-            <span className={`mod-vault-type ${mod.modType}`}>{t(mod.modType === "ui" ? "mods.vault.typeBadge.ui" : "mods.vault.typeBadge.sim")}</span>
+          <span className="mod-vault-tags">
+            <span className={`mod-vault-type ${mod.modType}`} title={t(mod.modType === "ui" ? "mods.vault.uiMod" : "mods.vault.simMod")}>
+              {t(mod.modType === "ui" ? "mods.vault.typeBadge.ui" : "mods.vault.typeBadge.sim")}
+            </span>
             {mod.modType === "sim" && (
               <span className={`mod-vault-type ${mod.ranked ? "ranked" : "unranked"}`}>
                 {t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}
               </span>
             )}
             {/* Installed says only that the folder is there. Enabled is the
-                one that answers "am I playing with this right now", which
-                nothing in the vault used to say. */}
+                one that answers "am I playing with this right now". */}
             {installed?.enabled && (
               <span className="mod-vault-type in-use" title={t("mods.vault.inUseHint")}>
                 {t("mods.vault.inUse")}
               </span>
             )}
           </span>
-          <span className="mod-vault-facts-row mod-vault-facts-sub">
+          <span className="mod-vault-facts-line">
             <span className="mod-vault-fact is-date" title={t("mods.vault.lastUpdated")}>
               {formatShortDate(mod.updatedAt || mod.createdAt)}
             </span>
-            <span
-              className="mod-vault-fact is-rating"
-              title={mod.reviews
-                ? t("mods.vault.ratingTooltip", { rating: (mod.ratingTenths / 10).toFixed(1), reviews: mod.reviews })
-                : t("mods.vault.noReviews")}
-            >
-              <Icon name="star" size={12} />
-              {mod.reviews ? t("mods.vault.ratingSummary", { rating: (mod.ratingTenths / 10).toFixed(1), reviews: mod.reviews }) : t("common.notAvailable")}
+            <span className="mod-vault-fact-end">
+              <ModRating mod={mod} />
             </span>
           </span>
         </span>
       </button>
 
+      {/* The map card's foot: the star at the start, and at the end the one
+          thing to do with the mod: install it, or enable or disable it with
+          remove beside it as an icon. "Uninstall" in red words was the
+          loudest thing on a card whose subject is the mod. */}
       <div className="mod-vault-card-action">
         {onToggleFavorite && (
-          <Button
+          <button
+            type="button"
             className={favorite ? "mod-favorite-button active" : "mod-favorite-button"}
             aria-label={t(favorite ? "mods.vault.removeFavoriteAria" : "mods.vault.addFavoriteAria", {
               name: mod.displayName,
@@ -177,25 +296,29 @@ export function ModCard({
             title={t(favorite ? "mods.vault.removeFavorite" : "mods.vault.addFavorite")}
             onClick={onToggleFavorite}
           >
-            <Icon name="star" size={14} fill={favorite ? "currentColor" : "none"} />
-          </Button>
+            <Icon name="star" size={15} fill={favorite ? "currentColor" : "none"} />
+          </button>
         )}
         <span className="mod-vault-card-buttons">
           {installed ? (
-            updateAvailable ? (
-              <>
-                <Button className="mod-vault-uninstall" disabled={busy} onClick={onUninstall}>
-                  {t("mods.vault.uninstall")}
-                </Button>
+            <>
+              {updateAvailable ? (
                 <Button variant="primary" disabled={busy || !mod.downloadUrl} onClick={onUpdate ?? onInstall}>
                   {t(working ? "mods.vault.busy" : "mods.vault.update")}
                 </Button>
-              </>
-            ) : (
-              <Button className="mod-vault-uninstall" disabled={busy} onClick={onUninstall}>
-                {t(working ? "mods.vault.busy" : "mods.vault.uninstall")}
+              ) : onToggle ? (
+                <ModToggleButton mod={mod} enabled={installed.enabled} disabled={busy} onToggle={onToggle} />
+              ) : null}
+              <Button
+                className="mod-vault-uninstall is-icon"
+                disabled={busy}
+                aria-label={t("mods.installed.uninstallNamed", { name: mod.displayName })}
+                title={t("mods.vault.uninstall")}
+                onClick={onUninstall}
+              >
+                <Icon name="trash" size={14} />
               </Button>
-            )
+            </>
           ) : (
             <Button variant="primary" disabled={busy || !mod.downloadUrl} onClick={onInstall}>
               {t(working ? "mods.vault.busy" : "mods.vault.install")}
@@ -242,8 +365,9 @@ export function ModDetailPanel({
   const description = cleanDescription(mod.description);
   const updateAvailable = Boolean(installed && modUpdateAvailable(installed.version, mod.version));
   const [reporting, setReporting] = useState(false);
+  const toggleLabel = t(toggling ? "mods.vault.toggling" : installed?.enabled ? "mods.vault.disable" : "mods.vault.enable");
   return (
-    <aside className="vault-detail-panel mod-vault-details surface-panel">
+    <aside className="mod-detail-panel surface-panel">
       {reporting && (
         <ReportDialog
           kind={t("mods.vault.reportKind")}
@@ -256,62 +380,71 @@ export function ModDetailPanel({
           onClose={() => setReporting(false)}
         />
       )}
-      <div className="vault-detail-preview mod-vault-detail-preview">
-        <ModPreview mod={mod} large />
+      {/* The card's picture, larger: the logo square and whole at the full
+          height of a band across the panel, its blurred copy at the sides. */}
+      <div className="mod-vault-cover mod-detail-preview">
+        <ModIcon url={mod.thumbnailUrl} cover />
       </div>
-      <div className="vault-detail-body mod-vault-detail-body">
-        <div className="vault-detail-header">
-          <div className="vault-detail-kicker mod-vault-detail-kicker">
-            <span className={`vault-badge mod-badge mod-badge-${mod.modType}`}>
+      <div className="mod-detail-body">
+        {/* The name large, the way the leaderboard's player panel opens, with
+            who made it under it and then what kind of mod it is. */}
+        <header className="mod-detail-head">
+          <div className="mod-detail-name-row">
+            <h2 className="mod-detail-name">{mod.displayName}</h2>
+            {/* Beside the name and icon-only: reporting something is rare,
+                and a full-size button would sit in front of everybody for the
+                sake of the few who ever press it. */}
+            <button
+              type="button"
+              className="mod-detail-report"
+              aria-label={t("vault.report.action")}
+              title={t("vault.report.action")}
+              onClick={() => setReporting(true)}
+            >
+              <Icon name="flag" size={13} />
+            </button>
+          </div>
+          <p className="mod-detail-byline">
+            {mod.author ? t("mods.vault.authoredBy", { author: mod.author }) : t("mods.vault.unknownAuthor")}
+            {mod.uploader && mod.uploader !== mod.author ? ` · ${t("mods.vault.uploadedBy", { uploader: mod.uploader })}` : ""}
+          </p>
+          <div className="mod-detail-tags">
+            <span className={`mod-vault-type ${mod.modType}`}>
               {t(mod.modType === "ui" ? "mods.vault.uiMod" : "mods.vault.simMod")}
             </span>
             {mod.modType === "sim" && (
-              <span className={`vault-badge is-${mod.ranked ? "ok" : "neutral"} ${mod.ranked ? "ranked" : "unranked"}`}>
+              <span className={`mod-vault-type ${mod.ranked ? "ranked" : "unranked"}`}>
                 {t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}
               </span>
             )}
-            {mod.recommended && <span className="vault-badge is-accent">{t("mods.vault.featured")}</span>}
+            {mod.recommended && <span className="mod-vault-type featured">{t("mods.vault.featured")}</span>}
             {installed?.enabled && (
-              <span className="vault-badge is-ok mod-badge-in-use" title={t("mods.vault.inUseHint")}>
-                <Icon name="check" size={12} />
+              <span className="mod-vault-type in-use" title={t("mods.vault.inUseHint")}>
                 {t("mods.vault.inUse")}
               </span>
             )}
           </div>
-          <h2 className="vault-detail-title">{mod.displayName}</h2>
-          <p className="vault-detail-byline mod-vault-byline">
-            <span className="vault-detail-author">
-              {mod.author ? t("mods.vault.authoredBy", { author: mod.author }) : t("mods.vault.unknownAuthor")}
-            </span>
-            {mod.uploader ? (
-              <>
-                <span className="vault-detail-dot">·</span>
-                <span className="vault-detail-uploader">
-                  {t("mods.vault.uploadedBy", { uploader: mod.uploader })}
-                </span>
-              </>
-            ) : null}
-          </p>
-        </div>
+        </header>
 
-        <div className="vault-detail-props">
-          <div className="vault-prop-row">
-            <span className="vault-prop-label">{t("mods.vault.version")}</span>
-            <span className="vault-prop-value">{mod.version ? t("common.version", { version: mod.version }) : t("common.notAvailable")}</span>
-          </div>
-          <div className="vault-prop-row">
-            <span className="vault-prop-label">{t("mods.vault.communityRating")}</span>
-            <span className="vault-prop-value">{ratingLabel(mod)}</span>
-          </div>
-          <div className="vault-prop-row">
-            <span className="vault-prop-label">{t("mods.vault.published")}</span>
-            <span className="vault-prop-value">{formatShortDate(mod.createdAt)}</span>
-          </div>
-          <div className="vault-prop-row">
-            <span className="vault-prop-label">{t("mods.vault.updated")}</span>
-            <span className="vault-prop-value">{formatShortDate(mod.updatedAt || mod.createdAt)}</span>
-          </div>
-        </div>
+        {/* What the vault knows about it, as the training overview's facts
+            strip: the version and its reviews, then when it appeared and
+            when it last changed. */}
+        <FactsStrip
+          className="mod-detail-facts"
+          columns={2}
+          groups={[{
+            facts: [
+              {
+                label: t("mods.vault.version"),
+                value: mod.version ? t("common.version", { version: mod.version }) : t("common.notAvailable"),
+                unknown: !mod.version,
+              },
+              { label: t("mods.vault.reviews"), value: ratingLabel(mod), unknown: mod.reviews === 0 },
+              { label: t("mods.vault.published"), value: formatShortDate(mod.createdAt) },
+              { label: t("mods.vault.updated"), value: formatShortDate(mod.updatedAt || mod.createdAt) },
+            ],
+          }]}
+        />
 
         <VaultDescription
           className="mod-vault-description"
@@ -320,19 +453,23 @@ export function ModDetailPanel({
           empty={t("mods.vault.noDescription")}
         />
 
-        <div className="vault-detail-actions mod-vault-detail-actions">
-          <div className="vault-detail-actions-left">
+        {/* One action to a line, icon first, and the one the panel is for
+            last: install, update, or switch the mod on or off. */}
+        <div className="mod-detail-actions">
+          <div className="mod-detail-action-list">
             {onToggleFavorite && (
               <Button
-                className={favorite ? "vault-action-favorite is-active mod-favorite-button active" : "vault-action-favorite mod-favorite-button"}
+                variant="ghost"
+                className={favorite ? "mod-detail-favorite is-active" : "mod-detail-favorite"}
                 aria-pressed={favorite}
                 onClick={onToggleFavorite}
               >
-                <Icon name="star" size={14} fill={favorite ? "currentColor" : "none"} />
+                <Icon name="star" size={15} fill={favorite ? "currentColor" : "none"} />
                 {t(favorite ? "mods.vault.favorited" : "mods.vault.favorite")}
               </Button>
             )}
-            <Button onClick={() => void openReviews("mod", mod.modId, mod.displayName)}>
+            <Button variant="ghost" onClick={() => void openReviews("mod", mod.modId, mod.displayName)}>
+              <Icon name="chat" size={15} />
               {t("mods.vault.reviews")}
             </Button>
             {/* Only on your own upload, and only with the folder to hand: a
@@ -343,47 +480,45 @@ export function ModDetailPanel({
                 button would leave. */}
             {mine && onRename && (
               <Button
+                variant="ghost"
                 disabled={busy || !installed}
                 title={t(installed ? "mods.rename.action" : "mods.rename.needsInstall")}
                 onClick={onRename}
               >
-                <Icon name="edit" size={14} />
+                <Icon name="edit" size={15} />
                 {t("mods.rename.action")}
               </Button>
             )}
-            {installed && (
-              <Button disabled={busy} onClick={onToggle}>
-                {t(toggling ? "mods.vault.toggling" : installed.enabled ? "mods.vault.disable" : "mods.vault.enable")}
+            {installed && updateAvailable && (
+              <Button variant="ghost" disabled={busy} onClick={onToggle}>
+                <Icon name={installed.enabled ? "close" : "check"} size={15} />
+                {toggleLabel}
               </Button>
             )}
-            {/* Last in the row and icon-only: reporting something is rare, and
-                a full-width button would sit in front of everybody for the
-                sake of the few who ever press it. */}
-            <Button
-              className="vault-action-report"
-              aria-label={t("vault.report.action")}
-              title={t("vault.report.action")}
-              onClick={() => setReporting(true)}
-            >
-              <Icon name="flag" size={14} />
-            </Button>
-          </div>
-
-          <div className="vault-detail-actions-right">
-            {updateAvailable ? (
-              <Button variant="primary" disabled={busy || !mod.downloadUrl} onClick={onUpdate ?? onInstall}>
-                {t(installing ? "mods.vault.busy" : "mods.vault.installUpdate")}
-              </Button>
-            ) : installed ? (
-              <Button className="mod-vault-uninstall" disabled={busy} onClick={onUninstall}>
+            {installed && (
+              <Button variant="ghost" className="mod-detail-uninstall" disabled={busy} onClick={onUninstall}>
+                <Icon name="trash" size={15} />
                 {t("mods.vault.uninstall")}
               </Button>
-            ) : (
-              <Button variant="primary" disabled={busy || !mod.downloadUrl} onClick={onInstall}>
-                {t(installing ? "mods.vault.busy" : "mods.vault.installMod")}
-              </Button>
             )}
           </div>
+
+          {updateAvailable ? (
+            <Button variant="primary" disabled={busy || !mod.downloadUrl} onClick={onUpdate ?? onInstall}>
+              <Icon name="download" size={15} />
+              {t(installing ? "mods.vault.busy" : "mods.vault.installUpdate")}
+            </Button>
+          ) : installed ? (
+            <Button variant={installed.enabled ? "ghost" : "primary"} disabled={busy} onClick={onToggle}>
+              <Icon name={installed.enabled ? "close" : "check"} size={15} />
+              {toggleLabel}
+            </Button>
+          ) : (
+            <Button variant="primary" disabled={busy || !mod.downloadUrl} onClick={onInstall}>
+              <Icon name="download" size={15} />
+              {t(installing ? "mods.vault.busy" : "mods.vault.installMod")}
+            </Button>
+          )}
         </div>
       </div>
     </aside>
