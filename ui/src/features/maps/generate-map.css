@@ -738,9 +738,17 @@
   flex-basis: 100%;
 }
 
+/* Each button as wide as its label, on one line: "Show generator help" is
+   the longest of them in German and broke over two lines when the buttons
+   shared out a narrow cell. */
 .generate-map-tools-group button {
-  flex: 1;
-  min-width: 0;
+  flex: none;
+  white-space: nowrap;
+}
+
+/* A row across both columns of the grid. */
+.generate-map-grid-2col > .generate-map-row-full {
+  grid-column: 1 / -1;
 }
 
 .generate-map-preset-save-group {
