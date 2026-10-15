@@ -2,7 +2,13 @@
 // fixture (`reducer.conformance.test.ts`), so a transition that drifts from the
 // Rust one fails a test rather than shipping.
 
-import type { TrainingDocument, TrainingEvent, TrainingState } from "../../ipc/bindings";
+import type {
+  LessonRecord,
+  LessonScore,
+  TrainingDocument,
+  TrainingEvent,
+  TrainingState,
+} from "../../ipc/bindings";
 
 /** Twin of `TrainingDocument::default`: nothing read, for nobody. */
 const NO_DOCUMENT: TrainingDocument = {
@@ -12,6 +18,23 @@ const NO_DOCUMENT: TrainingDocument = {
   recording: "",
   recordingStatus: { type: "idle" },
 };
+
+/** Twin of `LessonScore::beats`: more stars, then the quicker run. */
+function beats(score: LessonScore, other: LessonScore): boolean {
+  return (
+    score.stars > other.stars || (score.stars === other.stars && score.seconds < other.seconds)
+  );
+}
+
+/** Twin of `record_run`: the record after one more finished run. */
+function recordRun(previous: LessonRecord | undefined, score: LessonScore): LessonRecord {
+  if (!previous) return { best: score, last: score, runs: 1 };
+  return {
+    best: beats(score, previous.best) ? score : previous.best,
+    last: score,
+    runs: previous.runs + 1,
+  };
+}
 
 export function reduceTraining(state: TrainingState, event: TrainingEvent): TrainingState {
   switch (event.type) {
@@ -136,5 +159,29 @@ export function reduceTraining(state: TrainingState, event: TrainingEvent): Trai
       return { ...state, contributionPost: event.payload.post };
     case "contributionClosed":
       return { ...state, contribution: null, contributionPost: null };
+    case "lessonRecordsLoaded":
+      return { ...state, lessonRecords: event.payload.records };
+    case "lessonPreparing":
+      return { ...state, lessonLaunch: { type: "preparing", payload: event.payload } };
+    case "lessonPlaying":
+      return { ...state, lessonLaunch: { type: "playing", payload: event.payload } };
+    case "lessonLaunchFailed":
+      return { ...state, lessonLaunch: { type: "failed", payload: event.payload } };
+    case "lessonLaunchCancelled":
+      return { ...state, lessonLaunch: { type: "idle" } };
+    case "lessonFinished": {
+      const { resourceId, score } = event.payload;
+      const lessonLaunch = { type: "finished" as const, payload: { resourceId, score } };
+      // A run quit before its debrief wrote nothing, and changes no record.
+      if (!score) return { ...state, lessonLaunch };
+      return {
+        ...state,
+        lessonLaunch,
+        lessonRecords: {
+          ...state.lessonRecords,
+          [resourceId]: recordRun(state.lessonRecords[resourceId], score),
+        },
+      };
+    }
   }
 }

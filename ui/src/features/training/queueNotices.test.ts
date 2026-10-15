@@ -69,6 +69,7 @@ describe("whether a submission can be accepted in one press", () => {
     url: "",
     imageUrl: "",
     tutorialId: null,
+    lesson: null,
     author: "",
     ratingMin: null,
     ratingMax: null,

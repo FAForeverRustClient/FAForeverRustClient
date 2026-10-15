@@ -311,6 +311,65 @@ by field. Half a merge would be worse than either half: an entry whose tags
 come from a curator and whose level comes from a keyword table is not something
 anyone can reason about.
 
+### A lesson the catalogue holds itself
+
+A lesson can also live in the catalogue repository: a scripted map folder under
+`lessons/<folder>/`, which the client downloads and starts from the Training
+tab. The entry names the folder and its files and nothing else:
+
+```json
+{
+  "id": "lesson-gunships-against-flak",
+  "title": "Gunships against flak",
+  "kind": "lesson",
+  "lesson": {
+    "folder": "FAF_Lesson_Gunships_01",
+    "files": [
+      "FAF_Lesson_Gunships_01_scenario.lua",
+      "FAF_Lesson_Gunships_01_save.lua",
+      "FAF_Lesson_Gunships_01_script.lua",
+      "FAF_Lesson_Gunships_01_strings.lua",
+      "FAF_Lesson_Gunships_01_operation.lua"
+    ]
+  }
+}
+```
+
+Starting one:
+
+1. refuses while Forged Alliance runs, as a tutorial does;
+2. patches the `faf` featured mod. Not `tutorials`: a lesson is written against
+   the base game's Lua, which every install has;
+3. downloads every listed file from
+   `raw.githubusercontent.com/<FAF_GUIDES_REPO>/main/lessons/<folder>/<file>`
+   into the player's maps folder, fresh each time, and swaps the folder in
+   only once all of them arrived;
+4. starts the game offline with `/map <folder>`.
+
+**Addresses are never stated.** The client builds them from the folder and file
+names inside the repository it trusts, for the reason a guide's address is
+checked: a manifest is remote content. A folder may hold letters, digits and
+underscores, a file those plus dots and hyphens, and every file must start with
+`<folder>_`. A package that breaks this is dropped where the manifest is parsed,
+so the entry stays in the library as a lesson that cannot start.
+
+**The result is a line in the game log.** When the game closes, the client reads
+the last line of this shape from the log it gave the game:
+
+```
+FAF_LESSON_RESULT lesson=<folder> stars=<n> max=<n> seconds=<n>
+```
+
+It keeps the best run (more stars, then the quicker time), the last run and how
+many runs finished, in the data directory on this machine and nowhere else. An
+offline game's result is whatever its own log says: good enough for a personal
+best, worthless for a leaderboard. A run closed before its debrief wrote nothing
+and is recorded as no result.
+
+How to write a lesson is the guides repository's `lessons/README.md`. Its
+`validate.mjs` checks that every listed file exists, that every file in the
+folder is listed, and that the scenario points at its own folder.
+
 ---
 
 ## Submissions and moderation

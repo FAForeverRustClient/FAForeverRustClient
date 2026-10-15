@@ -401,6 +401,8 @@ const INITIAL: AppState = {
     reviewPost: null,
     contribution: null,
     contributionPost: null,
+    lessonLaunch: { type: "idle" },
+    lessonRecords: {},
   },
   tutorials: {
     categories: [],
