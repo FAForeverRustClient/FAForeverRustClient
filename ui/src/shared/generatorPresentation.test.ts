@@ -255,7 +255,7 @@ describe("decoded map names, as labelled parameters", () => {
           textureStyle: "SYRTIS",
           resourceStyle: "LOW_MEX",
           propStyle: "ROCK_FIELD",
-          reclaimDensity: 127,
+          reclaimDensity: 1.0,
           resourceDensity: 0,
         },
       }),
@@ -370,11 +370,12 @@ describe("recognising our own run's outcome", () => {
 });
 
 describe("densities", () => {
-  it("shows the bin scale as the percentage it really is", () => {
-    // The sliders speak the generator's 127 bins; users think in percent.
+  it("shows the fraction as the percentage it really is", () => {
+    // The generator stores densities as 0-1 fractions.
     expect(densityPercent(0)).toBe(0);
-    expect(densityPercent(127)).toBe(100);
-    expect(densityPercent(64)).toBe(50);
+    expect(densityPercent(1)).toBe(100);
+    expect(densityPercent(0.5)).toBe(50);
+    expect(densityPercent(0.5590551)).toBe(56);
   });
 });
 

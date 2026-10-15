@@ -104,7 +104,7 @@ export function GeneratorStyleOptions({ model }: {
           max={DENSITY_BINS}
           low={form.reclaimDensityMin ?? null}
           high={form.reclaimDensityMax ?? null}
-          format={(v) => `${densityPercent(v)}%`}
+          format={(v) => `${densityPercent(v / DENSITY_BINS)}%`}
           closedScale
           onChange={(low, high) => {
             set("reclaimDensityMin", low);
@@ -120,7 +120,7 @@ export function GeneratorStyleOptions({ model }: {
           max={DENSITY_BINS}
           low={form.resourceDensityMin ?? null}
           high={form.resourceDensityMax ?? null}
-          format={(v) => `${densityPercent(v)}%`}
+          format={(v) => `${densityPercent(v / DENSITY_BINS)}%`}
           closedScale
           onChange={(low, high) => {
             set("resourceDensityMin", low);
