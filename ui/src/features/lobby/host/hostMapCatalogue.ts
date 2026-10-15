@@ -187,6 +187,12 @@ export function buildHostCatalogue(
 
     const version = installed.version || vaultMeta?.version || existing?.version;
 
+    // Generated maps (Neroxis) can be ranked - they're used in ladder/matchmaking.
+    // Only SIM mods can make them unranked. Installed generated maps are not in
+    // the vault, so use the generated-map check when no vault rating is known.
+    const isGenerated = isGeneratedMap(installed.folderName);
+    const ranked = vaultMeta?.ranked ?? (isOfficialMap(installed.folderName) || isGenerated);
+
     mapByFolder.set(key, {
       displayName: vaultMeta?.displayName ?? officialMeta?.displayName ?? installed.displayName,
       folderName: installed.folderName,
@@ -194,9 +200,7 @@ export function buildHostCatalogue(
       width,
       height,
       version: version ?? undefined,
-      // The vault knows; a base map the vault has never heard of is rated by
-      // definition. Same rule the Maps tab's installed list uses.
-      ranked: vaultMeta?.ranked ?? isOfficialMap(installed.folderName),
+      ranked,
       description,
       author: vaultMeta?.author,
     });
@@ -225,8 +229,10 @@ export function withUncataloguedMaps(
       width: 1024,
       height: 1024,
       version: "1.0",
-      // A generated map exists in no vault, so it is rated by nothing.
-      ranked: false,
+      // Generated maps can be ranked (used in ladder/matchmaking); the
+      // vault check in isCustomGameRanked passes because they're not
+      // in the vault. Unknown non-generated maps remain unranked.
+      ranked: isGeneratedMap(selectedMap),
       description: generatedDescription,
     });
   }
@@ -244,7 +250,8 @@ export function withUncataloguedMaps(
       width: 1024,
       height: 1024,
       version: "1.0",
-      ranked: false,
+      // Generated maps can be ranked (used in ladder/matchmaking).
+      ranked: true,
       description: generatedDescription,
     });
   }
