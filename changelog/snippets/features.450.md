@@ -1,3 +1,0 @@
-- The status bar's matchmaker search shows the Play tab's status dot.
-- The profile's Results tab sums up wins, losses and win rate of the games shown.
-- Offline players get the full player menu: friend, foe, note, replays and report.

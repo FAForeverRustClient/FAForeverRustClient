@@ -1,1 +1,0 @@
-- No visible changes: the changelog instructions require a snippet for every pull request.

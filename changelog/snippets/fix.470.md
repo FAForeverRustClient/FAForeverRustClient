@@ -1,1 +1,0 @@
-- The installed mods list shows every mod in one list instead of shrinking after a filter change.

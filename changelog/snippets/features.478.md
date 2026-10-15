@@ -1,1 +1,0 @@
-- Written guide series read as chapters, guides link to each other, and guides can show pictures, keys, steps, faction tabs and videos.

@@ -1,2 +1,0 @@
-- Changing the launch wrapper or the extra game arguments now asks you to confirm it.
-- The Browse buttons in Settings open where the current path points.

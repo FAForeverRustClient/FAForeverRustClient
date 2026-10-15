@@ -1,1 +1,0 @@
-- The game tiles on the Play tab show the map's name on its picture and give the host a line under the title.

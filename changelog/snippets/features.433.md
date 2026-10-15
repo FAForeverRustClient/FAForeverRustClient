@@ -1,1 +1,0 @@
-- Online replays on a generated map show the Generate button.

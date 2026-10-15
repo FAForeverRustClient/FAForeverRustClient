@@ -1,1 +1,0 @@
-- Many Training tab fixes: guide submissions and the review queue, staying signed in to GitHub while offline, and a library that still loads when one entry is broken.

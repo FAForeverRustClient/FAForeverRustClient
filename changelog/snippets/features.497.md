@@ -1,2 +1,0 @@
-- New game tiles in the Play tab, one consistent icon set, and scrollbars that no longer shift the layout.
-- Game titles are limited to 64 characters.

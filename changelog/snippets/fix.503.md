@@ -1,1 +1,0 @@
-- Quit in the tray no longer cuts a running game's connection; it does what closing the window does.
