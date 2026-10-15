@@ -193,6 +193,20 @@ fn lesson_file_address(repo: &str, branch: &str, folder: &str, file: &str) -> St
     format!("https://raw.githubusercontent.com/{repo}/{branch}/lessons/{folder}/{file}")
 }
 
+/// The empty terrain file a lesson folder needs to be mounted at all, or
+/// `None` when the package brings one of its own.
+///
+/// `init_faf.lua`'s `MountMapContent` skips every map folder without a
+/// `.scmap` in it ("Prevented loading a map with no scmap file"), so the
+/// scenario is never under `/maps/` and the launch fails with "Map scenario
+/// file does not exist". A lesson borrows a shipped map's terrain through its
+/// scenario's `map` entry and keeps the guides repository free of binaries,
+/// so the game never opens this file: it only has to be there by name.
+fn lesson_placeholder_terrain(lesson: &LessonPackage) -> Option<String> {
+    let brings_terrain = lesson.files.iter().any(|file| file.ends_with(".scmap"));
+    (!brings_terrain).then(|| format!("{}.scmap", lesson.folder))
+}
+
 /// A URL with a value on it that changes, so the request is not answered from
 /// a CDN cache.
 ///
@@ -496,6 +510,10 @@ impl TrainingPort for TrainingCatalogueClient {
             let bytes =
                 bounded_body(response, "that lesson file", MAX_LESSON_FILE_BYTES as u64).await?;
             std::fs::write(staging.path().join(file), bytes)
+                .map_err(|error| format!("could not write the lesson: {error}"))?;
+        }
+        if let Some(terrain) = lesson_placeholder_terrain(&lesson) {
+            std::fs::write(staging.path().join(terrain), b"")
                 .map_err(|error| format!("could not write the lesson: {error}"))?;
         }
 
@@ -1255,6 +1273,29 @@ mod tests {
         // cannot be started, never as one that writes outside its folder.
         assert_eq!(catalogue.resources[1].id, "escape");
         assert_eq!(catalogue.resources[1].lesson, None);
+    }
+
+    #[test]
+    fn a_lesson_without_terrain_gets_a_placeholder_the_game_will_mount() {
+        let package = |files: &[&str]| LessonPackage {
+            folder: "FAF_Lesson_A".into(),
+            files: files.iter().map(|file| file.to_string()).collect(),
+        };
+        assert_eq!(
+            lesson_placeholder_terrain(&package(&[
+                "FAF_Lesson_A_scenario.lua",
+                "FAF_Lesson_A_save.lua",
+                "FAF_Lesson_A_script.lua",
+            ])),
+            Some("FAF_Lesson_A.scmap".into())
+        );
+        assert_eq!(
+            lesson_placeholder_terrain(&package(&[
+                "FAF_Lesson_A_scenario.lua",
+                "FAF_Lesson_A_terrain.scmap",
+            ])),
+            None
+        );
     }
 
     #[test]
