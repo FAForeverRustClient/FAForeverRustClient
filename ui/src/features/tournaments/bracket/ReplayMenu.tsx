@@ -12,6 +12,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../../../design-system/Icon";
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
+import { useMenuKeyboard } from "../../../shared/hooks/useMenuKeyboard";
 import { useTranslation } from "../../../i18n/useTranslation";
 
 interface ReplayMenuProps {
@@ -43,7 +44,10 @@ export function ReplayMenu({ ids, onWatch }: ReplayMenuProps) {
       if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return;
       setOpen(false);
     };
-    const away = () => setOpen(false);
+    const away = (event: Event) => {
+      if (event.target instanceof Node && menuRef.current?.contains(event.target)) return;
+      setOpen(false);
+    };
     window.addEventListener("pointerdown", close, true);
     window.addEventListener("scroll", away, true);
     window.addEventListener("resize", away);
@@ -58,6 +62,7 @@ export function ReplayMenu({ ids, onWatch }: ReplayMenuProps) {
     setOpen(false);
     buttonRef.current?.focus();
   });
+  useMenuKeyboard(menuRef, open && at !== null, () => setOpen(false));
 
   // Under the button, its right edge on the button's.
   useLayoutEffect(() => {

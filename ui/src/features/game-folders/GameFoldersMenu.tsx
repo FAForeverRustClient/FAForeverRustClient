@@ -13,6 +13,7 @@
 // collapsed rail navigation modes.
 
 import { useOverlayLayer } from "../../design-system/useOverlayLayer";
+import { useMenuKeyboard } from "../../shared/hooks/useMenuKeyboard";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../../design-system/Icon";
@@ -90,6 +91,7 @@ export function GameFoldersMenu() {
   }, [open, place]);
 
   useOverlayLayer(open, () => { setOpen(false); triggerRef.current?.focus(); });
+  useMenuKeyboard(menuRef, open, () => setOpen(false));
 
   const handleToggle = () => {
     if (!open) {

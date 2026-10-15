@@ -1,4 +1,5 @@
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
+import { useMenuKeyboard } from "../../../shared/hooks/useMenuKeyboard";
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../../design-system/Button";
@@ -186,6 +187,7 @@ export function LiveWatchButton({
   }, [open, place]);
 
   useOverlayLayer(open, () => { setMenuOpen(false); triggerRef.current?.focus(); });
+  useMenuKeyboard(menuRef, open, () => setMenuOpen(false));
 
   useEffect(() => {
     if (!open) return;
@@ -242,6 +244,7 @@ export function LiveWatchButton({
           >
             <strong>{t("replays.live.whenReady")}</strong>
             <Button
+              role="menuitem"
               disabled={busy || tracked?.action === "notify"}
               onClick={() => {
                 ipc.send({
@@ -254,6 +257,7 @@ export function LiveWatchButton({
               {t("replays.live.notifyMe")}
             </Button>
             <Button
+              role="menuitem"
               disabled={busy || tracked?.action === "watch"}
               onClick={() => {
                 ipc.send({
@@ -267,6 +271,7 @@ export function LiveWatchButton({
             </Button>
             {tracked && (
               <Button
+                role="menuitem"
                 onClick={() => {
                   ipc.send({ kind: "Replays", command: { type: "cancelLiveTracking" } });
                   closeMenu();
