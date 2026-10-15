@@ -94,6 +94,43 @@ pub(crate) fn locate_bundled_helpers(app: &tauri::App) {
         }
     }
 
+    // The two below are also found beside the executable, which is where the
+    // Windows installer puts them. A Linux package does not: the binary goes
+    // to /usr/bin and the resources to /usr/lib/<product>, so without this
+    // the experimental adapter reported itself as not installed there and
+    // faf-pioneer was looked up on PATH.
+    if std::env::var("FAF_EXP_JAVA_ICE_ADAPTER_JAR")
+        .unwrap_or_default()
+        .is_empty()
+    {
+        if let Ok(resource_dir) = app.path().resource_dir() {
+            let bundled_adapter = resource_dir
+                .join("natives")
+                .join("exp-java-ice-adapter")
+                .join("faf-ice-adapter.jar");
+            if bundled_adapter.is_file() {
+                std::env::set_var("FAF_EXP_JAVA_ICE_ADAPTER_JAR", bundled_adapter);
+            }
+        }
+    }
+
+    if std::env::var("FAF_ICE_ADAPTER_PATH")
+        .unwrap_or_default()
+        .is_empty()
+    {
+        if let Ok(resource_dir) = app.path().resource_dir() {
+            let pioneer_name = if cfg!(windows) {
+                "faf-pioneer.exe"
+            } else {
+                "faf-pioneer"
+            };
+            let bundled_pioneer = resource_dir.join("natives").join(pioneer_name);
+            if bundled_pioneer.is_file() {
+                std::env::set_var("FAF_ICE_ADAPTER_PATH", bundled_pioneer);
+            }
+        }
+    }
+
     if std::env::var("FAF_JAVA_PATH")
         .unwrap_or_default()
         .is_empty()
