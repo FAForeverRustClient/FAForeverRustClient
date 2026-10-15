@@ -6,6 +6,8 @@
 //!
 //! * [`dispatch`], [`dispatch_and_wait`] and [`snapshot`] are the *only*
 //!   way state moves across the boundary (ARCHITECTURE.md §1).
+//!   The two dispatches pass [`admit`] first, which refuses a path the player
+//!   did not pick (see `picked_paths`).
 //! * The folder, log and sound commands are desktop plumbing with no state.
 //! * [`webview_engine`], [`exit_app`] and [`page_ready`] are facts about, and
 //!   control over, the shell process itself.
@@ -16,6 +18,7 @@ use serde::Serialize;
 use tauri::Manager;
 use tauri_plugin_opener::OpenerExt;
 
+use crate::picked_paths::{admit, PickedPaths};
 use crate::Core;
 
 #[derive(Serialize)]
@@ -102,7 +105,11 @@ pub(crate) fn client_folder_path(kind: String) -> Result<String, String> {
 /// It is not always the name that was picked: see `import_sound` for why a
 /// collision gets a suffix rather than overwriting.
 #[tauri::command]
-pub(crate) fn import_notification_sound(path: String) -> Result<String, String> {
+pub(crate) fn import_notification_sound(
+    path: String,
+    picked: tauri::State<'_, PickedPaths>,
+) -> Result<String, String> {
+    picked.require(&path)?;
     faf_app::infra::notification_sounds::import_sound(std::path::Path::new(&path))
 }
 
@@ -126,7 +133,11 @@ pub(crate) fn read_notification_sound(name: String) -> Result<Vec<u8>, String> {
 /// Copy a picked picture in as the interface's background (#439). Returns the
 /// name it was stored under, which is what goes in the settings.
 #[tauri::command]
-pub(crate) fn import_background_image(path: String) -> Result<String, String> {
+pub(crate) fn import_background_image(
+    path: String,
+    picked: tauri::State<'_, PickedPaths>,
+) -> Result<String, String> {
+    picked.require(&path)?;
     faf_app::infra::backgrounds::import_background(std::path::Path::new(&path))
 }
 
@@ -233,8 +244,17 @@ pub(crate) fn read_latest_log(
 pub(crate) async fn dispatch(
     command: AppCommand,
     core: tauri::State<'_, Core>,
+    picked: tauri::State<'_, PickedPaths>,
+    window: tauri::Window,
 ) -> Result<(), String> {
     let core = core.0.clone();
+    admit(
+        &command,
+        &picked,
+        || core.with_state(|state| state.settings.clone()),
+        &window,
+    )
+    .await?;
     core.dispatch(command).await
 }
 
@@ -244,8 +264,17 @@ pub(crate) async fn dispatch(
 pub(crate) async fn dispatch_and_wait(
     command: AppCommand,
     core: tauri::State<'_, Core>,
+    picked: tauri::State<'_, PickedPaths>,
+    window: tauri::Window,
 ) -> Result<(), String> {
     let core = core.0.clone();
+    admit(
+        &command,
+        &picked,
+        || core.with_state(|state| state.settings.clone()),
+        &window,
+    )
+    .await?;
     core.dispatch_and_wait(command).await
 }
 
