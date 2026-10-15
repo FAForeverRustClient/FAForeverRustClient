@@ -1,0 +1,1 @@
+- Lessons can be started from the Training tab, and your best run is kept on this computer.
