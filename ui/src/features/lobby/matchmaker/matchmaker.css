@@ -333,14 +333,24 @@
   margin-left: 8px;
 }
 
+/* The dialog is as large as the pool needs and no larger: the grid's tracks
+   come from `mapPoolLayout.ts`, sized so every map shows at once, and the
+   panel shrinks around them. It keeps 24px from the window's edges
+   (`WINDOW_MARGIN`), and its own scrollbar is only for a pool too large for
+   even the smallest tiles. */
+.modal-panel.matchmaker-map-pool-modal {
+  width: auto;
+  min-width: min(640px, calc(100vw - 48px));
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 48px);
+}
+
 .map-pool-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  justify-content: center;
+  /* `MAP_POOL_GAP`. */
   gap: 10px;
-  max-height: 56vh;
   margin-top: 18px;
-  overflow: auto;
-  scrollbar-gutter: stable;
 }
 
 /* The bracket tabs are the shared `SectionTabs` strip, drawn as every other
@@ -382,6 +392,8 @@
   object-fit: cover;
 }
 
+/* Fixed line heights, because the layout counts on this strip being 45px with
+   the size line and 29px without (`MAP_POOL_FOOT`, `MAP_POOL_COMPACT_FOOT`). */
 .map-pool-card-foot {
   display: flex;
   min-width: 0;
@@ -390,8 +402,14 @@
   padding: 6px 9px 7px;
 }
 
-.map-pool-card strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.map-pool-card small { color: var(--color-subtle); font-size: 11px; }
+.map-pool-card strong { overflow: hidden; font-size: 12px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.map-pool-card small { overflow: hidden; color: var(--color-subtle); font-size: 11px; line-height: 15px; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Small tiles, for a large pool in a small window: the name alone, so the
+   picture keeps the height. The size is in the large preview a click away. */
+.map-pool-grid.compact .map-pool-card small { display: none; }
+.map-pool-grid.compact .map-pool-card-foot { padding-inline: 6px; }
+.map-pool-grid.compact .map-pool-card strong { font-size: 11px; }
 
 /* Vetoed: the colour goes, and a band says why. Dimming alone read as a tile
    still loading rather than as one the player had struck off. */
@@ -443,6 +461,20 @@
   text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+/* On a small tile the band's word at full size runs past both edges. */
+.map-pool-card-art {
+  container-type: inline-size;
+}
+
+@container (max-width: 150px) {
+  .map-pool-banned {
+    padding: 4px;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    white-space: normal;
+  }
 }
 
 /* Matchmaker ------------------------------------------------------------- */
@@ -1380,10 +1412,6 @@
 }
 
 @media (max-width: 700px) {
-  .map-pool-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   .matchmaker-player-factions {
     align-items: flex-start;
     width: 100%;
