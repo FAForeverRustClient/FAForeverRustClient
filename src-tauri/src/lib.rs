@@ -52,7 +52,7 @@ pub fn run() {
     // launcher starts beside a game, which is not a client. It must not open a
     // window, and it must not reach the single-instance check below, which
     // would hand it to the running client as a second start.
-    let arguments: Vec<String> = std::env::args().collect();
+    let arguments = command_line();
     if let Some(code) = faf_app::infra::steam_presence::run_helper_if_asked(&arguments) {
         std::process::exit(code);
     }
@@ -149,7 +149,7 @@ pub fn run() {
             // a second process. After `app.manage`, because the dispatch looks
             // the `Core` up out of Tauri's state and would otherwise find
             // nothing and log a warning about its own startup.
-            let arguments: Vec<String> = std::env::args().collect();
+            let arguments = command_line();
             if let Some(path) = startup::replay_argument(&arguments) {
                 startup::open_replay_from_argument(app.handle(), path);
             }
@@ -199,6 +199,17 @@ pub fn run() {
             #[cfg(windows)]
             webview_recovery::on_run_event(_app, &_event);
         });
+}
+
+/// The command line, without panicking on an argument that is not valid
+/// Unicode: `std::env::args` does, before any window or log exists. On Linux
+/// a replay file may have any bytes in its name; such an argument arrives
+/// with replacement characters and is reported as a file that cannot be
+/// opened, not as a client that does not start.
+fn command_line() -> Vec<String> {
+    std::env::args_os()
+        .map(|argument| argument.to_string_lossy().into_owned())
+        .collect()
 }
 
 #[cfg(test)]
