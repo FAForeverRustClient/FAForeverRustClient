@@ -391,9 +391,6 @@ export const en = {
   "updates.required.failedHint": "If the download keeps failing, install it from the release page. Continuing lasts until the client is restarted.",
   "updates.required.closeToFinish": "The installer cannot replace a client that is running. Close the client now to let it finish.",
   "updates.whatsNew.title": "What's new in v{version}",
-  "updates.whatsNew.more": { one: "and {count} more change", other: "and {count} more changes" },
-  "updates.whatsNew.fullNotes": { one: "{count} change in the full notes", other: "{count} changes in the full notes" },
-  "updates.whatsNew.seeAll": "See all changes",
 
   // Vault upload dialog.
   "uploads.title.map": "Publish map",
