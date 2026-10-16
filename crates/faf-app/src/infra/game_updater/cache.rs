@@ -157,11 +157,16 @@ fn prune_cache_manifest(cache_dir: &Path) {
     let parent = cache_dir.parent();
     let versions_dir = parent.map(|p| p.join("versions"));
 
-    manifest.entries.retain_mut(|entry| {
-        entry
+    // An entry is a whole build or nothing. Shrinking it to the files still
+    // stored made it a partial build that staged "successfully": a replay of
+    // it then ran with the rest of whatever build was installed before, and
+    // desynced or crashed. Dropped, the build is downloaded again instead,
+    // which is what staging already does when a listed file is missing.
+    manifest.entries.retain(|entry| {
+        let keep = entry
             .files
-            .retain(|f| cache_dir.join(&f.group).join(&f.md5).is_file());
-        let keep = !entry.files.is_empty();
+            .iter()
+            .all(|f| cache_dir.join(&f.group).join(&f.md5).is_file());
         if !keep {
             if let Some(v_dir) = &versions_dir {
                 let folder_name = crate::infra::sanitize_folder_name(&entry.name);
@@ -200,6 +205,15 @@ pub async fn clean_expired_cache_files(
             if metadata.is_dir() {
                 stack.push(path);
             } else if metadata.is_file() {
+                // The index of what is stored, not a stored file: expiring it
+                // forgot every build still on disk after a month without a
+                // launch, and left their files to age out unused.
+                if path.parent() == Some(cache_dir)
+                    && path.file_name().and_then(|name| name.to_str())
+                        == Some("cache_manifest.json")
+                {
+                    continue;
+                }
                 let mtime = metadata.modified().unwrap_or(now);
                 if let Ok(age) = now.duration_since(mtime) {
                     if age > max_age && tokio::fs::remove_file(&path).await.is_ok() {
@@ -571,6 +585,66 @@ mod tests {
 
         std::fs::write(temp.path().join(".faf_build.json"), "not json").unwrap();
         assert_eq!(read_installed_build(temp.path()), None);
+    }
+
+    #[test]
+    fn a_build_missing_a_file_is_dropped_whole() {
+        let root = tempfile::tempdir().unwrap();
+        let cache_dir = root.path().join("cache");
+        std::fs::create_dir_all(cache_dir.join("bin")).unwrap();
+        std::fs::create_dir_all(cache_dir.join("gamedata")).unwrap();
+        // Only the executable is stored; the build also lists its lua.nx2.
+        std::fs::write(cache_dir.join("bin").join("md5_exe"), b"exe").unwrap();
+        let file = |group: &str, md5: &str, name: &str| CachedFileInfo {
+            group: group.to_string(),
+            md5: md5.to_string(),
+            name: Some(name.to_string()),
+        };
+        save_cache_manifest_entry(
+            &cache_dir,
+            CacheManifestEntry {
+                featured_mod: "faf".to_string(),
+                version: Some(3837),
+                resolved_version: 3837,
+                name: "FAF Build 3837".to_string(),
+                url: None,
+                git_short_sha: None,
+                signature: None,
+                files: vec![
+                    file("bin", "md5_exe", "ForgedAlliance.exe"),
+                    file("gamedata", "md5_lua", "lua.nx2"),
+                ],
+                updated_at: 100,
+                base_version: None,
+            },
+        );
+
+        prune_cache_manifest(&cache_dir);
+        assert!(
+            load_cache_manifest(&cache_dir).entries.is_empty(),
+            "a partial build stayed indexed and would stage as if whole"
+        );
+    }
+
+    #[tokio::test]
+    async fn the_index_is_not_expired_with_the_files_it_lists() {
+        let root = tempfile::tempdir().unwrap();
+        let cache_dir = root.path().join("cache");
+        std::fs::create_dir_all(cache_dir.join("bin")).unwrap();
+        let manifest = cache_dir.join("cache_manifest.json");
+        let stale = cache_dir.join("bin").join("old");
+        for path in [&manifest, &stale] {
+            std::fs::write(path, b"{}").unwrap();
+            std::fs::File::options()
+                .write(true)
+                .open(path)
+                .unwrap()
+                .set_modified(std::time::SystemTime::UNIX_EPOCH)
+                .unwrap();
+        }
+        assert_eq!(clean_expired_cache_files(&cache_dir, 1).await.unwrap(), 1);
+        assert!(manifest.is_file(), "the index expired with the files");
+        assert!(!stale.exists());
     }
 
     #[tokio::test]
