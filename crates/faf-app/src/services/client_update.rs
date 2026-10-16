@@ -218,10 +218,14 @@ async fn check(ctx: &ServiceCtx, out: &EventSink) {
                     .unwrap_or_default();
                 let behind =
                     faf_domain::state::client_update::releases_behind(&current, &notes, channel);
+                let required = faf_domain::state::client_update::behind_a_required_release(
+                    &current, &notes, channel,
+                );
                 if !faf_domain::state::client_update::is_overdue(
                     &release,
                     chrono::Utc::now(),
                     behind,
+                    required,
                 ) {
                     announce(&release, &current, out, false);
                 }
@@ -259,8 +263,9 @@ async fn check(ctx: &ServiceCtx, out: &EventSink) {
     ctx.client_update.background.offer();
 }
 
-/// Emit `Overdue` once the held release has passed its grace period or the
-/// player has fallen too far behind, and announce it. No network: it reads the
+/// Emit `Overdue` once the held release has passed its grace period, the
+/// player has fallen too far behind, or a release they are behind was
+/// published as required, and announce it. No network: it reads the
 /// release and the notes the last check left, which is what lets the six-hour
 /// ticker move a client left open for days into the gate.
 pub(crate) fn reevaluate_overdue(
@@ -279,12 +284,18 @@ pub(crate) fn reevaluate_overdue(
             .client_update
             .cached_release_notes()
             .unwrap_or_else(|| update.notes.clone());
+        let channel = state.settings.updates.channel();
         let behind = faf_domain::state::client_update::releases_behind(
             &update.current_version,
             &notes,
-            state.settings.updates.channel(),
+            channel,
         );
-        faf_domain::state::client_update::is_overdue(release, now, behind)
+        let required = faf_domain::state::client_update::behind_a_required_release(
+            &update.current_version,
+            &notes,
+            channel,
+        );
+        faf_domain::state::client_update::is_overdue(release, now, behind, required)
             .then(|| (release.clone(), update.current_version.clone()))
     });
     if let Some((release, current)) = candidate {

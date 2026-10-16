@@ -724,6 +724,7 @@ fn release_notes(version: &str) -> ClientReleaseNotes {
         pre_release: true,
         notes_url: format!("https://example.invalid/releases/tag/v{version}"),
         blocks: vec![],
+        required: false,
     }
 }
 

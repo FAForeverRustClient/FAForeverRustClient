@@ -3354,6 +3354,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -11164,6 +11165,7 @@
                     "notesUrl": "https://example.invalid/releases/tag/v0.4.0",
                     "preRelease": true,
                     "publishedAt": "2026-02-01T00:00:00Z",
+                    "required": false,
                     "version": "0.4.0"
                   },
                   {
@@ -11196,6 +11198,7 @@
                     "notesUrl": "https://example.invalid/releases/tag/v0.3.0",
                     "preRelease": true,
                     "publishedAt": "2026-02-01T00:00:00Z",
+                    "required": false,
                     "version": "0.3.0"
                   }
                 ]
@@ -11239,6 +11242,7 @@
                 "notesUrl": "https://example.invalid/releases/tag/v0.4.0",
                 "preRelease": true,
                 "publishedAt": "2026-02-01T00:00:00Z",
+                "required": false,
                 "version": "0.4.0"
               },
               {
@@ -11271,6 +11275,7 @@
                 "notesUrl": "https://example.invalid/releases/tag/v0.3.0",
                 "preRelease": true,
                 "publishedAt": "2026-02-01T00:00:00Z",
+                "required": false,
                 "version": "0.3.0"
               }
             ],
@@ -11327,6 +11332,7 @@
                 "notesUrl": "https://example.invalid/releases/tag/v0.4.0",
                 "preRelease": true,
                 "publishedAt": "2026-02-01T00:00:00Z",
+                "required": false,
                 "version": "0.4.0"
               },
               {
@@ -11359,6 +11365,7 @@
                 "notesUrl": "https://example.invalid/releases/tag/v0.3.0",
                 "preRelease": true,
                 "publishedAt": "2026-02-01T00:00:00Z",
+                "required": false,
                 "version": "0.3.0"
               }
             ],
@@ -11418,6 +11425,7 @@
                 "notesUrl": "https://example.invalid/releases/tag/v0.4.0",
                 "preRelease": true,
                 "publishedAt": "2026-02-01T00:00:00Z",
+                "required": false,
                 "version": "0.4.0"
               },
               {
@@ -11450,6 +11458,7 @@
                 "notesUrl": "https://example.invalid/releases/tag/v0.3.0",
                 "preRelease": true,
                 "publishedAt": "2026-02-01T00:00:00Z",
+                "required": false,
                 "version": "0.3.0"
               }
             ],
@@ -11499,6 +11508,7 @@
                     "notesUrl": "https://example.invalid/releases/tag/v0.4.0",
                     "preRelease": true,
                     "publishedAt": "2026-02-01T00:00:00Z",
+                    "required": false,
                     "version": "0.4.0"
                   }
                 ]
@@ -11542,6 +11552,7 @@
                 "notesUrl": "https://example.invalid/releases/tag/v0.4.0",
                 "preRelease": true,
                 "publishedAt": "2026-02-01T00:00:00Z",
+                "required": false,
                 "version": "0.4.0"
               }
             ],
@@ -11601,6 +11612,7 @@
                 "notesUrl": "https://example.invalid/releases/tag/v0.4.0",
                 "preRelease": true,
                 "publishedAt": "2026-02-01T00:00:00Z",
+                "required": false,
                 "version": "0.4.0"
               }
             ],
@@ -11657,6 +11669,7 @@
                 "notesUrl": "https://example.invalid/releases/tag/v0.4.0",
                 "preRelease": true,
                 "publishedAt": "2026-02-01T00:00:00Z",
+                "required": false,
                 "version": "0.4.0"
               }
             ],
@@ -60734,6 +60747,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -61024,6 +61038,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -61324,6 +61339,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -61620,6 +61636,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -61915,6 +61932,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -62230,6 +62248,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -62535,6 +62554,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -62850,6 +62870,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -63165,6 +63186,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -63609,6 +63631,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -63969,6 +63992,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -64331,6 +64355,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -64830,6 +64855,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -78862,6 +78888,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -79163,6 +79190,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -79493,6 +79521,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -79809,6 +79838,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -80114,6 +80144,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -80408,6 +80439,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -80421,6 +80453,7 @@
                 "preferences": {
                   "automatic": false,
                   "backgroundDownload": false,
+                  "channelChoiceVersion": 1,
                   "lastSeenVersion": "0.4.0",
                   "preRelease": true,
                   "showWhatsNew": true
@@ -80704,6 +80737,7 @@
             "updates": {
               "automatic": false,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": "0.4.0",
               "preRelease": true,
               "showWhatsNew": true
@@ -81025,6 +81059,7 @@
             "updates": {
               "automatic": false,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": "0.4.0",
               "preRelease": true,
               "showWhatsNew": true
@@ -81315,6 +81350,7 @@
             "updates": {
               "automatic": false,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": "0.4.0",
               "preRelease": true,
               "showWhatsNew": true
@@ -81625,6 +81661,7 @@
             "updates": {
               "automatic": false,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": "0.4.0",
               "preRelease": true,
               "showWhatsNew": true
@@ -81927,6 +81964,7 @@
             "updates": {
               "automatic": false,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": "0.4.0",
               "preRelease": true,
               "showWhatsNew": true
@@ -82211,6 +82249,7 @@
                   "updates": {
                     "automatic": true,
                     "backgroundDownload": false,
+                    "channelChoiceVersion": 1,
                     "lastSeenVersion": null,
                     "preRelease": true,
                     "showWhatsNew": true
@@ -82495,6 +82534,7 @@
             "updates": {
               "automatic": true,
               "backgroundDownload": false,
+              "channelChoiceVersion": 1,
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
@@ -123831,6 +123871,7 @@
       "updates": {
         "automatic": true,
         "backgroundDownload": false,
+        "channelChoiceVersion": 1,
         "lastSeenVersion": null,
         "preRelease": true,
         "showWhatsNew": true

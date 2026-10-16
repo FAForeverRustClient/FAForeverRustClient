@@ -30,17 +30,20 @@ pub const GRACE_PERIOD_DAYS: i64 = 3;
 /// Two newer releases are enough to require an update even during the grace period.
 pub const RELEASES_BEHIND_LIMIT: usize = 2;
 
-/// Whether an offered release has stopped being optional: the player is
-/// [`RELEASES_BEHIND_LIMIT`] releases behind, or it was published at least
-/// [`GRACE_PERIOD_DAYS`] ago. A publish date the client cannot read, or one in
-/// the future, never makes it overdue: nobody is locked out on data the client
-/// does not understand.
+/// Whether an offered release has stopped being optional: a release the
+/// player is behind was marked required ([`behind_a_required_release`]), the
+/// player is [`RELEASES_BEHIND_LIMIT`] releases behind, or it was published at
+/// least [`GRACE_PERIOD_DAYS`] ago. A publish date the client cannot read, or
+/// one in the future, never makes it overdue: nobody is locked out on data the
+/// client does not understand.
 pub fn is_overdue(
     release: &ClientRelease,
     now: chrono::DateTime<chrono::Utc>,
     behind: usize,
+    required: bool,
 ) -> bool {
-    behind >= RELEASES_BEHIND_LIMIT
+    required
+        || behind >= RELEASES_BEHIND_LIMIT
         || chrono::DateTime::parse_from_rfc3339(&release.published_at).is_ok_and(|published| {
             now.signed_duration_since(published) >= chrono::Duration::days(GRACE_PERIOD_DAYS)
         })
@@ -62,6 +65,22 @@ pub fn releases_behind(
         .map(|note| strip_version_prefix(&note.version))
         .collect::<std::collections::HashSet<_>>()
         .len()
+}
+
+/// Whether any release on the player's channel newer than the running build
+/// was published as required ([`ClientReleaseNotes::required`]). Any of them,
+/// not only the newest: a player two releases behind still skipped the fix the
+/// older one was required for.
+pub fn behind_a_required_release(
+    current: &str,
+    notes: &[ClientReleaseNotes],
+    channel: ReleaseChannel,
+) -> bool {
+    notes.iter().any(|note| {
+        note.required
+            && (channel == ReleaseChannel::PreRelease || !note.pre_release)
+            && should_update(current, &note.version)
+    })
 }
 
 /// Which releases to offer.
@@ -130,6 +149,10 @@ pub struct ClientReleaseNotes {
     /// published without notes, which every release before the changelog
     /// snippets was.
     pub blocks: Vec<ChangelogBlock>,
+    /// Published to be installed at once: the body carries
+    /// [`crate::protocol::changelog::REQUIRED_UPDATE_LINE`].
+    #[serde(default)]
+    pub required: bool,
 }
 
 /// Status of the release-notes list. Mirrors `ChangelogStatus`.
@@ -651,12 +674,18 @@ mod tests {
             .to_utc();
         let mut candidate = release("1.0.0");
         candidate.published_at = "2026-10-14T12:00:00Z".into();
-        assert!(!is_overdue(&candidate, now, 1));
-        assert!(is_overdue(&candidate, now + chrono::Duration::days(1), 1));
-        assert!(is_overdue(&candidate, now, 2));
+        assert!(!is_overdue(&candidate, now, 1, false));
+        assert!(is_overdue(
+            &candidate,
+            now + chrono::Duration::days(1),
+            1,
+            false
+        ));
+        assert!(is_overdue(&candidate, now, 2, false));
+        assert!(is_overdue(&candidate, now, 1, true));
         for date in ["", "broken", "2027-01-01T00:00:00Z"] {
             candidate.published_at = date.into();
-            assert!(!is_overdue(&candidate, now, 1));
+            assert!(!is_overdue(&candidate, now, 1, false));
         }
         let mut published = vec![notes("0.9.0"), notes("1.0.0"), notes("1.1.0"), notes("bad")];
         published[1].pre_release = false;
@@ -669,6 +698,29 @@ mod tests {
             releases_behind("0.9.0", &published, ReleaseChannel::PreRelease),
             2
         );
+        // Only a required release the player is behind, on their channel.
+        assert!(!behind_a_required_release(
+            "0.9.0",
+            &published,
+            ReleaseChannel::PreRelease
+        ));
+        published[2].required = true;
+        assert!(behind_a_required_release(
+            "0.9.0",
+            &published,
+            ReleaseChannel::PreRelease
+        ));
+        assert!(!behind_a_required_release(
+            "0.9.0",
+            &published,
+            ReleaseChannel::Stable
+        ));
+        assert!(!behind_a_required_release(
+            "1.1.0",
+            &published,
+            ReleaseChannel::PreRelease
+        ));
+        published[2].required = false;
 
         let mut state = ClientUpdateState::default();
         reduce(
@@ -1175,6 +1227,7 @@ mod tests {
                 level: 3,
                 text: "Features".into(),
             }],
+            required: false,
         }
     }
 

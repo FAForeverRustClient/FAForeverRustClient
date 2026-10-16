@@ -1789,6 +1789,11 @@ export type ClientReleaseNotes = {
 	 *  snippets was.
 	 */
 	blocks: ChangelogBlock[],
+	/**
+	 *  Published to be installed at once: the body carries
+	 *  [`crate::protocol::changelog::REQUIRED_UPDATE_LINE`].
+	 */
+	required?: boolean,
 };
 
 /**  Status of the release-notes list. Mirrors `ChangelogStatus`. */
@@ -12956,9 +12961,19 @@ export type UpdatePreferences = {
 	 *
 	 *  On by default: every release of this client so far has been published
 	 *  as a prerelease, so a client on the stable channel was never offered
-	 *  one. A settings file that already stores the choice keeps it.
+	 *  one. A settings file that stores `false` from before
+	 *  [`UpdatePreferences::channel_choice_version`] is switched on once.
 	 */
 	preRelease: boolean,
+	/**
+	 *  Which channel default the stored [`Self::pre_release`] was written
+	 *  under. Same shape as `NotificationPreferences::sound_choice_version`:
+	 *  every save writes every field, so a `false` stored before prereleases
+	 *  became the default is the old default, not evidence of a choice, and
+	 *  it left those players on a channel that has never had a release.
+	 *  Version zero is a file written before this field existed.
+	 */
+	channelChoiceVersion: number,
 	/**
 	 *  Show what changed, once, on the first start after the client was
 	 *  updated. See `whats_new_on_startup` in the client-update slice.
@@ -12983,6 +12998,7 @@ export type UpdatePreferencesPatch = {
 	automatic?: boolean,
 	backgroundDownload?: boolean,
 	preRelease?: boolean,
+	channelChoiceVersion?: number,
 	showWhatsNew?: boolean,
 	lastSeenVersion?: string | null,
 };

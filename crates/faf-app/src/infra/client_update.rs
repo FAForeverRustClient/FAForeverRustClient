@@ -31,7 +31,7 @@
 //! client writes or what it runs.
 
 use async_trait::async_trait;
-use faf_domain::protocol::changelog::parse_release_notes;
+use faf_domain::protocol::changelog::{marks_required_update, parse_release_notes};
 use faf_domain::state::{
     compare_versions, is_release_version, strip_version_prefix, ClientRelease, ClientReleaseNotes,
     ReleaseChannel,
@@ -603,6 +603,7 @@ fn release_notes_from(releases: &[Value], issue_base: &str) -> Vec<ClientRelease
                 notes_url: text("html_url").to_string(),
                 // `null` for a release published with no text at all.
                 blocks: parse_release_notes(text("body"), issue_base),
+                required: marks_required_update(text("body")),
             })
         })
         .collect();
@@ -876,6 +877,26 @@ mod tests {
         }));
         assert_eq!(notes[1].published_at, None);
         assert!(notes[1].blocks.is_empty());
+    }
+
+    #[test]
+    fn a_release_published_as_required_says_so_in_its_notes() {
+        use faf_domain::protocol::changelog::REQUIRED_UPDATE_LINE;
+        let mut required = release_json("v0.10.0", false, true);
+        required["body"] = Value::String(format!(
+            "{REQUIRED_UPDATE_LINE}
+
+### Bug fixes
+
+- Fixed it.
+"
+        ));
+        let notes = release_notes_from(
+            &[required, release_json("v0.9.0", false, true)],
+            "https://github.com/Org/Repo/issues",
+        );
+        assert!(notes[0].required);
+        assert!(!notes[1].required);
     }
 
     /// A local release list that answers every request with `body` and counts

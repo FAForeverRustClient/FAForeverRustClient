@@ -9579,6 +9579,7 @@ fn client_release_notes(version: &str) -> ClientReleaseNotes {
                 }],
             },
         ],
+        required: false,
     }
 }
 

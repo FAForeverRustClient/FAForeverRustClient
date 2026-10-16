@@ -16,6 +16,8 @@ struct Script {
     downloads: AtomicUsize,
     cancellations: AtomicUsize,
     fail: AtomicBool,
+    /// Publish 1.0.0 as a required release.
+    required: AtomicBool,
     finish: Notify,
 }
 
@@ -33,6 +35,13 @@ impl ClientUpdatePort for Updates {
             published_at: chrono::Utc::now().to_rfc3339(),
             ..Default::default()
         }))
+    }
+    fn cached_release_notes(&self) -> Option<Vec<faf_domain::state::ClientReleaseNotes>> {
+        Some(vec![faf_domain::state::ClientReleaseNotes {
+            version: "1.0.0".into(),
+            required: self.0.required.load(Ordering::SeqCst),
+            ..Default::default()
+        }])
     }
     async fn download(
         &self,
@@ -236,6 +245,16 @@ async fn update_notice_ticker_uses_the_held_release_without_a_network_check() {
         chrono::Utc::now() + chrono::Duration::days(3),
     );
     assert!(sink.with_state(|s| s.client_update.overdue));
+}
+
+#[tokio::test]
+async fn update_notice_a_required_release_gates_without_a_grace_period() {
+    let (ctx, sink, script) = harness();
+    script.required.store(true, Ordering::SeqCst);
+    // Published a moment ago and one release behind: only the mark gates it.
+    run_command(ClientUpdateCommand::Check.into(), &ctx, &sink).await;
+    assert!(sink.with_state(|s| s.client_update.overdue));
+    assert!(sink.with_state(|s| s.client_update.required_release().is_some()));
 }
 
 #[tokio::test]

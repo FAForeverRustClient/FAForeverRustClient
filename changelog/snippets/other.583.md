@@ -1,2 +1,5 @@
-- An update now only becomes required three days after its release, or when you are two versions behind; until then it is the sidebar notice, which "Not now" hides and "Check now" brings back.
-- The client keeps a downloaded installer instead of fetching it again, and deletes old ones.
+- Updates become required after three days or when two newer releases are available.
+- Releases marked as required prompt installation immediately.
+- Completed installers are reused instead of downloaded again.
+- Older cached installers are removed after a successful download.
+- Prerelease updates turn on once for existing installations; later choices in Settings, Updates are preserved.
