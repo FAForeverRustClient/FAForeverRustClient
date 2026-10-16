@@ -18,7 +18,8 @@ import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
 import { useVaultNameLookup } from "../../../shared/hooks/useVaultNameLookup";
-import { matchVaultMap, tourneyMapImage } from "../../../shared/rules/tourneyRules";
+import { matchVaultMap } from "../../../shared/rules/tourneyRules";
+import { canEnlargeMapPicture, tourneyMapPicture } from "../mapPicture";
 import { labelForRoundKey } from "../bracket/matchLabels";
 import { needsSizeLookup, tourneyMapSize } from "../mapSizePresentation";
 import { formatMoment } from "../tourneyPresentation";
@@ -89,9 +90,9 @@ function MapTile({
     <button
       type="button"
       className="tournament-map-tile"
-      disabled={picture === ""}
+      disabled={!canEnlargeMapPicture(picture)}
       onClick={onOpen}
-      title={picture === "" ? undefined : t("common.mapPreview", { name: map.name })}
+      title={canEnlargeMapPicture(picture) ? t("common.mapPreview", { name: map.name }) : undefined}
     >
       {picture !== "" ? (
         <img src={picture} alt="" loading="lazy" decoding="async" />
@@ -114,7 +115,7 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
   const organiser = event.viewer.organiser;
   const db = event.mapDb;
   const byId = (mapId: string) => db.find((held) => held.id === mapId);
-  const image = (map: TourneyMap) => (map.masked ? "" : tourneyMapImage(map, assetBase, vault));
+  const image = (map: TourneyMap) => (map.masked ? "" : tourneyMapPicture(map, assetBase, vault));
   const sizeOf = (map: TourneyMap) => tourneyMapSize(map, vault);
 
   // Where a map is played directly (pinned to a round), and which pools hold
@@ -361,7 +362,7 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
         </section>
       )}
 
-      {open !== undefined && openPicture !== "" && (
+      {open !== undefined && canEnlargeMapPicture(openPicture) && (
         <MapPreviewDialog
           map={{
             folderName: matchVaultMap(open, vault)?.folderName ?? "",
