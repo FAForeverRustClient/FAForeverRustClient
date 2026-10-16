@@ -314,19 +314,10 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
         </div>
 
         <ReplayGameTypeField form={form} featuredMods={featuredMods} set={set} />
-        </div>
 
-        <Button type="submit" variant="primary" className="vault-search-submit search-panel-submit">
-          <Icon name="search" size={15} /> {t("replays.search.submit")}
-        </Button>
-      </div>
-
-      {/* The second row: the sort, then every range at once, so the sliders
-          are there from the start rather than behind "More filters". The sort
-          sits here rather than at the end of the first row, where on most
-          windows it was the one field that did not fit and took a whole line
-          to itself, pushing the sliders down to a third. */}
-      <div className="online-search-sliders">
+        {/* The sort with the other fields, now that the game title has gone
+            to More filters and left room for it. Where the row still runs
+            out of width, the sort wraps with the fields, above the sliders. */}
         <div className="online-search-sort">
           <label className="vault-field vault-search-sort search-panel-field">
             <span className="vault-field-label search-panel-label">{t("replays.search.sortBy")}</span>
@@ -352,6 +343,16 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
             {form.sortDescending ? "↓" : "↑"}
           </button>
         </div>
+        </div>
+
+        <Button type="submit" variant="primary" className="vault-search-submit search-panel-submit">
+          <Icon name="search" size={15} /> {t("replays.search.submit")}
+        </Button>
+      </div>
+
+      {/* The second row: every range at once, so the sliders are there from
+          the start rather than behind "More filters". */}
+      <div className="online-search-sliders">
         {/* The label says "any player's", because that is what the API can
             answer and therefore what this does: a 500 against a 2500 comes
             back from a search for either number. It is a different question

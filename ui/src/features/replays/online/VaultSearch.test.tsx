@@ -21,7 +21,9 @@ describe("VaultSearch", () => {
     );
     expect(markup).toContain('class="vault-input search-panel-control vault-sort-order"');
     expect(markup).toContain('class="btn-primary vault-search-submit search-panel-submit"');
-    expect(markup.indexOf("vault-search-submit")).toBeLessThan(markup.indexOf("vault-sort-order"));
+    // The sort is in the fields row with Search, not in the sliders' row.
+    expect(markup.indexOf("vault-sort-order")).toBeLessThan(markup.indexOf("vault-search-submit"));
+    expect(markup.indexOf("vault-sort-order")).toBeLessThan(markup.indexOf("online-search-sliders"));
     // The lobby title is under "More filters", not in the always-visible row.
     expect(markup).not.toContain('placeholder="Any title"');
   });

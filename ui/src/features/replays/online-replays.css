@@ -104,22 +104,24 @@
   margin-top: 20px;
 }
 
-/* The second row: every range slider, side by side, always shown. Each
-   fills its column rather than stopping at the slider's own 240px cap, which
-   left a gap after every track on a wide window. */
+/* The second row: every range slider, side by side, always shown. Columns of
+   one width, 260px, as many as fit: stretched to fill the row, the tracks grew
+   with the window and a wide screen got sliders a third of a metre long. The
+   spare width stays at the row's end, a narrow window wraps the sliders onto
+   a second line of the same columns, and a panel narrower than one column
+   gives the slider all of it. */
 .online-search-sliders {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 260px));
+  align-items: end;
   gap: var(--space-2) var(--space-4);
 }
 
 .online-search-sliders > .range-slider {
-  flex: 1 1 180px;
   max-width: none;
 }
 
-/* The sort and its direction, as one block at the start of the row. */
+/* The sort and its direction, as one block in the fields row. */
 .online-search-sort {
   display: flex;
   flex: none;
