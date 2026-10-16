@@ -3,7 +3,7 @@
 
 use faf_domain::state::{
     with_exp_java_adapter_tag, with_go_adapter_tag, HostGameConfig, HostGamePreferences,
-    IceAdapter, JoinState, LobbyEvent, SettingsEvent,
+    IceAdapter, JoinState, LobbyEvent, MatchmakingState, SettingsEvent,
 };
 
 use crate::ports::ModPrepFailure;
@@ -12,6 +12,26 @@ use crate::services::launcher;
 use crate::services::notifications;
 
 use super::launch::terminate_game;
+
+/// Whether a game of this client is running, or a matchmaker match is being
+/// launched. A custom join or host must not start then: it becomes the current
+/// lobby operation, which cancels the match's launch and tells the server the
+/// game ended, and its preparation would update the install a running game is
+/// using. A join still being prepared is not counted: a second click on it is
+/// refused quietly by the join slot, as before.
+fn a_game_is_starting_or_running(ctx: &ServiceCtx, out: &EventSink) -> bool {
+    ctx.ports.process.game_running()
+        || ctx.lobby.running_game_id().is_some()
+        || out.with_state(|state| {
+            matches!(
+                state.lobby.join,
+                JoinState::Launched { .. } | JoinState::InGame
+            ) || matches!(
+                state.lobby.matchmaking,
+                MatchmakingState::MatchFound { .. } | MatchmakingState::Launching { .. }
+            )
+        })
+}
 
 /// Join game `id`: `LobbyCommand::Join`.
 pub(super) async fn join(
@@ -24,6 +44,14 @@ pub(super) async fn join(
     // A new join starts uncancelled, whatever the last one did, under
     // an id of its own: a cancelled join still draining its
     // preparation keeps reading "cancelled" for its own id.
+    if a_game_is_starting_or_running(ctx, out) {
+        out.emit(LobbyEvent::JoinFailed {
+            id,
+            reason: "Forged Alliance is running or a match is starting. Join once it has ended."
+                .into(),
+        });
+        return;
+    }
     let operations = &ctx.lobby.operations;
     let Some(operation) = operations.try_begin_join(id) else {
         return;
@@ -130,6 +158,15 @@ pub(super) async fn join(
 pub(super) async fn host(config: HostGameConfig, ctx: &ServiceCtx, out: &EventSink) {
     match config.validated() {
         Ok(config) => {
+            if a_game_is_starting_or_running(ctx, out) {
+                launcher::report_failure(
+                    ctx,
+                    out,
+                    "Forged Alliance is running or a match is starting. Host once it has ended."
+                        .into(),
+                );
+                return;
+            }
             // A new host starts uncancelled, whatever the last join did,
             // under an id of its own; see the same note on `Join`.
             let operations = &ctx.lobby.operations;
