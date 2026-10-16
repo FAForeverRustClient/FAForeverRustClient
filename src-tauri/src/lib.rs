@@ -151,7 +151,7 @@ pub fn run() {
             // nothing and log a warning about its own startup.
             let arguments: Vec<String> = std::env::args().collect();
             if let Some(path) = startup::replay_argument(&arguments) {
-                startup::open_replay_from_argument(app.handle(), path);
+                startup::open_replay_at_startup(app.handle(), path.to_string());
             }
 
             app.manage(window::MainWindow::default());

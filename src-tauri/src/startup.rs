@@ -52,6 +52,73 @@ pub(crate) fn open_replay_from_argument(app: &tauri::AppHandle, path: &str) {
         }));
 }
 
+/// [`open_replay_from_argument`] for the replay a cold start was opened with.
+///
+/// That one arrives before the settings are read and before a remembered
+/// sign-in is restored, and playback needs both: the replay install comes
+/// from the settings, and the engine build a replay needs is downloaded with
+/// the session's token. Opened at once, it started FA unprepared ("Unable to
+/// load game replay") or failed with "not logged in". It waits for the backend
+/// to be ready and, while a remembered sign-in is being restored, briefly for
+/// that too, then opens as before.
+pub(crate) fn open_replay_at_startup(app: &tauri::AppHandle, path: String) {
+    use faf_domain::state::{AuthEvent, AuthMode, ConnectionStatus, SessionEvent};
+    use faf_domain::AppEvent;
+    use std::time::Duration;
+
+    const READY_WAIT: Duration = Duration::from_secs(60);
+    const SIGN_IN_WAIT: Duration = Duration::from_secs(20);
+
+    let Some(core) = app.try_state::<Core>() else {
+        tracing::warn!("asked to open a replay before the backend was ready");
+        return;
+    };
+    let core = core.0.clone();
+    let handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        // Subscribed before the state is read, so an event in between is seen.
+        let mut events = core.subscribe();
+        let ready = core.with_state(|state| state.session.status == ConnectionStatus::Connected);
+        if !ready {
+            wait_for_event(&mut events, READY_WAIT, |event| {
+                matches!(event, AppEvent::Session(SessionEvent::BackendReady { .. }))
+            })
+            .await;
+        }
+        let restoring = core.with_state(|state| {
+            state.settings.general.auto_login
+                && state.auth.player.is_none()
+                && state.auth.mode == AuthMode::Account
+        });
+        if restoring {
+            // A restore that fails says nothing, so this is bounded.
+            wait_for_event(&mut events, SIGN_IN_WAIT, |event| {
+                matches!(event, AppEvent::Auth(AuthEvent::LoggedIn { .. }))
+            })
+            .await;
+        }
+        open_replay_from_argument(&handle, &path);
+    });
+}
+
+/// Wait up to `limit` for an event `done` accepts.
+async fn wait_for_event(
+    events: &mut tokio::sync::broadcast::Receiver<faf_domain::AppEvent>,
+    limit: std::time::Duration,
+    done: impl Fn(&faf_domain::AppEvent) -> bool,
+) {
+    let _ = tokio::time::timeout(limit, async {
+        loop {
+            match events.recv().await {
+                Ok(event) if done(&event) => return,
+                Err(RecvError::Closed) => return,
+                _ => {}
+            }
+        }
+    })
+    .await;
+}
+
 /// Point the environment at the helpers the installer bundles.
 ///
 /// Packaged builds place native helpers under Tauri's resource directory. The
