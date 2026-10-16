@@ -213,9 +213,7 @@ async fn remove_installed_mod(dir: &std::path::Path, folder_name: &str) -> Resul
     }
 
     if let Some(uid) = uid {
-        let mut uids = read_active_mod_uids().await;
-        uids.retain(|u| u != &uid);
-        write_active_mod_uids_to_disk(&uids).await?;
+        update_active_mod_uids_on_disk(|uids| uids.retain(|u| u != &uid)).await?;
     }
     Ok(())
 }
@@ -250,12 +248,13 @@ async fn replace_installed_mod(
     .await
     .map_err(|e| format!("replacement task failed: {e}"))??;
     if let Some(previous) = previous {
-        let mut active = read_active_mod_uids().await;
-        active.retain(|candidate| candidate != &previous.uid);
-        if previous.enabled && !active.contains(&uid) {
-            active.push(uid);
-        }
-        write_active_mod_uids_to_disk(&active).await?;
+        update_active_mod_uids_on_disk(|active| {
+            active.retain(|candidate| candidate != &previous.uid);
+            if previous.enabled && !active.contains(&uid) {
+                active.push(uid);
+            }
+        })
+        .await?;
     }
     list_installed_dir(&dir).await
 }
@@ -613,12 +612,13 @@ impl ModsPort for ModsClient {
     }
 
     async fn toggle_mod(&self, uid: String, enabled: bool) -> Result<Vec<InstalledMod>, String> {
-        let mut uids = read_active_mod_uids().await;
-        uids.retain(|u| u != &uid);
-        if enabled {
-            uids.push(uid);
-        }
-        write_active_mod_uids_to_disk(&uids).await?;
+        update_active_mod_uids_on_disk(|uids| {
+            uids.retain(|u| u != &uid);
+            if enabled {
+                uids.push(uid);
+            }
+        })
+        .await?;
         list_installed_dir(&mods_dir()).await
     }
 
@@ -736,14 +736,14 @@ impl ModsPort for ModsClient {
                 })?
                 .map_err(ModPrepFailure::Failed)?;
                 if let Some(occupant) = occupant {
-                    let mut active = read_active_mod_uids().await;
-                    active.retain(|candidate| candidate != &occupant.uid);
-                    if !active.contains(uid) {
-                        active.push(uid.clone());
-                    }
-                    write_active_mod_uids_to_disk(&active)
-                        .await
-                        .map_err(ModPrepFailure::Failed)?;
+                    update_active_mod_uids_on_disk(|active| {
+                        active.retain(|candidate| candidate != &occupant.uid);
+                        if !active.contains(uid) {
+                            active.push(uid.clone());
+                        }
+                    })
+                    .await
+                    .map_err(ModPrepFailure::Failed)?;
                 }
                 continue;
             }
@@ -762,15 +762,15 @@ impl ModsPort for ModsClient {
             return Err(ModPrepFailure::Conflicts(conflicts));
         }
 
-        let mut active = read_active_mod_uids().await;
-        for uid in mods.keys() {
-            if !active.contains(uid) {
-                active.push(uid.clone());
+        update_active_mod_uids_on_disk(|active| {
+            for uid in mods.keys() {
+                if !active.contains(uid) {
+                    active.push(uid.clone());
+                }
             }
-        }
-        write_active_mod_uids_to_disk(&active)
-            .await
-            .map_err(ModPrepFailure::Failed)
+        })
+        .await
+        .map_err(ModPrepFailure::Failed)
     }
 }
 
@@ -1244,8 +1244,26 @@ pub(crate) async fn restore_own_mods_after_replay(generation: Option<u64>) {
 static GAME_PREFS_WRITE: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 pub(crate) async fn write_active_mod_uids_to_disk(uids: &[String]) -> Result<(), String> {
+    let uids = uids.to_vec();
+    update_active_mod_uids_on_disk(move |active| *active = uids).await
+}
+
+/// Change the active mods as one step: read, changed and written under the
+/// one lock. Callers used to read the list first and write their changed copy
+/// after, so a mod toggled while a join switched on its mods could start from
+/// the same list and lose the other's change. The file itself was safe; the
+/// list was not.
+pub(crate) async fn update_active_mod_uids_on_disk(
+    change: impl FnOnce(&mut Vec<String>) + Send,
+) -> Result<(), String> {
+    update_active_mod_uids_at(game_prefs_path(), change).await
+}
+
+async fn update_active_mod_uids_at(
+    path: PathBuf,
+    change: impl FnOnce(&mut Vec<String>) + Send,
+) -> Result<(), String> {
     let _write = GAME_PREFS_WRITE.lock().await;
-    let path = game_prefs_path();
     // A read failure (missing file, locked, non-UTF-8 bytes, …) must abort,
     // never be treated as an empty file. `game.prefs` is FA's *entire*
     // config (hotkeys, video, audio, profiles); the previous
@@ -1259,7 +1277,9 @@ pub(crate) async fn write_active_mod_uids_to_disk(uids: &[String]) -> Result<(),
             path.display()
         )
     })?;
-    let updated = write_active_mod_uids(&contents, uids);
+    let mut uids = parse_active_mod_uids(&contents);
+    change(&mut uids);
+    let updated = write_active_mod_uids(&contents, &uids);
     // Replaced in one step, never truncated and rewritten: a crash or power
     // loss halfway through a plain write left FA a cut-off file, and FA throws
     // the whole of an unreadable `game.prefs` away, hotkeys and all.
@@ -1878,6 +1898,32 @@ mod tests {
         assert!(safe_mod_target(root, "../outside").is_err());
         assert!(safe_mod_target(root, "nested/mod/deeper").is_err());
         assert!(safe_mod_target(root, ".").is_err());
+    }
+
+    #[tokio::test]
+    async fn concurrent_active_mod_changes_both_land() {
+        // Each change reads the list under the lock, so neither starts from
+        // a list the other is about to replace.
+        let dir = std::env::temp_dir().join(format!("faf-prefs-{}", rand::random::<u64>()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("game.prefs");
+        std::fs::write(
+            &path,
+            "profile = { name = \"x\" }
+active_mods = {
+}
+",
+        )
+        .unwrap();
+        let (first, second) = tokio::join!(
+            update_active_mod_uids_at(path.clone(), |uids| uids.push("mod-a".into())),
+            update_active_mod_uids_at(path.clone(), |uids| uids.push("mod-b".into())),
+        );
+        first.unwrap();
+        second.unwrap();
+        let uids = parse_active_mod_uids(&std::fs::read_to_string(&path).unwrap());
+        assert!(uids.contains(&"mod-a".to_string()) && uids.contains(&"mod-b".to_string()));
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
