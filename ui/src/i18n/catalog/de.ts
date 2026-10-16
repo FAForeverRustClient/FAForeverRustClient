@@ -3717,6 +3717,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "tournaments.maps.closedMex": "Geschlossene Spawn-Mexe",
   "tournaments.maps.size": "Kartengröße: {size} km",
   "tournaments.maps.sizeShort": "{size} km",
+  "tournaments.maps.generated": "Generierte Karte",
   "tournaments.manage.format": "Format",
   "tournaments.manage.organisers": "Organisatoren",
   "tournaments.manage.mutes": "Im Chat stummgeschaltet",

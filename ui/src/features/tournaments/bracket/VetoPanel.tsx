@@ -30,9 +30,9 @@ import {
   factionVetoOn,
   maySetVetoSides,
   mayVeto,
-  tourneyMapImage,
   vetoTurn,
 } from "../../../shared/rules/tourneyRules";
+import { tourneyMapPicture } from "../mapPicture";
 import { FactionGame } from "./FactionVeto";
 import { teamNameOf } from "./matchParts";
 import { vetoLog } from "./vetoPresentation";
@@ -87,7 +87,7 @@ export function VetoPanel(props: VetoPanelProps) {
   const mapName = (mapId: string) => held(mapId)?.name ?? mapId;
   const preview = (mapId: string) => {
     const map = held(mapId);
-    return map === undefined ? "" : tourneyMapImage(map, props.assetBase, props.vault);
+    return map === undefined ? "" : tourneyMapPicture(map, props.assetBase, props.vault);
   };
   const thumb = (mapId: string, dim = false) => {
     const image = preview(mapId);

@@ -26,6 +26,7 @@ import {
   matchVaultMap,
   tourneyMapImage,
 } from "../../../shared/rules/tourneyRules";
+import { tourneyMapPicture } from "../mapPicture";
 import { MapSpec } from "../detail/MapsPanel";
 import { withKnownSize } from "../mapSizePresentation";
 import { MapEditor } from "./MapEditor";
@@ -128,7 +129,7 @@ export function MapDbPanel(props: MapDbPanelProps) {
           const vaultMap = matchVaultMap(held, vault);
           // FAF's own preview first: it is the picture players already know
           // from the maps tab. The event's own copy is for maps never uploaded.
-          const preview = tourneyMapImage(held, props.assetBase, vault);
+          const preview = tourneyMapPicture(held, props.assetBase, vault);
                   return (
             <li className="tournament-map-row" key={held.id}>
               {preview ? (

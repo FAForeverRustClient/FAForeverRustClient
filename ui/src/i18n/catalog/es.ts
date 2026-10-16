@@ -3609,6 +3609,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "tournaments.maps.closedMex": "Extractores cerrados",
   "tournaments.maps.size": "Tamaño: {size} km",
   "tournaments.maps.sizeShort": "{size} km",
+  "tournaments.maps.generated": "Mapa generado",
   "tournaments.manage.format": "Formato",
   "tournaments.manage.organisers": "Organizadores",
   "tournaments.manage.mutes": "Silenciados en el chat",

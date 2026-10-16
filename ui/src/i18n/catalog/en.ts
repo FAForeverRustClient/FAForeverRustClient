@@ -4155,6 +4155,7 @@ export const en = {
   "tournaments.maps.closedMex": "Closed spawn mexes",
   "tournaments.maps.size": "Map size: {size} km",
   "tournaments.maps.sizeShort": "{size} km",
+  "tournaments.maps.generated": "Generated map",
   "tournaments.manage.format": "Format",
   "tournaments.manage.organisers": "Organisers",
   "tournaments.manage.mutes": "Silenced in chat",

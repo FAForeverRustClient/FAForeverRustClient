@@ -8,7 +8,7 @@
 // without one: its size would narrow down which map it is.
 
 import type { MapSpec, TourneyMap, VaultMap } from "../../ipc/bindings";
-import { kilometresLabel, officialMapFor } from "../../shared/mapPresentation";
+import { isGeneratedMap, kilometresLabel, officialMapFor } from "../../shared/mapPresentation";
 import { matchVaultMap } from "../../shared/rules/tourneyRules";
 
 /** The website's size choices, keyed by the side of a square map in generator units. */
@@ -59,9 +59,18 @@ export function tourneyMapSize(map: TourneyMap, vault: VaultMap[]): string {
   return listed !== "" ? listed : `${kilometresLabel(dimensions.width)}x${kilometresLabel(dimensions.height)}`;
 }
 
-/** Whether the client would have to ask the vault before it can size this map. */
+/**
+ * Whether the client would have to ask the vault before it can size this map.
+ * Never for a generated map: the vault holds none, and asking for one by name
+ * was a request per map that could only come back empty.
+ */
 export function needsSizeLookup(map: TourneyMap, vault: VaultMap[]): boolean {
-  return !map.masked && (map.spec?.size.trim() ?? "") === "" && mapDimensionsByName(map.name, vault) === null;
+  return (
+    !map.masked &&
+    !isGeneratedMap(map.name) &&
+    (map.spec?.size.trim() ?? "") === "" &&
+    mapDimensionsByName(map.name, vault) === null
+  );
 }
 
 /**
