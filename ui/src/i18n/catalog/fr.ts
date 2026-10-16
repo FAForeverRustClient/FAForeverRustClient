@@ -1086,7 +1086,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.general.startPage.label": "Page de démarrage",
   "settings.general.autoLogin.label": "Connexion automatique",
   "settings.general.keepRunningDuringGame.label": "Continuer pendant une partie",
-  "settings.general.keepRunningDuringGame.hint": "Fermer la fenêtre ou choisir \"Quit\" dans la zone de notification pendant une partie y masque le client à la place, et la partie garde sa connexion. Il se ferme de lui-même à la fin de la partie, sauf si vous le rouvrez. Désactivé, il demande avant de se fermer.",
+  "settings.general.keepRunningDuringGame.hint": "Le client se réduit dans la zone de notification et se ferme de lui-même après la partie. Si l’option est désactivée, il demande confirmation avant de se fermer.",
   "settings.general.filterMemory.label": "Mémoriser les filtres",
   "settings.general.filterMemory.never": "Jamais",
   "settings.general.filterMemory.session": "Jusqu'à la fermeture du client",

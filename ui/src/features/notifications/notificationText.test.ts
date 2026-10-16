@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { ClientNotification } from "../../ipc/bindings";
+import { t } from "../../i18n";
 import { de } from "../../i18n/catalog/de";
 import { en } from "../../i18n/catalog/en";
-import { ru } from "../../i18n/catalog/ru";
 import { resetLocaleForTests, setLocale } from "../../i18n/store";
 import { notificationBody, notificationBodyDetail, notificationTitle } from "./notificationText";
 
@@ -27,20 +27,16 @@ describe("a notification's text (#458)", () => {
     const notice = item({
       kind: "error",
       title: en["notifications.msg.liveReplayDelayed.title"],
-      body: en["notifications.msg.liveReplayDelayed.body"]
-        .replace("{minutes}", "3")
-        .replace("{seconds}", "17"),
+      body: en["notifications.msg.liveReplayDelayed.body"],
       text: {
         key: "notifications.msg.liveReplayDelayed",
         params: { minutes: "3", seconds: "17" },
       },
     });
     setLocale("ru");
-    expect(notificationTitle(notice)).toBe(ru["notifications.msg.liveReplayDelayed.title"]);
+    expect(notificationTitle(notice)).toBe(t("notifications.msg.liveReplayDelayed.title"));
     expect(notificationBody(notice)).toBe(
-      ru["notifications.msg.liveReplayDelayed.body"]
-        .replace("{minutes}", "3")
-        .replace("{seconds}", "17"),
+      t("notifications.msg.liveReplayDelayed.body", { minutes: 3, seconds: 17 }),
     );
   });
 

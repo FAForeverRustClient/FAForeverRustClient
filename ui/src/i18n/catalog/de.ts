@@ -509,7 +509,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.general.startPage.label": "Startseite",
   "settings.general.autoLogin.label": "Automatisch anmelden",
   "settings.general.keepRunningDuringGame.label": "Während eines Spiels weiterlaufen",
-  "settings.general.keepRunningDuringGame.hint": "Schließt du während eines Spiels das Fenster oder wählst im Tray \"Quit\", verschwindet der Client stattdessen im Tray und das Spiel behält seine Verbindung. Er beendet sich von selbst, sobald das Spiel vorbei ist, außer du öffnest ihn wieder. Ausgeschaltet fragt er vor dem Schließen nach.",
+  "settings.general.keepRunningDuringGame.hint": "Der Client wird in den Infobereich minimiert und schließt sich nach dem Spiel selbst. Ist die Option deaktiviert, fragt er vor dem Schließen nach.",
   "settings.general.rememberTypedEntries.label": "Frühere Eingaben vorschlagen",
   "settings.general.filterMemory.label": "Filter merken",
   "settings.general.filterMemory.never": "Nie",

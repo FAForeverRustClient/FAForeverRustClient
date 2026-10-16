@@ -597,7 +597,7 @@ export const en = {
   "settings.general.startPage.label": "Start page",
   "settings.general.autoLogin.label": "Auto sign-in",
   "settings.general.keepRunningDuringGame.label": "Keep running during a game",
-  "settings.general.keepRunningDuringGame.hint": "Closing the window, or \"Quit\" in the tray, while a game runs hides the client to the tray instead, so the game keeps its connection. It exits by itself once the game ends, unless you open it again. Off, it asks before closing.",
+  "settings.general.keepRunningDuringGame.hint": "The client hides to the tray and exits on its own after the game. If off, it asks before closing.",
   "settings.general.rememberTypedEntries.label": "Suggest what you typed before",
   "settings.general.filterMemory.label": "Remember filters",
   "settings.general.filterMemory.never": "Never",
