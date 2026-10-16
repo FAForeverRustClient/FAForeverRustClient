@@ -208,6 +208,7 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
               )}
               {isGenerated && (
                 <Button
+                  className="map-preview-text-action"
                   aria-expanded={namingPreset}
                   disabled={!presetOptions}
                   title={t(
@@ -218,7 +219,7 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
                   onClick={() => setNamingPreset((open) => !open)}
                 >
                   <Icon name="settings" size={14} />
-                  {t("maps.generate.presetFromMap")}
+                  <span className="map-preview-text-action-label">{t("maps.generate.presetFromMap")}</span>
                 </Button>
               )}
               {/* Starring from here is what makes a generated map worth
@@ -264,7 +265,7 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
           pairs, which nobody could scan, so they are the facts grid the
           generator and the detail panels use: each label over its value, a
           hairline between the values of a row. */}
-      <GeneratorFactsStrip rows={factRows} label={t("maps.generate.reproduceTitle")} columns={4} />
+      <GeneratorFactsStrip rows={factRows} label={t("maps.generate.reproduceTitle")} columns={4} dense />
 
       <footer className="game-preview-dialog-actions play-dialog-actions">
         {!installed && !isGenerated && vaultMap && (
