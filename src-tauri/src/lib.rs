@@ -52,7 +52,7 @@ pub fn run() {
     // launcher starts beside a game, which is not a client. It must not open a
     // window, and it must not reach the single-instance check below, which
     // would hand it to the running client as a second start.
-    let arguments: Vec<String> = std::env::args().collect();
+    let arguments = command_line();
     if let Some(code) = faf_app::infra::steam_presence::run_helper_if_asked(&arguments) {
         std::process::exit(code);
     }
@@ -149,7 +149,7 @@ pub fn run() {
             // a second process. After `app.manage`, because the dispatch looks
             // the `Core` up out of Tauri's state and would otherwise find
             // nothing and log a warning about its own startup.
-            let arguments: Vec<String> = std::env::args().collect();
+            let arguments = command_line();
             if let Some(path) = startup::replay_argument(&arguments) {
                 startup::open_replay_from_argument(app.handle(), path);
             }
@@ -189,6 +189,7 @@ pub fn run() {
             commands::report_event_cost,
             commands::exit_app,
             commands::page_ready,
+            commands::page_gone,
             picked_paths::pick_path
         ])
         .build(tauri::generate_context!())
@@ -199,6 +200,17 @@ pub fn run() {
             #[cfg(windows)]
             webview_recovery::on_run_event(_app, &_event);
         });
+}
+
+/// The command line, without panicking on an argument that is not valid
+/// Unicode: `std::env::args` does, before any window or log exists. On Linux
+/// a replay file may have any bytes in its name; such an argument arrives
+/// with replacement characters and is reported as a file that cannot be
+/// opened, not as a client that does not start.
+fn command_line() -> Vec<String> {
+    std::env::args_os()
+        .map(|argument| argument.to_string_lossy().into_owned())
+        .collect()
 }
 
 #[cfg(test)]
@@ -417,12 +429,16 @@ mod tests {
             // as well as the window's, so with the root missing here the
             // frame's own page went to the browser (PR 463).
             "https://faforever.github.io/etfreeman-db/#/",
+            // A training video frame, for the same reason.
+            "https://www.youtube-nocookie.com/embed/abc?rel=0",
         ] {
             assert!(crate::navigation::is_internal_navigation(&url(embedded)));
         }
 
         for external in [
             "https://www.youtube.com/watch?v=abc",
+            // Only the player frame, not the rest of that host.
+            "https://www.youtube-nocookie.com/watch?v=abc",
             "https://forum.faforever.com/topic/1",
             // A host that merely starts with an origin we trust is not that origin.
             "http://localhost.example.com/",

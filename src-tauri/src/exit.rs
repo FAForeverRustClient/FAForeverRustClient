@@ -72,8 +72,11 @@ pub(crate) fn page_ready(app: &tauri::AppHandle) {
 }
 
 /// The page is gone or going: ask natively until it says it is ready again.
-/// Only a crash recovery tells (`webview_recovery`), which is Windows only.
-#[cfg(windows)]
+/// The page says so itself when its close confirmation stops listening (the
+/// error screen replacing the app, a reload: `commands::page_gone`), and a
+/// crash recovery says so on Windows (`webview_recovery`). Before, only the
+/// latter did, and a close during a game was sent to a listener that no
+/// longer existed: the close button did nothing.
 pub(crate) fn page_gone(app: &tauri::AppHandle) {
     if let Some(ready) = app.try_state::<PageReady>() {
         ready.0.store(false, Ordering::SeqCst);

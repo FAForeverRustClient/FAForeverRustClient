@@ -869,8 +869,16 @@ pub(crate) fn parse_scenario_lua(content: &str) -> ScenarioInfo {
     // 2. Size: size = { width, height }
     if let Some(size_idx) = content.find("size =").or_else(|| content.find("size=")) {
         let slice = &content[size_idx..];
-        if let (Some(start), Some(end)) = (slice.find('{'), slice.find('}')) {
-            let inner = &slice[start + 1..end];
+        // The closing brace is the one after the opening one: a `}` before
+        // it (a comment, another table) would otherwise slice backwards and
+        // panic the whole installed-maps scan on one map.
+        let braces = slice
+            .find('{')
+            .and_then(|start| slice[start..].find('}').map(|end| (start, start + end)));
+        if let Some((start, end)) = braces {
+            // The innermost table before that brace, should the first `{`
+            // found belong to an enclosing one.
+            let inner = slice[start + 1..end].rsplit('{').next().unwrap_or_default();
             let dims = inner
                 .split(',')
                 .filter_map(|s| s.trim().parse::<i32>().ok())
@@ -1943,6 +1951,12 @@ ScenarioInfo = {
         let info = parse_scenario_lua(content);
         assert_eq!(info.name.as_deref(), Some("Adaptive Metir"));
         assert_eq!(info.width, 512);
+        // A closing brace before the size table's opening one is ignored,
+        // not sliced backwards.
+        let stray = "-- size = }
+ScenarioInfo = { size = {256, 512} }";
+        let sized = parse_scenario_lua(stray);
+        assert_eq!((sized.width, sized.height), (256, 512));
         assert_eq!(info.height, 512);
         assert_eq!(info.max_players, 4);
         assert_eq!(info.version.as_deref(), Some("1"));

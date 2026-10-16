@@ -351,6 +351,14 @@ pub(crate) fn page_ready(app: tauri::AppHandle) {
     crate::exit::page_ready(&app);
 }
 
+/// The page's close confirmation has stopped listening: the app was replaced
+/// by its error screen, or the page is reloading. Closing during a game asks
+/// natively again until the next [`page_ready`].
+#[tauri::command]
+pub(crate) fn page_gone(app: tauri::AppHandle) {
+    crate::exit::page_gone(&app);
+}
+
 /// Which rendering engine the client actually ended up in.
 ///
 /// Only Linux reports a version, because only Linux can surprise us: Windows

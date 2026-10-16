@@ -87,6 +87,11 @@ pub(crate) fn is_internal_navigation(url: &tauri::Url) -> bool {
         || url_str.starts_with("https://www.faforever.com/dist/")
         || url_str.starts_with("https://faforever.github.io/spooky-db")
         || url_str.starts_with("https://faforever.github.io/etfreeman-db")
+        // The training videos' player (`trainingPresentation.ts`), the one
+        // origin the CSP's frame-src allows that was missing here. WebKitGTK
+        // asks about a frame's loads too, so on Linux every video frame went
+        // to the browser instead of playing in the client.
+        || url_str.starts_with("https://www.youtube-nocookie.com/embed/")
 }
 
 /// The link to hand the operating system, or `None` for one it must never see.

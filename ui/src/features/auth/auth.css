@@ -35,6 +35,55 @@
   color: var(--color-text);
 }
 
+/* The way in when no browser appears: a quiet line under Cancel, the link in
+   a field that selects whole on focus, and Copy beside it. */
+.login-link {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.login-link-label {
+  margin: 0 0 8px;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.login-link-row {
+  display: flex;
+  gap: 6px;
+}
+
+.login-link-field {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  color: var(--color-muted);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+
+.login-link-field:focus-visible {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+.login-link-copy {
+  flex: none;
+  min-height: 32px;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
 /* Says what pressing it actually does. The browser handoff surprises people
    who expect an in-client password field, and "we never see your password" is
    the reassuring half of that. */

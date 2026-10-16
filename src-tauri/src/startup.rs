@@ -5,13 +5,44 @@ use std::sync::Arc;
 
 use faf_app::App;
 use faf_domain::state::{
-    AuthCommand, NavCommand, ReplayCommand, SessionCommand, SettingsCommand, Tab,
+    AuthCommand, NavCommand, ReplayCommand, SessionCommand, SettingsCommand, SettingsEvent, Tab,
 };
-use faf_domain::AppCommand;
+use faf_domain::{AppCommand, AppEvent};
 use tauri::{Emitter, Manager};
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::{Core, FrontendMessage, EVENT_CHANNEL};
+
+/// Wait until the startup settings have been read: their `Loaded` event, or
+/// the end of the whole load where events were missed. `false` when the load
+/// failed before the settings were read.
+async fn settings_read(
+    mut events: tokio::sync::broadcast::Receiver<AppEvent>,
+    mut load: tauri::async_runtime::JoinHandle<Result<(), String>>,
+) -> bool {
+    let finished = |result: Result<Result<(), String>, tauri::Error>| match result {
+        Ok(Ok(())) => true,
+        Ok(Err(reason)) => {
+            tracing::error!(%reason, "could not load startup settings");
+            false
+        }
+        Err(error) => {
+            tracing::error!(%error, "the startup settings load stopped");
+            false
+        }
+    };
+    loop {
+        tokio::select! {
+            event = events.recv() => match event {
+                Ok(AppEvent::Settings(SettingsEvent::Loaded { .. })) => return true,
+                Ok(_) => {}
+                // Events were missed: the end of the load is the signal then.
+                Err(RecvError::Lagged(_) | RecvError::Closed) => return finished(load.await),
+            },
+            result = &mut load => return finished(result),
+        }
+    }
+}
 
 /// The replay file this process was asked to open, if it was asked to open one.
 ///
@@ -237,13 +268,23 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
     // browser preferences into Rust defaults while the settings file
     // is still being read. Auth restore can proceed concurrently once
     // that dependency is satisfied.
+    //
+    // That dependency is the file, not the whole command: `Load` goes on to
+    // measure the game cache and ask GitHub for a client update, which on a
+    // cold disk or with GitHub slow or blocked took from seconds to over a
+    // minute, and auto sign-in waited for all of it. Sign-in starts at
+    // `Loaded` now and the rest of the load runs beside it.
     let startup_core = core.clone();
+    // Subscribed before the load starts, so its `Loaded` cannot be missed.
+    let settings_events = startup_core.subscribe();
     tauri::async_runtime::spawn(async move {
-        if let Err(reason) = startup_core
-            .dispatch_and_wait(AppCommand::Settings(SettingsCommand::Load))
-            .await
-        {
-            tracing::error!(%reason, "could not load startup settings");
+        let load_core = startup_core.clone();
+        let load = tauri::async_runtime::spawn(async move {
+            load_core
+                .dispatch_and_wait(AppCommand::Settings(SettingsCommand::Load))
+                .await
+        });
+        if !settings_read(settings_events, load).await {
             return;
         }
         if cleanup_files {

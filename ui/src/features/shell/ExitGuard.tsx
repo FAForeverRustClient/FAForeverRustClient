@@ -20,18 +20,34 @@ export function ExitGuard() {
 
   useEffect(() => {
     let dispose: (() => void) | undefined;
+    let stopped = false;
     void native
       .onRequestExitConfirm(() => {
         setAsking(true);
       })
       .then((unlisten) => {
+        if (stopped) {
+          unlisten();
+          return;
+        }
         dispose = unlisten;
         // Listening now, so the shell may ask through this page rather than
         // natively. Said after the listener exists, not when the page starts
         // loading: a question sent before it would reach nobody.
         void native.pageReady();
       });
-    return () => dispose?.();
+    // A reload or navigation takes the listener with it. The shell has to
+    // know, or it keeps sending the question to a page that cannot answer.
+    const leaving = () => void native.pageGone();
+    window.addEventListener("pagehide", leaving);
+    return () => {
+      stopped = true;
+      window.removeEventListener("pagehide", leaving);
+      dispose?.();
+      // Unmounted: the error screen replaced the app, so nothing here answers
+      // a close request any more.
+      void native.pageGone();
+    };
   }, []);
 
   if (!asking) return null;

@@ -3458,6 +3458,7 @@
             "error": null,
             "mode": "account",
             "player": null,
+            "signInLink": null,
             "status": "loggingIn"
           }
         },
@@ -3483,6 +3484,7 @@
               "name": "Ada",
               "roles": []
             },
+            "signInLink": null,
             "status": "loggedIn"
           }
         },
@@ -3497,6 +3499,7 @@
             "error": null,
             "mode": "account",
             "player": null,
+            "signInLink": null,
             "status": "loggedOut"
           }
         }
@@ -3516,6 +3519,7 @@
             "error": null,
             "mode": "account",
             "player": null,
+            "signInLink": null,
             "status": "loggingIn"
           }
         },
@@ -3533,6 +3537,7 @@
             "error": "the server did not answer",
             "mode": "account",
             "player": null,
+            "signInLink": null,
             "status": "failed"
           }
         },
@@ -3547,6 +3552,7 @@
             "error": null,
             "mode": "offline",
             "player": null,
+            "signInLink": null,
             "status": "loggedIn"
           }
         },
@@ -3561,6 +3567,7 @@
             "error": null,
             "mode": "account",
             "player": null,
+            "signInLink": null,
             "status": "loggedOut"
           }
         }
@@ -3580,6 +3587,7 @@
             "error": null,
             "mode": "account",
             "player": null,
+            "signInLink": null,
             "status": "loggingIn"
           }
         },
@@ -3605,6 +3613,7 @@
               "name": "Ada",
               "roles": []
             },
+            "signInLink": null,
             "status": "loggedIn"
           }
         },
@@ -3622,6 +3631,7 @@
             "error": "You are banned from FAF forever.",
             "mode": "offline",
             "player": null,
+            "signInLink": null,
             "status": "loggedIn"
           }
         },
@@ -3636,7 +3646,82 @@
             "error": null,
             "mode": "account",
             "player": null,
+            "signInLink": null,
             "status": "loggedOut"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a sign-in link shows while the browser sign-in waits and goes with it",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "url": "https://hydra.example/ignored"
+              },
+              "type": "signInLinkReady"
+            },
+            "kind": "Auth"
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": null,
+            "signInLink": null,
+            "status": "loggedOut"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "loginStarted"
+            },
+            "kind": "Auth"
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": null,
+            "signInLink": null,
+            "status": "loggingIn"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "url": "https://hydra.example/oauth2/auth?state=x"
+              },
+              "type": "signInLinkReady"
+            },
+            "kind": "Auth"
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": null,
+            "signInLink": "https://hydra.example/oauth2/auth?state=x",
+            "status": "loggingIn"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "message": "Login timed out waiting for the browser."
+              },
+              "type": "loginFailed"
+            },
+            "kind": "Auth"
+          },
+          "expected": {
+            "error": "Login timed out waiting for the browser.",
+            "mode": "account",
+            "player": null,
+            "signInLink": null,
+            "status": "failed"
           }
         }
       ]
@@ -3655,6 +3740,7 @@
             "error": null,
             "mode": "account",
             "player": null,
+            "signInLink": null,
             "status": "loggingIn"
           }
         },
@@ -3672,6 +3758,7 @@
             "error": "bad state",
             "mode": "account",
             "player": null,
+            "signInLink": null,
             "status": "failed"
           }
         }
@@ -90827,6 +90914,7 @@
               "name": "Ada",
               "roles": []
             },
+            "signInLink": null,
             "status": "loggedIn"
           }
         },
@@ -90845,6 +90933,7 @@
               "name": "Ada",
               "roles": []
             },
+            "signInLink": null,
             "status": "loggingIn"
           }
         },
@@ -90862,6 +90951,7 @@
             "error": "the test server refused the token",
             "mode": "test",
             "player": null,
+            "signInLink": null,
             "status": "failed"
           }
         },
@@ -90887,6 +90977,7 @@
               "name": "Ada",
               "roles": []
             },
+            "signInLink": null,
             "status": "loggedIn"
           }
         },
@@ -90901,6 +90992,7 @@
             "error": null,
             "mode": "account",
             "player": null,
+            "signInLink": null,
             "status": "loggedOut"
           }
         }
@@ -122635,6 +122727,7 @@
       "error": null,
       "mode": "account",
       "player": null,
+      "signInLink": null,
       "status": "loggedOut"
     },
     "changelog": {

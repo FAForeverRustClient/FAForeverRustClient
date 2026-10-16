@@ -211,9 +211,16 @@ fn prune(directory: &Path, keep: usize) -> Result<(), String> {
             .unwrap_or(UNIX_EPOCH)
     });
     let remove = logs.len().saturating_sub(keep.saturating_sub(1));
+    // Housekeeping, never a reason to refuse a launch: a log that cannot go
+    // (read-only, left by an elevated run, held open by an editor) stays, and
+    // the next launch tries again.
     for path in logs.into_iter().take(remove) {
-        std::fs::remove_file(&path)
-            .map_err(|error| format!("could not prune an old game log: {error}"))?;
+        if let Err(error) = std::fs::remove_file(&path) {
+            // The file name and the kind of failure only: the full path holds
+            // the player's profile folder, and client logs get shared.
+            let name = path.file_name().unwrap_or_default().to_string_lossy();
+            tracing::warn!(file = %name, kind = ?error.kind(), "could not prune an old game log");
+        }
     }
     Ok(())
 }
@@ -237,6 +244,18 @@ mod tests {
         }
         prune(&root, 50).unwrap();
         assert_eq!(std::fs::read_dir(&root).unwrap().count(), 49);
+
+        // A log that cannot be removed (read-only blocks it on Windows) is
+        // skipped, and the launch that asked for a new path still gets one.
+        let stuck = root.join("game-stuck.log");
+        std::fs::write(&stuck, []).unwrap();
+        let mut permissions = std::fs::metadata(&stuck).unwrap().permissions();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(&stuck, permissions.clone()).unwrap();
+        assert!(prune(&root, 1).is_ok());
+        #[allow(clippy::permissions_set_readonly_false)]
+        permissions.set_readonly(false);
+        let _ = std::fs::set_permissions(&stuck, permissions);
         std::fs::remove_dir_all(root).unwrap();
     }
 

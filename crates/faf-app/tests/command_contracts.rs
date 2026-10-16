@@ -1417,7 +1417,11 @@ struct HeldAuth {
 
 #[async_trait]
 impl AuthPort for HeldAuth {
-    async fn login(&self, _remember: bool) -> AuthResult<Player> {
+    async fn login(
+        &self,
+        _remember: bool,
+        _link: &(dyn Fn(String) + Send + Sync),
+    ) -> AuthResult<Player> {
         self.gates.pass("login").await;
         Ok(Player::new(7, "Ada"))
     }

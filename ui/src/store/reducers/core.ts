@@ -174,21 +174,24 @@ export function reduceInstall(_state: InstallState, event: InstallEvent): Instal
 export function reduceAuth(state: AuthState, event: AuthEvent): AuthState {
   switch (event.type) {
     case "loginStarted":
-      return { ...state, status: "loggingIn", error: null };
+      return { ...state, status: "loggingIn", error: null, signInLink: null };
+    case "signInLinkReady":
+      // Only for the attempt in progress; a late one after it ended is ignored.
+      return state.status === "loggingIn" ? { ...state, signInLink: event.payload.url } : state;
     case "loggedIn":
-      return { ...state, status: "loggedIn", player: event.payload.player, error: null, mode: "account" };
+      return { ...state, status: "loggedIn", player: event.payload.player, error: null, mode: "account", signInLink: null };
     case "testLoggedIn":
-      return { ...state, status: "loggedIn", player: event.payload.player, error: null, mode: "test" };
+      return { ...state, status: "loggedIn", player: event.payload.player, error: null, mode: "test", signInLink: null };
     case "wentOffline":
-      return { ...state, status: "loggedIn", player: null, error: null, mode: "offline" };
+      return { ...state, status: "loggedIn", player: null, error: null, mode: "offline", signInLink: null };
     case "banned":
       // The lobby refused a banned account (#488): what is left is an offline
       // session, with the server's reason kept.
-      return { ...state, status: "loggedIn", player: null, error: event.payload.message, mode: "offline" };
+      return { ...state, status: "loggedIn", player: null, error: event.payload.message, mode: "offline", signInLink: null };
     case "loginFailed":
-      return { ...state, status: "failed", player: null, error: event.payload.message };
+      return { ...state, status: "failed", player: null, error: event.payload.message, signInLink: null };
     case "loggedOut":
-      return { ...state, status: "loggedOut", player: null, error: null, mode: "account" };
+      return { ...state, status: "loggedOut", player: null, error: null, mode: "account", signInLink: null };
   }
 }
 
