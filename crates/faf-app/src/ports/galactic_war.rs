@@ -12,7 +12,7 @@
 //! to well over a hundred megabytes.
 
 use async_trait::async_trait;
-use faf_domain::state::{ClientVersions, GalacticWarStatistics};
+use faf_domain::state::{ClientVersions, GalacticWarPlayerFaction, GalacticWarStatistics};
 use tokio::sync::mpsc;
 
 /// One step of an install run.
@@ -44,6 +44,19 @@ pub trait GalacticWarPort: Send + Sync {
     /// Its own result rather than folded into any other call: statistics are
     /// decoration and must never be able to fail the install path with them.
     async fn statistics(&self) -> Result<GalacticWarStatistics, String>;
+
+    /// The faction the player with this FAF id fights for, or `None` when
+    /// they have none (never joined, or a galaxy reset since).
+    ///
+    /// The one call that sends the signed-in player's FAF access token, which
+    /// the gateway requires for it and checks against the id. The default is
+    /// the honest answer for a fake that knows no players.
+    async fn player_faction(
+        &self,
+        _faf_id: i32,
+    ) -> Result<Option<GalacticWarPlayerFaction>, String> {
+        Err("this build does not reach the Galactic War gateway".into())
+    }
 
     /// What the gateway says should be installed, and what it will still
     /// accept.

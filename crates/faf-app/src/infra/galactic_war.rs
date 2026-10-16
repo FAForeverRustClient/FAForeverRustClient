@@ -37,15 +37,16 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use faf_domain::protocol::galactic_war::{
-    download_url, is_safe_version, parse_client_versions, parse_statistics, version_path,
-    CONTENT_PACK_NAME, EXECUTABLE_NAME,
+    download_url, is_safe_version, parse_client_versions, parse_player_faction, parse_statistics,
+    player_faction_path, version_path, CONTENT_PACK_NAME, EXECUTABLE_NAME,
 };
-use faf_domain::state::{ClientVersions, GalacticWarStatistics};
+use faf_domain::state::{ClientVersions, GalacticWarPlayerFaction, GalacticWarStatistics};
 use futures_util::StreamExt as _;
 use sha2::{Digest as _, Sha256};
 use tokio::process::{Child, Command};
 use tokio::sync::{mpsc, Notify};
 
+use crate::infra::session::TokenStore;
 use crate::infra::{data_dir, env_or, http::shared_http_client, vault_install};
 use crate::ports::{GalacticWarPort, InstallProgress};
 
@@ -92,6 +93,9 @@ impl GalacticWarConfig {
 pub struct GalacticWarGateway {
     config: GalacticWarConfig,
     http: reqwest::Client,
+    /// The FAF session's access token, for the one call that needs it
+    /// ([`GalacticWarPort::player_faction`]). Empty unless given one.
+    tokens: TokenStore,
     child: Arc<Mutex<Option<Child>>>,
     /// Woken when the tracked client exits; see [`Self::watch_for_exit`].
     exited: Arc<Notify>,
@@ -102,6 +106,7 @@ impl GalacticWarGateway {
         Self {
             config,
             http: shared_http_client(),
+            tokens: TokenStore::new(),
             child: Arc::new(Mutex::new(None)),
             exited: Arc::new(Notify::new()),
         }
@@ -109,6 +114,21 @@ impl GalacticWarGateway {
 
     pub fn faf() -> Result<Self, String> {
         Ok(Self::new(GalacticWarConfig::faf()?))
+    }
+
+    /// Share the FAF session's token store, for the player's faction.
+    pub fn with_tokens(mut self, tokens: TokenStore) -> Self {
+        self.tokens = tokens;
+        self
+    }
+
+    /// Whether the access token may be sent to `url`: over an encrypted
+    /// connection, or to this machine for a gateway run locally. The token is
+    /// FAF's, and the gateway is not a FAF host.
+    fn may_carry_token(url: &str) -> bool {
+        url.starts_with("https://")
+            || url.starts_with("http://127.0.0.1")
+            || url.starts_with("http://localhost")
     }
 
     fn api_url(&self, path: &str) -> String {
@@ -480,6 +500,42 @@ impl GalacticWarPort for GalacticWarGateway {
         parse_client_versions(&body)
     }
 
+    async fn player_faction(
+        &self,
+        faf_id: i32,
+    ) -> Result<Option<GalacticWarPlayerFaction>, String> {
+        let url = self.api_url(&player_faction_path(faf_id));
+        if !Self::may_carry_token(&url) {
+            return Err("the Galactic War gateway is not reached over an encrypted connection, so your sign-in is not sent to it".into());
+        }
+        let token = self
+            .tokens
+            .get()
+            .ok_or_else(|| "you are not signed in to FAF".to_string())?;
+        let response = self
+            .http
+            .get(&url)
+            .bearer_auth(token)
+            .timeout(API_TIMEOUT)
+            .send()
+            .await
+            .map_err(|error| format!("could not reach the Galactic War gateway: {error}"))?;
+        let status = response.status();
+        if status == reqwest::StatusCode::UNAUTHORIZED || status == reqwest::StatusCode::FORBIDDEN {
+            return Err(format!(
+                "the Galactic War gateway did not accept your sign-in ({status})"
+            ));
+        }
+        if !status.is_success() {
+            return Err(format!("the Galactic War gateway answered {status}"));
+        }
+        let body = response
+            .text()
+            .await
+            .map_err(|error| format!("could not read the Galactic War faction: {error}"))?;
+        parse_player_faction(&body)
+    }
+
     fn installed_version(&self) -> Option<String> {
         self.installed_executable().map(|(version, _)| version)
     }
@@ -503,6 +559,7 @@ impl GalacticWarPort for GalacticWarGateway {
         let worker = Self {
             config: self.config.clone(),
             http: self.http.clone(),
+            tokens: self.tokens.clone(),
             child: self.child.clone(),
             exited: self.exited.clone(),
         };
@@ -597,6 +654,19 @@ mod tests {
             download_base: download_base.into(),
             install_dir: std::env::temp_dir().join(format!("faf-gw-{}", rand::random::<u64>())),
         })
+    }
+
+    #[test]
+    fn the_token_goes_to_an_encrypted_gateway_only() {
+        assert!(GalacticWarGateway::may_carry_token(
+            "https://gw.example/player/1/faction"
+        ));
+        assert!(GalacticWarGateway::may_carry_token(
+            "http://localhost:8080/player/1/faction"
+        ));
+        assert!(!GalacticWarGateway::may_carry_token(
+            "http://gw.example/player/1/faction"
+        ));
     }
 
     #[test]

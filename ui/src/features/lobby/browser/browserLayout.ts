@@ -16,6 +16,7 @@ import {
 import {
   columnTemplate as templateFor,
   resolveColumnWidths,
+  type ColumnFit,
 } from "../../../shared/tableColumns";
 
 /**
@@ -44,6 +45,22 @@ export const DEFAULT_COLUMN_WIDTHS: readonly number[] = [254, 96, 150, 74, 80, 8
  * panel at the default window, with a game selected.
  */
 export const COLUMN_FLOORS: readonly number[] = [160, 40, 96, 36, 36, 36];
+
+/** The tags column, by its designed position. */
+export const TAGS_COLUMN = 1;
+
+/**
+ * How wide the tags column is drawn at least when the list has room to spare: two
+ * ordinary tags side by side ("3 SIM" and "Unranked" take 119 pixels in
+ * German), or one of them and its "+N more".
+ *
+ * Its designed width of 96 is what the default window can afford, and on a
+ * wider one every spare pixel went to the game column, so a list with half a
+ * screen of title room showed "+2 more" and no tag at all (#559). The width
+ * a reader dragged it to is kept as the least it gets; this is only what the
+ * spare room tops it up to before the columns share the rest (`withSpareRoom`).
+ */
+export const TAGS_COMFORT_PX = 150;
 
 /** How many columns the list had before the tags got one of their own. */
 const COLUMNS_BEFORE_TAGS = 5;
@@ -151,4 +168,44 @@ export function detailWidth(stored: number | undefined): number {
   return stored && stored > 0
     ? Math.min(MAX_DETAIL_PX, Math.max(MIN_DETAIL_PX, stored))
     : DEFAULT_DETAIL_WIDTH;
+}
+
+/**
+ * How far spare room widens a column beyond its own width, the game column
+ * apart. Up to here the whole list widens in proportion, which is what a
+ * 1440p window needs; on a still wider one, what is left goes to the titles
+ * rather than to a players count wider than any figure in it.
+ */
+export const MAX_COLUMN_GROWTH = 2.5;
+
+/**
+ * The fitted widths with the room the columns leave in `space` shared out.
+ *
+ * At the designed widths a wide window gave every spare pixel to the game
+ * column: a title column across half the screen beside tags, map names and
+ * figures at the widths the 1100 pixel window can afford, the tags too narrow
+ * to show a tag at all (#559). So the tags column is first topped up to
+ * [`TAGS_COMFORT_PX`], and then every column, the game column included, grows
+ * by the factor the list is wider than its columns, the others up to
+ * [`MAX_COLUMN_GROWTH`] times their own width; the game column takes the
+ * rest, as it always has.
+ *
+ * Only with every column at its full width: where the columns do not fit as
+ * stored (the default window), the widths are as fitted, including the odd
+ * pixel the rounding leaves over. Unmeasured (zero), nothing changes either.
+ */
+export function withSpareRoom(fit: ColumnFit, space: number): number[] {
+  const result = [...fit.drawn];
+  if (fit.overflow || fit.scale < 1) return result;
+  const total = (widths: readonly number[]) => widths.reduce((sum, width) => sum + width, 0);
+  const spare = space - total(result);
+  if (spare <= 0) return result;
+  result[TAGS_COLUMN] += Math.min(spare, Math.max(0, TAGS_COMFORT_PX - result[TAGS_COLUMN]));
+  const factor = space / total(result);
+  // The limit counts from the topped-up width, so the tags, which hold the
+  // most text after the title, grow from their comfortable width rather than
+  // stopping where the figures do.
+  return result.map((width, index) =>
+    index === FLEXIBLE_COLUMN ? width : Math.floor(Math.min(width * factor, width * MAX_COLUMN_GROWTH)),
+  );
 }

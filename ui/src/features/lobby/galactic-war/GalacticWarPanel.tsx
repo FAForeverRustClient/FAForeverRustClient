@@ -20,12 +20,12 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import type { MessageKey } from "../../../i18n";
 import { useAppStore } from "../../../store/store";
 import { FactionIcon } from "../../../shared/components/FactionIcon";
-import { galacticWarFactionLabel } from "../../../shared/factions";
+import { FACTION_COLORS, FACTION_NAMES, galacticWarFactionLabel } from "../../../shared/factions";
 import { openHttpsUrl } from "../../../shared/externalLinks";
 import { plainError } from "../../../shared/plainError";
 import { canLaunch, installTarget, isBusy, updateAvailable } from "../../../shared/rules/galacticWarActions";
 import { onlineCommanders } from "./galacticWarOnline";
-import { ringSegments, type RingSegment } from "./galacticWarRing";
+import { factionNumber, ringSegments, type RingSegment } from "./galacticWarRing";
 import type { PlayModePanelProps } from "../PlayModeTabs";
 import "./galactic-war.css";
 
@@ -153,6 +153,7 @@ export function GalacticWarPanel({
 } = {}) {
   const { t } = useTranslation();
   const state = useAppStore((store) => store.state.galacticWar);
+  const playerName = useAppStore((store) => store.state.auth.player?.name ?? null);
 
   useEffect(() => {
     // Entering the surface is the only trigger: the gateway is a service
@@ -170,6 +171,22 @@ export function GalacticWarPanel({
   const factions = state.statistics?.factions ?? [];
   const segments = ringSegments(factions);
   const statsFailed = state.statisticsStatus.type === "failed";
+  // The signed-in player's faction, by the number the cards and the ring use.
+  const playerFaction = state.playerFaction;
+  const ownFaction =
+    playerFaction.type === "loaded" && playerFaction.payload.faction
+      ? playerFaction.payload.faction
+      : null;
+  // A name the client does not know marks no card: every unknown faction
+  // shares one number, so it would mark the wrong one.
+  const ownGuess = ownFaction ? factionNumber(ownFaction.name ?? "") : null;
+  const ownNumber = ownGuess === factionNumber("") ? null : ownGuess;
+  // The whole tab takes the player's faction as its theme: its colour for the
+  // accents, its emblem and texture behind the boards. Without one, the
+  // client's own accent and no texture.
+  const theme = ownNumber === null ? undefined : FACTION_NAMES[ownNumber]?.toLowerCase();
+  const themeStyle =
+    ownNumber === null ? undefined : ({ "--gw-theme": FACTION_COLORS[ownNumber] } as CSSProperties);
   const cycleAge = cycleAgeInDays(season?.startedAt ?? "");
 
   // While something is in flight the ring reports that instead of territory:
@@ -242,7 +259,20 @@ export function GalacticWarPanel({
   ];
 
   return (
-    <div {...panelProps} className="gw-layout">
+    <div
+      {...panelProps}
+      className={theme ? "gw-layout is-themed" : "gw-layout"}
+      data-faction={theme}
+      style={themeStyle}
+    >
+      {/* The scenery behind the boards: a glow from above, the faction's
+          texture, its emblem large and faint, and a vignette. Decoration
+          only, and drawn under everything. */}
+      {ownNumber !== null ? (
+        <div className="gw-backdrop" aria-hidden="true">
+          <FactionIcon faction={ownNumber} size={520} className="gw-backdrop-emblem" aria-hidden="true" />
+        </div>
+      ) : null}
       <aside className="gw-column gw-column-info">
         <header className="gw-column-head">
           <h3>{t("lobby.galacticWar.client.title")}</h3>
@@ -252,27 +282,31 @@ export function GalacticWarPanel({
             <span className="gw-column-state">{t("lobby.galacticWar.notInstalled")}</span>
           ) : null}
         </header>
+        {/* Outside the scrolling part, so the band runs edge to edge: inside
+            it, the scrollbar's kept room cut it short on the right. */}
+        <FactsStrip className="gw-client-facts" columns={3} groups={[{ facts: clientFacts }]} />
         <div className="gw-scroll">
-          <section className="gw-section">
-            <FactsStrip className="gw-client-facts" columns={3} groups={[{ facts: clientFacts }]} />
-            {state.belowMinimum ? (
-              <p className="gw-notice gw-notice-warn">{t("lobby.galacticWar.belowMinimum")}</p>
-            ) : null}
-            {/* Retry asks the gateway again, which is the one step every
-                failure here shares: a failed version check is answered by it,
-                and after a failed install or launch it clears the line and
-                leaves the launch button to say what comes next. */}
-            {status.type === "failed" ? (
-              <StatusNotice
-                tone="error"
-                className="gw-failure"
-                action={{ label: t("common.retry"), onClick: refresh }}
-                detail={status.payload.reason}
-              >
-                {plainError(status.payload.reason)}
-              </StatusNotice>
-            ) : null}
-          </section>
+          {state.belowMinimum || status.type === "failed" ? (
+            <section className="gw-section">
+              {state.belowMinimum ? (
+                <p className="gw-notice gw-notice-warn">{t("lobby.galacticWar.belowMinimum")}</p>
+              ) : null}
+              {/* Retry asks the gateway again, which is the one step every
+                  failure here shares: a failed version check is answered by it,
+                  and after a failed install or launch it clears the line and
+                  leaves the launch button to say what comes next. */}
+              {status.type === "failed" ? (
+                <StatusNotice
+                  tone="error"
+                  className="gw-failure"
+                  action={{ label: t("common.retry"), onClick: refresh }}
+                  detail={status.payload.reason}
+                >
+                  {plainError(status.payload.reason)}
+                </StatusNotice>
+              ) : null}
+            </section>
+          ) : null}
 
           <section className="gw-section gw-news">
             <h3 className="gw-section-title">{t("lobby.galacticWar.news.title")}</h3>
@@ -299,12 +333,16 @@ export function GalacticWarPanel({
       </aside>
 
       <div className="gw-column gw-column-center">
-        <section className="gw-board gw-world">
-          <header className="gw-board-head">
-            <div className="gw-board-heading">
-              <h3>{t("lobby.galacticWar.cycle.title")}</h3>
-              <p className="gw-cycle-name">{season?.name || NO_VALUE}</p>
-            </div>
+        {/* The tab's opening, open to the scenery behind it: the launch dial
+            in the middle with the player's faction emblem as its face, the
+            cycle on its left, the commander on its right. It holds what the
+            cycle board's head, the commander card and the dial's own row
+            between the boards held, so the faction cards fit a 1080p window
+            under it. */}
+        <header className={ownNumber === null ? "gw-hero" : "gw-hero has-faction"}>
+          <div className="gw-hero-side gw-hero-cycle">
+            <span className="gw-hero-label">{t("lobby.galacticWar.cycle.title")}</span>
+            <strong className="gw-hero-title">{season?.name || NO_VALUE}</strong>
             {statsFailed ? (
               <span className="gw-offline">{t("lobby.galacticWar.statsUnavailable")}</span>
             ) : cycleAge !== null ? (
@@ -313,7 +351,77 @@ export function GalacticWarPanel({
                 <strong>{t("lobby.galacticWar.cycle.days", { count: cycleAge })}</strong>
               </span>
             ) : null}
-          </header>
+          </div>
+            <div className="gw-launch">
+              <svg className="gw-ring" viewBox="0 0 200 200" role="img">
+                {/* The ring's meaning belongs to the ring, not to a caption under
+                    the button: there is no room for one that does not end up
+                    inside the circle. */}
+                <title>
+                  {busy ? t("lobby.galacticWar.ringWorking") : t("lobby.galacticWar.ringCaption")}
+                </title>
+                <circle
+                  className="gw-ring-track"
+                  cx="100"
+                  cy="100"
+                  r={RING_RADIUS}
+                  fill="none"
+                  strokeWidth="9"
+                />
+                {indeterminate ? (
+                  <RingArc className="gw-ring-busy" length={RING_BUSY_ARC / RING_CIRCUMFERENCE} round />
+                ) : downloadShare !== null ? (
+                  <RingArc
+                    color="var(--color-accent)"
+                    length={downloadShare}
+                    round
+                  />
+                ) : (
+                  segments.map((segment) => (
+                    <TerritoryArc key={segment.name} segment={segment} />
+                  ))
+                )}
+              </svg>
+              <span className="gw-launch-bezel" />
+              <button
+                className="gw-launch-button"
+                disabled={busy || running || (!canLaunch(state) && target === "")}
+                onClick={play}
+                type="button"
+              >
+                {/* The player's emblem is the button's face once there is one:
+                    the tab's logo, lit, where the eye already goes. */}
+                {ownNumber !== null ? (
+                  <FactionIcon faction={ownNumber} size={58} className="gw-launch-emblem" aria-hidden="true" />
+                ) : null}
+                <span className="gw-launch-verb">{actionLabel}</span>
+                {ownNumber === null ? (
+                  <span className="gw-launch-name">{t("lobby.galacticWar.short")}</span>
+                ) : null}
+              </button>
+            </div>
+          <div className="gw-hero-side gw-hero-commander">
+            {/* The gateway answers for the token's owner alone, so this is
+                always the player at the keyboard. Absent without an account. */}
+            {playerName !== null && playerFaction.type !== "unknown" ? (
+              <>
+                <span className="gw-hero-label">{t("lobby.galacticWar.player.title")}</span>
+                <strong className="gw-hero-title">{playerName}</strong>
+                <span className="gw-hero-faction">
+                  {playerFaction.type === "loading"
+                    ? t("lobby.galacticWar.player.loading")
+                    : playerFaction.type === "failed"
+                      ? t("lobby.galacticWar.player.unavailable")
+                      : ownFaction
+                        ? galacticWarFactionLabel(ownFaction.name ?? "", ownFaction.longName || ownFaction.name || "")
+                        : t("lobby.galacticWar.player.noFaction")}
+                </span>
+              </>
+            ) : null}
+          </div>
+        </header>
+
+        <section className="gw-board gw-world">
           {season ? (
             <FactsStrip className="gw-cycle-facts" columns={3} groups={[{ facts: cycleFacts }]} />
           ) : (
@@ -321,54 +429,11 @@ export function GalacticWarPanel({
           )}
         </section>
 
-        <div className="gw-launch">
-          <svg className="gw-ring" viewBox="0 0 200 200" role="img">
-            {/* The ring's meaning belongs to the ring, not to a caption under
-                the button: there is no room for one that does not end up
-                inside the circle. */}
-            <title>
-              {busy ? t("lobby.galacticWar.ringWorking") : t("lobby.galacticWar.ringCaption")}
-            </title>
-            <circle
-              className="gw-ring-track"
-              cx="100"
-              cy="100"
-              r={RING_RADIUS}
-              fill="none"
-              strokeWidth="9"
-            />
-            {indeterminate ? (
-              <RingArc className="gw-ring-busy" length={RING_BUSY_ARC / RING_CIRCUMFERENCE} round />
-            ) : downloadShare !== null ? (
-              <RingArc
-                color="var(--color-accent)"
-                length={downloadShare}
-                round
-              />
-            ) : (
-              segments.map((segment) => (
-                <TerritoryArc key={segment.name} segment={segment} />
-              ))
-            )}
-          </svg>
-          <span className="gw-launch-bezel" />
-          <button
-            className="gw-launch-button"
-            disabled={busy || running || (!canLaunch(state) && target === "")}
-            onClick={play}
-            type="button"
-          >
-            <span className="gw-launch-verb">{actionLabel}</span>
-            <span className="gw-launch-name">{t("lobby.galacticWar.short")}</span>
-          </button>
-        </div>
-
         <section className="gw-board gw-factions-board">
-          <header className="gw-factions-head">
-            <h3>{t("lobby.galacticWar.factions.title")}</h3>
-          </header>
           {segments.length > 0 ? (
-            <ul className="gw-factions">
+            // No heading over the cards: they name their factions, and its
+            // line went to the room around the dial. Still the list's name.
+            <ul className="gw-factions" aria-label={t("lobby.galacticWar.factions.title")}>
               {/* Rendered in the order the gateway sends, under the names it
                   sends, with the glyph resolved from the name: faction ids are
                   numbered differently by the spec and the running server. */}
@@ -397,7 +462,8 @@ export function GalacticWarPanel({
                 ];
                 return (
                   <li
-                    className="gw-faction"
+                    className={segment.faction === ownNumber ? "gw-faction is-own" : "gw-faction"}
+                    title={segment.faction === ownNumber ? t("lobby.galacticWar.faction.yours") : undefined}
                     key={`${faction.name}-${index}`}
                     style={{ "--gw-faction-color": segment.color } as CSSProperties}
                   >
@@ -405,7 +471,7 @@ export function GalacticWarPanel({
                         faction's mark, standing behind the head and the share. */}
                     <FactionIcon
                       faction={segment.faction}
-                      size={76}
+                      size={96}
                       className="gw-faction-emblem"
                       aria-hidden="true"
                     />

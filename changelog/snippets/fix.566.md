@@ -1,0 +1,7 @@
+- On Linux, signing in opens your browser again when the client runs as an AppImage.
+- On Linux, the client finds the maps, mods, replays and settings the Java client left in its own folders.
+- A long lobby title no longer pushes the game card beside a private chat off the screen.
+- On a wide window all columns of the game list widen with it, so tags show instead of only "+2 more".
+- Galactic War shows its cycle and faction figures larger.
+- The tournament tab's settings button and dialog are now called Keyboard shortcuts, which is all they hold, and the dialog has a new look with key caps.
+- The version band at the top of the Galactic War tab reaches across the whole column again.

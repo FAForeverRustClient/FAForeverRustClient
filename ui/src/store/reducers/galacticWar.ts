@@ -25,5 +25,7 @@ export function reduceGalacticWar(
         statistics: event.payload.statistics,
         statisticsStatus: { type: "loaded" },
       };
+    case "playerFactionChanged":
+      return { ...state, playerFaction: event.payload.status };
   }
 }

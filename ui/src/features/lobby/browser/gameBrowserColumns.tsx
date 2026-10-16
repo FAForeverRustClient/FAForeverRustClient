@@ -21,6 +21,7 @@ import {
   columnTemplate,
   columnWidths,
   FLEXIBLE_COLUMN,
+  withSpareRoom,
 } from "./browserLayout";
 
 /**
@@ -132,7 +133,9 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
   }, [enabled]);
   const fit = fitColumns(widths, COLUMN_FLOORS, space);
   const { scale } = fit;
-  const template = columnTemplate(order.map((column) => fit.drawn[column]), gamePosition);
+  // Spare room is shared by every column before the game column takes the rest.
+  const drawn = withSpareRoom(fit, space);
+  const template = columnTemplate(order.map((column) => drawn[column]), gamePosition);
   // Only when every column is at its floor and the floors are wider than the
   // list: the header and every row are then as wide as the floors, so the
   // list scrolls sideways with each row whole, its hover and its border along
@@ -159,20 +162,26 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
   // its columns the game column is drawn wider than its stored width, and a
   // drag starts from what is on screen, or the divider would jump.
   const drawnGame = useRef<number | null>(null);
+  // The same for every other column, which spare room draws wider than its
+  // stored width (`withSpareRoom`).
+  const drawnColumns = useRef<number[] | null>(null);
   // The scale the drag started at. It holds for the whole drag, since a trade
   // keeps the total, and a re-render part way through must not change it.
   const dragScale = useRef(1);
   const onStart = () => {
     const cell = headerRef.current?.children[FLEXIBLE_COLUMN];
     drawnGame.current = scale >= 1 && cell ? Math.round(cell.getBoundingClientRect().width) : null;
+    drawnColumns.current = scale >= 1 ? drawn : null;
     dragScale.current = scale;
     setResizing(true);
   };
   /** The divider in front of the column drawn at `position` moved by `delta`. */
   const onDrag = (position: number, delta: number) => {
-    dragOrigin.current ??= drawnGame.current === null
-      ? widths
-      : widths.map((width, index) => (index === FLEXIBLE_COLUMN ? drawnGame.current ?? width : width));
+    dragOrigin.current ??= widths.map((width, index) =>
+      index === FLEXIBLE_COLUMN
+        ? drawnGame.current ?? width
+        : drawnColumns.current?.[index] ?? width,
+    );
     // The pointer moves in drawn pixels and the widths are stored unscaled:
     // at half scale a stored width changes twice as far, which is what keeps
     // the divider under the cursor. A trade keeps the total, so the scale
@@ -197,6 +206,7 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
     const committed = latestWidths.current ?? localWidths;
     dragOrigin.current = null;
     drawnGame.current = null;
+    drawnColumns.current = null;
     latestWidths.current = null;
     setResizing(false);
     if (committed) saveBrowser({ columnWidths: committed });

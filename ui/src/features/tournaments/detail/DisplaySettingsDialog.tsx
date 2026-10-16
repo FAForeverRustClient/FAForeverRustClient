@@ -1,14 +1,16 @@
-// The tournament tab's keyboard shortcuts, the website's "Display settings".
+// The tournament tab's keyboard shortcuts, cut from the website's "Display
+// settings".
 //
 // Only the shortcuts: the website's same dialog also holds the time zone, the
 // date and time format and the interface scale, which the client keeps in its
-// own settings. A key is chosen by pressing it, a single letter or digit with
+// own settings, so the dialog is named for what is left in it (issue 565). A key is chosen by pressing it, a single letter or digit with
 // no modifier, and a key already in use moves from its old action.
 
 import { overlayStack } from "../../../design-system/overlayStack";
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { useEffect, useState } from "react";
 import { Button } from "../../../design-system/Button";
+import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { HOTKEY_ACTIONS, rebind, type HotkeyAction } from "../display";
@@ -46,47 +48,73 @@ export function DisplaySettingsDialog({ keys, onChange, onClose }: DisplaySettin
     return () => window.removeEventListener("keydown", listen, true);
   }, [arming, armingLayer, keys, onChange]);
 
+  // Three bands, as the client's other dialogs have them: a raised head
+  // naming the dialog, the shortcuts as rows in the body, the way out in the
+  // foot. Each shortcut is a key cap, chosen by clicking it and pressing the
+  // key; a row's clear button switches its shortcut off.
   return (
-    <Modal onClose={onClose} className="tournament-display-dialog" ariaLabel={t("tournaments.display.title")}>
-      <h3>{t("tournaments.display.title")}</h3>
-      <h5>{t("tournaments.display.shortcuts")}</h5>
-      <p className="muted">{t("tournaments.display.shortcutsHint")}</p>
-      <ul className="tournament-hotkeys">
-        {HOTKEY_ACTIONS.map((action) => (
-          <li key={action.id}>
-            <Button
-              className={arming === action.id ? "tournament-hotkey is-arming mono" : "tournament-hotkey mono"}
-              onClick={() => {
-                setRefused(false);
-                setArming(arming === action.id ? null : action.id);
-              }}
-            >
-              {arming === action.id
-                ? t("tournaments.display.press")
-                : keys[action.id] === ""
-                  ? t("tournaments.display.off")
-                  : keys[action.id].toUpperCase()}
-            </Button>
-            <span>
-              {t(action.label)}
-              {action.note !== undefined && <span className="muted"> ({t(action.note)})</span>}
-            </span>
-            <Button
-              title={t("tournaments.display.clearTitle")}
-              disabled={keys[action.id] === ""}
-              onClick={() => onChange({ ...keys, [action.id]: "" })}
-            >
-              {t("tournaments.display.clear")}
-            </Button>
-          </li>
-        ))}
-      </ul>
-      {refused && <p className="tournament-warning">{t("tournaments.display.singleKey")}</p>}
-      <div className="tournament-form-actions">
+    <Modal onClose={onClose} className="hotkeys-modal" ariaLabel={t("tournaments.display.shortcuts")}>
+      <header className="hotkeys-head">
+        <span className="hotkeys-head-icon" aria-hidden="true">
+          <Icon name="keyboard" size={22} />
+        </span>
+        <h2>{t("tournaments.display.shortcuts")}</h2>
+      </header>
+
+      <div className="hotkeys-body">
+        <p className="hotkeys-hint">{t("tournaments.display.shortcutsHint")}</p>
+        <ul className="hotkeys-list">
+          {HOTKEY_ACTIONS.map((action) => {
+            const isArming = arming === action.id;
+            const isOff = keys[action.id] === "";
+            return (
+              <li key={action.id} className={isArming ? "hotkeys-row is-arming" : "hotkeys-row"}>
+                <span className="hotkeys-label">
+                  <span>{t(action.label)}</span>
+                  {action.note !== undefined && <span className="hotkeys-note">{t(action.note)}</span>}
+                </span>
+                <button
+                  type="button"
+                  className={["hotkeys-key", isArming ? "is-arming" : "", isOff && !isArming ? "is-off" : ""]
+                    .filter(Boolean)
+                    .join(" ")}
+                  onClick={() => {
+                    setRefused(false);
+                    setArming(isArming ? null : action.id);
+                  }}
+                >
+                  {isArming
+                    ? t("tournaments.display.press")
+                    : isOff
+                      ? t("tournaments.display.off")
+                      : keys[action.id].toUpperCase()}
+                </button>
+                <Button
+                  className="icon-button hotkeys-clear"
+                  title={t("tournaments.display.clearTitle")}
+                  aria-label={t("tournaments.display.clearTitle")}
+                  disabled={isOff}
+                  onClick={() => onChange({ ...keys, [action.id]: "" })}
+                >
+                  <Icon name="close" size={14} />
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+        {refused && (
+          <p className="hotkeys-warning" role="alert">
+            <Icon name="alert" size={14} />
+            {t("tournaments.display.singleKey")}
+          </p>
+        )}
+      </div>
+
+      <footer className="hotkeys-foot">
         <Button variant="primary" onClick={onClose}>
           {t("common.close")}
         </Button>
-      </div>
+      </footer>
     </Modal>
   );
 }

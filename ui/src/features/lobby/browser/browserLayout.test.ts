@@ -13,8 +13,13 @@ import {
   detailWidth,
   emptyDetailGivesWay,
   listWidthFor,
+  FLEXIBLE_COLUMN,
+  MAX_COLUMN_GROWTH,
   ROW_PADDING_PX,
+  TAGS_COLUMN,
+  TAGS_COMFORT_PX,
   withDetailResized,
+  withSpareRoom,
 } from "./browserLayout";
 import {
   MAX_DETAIL_PX,
@@ -192,6 +197,48 @@ describe("the game list's column widths", () => {
     expect(columnTemplate([254, 96, 150, 72, 80, 52])).toBe(
       "minmax(160px, 1fr) 96px 150px 72px 80px 52px",
     );
+  });
+});
+
+describe("the columns' spare room", () => {
+  it("leaves the default window as it is", () => {
+    // The columns do not fit there as stored, so there is nothing to spare.
+    const fit = fitColumns(DEFAULT_COLUMN_WIDTHS, COLUMN_FLOORS, LAYOUT_AT_1100 - LIST_CHROME);
+    expect(withSpareRoom(fit, LAYOUT_AT_1100 - LIST_CHROME)).toEqual(fit.drawn);
+  });
+
+  it("widens every column on a wider list, not the game column alone (#559)", () => {
+    const space = LAYOUT_AT_1600 - LIST_CHROME;
+    const fit = fitColumns(DEFAULT_COLUMN_WIDTHS, COLUMN_FLOORS, space);
+    const drawn = withSpareRoom(fit, space);
+    expect(drawn[TAGS_COLUMN]).toBeGreaterThanOrEqual(TAGS_COMFORT_PX);
+    drawn.forEach((width, index) => {
+      if (index === FLEXIBLE_COLUMN) return;
+      expect(width).toBeGreaterThan(DEFAULT_COLUMN_WIDTHS[index]);
+      const base = index === TAGS_COLUMN ? TAGS_COMFORT_PX : DEFAULT_COLUMN_WIDTHS[index];
+      expect(width).toBeLessThanOrEqual(base * MAX_COLUMN_GROWTH);
+    });
+    // Never more than the list has.
+    const others = drawn.reduce((sum, width, index) => (index === FLEXIBLE_COLUMN ? sum : sum + width), 0);
+    expect(others + DEFAULT_COLUMN_WIDTHS[FLEXIBLE_COLUMN]).toBeLessThanOrEqual(space);
+  });
+
+  it("tops the tags up first when there is little to spare", () => {
+    const total = DEFAULT_COLUMN_WIDTHS.reduce((sum, width) => sum + width, 0);
+    const fit = fitColumns(DEFAULT_COLUMN_WIDTHS, COLUMN_FLOORS, total + 10);
+    const drawn = withSpareRoom(fit, total + 10);
+    expect(drawn[TAGS_COLUMN]).toBe(DEFAULT_COLUMN_WIDTHS[TAGS_COLUMN] + 10);
+  });
+
+  it("stops each column at its growth limit and never narrows one", () => {
+    const widths = [...DEFAULT_COLUMN_WIDTHS];
+    widths[TAGS_COLUMN] = 220;
+    const drawn = withSpareRoom(fitColumns(widths, COLUMN_FLOORS, 5000), 5000);
+    drawn.forEach((width, index) => {
+      if (index === FLEXIBLE_COLUMN) return;
+      expect(width).toBeGreaterThanOrEqual(widths[index]);
+      expect(width).toBeLessThanOrEqual(Math.floor(widths[index] * MAX_COLUMN_GROWTH));
+    });
   });
 });
 
