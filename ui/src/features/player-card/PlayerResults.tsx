@@ -72,7 +72,10 @@ export function PlayerResults({ playerId }: { playerId: number }) {
   const [shown, setShown] = useState(PAGE);
 
   if (status === "loading") {
-    return <div className="player-card-empty muted">{t("playerCard.maps.loading")}</div>;
+    // `player-card-tab-loading`: the list is nearly always longer than the
+    // card, so the card opens at its full height while the games are read,
+    // not short first.
+    return <div className="player-card-empty player-card-tab-loading muted" role="status">{t("playerCard.maps.loading")}</div>;
   }
   if (status === "failed") {
     // The way out beside the reason, as the card's own failed profile has it:

@@ -30,6 +30,7 @@ import { formatNumber, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { formatDate, formatDateTime } from "../../shared/format/dates";
 import { usePlayerMenu } from "../../shared/hooks/usePlayerMenu";
+import { ProfileSkeleton } from "./ProfileSkeleton";
 
 type PlayerCardTab = "overview" | "ratings" | "statistics" | "maps" | "results" | "achievements" | "names" | "clan";
 
@@ -379,8 +380,10 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
             {t("playerCard.history.peakLine")}
           </label>
         </div>
+        {/* The placeholder is the chart's own frame at the chart's height,
+            so the card does not open short and grow when the points arrive. */}
         {busy && state.history.length === 0
-          ? <div className="player-card-loading muted">{t("playerCard.history.loading")}</div>
+          ? <div className="player-rating-chart-wrap surface-panel player-history-chart-loading muted" role="status">{t("playerCard.history.loading")}</div>
           : <RatingHistoryChart points={state.history} maximum={state.historyMaximum} showMaximum={showMaximum} />}
       </div>
 
@@ -614,7 +617,10 @@ export function PlayerCardModal() {
         )}
       </header>
 
-      {state.profileStatus === "loading" && <div className="player-card-loading muted">{t("playerCard.profileLoading")}</div>}
+      {/* A profile on screen being refreshed says so in a line; a first load
+          shows the overview's shape below instead, so the card opens at about
+          the height it keeps. */}
+      {state.profileStatus === "loading" && profile && <div className="player-card-loading muted">{t("playerCard.profileLoading")}</div>}
       {state.profileStatus === "failed" && (
         // A plain sentence rather than the reason as it was sent ("error
         // sending request for url (...)"), which stays on hover. Retry asks
@@ -647,6 +653,11 @@ export function PlayerCardModal() {
           onSelect={(playerId, login) => void openPlayerCard(playerId, login)}
         />
       </div>
+      {state.profileStatus === "loading" && !profile && (
+        <div className="player-card-content">
+          <ProfileSkeleton />
+        </div>
+      )}
       {profile && (
         <div className="player-card-content" {...sectionPanelProps("player-card", shownTab)}>
           {shownTab === "overview" && (

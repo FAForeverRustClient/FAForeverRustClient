@@ -1,0 +1,6 @@
+- The player card no longer opens small and jumps to full size while a profile, rating history, results or maps load.
+- The reason a replay was not rated no longer overlaps the lineup in games with three or more teams or only one.
+- Replays with three or more teams no longer draw a second row of teams over the first, and player names in them are no longer cut short.
+- A single team of more than four players no longer has its second column of names floating in the middle of the card.
+- The replay search sliders no longer stretch across wide windows.
+- Opening a tournament's News tab no longer makes the page jump while the tournament reloads.

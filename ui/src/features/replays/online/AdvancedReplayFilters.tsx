@@ -199,6 +199,23 @@ export function AdvancedReplayFilters({ form, set, setRange, tagOptions, selecte
       </div>
 
       <div className="vault-search-fields">
+        {/* The lobby title: what tells apart the many games two players have
+            played against each other ("... Cup Final", "Round 3"). Back in
+            here to keep the always-visible search short; a title typed here
+            counts on the "More filters" button, so it is never forgotten
+            while the panel is closed. A contains match, like the map. */}
+        <label className="vault-field">
+          <span className="vault-field-label">{t("replays.search.gameTitle")}</span>
+          <input
+            className="vault-input"
+            type="search"
+            value={form.title}
+            placeholder={t("replays.search.anyTitle")}
+            title={t("replays.search.titleTooltip")}
+            onChange={(e) => set("title", e.target.value)}
+          />
+        </label>
+
         <label className="vault-field">
           <span className="vault-field-label">{t("replays.filters.host")}</span>
           <input

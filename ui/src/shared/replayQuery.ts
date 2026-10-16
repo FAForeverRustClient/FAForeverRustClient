@@ -101,8 +101,8 @@ export function advancedReplayFilterCount(query: ReplayQuery): number {
     // the rating range or the date range, which are all in the row the reader
     // is looking at. Nor are duration, players in the game, map size and
     // review score, which moved up beside the rating into the search panel's
-    // always-visible row of sliders. Nor is the lobby title, which moved up
-    // beside player and map (#415).
+    // always-visible row of sliders.
+    query.title.trim() !== "",
     query.host !== "",
     query.mapAuthor !== "",
     query.factions.length > 0,

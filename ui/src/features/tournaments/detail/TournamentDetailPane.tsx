@@ -590,7 +590,12 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
         </div>
       )}
 
-      {props.detailLoading && <p className="muted">{t("tournaments.detailLoading")}</p>}
+      {/* A refresh of the event already on screen: opening News marks it
+          read and reloads it, and a write does the same. Said to screen
+          readers only. As a line in the flow it pushed the section down for
+          the moment the refresh took and pulled it back up, a jump for a
+          reload that changes nothing the reader is looking at. */}
+      {props.detailLoading && <p className="tournament-refresh-status" role="status">{t("tournaments.detailLoading")}</p>}
 
       {/* Everything but the bracket reads at a measure rather than at the
           window's width. The pane is as wide as the client, which on a wide

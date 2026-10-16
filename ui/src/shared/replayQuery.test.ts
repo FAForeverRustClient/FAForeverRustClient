@@ -35,8 +35,9 @@ describe("advancedReplayFilterCount", () => {
     })).toBe(0);
   });
 
-  it("does not count the lobby title, which sits beside player and map", () => {
-    expect(advancedReplayFilterCount({ ...EMPTY_REPLAY_QUERY, title: "Cup" })).toBe(0);
+  it("counts the lobby title, which sits under More filters", () => {
+    expect(advancedReplayFilterCount({ ...EMPTY_REPLAY_QUERY, title: "Cup" })).toBe(1);
+    expect(advancedReplayFilterCount({ ...EMPTY_REPLAY_QUERY, title: "  " })).toBe(0);
   });
 
   it("does not count the sliders in the always-visible row", () => {
