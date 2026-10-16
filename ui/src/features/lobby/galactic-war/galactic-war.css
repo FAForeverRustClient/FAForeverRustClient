@@ -679,6 +679,8 @@
 .gw-layout {
   position: relative;
   isolation: isolate;
+  /* The hero's height: the launch dial's row, with room around its turning ring. */
+  --gw-hero-height: 288px;
 }
 
 .gw-layout > .gw-column {
@@ -692,64 +694,28 @@
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
+  /* A nebula in the faction's colour, as clouds of different size and
+     strength rather than one even glow: the brightest above the dial, a
+     thinner drift along the left, a faint one low on the right, and the
+     edges sinking into the page. */
   background:
-    radial-gradient(ellipse 70% 55% at 50% -8%, color-mix(in srgb, var(--gw-theme) 26%, transparent), transparent 70%),
+    radial-gradient(ellipse 34% 30% at 50% 6%, color-mix(in srgb, var(--gw-theme) 30%, transparent), transparent 70%),
+    radial-gradient(ellipse 46% 26% at 22% 34%, color-mix(in srgb, var(--gw-theme) 13%, transparent), transparent 72%),
+    radial-gradient(ellipse 30% 40% at 84% 70%, color-mix(in srgb, var(--gw-theme) 10%, transparent), transparent 70%),
+    radial-gradient(ellipse 60% 22% at 60% 46%, color-mix(in srgb, var(--gw-theme) 6%, transparent), transparent 75%),
     radial-gradient(ellipse 120% 90% at 50% 50%, transparent 55%, color-mix(in srgb, var(--color-bg) 70%, transparent) 100%);
 }
 
-/* The texture: each faction its own, at a strength that stays behind the
-   boards. On a layer of its own, so the glow above is not repeated. */
-.gw-backdrop::before {
+/* The stars over the nebula, fading out towards the edges. */
+.gw-starfield {
   position: absolute;
   inset: 0;
-  content: "";
-  opacity: 0.8;
-  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, black, transparent 85%);
-  mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, black, transparent 85%);
-}
-
-/* UEF: a surveyor's grid. */
-.gw-layout[data-faction="uef"] .gw-backdrop::before {
-  background:
-    repeating-linear-gradient(0deg, color-mix(in srgb, var(--gw-theme) 14%, transparent) 0 1px, transparent 1px 48px),
-    repeating-linear-gradient(90deg, color-mix(in srgb, var(--gw-theme) 14%, transparent) 0 1px, transparent 1px 48px);
-}
-
-/* Aeon: wide, soft rings, as from a light source above. */
-.gw-layout[data-faction="aeon"] .gw-backdrop::before {
-  background: repeating-radial-gradient(
-    circle at 50% 0%,
-    color-mix(in srgb, var(--gw-theme) 13%, transparent) 0 2px,
-    transparent 2px 64px
-  );
-}
-
-/* Cybran: circuit traces at an angle. */
-.gw-layout[data-faction="cybran"] .gw-backdrop::before {
-  background:
-    repeating-linear-gradient(45deg, color-mix(in srgb, var(--gw-theme) 13%, transparent) 0 1px, transparent 1px 22px),
-    repeating-linear-gradient(-45deg, color-mix(in srgb, var(--gw-theme) 7%, transparent) 0 1px, transparent 1px 66px);
-}
-
-/* Seraphim: tight glyph rings around the centre. */
-.gw-layout[data-faction="seraphim"] .gw-backdrop::before {
-  background: repeating-radial-gradient(
-    circle at 50% 42%,
-    color-mix(in srgb, var(--gw-theme) 15%, transparent) 0 1px,
-    transparent 1px 18px
-  );
-}
-
-/* The emblem, large and faint behind the launch dial. */
-.gw-backdrop-emblem {
-  position: absolute;
-  top: 18%;
-  left: 50%;
-  width: 520px;
-  height: 520px;
-  margin-left: -260px;
-  color: var(--gw-theme);
-  opacity: 0.16;
+  width: 100%;
+  height: 100%;
+  color: var(--color-text);
+  opacity: 0.85;
+  -webkit-mask-image: radial-gradient(ellipse 85% 80% at 50% 40%, black 40%, transparent 100%);
+  mask-image: radial-gradient(ellipse 85% 80% at 50% 40%, black 40%, transparent 100%);
 }
 
 /* The boards and columns let the scenery through a little. Their outlines
@@ -924,7 +890,7 @@
    as the ring, and neither board keeps a clear band for it. */
 .gw-hero .gw-launch {
   width: 236px;
-  height: 288px;
+  height: var(--gw-hero-height);
 }
 
 .gw-world {
@@ -966,16 +932,48 @@
   }
 }
 
-.gw-launch-emblem {
-  margin-bottom: 2px;
-  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--gw-theme) 70%, transparent));
+/* The faction's emblem as the launch button's face, over the word for what
+   pressing it does in the faction's colour, so the logo reads as the button
+   rather than as a picture on it. */
+.gw-launch-button.has-emblem {
+  gap: 7px;
+  padding-top: var(--space-3);
 }
 
-/* The large faint emblem behind the boards sits behind the hero now, filling
-   the open space either side of the dial. */
-.gw-layout .gw-backdrop-emblem {
-  top: -40px;
+.gw-launch-emblem {
+  flex: none;
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--gw-theme) 70%, transparent));
+  transition: transform 160ms ease, filter 160ms ease;
 }
+
+.gw-launch-button:hover:not(:disabled) .gw-launch-emblem {
+  filter: drop-shadow(0 0 20px color-mix(in srgb, var(--gw-theme) 90%, transparent));
+  transform: scale(1.06);
+}
+
+.gw-launch-cta {
+  max-width: 112px;
+  overflow: hidden;
+  color: var(--gw-theme);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Busy or running: the word says so, unlit. */
+.gw-launch-button:disabled .gw-launch-cta {
+  color: var(--color-muted);
+}
+
+.gw-launch-button:disabled .gw-launch-emblem {
+  filter: none;
+  opacity: 0.55;
+}
+
 
 /* The four faction cards held flat, so the dial above keeps room around its
    turning ring on a 1080p window: closer groups, a lower foot, a slightly

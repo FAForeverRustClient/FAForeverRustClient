@@ -1,0 +1,1 @@
+- Galactic War shows a starry sky in your faction's colour, and your faction's emblem is the launch button.
