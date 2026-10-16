@@ -354,7 +354,9 @@ impl ReplayVault {
     /// to megabytes of which the head is a few kilobytes: the JSON envelope,
     /// and enough of the compressed stream to decode the strings it opens
     /// with. A server that ignores the range answers `200` with the whole
-    /// file, which the same cap bounds, so asking is free either way.
+    /// file; its first `head` bytes are kept and the rest is not read. (It
+    /// used to be held to the head's size as a cap, so every replay larger
+    /// than the head failed as "too large".)
     async fn fetch_vault_replay_bytes(
         &self,
         uid: i32,
@@ -403,6 +405,11 @@ impl ReplayVault {
             }
             if !status.is_success() {
                 return Err(format!("could not download replay {uid}: {status}"));
+            }
+            if let Some(head) = head {
+                if status != reqwest::StatusCode::PARTIAL_CONTENT {
+                    return first_bytes(response, head, uid, on_bytes).await;
+                }
             }
             let cap = head.unwrap_or(MAX_DOWNLOAD_BYTES);
             return bounded_body_with_progress(response, &format!("replay {uid}"), cap, on_bytes)
@@ -1069,9 +1076,70 @@ fn retain_locally_matching(query: &ReplayQuery, replays: Vec<VaultReplay>) -> Ve
         .collect()
 }
 
+/// The first `limit` bytes of a body, without reading the rest: what a head
+/// request keeps when the server sent the whole file instead of the range.
+async fn first_bytes(
+    response: reqwest::Response,
+    limit: u64,
+    uid: i32,
+    on_bytes: &(dyn Fn(u64, Option<u64>) + Sync),
+) -> Result<Vec<u8>, String> {
+    use futures_util::StreamExt as _;
+    let limit = usize::try_from(limit).unwrap_or(usize::MAX);
+    let mut body = Vec::with_capacity(limit.min(1 << 20));
+    let mut stream = response.bytes_stream();
+    while body.len() < limit {
+        let Some(chunk) = stream.next().await else {
+            break;
+        };
+        let chunk = chunk.map_err(|error| {
+            format!(
+                "could not read replay {uid}: {}",
+                crate::infra::http::describe_transport_error(&error)
+            )
+        })?;
+        let room = limit - body.len();
+        body.extend_from_slice(&chunk[..chunk.len().min(room)]);
+        on_bytes(body.len() as u64, Some(limit as u64));
+    }
+    Ok(body)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn a_whole_file_sent_for_a_head_request_keeps_its_head() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let body = vec![7_u8; 200_000];
+        let served = body.clone();
+        tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = [0_u8; 1024];
+            let _ = socket.read(&mut request).await;
+            // The range is ignored: 200 and the whole file.
+            let head = format!(
+                "HTTP/1.1 200 OK
+Content-Length: {}
+
+",
+                served.len()
+            );
+            socket.write_all(head.as_bytes()).await.unwrap();
+            let _ = socket.write_all(&served).await;
+        });
+        let response = reqwest::get(format!("http://{address}/replay"))
+            .await
+            .unwrap();
+        let head = first_bytes(response, 64 * 1024, 1, &|_, _| {})
+            .await
+            .unwrap();
+        assert_eq!(head.len(), 64 * 1024);
+        assert_eq!(head[..], body[..64 * 1024]);
+    }
 
     use crate::infra::replay::test_support::replay_config;
 
