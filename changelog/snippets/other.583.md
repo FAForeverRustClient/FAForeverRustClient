@@ -1,0 +1,2 @@
+- An update now only becomes required three days after its release, or when you are two versions behind; until then it is the sidebar notice, which "Not now" hides and "Check now" brings back.
+- The client keeps a downloaded installer instead of fetching it again, and deletes old ones.
