@@ -1,14 +1,14 @@
-/* As tall as the tab it shows, up to a cap. The cap used to be 820px, which
-   is shorter than the panel's own content on every screen, so the scrollbar
-   in the report was there at 1080p and 1440p alike. 1120px fits the densest
-   profile, and the viewport still wins on a laptop, where the panel is as
-   tall as the window allows and scrolls inside. It was that tall always,
-   whatever the tab, which left a short overview standing over empty space. */
+/* One height for every tab: 1120px, which fits the densest profile, or as
+   tall as the window allows on a laptop, where a tab scrolls inside. As tall
+   as the tab it showed, the centred card grew and shrank with every tab, and
+   the tab strip moved with it, by 260px at 1080p between Statistics and
+   Former names: each next tab had to be chased (#578). A short tab now
+   leaves room under it, which is the price of the strip staying put. */
 .modal-panel.player-card-modal {
   display: flex;
   flex-direction: column;
   width: min(1180px, calc(100vw - 48px));
-  height: auto;
+  height: min(1120px, calc(100vh - 32px));
   max-width: none;
   max-height: min(1120px, calc(100vh - 32px));
   padding: 0;
@@ -903,8 +903,10 @@ button.player-avatar-tile:disabled {
   padding: 0 var(--space-4);
 }
 
+/* The rest of the card's fixed height, so a short tab's scrollbar track is
+   the card's height too and the panel's ground runs to its foot. */
 .player-card-content {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-height: 0;
   padding: var(--space-4);
   /* The scrollbar's kept room counts as part of the right padding, so the
@@ -983,17 +985,10 @@ button.player-avatar-tile:disabled {
   text-align: center;
 }
 
-/* Results and Maps while the games are read. Both lists are nearly always
-   longer than the card, so the card takes its full height at once, the
-   height it will have, instead of a 180px strip that jumps to full height a
-   moment later. A player with few games shrinks it once, when they show. */
-.modal-panel.player-card-modal:has(.player-card-tab-loading) {
-  height: min(1120px, calc(100vh - 32px));
-}
-
+/* Results and Maps while the games are read: the loading note centred in
+   the card's height. */
 .player-card-content:has(> .player-card-tab-loading) {
   display: flex;
-  flex: 1 1 auto;
   flex-direction: column;
 }
 
