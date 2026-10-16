@@ -249,6 +249,7 @@ pub async fn start(
     let exit_ports = ctx.ports.clone();
     let exit_sink = out.clone();
     let exit_running_game = ctx.lobby.running_game_handle();
+    let exit_local_list = ctx.replays.local_list_generation();
     let stopped_by_failure = Arc::new(AtomicBool::new(false));
     let exit_stopped_by_failure = stopped_by_failure.clone();
     tokio::spawn(async move {
@@ -271,12 +272,15 @@ pub async fn start(
         // The replay the game just streamed to the local recorder is on disk
         // now. Re-listing here is what makes it appear in the Local tab without
         // the user knowing to press refresh: the scan is a directory read, and
-        // it only happens once per game.
-        match exit_ports
-            .replay_library
-            .list_local(DEFAULT_LOCAL_REPLAY_LIMIT)
-            .await
-        {
+        // it only happens once per game. It takes its turn with the Local
+        // tab's own loads, so a scan that lands late cannot bring back a
+        // replay deleted meanwhile, and it lists at least as many as the tab
+        // shows, plus the new one, rather than cutting a longer list short.
+        let generation = exit_local_list.begin();
+        let shown = exit_sink.with_state(|state| state.replays.local.len());
+        let limit = DEFAULT_LOCAL_REPLAY_LIMIT.max(shown + 1);
+        match exit_ports.replay_library.list_local(limit).await {
+            Ok(_) if !exit_local_list.is_current(generation) => {}
             Ok(replays) => exit_sink.emit(ReplayEvent::LocalLoaded { replays }),
             Err(reason) => {
                 tracing::warn!(%reason, "could not refresh the local replay list after the game")
