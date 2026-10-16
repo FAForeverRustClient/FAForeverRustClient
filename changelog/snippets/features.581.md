@@ -1,0 +1,1 @@
+- The What's new window after an update lists every change of the release, the highlights first.
