@@ -26,5 +26,7 @@ describe("the conversation search", () => {
     expect(screen.queryByRole("search")).toBeNull();
     rerender(<List searchRequest={4} />);
     expect(screen.getByRole("search")).toBeTruthy();
+    // The log makes room above its first line, so the bar covers no match.
+    expect(screen.getByRole("log").classList.contains("is-finding")).toBe(true);
   });
 });

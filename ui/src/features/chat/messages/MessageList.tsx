@@ -332,7 +332,7 @@ export const MessageList = memo(function MessageList({
           only, so a reaction count ticking up or the "load older" label
           changing is not announced as if it were a message. */}
       <div
-        className="chat-messages surface-panel"
+        className={`chat-messages surface-panel${searchOpen ? " is-finding" : ""}`}
         ref={scrollRef}
         onScroll={onScroll}
         role="log"

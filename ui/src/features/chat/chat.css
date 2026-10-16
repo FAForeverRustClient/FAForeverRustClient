@@ -420,6 +420,16 @@ html.is-resizing-chat-roster * {
 
 /* The field as the player list's search draws it (`.chat-roster-search-field`),
    with the match count inside, where a browser puts it. */
+/* Room above the first line for the find bar while it is open (its offset,
+   its 42 px and a gap). Centring a match cannot scroll above the top of the
+   log, so a match in the first lines sat under the bar; the padding moves
+   those lines below it, and the scroll padding keeps every match centred in
+   the part of the log the bar leaves clear. */
+.chat-messages.is-finding {
+  padding-top: calc(var(--space-2) + 48px);
+  scroll-padding-top: calc(var(--space-2) + 48px);
+}
+
 .chat-find-field {
   display: flex;
   flex: 1;
