@@ -2,11 +2,10 @@
 //
 // The What's new popup after an update, mounted against the store. It waits
 // for the notes and for a game to end, and is never shown in place of notes
-// that could not be read; it shows the release's highlights and how many
-// changes the full notes hold, or, without highlights, the first few changes
-// and how many more there are; both of its ways out record it as seen, and
-// "See all changes" opens the release in the client's own changelog. A
-// release with nothing to list is recorded as seen without being shown.
+// that could not be read; it lists every change in the release, the
+// highlights first, each section under its heading; both of its ways out
+// record it as seen. A release with nothing to list is recorded as seen
+// without being shown.
 
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -54,7 +53,7 @@ function seedWhatsNew(clientUpdate: Partial<AppState["clientUpdate"]>, build: (s
 }
 
 describe("What's new popup, mounted", () => {
-  it("waits for the notes, then shows the first five changes and counts the rest", () => {
+  it("waits for the notes, then lists every change under its section", () => {
     seedWhatsNew({ notesStatus: { type: "loading" } });
     render(<WhatsNewDialog />);
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -63,14 +62,16 @@ describe("What's new popup, mounted", () => {
     applyEvent({ kind: "ClientUpdate", event: { type: "notesLoaded", payload: { notes: [RELEASE] } } });
     const dialog = screen.getByRole("dialog", { name: "What's new in v0.5.0" });
     const changes = within(dialog).getAllByRole("listitem").map((element) => element.textContent);
-    expect(changes).toEqual(["Feature one", "Feature two", "Feature three", "Feature four", "Fix one"]);
-    expect(within(dialog).getByText("and 2 more changes")).toBeTruthy();
-    // Enter goes on to the changelog rather than to a link in the list.
-    expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: en["updates.whatsNew.seeAll"] }));
+    expect(changes).toEqual(["Feature one", "Feature two", "Feature three", "Feature four", "Fix one", "Fix two", "Fix three"]);
+    const headings = within(dialog).getAllByRole("heading", { level: 3 }).map((element) => element.textContent);
+    expect(headings).toEqual(["Features", "Bug fixes"]);
+    // Enter closes it rather than following a link in the list.
+    const closes = within(dialog).getAllByRole("button", { name: en["common.close"] });
+    expect(document.activeElement).toBe(closes[closes.length - 1]);
     expect(sentCommands()).toEqual([]);
   });
 
-  it("shows the release's highlights instead, and counts the changes in the full notes", () => {
+  it("lists the release's highlights first, then every other change", () => {
     const highlighted: ClientReleaseNotes = {
       ...RELEASE,
       blocks: [
@@ -84,9 +85,19 @@ describe("What's new popup, mounted", () => {
 
     const dialog = screen.getByRole("dialog", { name: "What's new in v0.5.0" });
     const changes = within(dialog).getAllByRole("listitem").map((element) => element.textContent);
-    expect(changes).toEqual(["The headline", "The other headline"]);
-    expect(within(dialog).getByText("7 changes in the full notes")).toBeTruthy();
-    expect(within(dialog).queryByText(/more change/)).toBeNull();
+    expect(changes).toEqual([
+      "The headline",
+      "The other headline",
+      "Feature one",
+      "Feature two",
+      "Feature three",
+      "Feature four",
+      "Fix one",
+      "Fix two",
+      "Fix three",
+    ]);
+    const headings = within(dialog).getAllByRole("heading", { level: 3 }).map((element) => element.textContent);
+    expect(headings).toEqual(["Highlights", "Features", "Bug fixes"]);
   });
 
   it("records the popup as seen from Close", async () => {
@@ -108,22 +119,6 @@ describe("What's new popup, mounted", () => {
 
     await user.keyboard("{Escape}");
     expect(sentCommands()).toEqual([DISMISS]);
-  });
-
-  it("opens the release in the client's changelog from See all changes, and records it as seen", async () => {
-    const user = userEvent.setup();
-    seedWhatsNew({ notes: [RELEASE], notesStatus: { type: "ready" } });
-    render(<WhatsNewDialog />);
-
-    await user.click(screen.getByRole("button", { name: en["updates.whatsNew.seeAll"] }));
-    expect(sentCommands()).toEqual([
-      DISMISS,
-      { kind: "Nav", command: { type: "select", payload: { tab: "changelog" } } },
-      { kind: "Nav", command: { type: "selectChangelogClientRelease", payload: { version: "0.5.0" } } },
-    ]);
-
-    applyEvent({ kind: "ClientUpdate", event: { type: "whatsNewDismissed" } });
-    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("records a release with nothing to list as seen without showing anything", () => {

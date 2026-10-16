@@ -330,9 +330,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "updates.required.failedHint": "Wenn der Download weiter scheitert, installiere sie über die Release-Seite. Das Fortfahren gilt bis zum nächsten Start des Clients.",
   "updates.required.closeToFinish": "Der Installer kann keinen laufenden Client ersetzen. Schließe den Client jetzt, damit er fertig werden kann.",
   "updates.whatsNew.title": "Was ist neu in v{version}",
-  "updates.whatsNew.more": { one: "und {count} weitere Änderung", other: "und {count} weitere Änderungen" },
-  "updates.whatsNew.fullNotes": { one: "{count} Änderung in den vollständigen Release Notes", other: "{count} Änderungen in den vollständigen Release Notes" },
-  "updates.whatsNew.seeAll": "Alle Änderungen ansehen",
 
   "uploads.title.map": "Karte veröffentlichen",
   "uploads.title.mod": "Mod veröffentlichen",

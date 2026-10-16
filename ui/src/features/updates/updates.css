@@ -235,13 +235,17 @@
   gap: 8px;
 }
 
-/* What's new after an update (WhatsNewDialog.tsx): a heading, a few lines and
-   the way to the rest. The width of the gate rather than of a page, no art,
-   and the list in the text size of the dialog around it rather than at the
-   changelog's reading size: it is a glance, not the read. */
+/* What's new after an update (WhatsNewDialog.tsx): every change of the
+   release, by section. Wide enough that a line rarely takes three, no art,
+   and the lines in the text size of the dialog around it rather than at the
+   changelog's reading size. A long release scrolls between the title and
+   Close, which stay in place. */
 .modal-panel.whats-new {
-  width: min(480px, calc(100vw - 32px));
-  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  width: min(600px, calc(100vw - 32px));
+  max-width: 600px;
+  overflow: hidden;
   padding: 22px 24px 20px;
 }
 
@@ -273,6 +277,30 @@
   letter-spacing: -0.02em;
 }
 
+.whats-new-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  /* The scrollbar's room kept, so it never sits on a line's last letters and
+     the lines do not rewrap when a release grows long enough to scroll. */
+  scrollbar-gutter: stable;
+}
+
+.whats-new-section + .whats-new-section {
+  margin-top: var(--space-4);
+}
+
+/* The category, as the changelog's facts labels read: small capitals over
+   the lines. */
+.whats-new-heading {
+  margin: 0 0 var(--space-1);
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
 .whats-new-changes {
   margin: 0;
   padding-left: 18px;
@@ -289,14 +317,9 @@
   color: var(--color-subtle);
 }
 
-.whats-new-more {
-  margin: var(--space-2) 0 0;
-  color: var(--color-muted);
-  font-size: 12px;
-}
-
 .whats-new-actions {
   display: flex;
+  flex-shrink: 0;
   justify-content: flex-end;
   gap: var(--space-2);
   margin-top: var(--space-4);
