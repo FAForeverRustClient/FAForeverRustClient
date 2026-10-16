@@ -1,0 +1,2 @@
+- Busy chat channels no longer stop scrolling to new messages once they hold 500 lines.
+- Switching chat channels no longer reopens the search and sends your typing into it.

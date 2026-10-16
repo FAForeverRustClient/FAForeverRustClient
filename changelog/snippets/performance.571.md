@@ -1,0 +1,1 @@
+- Chat no longer redraws every message on each lobby, friend or typing update.
