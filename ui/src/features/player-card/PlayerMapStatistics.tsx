@@ -152,7 +152,8 @@ export function PlayerMapStatistics({ playerId }: Props) {
   };
 
   if (status === "loading") {
-    return <div className="player-card-empty muted">{t("playerCard.maps.loading")}</div>;
+    // At the card's full height, as on the Results tab (`player-card-tab-loading`).
+    return <div className="player-card-empty player-card-tab-loading muted" role="status">{t("playerCard.maps.loading")}</div>;
   }
   if (status === "failed") {
     // As on the Results tab, which reads the same scan: the way out beside the

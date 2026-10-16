@@ -983,6 +983,20 @@ button.player-avatar-tile:disabled {
   text-align: center;
 }
 
+/* Results and Maps while the games are read. Both lists are nearly always
+   longer than the card, so the card takes its full height at once, the
+   height it will have, instead of a 180px strip that jumps to full height a
+   moment later. A player with few games shrinks it once, when they show. */
+.modal-panel.player-card-modal:has(.player-card-tab-loading) {
+  height: min(1120px, calc(100vh - 32px));
+}
+
+.player-card-content:has(> .player-card-tab-loading) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
 /* A profile that could not be loaded has no tabs under it, so the notice sits
    where they would start, in line with the header above it. */
 .status-notice.player-card-failure {
@@ -1384,6 +1398,17 @@ button.player-avatar-tile:disabled {
   min-height: 300px;
   place-items: center;
   background: var(--color-bg);
+}
+
+/* The rating history before its first points: inside the chart's frame
+   (`player-rating-chart-wrap`) at the plot's 300px, so the card has the
+   chart's height from the start. The 300px is the plot's, inside the frame's
+   padding, as the plot's is. */
+.player-history-chart-loading {
+  display: grid;
+  box-sizing: content-box;
+  height: 300px;
+  place-items: center;
 }
 
 .player-statistics-grid {

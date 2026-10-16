@@ -380,8 +380,10 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
             {t("playerCard.history.peakLine")}
           </label>
         </div>
+        {/* The placeholder is the chart's own frame at the chart's height,
+            so the card does not open short and grow when the points arrive. */}
         {busy && state.history.length === 0
-          ? <div className="player-card-loading muted">{t("playerCard.history.loading")}</div>
+          ? <div className="player-rating-chart-wrap surface-panel player-history-chart-loading muted" role="status">{t("playerCard.history.loading")}</div>
           : <RatingHistoryChart points={state.history} maximum={state.historyMaximum} showMaximum={showMaximum} />}
       </div>
 
