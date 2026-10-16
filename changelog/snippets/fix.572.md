@@ -6,3 +6,6 @@
 - Replays no longer desync because the game cache kept only part of a game version.
 - Double-clicking a replay while the client is closed no longer fails with "not logged in".
 - Player list and map card text no longer shows in English in other languages.
+- One garbled message from the connection adapter no longer cuts the client off from it for the rest of the game.
+- An open file dialog no longer slows the lobby connection, and the client no longer touches network paths you did not pick.
+- Online replays no longer fail to show their map when the server sends the whole file.
