@@ -189,6 +189,7 @@ pub fn run() {
             commands::report_event_cost,
             commands::exit_app,
             commands::page_ready,
+            commands::page_gone,
             picked_paths::pick_path
         ])
         .build(tauri::generate_context!())
@@ -428,12 +429,16 @@ mod tests {
             // as well as the window's, so with the root missing here the
             // frame's own page went to the browser (PR 463).
             "https://faforever.github.io/etfreeman-db/#/",
+            // A training video frame, for the same reason.
+            "https://www.youtube-nocookie.com/embed/abc?rel=0",
         ] {
             assert!(crate::navigation::is_internal_navigation(&url(embedded)));
         }
 
         for external in [
             "https://www.youtube.com/watch?v=abc",
+            // Only the player frame, not the rest of that host.
+            "https://www.youtube-nocookie.com/watch?v=abc",
             "https://forum.faforever.com/topic/1",
             // A host that merely starts with an origin we trust is not that origin.
             "http://localhost.example.com/",
