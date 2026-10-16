@@ -93,12 +93,35 @@
 
 /* The row under the picture: the zoom at its start, the buttons at its end. */
 .map-preview-controls {
+  container: map-preview-controls / inline-size;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  margin-top: var(--space-3);
+  margin-top: var(--space-2);
   flex-wrap: wrap;
+}
+
+/* A worded button in the row, such as the game preview's "Save as preset".
+   In a row too narrow for its words beside the zoom (a short window makes
+   the whole dialog narrow), it is an icon button like the star beside it,
+   with its words still its name and tooltip, rather than the row breaking
+   onto a second line. */
+@container map-preview-controls (max-width: 449px) {
+  .map-preview-text-action {
+    width: 32px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .map-preview-text-action-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 .map-preview-actions {
@@ -398,6 +421,10 @@
 .map-preview-dialog {
   --preview-size-allowance: 250px;
   display: grid;
+  /* One column no wider than the dialog: an `auto` column grew to a
+     generated map's whole name, which the title only cuts short with an
+     ellipsis once its column lets it, and the dialog scrolled sideways. */
+  grid-template-columns: minmax(0, 1fr);
   width: min(calc(88vh - var(--preview-size-allowance)), 84vw, 1040px);
   min-width: min(280px, calc(100vw - 48px));
   max-width: 100%;
