@@ -1393,6 +1393,12 @@ button.vault-input {
   flex-shrink: 0;
 }
 
+/* Until the result is revealed there is no rating change to show, and the
+   44px kept for it came out of the name: in a narrow card, most of it. */
+.replay-player-stats:empty {
+  display: none;
+}
+
 .replay-player-rating {
   display: inline-block;
   font-size: 12px;
@@ -2807,6 +2813,21 @@ input.replay-options-filter {
    on one row. No rule under them: the cards start the lineup by themselves. */
 .replay-detail-teams[data-titles-above="true"] {
   row-gap: 0;
+}
+
+/* Three or more teams wrap onto further rows. The grid's row gap is also the
+   gap between one row's cards and the next row's headings, and at 0 the
+   fifth team's name sat on the first team's card. Each column keeps its own
+   gap between heading and card (below), so this one only parts the rows. */
+.replay-detail-teams[data-titles-above="true"]:not([data-layout="versus"]) {
+  row-gap: var(--space-4);
+}
+
+/* Narrow cards, one per team in a grid, cannot spare a width nobody uses.
+   The avatar column is kept only in a team where somebody has an avatar; in
+   the others the names start where the avatars would have. */
+.replay-detail-teams:not([data-layout="versus"]) .replay-detail-team:not(:has(.replay-player-avatar > img)) .replay-player-avatar {
+  display: none;
 }
 
 .replay-detail-team-column {
