@@ -1180,11 +1180,18 @@ impl NeroxisMapGenerator {
     }
 
     fn generation_worker(&self) -> Self {
-        let mut worker = self.for_run();
-        worker.cancel = Arc::new(CancelSignal::default());
+        let worker = self.launch_worker();
         let mut active = self.active_runs.lock().unwrap();
         active.retain(|signal| signal.strong_count() > 0);
         active.push(Arc::downgrade(&worker.cancel));
+        worker
+    }
+
+    /// A run with a cancel signal of its own that [`MapGeneratorPort::cancel`]
+    /// does not reach: dropping its receiver still stops it.
+    fn launch_worker(&self) -> Self {
+        let mut worker = self.for_run();
+        worker.cancel = Arc::new(CancelSignal::default());
         worker
     }
 
@@ -1576,6 +1583,17 @@ impl MapGeneratorPort for NeroxisMapGenerator {
         rx
     }
 
+    async fn generate_for_launch(&self, map_name: String) -> mpsc::Receiver<GeneratorUpdate> {
+        let (tx, rx) = mpsc::channel(32);
+        let runner = self.launch_worker();
+        tokio::spawn(async move {
+            runner
+                .run(Some(map_name), GeneratorOptions::default(), tx)
+                .await;
+        });
+        rx
+    }
+
     async fn generate(&self, options: GeneratorOptions) -> mpsc::Receiver<GeneratorUpdate> {
         let (tx, rx) = mpsc::channel(32);
         let runner = self.generation_worker();
@@ -1938,6 +1956,18 @@ mod tests {
         let name = next_output_line(&mut lines).await.unwrap().unwrap();
         assert!(!map_generator::scrape_map_names(&name).is_empty());
         assert!(next_output_line(&mut lines).await.unwrap().is_none());
+    }
+
+    #[test]
+    fn the_maps_tab_cancel_leaves_a_launch_run_alone() {
+        let root = temp_dir("launch-cancel");
+        let generator = NeroxisMapGenerator::new(config(&root));
+        let maps_tab = generator.generation_worker();
+        let launch = generator.launch_worker();
+        generator.cancel();
+        assert!(maps_tab.is_cancelled());
+        assert!(!launch.is_cancelled(), "Cancel in the Maps tab stopped a launch run");
+        let _ = std::fs::remove_dir_all(root);
     }
 
     #[tokio::test]

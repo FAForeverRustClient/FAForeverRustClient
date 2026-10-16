@@ -474,7 +474,7 @@ async fn ensure_generated_map(
     let mut updates = ctx
         .ports
         .map_generator
-        .generate_named(map_name.to_string())
+        .generate_for_launch(map_name.to_string())
         .await;
 
     // Forward progress so the UI can show what the wait is for: generation
