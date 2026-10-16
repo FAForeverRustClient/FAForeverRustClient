@@ -1,0 +1,5 @@
+- Galactic War takes on your faction: its colours, emblem and a starry sky, with who you are signed in as.
+- Linux: Java comes bundled, the experimental adapters start, AppImage sign-in works, and the Java client's folders are found.
+- Signing in is more reliable: sessions renew without "Stay signed in", and a link to copy when no browser opens.
+- A custom game no longer abandons a starting ranked match, and peers reconnect after the lobby reconnects mid-game.
+- Chat has a browser-style find bar, and busy channels keep scrolling to new messages.

@@ -1,1 +1,3 @@
 - Online features no longer stop working about an hour after signing in without "Stay signed in".
+- A lesson no longer ends a running game or a match being found, and closing the client waits until a lesson's result is saved.
+- A lesson update that fails no longer leaves the lesson deleted.
