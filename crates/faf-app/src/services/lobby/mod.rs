@@ -101,6 +101,10 @@ pub struct LobbyContext {
     /// Stop, or the end of the connection, reaches the updater behind it. See
     /// `matchmaking::start_search`.
     search_preparation: Cancellable<()>,
+    /// Counts search starts, so the timer waiting on one start's confirmation
+    /// can tell it from a newer start for the same queues: both read
+    /// `Preparing` with the same names. See `matchmaking::watch_for_search_start`.
+    search_attempt: std::sync::Arc<std::sync::atomic::AtomicU64>,
 }
 
 impl LobbyContext {

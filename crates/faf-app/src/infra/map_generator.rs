@@ -1966,7 +1966,10 @@ mod tests {
         let launch = generator.launch_worker();
         generator.cancel();
         assert!(maps_tab.is_cancelled());
-        assert!(!launch.is_cancelled(), "Cancel in the Maps tab stopped a launch run");
+        assert!(
+            !launch.is_cancelled(),
+            "Cancel in the Maps tab stopped a launch run"
+        );
         let _ = std::fs::remove_dir_all(root);
     }
 

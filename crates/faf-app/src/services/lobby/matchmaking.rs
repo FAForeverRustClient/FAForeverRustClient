@@ -220,6 +220,11 @@ pub(super) async fn start_search(mut queue_names: Vec<String>, ctx: &ServiceCtx,
     // Registered before the state says `Preparing`, so a Stop that sees the
     // state also reaches this preparation's updater.
     let preparation = ctx.lobby.search_preparation.begin(());
+    let attempt = ctx
+        .lobby
+        .search_attempt
+        .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+        + 1;
     out.emit(LobbyEvent::MatchmakingUpdated {
         state: MatchmakingState::Preparing {
             queue_names: queue_names.clone(),
@@ -267,7 +272,7 @@ pub(super) async fn start_search(mut queue_names: Vec<String>, ctx: &ServiceCtx,
     for queue_name in &queue_names {
         ctx.ports.lobby.matchmake(queue_name.clone(), true);
     }
-    watch_for_search_start(queue_names, out);
+    watch_for_search_start(queue_names, attempt, ctx, out);
 }
 
 /// How long the client waits for the server to confirm a search it asked for.
@@ -277,10 +282,23 @@ pub(super) async fn start_search(mut queue_names: Vec<String>, ctx: &ServiceCtx,
 /// this the bar would sit on "Preparing" until somebody pressed Stop.
 const SEARCH_START_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
 
-fn watch_for_search_start(queue_names: Vec<String>, out: &EventSink) {
+fn watch_for_search_start(
+    queue_names: Vec<String>,
+    attempt: u64,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+) {
     let out = out.clone();
+    let attempts = ctx.lobby.search_attempt.clone();
     tokio::spawn(async move {
         tokio::time::sleep(SEARCH_START_TIMEOUT).await;
+        // A search stopped and started again for the same queues reads the
+        // same `Preparing`. That one is not this one's to time out: setting it
+        // `Idle` made the newer search fail its own check and give up
+        // without a word.
+        if attempts.load(std::sync::atomic::Ordering::SeqCst) != attempt {
+            return;
+        }
         let unanswered = out.with_state(|state| {
             matches!(
                 &state.lobby.matchmaking,
