@@ -3474,6 +3474,8 @@ export const en = {
   "notifications.msg.clientUpdateFrom.title": "Version {version} is available",
   "notifications.msg.clientUpdateFrom.body": "You are running {current}. Open Settings to download it.",
   "notifications.msg.replayFailed.title": "Replay failed",
+  "notifications.msg.liveReplayDelayed.title": "Replay failed",
+  "notifications.msg.liveReplayDelayed.body": "Live replays are delayed by five minutes so nobody can watch an ongoing game for an advantage. Try again in {minutes}m {seconds}s.",
   "notifications.msg.liveReplayReady.title": "Live replay ready",
   "notifications.msg.liveReplayReady.body": "{title} is now available to watch.",
   "notifications.msg.liveReplayLaunching.title": "Live replay ready",
