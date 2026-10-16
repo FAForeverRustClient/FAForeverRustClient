@@ -1,0 +1,1 @@
+- The chat search opened with Ctrl+F is a compact find bar like a browser's, and the online count is quieter.
