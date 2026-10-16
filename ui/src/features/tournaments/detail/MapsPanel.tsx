@@ -144,6 +144,79 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
   const noPicture = (map: TourneyMap) =>
     map.masked ? t("tournaments.maps.hidden") : t("tournaments.maps.noImage");
 
+  // One pool holding exactly the maps on show: the pool and "All maps" were
+  // the same tiles twice, the second time with the pool's name on every
+  // card. Then the pool is the only section, and its maps are drawn as the
+  // full cards, spawns and all, without the tag that would only repeat the
+  // heading above them.
+  const visibleIds = new Set(visible.map((map) => map.id));
+  const onlyPool =
+    pools.length === 1 &&
+    visibleIds.size > 0 &&
+    pools[0].mapIds.length === visibleIds.size &&
+    pools[0].mapIds.every((mapId) => visibleIds.has(mapId));
+
+  const mapCard = (map: TourneyMap, showPools: boolean) => {
+    const played = playedIn(map.id);
+    const pooled = showPools ? inPools(map.id) : [];
+    const facts = specRows(map, t);
+    const hidden = organiser && !map.published;
+    const tagged = hidden || map.secret || pooled.length > 0;
+    const unused = organiser && played.length === 0 && inPools(map.id).length === 0;
+    const hasBody =
+      tagged || facts.length > 0 || map.description !== "" || played.length > 0 || unused;
+    return (
+      <article className="tournament-mapdb-card" key={map.id}>
+        <MapTile
+          map={map}
+          size={sizeOf(map)}
+          picture={image(map)}
+          emptyLabel={noPicture(map)}
+          onOpen={() => setEnlarged(map.id)}
+        />
+        {/* What the picture cannot say, under it: which pools hold the map,
+            the spawns, the organiser's note, where it is played. The pool
+            tags say "in pool" on their own. */}
+        {hasBody && (
+          <div className="tournament-mapdb-body">
+            {tagged && (
+              <div className="tournament-mapdb-tags">
+                {pooled.map((name) => (
+                  <span key={name} className="tournament-badge is-ok">
+                    {name}
+                  </span>
+                ))}
+                {map.secret && (
+                  <span className="tournament-badge" title={t("tournaments.maps.secretHint")}>
+                    {t("tournaments.maps.secretBadge", { number: secretNumber(map) })}
+                  </span>
+                )}
+                {hidden && <span className="tournament-badge">{t("tournaments.maps.hidden")}</span>}
+              </div>
+            )}
+            {facts.length > 0 && (
+              <dl className="tournament-mapdb-facts">
+                {facts.map((fact) => (
+                  <div key={fact.label}>
+                    <dt>{fact.label}</dt>
+                    <dd>{fact.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            {map.description !== "" && <p className="tournament-mapdb-desc">{map.description}</p>}
+            {played.length > 0 && (
+              <p className="tournament-mapdb-used">
+                {t("tournaments.maps.playedIn", { rounds: played.join(", ") })}
+              </p>
+            )}
+            {unused && <p className="tournament-mapdb-used muted">{t("tournaments.maps.unused")}</p>}
+          </div>
+        )}
+      </article>
+    );
+  };
+
   const open = enlarged === null ? undefined : byId(enlarged);
   const openPicture = open === undefined ? "" : image(open);
   const openMeta =
@@ -228,6 +301,13 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
                     )}
                     {pool.mapIds.length === 0 ? (
                       <p className="muted">{t("tournaments.pools.empty")}</p>
+                    ) : onlyPool ? (
+                      <div className="tournament-mapdb-grid">
+                        {pool.mapIds.map((mapId) => {
+                          const map = byId(mapId);
+                          return map === undefined ? null : mapCard(map, false);
+                        })}
+                      </div>
                     ) : (
                       <div className="tournament-pool-tiles">
                         {pool.mapIds.map((mapId) => {
@@ -265,80 +345,21 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
         </section>
       )}
 
-      <section className="tournament-maps-section">
-        <header className="tournament-maps-section-head">
-          <h5>{t("tournaments.maps.all")}</h5>
-          {visible.length > 0 && <span className="tournament-maps-count">{visible.length}</span>}
-        </header>
-        {visible.length === 0 ? (
-          <p className="muted">
-            {t(organiser ? "tournaments.maps.emptyOrganiser" : "tournaments.maps.empty")}
-          </p>
-        ) : (
-          <div className="tournament-mapdb-grid">
-            {visible.map((map) => {
-              const played = playedIn(map.id);
-              const pooled = inPools(map.id);
-              const facts = specRows(map, t);
-              const hidden = organiser && !map.published;
-              const tagged = hidden || map.secret || pooled.length > 0;
-              const unused = organiser && played.length === 0 && pooled.length === 0;
-              const hasBody =
-                tagged || facts.length > 0 || map.description !== "" || played.length > 0 || unused;
-              return (
-                <article className="tournament-mapdb-card" key={map.id}>
-                  <MapTile
-                    map={map}
-                    size={sizeOf(map)}
-                    picture={image(map)}
-                    emptyLabel={noPicture(map)}
-                    onOpen={() => setEnlarged(map.id)}
-                  />
-                  {/* What the picture cannot say, under it: which pools hold
-                      the map, the spawns, the organiser's note, where it is
-                      played. The pool tags say "in pool" on their own. */}
-                  {hasBody && (
-                    <div className="tournament-mapdb-body">
-                      {tagged && (
-                        <div className="tournament-mapdb-tags">
-                          {pooled.map((name) => (
-                            <span key={name} className="tournament-badge is-ok">
-                              {name}
-                            </span>
-                          ))}
-                          {map.secret && (
-                            <span className="tournament-badge" title={t("tournaments.maps.secretHint")}>
-                              {t("tournaments.maps.secretBadge", { number: secretNumber(map) })}
-                            </span>
-                          )}
-                          {hidden && <span className="tournament-badge">{t("tournaments.maps.hidden")}</span>}
-                        </div>
-                      )}
-                      {facts.length > 0 && (
-                        <dl className="tournament-mapdb-facts">
-                          {facts.map((fact) => (
-                            <div key={fact.label}>
-                              <dt>{fact.label}</dt>
-                              <dd>{fact.value}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      )}
-                      {map.description !== "" && <p className="tournament-mapdb-desc">{map.description}</p>}
-                      {played.length > 0 && (
-                        <p className="tournament-mapdb-used">
-                          {t("tournaments.maps.playedIn", { rounds: played.join(", ") })}
-                        </p>
-                      )}
-                      {unused && <p className="tournament-mapdb-used muted">{t("tournaments.maps.unused")}</p>}
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      {!onlyPool && (
+        <section className="tournament-maps-section">
+          <header className="tournament-maps-section-head">
+            <h5>{t("tournaments.maps.all")}</h5>
+            {visible.length > 0 && <span className="tournament-maps-count">{visible.length}</span>}
+          </header>
+          {visible.length === 0 ? (
+            <p className="muted">
+              {t(organiser ? "tournaments.maps.emptyOrganiser" : "tournaments.maps.empty")}
+            </p>
+          ) : (
+            <div className="tournament-mapdb-grid">{visible.map((map) => mapCard(map, true))}</div>
+          )}
+        </section>
+      )}
 
       {open !== undefined && openPicture !== "" && (
         <MapPreviewDialog
