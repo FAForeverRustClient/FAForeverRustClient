@@ -10,7 +10,9 @@
 //! same two futures (`updateFeaturedModToLatest` + `downloadIfNecessary`)
 //! before calling `launchOfflineGame`.
 
-use faf_domain::state::{JoinState, TutorialsCommand, TutorialsEvent, TUTORIALS_FEATURED_MOD};
+use faf_domain::state::{
+    JoinState, MatchmakingState, TutorialsCommand, TutorialsEvent, TUTORIALS_FEATURED_MOD,
+};
 
 use crate::ports::{GamePreparation, UpdateProgress};
 use crate::runtime::{CancellationSlot, EventSink, ServiceCtx};
@@ -58,14 +60,12 @@ async fn launch(tutorial_id: i32, ctx: &ServiceCtx, out: &EventSink) {
         return;
     };
 
-    // Before anything is patched. The game slot holds one process, so
-    // launching now would end the game in progress, and patching the
-    // tutorials mod under a running game is no better. The same refusal
-    // "Play offline" gives, and for the same reason.
+    // Refuse before patching the tutorials mod under a running game. The
+    // process port also refuses a second game launch as a final safeguard.
     if game_is_running(ctx, out) {
         out.emit(TutorialsEvent::LaunchFailed {
             tutorial_id,
-            reason: "Forged Alliance is already running. Close it before starting a lesson.".into(),
+            reason: "Forged Alliance is running or a multiplayer game is starting. Close it or cancel the launch before starting a tutorial.".into(),
         });
         return;
     }
@@ -135,6 +135,14 @@ async fn launch(tutorial_id: i32, ctx: &ServiceCtx, out: &EventSink) {
         return;
     }
 
+    if game_is_running(ctx, out) {
+        out.emit(TutorialsEvent::LaunchFailed {
+            tutorial_id,
+            reason: "Forged Alliance is running or a multiplayer game is starting. Close it or cancel the launch before starting a tutorial.".into(),
+        });
+        return;
+    }
+
     match ctx
         .ports
         .process
@@ -167,7 +175,13 @@ pub(crate) fn game_is_running(ctx: &ServiceCtx, out: &EventSink) -> bool {
         || out.with_state(|state| {
             matches!(
                 state.lobby.join,
-                JoinState::Launched { .. } | JoinState::InGame
+                JoinState::Joining { .. }
+                    | JoinState::Preparing { .. }
+                    | JoinState::Launched { .. }
+                    | JoinState::InGame
+            ) || matches!(
+                state.lobby.matchmaking,
+                MatchmakingState::MatchFound { .. } | MatchmakingState::Launching { .. }
             )
         })
 }

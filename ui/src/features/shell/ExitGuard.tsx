@@ -5,9 +5,8 @@
 // GPGNet relay down with it, so a game in progress loses its connectivity, not
 // just its chat.
 //
-// The check is a state read rather than a process probe: `JoinState::InGame`
-// means the launch chain reported the game process started, and the launcher's
-// game-exit watcher clears it again.
+// The shell checks online and offline game processes and pending lesson
+// results, then asks through this page once its listener is ready.
 
 import { useEffect, useState } from "react";
 import { Button } from "../../design-system/Button";

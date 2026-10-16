@@ -2241,7 +2241,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.host.mapGeneratedDescription": "Carte Neroxis générée.",
   "playerCard.clearSearch": "Effacer la recherche",
   "shell.exitGuard.title": "Forged Alliance tourne encore",
-  "shell.exitGuard.body": "Fermer le client maintenant coupe aussi la connexion au jeu, et vous quitteriez la partie. Quittez d'abord le jeu s'il est toujours en cours.",
+  "shell.exitGuard.body": "Fermer le client maintenant coupe aussi la connexion au jeu, donc vous quitteriez la partie et une leçon perdrait son résultat. Quittez d'abord le jeu s'il est toujours en cours.",
   "shell.exitGuard.keepOpen": "Garder le client ouvert",
   "shell.exitGuard.closeAnyway": "Fermer quand même",
   "clan.loading": "Lecture de votre clan…",

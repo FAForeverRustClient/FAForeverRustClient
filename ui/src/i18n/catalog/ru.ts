@@ -2756,7 +2756,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.mapPool.failed": "Не удалось загрузить пулы карт: {reason}",
   "playerCard.clearSearch": "Очистить поиск",
   "shell.exitGuard.title": "Forged Alliance ещё запущена",
-  "shell.exitGuard.body": "Если закрыть клиент сейчас, соединение с игрой тоже оборвётся, и вы вылетите из матча. Сначала выйдите из игры, если она ещё идёт.",
+  "shell.exitGuard.body": "Если закрыть клиент сейчас, соединение с игрой тоже оборвётся: вы вылетите из матча, а урок потеряет свой результат. Сначала выйдите из игры, если она ещё идёт.",
   "shell.exitGuard.keepOpen": "Оставить клиент открытым",
   "shell.exitGuard.closeAnyway": "Всё равно закрыть",
   "clan.loading": "Читаем данные вашего клана…",
