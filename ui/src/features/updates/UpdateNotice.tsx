@@ -11,8 +11,7 @@
 //
 // Its states, read off the backend's status: available, downloading (with the
 // share done as a thin bar under the label), ready (the accent button that
-// starts the installer in one click), installing (the client has to be closed
-// to finish), failed (with the reason, and a retry, in the popover).
+// starts the installer in one click), installing (Windows closes and reopens the client automatically), failed (with the reason, and a retry, in the popover).
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -30,6 +29,8 @@ import { plainError } from "../../shared/plainError";
 import { menuPosition } from "../../shared/rules/menuPosition";
 import { useAppStore } from "../../store/store";
 import { updateBannerRelease, updatePercent } from "../../store/reducers/clientUpdate";
+import { installerRestartsClient } from "./installerCopy";
+import { useUpdateGameplay } from "./useUpdateGameplay";
 import { useGatedUpdate } from "./useGatedUpdate";
 import "./updates.css";
 
@@ -44,10 +45,11 @@ export function UpdateNotice({ deferredVersion = null }: { deferredVersion?: str
   const automatic = useAppStore((s) => s.state.settings.updates.automatic);
   const authMode = useAppStore((s) => s.state.auth.mode);
   const gated = useGatedUpdate(deferredVersion);
+  const playing = useUpdateGameplay();
   const release = updateBannerRelease(update);
   // "Announce optional updates" off hides an optional one. An overdue one is
   // shown regardless: the gate is about to ask for it anyway.
-  const visible = release !== null && !gated && (automatic || update.overdue === true);
+  const visible = release !== null && !playing && !gated && (automatic || update.overdue === true);
   const [open, setOpen] = useState(false);
   const opened = open && visible;
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -95,7 +97,8 @@ export function UpdateNotice({ deferredVersion = null }: { deferredVersion?: str
   // The button's accessible name names the state; the visible label adds the
   // share while downloading. The live region reads the name, so a screen
   // reader hears each state once rather than every percent.
-  const label = stateLabel(status, t);
+  const restarts = installerRestartsClient(release);
+  const label = stateLabel(status, restarts, t);
   const shown = downloading && percent !== null ? t("updates.notice.downloading", { percent }) : label;
   const notesUrl = optionalHttpsUrl(release.notesUrl);
   const notesInClient = canOpenClientRelease(update.notes, authMode, release.version);
@@ -116,7 +119,7 @@ export function UpdateNotice({ deferredVersion = null }: { deferredVersion?: str
     <Button onClick={() => send("cancelDownload")}>{t("updates.cancelDownload")}</Button>
   ) : busy ? null : release.downloadUrl ? (
     <Button variant="primary" onClick={() => send(ready ? "install" : "download")}>
-      {ready ? t("updates.notice.install") : failed ? t("updates.notice.retry") : t("updates.download")}
+      {ready ? t(restarts ? "updates.updateAndReopen" : "updates.notice.install") : failed ? t("updates.notice.retry") : t("updates.download")}
     </Button>
   ) : notesUrl ? (
     <Button variant="primary" onClick={() => void openHttpsUrl(notesUrl)}>{t("updates.required.openPage")}</Button>
@@ -183,7 +186,7 @@ export function UpdateNotice({ deferredVersion = null }: { deferredVersion?: str
               {update.currentVersion && t("updates.running", { version: update.currentVersion })}{" "}
               {size && t("updates.installerSize", { size })}
             </p>
-            {status.type === "installing" && <p>{t("updates.started")}</p>}
+            {status.type === "installing" && <p>{t(restarts ? "updates.updating" : "updates.started")}</p>}
             {failed && <p className="update-notice-error">{plainError(status.payload.reason)}</p>}
             {!release.downloadUrl && <p>{t("updates.noInstallerFor", { version: release.version })}</p>}
             <div className="update-notice-actions">
@@ -205,12 +208,12 @@ export function UpdateNotice({ deferredVersion = null }: { deferredVersion?: str
   );
 }
 
-function stateLabel(status: Status, t: ReturnType<typeof useTranslation>["t"]): string {
+function stateLabel(status: Status, restarts: boolean, t: ReturnType<typeof useTranslation>["t"]): string {
   switch (status.type) {
     case "ready":
-      return t("updates.notice.install");
+      return t(restarts ? "updates.updateAndReopen" : "updates.notice.install");
     case "installing":
-      return t("updates.notice.closeToFinish");
+      return t(restarts ? "updates.updating" : "updates.notice.closeToFinish");
     case "failed":
       return t("updates.notice.failed");
     case "downloading":

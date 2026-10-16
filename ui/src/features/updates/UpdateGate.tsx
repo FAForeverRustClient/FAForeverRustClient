@@ -20,6 +20,7 @@ import { useAppStore } from "../../store/store";
 import { updatePercent } from "../../store/reducers/clientUpdate";
 import { formatSize } from "../../shared/format/installerSize";
 import { formatDate } from "../../shared/format/dates";
+import { installerRestartsClient } from "./installerCopy";
 import { useGatedUpdate } from "./useGatedUpdate";
 import "./updates.css";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -53,6 +54,7 @@ interface DialogProps {
  */
 export function UpdateGateDialog({ release, status, currentVersion, onDefer }: DialogProps) {
   const { t } = useTranslation();
+  const restarts = installerRestartsClient(release);
   const percent = updatePercent(status);
   const notesUrl = optionalHttpsUrl(release.notesUrl);
   const size = formatSize(release.sizeBytes);
@@ -92,7 +94,7 @@ export function UpdateGateDialog({ release, status, currentVersion, onDefer }: D
         // itself says them plainly.
         title={status.type === "failed" ? status.payload.reason : undefined}
       >
-        {describe(status, t)}
+        {describe(status, restarts, t)}
       </p>
       {percent !== null && (
         <div className="update-gate-progress" aria-hidden="true">
@@ -107,7 +109,7 @@ export function UpdateGateDialog({ release, status, currentVersion, onDefer }: D
             disabled={status.type === "installing"}
             onClick={() => void send("install")}
           >
-            {t("updates.runInstaller")}
+            {t(restarts ? "updates.updateAndReopen" : "updates.runInstaller")}
           </Button>
         ) : (
           <Button
@@ -143,6 +145,7 @@ export function UpdateGateDialog({ release, status, currentVersion, onDefer }: D
 
 function describe(
   status: ClientUpdateState["status"],
+  restarts: boolean,
   t: ReturnType<typeof useTranslation>["t"],
 ): string {
   switch (status.type) {
@@ -153,9 +156,9 @@ function describe(
         : t("updates.progress.percent", { percent });
     }
     case "ready":
-      return t("updates.ready");
+      return t(restarts ? "updates.readyToReopen" : "updates.ready");
     case "installing":
-      return t("updates.required.closeToFinish");
+      return t(restarts ? "updates.updating" : "updates.required.closeToFinish");
     case "failed":
       return plainError(status.payload.reason);
     default:

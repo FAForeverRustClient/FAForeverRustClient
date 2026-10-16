@@ -13,8 +13,8 @@ use std::time::Duration;
 
 use faf_domain::state::{
     should_update, whats_new_on_startup, ClientRelease, ClientReleaseNotesStatus,
-    ClientUpdateCommand, ClientUpdateEvent, ClientUpdateStatus, NotificationAction,
-    NotificationKind, SettingsEvent, WhatsNewOnStartup,
+    ClientUpdateCommand, ClientUpdateEvent, ClientUpdateStatus, JoinState, MatchmakingState,
+    NotificationAction, NotificationKind, SettingsEvent, WhatsNewOnStartup,
 };
 
 use crate::ports::DownloadProgress;
@@ -472,9 +472,40 @@ async fn install(ctx: &ServiceCtx, out: &EventSink) {
         return;
     };
 
-    out.emit(ClientUpdateEvent::Installing);
-    if let Err(reason) = ctx.ports.client_update.install(path).await {
-        out.emit(ClientUpdateEvent::Failed { reason });
+    // Recheck at the command boundary: the offer may have been clicked just
+    // before a game, lesson or search started. Never close an active client.
+    let idle = out.with_state(|state| {
+        matches!(state.lobby.join, JoinState::Idle)
+            && matches!(
+                state.lobby.matchmaking,
+                MatchmakingState::Idle | MatchmakingState::Cancelled { .. }
+            )
+            && !matches!(
+                state.training.lesson_launch,
+                faf_domain::state::LessonLaunch::Preparing { .. }
+                    | faf_domain::state::LessonLaunch::Playing { .. }
+            )
+            && !matches!(
+                state.tutorials.launch,
+                faf_domain::state::TutorialLaunchStatus::Preparing { .. }
+            )
+    });
+    if !idle
+        || ctx.ports.process.game_running()
+        || ctx.ports.process.replay_upload_pending()
+        || ctx
+            .training
+            .lesson_results
+            .load(std::sync::atomic::Ordering::Acquire)
+            != 0
+    {
+        return;
+    }
+    match ctx.ports.client_update.install(path).await {
+        // On Windows the shell exits on this event. A spawn failure must never
+        // publish it, or the player would lose the client without an update.
+        Ok(()) => out.emit(ClientUpdateEvent::Installing),
+        Err(reason) => out.emit(ClientUpdateEvent::Failed { reason }),
     }
 }
 

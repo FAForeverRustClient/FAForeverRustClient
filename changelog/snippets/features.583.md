@@ -1,2 +1,3 @@
-- A small notice in the sidebar says when a client update is available, shows the download's progress, and installs it in one click once it is downloaded.
-- Settings, Updates can download updates in the background. It is off by default, for slow or metered connections, and never downloads during a game.
+- The sidebar shows available updates, download progress and an install button.
+- Settings, Updates can download updates in the background when no game is running.
+- On Windows, updating closes the client, installs with a progress bar and reopens it automatically.

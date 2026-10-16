@@ -1,3 +1,4 @@
+import { useUpdateGameplay } from "./useUpdateGameplay";
 import { useAppStore } from "../../store/store";
 import { updateRequiredRelease } from "../../store/reducers/clientUpdate";
 
@@ -22,9 +23,7 @@ import { updateRequiredRelease } from "../../store/reducers/clientUpdate";
  */
 export function useGatedUpdate(deferredVersion: string | null) {
   const update = useAppStore((s) => s.state.clientUpdate);
-  const join = useAppStore((s) => s.state.lobby.join);
-  const matchmaking = useAppStore((s) => s.state.lobby.matchmaking);
+  const playing = useUpdateGameplay();
   const release = updateRequiredRelease(update);
-  return release && release.version !== deferredVersion && join.type === "idle"
-    && (matchmaking.type === "idle" || matchmaking.type === "cancelled") ? release : null;
+  return release && release.version !== deferredVersion && !playing ? release : null;
 }

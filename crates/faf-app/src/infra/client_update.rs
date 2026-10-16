@@ -30,6 +30,8 @@
 //! [`ASSET_SUFFIXES`], so a hostile asset name cannot influence where the
 //! client writes or what it runs.
 
+mod installer;
+
 use async_trait::async_trait;
 use faf_domain::protocol::changelog::{marks_required_update, parse_release_notes};
 use faf_domain::state::{
@@ -669,13 +671,7 @@ async fn start_installer(path: &Path) -> Result<(), String> {
             .map_err(|e| format!("could not make the installer executable: {e}"))?;
     }
 
-    let mut command = if path.extension().is_some_and(|ext| ext == "msi") {
-        let mut command = tokio::process::Command::new("msiexec");
-        command.arg("/i").arg(path);
-        command
-    } else {
-        tokio::process::Command::new(path)
-    };
+    let mut command = tokio::process::Command::from(installer::command(path, cfg!(windows)));
 
     command
         .spawn()

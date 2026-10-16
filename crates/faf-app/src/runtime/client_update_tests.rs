@@ -14,6 +14,11 @@ use tokio_util::sync::CancellationToken;
 #[derive(Default)]
 struct Script {
     downloads: AtomicUsize,
+    installs: AtomicUsize,
+    hold_install: AtomicBool,
+    fail_install: AtomicBool,
+    install_started: Notify,
+    finish_install: Notify,
     cancellations: AtomicUsize,
     fail: AtomicBool,
     /// Publish 1.0.0 as a required release.
@@ -67,7 +72,16 @@ impl ClientUpdatePort for Updates {
         rx
     }
     async fn install(&self, _: String) -> Result<(), String> {
-        Ok(())
+        self.0.installs.fetch_add(1, Ordering::SeqCst);
+        self.0.install_started.notify_one();
+        if self.0.hold_install.load(Ordering::SeqCst) {
+            self.0.finish_install.notified().await;
+        }
+        if self.0.fail_install.load(Ordering::SeqCst) {
+            Err("installer could not start".into())
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -281,4 +295,78 @@ async fn update_notice_check_leaves_the_background_download_to_its_own_task() {
         matches!(s.status, ClientUpdateStatus::Ready { .. })
     })
     .await;
+}
+
+#[tokio::test]
+async fn update_install_signals_exit_only_after_the_installer_starts() {
+    let (ctx, sink, script) = harness();
+    script.hold_install.store(true, Ordering::SeqCst);
+    run_command(ClientUpdateCommand::Check.into(), &ctx, &sink).await;
+    sink.emit(faf_domain::state::ClientUpdateEvent::Downloaded {
+        path: "installer".into(),
+    });
+    let worker = {
+        let ctx = ctx.clone();
+        let sink = sink.clone();
+        tokio::spawn(
+            async move { run_command(ClientUpdateCommand::Install.into(), &ctx, &sink).await },
+        )
+    };
+    tokio::time::timeout(
+        std::time::Duration::from_secs(3),
+        script.install_started.notified(),
+    )
+    .await
+    .unwrap();
+    assert!(sink.with_state(|state| matches!(
+        state.client_update.status,
+        ClientUpdateStatus::Ready { .. }
+    )));
+    script.finish_install.notify_one();
+    worker.await.unwrap();
+    assert!(sink.with_state(|state| state.client_update.status == ClientUpdateStatus::Installing));
+}
+
+#[tokio::test]
+async fn update_install_failure_does_not_signal_exit() {
+    let (ctx, sink, script) = harness();
+    script.fail_install.store(true, Ordering::SeqCst);
+    run_command(ClientUpdateCommand::Check.into(), &ctx, &sink).await;
+    sink.emit(faf_domain::state::ClientUpdateEvent::Downloaded {
+        path: "installer".into(),
+    });
+    let mut events = sink.subscribe();
+    run_command(ClientUpdateCommand::Install.into(), &ctx, &sink).await;
+    assert!(sink.with_state(|state| matches!(
+        state.client_update.status,
+        ClientUpdateStatus::Failed { .. }
+    )));
+    while let Ok(event) = events.try_recv() {
+        assert!(!matches!(
+            event,
+            faf_domain::AppEvent::ClientUpdate(faf_domain::state::ClientUpdateEvent::Installing)
+        ));
+    }
+}
+
+#[tokio::test]
+async fn update_install_is_refused_during_a_join_or_lesson_result_save() {
+    let (ctx, sink, script) = harness();
+    run_command(ClientUpdateCommand::Check.into(), &ctx, &sink).await;
+    sink.emit(faf_domain::state::ClientUpdateEvent::Downloaded {
+        path: "installer".into(),
+    });
+    sink.emit(LobbyEvent::Joining {
+        id: 1,
+        prepared: false,
+    });
+    run_command(ClientUpdateCommand::Install.into(), &ctx, &sink).await;
+    assert_eq!(script.installs.load(Ordering::SeqCst), 0);
+    sink.emit(LobbyEvent::JoinCancelled);
+    ctx.training.lesson_results.store(1, Ordering::SeqCst);
+    run_command(ClientUpdateCommand::Install.into(), &ctx, &sink).await;
+    assert_eq!(script.installs.load(Ordering::SeqCst), 0);
+    ctx.training.lesson_results.store(0, Ordering::SeqCst);
+    run_command(ClientUpdateCommand::Install.into(), &ctx, &sink).await;
+    assert_eq!(script.installs.load(Ordering::SeqCst), 1);
 }

@@ -36,8 +36,8 @@ describe("UpdateNotice states", () => {
   it.each([
     ["available", "Update available"],
     ["downloading", "Downloading…"],
-    ["ready", "Install update"],
-    ["installing", "Close the client to finish"],
+    ["ready", "Update and reopen"],
+    ["installing", "Updating…"],
     ["failed", "Update failed"],
   ] as const)("shows %s and dispatches its action", async (type, label) => {
     const user = userEvent.setup();
@@ -60,6 +60,34 @@ describe("UpdateNotice states", () => {
         expect(sentCommands()).toEqual([{ kind: "ClientUpdate", command: { type: type === "downloading" ? "cancelDownload" : "download" } }]);
       }
     }
+  });
+
+  it.each(["join", "search", "lesson", "tutorial"] as const)("keeps installation and the gate out of %s", (activity) => {
+    seedStore((state) => ({ ...state,
+      lobby: { ...state.lobby,
+        join: activity === "join" ? { type: "inGame" } : state.lobby.join,
+        matchmaking: activity === "search" ? { type: "searching", payload: { queueNames: ["ladder1v1"] } } : state.lobby.matchmaking,
+      },
+      training: { ...state.training, lessonLaunch: activity === "lesson" ? { type: "playing", payload: { resourceId: "lesson" } } : state.training.lessonLaunch },
+      tutorials: { ...state.tutorials, launch: activity === "tutorial" ? { type: "preparing", payload: { tutorialId: 1, detail: "Preparing" } } : state.tutorials.launch },
+      clientUpdate: { ...state.clientUpdate, release, overdue: true, status: { type: "ready", payload: { path: "installer" } } },
+    }));
+    render(<><UpdateNotice /><UpdateGate /></>);
+    expect(screen.queryByRole("button", { name: "Update and reopen" })).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("keeps the manual installer instructions on other platforms", async () => {
+    const user = userEvent.setup();
+    seedStore((state) => ({ ...state, clientUpdate: { ...state.clientUpdate,
+      release: { ...release, assetName: "client.dmg" }, status: { type: "ready", payload: { path: "installer" } }, overdue: false,
+    } }));
+    render(<UpdateNotice />);
+    clearSentCommands();
+    await user.click(screen.getByRole("button", { name: "Install update" }));
+    expect(sentCommands()).toEqual([{ kind: "ClientUpdate", command: { type: "install" } }]);
+    applyEvent({ kind: "ClientUpdate", event: { type: "installing" } });
+    expect(screen.getByRole("button", { name: "Close the client to finish" })).toBeDefined();
   });
 
   it("dismisses this version and restores focus after Escape", async () => {
