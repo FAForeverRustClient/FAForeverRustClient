@@ -161,7 +161,7 @@
         "Replays and mods",
         [
           [
-            "Settings, Game includes an optional Windows live-replay workaround using a named pipe.",
+            "Settings, Game has an optional workaround for watching live replays on Windows.",
             "5d9bf6d4"
           ],
           [
