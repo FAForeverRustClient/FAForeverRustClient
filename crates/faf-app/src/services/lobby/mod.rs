@@ -101,6 +101,13 @@ pub struct LobbyContext {
     /// Stop, or the end of the connection, reaches the updater behind it. See
     /// `matchmaking::start_search`.
     search_preparation: Cancellable<()>,
+    /// The running game's adapter link while no lobby connection is open.
+    /// It lived in the connect loop and closed with it, which ended the
+    /// adapter's input for good: after Disconnect and Connect mid-game, or a
+    /// connection that gave up and came back, the server's relay messages for
+    /// the restored game were dropped, and peers who lost each other never
+    /// reconnected. See `connection::connect_with`.
+    kept_session: std::sync::Mutex<Option<crate::services::launcher::LaunchSession>>,
     /// Counts search starts, so the timer waiting on one start's confirmation
     /// can tell it from a newer start for the same queues: both read
     /// `Preparing` with the same names. See `matchmaking::watch_for_search_start`.
