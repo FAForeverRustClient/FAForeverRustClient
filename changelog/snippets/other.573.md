@@ -1,0 +1,2 @@
+- In the online replay search, the game title moved under More filters and Sort by moved into the top row.
+- The v0.5.7 release notes describe the live-replay workaround in plain words.
