@@ -25,6 +25,7 @@ import { openHttpsUrl } from "../../../shared/externalLinks";
 import { plainError } from "../../../shared/plainError";
 import { canLaunch, installTarget, isBusy, updateAvailable } from "../../../shared/rules/galacticWarActions";
 import { onlineCommanders } from "./galacticWarOnline";
+import { GalacticWarStarfield } from "./GalacticWarStarfield";
 import { factionNumber, ringSegments, type RingSegment } from "./galacticWarRing";
 import type { PlayModePanelProps } from "../PlayModeTabs";
 import "./galactic-war.css";
@@ -265,12 +266,12 @@ export function GalacticWarPanel({
       data-faction={theme}
       style={themeStyle}
     >
-      {/* The scenery behind the boards: a glow from above, the faction's
-          texture, its emblem large and faint, and a vignette. Decoration
-          only, and drawn under everything. */}
+      {/* The scenery behind the boards: a nebula in the faction's colour, a
+          field of stars over it, and a vignette. Decoration only, and drawn
+          under everything. */}
       {ownNumber !== null ? (
         <div className="gw-backdrop" aria-hidden="true">
-          <FactionIcon faction={ownNumber} size={520} className="gw-backdrop-emblem" aria-hidden="true" />
+          <GalacticWarStarfield />
         </div>
       ) : null}
       <aside className="gw-column gw-column-info">
@@ -384,20 +385,27 @@ export function GalacticWarPanel({
               </svg>
               <span className="gw-launch-bezel" />
               <button
-                className="gw-launch-button"
+                className={ownNumber === null ? "gw-launch-button" : "gw-launch-button has-emblem"}
                 disabled={busy || running || (!canLaunch(state) && target === "")}
                 onClick={play}
+                title={`${actionLabel}: ${t("lobby.galacticWar.title")}`}
                 type="button"
               >
-                {/* The player's emblem is the button's face once there is one:
-                    the tab's logo, lit, where the eye already goes. */}
+                {/* With a faction, its emblem is the button's face: the tab's
+                    logo, large and lit, where the eye already goes. What the
+                    button does is said under it in the faction's colour, so
+                    the logo never reads as decoration. */}
                 {ownNumber !== null ? (
-                  <FactionIcon faction={ownNumber} size={58} className="gw-launch-emblem" aria-hidden="true" />
-                ) : null}
-                <span className="gw-launch-verb">{actionLabel}</span>
-                {ownNumber === null ? (
-                  <span className="gw-launch-name">{t("lobby.galacticWar.short")}</span>
-                ) : null}
+                  <>
+                    <FactionIcon faction={ownNumber} size={74} className="gw-launch-emblem" aria-hidden="true" />
+                    <span className="gw-launch-cta">{actionLabel}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="gw-launch-verb">{actionLabel}</span>
+                    <span className="gw-launch-name">{t("lobby.galacticWar.short")}</span>
+                  </>
+                )}
               </button>
             </div>
           <div className="gw-hero-side gw-hero-commander">
