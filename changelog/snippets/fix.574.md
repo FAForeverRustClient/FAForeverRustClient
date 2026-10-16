@@ -1,0 +1,3 @@
+- Generated maps in a tournament's Maps tab, round pools and veto no longer show "No picture": they show the map generator's art, at full brightness.
+- Generated maps in a tournament no longer show their long technical name cut off: the tile reads "Generated map" with its version and seed.
+- A tournament with one map pool holding every map no longer lists the same maps twice on its Maps tab.
