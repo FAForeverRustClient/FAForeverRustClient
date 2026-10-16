@@ -34,6 +34,15 @@ pub trait MapGeneratorPort: Send + Sync {
     /// either `Generated` or `Failed`.
     async fn generate_named(&self, map_name: String) -> mpsc::Receiver<GeneratorUpdate>;
 
+    /// [`Self::generate_named`] for a game or replay launch. Stopped only by
+    /// dropping the receiver (the launch's own cancel), never by
+    /// [`Self::cancel`]: that is the Maps tab's Cancel, and pressed while a
+    /// match's map was being built it stopped that run too, failing the
+    /// launch after the seat was given up.
+    async fn generate_for_launch(&self, map_name: String) -> mpsc::Receiver<GeneratorUpdate> {
+        self.generate_named(map_name).await
+    }
+
     /// Generate one or more fresh maps from options.
     async fn generate(&self, options: GeneratorOptions) -> mpsc::Receiver<GeneratorUpdate>;
 

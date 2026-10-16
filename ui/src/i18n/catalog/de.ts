@@ -4821,6 +4821,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "chat.gameBadge.aria": "{status}: {title} auf {map}",
   "chat.roster.filterPlaceholder": { one: "{count} Person, zum Filtern tippen", other: "{count} Personen, zum Filtern tippen" },
   "chat.roster.filterAria": { one: "Liste filtern ({count} Person)", other: "Liste filtern ({count} Personen)" },
+  "chat.roster.noMatch": "Kein Nutzer passt zu „{filter}“.",
+  "maps.vault.viewMap": "{name} ansehen",
   "chat.roster.noteMark": "Deine Notiz: {note}",
   "chat.roster.view.button": "Spieler filtern und sortieren",
   "chat.roster.view.board": "Rating",

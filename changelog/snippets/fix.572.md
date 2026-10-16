@@ -1,0 +1,8 @@
+- Joining or hosting a game while a ranked match is starting no longer abandons the match.
+- Reconnecting to the lobby during a game no longer keeps players who lost each other from reconnecting.
+- Cancel in the map generator no longer stops the map a match is waiting for.
+- Stopping and restarting a matchmaker search no longer makes the new search give up silently.
+- A replay deleted in the Local tab no longer comes back after a game.
+- Replays no longer desync because the game cache kept only part of a game version.
+- Double-clicking a replay while the client is closed no longer fails with "not logged in".
+- Player list and map card text no longer shows in English in other languages.

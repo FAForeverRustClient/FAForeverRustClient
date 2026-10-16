@@ -2744,6 +2744,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "chat.gameBadge.aria": "{status}: {title} на карте {map}",
   "chat.roster.filterPlaceholder": { one: "{count} человек, введите текст для фильтра", few: "{count} человека, введите текст для фильтра", many: "{count} человек, введите текст для фильтра", other: "{count} человека, введите текст для фильтра" },
   "chat.roster.filterAria": { one: "Фильтр списка ({count} человек)", few: "Фильтр списка ({count} человека)", many: "Фильтр списка ({count} человек)", other: "Фильтр списка ({count} человека)" },
+  "chat.roster.noMatch": "Нет пользователей по запросу «{filter}».",
+  "maps.vault.viewMap": "Открыть {name}",
   "chat.roster.noteMark": "Ваша заметка: {note}",
   "chat.roster.view.button": "Фильтр и сортировка игроков",
   "chat.roster.view.board": "Рейтинг",

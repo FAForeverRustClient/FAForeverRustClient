@@ -124,7 +124,13 @@ pub(crate) async fn pick_path(
         let extensions: Vec<&str> = filter.extensions.iter().map(String::as_str).collect();
         dialog = dialog.add_filter(&filter.name, &extensions);
     }
-    if let Some(start) = request.default_path.as_deref() {
+    // A start on another machine is not looked at: checking it is how
+    // Windows signs in to that host with the player's credentials.
+    if let Some(start) = request
+        .default_path
+        .as_deref()
+        .filter(|start| !names_another_machine(start))
+    {
         let (folder, name) = start_of(start);
         if let Some(folder) = folder {
             dialog = dialog.set_directory(folder);
@@ -133,11 +139,19 @@ pub(crate) async fn pick_path(
             dialog = dialog.set_file_name(name);
         }
     }
-    let chosen = if request.directory {
-        dialog.blocking_pick_folder()
-    } else {
-        dialog.blocking_pick_file()
-    };
+    // On a blocking thread, as `confirm_launch_change` does: the dialog
+    // waits for the player, and an async worker held that long slowed the
+    // lobby connection, ICE and event forwarding until it closed.
+    let directory = request.directory;
+    let chosen = tauri::async_runtime::spawn_blocking(move || {
+        if directory {
+            dialog.blocking_pick_folder()
+        } else {
+            dialog.blocking_pick_file()
+        }
+    })
+    .await
+    .map_err(|error| format!("the file dialog stopped: {error}"))?;
     let Some(chosen) = chosen else {
         return Ok(None);
     };
@@ -215,23 +229,75 @@ pub(crate) async fn admit(
             }
         }
         AppCommand::Replays(ReplayCommand::OpenFile { path }) => {
-            // A row of the local replay list is a file the client listed
-            // itself, out of its own replay folder; anything else was picked.
-            if picked.was_picked(path)
-                || faf_app::infra::replay::validated_local_replay_path(Path::new(path))
-                    .await
-                    .is_ok()
-            {
-                Ok(())
-            } else {
-                Err(refusal(path))
-            }
+            admit_local_replay(picked, path).await
         }
+        AppCommand::Replays(
+            ReplayCommand::LoadDetails {
+                local_path: Some(path),
+                ..
+            }
+            | ReplayCommand::LoadAnalysis {
+                local_path: Some(path),
+                ..
+            },
+        ) => admit_replay_read(picked, path),
         AppCommand::Uploads(UploadsCommand::Open { request }) => match &request.source_path {
             Some(path) => picked.require(path),
             None => Ok(()),
         },
         _ => Ok(()),
+    }
+}
+
+/// A replay file the client may read: picked in the dialog, or a row of the
+/// local replay list, which is a file the client listed itself out of its own
+/// replay folder. A path on another machine that was not picked is refused
+/// before anything looks at it.
+async fn admit_local_replay(picked: &PickedPaths, path: &str) -> Result<(), String> {
+    if picked.was_picked(path) {
+        return Ok(());
+    }
+    if names_another_machine(path) {
+        return Err(refusal(path));
+    }
+    faf_app::infra::replay::validated_local_replay_path(Path::new(path))
+        .await
+        .map(|_| ())
+        .map_err(|_| refusal(path))
+}
+
+/// A replay the details or analysis panel reads. Any local file may be read,
+/// as before (a replay opened from anywhere through the dialog stays readable
+/// after its pick has expired); only a path on another machine is refused
+/// unless it was picked, because looking at one signs in to that machine.
+fn admit_replay_read(picked: &PickedPaths, path: &str) -> Result<(), String> {
+    if names_another_machine(path) && !picked.was_picked(path) {
+        Err(refusal(path))
+    } else {
+        Ok(())
+    }
+}
+
+/// Whether `path` names another machine (`\servershare`, `\?UNC...`).
+///
+/// On Windows, merely checking such a path (`is_dir`, `exists`,
+/// `canonicalize`) makes the system sign in to that host with the player's
+/// credentials. A path from the page that the player did not pick must never
+/// be looked at, so these are refused before any check. Extended-length local
+/// paths (`\?C:...`) are local and pass.
+pub(crate) fn names_another_machine(path: &str) -> bool {
+    if !cfg!(windows) {
+        return false;
+    }
+    let path = path.trim().replace('/', "\\");
+    match path
+        .strip_prefix(r"\\?\")
+        .or_else(|| path.strip_prefix(r"\\.\"))
+    {
+        Some(rest) => rest
+            .get(..4)
+            .is_some_and(|unc| unc.eq_ignore_ascii_case("UNC\\")),
+        None => path.starts_with("\\\\"),
     }
 }
 
@@ -356,6 +422,53 @@ async fn confirm_launch_change(window: &tauri::Window, change: LaunchChange) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn a_path_on_another_machine_is_recognised_and_a_local_one_is_not() {
+        for remote in [
+            r"\\attacker\share\x.fafreplay",
+            "//attacker/share/x.fafreplay",
+            r"\\?\UNC\attacker\share\x.fafreplay",
+            r"\\.\unc\attacker\share",
+        ] {
+            assert!(names_another_machine(remote), "{remote}");
+        }
+        for local in [
+            r"C:\Users\x\replays\a.fafreplay",
+            r"\\?\C:\Users\x\replays\a.fafreplay",
+            "relative/a.fafreplay",
+        ] {
+            assert!(!names_another_machine(local), "{local}");
+        }
+    }
+
+    #[tokio::test]
+    async fn a_replay_path_from_the_page_is_read_only_when_picked_or_listed() {
+        let picked = PickedPaths::default();
+        let elsewhere = r"\\attacker\share\x.fafreplay";
+        assert!(admit_local_replay(&picked, elsewhere).await.is_err());
+        assert!(
+            admit_local_replay(&picked, "C:/not/a/replay/folder/x.fafreplay")
+                .await
+                .is_err()
+        );
+        picked.remember(elsewhere);
+        assert!(admit_local_replay(&picked, elsewhere).await.is_ok());
+    }
+
+    #[test]
+    fn details_read_any_local_replay_but_not_an_unpicked_one_elsewhere() {
+        let picked = PickedPaths::default();
+        assert!(admit_replay_read(&picked, "C:/Downloads/old.fafreplay").is_ok());
+        let elsewhere = r"\\attacker\share\x.fafreplay";
+        assert_eq!(
+            admit_replay_read(&picked, elsewhere).is_err(),
+            cfg!(windows)
+        );
+        picked.remember(elsewhere);
+        assert!(admit_replay_read(&picked, elsewhere).is_ok());
+    }
 
     #[test]
     fn a_path_passes_when_picked_stored_or_empty() {

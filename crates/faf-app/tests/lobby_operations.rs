@@ -800,3 +800,82 @@ async fn a_refusal_for_another_attempt_leaves_the_launched_retry_alone() {
         "another attempt's refusal was put over the launched game"
     );
 }
+
+/// Forged Alliance from this client is already running. The process port
+/// reports it; nothing else of this test needs a real game.
+struct RunningGame;
+
+#[async_trait]
+impl ProcessPort for RunningGame {
+    fn supports_live_launch(&self) -> bool {
+        true
+    }
+    fn game_running(&self) -> bool {
+        true
+    }
+    async fn launch_game(&self, _params: GameLaunchParams) -> Result<(), String> {
+        Err("a second game must never be launched".into())
+    }
+    async fn launch_offline(&self, _featured_mod: String, _map: String) -> Result<(), String> {
+        Err("a second game must never be launched".into())
+    }
+    async fn launch_replay(&self, _args: Vec<String>) -> Result<(), String> {
+        Ok(())
+    }
+    fn kill(&self) {}
+    async fn wait_for_exit(&self) {
+        std::future::pending::<()>().await
+    }
+    fn set_paths(&self, _game_path: String, _replay_game_path: String) {}
+    fn set_additional_arguments(&self, _arguments: Vec<String>) {}
+    fn game_install_dir(&self) -> Option<PathBuf> {
+        Some(PathBuf::from("C:/faf"))
+    }
+    fn replay_install_dir(&self) -> Option<PathBuf> {
+        None
+    }
+    fn installs_present(&self) -> InstallPresence {
+        InstallPresence::default()
+    }
+}
+
+/// A custom join while a game of this client runs, or a match is being
+/// launched, would become the current lobby operation: that cancels the
+/// match's launch and tells the server the game ended. It is refused before
+/// anything is prepared or sent.
+#[tokio::test]
+async fn a_join_while_a_game_runs_is_refused_before_anything_is_sent() {
+    let lobby = FakeLobby::default();
+    let ports = Ports {
+        lobby: Arc::new(lobby.clone()),
+        process: Arc::new(RunningGame),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    let mut events = app.subscribe();
+    app.dispatch_and_wait(AuthCommand::Login { remember: false }.into())
+        .await
+        .unwrap();
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    expect(&mut events, "the lobby connecting", |event| {
+        matches!(event, LobbyEvent::Connected)
+    })
+    .await;
+
+    app.dispatch(
+        LobbyCommand::Join {
+            id: 42,
+            password: None,
+            replace_mods: false,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    expect(&mut events, "the join being refused", |event| {
+        matches!(event, LobbyEvent::JoinFailed { id: 42, reason } if reason.contains("match is starting"))
+    })
+    .await;
+    assert!(lobby.held_joins().is_empty(), "the join request went out");
+}

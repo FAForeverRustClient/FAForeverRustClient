@@ -192,6 +192,8 @@ export const en = {
   "chat.gameBadge.aria": "{status}: {title} on {map}",
   "chat.roster.filterPlaceholder": { one: "{count} user, type to filter", other: "{count} users, type to filter" },
   "chat.roster.filterAria": { one: "Filter the roster ({count} user)", other: "Filter the roster ({count} users)" },
+  "chat.roster.noMatch": "No user matches “{filter}”.",
+  "maps.vault.viewMap": "View {name}",
   "chat.roster.noteMark": "Your note: {note}",
   "chat.roster.view.button": "Filter and order players",
   "chat.roster.view.board": "Rating",

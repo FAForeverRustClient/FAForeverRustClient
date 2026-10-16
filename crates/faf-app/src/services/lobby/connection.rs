@@ -46,6 +46,12 @@ async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
 
     let launch_enabled = ctx.ports.process.supports_live_launch();
     let mut launch = LaunchSlot::default();
+    // A game still running from before this connection gets its adapter link
+    // back, so the relay for the restored session reaches the adapter.
+    let kept = ctx.lobby.kept_session.lock().unwrap().take();
+    if ctx.lobby.running_game.id().is_some() {
+        launch.session = kept;
+    }
     let mut background = Background::default();
     let mut game_notifications = GameNotificationTracker::default();
 
@@ -101,6 +107,11 @@ async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
     if let Some(starting) = background.launch.take() {
         let session = starting.await;
         launch.started(session, ctx, out).await;
+    }
+
+    // The game outlives the connection: keep its adapter link for the next.
+    if ctx.lobby.running_game.id().is_some() {
+        *ctx.lobby.kept_session.lock().unwrap() = launch.session.take();
     }
 
     ctx.lobby.active.finish();

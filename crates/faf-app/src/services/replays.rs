@@ -149,6 +149,12 @@ enum LaunchTarget {
 }
 
 impl ReplaysContext {
+    /// The Local tab's list generation, for a scan started outside a
+    /// `LoadLocal` (the one after a game) to take its turn in the same order.
+    pub(crate) fn local_list_generation(&self) -> LatestRequest {
+        self.local_generation.clone()
+    }
+
     fn launch_slot(&self) -> std::sync::MutexGuard<'_, LaunchSlot> {
         self.launch
             .lock()

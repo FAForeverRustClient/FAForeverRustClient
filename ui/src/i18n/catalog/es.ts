@@ -2225,6 +2225,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "chat.gameBadge.aria": "{status}: {title} en {map}",
   "chat.roster.filterPlaceholder": { one: "{count} usuario, escribe para filtrar", other: "{count} usuarios, escribe para filtrar" },
   "chat.roster.filterAria": { one: "Filtrar la lista ({count} usuario)", other: "Filtrar la lista ({count} usuarios)" },
+  "chat.roster.noMatch": "Ningún usuario coincide con «{filter}».",
+  "maps.vault.viewMap": "Ver {name}",
   "chat.roster.noteMark": "Tu nota: {note}",
   "chat.roster.view.button": "Filtrar y ordenar jugadores",
   "chat.roster.view.board": "Puntuación",

@@ -191,6 +191,10 @@ pub(crate) fn open_version_folder(name: String, app: tauri::AppHandle) -> Result
 
 #[tauri::command]
 pub(crate) async fn reveal_replay(path: String, app: tauri::AppHandle) -> Result<(), String> {
+    // Never looked at when it names another machine (`picked_paths`).
+    if crate::picked_paths::names_another_machine(&path) {
+        return Err("only replays in the replay folder can be shown".into());
+    }
     let path =
         faf_app::infra::replay::validated_local_replay_path(std::path::Path::new(&path)).await?;
     app.opener()
