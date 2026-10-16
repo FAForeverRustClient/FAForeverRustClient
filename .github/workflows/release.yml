@@ -237,6 +237,19 @@ jobs:
       - name: Verify bundled Java runtime
         run: node scripts/check-java-runtime.mjs
 
+      # linuxdeploy resolves the dependencies of every library in the AppImage,
+      # the bundled JRE's included, and the JRE's own libraries need
+      # `libjvm.so`, which sits in its `lib/server` where linuxdeploy does not
+      # look: 0.9.1's first run failed with "Could not find dependency:
+      # libjvm.so". On the search path it is found. linuxdeploy then also
+      # copies one into `usr/lib`, which nothing loads (25 MB); the JRE's
+      # libraries keep `$ORIGIN` and load their own, and the bundled java runs
+      # the ICE adapter from the extracted AppImage (checked in a throwaway
+      # workflow, 2026-10-16).
+      - name: Let linuxdeploy find the bundled JRE's libjvm
+        if: matrix.platform == 'ubuntu-22.04'
+        run: echo "LD_LIBRARY_PATH=$GITHUB_WORKSPACE/natives/jre/lib/server:$GITHUB_WORKSPACE/natives/jre/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+
       - name: Build and publish release
         uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0.6.2
         env:
