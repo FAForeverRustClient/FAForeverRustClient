@@ -1671,6 +1671,14 @@
   --preview-size-allowance: 320px;
 }
 
+/* The facts band's own bottom rule closes it off from the buttons, so the
+   footer's rule and the space above it would only draw a second line. */
+.game-preview-dialog .generator-facts-strip + .game-preview-dialog-actions {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
 /* The tile's and the details panel's plate (`.game-tile-private`), with the
    word beside the lock at this size. */
 .game-preview-dialog-private {

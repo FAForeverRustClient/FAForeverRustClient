@@ -5,3 +5,44 @@
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+/* Dense, for the large preview dialogs (the Play tab's game preview and the
+   map preview), where the settings sit under a picture that takes most of the
+   window: a dozen facts at the shared sizes pushed the dialog into scrolling.
+   As many columns as fit rather than a fixed four, so a narrow dialog moves a
+   fact onto the next row instead of breaking a label mid-word ("STARTPUN
+   KTE"). With the column count not known, the hairline is on every value and
+   the grid is shifted left by one indent and a hairline, which the clip then
+   hides: no hairline and no indent at the start of a row, as in the fixed
+   grids. */
+.generator-facts-strip.is-dense {
+  padding-block: var(--space-2);
+}
+
+.generator-facts-strip.is-dense .facts-grid {
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  row-gap: var(--space-2);
+  margin-left: calc(-1 * (var(--space-2) + 1px));
+  clip-path: inset(0 0 0 calc(var(--space-2) + 1px));
+}
+
+.generator-facts-strip.is-dense .facts-grid > div:nth-child(n) {
+  padding-inline: var(--space-2);
+  border-left: 1px solid var(--color-border);
+}
+
+/* A label word wider than its column (German "Rohstoffdichte" in the
+   narrowest one) runs a pixel or two into the padding before the next
+   hairline rather than losing its last letters to a line of their own;
+   labels still wrap between words. */
+.generator-facts-strip.is-dense .facts-grid dt {
+  margin-bottom: 1px;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  overflow-wrap: normal;
+}
+
+.generator-facts-strip.is-dense .facts-grid dd {
+  font-size: 13px;
+  line-height: 1.3;
+}

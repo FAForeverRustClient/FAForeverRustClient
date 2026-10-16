@@ -155,6 +155,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
               rows={generatorParameters(currentFacts, t)}
               label={t("maps.generate.reproduceTitle")}
               columns={4}
+              dense
             />
           )}
           onClose={() => setZoomed(false)}
