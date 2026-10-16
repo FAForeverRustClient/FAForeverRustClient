@@ -1,0 +1,8 @@
+- Signing in no longer gets stuck when no browser opens: the login screen shows the link to copy into one.
+- Automatic sign-in at startup no longer waits for the game cache scan and the update check.
+- An old log file that cannot be deleted no longer stops games from launching or the client from starting.
+- An unusual map file no longer leaves the installed maps list stuck on "Loading".
+- A crash while the client switches mods no longer wipes the game's hotkeys and settings.
+- On Linux, training videos no longer open in the browser instead of playing in the client.
+- On Linux, opening a replay whose file name has unusual characters no longer crashes the client.
+- The close button no longer stops working during a game after the client showed its error screen.
