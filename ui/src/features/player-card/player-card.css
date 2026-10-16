@@ -2,7 +2,7 @@
    tall as the window allows on a laptop, where a tab scrolls inside. As tall
    as the tab it showed, the centred card grew and shrank with every tab, and
    the tab strip moved with it, by 260px at 1080p between Statistics and
-   Former names: each next tab had to be chased (#578). A short tab now
+   Former names: each next tab had to be chased (issue 578). A short tab now
    leaves room under it, which is the price of the strip staying put. */
 .modal-panel.player-card-modal {
   display: flex;
