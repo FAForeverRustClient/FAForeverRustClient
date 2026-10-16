@@ -11,13 +11,16 @@
 // theirs. A click opens the client's one map preview, the zoomable dialog the
 // Play tab, the host dialog and a round's pool all open.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import type { MapPool, Tourney, TourneyMap, VaultMap } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
 import { useVaultNameLookup } from "../../../shared/hooks/useVaultNameLookup";
+import { ipc } from "../../../ipc/client";
+import { isGeneratedMap } from "../../../shared/mapPresentation";
+import { useAppStore } from "../../../store/store";
 import { matchVaultMap } from "../../../shared/rules/tourneyRules";
 import { canEnlargeMapPicture, generatedMapParts, tourneyMapPicture } from "../mapPicture";
 import { labelForRoundKey } from "../bracket/matchLabels";
@@ -137,9 +140,10 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
   const [enlarged, setEnlarged] = useState<string | null>(null);
   const organiser = event.viewer.organiser;
   const db = event.mapDb;
+  const decoded = useAppStore((s) => s.state.mapGenerator.decoded);
   const byId = (mapId: string) => db.find((held) => held.id === mapId);
   const image = (map: TourneyMap) => (map.masked ? "" : tourneyMapPicture(map, assetBase, vault));
-  const sizeOf = (map: TourneyMap) => tourneyMapSize(map, vault);
+  const sizeOf = (map: TourneyMap) => tourneyMapSize(map, vault, decoded?.[map.name]?.mapSize);
 
   // Where a map is played directly (pinned to a round), and which pools hold
   // it. Pool membership is not "played in", as on the website.
@@ -164,6 +168,18 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
   // Sizes the organiser left out and the client cannot place yet: asked of
   // the vault by name, once, rather than loading the whole catalogue for them.
   useVaultNameLookup(visible.filter((map) => needsSizeLookup(map, vault)).map((map) => map.name));
+
+  // A generated map's size is in its name. The map generator slice decodes
+  // names on request, without any IO, as it does for the lobby's tiles; asked
+  // once for the generated maps whose size it has not read yet.
+  const undecoded = visible
+    .filter((map) => !map.masked && isGeneratedMap(map.name) && decoded?.[map.name] === undefined)
+    .map((map) => map.name)
+    .join("\n");
+  useEffect(() => {
+    if (undecoded === "") return;
+    ipc.send({ kind: "MapGenerator", command: { type: "decodeNames", payload: { mapNames: undecoded.split("\n") } } });
+  }, [undecoded]);
 
   const noPicture = (map: TourneyMap) =>
     map.masked ? t("tournaments.maps.hidden") : t("tournaments.maps.noImage");

@@ -49,10 +49,16 @@ export function mapDimensionsByName(name: string, vault: VaultMap[]): { width: n
  * one the client knows. A size off the website's list (`15x15`, `10x20`) is
  * still a size worth showing. "" where nobody knows, or it is secret.
  */
-export function tourneyMapSize(map: TourneyMap, vault: VaultMap[]): string {
+export function tourneyMapSize(map: TourneyMap, vault: VaultMap[], generatedSize?: number): string {
   const stored = map.spec?.size.trim() ?? "";
   if (stored !== "") return stored;
   if (map.masked) return "";
+  // A generated map is in no vault, but its name encodes its size: the map
+  // generator slice decodes it (`decodeNames`), as for a lobby tile.
+  if (generatedSize !== undefined && generatedSize > 0) {
+    const listed = specSizeOf(generatedSize, generatedSize);
+    return listed !== "" ? listed : `${kilometresLabel(generatedSize)}x${kilometresLabel(generatedSize)}`;
+  }
   const dimensions = mapDimensionsByName(map.name, vault);
   if (dimensions === null) return "";
   const listed = specSizeOf(dimensions.width, dimensions.height);
