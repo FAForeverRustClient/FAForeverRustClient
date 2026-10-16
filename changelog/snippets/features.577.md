@@ -1,0 +1,1 @@
+- The large map preview in the Play tab and the generator fits on screen: its map settings take less room under the picture.
