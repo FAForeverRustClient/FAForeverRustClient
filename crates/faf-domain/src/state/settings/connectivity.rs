@@ -20,7 +20,7 @@ pub enum IceAdapter {
     Dynamic,
     /// `faf-ice-adapter`, driven over JSON-RPC.
     Java,
-    /// Experimental Java adapter (v4.0.0).
+    /// Experimental Java adapter (v4.0.1).
     ExpJava,
     /// Experimental faf-pioneer backend. Owns a local GPGNet relay the Java
     /// adapter has no equivalent of.
@@ -32,7 +32,7 @@ impl IceAdapter {
         match self {
             Self::Dynamic => "Dynamic (follows the host)",
             Self::Java => "Java (faf-ice-adapter)",
-            Self::ExpJava => "Exp Java (faf-ice-adapter 4.0.0)",
+            Self::ExpJava => "Exp Java (faf-ice-adapter 4.0.1)",
             Self::Go => "Go (faf-pioneer)",
         }
     }

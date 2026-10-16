@@ -933,7 +933,7 @@ export const en = {
   "lobby.browser.expJavaAdapter": "Exp Java",
   "lobby.browser.moreTags": "+{count} more",
   "lobby.browser.goAdapterTitle": "Hosted on the Go adapter (faf-pioneer). On Dynamic you join on Go automatically; otherwise choose Go in the connectivity settings.",
-  "lobby.browser.expJavaAdapterTitle": "Hosted on the experimental Java adapter (faf-ice-adapter 4.0.0). On Dynamic you join on Exp Java automatically; otherwise choose Exp Java in the connectivity settings.",
+  "lobby.browser.expJavaAdapterTitle": "Hosted on the experimental Java adapter (faf-ice-adapter 4.0.1). On Dynamic you join on Exp Java automatically; otherwise choose Exp Java in the connectivity settings.",
   // The sim-mod tag says how many, and its tooltip says the thing the count
   // does not: whether those mods cost the game its rating. Plural because
   // German needs a different noun form, which a ternary could not express.
@@ -1827,7 +1827,7 @@ export const en = {
   "settings.updates.aNewerVersion": "a newer version",
   "settings.updates.lastChecked": "checked {time}",
   "settings.connectivity.java": "Java (faf-ice-adapter)",
-  "settings.connectivity.expJava": "Exp Java (faf-ice-adapter 4.0.0, experimental)",
+  "settings.connectivity.expJava": "Exp Java (faf-ice-adapter 4.0.1, experimental)",
   "settings.connectivity.go": "Go (faf-pioneer, experimental)",
   // The connectivity check and the live relay view (Settings > Connectivity).
   "settings.connectivityCheck.label": "Connectivity check",
@@ -5205,9 +5205,9 @@ export const en = {
   "lobby.joinProgress.adapter.hostOnGo": "This game runs on the Go adapter (faf-pioneer), so you join on it too.",
   "lobby.joinProgress.adapter.goAgainstHost": "You join on the Go adapter (faf-pioneer) because of your settings, but this game is not marked as hosted on Go. Players on different adapters cannot connect to each other.",
   "lobby.joinProgress.adapter.javaAgainstHost": "You join on the Java adapter (faf-ice-adapter) because of your settings, but this game is hosted on Go. Players on different adapters cannot connect to each other.",
-  "lobby.joinProgress.adapter.hostOnExpJava": "This game runs on the experimental Java adapter (faf-ice-adapter 4.0.0), so you join on it too.",
-  "lobby.joinProgress.adapter.expJavaAgainstHost": "You join on the experimental Java adapter (faf-ice-adapter 4.0.0) because of your settings, but this game is not marked as hosted on it. Players on different adapters cannot connect to each other.",
-  "lobby.joinProgress.adapter.javaAgainstExpJavaHost": "You join on the Java adapter (faf-ice-adapter) because of your settings, but this game is hosted on the experimental Java adapter (4.0.0). Players on different adapters cannot connect to each other.",
+  "lobby.joinProgress.adapter.hostOnExpJava": "This game runs on the experimental Java adapter (faf-ice-adapter 4.0.1), so you join on it too.",
+  "lobby.joinProgress.adapter.expJavaAgainstHost": "You join on the experimental Java adapter (faf-ice-adapter 4.0.1) because of your settings, but this game is not marked as hosted on it. Players on different adapters cannot connect to each other.",
+  "lobby.joinProgress.adapter.javaAgainstExpJavaHost": "You join on the Java adapter (faf-ice-adapter) because of your settings, but this game is hosted on the experimental Java adapter (4.0.1). Players on different adapters cannot connect to each other.",
   "tournaments.publish.notPublic": "Draft: not public yet.",
   "tournaments.publish.hint": "Only people with the link below can see this. Publish it to list it for everyone and open it up.",
   "tournaments.publish.copy": "Copy share link",
