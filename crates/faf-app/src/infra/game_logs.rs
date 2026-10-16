@@ -216,7 +216,10 @@ fn prune(directory: &Path, keep: usize) -> Result<(), String> {
     // the next launch tries again.
     for path in logs.into_iter().take(remove) {
         if let Err(error) = std::fs::remove_file(&path) {
-            tracing::warn!(path = %path.display(), %error, "could not prune an old game log");
+            // The file name and the kind of failure only: the full path holds
+            // the player's profile folder, and client logs get shared.
+            let name = path.file_name().unwrap_or_default().to_string_lossy();
+            tracing::warn!(file = %name, kind = ?error.kind(), "could not prune an old game log");
         }
     }
     Ok(())
