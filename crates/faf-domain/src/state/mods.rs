@@ -459,11 +459,20 @@ pub fn reduce(state: &mut ModsState, event: &ModsEvent) {
                 .chain(removed_ids.iter().copied())
                 .collect();
             state.vault.retain(|item| !changed.contains(&item.mod_id));
-            state.vault.extend(
-                mods.iter()
-                    .filter(|item| !removed_ids.contains(&item.mod_id))
-                    .cloned(),
-            );
+            // One entry per mod, even when a delta lists one twice.
+            for item in mods
+                .iter()
+                .filter(|item| !removed_ids.contains(&item.mod_id))
+            {
+                match state
+                    .vault
+                    .iter_mut()
+                    .find(|known| known.mod_id == item.mod_id)
+                {
+                    Some(known) => *known = item.clone(),
+                    None => state.vault.push(item.clone()),
+                }
+            }
             state.vault_status = ModListStatus::Ready;
             state.vault_progress = None;
         }

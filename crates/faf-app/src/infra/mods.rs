@@ -425,7 +425,7 @@ impl ModsPort for ModsClient {
         )
         .await?;
         let entries = docs.iter().flat_map(parse_vault_mods).collect();
-        let mut batch = crate::infra::catalogue_query::batch(&docs, entries, since)?;
+        let mut batch = crate::infra::catalogue_query::batch(&docs, entries, since, true)?;
         batch
             .entries
             .retain(|item| !batch.removed_ids.contains(&item.mod_id));
@@ -485,7 +485,7 @@ impl ModsPort for ModsClient {
             }
         }
         crate::infra::catalogue_query::complete(&docs)?;
-        let mut batch = crate::infra::catalogue_query::batch(&docs, all_mods, "")?;
+        let mut batch = crate::infra::catalogue_query::batch(&docs, all_mods, "", false)?;
         // Keep withdrawals out of the saved index even if the server ignores
         // the visible-only filter. Delta watermarks still include their dates.
         batch

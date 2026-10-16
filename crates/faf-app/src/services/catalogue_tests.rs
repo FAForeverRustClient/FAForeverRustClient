@@ -29,6 +29,8 @@ struct Script<T> {
     cache: Mutex<Option<CachedCatalogue<T>>>,
     answer: Mutex<Result<CatalogueBatch<T>, String>>,
     requests: Mutex<Vec<String>>,
+    saves: Mutex<u32>,
+    full_fails: AtomicBool,
     block: AtomicBool,
     entered: Notify,
     release: Notify,
@@ -44,6 +46,8 @@ impl<T: Clone> Script<T> {
                 pages: 1,
             })),
             requests: Mutex::new(vec![]),
+            saves: Mutex::new(0),
+            full_fails: AtomicBool::new(false),
             block: AtomicBool::new(false),
             entered: Notify::new(),
             release: Notify::new(),
@@ -54,6 +58,9 @@ impl<T: Clone> Script<T> {
         self.entered.notify_one();
         if self.block.load(Ordering::SeqCst) {
             self.release.notified().await;
+        }
+        if request == "full" && self.full_fails.load(Ordering::SeqCst) {
+            return Err("weekly crawl failed".into());
         }
         self.answer.lock().unwrap().clone()
     }
@@ -135,6 +142,7 @@ impl MapsPort for Script<VaultMap> {
         self.cache.lock().unwrap().clone()
     }
     async fn save_catalogue_cache(&self, cache: CachedCatalogue<VaultMap>) -> Result<(), String> {
+        *self.saves.lock().unwrap() += 1;
         *self.cache.lock().unwrap() = Some(cache);
         Ok(())
     }
@@ -197,6 +205,7 @@ impl ModsPort for Script<VaultMod> {
         self.cache.lock().unwrap().clone()
     }
     async fn save_catalogue_cache(&self, cache: CachedCatalogue<VaultMod>) -> Result<(), String> {
+        *self.saves.lock().unwrap() += 1;
         *self.cache.lock().unwrap() = Some(cache);
         Ok(())
     }
@@ -552,4 +561,86 @@ async fn catalogue_mod_cached_reads_remain_ready_on_failure_and_cancellation() {
         assert_eq!(app.snapshot().mods.vault, before.entries);
         assert_eq!(*script.cache.lock().unwrap(), Some(before));
     }
+}
+
+#[tokio::test]
+async fn catalogue_delta_without_changes_neither_publishes_nor_saves() {
+    let before = CachedCatalogue {
+        newest_change: NEW_CHANGE.into(),
+        ..saved(vec![map(1, 11), map(2, 22)], 0)
+    };
+    let script = Script::new(Some(before.clone()), vec![map(1, 11)]);
+    let app = maps_app(script.clone());
+    let (mut events, _) = app.subscribe_with_snapshot();
+    app.dispatch_and_wait(MapsCommand::LoadVault.into())
+        .await
+        .unwrap();
+    assert_eq!(*script.requests.lock().unwrap(), [NEW_CHANGE]);
+    assert_eq!(*script.saves.lock().unwrap(), 0);
+    assert_eq!(*script.cache.lock().unwrap(), Some(before.clone()));
+    assert_eq!(app.snapshot().maps.vault, before.entries);
+    while let Ok(event) = events.try_recv() {
+        assert!(!matches!(
+            event,
+            AppEvent::Maps(MapsEvent::VaultUpdated { .. })
+        ));
+    }
+}
+
+#[tokio::test]
+async fn catalogue_failed_weekly_crawl_falls_back_to_the_changes() {
+    let script = Script::new(Some(saved(vec![map(1, 11)], 8)), vec![map(1, 12)]);
+    script.full_fails.store(true, Ordering::SeqCst);
+    let app = maps_app(script.clone());
+    app.dispatch_and_wait(MapsCommand::LoadVault.into())
+        .await
+        .unwrap();
+    assert_eq!(*script.requests.lock().unwrap(), ["full", CHANGE]);
+    assert_eq!(app.snapshot().maps.vault, vec![map(1, 12)]);
+    let cache = script.cache.lock().unwrap().clone().unwrap();
+    assert_eq!(cache.entries, vec![map(1, 12)]);
+    assert_eq!(cache.newest_change, NEW_CHANGE);
+    // Still due: the next start tries the weekly crawl again.
+    assert!(cache.needs_full_refresh(Utc::now()));
+
+    let script = Script::new(
+        Some(saved(vec![mod_entry(1, 11)], 8)),
+        vec![mod_entry(1, 12)],
+    );
+    script.full_fails.store(true, Ordering::SeqCst);
+    let app = mods_app(script.clone());
+    app.dispatch_and_wait(ModsCommand::LoadVault.into())
+        .await
+        .unwrap();
+    assert_eq!(*script.requests.lock().unwrap(), ["full", CHANGE]);
+    assert_eq!(app.snapshot().mods.vault, vec![mod_entry(1, 12)]);
+}
+
+#[tokio::test]
+async fn catalogue_mod_check_without_a_published_list_answers_with_the_whole_catalogue() {
+    let script = Script::new(
+        Some(saved(vec![mod_entry(1, 11), mod_entry(2, 22)], 0)),
+        vec![mod_entry(1, 12)],
+    );
+    script.block.store(true, Ordering::SeqCst);
+    let app = mods_app(script.clone());
+    let check = {
+        let app = app.clone();
+        tokio::spawn(async move {
+            app.dispatch_and_wait(ModsCommand::ReloadVault.into())
+                .await
+                .unwrap()
+        })
+    };
+    script.entered.notified().await;
+    // Nothing from the saved copy shows while the server is asked.
+    assert_eq!(app.snapshot().mods.vault_status, ModListStatus::Loading);
+    assert!(app.snapshot().mods.vault.is_empty());
+    script.release.notify_one();
+    check.await.unwrap();
+    assert_eq!(app.snapshot().mods.vault_status, ModListStatus::Ready);
+    assert_eq!(
+        app.snapshot().mods.vault,
+        vec![mod_entry(1, 12), mod_entry(2, 22)]
+    );
 }

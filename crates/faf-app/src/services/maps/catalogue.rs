@@ -1,8 +1,11 @@
 //! Disk-first lookup catalogue loading. Live vault searches use a separate path.
-use crate::ports::catalogue::CachedCatalogue;
+use crate::ports::catalogue::{
+    changes_anything, is_later, merge_changes, CachedCatalogue, CatalogueBatch,
+};
 use crate::runtime::{EventSink, ServiceCtx};
 use chrono::Utc;
-use faf_domain::state::{MapListStatus, MapsEvent};
+use faf_domain::state::{MapListStatus, MapsEvent, VaultMap};
+use tokio_util::sync::CancellationToken;
 
 pub(super) async fn load(ctx: &ServiceCtx, out: &EventSink) {
     crate::runtime::expect_admitted(crate::runtime::Key::MapVault);
@@ -24,41 +27,34 @@ pub(super) async fn load(ctx: &ServiceCtx, out: &EventSink) {
             maps: cache.entries.clone(),
         });
     }
-    let full = cached
+    let mut full = cached
         .as_ref()
         .is_none_or(|cache| cache.needs_full_refresh(Utc::now()));
     let visible = cached.is_none();
     if visible {
         out.emit(MapsEvent::VaultLoading);
     }
-    let started = std::time::Instant::now();
-    let (progress_tx, mut progress_rx) = tokio::sync::mpsc::channel(32);
     let since = cached
         .as_ref()
         .map(|cache| cache.newest_change.clone())
         .unwrap_or_default();
-    let request = async {
-        if full {
-            ctx.ports
-                .maps
-                .catalogue_full(visible.then_some(progress_tx))
-                .await
-        } else {
-            ctx.ports.maps.catalogue_delta(&since).await
-        }
+    let started = std::time::Instant::now();
+    let Some(mut result) = fetch(ctx, out, &cancel, full, visible, &since).await else {
+        return;
     };
-    tokio::pin!(request);
-    let result = loop {
-        tokio::select! {
-            biased;
-            () = cancel.cancelled() => {
-                if visible { out.emit(MapsEvent::VaultCancelled); }
+    // A weekly crawl that fails leaves the saved copy, and without this it
+    // stayed due, so every later start tried the crawl again and nothing
+    // brought the copy up to date in the meantime. A delta still can.
+    if full && cached.is_some() {
+        if let Err(reason) = &result {
+            tracing::warn!(%reason, "map vault: weekly catalogue refresh failed; fetching changes instead");
+            full = false;
+            let Some(delta) = fetch(ctx, out, &cancel, false, false, &since).await else {
                 return;
-            }
-            result = &mut request => break result,
-            Some(progress) = progress_rx.recv(), if visible => out.emit(MapsEvent::VaultProgress { progress }),
+            };
+            result = delta;
         }
-    };
+    }
     let batch = match result {
         Ok(batch) => batch,
         Err(reason) => {
@@ -72,7 +68,6 @@ pub(super) async fn load(ctx: &ServiceCtx, out: &EventSink) {
     tracing::info!(
         full,
         changes = batch.entries.len(),
-        removed = batch.removed_ids.len(),
         pages = batch.pages,
         seconds = started.elapsed().as_secs_f32(),
         "map vault: catalogue refreshed"
@@ -87,18 +82,19 @@ pub(super) async fn load(ctx: &ServiceCtx, out: &EventSink) {
             entries: batch.entries,
         }
     } else {
-        out.emit(MapsEvent::VaultUpdated {
-            maps: batch.entries.clone(),
-        });
         let mut cache = cached.expect("delta has a cache");
-        let changed: std::collections::HashSet<_> =
-            batch.entries.iter().map(|entry| entry.map_id).collect();
-        cache
-            .entries
-            .retain(|entry| !changed.contains(&entry.map_id));
-        cache
-            .entries
-            .extend(batch.entries.into_iter().filter(|entry| !entry.hidden));
+        let key = |map: &VaultMap| map.map_id;
+        let keep = |map: &VaultMap| !map.hidden;
+        let changed = changes_anything(&cache.entries, &batch.entries, key, keep);
+        if changed {
+            out.emit(MapsEvent::VaultUpdated {
+                maps: batch.entries.clone(),
+            });
+            merge_changes(&mut cache.entries, &batch.entries, key, keep);
+        }
+        if !changed && !is_later(&batch.newest_change, &cache.newest_change) {
+            return;
+        }
         cache.newest_change = batch.newest_change;
         cache
     };
@@ -107,6 +103,41 @@ pub(super) async fn load(ctx: &ServiceCtx, out: &EventSink) {
     if !catalogue.newest_change.is_empty() {
         if let Err(reason) = ctx.ports.maps.save_catalogue_cache(catalogue).await {
             tracing::warn!(%reason, "map vault: could not save catalogue cache");
+        }
+    }
+}
+
+/// One read of the catalogue, whole or since `since`, with its progress shown
+/// when `visible`. `None` when it was called off, which has been said already.
+async fn fetch(
+    ctx: &ServiceCtx,
+    out: &EventSink,
+    cancel: &CancellationToken,
+    full: bool,
+    visible: bool,
+    since: &str,
+) -> Option<Result<CatalogueBatch<VaultMap>, String>> {
+    let (progress_tx, mut progress_rx) = tokio::sync::mpsc::channel(32);
+    let request = async {
+        if full {
+            ctx.ports
+                .maps
+                .catalogue_full(visible.then_some(progress_tx))
+                .await
+        } else {
+            ctx.ports.maps.catalogue_delta(since).await
+        }
+    };
+    tokio::pin!(request);
+    loop {
+        tokio::select! {
+            biased;
+            () = cancel.cancelled() => {
+                if visible { out.emit(MapsEvent::VaultCancelled); }
+                return None;
+            }
+            result = &mut request => return Some(result),
+            Some(progress) = progress_rx.recv(), if visible => out.emit(MapsEvent::VaultProgress { progress }),
         }
     }
 }

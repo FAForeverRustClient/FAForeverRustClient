@@ -44,11 +44,25 @@ fn read_at<T: DeserializeOwned>(path: &Path, api_base: &str) -> Option<CachedCat
             return None;
         }
     };
+    // A file that cannot be opened is not unusable, only busy (an antivirus
+    // scan, another instance): it is left for the next start, unlike a file
+    // whose contents are broken, which is discarded below.
+    let file = if metadata.is_file() {
+        match std::fs::File::open(path) {
+            Ok(file) => Some(file),
+            Err(error) => {
+                tracing::warn!(kind = ?error.kind(), "could not open the catalogue cache; left for the next start");
+                return None;
+            }
+        }
+    } else {
+        None
+    };
     let decoded = (|| {
-        if !metadata.is_file() || metadata.len() > MAX_COMPRESSED_BYTES {
+        if metadata.len() > MAX_COMPRESSED_BYTES {
             return None;
         }
-        let file = std::fs::File::open(path).ok()?;
+        let file = file?;
         let mut bytes = Vec::new();
         zstd::stream::read::Decoder::new(file)
             .ok()?

@@ -21,6 +21,10 @@ pub struct ModsContext {
     /// screen.
     search_generation: LatestRequest,
     catalogue: CancellationSlot,
+    /// Held for the length of one load or check of the mod catalogue, so a
+    /// check waits for a background load already running instead of racing it
+    /// to the saved copy, and a load queued behind a check finds it done.
+    catalogue_writer: tokio::sync::Mutex<()>,
     /// The install or update running, by uid, so `CancelInstall` can reach
     /// it. One at most: they are serial on `Key::ModFiles`.
     installs: Cancellable<String>,

@@ -4,15 +4,22 @@ use super::jsonapi::{
 };
 use crate::ports::catalogue::CatalogueBatch;
 
-/// Source-verified against faf-java-api AbstractEntity, Map/Mod and their
-/// version entities: all inherit createTime/updateTime; latestVersion is a
-/// formula, so a version upload need not touch its parent's timestamp.
-/// Authenticated live verification is pending (anonymous API requests return
-/// 401). See docs/vault-catalogue-cache.md. Inclusive bounds replay timestamp
-/// ties safely; do not add the visible-only filter or withdrawals disappear.
+/// How far before the saved change time a delta starts reading. The newest
+/// time is the largest one seen anywhere in a read, so a record that changed
+/// earlier, on a page already fetched, or that was written before a slow
+/// commit, sorts below it and was skipped until the weekly crawl. Reading the
+/// last hour again is harmless: merging is by id.
+const DELTA_OVERLAP: chrono::Duration = chrono::Duration::hours(1);
+
+/// faf-java-api's Map and Mod and their version entities all carry
+/// createTime and updateTime; latestVersion is a formula, so a version upload
+/// need not touch its parent's timestamp, hence the four fields. Inclusive
+/// bounds replay timestamp ties safely; do not add the visible-only filter or
+/// withdrawals disappear. See docs/vault-catalogue-cache.md.
 pub(crate) fn delta_filter(since: &str) -> Result<String, String> {
-    let since = chrono::DateTime::parse_from_rfc3339(since)
+    let since = (chrono::DateTime::parse_from_rfc3339(since)
         .map_err(|_| "invalid catalogue change timestamp".to_string())?
+        - DELTA_OVERLAP)
         .to_rfc3339();
     Ok([
         "updateTime",
@@ -70,10 +77,15 @@ pub(crate) fn complete(docs: &[JsonApiDoc]) -> Result<(), String> {
     Ok(())
 }
 
+/// `strict` for a delta, whose change time must not move past a record it
+/// could not read, or that record would never be read again. A full crawl is
+/// not strict: one malformed record among thousands failed the whole crawl,
+/// on every start of a client with no saved copy; it is skipped and logged.
 pub(crate) fn batch<T>(
     docs: &[JsonApiDoc],
     entries: Vec<T>,
     previous: &str,
+    strict: bool,
 ) -> Result<CatalogueBatch<T>, String> {
     let mut newest = chrono::DateTime::parse_from_rfc3339(previous).ok();
     let mut removed_ids = Vec::new();
@@ -100,7 +112,10 @@ pub(crate) fn batch<T>(
                     }
                 }
                 if !has_timestamp {
-                    return Err("catalogue record has no change timestamps".into());
+                    if strict {
+                        return Err("catalogue record has no change timestamps".into());
+                    }
+                    tracing::warn!(id = %parent.id, "catalogue record has no change timestamps; skipped");
                 }
             }
             if version.is_some_and(|version| value_bool(&version.attributes, "hidden")) {
@@ -116,7 +131,14 @@ pub(crate) fn batch<T>(
     // Never advance past a record that could not be decoded. Otherwise that
     // record might be missed forever by subsequent timestamp deltas.
     if records != entries.len() {
-        return Err("catalogue response is missing latest-version data".into());
+        if strict {
+            return Err("catalogue response is missing latest-version data".into());
+        }
+        tracing::warn!(
+            records,
+            read = entries.len(),
+            "catalogue records without latest-version data were skipped"
+        );
     }
     if records > 0 && newest.is_none() {
         return Err("catalogue response has no change timestamps".into());
@@ -156,16 +178,22 @@ mod tests {
             "included":[{"type":"mapVersion","id":"12","attributes":{"createTime":"2026-10-02T00:00:00Z","updateTime":"2026-10-03T00:00:00Z","hidden":true}},
                 {"type":"player","id":"42","attributes":{"updateTime":"2026-10-15T00:00:00Z"}}]
         })).unwrap();
-        let delta = batch(std::slice::from_ref(&doc), vec![1], "2026-10-01T12:00:00Z").unwrap();
+        let delta = batch(
+            std::slice::from_ref(&doc),
+            vec![1],
+            "2026-10-01T12:00:00Z",
+            true,
+        )
+        .unwrap();
         assert_eq!(delta.newest_change, "2026-10-03T00:00:00+00:00");
         assert_eq!(delta.removed_ids, vec![1]);
-        assert!(batch::<i32>(std::slice::from_ref(&doc), vec![], "").is_err());
+        assert!(batch::<i32>(std::slice::from_ref(&doc), vec![], "", true).is_err());
         let no_change =
-            batch::<i32>(&[JsonApiDoc::default()], vec![], &delta.newest_change).unwrap();
+            batch::<i32>(&[JsonApiDoc::default()], vec![], &delta.newest_change, true).unwrap();
         assert_eq!(no_change.newest_change, delta.newest_change);
         // Inclusive replay is idempotent and cannot move the cursor backwards.
         assert_eq!(
-            batch(&[doc], vec![1], &delta.newest_change)
+            batch(&[doc], vec![1], &delta.newest_change, true)
                 .unwrap()
                 .newest_change,
             delta.newest_change

@@ -48,14 +48,21 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
     }
     // `browse` is one page of a server-side search and is separate from
     // `vault`, which stays the whole catalogue used as a folder-name index.
+    // Twin of the Rust arm: a changed map's entries go, except versions
+    // looked up by folder, and every version is held once.
     case "vaultUpdated": {
       const changed = new Set(event.payload.maps.map((map) => map.mapId));
+      const resolved = new Set(state.resolvedVaultVersions ?? []);
+      const vault = state.vault.filter((map) => !changed.has(map.mapId) || resolved.has(map.versionId));
+      for (const map of event.payload.maps) {
+        if (map.hidden) continue;
+        const at = vault.findIndex((known) => known.versionId === map.versionId);
+        if (at >= 0) vault[at] = map;
+        else vault.push(map);
+      }
       return {
         ...state,
-        vault: [
-          ...state.vault.filter((map) => !changed.has(map.mapId)),
-          ...event.payload.maps.filter((map) => !map.hidden),
-        ],
+        vault,
         vaultStatus: { type: "ready" },
         vaultProgress: null,
       };

@@ -167,7 +167,7 @@ impl MapsPort for MapsClient {
         )
         .await?;
         let entries = docs.iter().flat_map(parse_vault_maps).collect();
-        let mut batch = crate::infra::catalogue_query::batch(&docs, entries, since)?;
+        let mut batch = crate::infra::catalogue_query::batch(&docs, entries, since, true)?;
         batch.removed_ids.clear(); // Hidden map records carry their own removal flag.
         Ok(batch)
     }
@@ -223,7 +223,7 @@ impl MapsPort for MapsClient {
             all_maps.extend(parse_vault_maps(doc));
         }
         crate::infra::catalogue_query::complete(&docs)?;
-        let mut batch = crate::infra::catalogue_query::batch(&docs, all_maps, "")?;
+        let mut batch = crate::infra::catalogue_query::batch(&docs, all_maps, "", false)?;
         // Keep withdrawals out of the saved index even if the server ignores
         // the visible-only filter. Delta watermarks still include their dates.
         batch.entries.retain(|entry| !entry.hidden);

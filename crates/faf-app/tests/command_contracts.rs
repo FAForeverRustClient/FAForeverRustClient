@@ -744,6 +744,16 @@ fn single_flight_cases() -> Vec<SingleFlightCase> {
             probe: client_update_probe(),
         },
         SingleFlightCase {
+            key: "ModVault",
+            setup: vec![],
+            first: ModsCommand::LoadVault.into(),
+            first_gate: "mod-vault".into(),
+            // A second load, as another tab mounting would send.
+            again: ModsCommand::LoadVault.into(),
+            again_gate: "mod-vault".into(),
+            probe: client_update_probe(),
+        },
+        SingleFlightCase {
             key: "Changelog",
             setup: vec![],
             first: ChangelogCommand::Load.into(),

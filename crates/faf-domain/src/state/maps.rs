@@ -504,12 +504,30 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
             state.vault_progress = None;
         }
         MapsEvent::VaultUpdated { maps } => {
+            // A changed map's entries go, all but the versions this session
+            // looked up by folder (`VaultFoldersResolved`): a lobby tile asked
+            // for that exact version, asks once, and lost it to a delta that
+            // only said the map had moved on (or was withdrawn).
             let changed: std::collections::HashSet<i32> =
                 maps.iter().map(|map| map.map_id).collect();
-            state.vault.retain(|map| !changed.contains(&map.map_id));
-            state
-                .vault
-                .extend(maps.iter().filter(|map| !map.hidden).cloned());
+            let resolved: std::collections::HashSet<i32> =
+                state.resolved_vault_versions.iter().copied().collect();
+            state.vault.retain(|known| {
+                !changed.contains(&known.map_id) || resolved.contains(&known.version_id)
+            });
+            // One entry per version: a delta that lists a map twice (its pages
+            // shifted while it was read) or that carries a looked-up version
+            // replaces the entry rather than adding a copy.
+            for map in maps.iter().filter(|map| !map.hidden) {
+                match state
+                    .vault
+                    .iter_mut()
+                    .find(|known| known.version_id == map.version_id)
+                {
+                    Some(known) => *known = map.clone(),
+                    None => state.vault.push(map.clone()),
+                }
+            }
             state.vault_status = MapListStatus::Ready;
             state.vault_progress = None;
         }

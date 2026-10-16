@@ -8387,6 +8387,15 @@ fn transition_cases() -> Vec<Case> {
             MapsEvent::VaultUpdated { maps: vec![conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(3, 33, "third.v0001"), VaultMap { hidden: true, ..conformance_vault_map(2, 22, "second.v0001") }] }.into(),
             MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(3, 33, "third.v0001")] }.into(),
         ]),
+        case("a map catalogue delta keeps a looked-up older version of a changed map and lists each version once", vec![
+            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(1, 11, "first.v0001")] }.into(),
+            MapsEvent::VaultFoldersResolved { maps: vec![conformance_vault_map(1, 10, "first.v0000")] }.into(),
+            MapsEvent::VaultUpdated { maps: vec![conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(1, 10, "first.v0000")] }.into(),
+        ]),
+        case("a mod catalogue delta that lists a mod twice holds it once", vec![
+            ModsEvent::VaultLoaded { mods: vec![vault_mod(1, "old")] }.into(),
+            ModsEvent::VaultUpdated { mods: vec![vault_mod(3, "added"), vault_mod(1, "new"), vault_mod(3, "added")], removed_ids: vec![] }.into(),
+        ]),
         case("mod catalogue deltas replace versions and remove withdrawn mods", vec![
             ModsEvent::VaultLoaded { mods: vec![vault_mod(1, "old"), vault_mod(2, "removed")] }.into(),
             ModsEvent::VaultUpdated { mods: vec![vault_mod(1, "new"), vault_mod(3, "added")], removed_ids: vec![2] }.into(),
