@@ -1,0 +1,1 @@
+- The player info window keeps its size when switching tabs, so the tabs no longer jump around.
