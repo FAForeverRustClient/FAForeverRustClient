@@ -277,7 +277,7 @@ export const UserList = memo(function UserList({
       >
         {flatItems.length === 0 ? (
           users.length > 0 && (
-            <p className="muted chat-empty">No user matches “{filter.trim()}”.</p>
+            <p className="muted chat-empty">{t("chat.roster.noMatch", { filter: filter.trim() })}</p>
           )
         ) : (
           <div className="chat-roster-virtual-track" style={{ height: totalHeight }}>
