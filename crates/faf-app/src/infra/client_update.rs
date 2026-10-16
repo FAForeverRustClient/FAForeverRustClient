@@ -591,13 +591,26 @@ fn pick_asset(assets: Option<&Value>) -> Option<Asset> {
     None
 }
 
-/// Launch the installer and return; it outlives this process.
+/// Install the update and return.
 ///
-/// An `.msi` is data, not a program, so it goes through `msiexec`. Everything
-/// else is executed directly, matching Java's `ProcessBuilder(command)`.
+/// A Linux AppImage replaces the image this process was launched from. An
+/// `.msi` is data, not a program, so it goes through `msiexec`. Everything else
+/// is executed directly, matching Java's `ProcessBuilder(command)`.
 async fn start_installer(path: &Path) -> Result<(), String> {
     if !path.is_file() {
         return Err(format!("{} is no longer there", path.display()));
+    }
+
+    // An AppImage is the installed application, not an installer. Starting the
+    // downloaded copy from the update cache would run the new version once but
+    // leave the AppImage the user normally launches unchanged. Put the new
+    // image over that file instead; the running process keeps using the old
+    // inode until it exits, and the next launch uses the replacement.
+    #[cfg(target_os = "linux")]
+    if path.extension().is_some_and(|ext| ext == "AppImage") {
+        if let Some(installed) = std::env::var_os("APPIMAGE") {
+            return replace_appimage(path, Path::new(&installed));
+        }
     }
 
     #[cfg(unix)]
@@ -622,6 +635,42 @@ async fn start_installer(path: &Path) -> Result<(), String> {
         .spawn()
         .map(|_child| ())
         .map_err(|e| format!("could not start the installer: {e}"))
+}
+
+/// Atomically replace a running AppImage without modifying the inode mounted
+/// by its current process. The temporary file lives beside the installed one,
+/// so the final rename cannot cross filesystems even when the download cache
+/// does.
+#[cfg(target_os = "linux")]
+fn replace_appimage(downloaded: &Path, installed: &Path) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    if !installed.is_file() {
+        return Err(format!(
+            "could not replace the AppImage: {} is no longer there",
+            installed.display()
+        ));
+    }
+    let directory = installed.parent().ok_or_else(|| {
+        format!(
+            "could not resolve the AppImage directory for {}",
+            installed.display()
+        )
+    })?;
+    let temporary = tempfile::NamedTempFile::new_in(directory)
+        .map_err(|e| format!("could not create the replacement AppImage: {e}"))?;
+    std::fs::copy(downloaded, temporary.path())
+        .map_err(|e| format!("could not copy the replacement AppImage: {e}"))?;
+    std::fs::set_permissions(temporary.path(), std::fs::Permissions::from_mode(0o755))
+        .map_err(|e| format!("could not make the replacement AppImage executable: {e}"))?;
+    temporary
+        .as_file()
+        .sync_all()
+        .map_err(|e| format!("could not finish writing the replacement AppImage: {e}"))?;
+    temporary
+        .persist(installed)
+        .map(|_| ())
+        .map_err(|e| format!("could not replace the AppImage: {}", e.error))
 }
 
 /// Reports that the client is current, without asking anyone.
@@ -1023,6 +1072,39 @@ mod tests {
             ..ClientRelease::default()
         };
         assert!(client.installer_path(&release).is_err());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn an_appimage_update_replaces_the_installed_file_atomically() {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        let download_dir = tempfile::tempdir().expect("download directory");
+        let install_dir = tempfile::tempdir().expect("install directory");
+        let downloaded = download_dir.path().join("faf-client-2.0.0.AppImage");
+        let installed = install_dir.path().join("FAForever.AppImage");
+        std::fs::write(&downloaded, b"new appimage").expect("downloaded image");
+        std::fs::write(&installed, b"old appimage").expect("installed image");
+
+        replace_appimage(&downloaded, &installed).expect("replace the image");
+
+        assert_eq!(std::fs::read(&installed).unwrap(), b"new appimage");
+        assert_eq!(
+            std::fs::metadata(&installed).unwrap().permissions().mode() & 0o777,
+            0o755
+        );
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_failed_appimage_copy_leaves_the_installed_file_untouched() {
+        let directory = tempfile::tempdir().expect("install directory");
+        let downloaded = directory.path().join("missing.AppImage");
+        let installed = directory.path().join("FAForever.AppImage");
+        std::fs::write(&installed, b"old appimage").expect("installed image");
+
+        assert!(replace_appimage(&downloaded, &installed).is_err());
+        assert_eq!(std::fs::read(&installed).unwrap(), b"old appimage");
     }
 
     #[tokio::test]
