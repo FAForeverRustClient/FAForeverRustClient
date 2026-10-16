@@ -254,6 +254,21 @@ describe("ReplayRoster outcomes", () => {
     expect(revealedMarkup).not.toContain("Team 1");
   });
 
+  it("gives a lone team its heading above the card, without a summed rating", () => {
+    const teams: ReplayTeam[] = [{
+      team: 1,
+      players: [
+        { name: "P1", faction: 1, rating: 1000, outcome: "", score: null },
+        { name: "P2", faction: 2, rating: 1100, outcome: "", score: null },
+      ],
+    }];
+
+    const markup = renderToStaticMarkup(<ReplayDetailRoster teams={teams} titlesAbove />);
+    expect(markup).toContain('class="replay-detail-team-heading"');
+    expect(markup).toContain("Free for all");
+    expect(markup).not.toContain("replay-detail-team-heading-rating");
+  });
+
   it("labels the sole player team as Players when observers are present", () => {
     const teams: ReplayTeam[] = [
       {
