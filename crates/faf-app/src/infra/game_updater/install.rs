@@ -538,7 +538,13 @@ pub(super) fn documents_vault_dir() -> Option<PathBuf> {
 }
 
 fn slashed(path: &Path) -> String {
-    path.display().to_string().replace('\\', "/")
+    let path = path.display().to_string().replace('\\', "/");
+
+    if cfg!(target_os = "linux") && path.starts_with('/') {
+        format!("Z:{path}")
+    } else {
+        path
+    }
 }
 
 /// Whether every one of the version offsets in `exe_path` already holds
