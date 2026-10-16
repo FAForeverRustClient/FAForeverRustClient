@@ -55,9 +55,10 @@ const IGNORED_FILES = new Map([
   ["ui/src/features/chat/messages/emoji.ts", "the picker's English emoji names and search keywords; translating them is open work"],
 ]);
 
-// Attribute names whose values are machine tokens, never prose.
+// Attribute names whose values are machine tokens, never prose. An SVG's
+// `preserveAspectRatio` ("xMidYMid slice") reads like two words and is not.
 const TECHNICAL_ATTRS =
-  /\b(?:className|key|id|htmlFor|name|type|role|value|href|src|rel|target|autoComplete|inputMode|allow|data-[\w-]+|aria-(?:hidden|current|expanded|haspopup|controls|live|valuetext|labelledby|describedby|selected|checked|disabled|sort))\s*=\s*"[^"]*"/g;
+  /\b(?:className|key|id|htmlFor|name|type|role|value|href|src|rel|target|autoComplete|inputMode|allow|preserveAspectRatio|data-[\w-]+|aria-(?:hidden|current|expanded|haspopup|controls|live|valuetext|labelledby|describedby|selected|checked|disabled|sort))\s*=\s*"[^"]*"/g;
 
 // Object keys carrying machine tokens in this codebase's command shapes.
 const COMMAND_KEYS =
