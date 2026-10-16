@@ -422,6 +422,7 @@ const INITIAL: AppState = {
     playerFaction: { type: "unknown" },
   },
   clientUpdate: {
+    overdue: false,
     status: { type: "idle" },
     currentVersion: "",
     release: null,
@@ -620,7 +621,7 @@ const INITIAL: AppState = {
       iceAdapterConsoleWindow: false,
       mapGeneratorWindow: false,
     },
-    updates: { automatic: true, preRelease: true, showWhatsNew: true, lastSeenVersion: null },
+    updates: { automatic: true, backgroundDownload: false, preRelease: true, showWhatsNew: true, lastSeenVersion: null },
     browsing: {
       customGamesView: "tiles",
       replaysView: "tiles",

@@ -1799,7 +1799,7 @@ export type ClientReleaseNotesStatus = { type: "idle" } | { type: "loading" } | 
 export type ClientUpdateCommand =
 /**
  *  Ask the release source what the newest build is. Runs automatically at
- *  startup unless the user turned that off.
+ *  startup and every six hours.
  */
 { type: "check" } |
 /**  Fetch the installer for the release already in state. */
@@ -1848,6 +1848,8 @@ export type ClientUpdateEvent =
 } } | { type: "upToDate" } | { type: "available"; payload: {
 	release: ClientRelease,
 } } |
+/**  The held release has become required, independently of dismissal. */
+{ type: "overdue" } |
 /**
  *  A check settled, whichever way it went. Separate from the outcome
  *  because the outcome is often identical to the previous one, and "we
@@ -1887,6 +1889,8 @@ export type ClientUpdateEvent =
 
 export type ClientUpdateState = {
 	status: ClientUpdateStatus,
+	/**  The offered release has passed the grace period or the release-count limit. */
+	overdue?: boolean,
 	/**  The running build's version, filled in by the first check. */
 	currentVersion: string,
 	release: ClientRelease | null,
@@ -12944,6 +12948,8 @@ export type UpdatePreferences = {
 	 *  request made before login.
 	 */
 	automatic: boolean,
+	/**  Fetch installers while idle; off by default for slow or metered connections. */
+	backgroundDownload: boolean,
 	/**
 	 *  Also offer prereleases. Java's `preReleaseCheckEnabled`, where it picks
 	 *  between two entirely separate check tasks.
@@ -12975,6 +12981,7 @@ export type UpdatePreferences = {
 /**  A change to [`UpdatePreferences`]. */
 export type UpdatePreferencesPatch = {
 	automatic?: boolean,
+	backgroundDownload?: boolean,
 	preRelease?: boolean,
 	showWhatsNew?: boolean,
 	lastSeenVersion?: string | null,

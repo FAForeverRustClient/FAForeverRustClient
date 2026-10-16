@@ -82,6 +82,8 @@ pub struct UpdatePreferences {
     /// page alone, still sends nothing about the user, and is still the only
     /// request made before login.
     pub automatic: bool,
+    /// Fetch installers while idle; off by default for slow or metered connections.
+    pub background_download: bool,
     /// Also offer prereleases. Java's `preReleaseCheckEnabled`, where it picks
     /// between two entirely separate check tasks.
     ///
@@ -108,6 +110,7 @@ impl Default for UpdatePreferences {
     fn default() -> Self {
         Self {
             automatic: true,
+            background_download: false,
             pre_release: true,
             show_whats_new: true,
             last_seen_version: None,
@@ -137,6 +140,7 @@ impl<'de> Deserialize<'de> for UpdatePreferences {
         #[serde(rename_all = "camelCase", default)]
         struct Wire {
             automatic: bool,
+            background_download: bool,
             pre_release: bool,
             show_whats_new: bool,
             last_seen_version: Option<String>,
@@ -147,6 +151,7 @@ impl<'de> Deserialize<'de> for UpdatePreferences {
                 let defaults = UpdatePreferences::default();
                 Self {
                     automatic: defaults.automatic,
+                    background_download: defaults.background_download,
                     pre_release: defaults.pre_release,
                     show_whats_new: defaults.show_whats_new,
                     last_seen_version: defaults.last_seen_version,
@@ -157,6 +162,7 @@ impl<'de> Deserialize<'de> for UpdatePreferences {
         let wire = Wire::deserialize(deserializer)?;
         Ok(Self {
             automatic: wire.automatic,
+            background_download: wire.background_download,
             pre_release: wire.pre_release,
             show_whats_new: wire.show_whats_new,
             last_seen_version: wire.last_seen_version,
@@ -176,6 +182,7 @@ preference_patch! {
     /// A change to [`UpdatePreferences`].
     UpdatePreferencesPatch for UpdatePreferences {
         automatic: bool,
+        background_download: bool,
         pre_release: bool,
         show_whats_new: bool,
         last_seen_version: Option<String>,
@@ -185,6 +192,23 @@ preference_patch! {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn update_notice_background_download_is_opt_in() {
+        let settings: SettingsState =
+            serde_json::from_str(r#"{"updates":{"automatic":true,"preRelease":true}}"#).unwrap();
+        assert!(!settings.updates.background_download);
+        let patch: UpdatePreferencesPatch =
+            serde_json::from_str(r#"{"backgroundDownload":true}"#).unwrap();
+        let updated = patch.apply_to(settings.updates.clone());
+        assert!(updated.background_download);
+        assert_eq!(updated.automatic, settings.updates.automatic);
+        assert_eq!(updated.pre_release, settings.updates.pre_release);
+        assert_eq!(
+            updated.last_seen_version,
+            settings.updates.last_seen_version
+        );
+    }
 
     #[test]
     fn a_settings_file_from_before_whats_new_shows_it_and_has_seen_nothing() {

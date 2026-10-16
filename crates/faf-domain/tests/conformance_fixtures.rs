@@ -5347,6 +5347,7 @@ fn cases() -> Vec<Case> {
                     },
                 }
                 .into(),
+                ClientUpdateEvent::Overdue.into(),
                 ClientUpdateEvent::DownloadProgressed {
                     received_bytes: 2048,
                     total_bytes: 4096,
@@ -5370,8 +5371,15 @@ fn cases() -> Vec<Case> {
                     version: "0.3.0".into(),
                 }
                 .into(),
+                // Checking again takes the dismissal back.
+                ClientUpdateEvent::CheckStarted {
+                    current_version: "0.2.0".into(),
+                }
+                .into(),
                 // A later check finding nothing must clear the offer, not keep
                 // a dismissed release lying around under an up-to-date status.
+                ClientUpdateEvent::Available { release: ClientRelease { version: "0.4.0".into(), ..ClientRelease::default() } }.into(),
+                ClientUpdateEvent::Overdue.into(),
                 ClientUpdateEvent::UpToDate.into(),
                 ClientUpdateEvent::CheckCompleted {
                     at: "2026-02-01T09:05:00Z".into(),
