@@ -22,6 +22,7 @@ const EMPTY_QUERY = {
 function state(overrides: Partial<MapsState> = {}): MapsState {
   return {
     vault: [],
+    resolvedVaultVersions: [],
     vaultStatus: { type: "idle" },
     vaultProgress: null,
     browse: [],

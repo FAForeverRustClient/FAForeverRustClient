@@ -383,7 +383,10 @@ fn map_generator(command: &MapGeneratorCommand) -> CommandPolicy {
 fn mods(command: &ModsCommand) -> CommandPolicy {
     match command {
         ModsCommand::CancelVaultLoad => PRIORITY,
-        ModsCommand::LoadVault | ModsCommand::ReloadVault => single_flight(Key::ModVault),
+        // A manual check must wait for a quiet startup refresh, then make its
+        // own request and publish completion. Dropping it would leave the UI
+        // waiting for a Loading transition that background reads never emit.
+        ModsCommand::LoadVault | ModsCommand::ReloadVault => serial(Key::ModVault),
         ModsCommand::SearchVault { .. }
         | ModsCommand::LoadInstalled
         | ModsCommand::QueryDownloadSizes { .. } => ORDINARY,
@@ -862,7 +865,7 @@ mod tests {
         );
         assert_eq!(
             admission(ModsCommand::ReloadVault.into()),
-            Admission::SingleFlight(Key::ModVault)
+            Admission::Serial(Key::ModVault)
         );
         assert_eq!(
             admission(

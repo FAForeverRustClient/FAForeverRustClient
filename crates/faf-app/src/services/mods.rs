@@ -9,6 +9,8 @@ use faf_domain::state::{ModListStatus, ModsCommand, ModsEvent};
 
 use crate::runtime::{Cancellable, CancellationSlot, EventSink, LatestRequest, ServiceCtx};
 
+mod catalogue;
+
 /// The mod vault's request generation and the install in flight. Owned by
 /// this service.
 #[derive(Default)]
@@ -38,26 +40,8 @@ fn install_progress(out: &EventSink, uid: &str) -> crate::ports::VaultInstallPro
 pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         ModsCommand::CancelVaultLoad => ctx.mods.catalogue.cancel(),
-        ModsCommand::LoadVault => {
-            // Same guard, same reason, as `services::maps`: one crawl.
-            if out.with_state(|state| {
-                matches!(
-                    state.mods.vault_status,
-                    ModListStatus::Loading | ModListStatus::Ready
-                )
-            }) {
-                return;
-            }
-            crawl_vault(ctx, out).await;
-        }
-        ModsCommand::ReloadVault => {
-            // Asked for by a person, so a loaded catalogue is not a reason to
-            // refuse. A crawl already running is: it is the answer they want.
-            if out.with_state(|state| state.mods.vault_status == ModListStatus::Loading) {
-                return;
-            }
-            crawl_vault(ctx, out).await;
-        }
+        ModsCommand::LoadVault => catalogue::load(ctx, out, false).await,
+        ModsCommand::ReloadVault => catalogue::load(ctx, out, true).await,
         ModsCommand::SearchVault { query } => {
             // Same newest-wins rule as `services::maps`: an older query that
             // answers late must not replace the newer one's page, totals or
@@ -196,53 +180,6 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Ok(installed) => out.emit(ModsEvent::Toggled { installed }),
                 Err(reason) => out.emit(ModsEvent::ToggleFailed { reason }),
             }
-        }
-    }
-}
-
-/// Read the whole catalogue and report it. The caller decides whether a crawl
-/// is wanted; the data already loaded stays on screen until this replaces it.
-async fn crawl_vault(ctx: &ServiceCtx, out: &EventSink) {
-    crate::runtime::expect_admitted(crate::runtime::Key::ModVault);
-    let cancel = ctx.mods.catalogue.begin();
-    out.emit(ModsEvent::VaultLoading);
-    // Logged both ways with its duration, as the map vault's is: the crawl is
-    // many pages, and the Live and Play tabs start it as they open.
-    let started = std::time::Instant::now();
-    tracing::info!("mod vault: loading the catalogue");
-    let (progress_tx, mut progress_rx) = tokio::sync::mpsc::channel(32);
-    let request = ctx.ports.mods.list_vault_with_progress(Some(progress_tx));
-    tokio::pin!(request);
-    let result = loop {
-        tokio::select! {
-            biased;
-            () = cancel.cancelled() => {
-                out.emit(ModsEvent::VaultCancelled);
-                return;
-            }
-            result = &mut request => break result,
-            Some(progress) = progress_rx.recv() => out.emit(ModsEvent::VaultProgress { progress }),
-        }
-    };
-    while let Ok(progress) = progress_rx.try_recv() {
-        out.emit(ModsEvent::VaultProgress { progress });
-    }
-    match result {
-        Ok(mods) => {
-            tracing::info!(
-                mods = mods.len(),
-                seconds = started.elapsed().as_secs_f32(),
-                "mod vault: loaded"
-            );
-            out.emit(ModsEvent::VaultLoaded { mods })
-        }
-        Err(reason) => {
-            tracing::warn!(
-                %reason,
-                seconds = started.elapsed().as_secs_f32(),
-                "mod vault: loading failed"
-            );
-            out.emit(ModsEvent::VaultLoadFailed { reason })
         }
     }
 }

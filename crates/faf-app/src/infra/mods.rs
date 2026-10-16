@@ -389,6 +389,53 @@ impl ModsPort for ModsClient {
         &self,
         progress: Option<tokio::sync::mpsc::Sender<faf_domain::state::maps::CatalogueProgress>>,
     ) -> Result<Vec<VaultMod>, String> {
+        self.catalogue_full(progress)
+            .await
+            .map(|batch| batch.entries)
+    }
+
+    async fn load_catalogue_cache(
+        &self,
+    ) -> Option<crate::ports::catalogue::CachedCatalogue<VaultMod>> {
+        crate::infra::catalogue_cache::read("mods", &self.config.api_base).await
+    }
+
+    async fn save_catalogue_cache(
+        &self,
+        cache: crate::ports::catalogue::CachedCatalogue<VaultMod>,
+    ) -> Result<(), String> {
+        crate::infra::catalogue_cache::write("mods", &self.config.api_base, cache).await
+    }
+
+    async fn catalogue_delta(
+        &self,
+        since: &str,
+    ) -> Result<crate::ports::catalogue::CatalogueBatch<VaultMod>, String> {
+        let token = self
+            .tokens
+            .get()
+            .ok_or_else(|| "not logged in".to_string())?;
+        let docs = crate::infra::catalogue_query::delta(
+            &self.http,
+            &token,
+            &self.config.api_base,
+            "mod",
+            MOD_VAULT_INCLUDE,
+            since,
+        )
+        .await?;
+        let entries = docs.iter().flat_map(parse_vault_mods).collect();
+        let mut batch = crate::infra::catalogue_query::batch(&docs, entries, since)?;
+        batch
+            .entries
+            .retain(|item| !batch.removed_ids.contains(&item.mod_id));
+        Ok(batch)
+    }
+
+    async fn catalogue_full(
+        &self,
+        progress: Option<tokio::sync::mpsc::Sender<faf_domain::state::maps::CatalogueProgress>>,
+    ) -> Result<crate::ports::catalogue::CatalogueBatch<VaultMod>, String> {
         let token = self
             .tokens
             .get()
@@ -437,7 +484,14 @@ impl ModsPort for ModsClient {
                 tracing::warn!(%error, "could not add up the mods' ratings over their versions")
             }
         }
-        Ok(all_mods)
+        crate::infra::catalogue_query::complete(&docs)?;
+        let mut batch = crate::infra::catalogue_query::batch(&docs, all_mods, "")?;
+        // Keep withdrawals out of the saved index even if the server ignores
+        // the visible-only filter. Delta watermarks still include their dates.
+        batch
+            .entries
+            .retain(|entry| !batch.removed_ids.contains(&entry.mod_id));
+        Ok(batch)
     }
 
     async fn download_sizes(&self, targets: Vec<ModDownloadTarget>) -> Vec<ModDownloadSize> {

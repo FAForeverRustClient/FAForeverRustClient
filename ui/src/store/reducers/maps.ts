@@ -17,8 +17,14 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
     // Merged with what folder lookups already added: see the Rust twin.
     case "vaultLoaded": {
       const loaded = new Set(event.payload.maps.map((map) => map.versionId));
-      const resolved = state.vault.filter((map) => !loaded.has(map.versionId));
-      return { ...state, vault: [...event.payload.maps, ...resolved], vaultStatus: { type: "ready" } };
+      const resolvedIds = new Set(state.resolvedVaultVersions ?? []);
+      const resolved = state.vault.filter((map) => resolvedIds.has(map.versionId) && !loaded.has(map.versionId));
+      return {
+        ...state,
+        vault: [...event.payload.maps, ...resolved],
+        vaultStatus: { type: "ready" },
+        vaultProgress: null,
+      };
     }
     case "vaultLoadFailed":
       return { ...state, vaultStatus: { type: "failed", payload: { reason: event.payload.reason } } };
@@ -31,10 +37,29 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
         known.add(map.versionId);
         return true;
       });
-      return added.length === 0 ? state : { ...state, vault: [...state.vault, ...added] };
+      return {
+        ...state,
+        vault: [...state.vault, ...added],
+        resolvedVaultVersions: [...new Set([
+          ...(state.resolvedVaultVersions ?? []),
+          ...event.payload.maps.map((map) => map.versionId),
+        ])],
+      };
     }
     // `browse` is one page of a server-side search and is separate from
     // `vault`, which stays the whole catalogue used as a folder-name index.
+    case "vaultUpdated": {
+      const changed = new Set(event.payload.maps.map((map) => map.mapId));
+      return {
+        ...state,
+        vault: [
+          ...state.vault.filter((map) => !changed.has(map.mapId)),
+          ...event.payload.maps.filter((map) => !map.hidden),
+        ],
+        vaultStatus: { type: "ready" },
+        vaultProgress: null,
+      };
+    }
     case "vaultSearching":
       return {
         ...state,

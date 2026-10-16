@@ -744,16 +744,6 @@ fn single_flight_cases() -> Vec<SingleFlightCase> {
             probe: client_update_probe(),
         },
         SingleFlightCase {
-            key: "ModVault",
-            setup: vec![],
-            first: ModsCommand::LoadVault.into(),
-            first_gate: "mod-vault".into(),
-            // The other command under the key: a reload asked for by a person.
-            again: ModsCommand::ReloadVault.into(),
-            again_gate: "mod-vault".into(),
-            probe: client_update_probe(),
-        },
-        SingleFlightCase {
             key: "Changelog",
             setup: vec![],
             first: ChangelogCommand::Load.into(),

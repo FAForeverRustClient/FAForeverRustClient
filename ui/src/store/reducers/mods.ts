@@ -15,9 +15,22 @@ export function reduceMods(state: ModsState, event: ModsEvent): ModsState {
     case "vaultLoading":
       return { ...state, vaultStatus: { type: "loading" }, vaultProgress: null };
     case "vaultLoaded":
-      return { ...state, vault: event.payload.mods, vaultStatus: { type: "ready" } };
+      return { ...state, vault: event.payload.mods, vaultStatus: { type: "ready" }, vaultProgress: null };
     case "vaultLoadFailed":
       return { ...state, vaultStatus: { type: "failed", payload: { reason: event.payload.reason } } };
+    case "vaultUpdated": {
+      const removed = new Set(event.payload.removedIds);
+      const changed = new Set([...event.payload.mods.map((mod) => mod.modId), ...removed]);
+      return {
+        ...state,
+        vault: [
+          ...state.vault.filter((mod) => !changed.has(mod.modId)),
+          ...event.payload.mods.filter((mod) => !removed.has(mod.modId)),
+        ],
+        vaultStatus: { type: "ready" },
+        vaultProgress: null,
+      };
+    }
     case "vaultSearching":
       return { ...state, browseStatus: { type: "loading" } };
     case "vaultSearched":

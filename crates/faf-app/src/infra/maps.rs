@@ -131,6 +131,51 @@ impl MapsPort for MapsClient {
         &self,
         progress: Option<tokio::sync::mpsc::Sender<faf_domain::state::maps::CatalogueProgress>>,
     ) -> Result<Vec<VaultMap>, String> {
+        self.catalogue_full(progress)
+            .await
+            .map(|batch| batch.entries)
+    }
+
+    async fn load_catalogue_cache(
+        &self,
+    ) -> Option<crate::ports::catalogue::CachedCatalogue<VaultMap>> {
+        crate::infra::catalogue_cache::read("maps", &self.config.api_base).await
+    }
+
+    async fn save_catalogue_cache(
+        &self,
+        cache: crate::ports::catalogue::CachedCatalogue<VaultMap>,
+    ) -> Result<(), String> {
+        crate::infra::catalogue_cache::write("maps", &self.config.api_base, cache).await
+    }
+
+    async fn catalogue_delta(
+        &self,
+        since: &str,
+    ) -> Result<crate::ports::catalogue::CatalogueBatch<VaultMap>, String> {
+        let token = self
+            .tokens
+            .get()
+            .ok_or_else(|| "not logged in".to_string())?;
+        let docs = crate::infra::catalogue_query::delta(
+            &self.http,
+            &token,
+            &self.config.api_base,
+            "map",
+            MAP_VAULT_INCLUDE,
+            since,
+        )
+        .await?;
+        let entries = docs.iter().flat_map(parse_vault_maps).collect();
+        let mut batch = crate::infra::catalogue_query::batch(&docs, entries, since)?;
+        batch.removed_ids.clear(); // Hidden map records carry their own removal flag.
+        Ok(batch)
+    }
+
+    async fn catalogue_full(
+        &self,
+        progress: Option<tokio::sync::mpsc::Sender<faf_domain::state::maps::CatalogueProgress>>,
+    ) -> Result<crate::ports::catalogue::CatalogueBatch<VaultMap>, String> {
         let token = self
             .tokens
             .get()
@@ -177,7 +222,12 @@ impl MapsPort for MapsClient {
         for doc in &docs {
             all_maps.extend(parse_vault_maps(doc));
         }
-        Ok(all_maps)
+        crate::infra::catalogue_query::complete(&docs)?;
+        let mut batch = crate::infra::catalogue_query::batch(&docs, all_maps, "")?;
+        // Keep withdrawals out of the saved index even if the server ignores
+        // the visible-only filter. Delta watermarks still include their dates.
+        batch.entries.retain(|entry| !entry.hidden);
+        Ok(batch)
     }
 
     async fn search_vault(&self, query: MapVaultQuery) -> Result<MapSearchPage, String> {
