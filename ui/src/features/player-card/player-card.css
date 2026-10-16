@@ -914,6 +914,65 @@ button.player-avatar-tile:disabled {
   scrollbar-gutter: stable;
 }
 
+/* The overview's shape while the profile loads (`ProfileSkeleton`): the same
+   tiles and cards, holding pulsing bars. Still while reduced motion is asked
+   for, as the changelog's skeleton is. */
+.player-card-skeleton-tile {
+  min-height: 160px;
+  padding-bottom: var(--space-3);
+}
+
+.player-card-skeleton-card {
+  align-content: start;
+}
+
+.player-card-skeleton-line {
+  display: block;
+  width: 70%;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  animation: player-card-pulse 1.4s ease-in-out infinite;
+}
+
+.player-card-skeleton-line.is-short {
+  width: 40%;
+}
+
+.player-card-skeleton-line.is-title {
+  width: 140px;
+  height: 16px;
+  margin: 6px 0;
+}
+
+.player-card-skeleton-line.is-figure {
+  width: 50%;
+  height: 28px;
+  margin: 4px 0;
+}
+
+/* Read by screen readers, not drawn: the skeleton's status. */
+.player-card-skeleton-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@keyframes player-card-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-card-skeleton-line {
+    animation: none;
+  }
+}
+
 .player-card-loading,
 .player-card-empty {
   display: grid;

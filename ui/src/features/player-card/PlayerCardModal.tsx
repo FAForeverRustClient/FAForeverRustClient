@@ -30,6 +30,7 @@ import { formatNumber, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { formatDate, formatDateTime } from "../../shared/format/dates";
 import { usePlayerMenu } from "../../shared/hooks/usePlayerMenu";
+import { ProfileSkeleton } from "./ProfileSkeleton";
 
 type PlayerCardTab = "overview" | "ratings" | "statistics" | "maps" | "results" | "achievements" | "names" | "clan";
 
@@ -614,7 +615,10 @@ export function PlayerCardModal() {
         )}
       </header>
 
-      {state.profileStatus === "loading" && <div className="player-card-loading muted">{t("playerCard.profileLoading")}</div>}
+      {/* A profile on screen being refreshed says so in a line; a first load
+          shows the overview's shape below instead, so the card opens at about
+          the height it keeps. */}
+      {state.profileStatus === "loading" && profile && <div className="player-card-loading muted">{t("playerCard.profileLoading")}</div>}
       {state.profileStatus === "failed" && (
         // A plain sentence rather than the reason as it was sent ("error
         // sending request for url (...)"), which stays on hover. Retry asks
@@ -647,6 +651,11 @@ export function PlayerCardModal() {
           onSelect={(playerId, login) => void openPlayerCard(playerId, login)}
         />
       </div>
+      {state.profileStatus === "loading" && !profile && (
+        <div className="player-card-content">
+          <ProfileSkeleton />
+        </div>
+      )}
       {profile && (
         <div className="player-card-content" {...sectionPanelProps("player-card", shownTab)}>
           {shownTab === "overview" && (
