@@ -13,6 +13,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { OverlayParentContext, useOverlayLayer } from "../../design-system/useOverlayLayer";
 import { restoreFocus } from "../../design-system/overlayStack";
+import { useMenuKeyboard } from "../../shared/hooks/useMenuKeyboard";
 import { useTranslation } from "../../i18n/useTranslation";
 import { menuPosition, type MenuAnchor } from "../../shared/rules/menuPosition";
 import "../../shared/components/user-menu.css";
@@ -38,14 +39,12 @@ export function ProfileMenu({ target, name, onCopyName, onPlayOffline, onLogOut,
   const previousFocus = useRef<HTMLElement | null>(null);
   useEffect(() => {
     previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    // Opened from the keyboard as well as the mouse: the first entry takes
-    // focus, so the arrow-free menu is still reachable with Tab.
-    menuRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
   }, []);
   const layer = useOverlayLayer(true, () => {
     onClose();
     restoreFocus(previousFocus.current);
   }, { elementRef: menuRef });
+  useMenuKeyboard(menuRef, true, onClose);
   const [position, setPosition] = useState<{ x: number; y: number; maxHeight?: number }>({ x: target.x, y: target.y });
 
   useLayoutEffect(() => {

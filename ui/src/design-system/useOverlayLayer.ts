@@ -12,7 +12,7 @@ import { pushOverlay, type OverlayLayer } from "./overlayStack";
 export const OverlayParentContext = createContext<OverlayLayer | null>(null);
 
 interface Options {
-  /** Keep Tab inside this layer. For dialogs; lists and pickers leave it alone. */
+  /** Keep Tab inside this layer. For dialogs, including picker dialogs. */
   trapsFocus?: boolean;
   /** The element focus returns to when a layer opened above this one closes. */
   elementRef?: RefObject<HTMLElement | null>;

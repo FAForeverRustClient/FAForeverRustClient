@@ -6,7 +6,7 @@
 // player" is gone, and only somebody muted before can still be unmuted; and
 // "Add foe" says what being a foe does.
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { PlayerProfile } from "../../ipc/bindings";
@@ -40,11 +40,21 @@ const online: PlayerProfile = {
   avatarTooltip: "",
 };
 
-function openMenu(name: string, mutedPlayers: string[] = []) {
+function openMenu(name: string, mutedPlayers: string[] = [], nameColor?: string) {
   seedStore((state) => ({
     ...state,
     social: { ...state.social, players: [online] },
-    settings: { ...state.settings, chat: { ...state.settings.chat, mutedPlayers } },
+    settings: {
+      ...state.settings,
+      chat: {
+        ...state.settings.chat,
+        mutedPlayers,
+        nameColors: {
+          ...state.settings.chat.nameColors,
+          players: nameColor ? { [name.toLowerCase()]: nameColor } : {},
+        },
+      },
+    },
   }));
   render(<Harness name={name} />);
   clearSentCommands();
@@ -62,8 +72,12 @@ describe("player menu", () => {
     render(<Modal onClose={onClose} ariaLabel="Replay"><Harness name="Alice" /></Modal>);
     fireEvent.contextMenu(screen.getByText("Alice"));
     const trigger = screen.getByRole("button", { name: "Choose a name color for Alice" });
-    await user.click(trigger);
+    await user.keyboard("{Tab}{Enter}");
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    const picker = screen.getByRole("dialog", { name: "Choose a name color for Alice" });
+    expect(document.activeElement).toBe(within(picker).getAllByRole("slider")[0]);
+    await user.keyboard("{Tab}{Tab}");
+    expect(document.activeElement).toBe(within(picker).getByRole("textbox"));
     await user.keyboard("{Escape}");
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
     expect(screen.getByRole("menu")).toBeTruthy();
@@ -130,5 +144,84 @@ describe("player menu", () => {
   it("offers Unmute for a player muted before the change", () => {
     openMenu("Alice", ["Alice"]);
     expect(entry("Unmute player")).toBeTruthy();
+  });
+
+  it("reaches the name colour with Tab and closes once Tab leaves the menu", async () => {
+    const user = userEvent.setup();
+    openMenu("Alice");
+    const items = screen.getAllByRole("menuitem").filter((item) => !(item as HTMLButtonElement).disabled);
+    expect(document.activeElement).toBe(items[0]);
+    await user.keyboard("{ArrowDown}");
+    expect(document.activeElement).toBe(items[1]);
+    const colour = screen.getByRole("button", { name: "Choose a name color for Alice" });
+    await user.keyboard("{Tab}");
+    expect(document.activeElement).toBe(colour);
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    expect(document.activeElement).toBe(items[1]);
+    await user.keyboard("{Tab}{Tab}");
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it.each([undefined, "#abcdef"])("edits the name colour by keyboard with an existing colour of %s", async (nameColor) => {
+    const user = userEvent.setup();
+    openMenu("Alice", [], nameColor);
+    const trigger = screen.getByRole("button", { name: "Choose a name color for Alice" });
+    await user.keyboard("{Tab}{Enter}");
+    const picker = screen.getByRole("dialog", { name: "Choose a name color for Alice" });
+    const [shade, hue] = within(picker).getAllByRole("slider");
+    const hex = within(picker).getByRole("textbox");
+    expect(document.activeElement).toBe(shade);
+    await user.keyboard("{ArrowRight}{Tab}");
+    expect(document.activeElement).toBe(hue);
+    await user.keyboard("{Tab}");
+    expect(document.activeElement).toBe(hex);
+    clearSentCommands();
+    await user.clear(hex);
+    await user.type(hex, "#123456");
+    expect(sentCommands()).toContainEqual({
+      kind: "Settings",
+      command: { type: "setPlayerNameColor", payload: { player: "Alice", color: "#123456" } },
+    });
+    await user.keyboard("{Tab}");
+    expect(document.activeElement).toBe(shade);
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    expect(document.activeElement).toBe(hex);
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("menu")).toBeTruthy();
+    expect(document.activeElement).toBe(trigger);
+    await user.keyboard("{Tab}");
+    if (nameColor) {
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Clear" }));
+      clearSentCommands();
+      await user.keyboard("{Enter}");
+      expect(sentCommands()).toContainEqual({
+        kind: "Settings",
+        command: { type: "setPlayerNameColor", payload: { player: "Alice", color: null } },
+      });
+      expect(document.activeElement).toBe(trigger);
+      // The mocked store keeps the colour, so Clear stays enabled here.
+      await user.keyboard("{Tab}{Tab}");
+    }
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("keeps the player menu open for pointer input inside its colour picker", async () => {
+    const user = userEvent.setup();
+    openMenu("Alice");
+    await user.click(screen.getByRole("button", { name: "Choose a name color for Alice" }));
+    const picker = screen.getByRole("dialog", { name: "Choose a name color for Alice" });
+    const hex = within(picker).getByRole("textbox");
+    await user.clear(hex);
+    await user.type(hex, "#123456");
+    expect(screen.getByRole("menu")).toBeTruthy();
+    expect(screen.getByRole("dialog")).toBe(picker);
+    expect(sentCommands()).toContainEqual({
+      kind: "Settings",
+      command: { type: "setPlayerNameColor", payload: { player: "Alice", color: "#123456" } },
+    });
+    await user.click(document.body);
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

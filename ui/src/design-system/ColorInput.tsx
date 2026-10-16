@@ -12,12 +12,13 @@
 // body, because two of the places this sits in (a context menu and a card
 // grid) clip their overflow.
 
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 import { clamp01, hexToHsv, hsvToHex, normalizeHex, type Hsv } from "./colorMath";
 import { useTranslation } from "../i18n/useTranslation";
 import { useOverlayLayer } from "./useOverlayLayer";
+import { overlayStack } from "./overlayStack";
 import "./color-input.css";
 
 interface Props {
@@ -35,6 +36,8 @@ interface Props {
 type EyeDropperConstructor = new () => { open: () => Promise<{ sRGBHex: string }> };
 
 const POPOVER_WIDTH = 220;
+// Joined from single selectors, like `Modal`'s, so it never reads as copy.
+const FOCUSABLE = ["button", "input", "[tabindex]"].join(",");
 
 export function ColorInput({ value, onChange, "aria-label": ariaLabel, className, showSwatch = false }: Props) {
   const { t } = useTranslation();
@@ -77,10 +80,31 @@ export function ColorInput({ value, onChange, "aria-label": ariaLabel, className
 
   // Escape closes only the picker: while it is open it is the top of the
   // overlay stack, so a menu or modal underneath stays open.
-  useOverlayLayer(open, () => {
+  const layer = useOverlayLayer(open, () => {
     setOpen(false);
     triggerRef.current?.focus();
-  });
+  }, { trapsFocus: true, elementRef: popoverRef });
+
+  useEffect(() => {
+    if (open) popoverRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus({ preventScroll: true });
+  }, [open]);
+
+  const onPickerKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab" || overlayStack.topFocusTrap() !== layer) return;
+    // The picker is a portal, so its parent's menu cannot include these
+    // controls in its Tab order. Keep focus here until Escape returns it.
+    const controls = Array.from(popoverRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])
+      .filter((element) => element.tabIndex >= 0 && !element.matches(":disabled"));
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  };
 
   const commit = (next: Hsv) => {
     setHsv(next);
@@ -156,6 +180,7 @@ export function ColorInput({ value, onChange, "aria-label": ariaLabel, className
           role="dialog"
           aria-label={ariaLabel}
           style={{ ...position, width: POPOVER_WIDTH }}
+          onKeyDown={onPickerKeyDown}
         >
           <div
             className="color-input-square"
