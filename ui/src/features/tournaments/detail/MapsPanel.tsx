@@ -19,7 +19,7 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
 import { useVaultNameLookup } from "../../../shared/hooks/useVaultNameLookup";
 import { matchVaultMap } from "../../../shared/rules/tourneyRules";
-import { canEnlargeMapPicture, tourneyMapPicture } from "../mapPicture";
+import { canEnlargeMapPicture, generatedMapParts, tourneyMapPicture } from "../mapPicture";
 import { labelForRoundKey } from "../bracket/matchLabels";
 import { needsSizeLookup, tourneyMapSize } from "../mapSizePresentation";
 import { formatMoment } from "../tourneyPresentation";
@@ -86,26 +86,49 @@ function MapTile({
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
-  return (
-    <button
-      type="button"
-      className="tournament-map-tile"
-      disabled={!canEnlargeMapPicture(picture)}
-      onClick={onOpen}
-      title={canEnlargeMapPicture(picture) ? t("common.mapPreview", { name: map.name }) : undefined}
-    >
+  const generated = generatedMapParts(map.name);
+  const content = (
+    <>
       {picture !== "" ? (
         <img src={picture} alt="" loading="lazy" decoding="async" />
       ) : (
         <span className="tournament-map-tile-none">{emptyLabel}</span>
       )}
       <span className="tournament-map-tile-foot">
-        <span className="tournament-map-tile-name">{map.name}</span>
+        {/* A generated map by what it is and its seed, which is what tells
+            two of them apart; the whole technical name is on hover. */}
+        {generated !== null ? (
+          <span className="tournament-map-tile-generated">
+            <span className="tournament-map-tile-name">{t("tournaments.maps.generated")}</span>
+            <span className="tournament-map-tile-seed">
+              {generated.version !== "" ? `${generated.version} · ${generated.seed}` : generated.seed}
+            </span>
+          </span>
+        ) : (
+          <span className="tournament-map-tile-name">{map.name}</span>
+        )}
         {size !== "" && (
           <span className="tournament-map-tile-size">{t("tournaments.maps.sizeShort", { size })}</span>
         )}
       </span>
+    </>
+  );
+  // Only a picture worth enlarging makes the tile a button. Anything else is
+  // drawn as it is rather than as a disabled button: those are dimmed, which
+  // put the generator's art at half strength beside every vault map.
+  return canEnlargeMapPicture(picture) ? (
+    <button
+      type="button"
+      className="tournament-map-tile"
+      onClick={onOpen}
+      title={t("common.mapPreview", { name: map.name })}
+    >
+      {content}
     </button>
+  ) : (
+    <div className="tournament-map-tile is-static" title={map.name}>
+      {content}
+    </div>
   );
 }
 

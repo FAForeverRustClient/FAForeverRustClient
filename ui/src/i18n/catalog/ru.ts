@@ -4036,6 +4036,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "tournaments.maps.closedMex": "Закрытые экстракторы спавнов",
   "tournaments.maps.size": "Размер карты: {size} км",
   "tournaments.maps.sizeShort": "{size} км",
+  "tournaments.maps.generated": "Сгенерированная карта",
   "tournaments.manage.format": "Формат",
   "tournaments.manage.organisers": "Организаторы",
   "tournaments.manage.mutes": "Лишены слова в чате",

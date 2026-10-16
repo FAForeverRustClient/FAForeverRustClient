@@ -43,6 +43,15 @@ describe("the Maps tab", () => {
     expect(html).not.toContain("tournament-badge is-ok");
   });
 
+  it("draws a generated map by its seed, at full strength rather than as a disabled button", () => {
+    const generated = map("g1", "neroxis_map_generator_1.22.2_yzlqo3opnhdoi_ayfqeaa_aaaaaadkw");
+    const html = markup([pool("p1", "Round 1", ["g1"])], [generated]);
+    expect(html).toContain("Generated map");
+    expect(html).toContain("1.22.2 · yzlqo3opnhdoi_ayfqeaa_aaaaaadkw");
+    expect(html).toContain("tournament-map-tile is-static");
+    expect(html).not.toMatch(/<button[^>]*tournament-map-tile[^>]*disabled/);
+  });
+
   it("keeps both sections when a map is outside the pool", () => {
     const html = markup([pool("p1", "Challengers Cup", ["corona", "kappa"])]);
     expect(html).toContain(">All maps<");

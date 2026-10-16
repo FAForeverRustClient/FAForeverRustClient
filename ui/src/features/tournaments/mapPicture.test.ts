@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TourneyMap } from "../../ipc/bindings";
 import { GENERATED_MAP_PLACEHOLDER_URL } from "../../shared/mapPresentation";
-import { canEnlargeMapPicture, tourneyMapPicture } from "./mapPicture";
+import { canEnlargeMapPicture, generatedMapParts, tourneyMapPicture } from "./mapPicture";
 
 function map(name: string, imageUrl = ""): TourneyMap {
   return { id: name, name, imageUrl, description: "", published: true, spec: null, secret: false, masked: false };
@@ -30,5 +30,15 @@ describe("canEnlargeMapPicture", () => {
     expect(canEnlargeMapPicture("https://tournaments.example/map-images/corona.png")).toBe(true);
     expect(canEnlargeMapPicture(GENERATED_MAP_PLACEHOLDER_URL)).toBe(false);
     expect(canEnlargeMapPicture("")).toBe(false);
+  });
+});
+
+describe("generatedMapParts", () => {
+  it("splits a generated name into the generator version and the seed", () => {
+    expect(generatedMapParts(GENERATED)).toEqual({ version: "1.22.2", seed: "yzlqo3opnhdoi_ayfqeaa_aaaaaadkw" });
+  });
+
+  it("is null for an ordinary map", () => {
+    expect(generatedMapParts("Corona")).toBeNull();
   });
 });
