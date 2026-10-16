@@ -62,3 +62,43 @@ describe("a failed sign-in, mounted", () => {
     expect(authCommands()).toEqual([{ kind: "Auth", command: { type: "launchOfflineGame" } }]);
   });
 });
+
+describe("a sign-in whose browser never appeared", () => {
+  const link = "https://hydra.faforever.com/oauth2/auth?client_id=faf-client&state=abc";
+
+  it("offers the link to open by hand, copies it, and drops it when the attempt ends", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    render(<LoginView />);
+
+    authEvent({ type: "loginStarted" });
+    expect(screen.queryByRole("textbox", { name: en["auth.linkLabel"] })).toBeNull();
+
+    authEvent({ type: "signInLinkReady", payload: { url: link } });
+    const field = screen.getByRole<HTMLInputElement>("textbox", { name: en["auth.linkLabel"] });
+    expect(field.value).toBe(link);
+    expect(field.readOnly).toBe(true);
+
+    await user.click(screen.getByRole("button", { name: en["auth.copyLink"] }));
+    expect(writeText).toHaveBeenCalledWith(link);
+    expect(screen.getByRole("button", { name: en["auth.linkCopied"] })).toBeTruthy();
+
+    authEvent({ type: "loggedOut" });
+    expect(screen.queryByRole("textbox", { name: en["auth.linkLabel"] })).toBeNull();
+  });
+
+  it("selects the link for copying by hand when the clipboard is refused", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(() => Promise.reject(new Error("NotAllowedError")));
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    render(<LoginView />);
+
+    authEvent({ type: "loginStarted" });
+    authEvent({ type: "signInLinkReady", payload: { url: link } });
+    await user.click(screen.getByRole("button", { name: en["auth.copyLink"] }));
+    const field = screen.getByRole<HTMLInputElement>("textbox", { name: en["auth.linkLabel"] });
+    expect(document.activeElement).toBe(field);
+    expect(screen.getByRole("button", { name: en["auth.copyLink"] })).toBeTruthy();
+  });
+});

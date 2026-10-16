@@ -1237,7 +1237,14 @@ pub(crate) async fn restore_own_mods_after_replay(generation: Option<u64>) {
     }
 }
 
+/// One read-modify-write of `game.prefs` at a time. Joins, mod toggles, mod
+/// updates and the replay window's restore run on separate command tasks;
+/// interleaved, the later write could land on contents read before the
+/// earlier one finished.
+static GAME_PREFS_WRITE: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 pub(crate) async fn write_active_mod_uids_to_disk(uids: &[String]) -> Result<(), String> {
+    let _write = GAME_PREFS_WRITE.lock().await;
     let path = game_prefs_path();
     // A read failure (missing file, locked, non-UTF-8 bytes, …) must abort,
     // never be treated as an empty file. `game.prefs` is FA's *entire*
@@ -1253,9 +1260,16 @@ pub(crate) async fn write_active_mod_uids_to_disk(uids: &[String]) -> Result<(),
         )
     })?;
     let updated = write_active_mod_uids(&contents, uids);
-    tokio::fs::write(&path, updated)
-        .await
-        .map_err(|e| format!("could not write {}: {e}", path.display()))
+    // Replaced in one step, never truncated and rewritten: a crash or power
+    // loss halfway through a plain write left FA a cut-off file, and FA throws
+    // the whole of an unreadable `game.prefs` away, hotkeys and all.
+    let target = path.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::infra::settings_file::write_atomically(&target, updated.as_bytes())
+    })
+    .await
+    .map_err(|e| format!("the game.prefs writer stopped: {e}"))?
+    .map_err(|e| format!("could not write {}: {e}", path.display()))
 }
 
 /// Byte range `[start, end]` (inclusive) of the **whole**

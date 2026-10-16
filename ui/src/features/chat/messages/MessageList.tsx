@@ -231,8 +231,12 @@ export const MessageList = memo(function MessageList({
     return () => window.removeEventListener("keydown", onFind);
   }, []);
 
+  // Only a request made while this conversation is shown opens its search.
+  // The list is mounted afresh for every conversation, and the count it was
+  // mounted with is an earlier conversation's click, not this one's.
+  const searchRequestAtMount = useRef(searchRequest);
   useEffect(() => {
-    if (searchRequest === 0) return;
+    if (searchRequest === searchRequestAtMount.current) return;
     setSearchOpen(true);
     requestAnimationFrame(() => searchInputRef.current?.focus());
   }, [searchRequest]);
@@ -241,7 +245,10 @@ export const MessageList = memo(function MessageList({
     if (activeMessageId) rowRefs.current.get(activeMessageId)?.scrollIntoView({ block: "center" });
   }, [activeMessageId]);
 
-  // Layout effect so the jump happens before paint: no visible flick.
+  // Layout effect so the jump happens before paint: no visible flick. Keyed
+  // on the newest message as well as the count: a full channel drops its
+  // oldest line for every new one, so from then on the count stays the same.
+  const newestMessageId = messages[messages.length - 1]?.id;
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -252,7 +259,7 @@ export const MessageList = memo(function MessageList({
     } else {
       setMissed(true);
     }
-  }, [messages.length]);
+  }, [messages.length, newestMessageId]);
 
   const onScroll = () => {
     const el = scrollRef.current;
@@ -287,28 +294,35 @@ export const MessageList = memo(function MessageList({
   return (
     <div className="chat-scroll-wrap">
       {searchOpen && (
-        <div className="chat-conversation-search surface-raised" role="search">
-          <Icon name="search" size={15} />
-          <input
-            ref={searchInputRef}
-            value={search}
-            placeholder={t("chat.search.placeholder")}
-            aria-label={t("chat.search.placeholder")}
-            onChange={(event) => { setSearch(event.target.value); setActiveMatch(0); }}
-            onKeyDown={(event) => {
-              if (event.nativeEvent.isComposing) return;
-              if (event.key === "Enter") { event.preventDefault(); navigateSearch(event.shiftKey ? -1 : 1); }
-            }}
-          />
-          <span aria-live="polite">
-            {search.trim() ? (matchingIds.length > 0 ? t("chat.search.counter", { current: normalizedMatch + 1, total: matchingIds.length }) : t("chat.search.noMatches")) : t("chat.search.shortcut")}
-          </span>
+        // A browser's find bar: a small box over the log's top right corner,
+        // not a strip across it. The field is drawn as the player list's
+        // search is, with the match count inside it.
+        <div className="chat-find surface-raised" role="search">
+          <label className="chat-find-field">
+            <Icon name="search" size={14} />
+            <input
+              ref={searchInputRef}
+              value={search}
+              placeholder={t("chat.search.placeholder")}
+              aria-label={t("chat.search.placeholder")}
+              onChange={(event) => { setSearch(event.target.value); setActiveMatch(0); }}
+              onKeyDown={(event) => {
+                if (event.nativeEvent.isComposing) return;
+                if (event.key === "Enter") { event.preventDefault(); navigateSearch(event.shiftKey ? -1 : 1); }
+              }}
+            />
+            <span className="chat-find-count" aria-live="polite">
+              {search.trim() ? (matchingIds.length > 0 ? t("chat.search.counter", { current: normalizedMatch + 1, total: matchingIds.length }) : t("chat.search.noMatches")) : ""}
+            </span>
+          </label>
+          {/* Up for the older match, down for the newer one, as the log runs. */}
           <button type="button" aria-label={t("chat.search.previous")} title={t("chat.search.previous")} disabled={matchingIds.length === 0} onClick={() => navigateSearch(-1)}>
-            <Icon className="is-previous" name="arrowRight" size={14} />
+            <Icon name="chevronUp" size={16} />
           </button>
           <button type="button" aria-label={t("chat.search.next")} title={t("chat.search.next")} disabled={matchingIds.length === 0} onClick={() => navigateSearch(1)}>
-            <Icon name="arrowRight" size={14} />
+            <Icon name="chevronDown" size={16} />
           </button>
+          <span className="chat-find-divider" aria-hidden="true" />
           <button type="button" aria-label={t("chat.search.close")} title={t("chat.search.close")} onClick={closeSearch}>
             <Icon name="close" size={14} />
           </button>
@@ -318,7 +332,7 @@ export const MessageList = memo(function MessageList({
           only, so a reaction count ticking up or the "load older" label
           changing is not announced as if it were a message. */}
       <div
-        className="chat-messages surface-panel"
+        className={`chat-messages surface-panel${searchOpen ? " is-finding" : ""}`}
         ref={scrollRef}
         onScroll={onScroll}
         role="log"

@@ -37,6 +37,8 @@ use crate::runtime::{CancellationSlot, EventSink, ServiceCtx};
 /// The training service's own state. Owned by this service.
 #[derive(Default)]
 pub struct TrainingContext {
+    pub(crate) lesson_results: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    lesson_records_write: std::sync::Arc<tokio::sync::Mutex<()>>,
     /// This account's matchmaker profile, as the hub fetched it for its
     /// recommendations. Kept here rather than in the player card, which is one
     /// shared slot: loading this account into it replaced whatever card the
@@ -44,6 +46,14 @@ pub struct TrainingContext {
     own_profile: std::sync::Mutex<Option<MatchmakerPlayerProfile>>,
     /// The lesson being prepared, so the player can call it off.
     lesson_launch: CancellationSlot,
+}
+
+struct LessonResultGuard(std::sync::Arc<std::sync::atomic::AtomicUsize>);
+
+impl Drop for LessonResultGuard {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+    }
 }
 
 /// The featured mod a catalogue lesson runs on.
@@ -527,6 +537,11 @@ async fn launch_lesson(resource_id: String, ctx: &ServiceCtx, out: &EventSink) {
         return;
     }
 
+    if super::tutorials::game_is_running(ctx, out) {
+        fail("Forged Alliance is running or a multiplayer game is starting. Close it or cancel the launch before starting a lesson.".into());
+        return;
+    }
+
     let log = match ctx
         .ports
         .process
@@ -539,6 +554,9 @@ async fn launch_lesson(resource_id: String, ctx: &ServiceCtx, out: &EventSink) {
             return;
         }
     };
+    let pending_results = ctx.training.lesson_results.clone();
+    pending_results.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    let result_guard = LessonResultGuard(pending_results);
     super::replays::cancel_live_tracking(out);
     out.emit(TrainingEvent::LessonPlaying {
         resource_id: resource_id.clone(),
@@ -548,7 +566,9 @@ async fn launch_lesson(resource_id: String, ctx: &ServiceCtx, out: &EventSink) {
     // long after this command has finished: a task of its own, holding no key.
     let ports = ctx.ports.clone();
     let sink = out.clone();
+    let records_write = ctx.training.lesson_records_write.clone();
     tokio::spawn(async move {
+        let _result_guard = result_guard;
         ports.process.wait_for_exit().await;
         let score = match log {
             Some(path) => match ports.training.read_lesson_log(path).await {
@@ -565,6 +585,7 @@ async fn launch_lesson(resource_id: String, ctx: &ServiceCtx, out: &EventSink) {
             score,
         });
         if score.is_some() {
+            let _write = records_write.lock().await;
             // From the post-reduce state, which is where the best run is
             // decided: the service never computes a record of its own.
             let records = sink.with_state(|state| state.training.lesson_records.clone());

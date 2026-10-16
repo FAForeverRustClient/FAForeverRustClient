@@ -53,7 +53,11 @@ impl FakeAuth {
 
 #[async_trait]
 impl AuthPort for FakeAuth {
-    async fn login(&self, _remember: bool) -> AuthResult<Player> {
+    async fn login(
+        &self,
+        _remember: bool,
+        _link: &(dyn Fn(String) + Send + Sync),
+    ) -> AuthResult<Player> {
         if !self.delay.is_zero() {
             tokio::time::sleep(self.delay).await;
         }

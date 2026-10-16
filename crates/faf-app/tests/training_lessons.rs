@@ -7,6 +7,7 @@
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
@@ -20,10 +21,24 @@ use faf_domain::state::{
     LessonLaunch, LessonPackage, LessonRecord, LessonScore, TrainingCatalogue, TrainingCommand,
     TrainingKind, TrainingResource, TrainingStatus,
 };
-use tokio::sync::{mpsc, Notify};
+use tokio::sync::{mpsc, Notify, Semaphore};
 
 const FOLDER: &str = "FAF_Lesson_Gunships_01";
 const LOG: &str = "C:/logs/offline-1.log";
+
+struct Gate {
+    entered: Semaphore,
+    release: Semaphore,
+}
+
+impl Gate {
+    fn new() -> Arc<Self> {
+        Arc::new(Self {
+            entered: Semaphore::new(0),
+            release: Semaphore::new(0),
+        })
+    }
+}
 
 fn package() -> LessonPackage {
     LessonPackage {
@@ -38,6 +53,8 @@ fn package() -> LessonPackage {
 /// A catalogue holding one lesson, and a record of what was done with it.
 #[derive(Default)]
 struct StubLessons {
+    install_gate: Option<Arc<Gate>>,
+    save_gate: Option<Arc<Gate>>,
     installed: Mutex<Vec<LessonPackage>>,
     install_fails: bool,
     log: String,
@@ -69,6 +86,10 @@ impl TrainingPort for StubLessons {
     }
 
     async fn install_lesson(&self, lesson: LessonPackage) -> Result<(), String> {
+        if let Some(gate) = &self.install_gate {
+            gate.entered.add_permits(1);
+            gate.release.acquire().await.unwrap().forget();
+        }
         if self.install_fails {
             return Err("could not download the lesson".into());
         }
@@ -80,6 +101,10 @@ impl TrainingPort for StubLessons {
         &self,
         records: BTreeMap<String, LessonRecord>,
     ) -> Result<(), String> {
+        if let Some(gate) = &self.save_gate {
+            gate.entered.add_permits(1);
+            gate.release.acquire().await.unwrap().forget();
+        }
         self.saved.lock().unwrap().push(records);
         Ok(())
     }
@@ -95,7 +120,7 @@ impl TrainingPort for StubLessons {
 #[derive(Default)]
 struct ScriptedGame {
     offline: Mutex<Vec<(String, String)>>,
-    running: bool,
+    running: AtomicBool,
     exited: Notify,
 }
 
@@ -105,7 +130,7 @@ impl ProcessPort for ScriptedGame {
         true
     }
     fn game_running(&self) -> bool {
-        self.running
+        self.running.load(Ordering::SeqCst)
     }
     async fn launch_game(&self, _params: GameLaunchParams) -> Result<(), String> {
         Err("a lesson must never go through the lobby launch".into())
@@ -327,7 +352,7 @@ async fn a_running_game_refuses_the_lesson_before_anything_is_downloaded() {
     let h = harness(
         StubLessons::default(),
         ScriptedGame {
-            running: true,
+            running: AtomicBool::new(true),
             ..ScriptedGame::default()
         },
     )
@@ -343,6 +368,74 @@ async fn a_running_game_refuses_the_lesson_before_anything_is_downloaded() {
     assert!(h.updater.seen.lock().unwrap().is_empty());
     assert!(h.lessons.installed.lock().unwrap().is_empty());
     assert!(h.game.offline.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn a_game_started_during_lesson_preparation_is_not_replaced() {
+    let gate = Gate::new();
+    let h = harness(
+        StubLessons {
+            install_gate: Some(gate.clone()),
+            ..StubLessons::default()
+        },
+        ScriptedGame::default(),
+    )
+    .await;
+    h.app.dispatch(launch()).await.unwrap();
+    tokio::time::timeout(std::time::Duration::from_secs(3), gate.entered.acquire())
+        .await
+        .unwrap()
+        .unwrap()
+        .forget();
+    h.game.running.store(true, Ordering::SeqCst);
+    gate.release.add_permits(1);
+    wait_for(&h.app, |app| {
+        matches!(
+            app.snapshot().training.lesson_launch,
+            LessonLaunch::Failed { .. }
+        )
+    })
+    .await;
+    assert!(h.game.offline.lock().unwrap().is_empty());
+    assert!(h.game.running.load(Ordering::SeqCst));
+}
+
+#[tokio::test]
+async fn a_lesson_keeps_shutdown_waiting_until_its_result_is_saved() {
+    let gate = Gate::new();
+    let h = harness(
+        StubLessons {
+            save_gate: Some(gate.clone()),
+            log: format!("INFO: FAF_LESSON_RESULT lesson={FOLDER} stars=2 max=3 seconds=431\n"),
+            ..StubLessons::default()
+        },
+        ScriptedGame::default(),
+    )
+    .await;
+    h.app.dispatch(launch()).await.unwrap();
+    wait_for(&h.app, |app| {
+        matches!(
+            app.snapshot().training.lesson_launch,
+            LessonLaunch::Playing { .. }
+        )
+    })
+    .await;
+    assert!(h.app.lesson_result_pending());
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    h.game.exited.notify_waiters();
+    tokio::time::timeout(std::time::Duration::from_secs(3), gate.entered.acquire())
+        .await
+        .unwrap()
+        .unwrap()
+        .forget();
+    assert!(
+        h.app.lesson_result_pending(),
+        "finishing in state must not bypass the save"
+    );
+    assert!(h.lessons.saved.lock().unwrap().is_empty());
+    gate.release.add_permits(1);
+    wait_for(&h.app, |app| !app.lesson_result_pending()).await;
+    assert_eq!(h.lessons.saved.lock().unwrap().len(), 1);
 }
 
 #[tokio::test]

@@ -19,7 +19,7 @@ import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import type { ChatChannel, ChatStatus, Game, Reaction } from "../../ipc/bindings";
+import type { ChatChannel, ChatMessage, ChatStatus, Game, Reaction } from "../../ipc/bindings";
 import { isPrivateChannel } from "../../store/reducer";
 import { typistsAt } from "../../store/reducers/chat";
 import { CHAT_TABS_ID, ChannelTabs } from "./ChannelTabs";
@@ -240,6 +240,22 @@ export function ChatView() {
     return () => window.clearInterval(timer);
   }, [inPrivateConversation]);
 
+  // Stable across renders, as the list's other handlers are: `MessageList`
+  // and every line in it are memoised, and a fresh function each render
+  // re-rendered all of them on every lobby, social or typing update.
+  const reactInActive = useCallback(
+    (msgid: string, emoji: string) => void react(activeName, msgid, emoji),
+    [activeName],
+  );
+  const unreactInActive = useCallback(
+    (msgid: string, emoji: string) => void unreact(activeName, msgid, emoji),
+    [activeName],
+  );
+  const replyToMessage = useCallback(
+    (message: ChatMessage) => setReplyTo({ msgid: message.msgid ?? "", sender: message.sender }),
+    [],
+  );
+
   const openConversation = useCallback((nick: string) => {
     if (!nick || nick === self) return;
     void joinChannel(nick);
@@ -321,12 +337,12 @@ export function ChatView() {
         <header className="chat-head">
           {(() => {
             const context = channelContext(active, chatStatus);
-            // The head count as the leaderboard shows its players: the people
-            // icon and the count in the text colour, not a grey line of text.
+            // The head count, at the size of the controls beside it: a status
+            // line for the room, not a heading.
             return typeof context === "number" ? (
               <span className="chat-online-count">
-                <Icon name="users" size={16} />
-                <strong>{t("chat.header.online", { count: context })}</strong>
+                <Icon name="users" size={14} />
+                <span>{t("chat.header.online", { count: context })}</span>
               </span>
             ) : (
               <p className="chat-topic" title={active?.topic || undefined}>
@@ -338,7 +354,11 @@ export function ChatView() {
           {gameLinkNotice && <span className="chat-link-notice" role="status">{gameLinkNotice}</span>}
           {/* A button that looks like one, as "More filters" does elsewhere:
               as bare text with an icon it read as a label. */}
-          <Button className="chat-search-button" onClick={() => setSearchRequest((request) => request + 1)}>
+          <Button
+            className="chat-search-button"
+            title={t("chat.search.shortcut")}
+            onClick={() => setSearchRequest((request) => request + 1)}
+          >
             <Icon name="search" size={14} /> {t("chat.search.open")}
           </Button>
           <label className="chat-toggle">
@@ -378,9 +398,9 @@ export function ChatView() {
             social={social}
             preferences={chatPreferences}
             reactions={reactionsByMessage}
-            onReact={(msgid, emoji) => void react(active.name, msgid, emoji)}
-            onUnreact={(msgid, emoji) => void unreact(active.name, msgid, emoji)}
-            onReply={(message) => setReplyTo({ msgid: message.msgid ?? "", sender: message.sender })}
+            onReact={reactInActive}
+            onUnreact={unreactInActive}
+            onReply={replyToMessage}
             findByMsgid={findByMsgid}
             conversationLabel={partyChannelLabel(active.name)}
             searchRequest={searchRequest}

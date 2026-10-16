@@ -5,9 +5,8 @@
 // GPGNet relay down with it, so a game in progress loses its connectivity, not
 // just its chat.
 //
-// The check is a state read rather than a process probe: `JoinState::InGame`
-// means the launch chain reported the game process started, and the launcher's
-// game-exit watcher clears it again.
+// The shell checks online and offline game processes and pending lesson
+// results, then asks through this page once its listener is ready.
 
 import { useEffect, useState } from "react";
 import { Button } from "../../design-system/Button";
@@ -21,18 +20,34 @@ export function ExitGuard() {
 
   useEffect(() => {
     let dispose: (() => void) | undefined;
+    let stopped = false;
     void native
       .onRequestExitConfirm(() => {
         setAsking(true);
       })
       .then((unlisten) => {
+        if (stopped) {
+          unlisten();
+          return;
+        }
         dispose = unlisten;
         // Listening now, so the shell may ask through this page rather than
         // natively. Said after the listener exists, not when the page starts
         // loading: a question sent before it would reach nobody.
         void native.pageReady();
       });
-    return () => dispose?.();
+    // A reload or navigation takes the listener with it. The shell has to
+    // know, or it keeps sending the question to a page that cannot answer.
+    const leaving = () => void native.pageGone();
+    window.addEventListener("pagehide", leaving);
+    return () => {
+      stopped = true;
+      window.removeEventListener("pagehide", leaving);
+      dispose?.();
+      // Unmounted: the error screen replaced the app, so nothing here answers
+      // a close request any more.
+      void native.pageGone();
+    };
   }, []);
 
   if (!asking) return null;

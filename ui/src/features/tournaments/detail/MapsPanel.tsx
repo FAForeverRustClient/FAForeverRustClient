@@ -18,7 +18,8 @@ import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
 import { useVaultNameLookup } from "../../../shared/hooks/useVaultNameLookup";
-import { matchVaultMap, tourneyMapImage } from "../../../shared/rules/tourneyRules";
+import { matchVaultMap } from "../../../shared/rules/tourneyRules";
+import { canEnlargeMapPicture, generatedMapParts, tourneyMapPicture } from "../mapPicture";
 import { labelForRoundKey } from "../bracket/matchLabels";
 import { needsSizeLookup, tourneyMapSize } from "../mapSizePresentation";
 import { formatMoment } from "../tourneyPresentation";
@@ -85,26 +86,49 @@ function MapTile({
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
-  return (
-    <button
-      type="button"
-      className="tournament-map-tile"
-      disabled={picture === ""}
-      onClick={onOpen}
-      title={picture === "" ? undefined : t("common.mapPreview", { name: map.name })}
-    >
+  const generated = generatedMapParts(map.name);
+  const content = (
+    <>
       {picture !== "" ? (
         <img src={picture} alt="" loading="lazy" decoding="async" />
       ) : (
         <span className="tournament-map-tile-none">{emptyLabel}</span>
       )}
       <span className="tournament-map-tile-foot">
-        <span className="tournament-map-tile-name">{map.name}</span>
+        {/* A generated map by what it is and its seed, which is what tells
+            two of them apart; the whole technical name is on hover. */}
+        {generated !== null ? (
+          <span className="tournament-map-tile-generated">
+            <span className="tournament-map-tile-name">{t("tournaments.maps.generated")}</span>
+            <span className="tournament-map-tile-seed">
+              {generated.version !== "" ? `${generated.version} · ${generated.seed}` : generated.seed}
+            </span>
+          </span>
+        ) : (
+          <span className="tournament-map-tile-name">{map.name}</span>
+        )}
         {size !== "" && (
           <span className="tournament-map-tile-size">{t("tournaments.maps.sizeShort", { size })}</span>
         )}
       </span>
+    </>
+  );
+  // Only a picture worth enlarging makes the tile a button. Anything else is
+  // drawn as it is rather than as a disabled button: those are dimmed, which
+  // put the generator's art at half strength beside every vault map.
+  return canEnlargeMapPicture(picture) ? (
+    <button
+      type="button"
+      className="tournament-map-tile"
+      onClick={onOpen}
+      title={t("common.mapPreview", { name: map.name })}
+    >
+      {content}
     </button>
+  ) : (
+    <div className="tournament-map-tile is-static" title={map.name}>
+      {content}
+    </div>
   );
 }
 
@@ -114,7 +138,7 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
   const organiser = event.viewer.organiser;
   const db = event.mapDb;
   const byId = (mapId: string) => db.find((held) => held.id === mapId);
-  const image = (map: TourneyMap) => (map.masked ? "" : tourneyMapImage(map, assetBase, vault));
+  const image = (map: TourneyMap) => (map.masked ? "" : tourneyMapPicture(map, assetBase, vault));
   const sizeOf = (map: TourneyMap) => tourneyMapSize(map, vault);
 
   // Where a map is played directly (pinned to a round), and which pools hold
@@ -143,6 +167,79 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
 
   const noPicture = (map: TourneyMap) =>
     map.masked ? t("tournaments.maps.hidden") : t("tournaments.maps.noImage");
+
+  // One pool holding exactly the maps on show: the pool and "All maps" were
+  // the same tiles twice, the second time with the pool's name on every
+  // card. Then the pool is the only section, and its maps are drawn as the
+  // full cards, spawns and all, without the tag that would only repeat the
+  // heading above them.
+  const visibleIds = new Set(visible.map((map) => map.id));
+  const onlyPool =
+    pools.length === 1 &&
+    visibleIds.size > 0 &&
+    pools[0].mapIds.length === visibleIds.size &&
+    pools[0].mapIds.every((mapId) => visibleIds.has(mapId));
+
+  const mapCard = (map: TourneyMap, showPools: boolean) => {
+    const played = playedIn(map.id);
+    const pooled = showPools ? inPools(map.id) : [];
+    const facts = specRows(map, t);
+    const hidden = organiser && !map.published;
+    const tagged = hidden || map.secret || pooled.length > 0;
+    const unused = organiser && played.length === 0 && inPools(map.id).length === 0;
+    const hasBody =
+      tagged || facts.length > 0 || map.description !== "" || played.length > 0 || unused;
+    return (
+      <article className="tournament-mapdb-card" key={map.id}>
+        <MapTile
+          map={map}
+          size={sizeOf(map)}
+          picture={image(map)}
+          emptyLabel={noPicture(map)}
+          onOpen={() => setEnlarged(map.id)}
+        />
+        {/* What the picture cannot say, under it: which pools hold the map,
+            the spawns, the organiser's note, where it is played. The pool
+            tags say "in pool" on their own. */}
+        {hasBody && (
+          <div className="tournament-mapdb-body">
+            {tagged && (
+              <div className="tournament-mapdb-tags">
+                {pooled.map((name) => (
+                  <span key={name} className="tournament-badge is-ok">
+                    {name}
+                  </span>
+                ))}
+                {map.secret && (
+                  <span className="tournament-badge" title={t("tournaments.maps.secretHint")}>
+                    {t("tournaments.maps.secretBadge", { number: secretNumber(map) })}
+                  </span>
+                )}
+                {hidden && <span className="tournament-badge">{t("tournaments.maps.hidden")}</span>}
+              </div>
+            )}
+            {facts.length > 0 && (
+              <dl className="tournament-mapdb-facts">
+                {facts.map((fact) => (
+                  <div key={fact.label}>
+                    <dt>{fact.label}</dt>
+                    <dd>{fact.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            {map.description !== "" && <p className="tournament-mapdb-desc">{map.description}</p>}
+            {played.length > 0 && (
+              <p className="tournament-mapdb-used">
+                {t("tournaments.maps.playedIn", { rounds: played.join(", ") })}
+              </p>
+            )}
+            {unused && <p className="tournament-mapdb-used muted">{t("tournaments.maps.unused")}</p>}
+          </div>
+        )}
+      </article>
+    );
+  };
 
   const open = enlarged === null ? undefined : byId(enlarged);
   const openPicture = open === undefined ? "" : image(open);
@@ -228,6 +325,13 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
                     )}
                     {pool.mapIds.length === 0 ? (
                       <p className="muted">{t("tournaments.pools.empty")}</p>
+                    ) : onlyPool ? (
+                      <div className="tournament-mapdb-grid">
+                        {pool.mapIds.map((mapId) => {
+                          const map = byId(mapId);
+                          return map === undefined ? null : mapCard(map, false);
+                        })}
+                      </div>
                     ) : (
                       <div className="tournament-pool-tiles">
                         {pool.mapIds.map((mapId) => {
@@ -265,82 +369,23 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
         </section>
       )}
 
-      <section className="tournament-maps-section">
-        <header className="tournament-maps-section-head">
-          <h5>{t("tournaments.maps.all")}</h5>
-          {visible.length > 0 && <span className="tournament-maps-count">{visible.length}</span>}
-        </header>
-        {visible.length === 0 ? (
-          <p className="muted">
-            {t(organiser ? "tournaments.maps.emptyOrganiser" : "tournaments.maps.empty")}
-          </p>
-        ) : (
-          <div className="tournament-mapdb-grid">
-            {visible.map((map) => {
-              const played = playedIn(map.id);
-              const pooled = inPools(map.id);
-              const facts = specRows(map, t);
-              const hidden = organiser && !map.published;
-              const tagged = hidden || map.secret || pooled.length > 0;
-              const unused = organiser && played.length === 0 && pooled.length === 0;
-              const hasBody =
-                tagged || facts.length > 0 || map.description !== "" || played.length > 0 || unused;
-              return (
-                <article className="tournament-mapdb-card" key={map.id}>
-                  <MapTile
-                    map={map}
-                    size={sizeOf(map)}
-                    picture={image(map)}
-                    emptyLabel={noPicture(map)}
-                    onOpen={() => setEnlarged(map.id)}
-                  />
-                  {/* What the picture cannot say, under it: which pools hold
-                      the map, the spawns, the organiser's note, where it is
-                      played. The pool tags say "in pool" on their own. */}
-                  {hasBody && (
-                    <div className="tournament-mapdb-body">
-                      {tagged && (
-                        <div className="tournament-mapdb-tags">
-                          {pooled.map((name) => (
-                            <span key={name} className="tournament-badge is-ok">
-                              {name}
-                            </span>
-                          ))}
-                          {map.secret && (
-                            <span className="tournament-badge" title={t("tournaments.maps.secretHint")}>
-                              {t("tournaments.maps.secretBadge", { number: secretNumber(map) })}
-                            </span>
-                          )}
-                          {hidden && <span className="tournament-badge">{t("tournaments.maps.hidden")}</span>}
-                        </div>
-                      )}
-                      {facts.length > 0 && (
-                        <dl className="tournament-mapdb-facts">
-                          {facts.map((fact) => (
-                            <div key={fact.label}>
-                              <dt>{fact.label}</dt>
-                              <dd>{fact.value}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      )}
-                      {map.description !== "" && <p className="tournament-mapdb-desc">{map.description}</p>}
-                      {played.length > 0 && (
-                        <p className="tournament-mapdb-used">
-                          {t("tournaments.maps.playedIn", { rounds: played.join(", ") })}
-                        </p>
-                      )}
-                      {unused && <p className="tournament-mapdb-used muted">{t("tournaments.maps.unused")}</p>}
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      {!onlyPool && (
+        <section className="tournament-maps-section">
+          <header className="tournament-maps-section-head">
+            <h5>{t("tournaments.maps.all")}</h5>
+            {visible.length > 0 && <span className="tournament-maps-count">{visible.length}</span>}
+          </header>
+          {visible.length === 0 ? (
+            <p className="muted">
+              {t(organiser ? "tournaments.maps.emptyOrganiser" : "tournaments.maps.empty")}
+            </p>
+          ) : (
+            <div className="tournament-mapdb-grid">{visible.map((map) => mapCard(map, true))}</div>
+          )}
+        </section>
+      )}
 
-      {open !== undefined && openPicture !== "" && (
+      {open !== undefined && canEnlargeMapPicture(openPicture) && (
         <MapPreviewDialog
           map={{
             folderName: matchVaultMap(open, vault)?.folderName ?? "",

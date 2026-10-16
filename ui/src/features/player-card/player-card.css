@@ -914,6 +914,65 @@ button.player-avatar-tile:disabled {
   scrollbar-gutter: stable;
 }
 
+/* The overview's shape while the profile loads (`ProfileSkeleton`): the same
+   tiles and cards, holding pulsing bars. Still while reduced motion is asked
+   for, as the changelog's skeleton is. */
+.player-card-skeleton-tile {
+  min-height: 160px;
+  padding-bottom: var(--space-3);
+}
+
+.player-card-skeleton-card {
+  align-content: start;
+}
+
+.player-card-skeleton-line {
+  display: block;
+  width: 70%;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  animation: player-card-pulse 1.4s ease-in-out infinite;
+}
+
+.player-card-skeleton-line.is-short {
+  width: 40%;
+}
+
+.player-card-skeleton-line.is-title {
+  width: 140px;
+  height: 16px;
+  margin: 6px 0;
+}
+
+.player-card-skeleton-line.is-figure {
+  width: 50%;
+  height: 28px;
+  margin: 4px 0;
+}
+
+/* Read by screen readers, not drawn: the skeleton's status. */
+.player-card-skeleton-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@keyframes player-card-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-card-skeleton-line {
+    animation: none;
+  }
+}
+
 .player-card-loading,
 .player-card-empty {
   display: grid;
@@ -922,6 +981,20 @@ button.player-avatar-tile:disabled {
   min-height: 180px;
   padding: var(--space-4);
   text-align: center;
+}
+
+/* Results and Maps while the games are read. Both lists are nearly always
+   longer than the card, so the card takes its full height at once, the
+   height it will have, instead of a 180px strip that jumps to full height a
+   moment later. A player with few games shrinks it once, when they show. */
+.modal-panel.player-card-modal:has(.player-card-tab-loading) {
+  height: min(1120px, calc(100vh - 32px));
+}
+
+.player-card-content:has(> .player-card-tab-loading) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
 }
 
 /* A profile that could not be loaded has no tabs under it, so the notice sits
@@ -1325,6 +1398,17 @@ button.player-avatar-tile:disabled {
   min-height: 300px;
   place-items: center;
   background: var(--color-bg);
+}
+
+/* The rating history before its first points: inside the chart's frame
+   (`player-rating-chart-wrap`) at the plot's 300px, so the card has the
+   chart's height from the start. The 300px is the plot's, inside the frame's
+   padding, as the plot's is. */
+.player-history-chart-loading {
+  display: grid;
+  box-sizing: content-box;
+  height: 300px;
+  place-items: center;
 }
 
 .player-statistics-grid {

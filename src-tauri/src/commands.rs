@@ -191,6 +191,10 @@ pub(crate) fn open_version_folder(name: String, app: tauri::AppHandle) -> Result
 
 #[tauri::command]
 pub(crate) async fn reveal_replay(path: String, app: tauri::AppHandle) -> Result<(), String> {
+    // Never looked at when it names another machine (`picked_paths`).
+    if crate::picked_paths::names_another_machine(&path) {
+        return Err("only replays in the replay folder can be shown".into());
+    }
     let path =
         faf_app::infra::replay::validated_local_replay_path(std::path::Path::new(&path)).await?;
     app.opener()
@@ -349,6 +353,14 @@ pub(crate) fn exit_app(app: tauri::AppHandle) {
 #[tauri::command]
 pub(crate) fn page_ready(app: tauri::AppHandle) {
     crate::exit::page_ready(&app);
+}
+
+/// The page's close confirmation has stopped listening: the app was replaced
+/// by its error screen, or the page is reloading. Closing during a game asks
+/// natively again until the next [`page_ready`].
+#[tauri::command]
+pub(crate) fn page_gone(app: tauri::AppHandle) {
+    crate::exit::page_gone(&app);
 }
 
 /// Which rendering engine the client actually ended up in.

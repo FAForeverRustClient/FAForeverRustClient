@@ -209,8 +209,10 @@ export const ReplayDetailLineup = memo(function ReplayDetailLineup({
       <div className="replay-detail-section-head replay-detail-section-head-end">
         {(!rated || notRated !== null) && (
           <p className="replay-detail-result-reason">
+            {/* In the line, not beside it: beside a reason that wraps, the
+                icon stood apart from the words it belongs to. */}
             <Icon name="info" size={14} />
-            <span>{notRated ?? t("replays.detail.noResultYet")}</span>
+            {notRated ?? t("replays.detail.noResultYet")}
           </p>
         )}
         {rated && (

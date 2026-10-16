@@ -204,7 +204,7 @@ impl ReplayPreparation {
         tracing::info!(map_name, "generating map required by replay playback");
         let mut updates = self
             .map_generator
-            .generate_named(map_name.to_string())
+            .generate_for_launch(map_name.to_string())
             .await;
         let mut outcome = Err("the map generator produced no result".to_string());
         while let Some(crate::ports::GeneratorUpdate::Status(status)) = updates.recv().await {

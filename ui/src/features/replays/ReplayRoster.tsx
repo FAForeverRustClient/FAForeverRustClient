@@ -587,12 +587,16 @@ export function ReplayDetailRoster({
           </span>
         );
         // Above the card: the name over the combined rating, and the outcome
-        // beside them once the result is on screen.
-        const headingAbove = titlesAbove && showHeader && (
+        // beside them once the result is on screen. A lone team has its
+        // heading too ("Free for all", "Players"), without the summed rating,
+        // which says nothing when nobody plays against it. The lineup's result
+        // switch sits on this row; without it the switch was laid over the
+        // card's first names.
+        const headingAbove = titlesAbove && (
           <header className="replay-detail-team-heading">
             <span className="replay-detail-team-heading-text">
               <span className="replay-detail-team-heading-name">
-                {!isSingleTeamGame ? teamName(team.team, soleTeam) : ""}
+                {teamName(team.team, soleTeam)}
               </span>
               {!isSingleTeamGame && teamRating !== null && (
                 <span className="replay-detail-team-heading-rating" title={t("replays.roster.combinedRating")}>

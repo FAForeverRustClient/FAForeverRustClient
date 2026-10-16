@@ -196,31 +196,82 @@ fn route(value: &Value, reply_tx: &mpsc::UnboundedSender<String>) -> Option<RpcN
     })
 }
 
+/// The most a malformed message may hold back while its line end is awaited.
+const MAX_UNPARSED_BYTES: usize = 1 << 20;
+
 /// Drain every complete JSON object from `buffer`, leaving any partial trailing
 /// object for the next read. Handles concatenated and newline-separated objects.
+///
+/// A malformed object is skipped to the end of its line (the adapters write
+/// one message per line) and parsing goes on after it. It used to stay at the
+/// front of the buffer for good: every message after it was dropped, pending
+/// requests timed out, and the buffer grew without bound.
 fn parse_objects(buffer: &mut Vec<u8>) -> Vec<Value> {
-    let mut stream = serde_json::Deserializer::from_slice(buffer).into_iter::<Value>();
     let mut values = Vec::new();
     loop {
-        match stream.next() {
-            Some(Ok(v)) => values.push(v),
-            // Incomplete trailing object: wait for more bytes.
-            Some(Err(e)) if e.is_eof() => break,
-            // Malformed: stop; drain what we consumed so we don't loop forever.
-            Some(Err(_)) => break,
-            None => break,
+        let mut stream = serde_json::Deserializer::from_slice(buffer).into_iter::<Value>();
+        let mut malformed = false;
+        loop {
+            match stream.next() {
+                Some(Ok(v)) => values.push(v),
+                // Incomplete trailing object: wait for more bytes.
+                Some(Err(e)) if e.is_eof() => break,
+                Some(Err(_)) => {
+                    malformed = true;
+                    break;
+                }
+                None => break,
+            }
+        }
+        let consumed = stream.byte_offset();
+        if consumed > 0 {
+            buffer.drain(..consumed);
+        }
+        if !malformed {
+            return values;
+        }
+        match buffer.iter().position(|&byte| byte == b'\n') {
+            Some(newline) => {
+                tracing::warn!(
+                    bytes = newline,
+                    "skipping a malformed message from the adapter"
+                );
+                buffer.drain(..=newline);
+            }
+            None => {
+                // The rest of the bad line has not arrived yet. Bounded, so a
+                // stream that never sends one cannot grow without end.
+                if buffer.len() > MAX_UNPARSED_BYTES {
+                    tracing::warn!("dropping an unparseable adapter stream");
+                    buffer.clear();
+                }
+                return values;
+            }
         }
     }
-    let consumed = stream.byte_offset();
-    if consumed > 0 {
-        buffer.drain(..consumed);
-    }
-    values
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_malformed_message_is_skipped_and_the_next_one_still_arrives() {
+        let mut buf = b"{\"jsonrpc\":\"2.0\",\"method\":\"a\",\"params\":[1]}\n{\"broken\": nope}\n{\"jsonrpc\":\"2.0\",\"method\":\"b\",\"params\":[]}\n".to_vec();
+        let objs = parse_objects(&mut buf);
+        assert_eq!(objs.len(), 2);
+        assert_eq!(objs[0]["method"], "a");
+        assert_eq!(objs[1]["method"], "b");
+        assert!(buf.is_empty());
+
+        // The bad line's end still to come: held, then skipped once it arrives.
+        let mut buf = b"{\"broken\": nope".to_vec();
+        assert!(parse_objects(&mut buf).is_empty());
+        buf.extend_from_slice(b"}\n{\"method\":\"c\"}\n");
+        let objs = parse_objects(&mut buf);
+        assert_eq!(objs.len(), 1);
+        assert_eq!(objs[0]["method"], "c");
+    }
 
     #[test]
     fn parses_newline_separated_objects() {

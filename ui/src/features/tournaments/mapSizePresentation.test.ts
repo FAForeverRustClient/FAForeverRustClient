@@ -61,6 +61,8 @@ describe("needsSizeLookup", () => {
     expect(needsSizeLookup(tourneyMap("Nowhere"), vault)).toBe(true);
     expect(needsSizeLookup(tourneyMap("Test Plateau"), vault)).toBe(false);
     expect(needsSizeLookup(tourneyMap("Hidden Map 1", { masked: true }), vault)).toBe(false);
+    // The vault holds no generated map, so it is never asked for one.
+    expect(needsSizeLookup(tourneyMap("neroxis_map_generator_1.22.2_yzlqo3opnhdoi_ayfqeaa"), vault)).toBe(false);
   });
 });
 

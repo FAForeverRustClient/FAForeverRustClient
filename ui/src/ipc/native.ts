@@ -230,6 +230,15 @@ export const native = {
     return invoke("page_ready");
   },
 
+  /**
+   * Tell the shell the close confirmation has stopped listening (unmounted by
+   * the error screen, or the page is unloading), so a close during a game is
+   * asked natively again instead of sent to nobody.
+   */
+  pageGone(): Promise<void> {
+    return invoke("page_gone");
+  },
+
   closeWindow(): Promise<void> {
     return invoke("exit_app");
   },

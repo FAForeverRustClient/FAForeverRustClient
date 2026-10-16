@@ -360,7 +360,7 @@ async fn a_lesson_is_refused_while_the_game_is_running() {
             reason,
         } => {
             assert_eq!(tutorial_id, 7, "the failure names the lesson it is about");
-            assert!(reason.contains("already running"), "{reason}");
+            assert!(reason.contains("running"), "{reason}");
         }
         other => panic!("expected a refusal, got {other:?}"),
     }

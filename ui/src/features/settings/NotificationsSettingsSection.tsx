@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { native } from "../../ipc/native";
+import { plainError } from "../../shared/plainError";
 import type { SampleSound, ToneSound } from "../notifications/notificationSound";
 import {
   customSoundName,
@@ -260,8 +261,8 @@ export function NotificationsSettingsSection() {
           reason goes here, beside the switch that owns all of them, rather
           than in the row that happened to open the dialog. */}
       {soundError !== "" && (
-        <p className="settings-inline-error" role="alert">
-          {t("settings.notifications.sound.importFailed", { reason: soundError })}
+        <p className="settings-inline-error" role="alert" title={soundError}>
+          {t("settings.notifications.sound.importFailed", { reason: plainError(soundError) })}
         </p>
       )}
       <SettingRow label={t("settings.notifications.volume")}>

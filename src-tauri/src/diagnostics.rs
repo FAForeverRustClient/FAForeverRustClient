@@ -169,8 +169,11 @@ where
                 .then_with(|| left.cmp(right))
         });
         let remove_count = files.len().saturating_sub(self.max_files);
+        // Best effort: an old log that cannot be removed (read-only, held open
+        // without delete sharing) must not stop the client from starting or
+        // from logging. This is the logger, so there is nowhere to report it.
         for path in files.into_iter().take(remove_count) {
-            std::fs::remove_file(path)?;
+            let _ = std::fs::remove_file(path);
         }
         Ok(())
     }

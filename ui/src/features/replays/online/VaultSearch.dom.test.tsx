@@ -5,7 +5,7 @@
 // form but not searched for yet must survive that, and a new search must still
 // replace the form with what was actually searched.
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { AppCommand, ReplayQuery } from "../../../ipc/bindings";
@@ -47,7 +47,13 @@ const searches = () =>
       : [],
   );
 
-const titleField = () => screen.getByPlaceholderText<HTMLInputElement>("Any title");
+// The lobby title is under "More filters": opened first where it is closed.
+const titleField = () => {
+  const shown = screen.queryByPlaceholderText<HTMLInputElement>("Any title");
+  if (shown) return shown;
+  fireEvent.click(screen.getByRole("button", { name: /More filters/ }));
+  return screen.getByPlaceholderText<HTMLInputElement>("Any title");
+};
 
 describe("Online replay search and paging", () => {
   it("keeps unsubmitted filters when the results per page change", async () => {

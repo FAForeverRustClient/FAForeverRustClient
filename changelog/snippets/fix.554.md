@@ -1,0 +1,1 @@
+- Online features no longer stop working about an hour after signing in without "Stay signed in".

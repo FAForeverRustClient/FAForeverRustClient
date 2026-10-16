@@ -36,7 +36,8 @@
 // change can still be unmuted here.
 
 import { OverlayParentContext, useOverlayLayer } from "../../design-system/useOverlayLayer";
-import { restoreFocus } from "../../design-system/overlayStack";
+import { overlayStack, restoreFocus } from "../../design-system/overlayStack";
+import { useMenuKeyboard } from "../hooks/useMenuKeyboard";
 import { ColorInput } from "../../design-system/ColorInput";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -127,6 +128,7 @@ export function UserMenu({
     onClose();
     restoreFocus(previousFocus.current);
   }, { elementRef: menuRef });
+  useMenuKeyboard(menuRef, true, onClose);
   const [position, setPosition] = useState<{ x: number; y: number; maxHeight?: number }>({ x: target.x, y: target.y });
 
   const { nickname, profile } = target;
@@ -211,7 +213,7 @@ export function UserMenu({
   // Dismiss on anything that isn't a click inside the menu.
   useEffect(() => {
     const onPointerDown = (e: PointerEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) onClose();
+      if (!overlayStack.contains(layer, e.target as Node)) onClose();
     };
     window.addEventListener("pointerdown", onPointerDown, true);
     window.addEventListener("resize", onClose);
@@ -219,7 +221,7 @@ export function UserMenu({
       window.removeEventListener("pointerdown", onPointerDown, true);
       window.removeEventListener("resize", onClose);
     };
-  }, [onClose]);
+  }, [layer, onClose]);
 
   // Rendered into `document.body`, the way every other floating layer in this
   // client is. It is `position: fixed` and was not, which is fine for as long
@@ -278,7 +280,14 @@ export function UserMenu({
           <button
             type="button"
             disabled={!nameColor}
-            onClick={() => actions.setNameColor(nickname, null)}
+            onClick={(event) => {
+              actions.setNameColor(nickname, null);
+              // The button disables itself, which would drop focus out of
+              // the menu; the colour swatch beside it takes it instead.
+              event.currentTarget.parentElement
+                ?.querySelector<HTMLElement>(".chat-user-menu-color-swatch")
+                ?.focus();
+            }}
           >
             {t("chat.menu.clear")}
           </button>

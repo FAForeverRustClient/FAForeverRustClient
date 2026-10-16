@@ -69,8 +69,12 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
                 return;
             }
             out.emit(AuthEvent::LoginStarted);
+            // The address the browser sign-in waits on, for the login screen's
+            // Copy button. The reducer ignores it once the attempt has ended.
+            let sink = out.clone();
+            let link = move |url: String| sink.emit(AuthEvent::SignInLinkReady { url });
             let result = tokio::select! {
-                res = ctx.ports.auth.login(remember) => Some(res),
+                res = ctx.ports.auth.login(remember, &link) => Some(res),
                 _ = token.cancelled() => None,
             };
             let player = match result {

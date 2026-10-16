@@ -104,22 +104,24 @@
   margin-top: 20px;
 }
 
-/* The second row: every range slider, side by side, always shown. Each
-   fills its column rather than stopping at the slider's own 240px cap, which
-   left a gap after every track on a wide window. */
+/* The second row: every range slider, side by side, always shown. Columns of
+   one width, 260px, as many as fit: stretched to fill the row, the tracks grew
+   with the window and a wide screen got sliders a third of a metre long. The
+   spare width stays at the row's end, a narrow window wraps the sliders onto
+   a second line of the same columns, and a panel narrower than one column
+   gives the slider all of it. */
 .online-search-sliders {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 260px));
+  align-items: end;
   gap: var(--space-2) var(--space-4);
 }
 
 .online-search-sliders > .range-slider {
-  flex: 1 1 180px;
   max-width: none;
 }
 
-/* The sort and its direction, as one block at the start of the row. */
+/* The sort and its direction, as one block in the fields row. */
 .online-search-sort {
   display: flex;
   flex: none;
@@ -1207,19 +1209,20 @@ button.vault-input {
   min-width: 0;
 }
 
+/* The icon is part of the text's first line, so it stays next to the words
+   when the reason wraps instead of standing off at the box's far edge. */
 .replay-detail-result-reason {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   min-width: 0;
   margin: 0;
   color: var(--color-muted);
   font-size: 12px;
   line-height: 1.35;
+  text-wrap: balance;
 }
 
 .replay-detail-result-reason > svg {
-  flex-shrink: 0;
+  margin-right: 5px;
+  vertical-align: -3px;
 }
 
 .replay-detail-reveal-btn {
@@ -1388,6 +1391,12 @@ button.vault-input {
   height: 24px;
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
+}
+
+/* Until the result is revealed there is no rating change to show, and the
+   44px kept for it came out of the name: in a narrow card, most of it. */
+.replay-player-stats:empty {
+  display: none;
 }
 
 .replay-player-rating {
@@ -2742,21 +2751,46 @@ input.replay-options-filter {
    the headings' row, which is exactly as tall (see `.replay-detail-team-heading`);
    the second team's heading keeps to the left of its column, so the two do
    not meet. With no switch the head is not drawn at all. */
-.replay-detail-lineup:has(> .replay-detail-section-head-end) {
+/* Only where that is true: two teams facing each other, or one alone. With
+   three or more, the grid fills the row with headings and the last one sits
+   exactly where the switch would, so the reason and the heading ran into
+   each other; there the head stays on a line of its own above the teams. */
+.replay-detail-section-head-end {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+.replay-detail-lineup:has(> .replay-detail-section-head-end):has(.replay-detail-teams:is([data-layout="versus"], [data-sole-team="true"])) {
   position: relative;
 }
 
-.replay-detail-section-head-end {
+.replay-detail-lineup:has(.replay-detail-teams:is([data-layout="versus"], [data-sole-team="true"])) > .replay-detail-section-head-end {
   position: absolute;
   top: var(--space-3);
   right: 0;
   z-index: 1;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
   max-width: calc(50% - 190px);
   height: 38px;
   min-height: 0;
   margin: 0;
+}
+
+/* A lone team's heading is a short name at the left, so the reason may take
+   the rest of the row and keep to one line. */
+.replay-detail-lineup:has(.replay-detail-teams[data-sole-team="true"]) > .replay-detail-section-head-end {
+  max-width: calc(100% - 220px);
+}
+
+/* A narrow dialog leaves the second team's half too little room beside its
+   heading: the reason went down one word a line, over the card. There the
+   head takes a line of its own again, above the teams. */
+@container (max-width: 860px) {
+  .replay-detail-lineup:has(.replay-detail-teams:is([data-layout="versus"], [data-sole-team="true"])) > .replay-detail-section-head-end {
+    position: static;
+    max-width: none;
+    height: auto;
+    margin-bottom: var(--space-2);
+  }
 }
 
 /* A long reason wraps onto a second line rather than pushing into the
@@ -2779,6 +2813,21 @@ input.replay-options-filter {
    on one row. No rule under them: the cards start the lineup by themselves. */
 .replay-detail-teams[data-titles-above="true"] {
   row-gap: 0;
+}
+
+/* Three or more teams wrap onto further rows. The grid's row gap is also the
+   gap between one row's cards and the next row's headings, and at 0 the
+   fifth team's name sat on the first team's card. Each column keeps its own
+   gap between heading and card (below), so this one only parts the rows. */
+.replay-detail-teams[data-titles-above="true"]:not([data-layout="versus"]) {
+  row-gap: var(--space-4);
+}
+
+/* Narrow cards, one per team in a grid, cannot spare a width nobody uses.
+   The avatar column is kept only in a team where somebody has an avatar; in
+   the others the names start where the avatars would have. */
+.replay-detail-teams:not([data-layout="versus"]) .replay-detail-team:not(:has(.replay-player-avatar > img)) .replay-player-avatar {
+  display: none;
 }
 
 .replay-detail-team-column {
@@ -2862,4 +2911,13 @@ input.replay-options-filter {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 2px var(--space-4);
+}
+
+/* More than four names go down two columns (`is-split`). The repeating
+   tracks above gave that grid as many columns as the card was wide, two
+   filled and the rest empty, so the second column landed wherever the third
+   track happened to start. Two tracks, each as wide as a team card's. */
+.replay-detail-team-column:only-child .replay-detail-roster.is-split,
+.replay-detail-team:only-child .replay-detail-roster.is-split {
+  grid-template-columns: repeat(2, minmax(0, 420px));
 }

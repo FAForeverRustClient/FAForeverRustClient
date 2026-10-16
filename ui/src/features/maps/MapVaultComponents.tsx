@@ -84,7 +84,7 @@ export function MapCard({
       <button
         className="map-vault-card-main"
         onClick={onSelect}
-        aria-label={`View ${map.displayName}`}
+        aria-label={t("maps.vault.viewMap", { name: map.displayName })}
       >
         <span className="map-vault-image-wrap">
           <MapPreview map={map} />

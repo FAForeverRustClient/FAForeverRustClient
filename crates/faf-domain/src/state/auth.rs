@@ -112,6 +112,14 @@ pub struct AuthState {
     pub player: Option<Player>,
     pub error: Option<String>,
     pub mode: AuthMode,
+    /// The address a browser sign-in waits on, while it waits.
+    ///
+    /// Shown on the login screen with a Copy button: a browser that never
+    /// opened (no default browser, a launcher that failed quietly) leaves the
+    /// player a way in through any browser on this machine. It is the
+    /// public authorize address; the secret half of the exchange never
+    /// leaves the client. Cleared by everything that ends the attempt.
+    pub sign_in_link: Option<String>,
 }
 
 /// The only way [`AuthState`] changes.
@@ -119,6 +127,11 @@ pub struct AuthState {
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum AuthEvent {
     LoginStarted,
+    /// The browser sign-in is waiting on `url`. Only meaningful while a
+    /// sign-in is in progress; a late one after it ended is ignored.
+    SignInLinkReady {
+        url: String,
+    },
     LoggedIn {
         player: Player,
     },
@@ -174,6 +187,13 @@ pub fn reduce(state: &mut AuthState, event: &AuthEvent) {
         AuthEvent::LoginStarted => {
             state.status = AuthStatus::LoggingIn;
             state.error = None;
+            state.sign_in_link = None;
+        }
+        AuthEvent::SignInLinkReady { url } => {
+            if state.status == AuthStatus::LoggingIn {
+                state.sign_in_link = Some(url.clone());
+            }
+            return;
         }
         AuthEvent::LoggedIn { player } => {
             state.status = AuthStatus::LoggedIn;
@@ -215,6 +235,10 @@ pub fn reduce(state: &mut AuthState, event: &AuthEvent) {
             state.mode = AuthMode::Account;
         }
     }
+    // Every event but the link itself ends or restarts the attempt it was for.
+    if !matches!(event, AuthEvent::LoginStarted) {
+        state.sign_in_link = None;
+    }
 }
 
 #[cfg(test)]
@@ -230,6 +254,38 @@ mod tests {
             roles: roles.iter().map(|role| (*role).to_string()).collect(),
             ..player()
         }
+    }
+
+    #[test]
+    fn the_sign_in_link_lives_only_as_long_as_the_attempt() {
+        let link = || AuthEvent::SignInLinkReady {
+            url: "https://hydra.example/oauth2/auth?state=x".into(),
+        };
+        let mut s = AuthState::default();
+        reduce(&mut s, &link());
+        assert_eq!(s.sign_in_link, None, "no attempt, no link");
+
+        for ending in [
+            AuthEvent::LoggedIn { player: player() },
+            AuthEvent::LoginFailed {
+                message: "timed out".into(),
+            },
+            AuthEvent::LoggedOut,
+            AuthEvent::WentOffline,
+        ] {
+            let mut s = AuthState::default();
+            reduce(&mut s, &AuthEvent::LoginStarted);
+            reduce(&mut s, &link());
+            assert!(s.sign_in_link.is_some());
+            reduce(&mut s, &ending);
+            assert_eq!(s.sign_in_link, None, "{ending:?} ends the attempt");
+        }
+
+        let mut s = AuthState::default();
+        reduce(&mut s, &AuthEvent::LoginStarted);
+        reduce(&mut s, &link());
+        reduce(&mut s, &AuthEvent::LoginStarted);
+        assert_eq!(s.sign_in_link, None, "a new attempt waits for its own link");
     }
 
     #[test]

@@ -23,6 +23,9 @@ use tokio::task::JoinHandle;
 const PATIENCE: Duration = Duration::from_secs(5);
 
 /// A port call held until the test lets it through.
+/// What the staging port reports as the address its browser sign-in waits on.
+const SIGN_IN_LINK: &str = "https://hydra.example/oauth2/auth?state=test";
+
 struct Gate {
     entered: Semaphore,
     release: Semaphore,
@@ -84,13 +87,18 @@ struct StagingAuth {
 
 #[async_trait]
 impl AuthPort for StagingAuth {
-    async fn login(&self, remember: bool) -> AuthResult<Player> {
+    async fn login(
+        &self,
+        remember: bool,
+        link: &(dyn Fn(String) + Send + Sync),
+    ) -> AuthResult<Player> {
         self.session.lock().unwrap().staged = None;
+        link(SIGN_IN_LINK.into());
         self.profile.pass().await;
         if self.profile_fails {
             return Err(AuthError::new("Could not load profile (/me returned 500)"));
         }
-        self.session.lock().unwrap().staged = Some((remember, remember));
+        self.session.lock().unwrap().staged = Some((remember, true));
         Ok(Player::new(7, "Ada"))
     }
 
@@ -236,6 +244,11 @@ async fn a_sign_in_called_off_during_the_profile_request_leaves_no_session() {
 
         let login = h.spawn(AuthCommand::Login { remember: true }.into());
         h.profile.wait_entered(name).await;
+        assert_eq!(
+            h.app.snapshot().auth.sign_in_link.as_deref(),
+            Some(SIGN_IN_LINK),
+            "{name}: the waiting sign-in offers its link"
+        );
         h.run(name, call_off).await;
         finish(&format!("{name}: the cancelled login"), login).await;
         // The profile answering now must change nothing.
@@ -246,6 +259,10 @@ async fn a_sign_in_called_off_during_the_profile_request_leaves_no_session() {
         assert_eq!(session.staged, None, "{name}: a session stayed staged");
         let auth = h.app.snapshot().auth;
         assert_eq!((auth.status, auth.mode), (status, mode), "{name}");
+        assert_eq!(
+            auth.sign_in_link, None,
+            "{name}: the link outlived the sign-in"
+        );
         assert_ne!(
             auth.player.map(|player| player.id),
             Some(7),
@@ -289,7 +306,7 @@ async fn a_successful_sign_in_is_published_and_remembered_as_before() {
                 staged: None,
                 access_token: true,
                 refresh_token_saved: remember,
-                renewing: remember,
+                renewing: true,
                 logouts: 0,
             },
             "remember: {remember}"

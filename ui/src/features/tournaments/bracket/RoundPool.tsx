@@ -11,8 +11,8 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import {
   matchVaultMap,
   poolForRound,
-  tourneyMapImage,
 } from "../../../shared/rules/tourneyRules";
+import { tourneyMapPicture } from "../mapPicture";
 
 /**
  * The button that opens a round's map pool.
@@ -91,7 +91,7 @@ export function PoolPanel({
     const vaultMap = matchVaultMap(held, vault);
     return {
       name: vaultMap?.displayName ?? held.name,
-      image: tourneyMapImage(held, assetBase, vault),
+      image: tourneyMapPicture(held, assetBase, vault),
       folder: vaultMap?.folderName ?? "",
     };
   };

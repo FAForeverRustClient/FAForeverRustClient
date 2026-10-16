@@ -25,9 +25,9 @@ import { roundKeyLabel as roundLabel } from "../bracket/matchLabels";
 import {
   matchVaultMap,
   roundPlan,
-  tourneyMapImage,
   type RoundKey,
 } from "../../../shared/rules/tourneyRules";
+import { tourneyMapPicture } from "../mapPicture";
 
 interface MapPoolPanelProps {
   event: Tourney;
@@ -258,7 +258,7 @@ export function MapPoolPanel({
                   // FAF's own preview is preferred: it is the picture players
                   // already recognise from the maps tab. The tournament
                   // server's copy is the fallback for a map never uploaded.
-                  const preview = tourneyMapImage(held, assetBase, vault);
+                  const preview = tourneyMapPicture(held, assetBase, vault);
                   return (
                     <li className="tournament-pool-map" key={mapId}>
                       {preview ? (

@@ -2709,7 +2709,7 @@
   font-size: 12px;
 }
 
-.tournament-map-tile:hover:not(:disabled) {
+.tournament-map-tile:hover:not(:disabled, .is-static) {
   border-color: var(--color-border-strong);
   background: var(--color-surface-hover);
 }
@@ -6055,7 +6055,7 @@
   transition: border-color 140ms ease;
 }
 
-.tournament-map-tile:hover:not(:disabled) {
+.tournament-map-tile:hover:not(:disabled, .is-static) {
   border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
 }
 
@@ -6065,6 +6065,11 @@
 }
 
 .tournament-map-tile:disabled {
+  cursor: default;
+}
+
+/* A tile with nothing to enlarge (`MapTile`): drawn, not pressed. */
+.tournament-map-tile.is-static {
   cursor: default;
 }
 
@@ -6078,7 +6083,7 @@
   transition: transform 260ms ease;
 }
 
-.tournament-map-tile:hover:not(:disabled) > img {
+.tournament-map-tile:hover:not(:disabled, .is-static) > img {
   transform: scale(1.04);
 }
 
@@ -6121,6 +6126,26 @@
   -webkit-line-clamp: 2;
 }
 
+/* A generated map on the foot: what it is, and under it the generator
+   version and the seed, cut short with an ellipsis rather than wrapped. */
+.tournament-map-tile-generated {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.tournament-map-tile-seed {
+  overflow: hidden;
+  color: var(--color-on-picture);
+  font-size: 11px;
+  line-height: 1.3;
+  opacity: 0.8;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+}
+
 /* A capsule on the picture's foot: the one place the tab keeps the round
    shape, since it sits on a picture rather than among the page's badges. */
 .tournament-map-tile-size {
@@ -6141,7 +6166,7 @@
     transition: none;
   }
 
-  .tournament-map-tile:hover:not(:disabled) > img {
+  .tournament-map-tile:hover:not(:disabled, .is-static) > img {
     transform: none;
   }
 }
@@ -6317,6 +6342,9 @@
   font-size: 12px;
   line-height: 1.45;
   white-space: pre-wrap;
+  /* A note that is one long word, a generated map's full name most often,
+     breaks inside the card instead of running out of it. */
+  overflow-wrap: anywhere;
 }
 
 .tournament-mapdb-used {
@@ -7484,44 +7512,42 @@ button.tournament-chat-author:hover {
   font-weight: 400;
 }
 
-/* The key itself, drawn as a key cap: a lighter top, a darker lip along the
-   bottom, as the training guides draw keys. */
+/* The key itself: a flat chip on the field ground, as the client's inputs
+   are, with one hairline under it for a hint of a key. It was a key cap,
+   gradient face and a 3px lip that sank on press, which stood out of a
+   dialog where nothing else is drawn in relief. */
 .hotkeys-key {
-  min-width: 44px;
-  height: 34px;
-  padding: 0 var(--space-3);
+  min-width: 40px;
+  height: 32px;
+  padding: 0 10px;
   color: var(--color-text);
   font-family: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  background: linear-gradient(
-    180deg,
-    var(--color-surface-hover),
-    color-mix(in oklab, var(--color-surface-raised) 70%, var(--color-bg))
-  );
-  border: 1px solid var(--color-border-strong);
-  border-bottom-width: 3px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
+  box-shadow: inset 0 -1px 0 var(--color-border);
   cursor: pointer;
-  transition: border-color 120ms ease, transform 80ms ease;
+  transition: border-color 120ms ease, background 120ms ease;
 }
 
 .hotkeys-key:hover {
-  border-color: var(--color-accent);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
 }
 
-.hotkeys-key:active {
-  transform: translateY(1px);
+.hotkeys-key:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .hotkeys-key.is-off {
   color: var(--color-muted);
   font-weight: 500;
-  letter-spacing: 0;
   background: transparent;
   border-style: dashed;
-  border-bottom-width: 1px;
+  box-shadow: none;
 }
 
 /* Waiting for a key: lit, and breathing so it is plain the next key press
@@ -9081,4 +9107,16 @@ button.tournament-chat-author:hover {
 .tournament-free-agent-who:has(.player-chip) > .tournament-discord,
 .tournament-admin-who:has(.player-chip) > .tournament-admin-facts {
   padding-left: calc(40px + var(--space-2));
+}
+
+/* The refresh of the event on screen (`detailLoading` in the detail pane):
+   read to screen readers, not drawn, so it takes no room above the section. */
+.tournament-refresh-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

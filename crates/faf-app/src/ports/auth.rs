@@ -44,8 +44,14 @@ pub trait AuthPort: Send + Sync {
     /// Run the full interactive login flow, resolving to the authenticated
     /// player and staging the session for [`Self::commit_session`].
     /// `remember` controls whether the refresh token is retained once the
-    /// session is committed.
-    async fn login(&self, remember: bool) -> AuthResult<Player>;
+    /// session is committed. `link` is called with the address the browser
+    /// sign-in waits on, before the browser is asked to open it, so the
+    /// player can open it by hand when no browser appears.
+    async fn login(
+        &self,
+        remember: bool,
+        link: &(dyn Fn(String) + Send + Sync),
+    ) -> AuthResult<Player>;
 
     /// Restore a previously remembered session without opening a browser,
     /// staging it like [`Self::login`] does. Implementations return

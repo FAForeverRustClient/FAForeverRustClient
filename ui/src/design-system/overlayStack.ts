@@ -83,6 +83,13 @@ export function createOverlayStack() {
       return layers[layers.length - 1];
     },
 
+    /** Whether a target belongs to this layer or one of its child portals. */
+    contains(layer: OverlayLayer, target: Node): boolean {
+      return layers.some((entry) =>
+        (entry === layer || descendsFrom(entry, layer)) && entry.element?.()?.contains(target),
+      );
+    },
+
     /** The topmost layer that traps focus, which is the one Tab belongs to. */
     topFocusTrap(): OverlayLayer | undefined {
       for (let index = layers.length - 1; index >= 0; index -= 1) {

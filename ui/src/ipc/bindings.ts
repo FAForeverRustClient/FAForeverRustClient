@@ -288,7 +288,14 @@ export type AuthCommand =
 { type: "launchOfflineGame" } | { type: "loginTest" } | { type: "logout" } | { type: "logoutTest" };
 
 /**  The only way [`AuthState`] changes. */
-export type AuthEvent = { type: "loginStarted" } | { type: "loggedIn"; payload: {
+export type AuthEvent = { type: "loginStarted" } |
+/**
+ *  The browser sign-in is waiting on `url`. Only meaningful while a
+ *  sign-in is in progress; a late one after it ended is ignored.
+ */
+{ type: "signInLinkReady"; payload: {
+	url: string,
+} } | { type: "loggedIn"; payload: {
 	player: Player,
 } } | { type: "testLoggedIn"; payload: {
 	player: Player,
@@ -334,6 +341,16 @@ export type AuthState = {
 	player: Player | null,
 	error: string | null,
 	mode: AuthMode,
+	/**
+	 *  The address a browser sign-in waits on, while it waits.
+	 *
+	 *  Shown on the login screen with a Copy button: a browser that never
+	 *  opened (no default browser, a launcher that failed quietly) leaves the
+	 *  player a way in through any browser on this machine. It is the
+	 *  public authorize address; the secret half of the exchange never
+	 *  leaves the client. Cleared by everything that ends the attempt.
+	 */
+	signInLink: string | null,
 };
 
 export type AuthStatus = "loggedOut" | "loggingIn" | "loggedIn" | "failed";

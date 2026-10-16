@@ -2,7 +2,7 @@
 // Login command. No knowledge of OAuth, tokens, or networking: that lives behind
 // the backend's AuthPort.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { BrandMark } from "../../design-system/BrandMark";
@@ -34,6 +34,56 @@ function AccountLink({ href, children }: { href: string; children: string }) {
     >
       {children}
     </a>
+  );
+}
+
+/**
+ * The address the browser sign-in waits on, for when no browser appears: a
+ * launcher that fails quietly or a system with no default browser. Opened by
+ * hand in any browser on this machine, it ends at the same loopback listener
+ * and the sign-in completes as usual. The field holds the whole link, so it
+ * can still be selected and copied by hand where the webview refuses the
+ * clipboard.
+ */
+function SignInLink({ url }: { url: string }) {
+  const { t } = useTranslation();
+  const field = useRef<HTMLInputElement>(null);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 2000);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+  const selectLink = () => {
+    field.current?.focus();
+    field.current?.select();
+  };
+  const copy = () => {
+    const clipboard = navigator.clipboard;
+    if (!clipboard) {
+      selectLink();
+      return;
+    }
+    clipboard.writeText(url).then(() => setCopied(true), selectLink);
+  };
+  return (
+    <div className="login-link">
+      <p className="login-link-label">{t("auth.noBrowser")}</p>
+      <div className="login-link-row">
+        <input
+          ref={field}
+          className="login-link-field"
+          readOnly
+          value={url}
+          aria-label={t("auth.linkLabel")}
+          spellCheck={false}
+          onFocus={(event) => event.currentTarget.select()}
+        />
+        <Button className="login-link-copy" onClick={copy}>
+          <Icon name={copied ? "check" : "copy"} size={14} /> {copied ? t("auth.linkCopied") : t("auth.copyLink")}
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -101,6 +151,7 @@ export function LoginView() {
             <Button className="login-cancel-button" variant="ghost" onClick={cancelLogin}>
               {t("auth.cancel")}
             </Button>
+            {auth.signInLink && <SignInLink url={auth.signInLink} />}
           </div>
         ) : (
           <Button className="login-button" variant="primary" onClick={login}>

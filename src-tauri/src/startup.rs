@@ -5,13 +5,44 @@ use std::sync::Arc;
 
 use faf_app::App;
 use faf_domain::state::{
-    AuthCommand, NavCommand, ReplayCommand, SessionCommand, SettingsCommand, Tab,
+    AuthCommand, NavCommand, ReplayCommand, SessionCommand, SettingsCommand, SettingsEvent, Tab,
 };
-use faf_domain::AppCommand;
+use faf_domain::{AppCommand, AppEvent};
 use tauri::{Emitter, Manager};
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::{Core, FrontendMessage, EVENT_CHANNEL};
+
+/// Wait until the startup settings have been read: their `Loaded` event, or
+/// the end of the whole load where events were missed. `false` when the load
+/// failed before the settings were read.
+async fn settings_read(
+    mut events: tokio::sync::broadcast::Receiver<AppEvent>,
+    mut load: tauri::async_runtime::JoinHandle<Result<(), String>>,
+) -> bool {
+    let finished = |result: Result<Result<(), String>, tauri::Error>| match result {
+        Ok(Ok(())) => true,
+        Ok(Err(reason)) => {
+            tracing::error!(%reason, "could not load startup settings");
+            false
+        }
+        Err(error) => {
+            tracing::error!(%error, "the startup settings load stopped");
+            false
+        }
+    };
+    loop {
+        tokio::select! {
+            event = events.recv() => match event {
+                Ok(AppEvent::Settings(SettingsEvent::Loaded { .. })) => return true,
+                Ok(_) => {}
+                // Events were missed: the end of the load is the signal then.
+                Err(RecvError::Lagged(_) | RecvError::Closed) => return finished(load.await),
+            },
+            result = &mut load => return finished(result),
+        }
+    }
+}
 
 /// The replay file this process was asked to open, if it was asked to open one.
 ///
@@ -50,6 +81,73 @@ pub(crate) fn open_replay_from_argument(app: &tauri::AppHandle, path: &str) {
         .try_dispatch(AppCommand::Replays(ReplayCommand::OpenFile {
             path: path.to_string(),
         }));
+}
+
+/// [`open_replay_from_argument`] for the replay a cold start was opened with.
+///
+/// That one arrives before the settings are read and before a remembered
+/// sign-in is restored, and playback needs both: the replay install comes
+/// from the settings, and the engine build a replay needs is downloaded with
+/// the session's token. Opened at once, it started FA unprepared ("Unable to
+/// load game replay") or failed with "not logged in". It waits for the backend
+/// to be ready and, while a remembered sign-in is being restored, briefly for
+/// that too, then opens as before.
+pub(crate) fn open_replay_at_startup(app: &tauri::AppHandle, path: String) {
+    use faf_domain::state::{AuthEvent, AuthMode, ConnectionStatus, SessionEvent};
+    use faf_domain::AppEvent;
+    use std::time::Duration;
+
+    const READY_WAIT: Duration = Duration::from_secs(60);
+    const SIGN_IN_WAIT: Duration = Duration::from_secs(20);
+
+    let Some(core) = app.try_state::<Core>() else {
+        tracing::warn!("asked to open a replay before the backend was ready");
+        return;
+    };
+    let core = core.0.clone();
+    let handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        // Subscribed before the state is read, so an event in between is seen.
+        let mut events = core.subscribe();
+        let ready = core.with_state(|state| state.session.status == ConnectionStatus::Connected);
+        if !ready {
+            wait_for_event(&mut events, READY_WAIT, |event| {
+                matches!(event, AppEvent::Session(SessionEvent::BackendReady { .. }))
+            })
+            .await;
+        }
+        let restoring = core.with_state(|state| {
+            state.settings.general.auto_login
+                && state.auth.player.is_none()
+                && state.auth.mode == AuthMode::Account
+        });
+        if restoring {
+            // A restore that fails says nothing, so this is bounded.
+            wait_for_event(&mut events, SIGN_IN_WAIT, |event| {
+                matches!(event, AppEvent::Auth(AuthEvent::LoggedIn { .. }))
+            })
+            .await;
+        }
+        open_replay_from_argument(&handle, &path);
+    });
+}
+
+/// Wait up to `limit` for an event `done` accepts.
+async fn wait_for_event(
+    events: &mut tokio::sync::broadcast::Receiver<faf_domain::AppEvent>,
+    limit: std::time::Duration,
+    done: impl Fn(&faf_domain::AppEvent) -> bool,
+) {
+    let _ = tokio::time::timeout(limit, async {
+        loop {
+            match events.recv().await {
+                Ok(event) if done(&event) => return,
+                Err(RecvError::Closed) => return,
+                _ => {}
+            }
+        }
+    })
+    .await;
 }
 
 /// Point the environment at the helpers the installer bundles.
@@ -237,13 +335,23 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
     // browser preferences into Rust defaults while the settings file
     // is still being read. Auth restore can proceed concurrently once
     // that dependency is satisfied.
+    //
+    // That dependency is the file, not the whole command: `Load` goes on to
+    // measure the game cache and ask GitHub for a client update, which on a
+    // cold disk or with GitHub slow or blocked took from seconds to over a
+    // minute, and auto sign-in waited for all of it. Sign-in starts at
+    // `Loaded` now and the rest of the load runs beside it.
     let startup_core = core.clone();
+    // Subscribed before the load starts, so its `Loaded` cannot be missed.
+    let settings_events = startup_core.subscribe();
     tauri::async_runtime::spawn(async move {
-        if let Err(reason) = startup_core
-            .dispatch_and_wait(AppCommand::Settings(SettingsCommand::Load))
-            .await
-        {
-            tracing::error!(%reason, "could not load startup settings");
+        let load_core = startup_core.clone();
+        let load = tauri::async_runtime::spawn(async move {
+            load_core
+                .dispatch_and_wait(AppCommand::Settings(SettingsCommand::Load))
+                .await
+        });
+        if !settings_read(settings_events, load).await {
             return;
         }
         if cleanup_files {
