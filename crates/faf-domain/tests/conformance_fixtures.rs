@@ -4811,6 +4811,8 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
                 LobbyEvent::InGame.into(),
+                // A full disconnect mid-game keeps the game; its exit ends it.
+                LobbyEvent::Disconnected.into(),
                 LobbyEvent::GameTerminated.into(),
                 LobbyEvent::Disconnected.into(),
             ],
