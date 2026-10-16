@@ -356,9 +356,17 @@ async fn an_overlay_replay_installs_its_base_build_and_overlay_revision_from_the
         fa_path.contains(&format!("GameVersion = \"{ENGINE_BUILD}\"")),
         "{fa_path}"
     );
+
     let retail_slashed = retail.display().to_string().replace('\\', "/");
+
+    let expected_path = if cfg!(target_os = "linux") {
+        format!("Z:{retail_slashed}")
+    } else {
+        retail_slashed
+    };
+
     assert!(
-        fa_path.contains(&format!("fa_path = \"{retail_slashed}\"")),
+        fa_path.contains(&format!("fa_path = \"{expected_path}\"")),
         "{fa_path}"
     );
 
