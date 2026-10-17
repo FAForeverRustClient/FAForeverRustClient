@@ -113,8 +113,29 @@ export function buildVaultIndex(vault: VaultMap[]): VaultIndex {
 }
 
 /**
- * The base-game maps, then every installed map with vault metadata filling the
- * gaps, keyed by lower-cased folder name. `officialDescription` is what a base
+ * Whether a scenario is a map to host a custom game on. Co-op missions
+ * (`campaign_coop`) and lessons (`campaign`) sit in the same maps folder as
+ * everything else, but the game's own skirmish lobby lists only `skirmish`
+ * scenarios, and a co-op mission is hosted from the co-op tab (#599). A map
+ * that does not say keeps its place.
+ */
+export function isSkirmishScenario(mapType: string | null | undefined): boolean {
+  const type = mapType?.trim().toLowerCase();
+  return !type || type === "skirmish";
+}
+
+/** Installed folders the host dialog leaves out, lower-cased. */
+export function nonSkirmishFolders(installedMaps: readonly InstalledMap[]): Set<string> {
+  return new Set(
+    installedMaps
+      .filter((installed) => !isSkirmishScenario(installed.mapType))
+      .map((installed) => installed.folderName.toLowerCase()),
+  );
+}
+
+/**
+ * The base-game maps, then every installed skirmish map with vault metadata
+ * filling the gaps, keyed by lower-cased folder name. `officialDescription` is what a base
  * map says about itself, passed in so this stays free of the locale.
  */
 export function buildHostCatalogue(
@@ -152,6 +173,7 @@ export function buildHostCatalogue(
     const vaultMeta =
       findVaultMapByFolder(vaultIndex.maps, installed.folderName)
       ?? vaultIndex.byName.get(nameKey);
+    if (!isSkirmishScenario(installed.mapType || vaultMeta?.mapType)) continue;
     const officialMeta =
       OFFICIAL_BY_FOLDER.get(key)
       ?? OFFICIAL_BY_FOLDER.get(baseKey)

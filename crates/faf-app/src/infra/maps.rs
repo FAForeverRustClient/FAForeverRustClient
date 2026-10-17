@@ -674,6 +674,7 @@ async fn list_installed_dir(dir: &std::path::Path) -> Result<Vec<InstalledMap>, 
             (0, 0, 0)
         };
 
+        let map_type = scenario_info.as_ref().and_then(|s| s.map_type.clone());
         let description = scenario_info.and_then(|s| s.description);
         // The folder's own modification time: an install unpacks into a fresh
         // folder, so this is when the map arrived (#453).
@@ -693,6 +694,7 @@ async fn list_installed_dir(dir: &std::path::Path) -> Result<Vec<InstalledMap>, 
             version,
             description,
             installed_at,
+            map_type,
         });
     }
     installed.sort_by(|a, b| a.display_name.cmp(&b.display_name));
@@ -898,6 +900,9 @@ pub(crate) struct ScenarioInfo {
     pub max_players: i32,
     pub version: Option<String>,
     pub description: Option<String>,
+    /// `type = '...'`: `skirmish`, `campaign_coop` for a co-op mission,
+    /// `campaign` for a lesson.
+    pub map_type: Option<String>,
 }
 
 pub(crate) fn parse_scenario_lua(content: &str) -> ScenarioInfo {
@@ -910,6 +915,21 @@ pub(crate) fn parse_scenario_lua(content: &str) -> ScenarioInfo {
             if let Some(val) = extract_quoted_string(trimmed) {
                 if !val.is_empty() {
                     info.name = Some(val);
+                    break;
+                }
+            }
+        }
+    }
+
+    // 1b. Type: type = 'skirmish'. The scenario's own key, written before
+    // anything else in ScenarioInfo; `AIType` and friends do not start a
+    // trimmed line with `type`.
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("type =") || trimmed.starts_with("type=") {
+            if let Some(val) = extract_quoted_string(trimmed) {
+                if !val.is_empty() {
+                    info.map_type = Some(val);
                     break;
                 }
             }
@@ -2010,10 +2030,33 @@ ScenarioInfo = { size = {256, 512} }";
         assert_eq!(info.height, 512);
         assert_eq!(info.max_players, 4);
         assert_eq!(info.version.as_deref(), Some("1"));
+        assert_eq!(info.map_type.as_deref(), Some("skirmish"));
         assert_eq!(
             info.description.as_deref(),
             Some("A balanced battleground for 4 players.")
         );
+    }
+
+    #[test]
+    fn a_coop_mission_says_so_in_its_scenario_type() {
+        // The head of SCCA_Coop_R06's scenario file, as installed (#599),
+        // with its armies cut down. A file without the key has no type.
+        let content = r#"
+version = 3
+ScenarioInfo = {
+    name = "Cybran Mission 6 - Freedom, Remastered",
+    description = "",
+    preview = '',
+    map_version = 23,
+    type = 'campaign_coop',
+    starts = true,
+    size = {1024, 1024},
+    Configurations = { ['standard'] = { teams = { { name = 'FFA', armies = {'Player1','Player2'} } } } },
+}
+"#;
+        let info = parse_scenario_lua(content);
+        assert_eq!(info.map_type.as_deref(), Some("campaign_coop"));
+        assert_eq!(parse_scenario_lua("ScenarioInfo = {}").map_type, None);
     }
 
     #[test]
