@@ -53,6 +53,7 @@ impl MapsPort for CountingMaps {
             version: None,
             description: None,
             installed_at: None,
+            map_type: None,
         }])
     }
     async fn uninstall_map(&self, folder: String) -> Result<Vec<InstalledMap>, String> {

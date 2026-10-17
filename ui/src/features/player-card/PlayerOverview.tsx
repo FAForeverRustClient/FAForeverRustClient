@@ -362,6 +362,9 @@ function FormerNames({ profile, onOpenNames }: { profile: PlayerCardProfile; onO
 function Avatars({ profile, selectable }: { profile: PlayerCardProfile; selectable: boolean }) {
   const { t } = useTranslation();
   const selecting = useAppStore((store) => store.state.lobby.avatarSelectionStatus === "loading");
+  // A refused choice says so: a tile that did nothing on a click was the
+  // whole of #597's report.
+  const selectFailed = useAppStore((store) => store.state.lobby.avatarSelectionStatus === "failed");
   // The same command the avatar picker sends. The server has no
   // acknowledgement for it, so the card marks the new one at once from
   // `avatarSelected` rather than waiting for a reload.
@@ -425,6 +428,9 @@ function Avatars({ profile, selectable }: { profile: PlayerCardProfile; selectab
           ? t("playerCard.avatar.wearing", { name: nameOf(worn.tooltip) })
           : t("playerCard.avatar.wearingNone")}
       </p>
+      {selectable && selectFailed && (
+        <p className="player-avatar-error" role="alert">{t("playerCard.avatar.selectFailed")}</p>
+      )}
       {/* Said where avatars are chosen, because the fallback acts without
           asking: the request came from a player who could not tell whether
           it already existed. Own card only; nobody else's choice is kept. */}

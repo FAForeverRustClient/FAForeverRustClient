@@ -16,6 +16,7 @@ import {
   buildHostCatalogue,
   buildVaultIndex,
   formatMapMeta,
+  nonSkirmishFolders,
   withUncataloguedMaps,
   type HostMap,
 } from "./hostMapCatalogue";
@@ -124,11 +125,15 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
     () => new Set(catalogueMaps.map((map) => map.folderName.toLowerCase())),
     [catalogueMaps],
   );
+  // A co-op mission remembered from before #599 is not put back either: the
+  // picker then falls back to the first map, as for any map no longer here.
+  const hiddenFolders = useMemo(() => nonSkirmishFolders(installed), [installed]);
   const mapsWithSelection = useMemo(() => {
     if (!selectedMap || catalogueFolders.has(selectedMap.toLowerCase())) return catalogueMaps;
+    if (hiddenFolders.has(selectedMap.toLowerCase())) return catalogueMaps;
     const [selected] = withUncataloguedMaps(new Map(), selectedMap, [], generatedDescription);
     return selected ? [...catalogueMaps, selected] : catalogueMaps;
-  }, [catalogueMaps, catalogueFolders, generatedDescription, selectedMap]);
+  }, [catalogueMaps, catalogueFolders, generatedDescription, hiddenFolders, selectedMap]);
 
   // Filters, favourites, keyboard selection and the enlarged preview. Called
   // here, ahead of the loads below, so its effects keep their original order.
