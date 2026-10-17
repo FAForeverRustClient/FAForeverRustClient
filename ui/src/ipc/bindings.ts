@@ -1873,7 +1873,17 @@ export type ClientUpdateEvent =
  */
 { type: "downloadCancelled" } | { type: "downloaded"; payload: {
 	path: string,
-} } | { type: "installing" } | { type: "failed"; payload: {
+} } |
+/**
+ *  Install waits for the last game to finish; see
+ *  [`ClientUpdateState::install_waiting`].
+ */
+{ type: "installWaiting" } |
+/**
+ *  The wait ended without installing: a new game, join or search began,
+ *  or the game took too long to finish. The installer stays ready.
+ */
+{ type: "installWaitEnded" } | { type: "installing" } | { type: "failed"; payload: {
 	reason: string,
 } } | { type: "dismissed"; payload: {
 	version: string,
@@ -1896,6 +1906,12 @@ export type ClientUpdateState = {
 	status: ClientUpdateStatus,
 	/**  The offered release has passed the grace period or the release-count limit. */
 	overdue?: boolean,
+	/**
+	 *  Install was asked for while the last game was still finishing (FA
+	 *  closing, its replay or a lesson result being saved). The installer
+	 *  starts once that is done, so the click is not lost.
+	 */
+	installWaiting?: boolean,
 	/**  The running build's version, filled in by the first check. */
 	currentVersion: string,
 	release: ClientRelease | null,

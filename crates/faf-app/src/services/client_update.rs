@@ -474,32 +474,31 @@ async fn install(ctx: &ServiceCtx, out: &EventSink) {
 
     // Recheck at the command boundary: the offer may have been clicked just
     // before a game, lesson or search started. Never close an active client.
-    let idle = out.with_state(|state| {
-        matches!(state.lobby.join, JoinState::Idle)
-            && matches!(
-                state.lobby.matchmaking,
-                MatchmakingState::Idle | MatchmakingState::Cancelled { .. }
-            )
-            && !matches!(
-                state.training.lesson_launch,
-                faf_domain::state::LessonLaunch::Preparing { .. }
-                    | faf_domain::state::LessonLaunch::Playing { .. }
-            )
-            && !matches!(
-                state.tutorials.launch,
-                faf_domain::state::TutorialLaunchStatus::Preparing { .. }
-            )
-    });
-    if !idle
-        || ctx.ports.process.game_running()
-        || ctx.ports.process.replay_upload_pending()
-        || ctx
-            .training
-            .lesson_results
-            .load(std::sync::atomic::Ordering::Acquire)
-            != 0
-    {
+    // The notice and the gate are hidden then, so this only drops a click
+    // that raced the start.
+    if playing(out) {
         return;
+    }
+    // The last game can still be finishing after the notice came back: FA
+    // closing, its replay upload or a lesson result being saved. Dropping the
+    // click then left a button that did nothing, so wait for it instead, and
+    // say so. A new game, join or search ends the wait without installing.
+    if finishing(ctx) {
+        out.emit(ClientUpdateEvent::InstallWaiting);
+        let deadline = tokio::time::Instant::now() + INSTALL_WAIT_LIMIT;
+        loop {
+            tokio::time::sleep(INSTALL_WAIT_POLL).await;
+            let still_ready = out.with_state(|state| {
+                state.client_update.status == ClientUpdateStatus::Ready { path: path.clone() }
+            });
+            if !still_ready || playing(out) || tokio::time::Instant::now() >= deadline {
+                out.emit(ClientUpdateEvent::InstallWaitEnded);
+                return;
+            }
+            if !finishing(ctx) {
+                break;
+            }
+        }
     }
     match ctx.ports.client_update.install(path).await {
         // On Windows the shell exits on this event. A spawn failure must never
@@ -507,6 +506,43 @@ async fn install(ctx: &ServiceCtx, out: &EventSink) {
         Ok(()) => out.emit(ClientUpdateEvent::Installing),
         Err(reason) => out.emit(ClientUpdateEvent::Failed { reason }),
     }
+}
+
+/// How long Install waits for the last game to finish before giving up.
+/// A replay upload or lesson result takes seconds; this is the backstop.
+const INSTALL_WAIT_LIMIT: Duration = Duration::from_secs(120);
+const INSTALL_WAIT_POLL: Duration = Duration::from_millis(500);
+
+/// A game, join, matchmaker search, lesson or tutorial launch is under way:
+/// the client must not close.
+fn playing(out: &EventSink) -> bool {
+    out.with_state(|state| {
+        !matches!(state.lobby.join, JoinState::Idle)
+            || !matches!(
+                state.lobby.matchmaking,
+                MatchmakingState::Idle | MatchmakingState::Cancelled { .. }
+            )
+            || matches!(
+                state.training.lesson_launch,
+                faf_domain::state::LessonLaunch::Preparing { .. }
+                    | faf_domain::state::LessonLaunch::Playing { .. }
+            )
+            || matches!(
+                state.tutorials.launch,
+                faf_domain::state::TutorialLaunchStatus::Preparing { .. }
+            )
+    })
+}
+
+/// The last game is still winding down where the UI cannot see it.
+fn finishing(ctx: &ServiceCtx) -> bool {
+    ctx.ports.process.game_running()
+        || ctx.ports.process.replay_upload_pending()
+        || ctx
+            .training
+            .lesson_results
+            .load(std::sync::atomic::Ordering::Acquire)
+            != 0
 }
 
 fn dismiss(out: &EventSink) {

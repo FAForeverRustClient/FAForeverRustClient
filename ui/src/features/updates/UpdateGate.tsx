@@ -34,13 +34,15 @@ export function UpdateGate({ deferredVersion = null, onDefer }: { deferredVersio
   const release = useGatedUpdate(deferredVersion);
   if (release === null) return null;
   return <UpdateGateDialog release={release} status={update.status} currentVersion={update.currentVersion}
-    onDefer={onDefer ? () => onDefer(release.version) : undefined} />;
+    waiting={update.installWaiting === true} onDefer={onDefer ? () => onDefer(release.version) : undefined} />;
 }
 
 interface DialogProps {
   release: ClientRelease;
   status: ClientUpdateState["status"];
   currentVersion: string;
+  /** Install is held until the last game has finished saving. */
+  waiting?: boolean;
   /** Carry on without the update for this session; offered after a failure. */
   onDefer?: () => void;
 }
@@ -52,7 +54,7 @@ interface DialogProps {
  * repository has no DOM in its test environment, and anything that reads the
  * store renders as though the store were empty.
  */
-export function UpdateGateDialog({ release, status, currentVersion, onDefer }: DialogProps) {
+export function UpdateGateDialog({ release, status, currentVersion, waiting = false, onDefer }: DialogProps) {
   const { t } = useTranslation();
   const restarts = installerRestartsClient(release);
   const percent = updatePercent(status);
@@ -94,7 +96,7 @@ export function UpdateGateDialog({ release, status, currentVersion, onDefer }: D
         // itself says them plainly.
         title={status.type === "failed" ? status.payload.reason : undefined}
       >
-        {describe(status, restarts, t)}
+        {waiting && status.type === "ready" ? t("updates.waitingForGame") : describe(status, restarts, t)}
       </p>
       {percent !== null && (
         <div className="update-gate-progress" aria-hidden="true">
@@ -106,7 +108,7 @@ export function UpdateGateDialog({ release, status, currentVersion, onDefer }: D
         {status.type === "ready" || status.type === "installing" ? (
           <Button
             variant="primary"
-            disabled={status.type === "installing"}
+            disabled={status.type === "installing" || (waiting && status.type === "ready")}
             onClick={() => void send("install")}
           >
             {t(restarts ? "updates.updateAndReopen" : "updates.runInstaller")}

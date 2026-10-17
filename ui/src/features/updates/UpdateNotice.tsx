@@ -89,16 +89,19 @@ export function UpdateNotice({ deferredVersion = null }: { deferredVersion?: str
 
   if (!visible || !release) return null;
   const status = update.status;
-  const ready = status.type === "ready";
+  // Install was asked for while the last game was still finishing: the
+  // client starts it as soon as that is done, so there is nothing to click.
+  const waiting = status.type === "ready" && update.installWaiting === true;
+  const ready = status.type === "ready" && !waiting;
   const failed = status.type === "failed";
   const downloading = status.type === "downloading";
-  const busy = downloading || status.type === "installing";
+  const busy = downloading || waiting || status.type === "installing";
   const percent = updatePercent(status);
   // The button's accessible name names the state; the visible label adds the
   // share while downloading. The live region reads the name, so a screen
   // reader hears each state once rather than every percent.
   const restarts = installerRestartsClient(release);
-  const label = stateLabel(status, restarts, t);
+  const label = waiting ? t("updates.waitingForGame") : stateLabel(status, restarts, t);
   const shown = downloading && percent !== null ? t("updates.notice.downloading", { percent }) : label;
   const notesUrl = optionalHttpsUrl(release.notesUrl);
   const notesInClient = canOpenClientRelease(update.notes, authMode, release.version);
@@ -187,6 +190,7 @@ export function UpdateNotice({ deferredVersion = null }: { deferredVersion?: str
               {size && t("updates.installerSize", { size })}
             </p>
             {status.type === "installing" && <p>{t(restarts ? "updates.updating" : "updates.started")}</p>}
+            {waiting && <p>{t("updates.waitingForGame")}</p>}
             {failed && <p className="update-notice-error">{plainError(status.payload.reason)}</p>}
             {!release.downloadUrl && <p>{t("updates.noInstallerFor", { version: release.version })}</p>}
             <div className="update-notice-actions">

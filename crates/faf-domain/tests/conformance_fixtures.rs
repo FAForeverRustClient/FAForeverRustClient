@@ -5366,7 +5366,14 @@ fn cases() -> Vec<Case> {
                 .into(),
                 // Too late: the installer is whole and stays ready.
                 ClientUpdateEvent::DownloadCancelled.into(),
+                // Asked for while the last game was finishing: held, then
+                // given up, then held again until the installer starts.
+                ClientUpdateEvent::InstallWaiting.into(),
+                ClientUpdateEvent::InstallWaitEnded.into(),
+                ClientUpdateEvent::InstallWaiting.into(),
                 ClientUpdateEvent::Installing.into(),
+                // Nothing ready to wait with.
+                ClientUpdateEvent::InstallWaiting.into(),
                 ClientUpdateEvent::Dismissed {
                     version: "0.3.0".into(),
                 }

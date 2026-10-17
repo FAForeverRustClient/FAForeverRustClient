@@ -77,6 +77,29 @@ describe("UpdateNotice states", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("says it is waiting for the last game, and sends nothing while it does", async () => {
+    const user = userEvent.setup();
+    seedStore((state) => ({ ...state, clientUpdate: { ...state.clientUpdate,
+      release, overdue: false, status: { type: "ready", payload: { path: "installer" } },
+    } }));
+    render(<UpdateNotice />);
+    applyEvent({ kind: "ClientUpdate", event: { type: "installWaiting" } });
+    clearSentCommands();
+    await user.click(screen.getByRole("button", { name: en["updates.waitingForGame"] }));
+    expect(sentCommands()).toEqual([]);
+    applyEvent({ kind: "ClientUpdate", event: { type: "installWaitEnded" } });
+    expect(screen.getAllByRole("button", { name: "Update and reopen" }).length).toBeGreaterThan(0);
+  });
+
+  it("holds the gate's button while it waits for the last game", () => {
+    seedStore((state) => ({ ...state, clientUpdate: { ...state.clientUpdate,
+      release, overdue: true, installWaiting: true, status: { type: "ready", payload: { path: "installer" } },
+    } }));
+    render(<UpdateGate />);
+    expect(screen.getByText(en["updates.waitingForGame"])).toBeDefined();
+    expect(screen.getByRole("button", { name: "Update and reopen" })).toHaveProperty("disabled", true);
+  });
+
   it("keeps the manual installer instructions on other platforms", async () => {
     const user = userEvent.setup();
     seedStore((state) => ({ ...state, clientUpdate: { ...state.clientUpdate,

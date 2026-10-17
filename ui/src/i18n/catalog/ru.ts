@@ -148,6 +148,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "updates.available.stable": "Доступна версия {version}",
   "updates.updateAndReopen": "Обновить и открыть снова",
   "updates.updating": "Обновление…",
+  "updates.waitingForGame": "Обновление после сохранения последней игры…",
   "updates.readyToReopen": "Клиент закроется, обновится и откроется снова.",
   "updates.runInstaller": "Запустить установщик",
   "updates.downloading": "Загрузка…",

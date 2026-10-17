@@ -10537,6 +10537,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "",
             "notes": [],
             "notesStatus": {
@@ -10563,6 +10564,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "2026-02-01T09:00:00Z",
             "notes": [],
             "notesStatus": {
@@ -10597,6 +10599,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "2026-02-01T09:00:00Z",
             "notes": [],
             "notesStatus": {
@@ -10628,6 +10631,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "2026-02-01T09:00:00Z",
             "notes": [],
             "notesStatus": {
@@ -10663,6 +10667,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "2026-02-01T09:00:00Z",
             "notes": [],
             "notesStatus": {
@@ -10698,6 +10703,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "2026-02-01T09:00:00Z",
             "notes": [],
             "notesStatus": {
@@ -10733,6 +10739,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "2026-02-01T09:00:00Z",
             "notes": [],
             "notesStatus": {
@@ -10771,6 +10778,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "2026-02-01T09:00:00Z",
             "notes": [],
             "notesStatus": {
@@ -10805,6 +10813,112 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
+            "lastChecked": "2026-02-01T09:00:00Z",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
+            "overdue": true,
+            "release": {
+              "assetName": "installer.exe",
+              "downloadUrl": "https://example.invalid/installer.exe",
+              "notesUrl": "https://example.invalid/releases/0.3.0",
+              "preRelease": false,
+              "publishedAt": "2026-02-01T00:00:00Z",
+              "sizeBytes": 4096,
+              "version": "0.3.0"
+            },
+            "status": {
+              "payload": {
+                "path": "/cache/updates/faf-client-0.3.0.exe"
+              },
+              "type": "ready"
+            },
+            "whatsNew": null
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "installWaiting"
+            },
+            "kind": "ClientUpdate"
+          },
+          "expected": {
+            "currentVersion": "0.2.0",
+            "dismissedVersion": "",
+            "installWaiting": true,
+            "lastChecked": "2026-02-01T09:00:00Z",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
+            "overdue": true,
+            "release": {
+              "assetName": "installer.exe",
+              "downloadUrl": "https://example.invalid/installer.exe",
+              "notesUrl": "https://example.invalid/releases/0.3.0",
+              "preRelease": false,
+              "publishedAt": "2026-02-01T00:00:00Z",
+              "sizeBytes": 4096,
+              "version": "0.3.0"
+            },
+            "status": {
+              "payload": {
+                "path": "/cache/updates/faf-client-0.3.0.exe"
+              },
+              "type": "ready"
+            },
+            "whatsNew": null
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "installWaitEnded"
+            },
+            "kind": "ClientUpdate"
+          },
+          "expected": {
+            "currentVersion": "0.2.0",
+            "dismissedVersion": "",
+            "installWaiting": false,
+            "lastChecked": "2026-02-01T09:00:00Z",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
+            "overdue": true,
+            "release": {
+              "assetName": "installer.exe",
+              "downloadUrl": "https://example.invalid/installer.exe",
+              "notesUrl": "https://example.invalid/releases/0.3.0",
+              "preRelease": false,
+              "publishedAt": "2026-02-01T00:00:00Z",
+              "sizeBytes": 4096,
+              "version": "0.3.0"
+            },
+            "status": {
+              "payload": {
+                "path": "/cache/updates/faf-client-0.3.0.exe"
+              },
+              "type": "ready"
+            },
+            "whatsNew": null
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "installWaiting"
+            },
+            "kind": "ClientUpdate"
+          },
+          "expected": {
+            "currentVersion": "0.2.0",
+            "dismissedVersion": "",
+            "installWaiting": true,
             "lastChecked": "2026-02-01T09:00:00Z",
             "notes": [],
             "notesStatus": {
@@ -10839,6 +10953,39 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
+            "lastChecked": "2026-02-01T09:00:00Z",
+            "notes": [],
+            "notesStatus": {
+              "type": "idle"
+            },
+            "overdue": true,
+            "release": {
+              "assetName": "installer.exe",
+              "downloadUrl": "https://example.invalid/installer.exe",
+              "notesUrl": "https://example.invalid/releases/0.3.0",
+              "preRelease": false,
+              "publishedAt": "2026-02-01T00:00:00Z",
+              "sizeBytes": 4096,
+              "version": "0.3.0"
+            },
+            "status": {
+              "type": "installing"
+            },
+            "whatsNew": null
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "installWaiting"
+            },
+            "kind": "ClientUpdate"
+          },
+          "expected": {
+            "currentVersion": "0.2.0",
+            "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "2026-02-01T09:00:00Z",
             "notes": [],
             "notesStatus": {
@@ -10873,6 +11020,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "0.3.0",
+            "installWaiting": false,
             "lastChecked": "2026-02-01T09:00:00Z",
             "notes": [],
             "notesStatus": {
@@ -10907,6 +11055,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "2026-02-01T09:00:00Z",
             "notes": [],
             "notesStatus": {
@@ -10949,6 +11098,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "2026-02-01T09:00:00Z",
             "notes": [],
             "notesStatus": {
@@ -10980,6 +11130,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "2026-02-01T09:00:00Z",
             "notes": [],
             "notesStatus": {
@@ -11011,6 +11162,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "2026-02-01T09:00:00Z",
             "notes": [],
             "notesStatus": {
@@ -11037,6 +11189,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "2026-02-01T09:05:00Z",
             "notes": [],
             "notesStatus": {
@@ -11065,6 +11218,7 @@
           "expected": {
             "currentVersion": "",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "",
             "notes": [],
             "notesStatus": {
@@ -11091,6 +11245,7 @@
           "expected": {
             "currentVersion": "",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "",
             "notes": [],
             "notesStatus": {
@@ -11117,6 +11272,7 @@
           "expected": {
             "currentVersion": "",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "",
             "notes": [],
             "notesStatus": {
@@ -11210,6 +11366,7 @@
           "expected": {
             "currentVersion": "",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "",
             "notes": [
               {
@@ -11300,6 +11457,7 @@
           "expected": {
             "currentVersion": "",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "",
             "notes": [
               {
@@ -11393,6 +11551,7 @@
           "expected": {
             "currentVersion": "",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "",
             "notes": [
               {
@@ -11520,6 +11679,7 @@
           "expected": {
             "currentVersion": "",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "",
             "notes": [
               {
@@ -11580,6 +11740,7 @@
           "expected": {
             "currentVersion": "",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "",
             "notes": [
               {
@@ -11637,6 +11798,7 @@
           "expected": {
             "currentVersion": "",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "",
             "notes": [
               {
@@ -83128,6 +83290,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "",
             "notes": [],
             "notesStatus": {
@@ -83162,6 +83325,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "",
             "notes": [],
             "notesStatus": {
@@ -83197,6 +83361,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "",
             "notes": [],
             "notesStatus": {
@@ -83235,6 +83400,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "",
             "notes": [],
             "notesStatus": {
@@ -83272,6 +83438,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "",
             "notes": [],
             "notesStatus": {
@@ -83306,6 +83473,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "",
             "notes": [],
             "notesStatus": {
@@ -83343,6 +83511,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "installWaiting": false,
             "lastChecked": "2026-02-01T09:00:00Z",
             "notes": [],
             "notesStatus": {
@@ -123038,6 +123207,7 @@
     "clientUpdate": {
       "currentVersion": "",
       "dismissedVersion": "",
+      "installWaiting": false,
       "lastChecked": "",
       "notes": [],
       "notesStatus": {

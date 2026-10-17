@@ -235,6 +235,11 @@ pub struct ClientUpdateState {
     /// The offered release has passed the grace period or the release-count limit.
     #[serde(default)]
     pub overdue: bool,
+    /// Install was asked for while the last game was still finishing (FA
+    /// closing, its replay or a lesson result being saved). The installer
+    /// starts once that is done, so the click is not lost.
+    #[serde(default)]
+    pub install_waiting: bool,
     /// The running build's version, filled in by the first check.
     pub current_version: String,
     pub release: Option<ClientRelease>,
@@ -350,6 +355,12 @@ pub enum ClientUpdateEvent {
     Downloaded {
         path: String,
     },
+    /// Install waits for the last game to finish; see
+    /// [`ClientUpdateState::install_waiting`].
+    InstallWaiting,
+    /// The wait ended without installing: a new game, join or search began,
+    /// or the game took too long to finish. The installer stays ready.
+    InstallWaitEnded,
     Installing,
     Failed {
         reason: String,
@@ -461,8 +472,16 @@ pub fn reduce(state: &mut ClientUpdateState, event: &ClientUpdateEvent) {
         ClientUpdateEvent::Downloaded { path } => {
             state.status = ClientUpdateStatus::Ready { path: path.clone() }
         }
-        ClientUpdateEvent::Installing => state.status = ClientUpdateStatus::Installing,
+        ClientUpdateEvent::InstallWaiting => {
+            state.install_waiting = matches!(state.status, ClientUpdateStatus::Ready { .. })
+        }
+        ClientUpdateEvent::InstallWaitEnded => state.install_waiting = false,
+        ClientUpdateEvent::Installing => {
+            state.install_waiting = false;
+            state.status = ClientUpdateStatus::Installing
+        }
         ClientUpdateEvent::Failed { reason } => {
+            state.install_waiting = false;
             state.status = ClientUpdateStatus::Failed {
                 reason: reason.clone(),
             }
@@ -950,6 +969,35 @@ mod tests {
 
     /// A called-off download puts the offer back, not a failure, and a late
     /// cancel cannot take back an installer that is already whole.
+    #[test]
+    fn waiting_to_install_holds_only_for_a_ready_installer_and_ends_with_it() {
+        let mut state = ClientUpdateState::default();
+        reduce(&mut state, &ClientUpdateEvent::InstallWaiting);
+        assert!(!state.install_waiting, "nothing to install");
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::Downloaded {
+                path: "setup.exe".into(),
+            },
+        );
+        reduce(&mut state, &ClientUpdateEvent::InstallWaiting);
+        assert!(state.install_waiting);
+        reduce(&mut state, &ClientUpdateEvent::InstallWaitEnded);
+        assert!(!state.install_waiting);
+        assert!(matches!(state.status, ClientUpdateStatus::Ready { .. }));
+        for end in [
+            ClientUpdateEvent::Installing,
+            ClientUpdateEvent::Failed { reason: "x".into() },
+        ] {
+            state.status = ClientUpdateStatus::Ready {
+                path: "setup.exe".into(),
+            };
+            reduce(&mut state, &ClientUpdateEvent::InstallWaiting);
+            reduce(&mut state, &end);
+            assert!(!state.install_waiting);
+        }
+    }
+
     #[test]
     fn a_cancelled_download_puts_the_offer_back() {
         let mut state = ClientUpdateState::default();

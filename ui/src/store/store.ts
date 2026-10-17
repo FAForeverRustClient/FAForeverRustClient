@@ -423,6 +423,7 @@ const INITIAL: AppState = {
   },
   clientUpdate: {
     overdue: false,
+    installWaiting: false,
     status: { type: "idle" },
     currentVersion: "",
     release: null,

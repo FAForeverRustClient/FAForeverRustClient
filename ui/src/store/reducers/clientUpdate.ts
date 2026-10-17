@@ -89,10 +89,15 @@ export function reduceClientUpdate(
         : state;
     case "downloaded":
       return { ...state, status: { type: "ready", payload: { path: event.payload.path } } };
+    // Held only while an installer is ready; see `install_waiting` in the domain.
+    case "installWaiting":
+      return { ...state, installWaiting: state.status.type === "ready" };
+    case "installWaitEnded":
+      return { ...state, installWaiting: false };
     case "installing":
-      return { ...state, status: { type: "installing" } };
+      return { ...state, installWaiting: false, status: { type: "installing" } };
     case "failed":
-      return { ...state, status: { type: "failed", payload: { reason: event.payload.reason } } };
+      return { ...state, installWaiting: false, status: { type: "failed", payload: { reason: event.payload.reason } } };
     case "dismissed":
       return { ...state, dismissedVersion: event.payload.version };
     case "checkCompleted":

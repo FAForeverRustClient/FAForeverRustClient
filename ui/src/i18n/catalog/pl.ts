@@ -142,6 +142,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "updates.available.stable": "Dostępna jest wersja {version}",
   "updates.updateAndReopen": "Zaktualizuj i otwórz ponownie",
   "updates.updating": "Aktualizowanie…",
+  "updates.waitingForGame": "Aktualizacja po zapisaniu ostatniej gry…",
   "updates.readyToReopen": "Klient zamknie się, zaktualizuje i otworzy ponownie.",
   "updates.runInstaller": "Uruchom instalator",
   "updates.downloading": "Pobieranie…",

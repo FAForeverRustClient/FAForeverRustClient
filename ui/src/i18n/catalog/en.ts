@@ -377,6 +377,7 @@ export const en = {
   "updates.available.stable": "Version {version} is available",
   "updates.updateAndReopen": "Update and reopen",
   "updates.updating": "Updating…",
+  "updates.waitingForGame": "Updates once the last game is saved…",
   "updates.readyToReopen": "The client will close, update and reopen.",
   "updates.runInstaller": "Run installer",
   "updates.downloading": "Downloading…",

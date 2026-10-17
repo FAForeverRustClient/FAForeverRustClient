@@ -316,6 +316,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "updates.available.stable": "Version {version} ist verfügbar",
   "updates.updateAndReopen": "Aktualisieren und neu öffnen",
   "updates.updating": "Wird aktualisiert…",
+  "updates.waitingForGame": "Wird aktualisiert, sobald das letzte Spiel gespeichert ist…",
   "updates.readyToReopen": "Der Client wird geschlossen, aktualisiert und wieder geöffnet.",
   "updates.runInstaller": "Installer starten",
   "updates.downloading": "Lädt…",
