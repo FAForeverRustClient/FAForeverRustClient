@@ -46,6 +46,10 @@ describe("browsing preferences", () => {
           { field: "title", constraint: "contains", value: "NO RUSH" },
           { field: "map", constraint: "equals", value: "" },
         ],
+        allowRules: [
+          { field: "mod", constraint: "contains", value: " roguelike " },
+          { field: "mod", constraint: "contains", value: "ROGUELIKE" },
+        ],
       },
       matchmakerUnselectedQueues: [" ladder_1v1 ", "LADDER_1V1", ""],
       matchmakerFactions: ["cybran", "unknown"],
@@ -147,6 +151,8 @@ describe("browsing preferences", () => {
       hideFoes: true,
       applyFilters: true,
       rules: [{ field: "title", constraint: "contains", value: "no rush" }],
+      // The always-show rules are bounded the same way (#593).
+      allowRules: [{ field: "mod", constraint: "contains", value: "roguelike" }],
     });
     expect([...normalized.liveReplayFilters.search]).toHaveLength(200);
     expect(normalized.liveReplayFilters.activePlayers).toBe("4");
