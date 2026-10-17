@@ -24,6 +24,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
+use faf_domain::protocol::map_generator::split_command_line;
 use faf_domain::state::settings::{
     GamePreferences, GamePreferencesPatch, PathPreferences, PathPreferencesPatch,
 };
@@ -369,14 +370,20 @@ fn admit_generator(
 
 /// A folder flag in the generator's raw arguments, if there is one, in any
 /// spelling the generator accepts (`--out-path x` or `--out-path=x`).
+///
+/// Read with the same splitter the launch uses
+/// (`map_generator::split_command_line`), never a simpler one: that splitter
+/// drops quotes anywhere in a word, so `--out-"path"` reached the generator
+/// as `--out-path` while a whitespace split saw a harmless word. An `@file`
+/// argument is refused too: the generator's argument parser (picocli) reads
+/// further arguments from that file, where any flag could hide.
 fn raw_argument_folder_flag(arguments: &str) -> Option<&'static str> {
     const FLAGS: [&str; 3] = ["--out-path", "--folder-path", "--preview-path"];
-    arguments.split_whitespace().find_map(|word| {
-        let name = word
-            .split('=')
-            .next()
-            .unwrap_or(word)
-            .trim_matches(|c| c == '"' || c == '\'');
+    split_command_line(arguments).iter().find_map(|word| {
+        if word.starts_with('@') {
+            return Some("@file");
+        }
+        let name = word.split('=').next().unwrap_or(word);
         FLAGS
             .into_iter()
             .find(|flag| name.eq_ignore_ascii_case(flag))
@@ -480,10 +487,22 @@ mod tests {
             "--folder-path=C:/x",
             "--PREVIEW-PATH C:/x",
             "\"--out-path\" C:/x",
+            // Quotes inside a word vanish when the launch splits it.
+            "--out-\"path\" C:/x",
+            "--'folder'-path=C:/x",
+            "--map-size 512 \"--preview-\"path C:/x",
+            // picocli reads more arguments from the named file.
+            "@C:/args.txt",
+            "--map-size 512 \"@args\"",
         ] {
             assert!(raw_argument_folder_flag(refused).is_some(), "{refused}");
         }
-        for allowed in ["", "--map-size 512 --spawn-count 4", "--seed path"] {
+        for allowed in [
+            "",
+            "--map-size 512 --spawn-count 4",
+            "--seed path",
+            "--seed \"a@b\"",
+        ] {
             assert!(raw_argument_folder_flag(allowed).is_none(), "{allowed}");
         }
     }
