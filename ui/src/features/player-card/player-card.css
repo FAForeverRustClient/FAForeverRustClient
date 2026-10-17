@@ -704,6 +704,13 @@ button.player-avatar-tile:disabled {
   line-height: 1.45;
 }
 
+.player-avatar-error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-error-text);
+}
+
 @media (max-width: 760px) {
   .player-overview-cards {
     column-count: 1;

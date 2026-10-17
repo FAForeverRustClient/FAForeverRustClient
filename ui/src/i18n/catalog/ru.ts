@@ -1031,6 +1031,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "playerCard.note.add": "Добавить заметку",
   "playerCard.avatar.fallbackHint": "Если аватар, который вы носите, перестаёт быть вашим, например турнирный аватар переходит к следующему победителю, клиент возвращает тот, что вы выбрали до него.",
   "playerCard.avatar.none": "Без аватара",
+  "playerCard.avatar.selectFailed": "Не удалось надеть этот аватар.",
   "playerCard.avatar.wearing": "Носит: {name}",
   "playerCard.avatar.wearingNone": "Аватар не выбран",
   "playerCard.hero.memberSince": "Регистрация: {date}",
