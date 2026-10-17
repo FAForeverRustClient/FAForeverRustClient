@@ -51,10 +51,9 @@ pub struct VaultMap {
     pub ranked: bool,
     /// Whether the author has withdrawn this version from the vault.
     ///
-    /// Always `false` in an ordinary search, which filters hidden versions out
-    /// server side; only "my maps" asks for them, so only there is this ever
-    /// `true` (mirrors `MapVersion.hidden`, which both reference clients read
-    /// on the detail view).
+    /// Ordinary searches exclude withdrawn versions. "My maps" and catalogue
+    /// deltas include them; deltas remove them from the lookup index (mirrors
+    /// `MapVersion.hidden`, which both reference clients read on the detail view).
     pub hidden: bool,
     pub recommended: bool,
     /// Average community review score in tenths (for example, `43` = 4.3).
@@ -220,6 +219,9 @@ pub struct MapsState {
     /// map from a folder name through it (`shared/mapPresentation.ts`). It is
     /// deliberately not what the Maps tab browses; see `browse` below.
     pub vault: Vec<VaultMap>,
+    /// Versions explicitly resolved for live folders, retained across full refreshes.
+    #[serde(default)]
+    pub resolved_vault_versions: Vec<i32>,
     pub vault_status: MapListStatus,
     #[serde(default)]
     pub vault_progress: Option<crate::state::maps::CatalogueProgress>,
@@ -286,6 +288,10 @@ pub enum MapsEvent {
         reason: String,
     },
     VaultLoaded {
+        maps: Vec<VaultMap>,
+    },
+    /// Apply a quiet catalogue delta without replacing unrelated folder lookups.
+    VaultUpdated {
         maps: Vec<VaultMap>,
     },
     VaultLoadFailed {
@@ -487,12 +493,43 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
             // #385, and nothing asked for the folder again. They are kept.
             let mut vault = maps.clone();
             for known in &state.vault {
-                if !vault.iter().any(|map| map.version_id == known.version_id) {
+                if state.resolved_vault_versions.contains(&known.version_id)
+                    && !vault.iter().any(|map| map.version_id == known.version_id)
+                {
                     vault.push(known.clone());
                 }
             }
             state.vault = vault;
             state.vault_status = MapListStatus::Ready;
+            state.vault_progress = None;
+        }
+        MapsEvent::VaultUpdated { maps } => {
+            // A changed map's entries go, all but the versions this session
+            // looked up by folder (`VaultFoldersResolved`): a lobby tile asked
+            // for that exact version, asks once, and lost it to a delta that
+            // only said the map had moved on (or was withdrawn).
+            let changed: std::collections::HashSet<i32> =
+                maps.iter().map(|map| map.map_id).collect();
+            let resolved: std::collections::HashSet<i32> =
+                state.resolved_vault_versions.iter().copied().collect();
+            state.vault.retain(|known| {
+                !changed.contains(&known.map_id) || resolved.contains(&known.version_id)
+            });
+            // One entry per version: a delta that lists a map twice (its pages
+            // shifted while it was read) or that carries a looked-up version
+            // replaces the entry rather than adding a copy.
+            for map in maps.iter().filter(|map| !map.hidden) {
+                match state
+                    .vault
+                    .iter_mut()
+                    .find(|known| known.version_id == map.version_id)
+                {
+                    Some(known) => *known = map.clone(),
+                    None => state.vault.push(map.clone()),
+                }
+            }
+            state.vault_status = MapListStatus::Ready;
+            state.vault_progress = None;
         }
         MapsEvent::VaultSearching => {
             state.browse_status = MapListStatus::Loading;
@@ -526,6 +563,9 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
         }
         MapsEvent::VaultFoldersResolved { maps } => {
             for map in maps {
+                if !state.resolved_vault_versions.contains(&map.version_id) {
+                    state.resolved_vault_versions.push(map.version_id);
+                }
                 if !state
                     .vault
                     .iter()
@@ -1147,5 +1187,70 @@ mod tests {
                 .collect::<Vec<_>>(),
             ["scmp_009.v0001", "phenom spartiate v2"]
         );
+    }
+    #[test]
+    fn catalogue_delta_merges_by_map_id_and_full_refresh_keeps_only_resolved_extras() {
+        let mut state = MapsState::default();
+        let first = vault_map("first.v0001");
+        let second = VaultMap {
+            map_id: 2,
+            version_id: 2,
+            ..vault_map("second.v0001")
+        };
+        let resolved = VaultMap {
+            map_id: 9,
+            version_id: 9,
+            hidden: true,
+            ..vault_map("resolved.v0001")
+        };
+        reduce(
+            &mut state,
+            &MapsEvent::VaultLoaded {
+                maps: vec![first.clone(), second.clone()],
+            },
+        );
+        reduce(
+            &mut state,
+            &MapsEvent::VaultFoldersResolved {
+                maps: vec![resolved.clone()],
+            },
+        );
+        let replacement = VaultMap {
+            version_id: 12,
+            ..first
+        };
+        let added = VaultMap {
+            map_id: 3,
+            version_id: 3,
+            ..vault_map("third.v0001")
+        };
+        let change = MapsEvent::VaultUpdated {
+            maps: vec![
+                replacement.clone(),
+                added.clone(),
+                VaultMap {
+                    hidden: true,
+                    ..second
+                },
+            ],
+        };
+        reduce(&mut state, &change);
+        assert_eq!(
+            state.vault,
+            vec![resolved.clone(), replacement.clone(), added.clone()]
+        );
+        reduce(&mut state, &change);
+        assert_eq!(
+            state.vault,
+            vec![resolved.clone(), replacement, added.clone()]
+        );
+        reduce(
+            &mut state,
+            &MapsEvent::VaultLoaded {
+                maps: vec![added.clone()],
+            },
+        );
+        assert_eq!(state.vault, vec![added, resolved]);
+        assert_eq!(state.vault_status, MapListStatus::Ready);
     }
 }

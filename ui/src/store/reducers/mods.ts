@@ -15,9 +15,27 @@ export function reduceMods(state: ModsState, event: ModsEvent): ModsState {
     case "vaultLoading":
       return { ...state, vaultStatus: { type: "loading" }, vaultProgress: null };
     case "vaultLoaded":
-      return { ...state, vault: event.payload.mods, vaultStatus: { type: "ready" } };
+      return { ...state, vault: event.payload.mods, vaultStatus: { type: "ready" }, vaultProgress: null };
     case "vaultLoadFailed":
       return { ...state, vaultStatus: { type: "failed", payload: { reason: event.payload.reason } } };
+    case "vaultUpdated": {
+      const removed = new Set(event.payload.removedIds);
+      const changed = new Set([...event.payload.mods.map((mod) => mod.modId), ...removed]);
+      const vault = state.vault.filter((mod) => !changed.has(mod.modId));
+      // One entry per mod, even when a delta lists one twice: see the Rust arm.
+      for (const mod of event.payload.mods) {
+        if (removed.has(mod.modId)) continue;
+        const at = vault.findIndex((known) => known.modId === mod.modId);
+        if (at >= 0) vault[at] = mod;
+        else vault.push(mod);
+      }
+      return {
+        ...state,
+        vault,
+        vaultStatus: { type: "ready" },
+        vaultProgress: null,
+      };
+    }
     case "vaultSearching":
       return { ...state, browseStatus: { type: "loading" } };
     case "vaultSearched":

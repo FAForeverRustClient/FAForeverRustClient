@@ -266,6 +266,12 @@ pub enum ModsEvent {
     VaultLoaded {
         mods: Vec<VaultMod>,
     },
+    /// Apply changed mod records and explicit withdrawals to the lookup index.
+    #[serde(rename_all = "camelCase")]
+    VaultUpdated {
+        mods: Vec<VaultMod>,
+        removed_ids: Vec<i32>,
+    },
     VaultLoadFailed {
         reason: String,
     },
@@ -444,6 +450,31 @@ pub fn reduce(state: &mut ModsState, event: &ModsEvent) {
         ModsEvent::VaultLoaded { mods } => {
             state.vault = mods.clone();
             state.vault_status = ModListStatus::Ready;
+            state.vault_progress = None;
+        }
+        ModsEvent::VaultUpdated { mods, removed_ids } => {
+            let changed: std::collections::HashSet<i32> = mods
+                .iter()
+                .map(|item| item.mod_id)
+                .chain(removed_ids.iter().copied())
+                .collect();
+            state.vault.retain(|item| !changed.contains(&item.mod_id));
+            // One entry per mod, even when a delta lists one twice.
+            for item in mods
+                .iter()
+                .filter(|item| !removed_ids.contains(&item.mod_id))
+            {
+                match state
+                    .vault
+                    .iter_mut()
+                    .find(|known| known.mod_id == item.mod_id)
+                {
+                    Some(known) => *known = item.clone(),
+                    None => state.vault.push(item.clone()),
+                }
+            }
+            state.vault_status = ModListStatus::Ready;
+            state.vault_progress = None;
         }
         ModsEvent::VaultSearching => state.browse_status = ModListStatus::Loading,
         ModsEvent::VaultSearched {
@@ -804,5 +835,39 @@ mod tests {
                 reason: "could not write game.prefs".into()
             }
         );
+    }
+    #[test]
+    fn catalogue_delta_merges_mod_versions_and_removals_idempotently() {
+        let mut state = ModsState::default();
+        let first = vault_mod("first");
+        let second = VaultMod {
+            mod_id: 2,
+            version_id: 2,
+            ..vault_mod("second")
+        };
+        reduce(
+            &mut state,
+            &ModsEvent::VaultLoaded {
+                mods: vec![first.clone(), second],
+            },
+        );
+        let replacement = VaultMod {
+            version_id: 12,
+            ..first
+        };
+        let added = VaultMod {
+            mod_id: 3,
+            version_id: 3,
+            ..vault_mod("third")
+        };
+        let delta = ModsEvent::VaultUpdated {
+            mods: vec![replacement.clone(), added.clone()],
+            removed_ids: vec![2],
+        };
+        for _ in 0..2 {
+            reduce(&mut state, &delta);
+            assert_eq!(state.vault, vec![replacement.clone(), added.clone()]);
+        }
+        assert_eq!(state.vault_status, ModListStatus::Ready);
     }
 }

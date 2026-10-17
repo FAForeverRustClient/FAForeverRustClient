@@ -61,6 +61,8 @@ pub mod auth;
 pub mod backgrounds;
 pub mod borderless;
 pub(crate) mod browser;
+mod catalogue_cache;
+mod catalogue_query;
 pub mod changelog;
 pub mod chat_fake;
 pub mod clan;

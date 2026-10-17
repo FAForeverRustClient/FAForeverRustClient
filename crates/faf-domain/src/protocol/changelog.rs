@@ -333,6 +333,25 @@ fn front_matter_value(front_matter: &str, key: &str) -> Option<String> {
 /// see, so it is dropped rather than shown as the last line of every release.
 const INSTALLER_TRAILER: &str = "Download the installer for your platform from the assets below";
 
+/// The line the Release workflow puts first in a release that must be
+/// installed at once (its `required` input): a security fix, or a change the
+/// server will not talk to older clients without. A client behind such a
+/// release skips the grace period (`is_overdue` in the client-update slice).
+///
+/// Kept as a line people read, not a hidden comment: the notes are also the
+/// Discord post, where a comment would show as markup, and a player should see
+/// why the client asks. `.github/workflows/release.yml` writes it verbatim; a
+/// test below holds the two together.
+pub const REQUIRED_UPDATE_LINE: &str =
+    "**Required update.** Older versions of the client ask to install it right away.";
+
+/// Whether a release body carries [`REQUIRED_UPDATE_LINE`] on a line of its own.
+pub fn marks_required_update(markdown: &str) -> bool {
+    markdown
+        .lines()
+        .any(|line| line.trim() == REQUIRED_UPDATE_LINE)
+}
+
 /// Parse the body of one of this client's own GitHub releases into blocks.
 ///
 /// The same parser as a patch note, because the body is a simpler cousin of
@@ -1298,6 +1317,20 @@ fn decode_entities(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_release_workflow_writes_the_required_update_line_the_client_reads() {
+        let workflow = include_str!("../../../../.github/workflows/release.yml");
+        assert!(workflow.contains(REQUIRED_UPDATE_LINE));
+        assert!(marks_required_update(&format!(
+            "{REQUIRED_UPDATE_LINE}\n\n### Bug fixes\n- Fixed it\n"
+        )));
+        assert!(!marks_required_update("### Bug fixes\n- Fixed it\n"));
+        // Mentioned inside a sentence is not the mark.
+        assert!(!marks_required_update(&format!(
+            "- Explains {REQUIRED_UPDATE_LINE}"
+        )));
+    }
 
     const INDEX: &str = r#"
       <h2 id="past-game-patches">Past game patches</h2>

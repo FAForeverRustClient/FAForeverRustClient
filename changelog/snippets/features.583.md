@@ -1,0 +1,3 @@
+- A notice in the sidebar says when a client update is available, shows the download's progress and installs it in one click.
+- Updates can download in the background while no game is running (Settings, Updates, off by default).
+- On Windows, installing an update no longer opens the installer: the client closes, updates and opens again by itself.

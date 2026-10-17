@@ -14,7 +14,7 @@ import { openTabForMode, TABS } from "../nav/tabs";
 import { ClientStatusBar } from "../status/ClientStatusBar";
 import { InstallBanner } from "./InstallBanner";
 import { WebviewEngineBanner } from "./WebviewEngineBanner";
-import { UpdateBanner } from "../updates/UpdateBanner";
+import { UpdateNotice } from "../updates/UpdateNotice";
 import { UpdateGate } from "../updates/UpdateGate";
 import { WhatsNewDialog } from "../updates/WhatsNewDialog";
 import { BrandMark } from "../../design-system/BrandMark";
@@ -63,6 +63,7 @@ function persistSidebarWidth(width: number) {
 
 export function AppShell() {
   const { t } = useTranslation();
+  const [deferredUpdate, setDeferredUpdate] = useState<string | null>(null);
   const activeTab = useAppStore((s) => s.state.nav.activeTab);
   const auth = useAppStore((s) => s.state.auth);
   const chatStatus = useAppStore((s) => s.state.chat.status);
@@ -224,6 +225,7 @@ export function AppShell() {
         <TabBar onPointerSelect={() => contentRef.current?.focus({ preventScroll: true })} />
 
         <div className="sidebar-footer">
+          <UpdateNotice deferredVersion={deferredUpdate} />
           <button
             type="button"
             className="sidebar-profile-button"
@@ -290,7 +292,6 @@ export function AppShell() {
             and would have overlapped the moment an update landed on a client
             with no game install configured. */}
         <div className="workspace-banners">
-          <UpdateBanner />
           <InstallBanner />
           <WebviewEngineBanner />
         </div>
@@ -315,7 +316,7 @@ export function AppShell() {
 
       {/* Last, and outside the banner row: this one is a dialog over the
           whole client rather than a strip inside it. */}
-      <UpdateGate />
+      <UpdateGate deferredVersion={deferredUpdate} onDefer={setDeferredUpdate} />
       {/* Beside the gate, and never over it: it waits while the gate or a
           game is up. Here, in the signed-in shell, so it is never shown over
           the login screen. */}

@@ -183,7 +183,7 @@ describe("disconnect", () => {
       status: "connected",
       games: [game(1)],
       liveGames: [game(2)],
-      join: { type: "inGame" },
+      join: { type: "joining", payload: { id: 1, prepared: true } },
       matchmakerQueues: [{
         queueName: "ladder1v1",
         teamSize: 1,
@@ -208,6 +208,17 @@ describe("disconnect", () => {
         playMode: "custom",
       }),
     );
+  });
+
+  it("keeps a game that is running until it exits", () => {
+    // Forged Alliance outlives the connection; its exit ends the join.
+    const next = apply(
+      state({ status: "connected", join: { type: "inGame" }, matchmaking: { type: "launching", payload: { queueName: "ladder1v1" } } }),
+      { type: "disconnected" },
+    );
+    expect(next.join).toEqual({ type: "inGame" });
+    expect(next.matchmaking.type).toBe("launching");
+    expect(apply(next, { type: "gameTerminated" }).join).toEqual({ type: "idle" });
   });
 
   it("keeps the selected play mode", () => {

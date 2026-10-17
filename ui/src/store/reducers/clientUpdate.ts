@@ -32,21 +32,10 @@ export function updateBannerRelease(state: ClientUpdateState): ClientRelease | n
   return showing && state.release.version !== state.dismissedVersion ? state.release : null;
 }
 
-/**
- * Twin of `ClientUpdateState::required_release`, which decides whether the
- * client may still be used.
- *
- * Both carve-outs are refusals to trap somebody, and the reasoning lives on
- * the Rust side: a release with no installer for this platform never forces,
- * and nothing forces until a check has actually found something. A prerelease
- * used to be a third, and is not any more: every release this project
- * publishes is marked as one, so that carve-out meant nothing ever forced.
- * Note what is *not* consulted: the dismissed version, because the point of a
- * gate is that it is not the user's to dismiss.
- */
+/** An overdue, installable release gates regardless of its notice's dismissal. */
 export function updateRequiredRelease(state: ClientUpdateState): ClientRelease | null {
   const release = state.release;
-  if (release === null || release.downloadUrl === "") return null;
+  if (!state.overdue || release === null || release.downloadUrl === "") return null;
   const gated =
     state.status.type === "available" ||
     state.status.type === "downloading" ||
@@ -64,18 +53,23 @@ export function reduceClientUpdate(
   event: ClientUpdateEvent,
 ): ClientUpdateState {
   switch (event.type) {
+    // A new check also takes back "Not now": asking again is asking to be
+    // told again. See the Rust arm.
     case "checkStarted":
       return {
         ...state,
         currentVersion: event.payload.currentVersion,
         status: { type: "checking" },
+        dismissedVersion: "",
       };
     case "upToDate":
       // Drop the offer too: the user may have installed it out of band, and a
       // stale banner behind an up-to-date status is worse than no banner.
-      return { ...state, release: null, status: { type: "upToDate" } };
+      return { ...state, overdue: false, release: null, status: { type: "upToDate" } };
     case "available":
-      return { ...state, release: event.payload.release, status: { type: "available" } };
+      return { ...state, overdue: state.release?.version === event.payload.release.version && state.overdue, release: event.payload.release, status: { type: "available" } };
+    case "overdue":
+      return { ...state, overdue: true };
     case "downloadProgressed":
       return {
         ...state,
@@ -95,10 +89,15 @@ export function reduceClientUpdate(
         : state;
     case "downloaded":
       return { ...state, status: { type: "ready", payload: { path: event.payload.path } } };
+    // Held only while an installer is ready; see `install_waiting` in the domain.
+    case "installWaiting":
+      return { ...state, installWaiting: state.status.type === "ready" };
+    case "installWaitEnded":
+      return { ...state, installWaiting: false };
     case "installing":
-      return { ...state, status: { type: "installing" } };
+      return { ...state, installWaiting: false, status: { type: "installing" } };
     case "failed":
-      return { ...state, status: { type: "failed", payload: { reason: event.payload.reason } } };
+      return { ...state, installWaiting: false, status: { type: "failed", payload: { reason: event.payload.reason } } };
     case "dismissed":
       return { ...state, dismissedVersion: event.payload.version };
     case "checkCompleted":
