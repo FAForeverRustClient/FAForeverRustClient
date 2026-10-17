@@ -725,9 +725,7 @@ fn appimage_of(
     let appimage = PathBuf::from(appimage.filter(|value| !value.is_empty())?);
     let appdir = Path::new(appdir?);
     // `/` or an empty value would hold every executable on the machine.
-    if appdir.parent().is_none() {
-        return None;
-    }
+    appdir.parent()?;
     executable?.starts_with(appdir).then_some(appimage)
 }
 
