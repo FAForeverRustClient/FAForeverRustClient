@@ -288,6 +288,8 @@ export function ReplayList({
     defaults: DEFAULT_COLUMN_PX,
     flexible: FLEXIBLE_COLUMN,
     floors: COLUMN_FLOOR_PX,
+    // The thumbnail and the status buttons keep their width on a wide window.
+    fixed: [0, 7],
     headerRef,
     layout: "grid",
   });
