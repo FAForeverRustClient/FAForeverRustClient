@@ -300,6 +300,20 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
                         handle.exit(0);
                         return;
                     }
+                    // An AppImage update has already put the new image where
+                    // the old one was, so restarting is what runs it. Tauri
+                    // starts `$APPIMAGE` only once the exit has released the
+                    // single-instance name, so the new process is not turned
+                    // away as a second copy of this one.
+                    #[cfg(target_os = "linux")]
+                    if matches!(
+                        event.event,
+                        AppEvent::ClientUpdate(faf_domain::state::ClientUpdateEvent::Installing)
+                    ) && faf_app::infra::client_update::running_appimage().is_some()
+                    {
+                        handle.request_restart();
+                        return;
+                    }
                     let _ = handle.emit(
                         EVENT_CHANNEL,
                         FrontendMessage::Event {
@@ -327,6 +341,15 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
                         faf_domain::state::ClientUpdateStatus::Installing
                     ) {
                         handle.exit(0);
+                        return;
+                    }
+                    #[cfg(target_os = "linux")]
+                    if matches!(
+                        snapshot.state.client_update.status,
+                        faf_domain::state::ClientUpdateStatus::Installing
+                    ) && faf_app::infra::client_update::running_appimage().is_some()
+                    {
+                        handle.request_restart();
                         return;
                     }
                     let bytes = serde_json::to_vec(&snapshot.state).map_or(0, |json| json.len());
