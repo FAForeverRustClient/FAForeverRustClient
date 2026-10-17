@@ -77,6 +77,7 @@ pub mod galactic_war;
 pub mod guides;
 pub mod launcher;
 pub mod leaderboard;
+pub mod linux_runtime;
 pub mod lobby;
 pub mod map_generator;
 pub mod maps;

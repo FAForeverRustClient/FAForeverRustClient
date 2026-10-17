@@ -30,10 +30,10 @@ use std::sync::{Arc, Mutex, PoisonError};
 use faf_domain::state::{
     AuthCommand, ChangelogCommand, ChatCommand, ClanCommand, ClientUpdateCommand,
     ConnectivityCommand, CoopCommand, EventsCommand, GalacticWarCommand, GuidesCommand,
-    LeaderboardCommand, LobbyCommand, MapGeneratorCommand, MapsCommand, ModsCommand, NavCommand,
-    NotificationCommand, PlayerCardCommand, ReplayCommand, ReportingCommand, ReviewsCommand,
-    SessionCommand, SettingsCommand, SocialCommand, StreamsCommand, TourneyCommand, TourneyRead,
-    TrainingCommand, TutorialsCommand, UploadsCommand,
+    LeaderboardCommand, LinuxRuntimeCommand, LobbyCommand, MapGeneratorCommand, MapsCommand,
+    ModsCommand, NavCommand, NotificationCommand, PlayerCardCommand, ReplayCommand,
+    ReportingCommand, ReviewsCommand, SessionCommand, SettingsCommand, SocialCommand,
+    StreamsCommand, TourneyCommand, TourneyRead, TrainingCommand, TutorialsCommand, UploadsCommand,
 };
 use faf_domain::AppCommand;
 use tokio::sync::oneshot;
@@ -80,6 +80,9 @@ pub(crate) enum Key {
     ClientReleaseNotes,
     /// Installing and launching Galactic War share a staging directory.
     GalacticWar,
+    /// Checking and installing the Linux runtime: one run owns its directory
+    /// and its record of what is installed.
+    LinuxRuntime,
     /// A GitHub device-flow sign-in: a second one would issue a second code
     /// and leave the one on screen dead.
     GuidesSignIn,
@@ -210,6 +213,7 @@ pub(crate) fn policy(command: &AppCommand) -> CommandPolicy {
         AppCommand::Events(command) => events(command),
         AppCommand::Uploads(command) => uploads(command),
         AppCommand::GalacticWar(command) => galactic_war(command),
+        AppCommand::LinuxRuntime(command) => linux_runtime(command),
         AppCommand::Guides(command) => guides(command),
         AppCommand::ClientUpdate(command) => client_update(command),
         AppCommand::Settings(command) => settings(command),
@@ -579,6 +583,13 @@ fn galactic_war(command: &GalacticWarCommand) -> CommandPolicy {
         GalacticWarCommand::CancelInstall => PRIORITY,
         GalacticWarCommand::Refresh | GalacticWarCommand::RefreshStatistics => ORDINARY,
         GalacticWarCommand::Install | GalacticWarCommand::Play => single_flight(Key::GalacticWar),
+    }
+}
+
+fn linux_runtime(command: &LinuxRuntimeCommand) -> CommandPolicy {
+    match command {
+        LinuxRuntimeCommand::Prepare => single_flight(Key::LinuxRuntime),
+        LinuxRuntimeCommand::Cancel => PRIORITY,
     }
 }
 

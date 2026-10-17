@@ -1,0 +1,1 @@
+- On Linux, the client sets up Wine for Forged Alliance by itself on its first start (GE-Proton in the Steam Linux Runtime, as FAForever/faf-linux does), so the faf-linux scripts are no longer needed.

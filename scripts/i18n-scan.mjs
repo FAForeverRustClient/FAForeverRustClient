@@ -39,6 +39,7 @@ const IGNORED_FILES = new Map([
   ["ui/src/store/reducer.ts", "AppEvent kind discriminants, matched against the wire"],
   ["ui/src/store/store.ts", "string-concatenation fragments, not standalone copy"],
   ["ui/src/shared/mapPresentation.ts", "official map names: proper nouns, never translated"],
+  ["ui/src/shared/linuxRuntimeText.ts", "product names (GE-Proton, DXVK) and the shell commands that install packages"],
   ["ui/src/design-system/Icon.tsx", "inline SVG path data"],
   ["ui/src/shared/externalLinks.ts", "developer-facing throw messages, never rendered"],
   ["ui/src/shared/factions.ts", "faction wire words keyed by game id; the shown labels are the factions.* keys"],

@@ -79,9 +79,9 @@ export type AdminArticle = {
 	updatedAt: number | null,
 };
 
-export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Streams"; command: StreamsCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand } | { kind: "Connectivity"; command: ConnectivityCommand };
+export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Streams"; command: StreamsCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "LinuxRuntime"; command: LinuxRuntimeCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand } | { kind: "Connectivity"; command: ConnectivityCommand };
 
-export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Streams"; event: StreamsEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent } | { kind: "Connectivity"; event: ConnectivityEvent };
+export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Streams"; event: StreamsEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "LinuxRuntime"; event: LinuxRuntimeEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent } | { kind: "Connectivity"; event: ConnectivityEvent };
 
 /**  The complete client state. One field per domain slice. */
 export type AppState = {
@@ -110,6 +110,7 @@ export type AppState = {
 	tutorials: TutorialsState,
 	uploads: UploadsState,
 	galacticWar: GalacticWarState,
+	linuxRuntime: LinuxRuntimeState,
 	guides: GuidesState,
 	clientUpdate: ClientUpdateState,
 	settings: SettingsState,
@@ -4372,6 +4373,127 @@ export type LessonScore = {
 	maxStars: number,
 	seconds: number,
 };
+
+/**
+ *  Which family of package managers to phrase install commands for.
+ *
+ *  Read from `/etc/os-release`. The UI uses it only to show the right command;
+ *  `Other` gets the list of what to install instead.
+ */
+export type LinuxDistribution =
+/**  Debian, Ubuntu, Linux Mint, Pop!_OS: `apt`. */
+"debian" |
+/**  Fedora, Bazzite, Nobara: `dnf`. */
+"fedora" |
+/**  Arch, Manjaro, EndeavourOS, CachyOS: `pacman`. */
+"arch" | "other";
+
+/**
+ *  Something the system has to provide that the client cannot install itself:
+ *  each of these needs the distribution's package manager, or root.
+ */
+export type LinuxPrerequisite =
+/**
+ *  `bwrap` is not installed. The Steam Linux Runtime container is built on
+ *  it.
+ */
+"bubblewrap" |
+/**
+ *  `bwrap` is installed but may not create a sandbox: recent Ubuntu
+ *  releases forbid unprivileged user namespaces through AppArmor unless
+ *  the administrator allows them.
+ */
+"userNamespaces" |
+/**  The 64-bit Vulkan loader, `libvulkan.so.1`. DXVK draws through it. */
+"vulkan64" |
+/**
+ *  The 32-bit Vulkan loader. Forged Alliance is a 32-bit program, so it
+ *  needs this one as well as the 64-bit one.
+ */
+"vulkan32" |
+/**  `xz`, which `tar` needs to unpack the Steam Linux Runtime. */
+"xz" |
+/**
+ *  No Forged Alliance install was found: not in any Steam library, and not
+ *  at a path set under Settings, Paths.
+ */
+"forgedAlliance";
+
+export type LinuxRuntimeCommand =
+/**
+ *  Check the system and install whatever is missing or out of date. Sent
+ *  once at every start, and again by the retry action; a runtime that is
+ *  already complete makes it a quick check.
+ */
+{ type: "prepare" } |
+/**
+ *  Stop a download or installation in progress. What was finished stays;
+ *  the next `Prepare` picks up from there.
+ */
+{ type: "cancel" };
+
+/**  The pieces the client downloads. */
+export type LinuxRuntimeComponent =
+/**  GE-Proton, whose Wine runs the game. */
+"proton" |
+/**  Valve's Steam Linux Runtime 4 container. */
+"steamRuntime" |
+/**  DXVK, Direct3D 9 to 11 over Vulkan. */
+"dxvk" |
+/**
+ *  Microsoft's DirectX June 2010 redistributable: the D3DX9 and XACT
+ *  libraries Forged Alliance was built against.
+ */
+"directX";
+
+export type LinuxRuntimeEvent = { type: "statusChanged"; payload: {
+	status: LinuxRuntimeStatus,
+} };
+
+export type LinuxRuntimeState = {
+	status: LinuxRuntimeStatus,
+};
+
+/**  Where the Linux runtime stands. */
+export type LinuxRuntimeStatus =
+/**
+ *  Nothing to do: not Linux, or the player starts the game through a
+ *  launch command of their own.
+ */
+{ type: "notNeeded" } |
+/**  Looking at what the system has and what is already installed. */
+{ type: "checking" } |
+/**
+ *  The system lacks something the client cannot install. Nothing was
+ *  downloaded; the check runs again on the next start, or on retry.
+ */
+{ type: "missing"; payload: {
+	prerequisites: LinuxPrerequisite[],
+	distribution: LinuxDistribution,
+} } |
+/**
+ *  Byte counts are `u32` like everywhere else on this boundary: specta
+ *  rejects 64-bit integers, and the largest download is about 520 MB.
+ */
+{ type: "downloading"; payload: {
+	component: LinuxRuntimeComponent,
+	downloadedBytes: number,
+	/**  Zero when the server sent no `Content-Length`. */
+	totalBytes: number,
+} } | { type: "installing"; payload: {
+	step: LinuxRuntimeStep,
+} } |
+/**  Games start through the runtime. */
+{ type: "ready" } | { type: "failed"; payload: {
+	reason: string,
+} };
+
+/**  One stage of turning the downloads into a working prefix. */
+export type LinuxRuntimeStep = { type: "unpacking"; payload: {
+	component: LinuxRuntimeComponent,
+} } |
+/**  `wineboot`: Wine creating the prefix's Windows directory. */
+{ type: "creatingPrefix" } | { type: "installingDirectX" } | { type: "installingDxvk" };
 
 /**
  *  An account on one of the console's lists: allowed to host, an editor, an

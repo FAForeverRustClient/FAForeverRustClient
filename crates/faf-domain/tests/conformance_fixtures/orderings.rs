@@ -428,6 +428,7 @@ slice_table! {
     tutorials => "tutorials",
     uploads => "uploads",
     galactic_war => "galacticWar",
+    linux_runtime => "linuxRuntime",
     guides => "guides",
     client_update => "clientUpdate",
     connectivity => "connectivity",

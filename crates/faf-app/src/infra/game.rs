@@ -320,30 +320,53 @@ impl GameProcess {
             "launching Forged Alliance"
         );
 
+        // Without a launch command of the player's own, a Linux machine runs
+        // the game through the runtime the client installed (see
+        // `infra::linux_runtime`): Proton's Wine in the Steam Linux Runtime
+        // container, with the environment faf-linux's wrappers set.
+        let runtime = if wrapper.is_empty() {
+            let arguments = config
+                .additional_arguments
+                .iter()
+                .map(std::ffi::OsString::from)
+                .chain(args.iter().map(std::ffi::OsString::from))
+                .collect();
+            crate::infra::linux_runtime::game_command(&exe, arguments)
+        } else {
+            None
+        };
+
         // With a wrapper the executable stops being the program and becomes
         // the wrapper's first argument, which is what `wine <exe> <args>` is.
         // Everything after it keeps its order, so the arguments FA receives are
         // the same either way.
-        let mut command = match wrapper.split_first() {
-            Some((program, rest)) => {
+        let mut command = match (&runtime, wrapper.split_first()) {
+            (Some(planned), _) => Command::from(planned.std_command()),
+            (None, Some((program, rest))) => {
                 let mut command = Command::new(program);
                 command.args(rest).arg(&exe);
+                command.args(&config.additional_arguments).args(args);
                 command
             }
-            None => Command::new(&exe),
+            (None, None) => {
+                let mut command = Command::new(&exe);
+                command.args(&config.additional_arguments).args(args);
+                command
+            }
         };
-        command
-            .args(&config.additional_arguments)
-            .args(args)
-            .current_dir(&work_dir);
+        command.current_dir(&work_dir);
         // The prefix decides where FA's `%LOCALAPPDATA%` is, and therefore
         // which `game.prefs` a launched game reads. Passing it to the child
         // rather than asking the user to export it keeps the client and the
         // game looking at one file: `infra::mods` resolves the same setting.
-        if !config.wine_prefix.is_empty() {
+        // The runtime brings its own prefix, already in its environment.
+        if runtime.is_none() && !config.wine_prefix.is_empty() {
             command.env("WINEPREFIX", &config.wine_prefix);
         }
-        let launched = wrapper.first().cloned();
+        let launched = match &runtime {
+            Some(planned) => Some(planned.program.display().to_string()),
+            None => wrapper.first().cloned(),
+        };
         drop(config);
 
         let child = command.spawn().map_err(|e| match &launched {
@@ -351,7 +374,15 @@ impl GameProcess {
             // "no such file" for `wine` on a machine without Wine installed
             // otherwise reads as the game being missing, which it is not.
             Some(program) => format!("could not start '{program}' to run the game: {e}"),
-            None => format!("could not start '{}': {e}", exe.display()),
+            None if cfg!(windows) => format!("could not start '{}': {e}", exe.display()),
+            // Outside Windows, an executable started on its own is a Windows
+            // program without Wine, which is the thing to say.
+            None => format!(
+                "could not start '{}': {e}. Forged Alliance needs Wine on this system: the \
+                 client sets it up by itself when it starts (Settings, Game shows how far it \
+                 got), or set a launch command of your own there",
+                exe.display()
+            ),
         })?;
 
         // Only replay launches may replace a running child. The game slot was
@@ -580,7 +611,8 @@ impl ProcessPort for GameProcess {
     }
 
     fn game_argument_path(&self, path: &Path) -> String {
-        let wrapped = !self.config.lock().unwrap().launch_wrapper.trim().is_empty();
+        let wrapped = !self.config.lock().unwrap().launch_wrapper.trim().is_empty()
+            || crate::infra::linux_runtime::active().is_some();
         game_visible_path(path, wrapped)
     }
 
