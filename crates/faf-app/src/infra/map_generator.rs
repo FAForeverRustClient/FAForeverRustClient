@@ -649,6 +649,7 @@ impl NeroxisMapGenerator {
 
         let mut command = Command::new(self.config.java_path());
         command
+            .args(jvm_options(jar))
             .arg("-jar")
             .arg(jar)
             .args(&args)
@@ -836,6 +837,7 @@ impl NeroxisMapGenerator {
     ) -> Result<String, String> {
         let mut command = Command::new(self.config.java_path());
         command
+            .args(jvm_options(jar))
             .arg("-jar")
             .arg(jar)
             .args(args)
@@ -1147,6 +1149,16 @@ impl NeroxisMapGenerator {
         } else {
             self.config.maps_dir()
         };
+        // Waiting for the lock can be waiting for this very map: "Generate" in
+        // a lobby's details and then joining it queue the join's run behind
+        // the first, which then rebuilt the same terrain from scratch only to
+        // find the folder there at the end (#596).
+        if let Some(name) = map_name
+            .as_ref()
+            .filter(|name| destination.join(name).is_dir())
+        {
+            return RunOutcome::Generated(vec![name.clone()]);
+        }
         let staging = destination.join(format!(".faf-install-{:016x}", rand::random::<u64>()));
         if let Err(error) = tokio::fs::create_dir_all(&staging).await {
             return RunOutcome::Failed(format!("could not stage generated maps: {error}"));
@@ -1533,6 +1545,34 @@ fn strip_ansi(line: &str) -> String {
 /// [`strip_ansi`] over a whole multi-line block.
 fn strip_ansi_block(text: &str) -> String {
     text.lines().map(strip_ansi).collect::<Vec<_>>().join("\n")
+}
+
+/// The JVM's own options, in front of `-jar`, for every run of the generator
+/// and every query to it (#596).
+///
+/// Every run is a fresh JVM that loads and verifies the same few thousand
+/// classes of the same JAR before it does any work, and a Maps-tab run starts
+/// one for the `--parse` before the run itself. A dynamic class-data archive
+/// (AppCDS, JDK 19 and later) keeps that work in a file beside the JAR: the
+/// first run writes it, every later one maps it in. One archive per JAR, so a
+/// new generator release starts its own; a different Java finds the archive
+/// does not fit and writes it again, which is what the option is for.
+///
+/// `IgnoreUnrecognizedVMOptions` first, because the Java can be one the user
+/// chose: an older one that does not know an option would otherwise refuse to
+/// start at all, and generating would fail where it only had to be slower.
+/// The CDS log tags off, since unified logging writes to stdout, which is the
+/// generator's own progress stream.
+fn jvm_options(jar: &Path) -> Vec<std::ffi::OsString> {
+    let mut archive = std::ffi::OsString::from("-XX:SharedArchiveFile=");
+    archive.push(jar.with_extension("jsa"));
+    vec![
+        "-XX:+IgnoreUnrecognizedVMOptions".into(),
+        "-XX:+AutoCreateSharedArchive".into(),
+        archive,
+        "-Xlog:cds=off".into(),
+        "-Xlog:cds+dynamic=off".into(),
+    ]
 }
 
 /// Render an argument list for the log, quoting anything with spaces so a
@@ -1944,6 +1984,25 @@ impl MapGeneratorPort for FakeMapGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_jvm_keeps_its_class_data_in_an_archive_beside_its_jar() {
+        let jar = Path::new("generator").join("NeroxisGen_1.22.1.jar");
+        let options: Vec<String> = jvm_options(&jar)
+            .into_iter()
+            .map(|option| option.to_string_lossy().into_owned())
+            .collect();
+        // Ignoring unknown options has to come first to cover the rest.
+        assert_eq!(options[0], "-XX:+IgnoreUnrecognizedVMOptions");
+        assert!(options.contains(&"-XX:+AutoCreateSharedArchive".to_string()));
+        let archive = format!(
+            "-XX:SharedArchiveFile={}",
+            Path::new("generator")
+                .join("NeroxisGen_1.22.1.jsa")
+                .display()
+        );
+        assert!(options.contains(&archive));
+    }
 
     #[tokio::test]
     async fn non_utf8_console_output_does_not_hide_the_next_map_name() {
