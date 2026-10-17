@@ -3,8 +3,10 @@ import { MIN_BROWSER_COLUMN_PX } from "./browsingPreferences";
 import {
   columnTemplate,
   fitColumns,
+  MAX_COLUMN_GROWTH,
   resolveColumnWidths,
   withBoundaryTraded,
+  withSpareRoom,
 } from "./tableColumns";
 
 const WIDTHS = [120, 110, 260, 84, 84, 150, 130, 128];
@@ -190,5 +192,35 @@ describe("dragging a divider", () => {
     const floor = () => MIN_BROWSER_COLUMN_PX;
     expect(withBoundaryTraded(WIDTHS, 0, 40, floor)).toEqual(WIDTHS);
     expect(withBoundaryTraded(WIDTHS, WIDTHS.length, 40, floor)).toEqual(WIDTHS);
+  });
+});
+
+describe("the spare room of a wide list (#591)", () => {
+  // The live table's columns: the Watch button is the last one.
+  const WATCH = 7;
+
+  it("widens every column but the fixed ones, and leaves the rest to the flexible one", () => {
+    const space = TOTAL * 2;
+    const drawn = withSpareRoom(fitColumns(WIDTHS, [], space), space, FLEXIBLE, { fixed: [WATCH] });
+    expect(drawn[WATCH]).toBe(WIDTHS[WATCH]);
+    expect(drawn[FLEXIBLE]).toBe(WIDTHS[FLEXIBLE]);
+    drawn.forEach((width, index) => {
+      if (index === WATCH || index === FLEXIBLE) return;
+      expect(width).toBeGreaterThan(WIDTHS[index]);
+      expect(width).toBeLessThanOrEqual(WIDTHS[index] * MAX_COLUMN_GROWTH);
+    });
+    // The flexible column's track takes what is left, so the others never
+    // add up to more than the list minus its own width.
+    const others = drawn.reduce((sum, width, index) => (index === FLEXIBLE ? sum : sum + width), 0);
+    expect(others + WIDTHS[FLEXIBLE]).toBeLessThanOrEqual(space);
+  });
+
+  it("changes nothing where the columns do not fit as stored", () => {
+    const fit = fitColumns(WIDTHS, [], TOTAL - 100);
+    expect(withSpareRoom(fit, TOTAL - 100, FLEXIBLE)).toEqual(fit.drawn);
+  });
+
+  it("changes nothing before the list is measured", () => {
+    expect(withSpareRoom(fitColumns(WIDTHS, [], 0), 0, FLEXIBLE)).toEqual(WIDTHS);
   });
 });

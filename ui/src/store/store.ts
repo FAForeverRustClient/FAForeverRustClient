@@ -637,6 +637,7 @@ const INITIAL: AppState = {
         hideFoes: false,
         applyFilters: false,
         rules: [],
+        allowRules: [],
         columnWidths: [],
         columnOrder: [],
         detailWidth: 0,
