@@ -214,15 +214,17 @@ export function reduceLobby(state: LobbyState, event: LobbyEvent): LobbyState {
             ? { type: "idle" }
             : state.matchmaking,
       };
+    // A running game, and the matchmaker launch it belongs to, outlive a full
+    // disconnect as they outlive a reconnect: see the Rust twin.
     case "disconnected":
       return {
         ...state,
         status: "disconnected",
         games: [],
         liveGames: [],
-        join: { type: "idle" },
+        join: gameKept(state) ? state.join : { type: "idle" },
         matchmakerQueues: [],
-        matchmaking: { type: "idle" },
+        matchmaking: gameKept(state) && state.matchmaking.type === "launching" ? state.matchmaking : { type: "idle" },
         party: { ownerId: null, members: [] },
         vetoes: [],
         availableAvatars: [],
@@ -232,4 +234,9 @@ export function reduceLobby(state: LobbyState, event: LobbyEvent): LobbyState {
         avatarSelectionError: "",
       };
   }
+}
+
+/** Whether a game is launched or running, and so outlives the connection. */
+function gameKept(state: LobbyState): boolean {
+  return state.join.type === "launched" || state.join.type === "inGame";
 }

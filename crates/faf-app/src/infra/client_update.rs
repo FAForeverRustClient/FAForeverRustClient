@@ -30,8 +30,10 @@
 //! [`ASSET_SUFFIXES`], so a hostile asset name cannot influence where the
 //! client writes or what it runs.
 
+mod installer;
+
 use async_trait::async_trait;
-use faf_domain::protocol::changelog::parse_release_notes;
+use faf_domain::protocol::changelog::{marks_required_update, parse_release_notes};
 use faf_domain::state::{
     compare_versions, is_release_version, strip_version_prefix, ClientRelease, ClientReleaseNotes,
     ReleaseChannel,
@@ -247,12 +249,35 @@ impl GitHubUpdates {
         }
 
         let target = self.installer_path(release)?;
+        self.run_download_to(release, progress, called_off, &target)
+            .await
+    }
+
+    async fn run_download_to(
+        &self,
+        release: &ClientRelease,
+        progress: &mpsc::Sender<DownloadProgress>,
+        called_off: &CancellationToken,
+        target: &std::path::Path,
+    ) -> Result<String, String> {
         let directory = target
             .parent()
             .ok_or_else(|| "could not resolve the download directory".to_string())?;
         tokio::fs::create_dir_all(directory)
             .await
             .map_err(|e| format!("could not create the download directory: {e}"))?;
+        // A completed target only arrives through our atomic rename below.
+        // Reuse its advertised, non-zero size instead of fetching it again.
+        if release.size_bytes > 0
+            && tokio::fs::symlink_metadata(target)
+                .await
+                .is_ok_and(|metadata| {
+                    metadata.is_file() && metadata.len() == u64::from(release.size_bytes)
+                })
+        {
+            prune_installers(directory, target).await;
+            return Ok(target.to_string_lossy().into_owned());
+        }
         let partial = target.with_extension("partial");
         // Clean up a file left by a process kill before starting another
         // attempt; completed installers use a different path.
@@ -372,11 +397,46 @@ impl GitHubUpdates {
             return Err(error);
         }
 
-        if let Err(error) = tokio::fs::rename(&partial, &target).await {
+        if let Err(error) = tokio::fs::rename(&partial, target).await {
             let _ = tokio::fs::remove_file(&partial).await;
             return Err(format!("could not store the installer: {error}"));
         }
+        prune_installers(directory, target).await;
         Ok(target.to_string_lossy().into_owned())
+    }
+}
+
+/// Only our installer files are pruned; unrelated cache entries stay intact.
+async fn prune_installers(directory: &std::path::Path, keep: &std::path::Path) {
+    let mut entries = match tokio::fs::read_dir(directory).await {
+        Ok(entries) => entries,
+        Err(error) => {
+            tracing::warn!(kind = ?error.kind(), "could not read cached installers");
+            return;
+        }
+    };
+    loop {
+        let entry = match entries.next_entry().await {
+            Ok(Some(entry)) => entry,
+            Ok(None) => break,
+            Err(error) => {
+                tracing::warn!(kind = ?error.kind(), "could not read a cached installer entry");
+                break;
+            }
+        };
+        if entry.path() == keep
+            || !entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with("faf-client-")
+        {
+            continue;
+        }
+        if entry.file_type().await.is_ok_and(|kind| kind.is_file()) {
+            if let Err(error) = tokio::fs::remove_file(entry.path()).await {
+                tracing::warn!(file = ?entry.file_name(), kind = ?error.kind(), "could not remove an old installer");
+            }
+        }
     }
 }
 
@@ -545,6 +605,7 @@ fn release_notes_from(releases: &[Value], issue_base: &str) -> Vec<ClientRelease
                 notes_url: text("html_url").to_string(),
                 // `null` for a release published with no text at all.
                 blocks: parse_release_notes(text("body"), issue_base),
+                required: marks_required_update(text("body")),
             })
         })
         .collect();
@@ -623,13 +684,7 @@ async fn start_installer(path: &Path) -> Result<(), String> {
             .map_err(|e| format!("could not make the installer executable: {e}"))?;
     }
 
-    let mut command = if path.extension().is_some_and(|ext| ext == "msi") {
-        let mut command = tokio::process::Command::new("msiexec");
-        command.arg("/i").arg(path);
-        command
-    } else {
-        tokio::process::Command::new(path)
-    };
+    let mut command = tokio::process::Command::from(installer::command(path, cfg!(windows)));
 
     command
         .spawn()
@@ -869,6 +924,26 @@ mod tests {
         assert!(notes[1].blocks.is_empty());
     }
 
+    #[test]
+    fn a_release_published_as_required_says_so_in_its_notes() {
+        use faf_domain::protocol::changelog::REQUIRED_UPDATE_LINE;
+        let mut required = release_json("v0.10.0", false, true);
+        required["body"] = Value::String(format!(
+            "{REQUIRED_UPDATE_LINE}
+
+### Bug fixes
+
+- Fixed it.
+"
+        ));
+        let notes = release_notes_from(
+            &[required, release_json("v0.9.0", false, true)],
+            "https://github.com/Org/Repo/issues",
+        );
+        assert!(notes[0].required);
+        assert!(!notes[1].required);
+    }
+
     /// A local release list that answers every request with `body` and counts
     /// how often it was asked.
     async fn serve_release_list(body: String) -> (String, Arc<std::sync::atomic::AtomicUsize>) {
@@ -1026,6 +1101,54 @@ mod tests {
         ] {
             assert!(!client.is_trusted(hostile), "{hostile} must be refused");
         }
+    }
+
+    #[tokio::test]
+    async fn update_notice_reuses_complete_installers_and_prunes_only_older_files() {
+        let directory =
+            std::env::temp_dir().join(format!("faf-update-reuse-{}", rand::random::<u64>()));
+        tokio::fs::create_dir(&directory).await.unwrap();
+        let target = directory.join("faf-client-1.0.0.exe");
+        let old = directory.join("faf-client-0.9.0.exe");
+        let unrelated = directory.join("keep.txt");
+        let subdirectory = directory.join("faf-client-folder");
+        tokio::fs::write(&target, b"whole").await.unwrap();
+        tokio::fs::write(&old, b"older").await.unwrap();
+        tokio::fs::write(&unrelated, b"keep").await.unwrap();
+        tokio::fs::create_dir(&subdirectory).await.unwrap();
+        let release = ClientRelease {
+            version: "1.0.0".into(),
+            size_bytes: 5,
+            download_url: "https://github.invalid/installer".into(),
+            ..Default::default()
+        };
+        let client = GitHubUpdates::new(config());
+        let (tx, _rx) = mpsc::channel(4);
+        let cancelled = CancellationToken::new();
+        cancelled.cancel();
+        // A cache hit succeeds even with the network path already cancelled.
+        let path = client
+            .run_download_to(&release, &tx, &cancelled, &target)
+            .await
+            .unwrap();
+        assert_eq!(std::path::Path::new(&path), target);
+        assert!(!old.exists());
+        assert!(unrelated.exists());
+        assert!(subdirectory.is_dir());
+        for size_bytes in [4, 0] {
+            let wrong_size = ClientRelease {
+                size_bytes,
+                ..release.clone()
+            };
+            assert_eq!(
+                client
+                    .run_download_to(&wrong_size, &tx, &cancelled, &target)
+                    .await
+                    .unwrap_err(),
+                DOWNLOAD_CALLED_OFF
+            );
+        }
+        tokio::fs::remove_dir_all(directory).await.unwrap();
     }
 
     #[tokio::test]

@@ -25,6 +25,64 @@ use std::cmp::Ordering;
 
 use crate::protocol::changelog::ChangelogBlock;
 
+/// Give players three days to choose a convenient time to update.
+pub const GRACE_PERIOD_DAYS: i64 = 3;
+/// Two newer releases are enough to require an update even during the grace period.
+pub const RELEASES_BEHIND_LIMIT: usize = 2;
+
+/// Whether an offered release has stopped being optional: a release the
+/// player is behind was marked required ([`behind_a_required_release`]), the
+/// player is [`RELEASES_BEHIND_LIMIT`] releases behind, or it was published at
+/// least [`GRACE_PERIOD_DAYS`] ago. A publish date the client cannot read, or
+/// one in the future, never makes it overdue: nobody is locked out on data the
+/// client does not understand.
+pub fn is_overdue(
+    release: &ClientRelease,
+    now: chrono::DateTime<chrono::Utc>,
+    behind: usize,
+    required: bool,
+) -> bool {
+    required
+        || behind >= RELEASES_BEHIND_LIMIT
+        || chrono::DateTime::parse_from_rfc3339(&release.published_at).is_ok_and(|published| {
+            now.signed_duration_since(published) >= chrono::Duration::days(GRACE_PERIOD_DAYS)
+        })
+}
+
+/// How many published releases on the player's channel are newer than the
+/// running build, each version counted once.
+pub fn releases_behind(
+    current: &str,
+    notes: &[ClientReleaseNotes],
+    channel: ReleaseChannel,
+) -> usize {
+    notes
+        .iter()
+        .filter(|note| {
+            (channel == ReleaseChannel::PreRelease || !note.pre_release)
+                && should_update(current, &note.version)
+        })
+        .map(|note| strip_version_prefix(&note.version))
+        .collect::<std::collections::HashSet<_>>()
+        .len()
+}
+
+/// Whether any release on the player's channel newer than the running build
+/// was published as required ([`ClientReleaseNotes::required`]). Any of them,
+/// not only the newest: a player two releases behind still skipped the fix the
+/// older one was required for.
+pub fn behind_a_required_release(
+    current: &str,
+    notes: &[ClientReleaseNotes],
+    channel: ReleaseChannel,
+) -> bool {
+    notes.iter().any(|note| {
+        note.required
+            && (channel == ReleaseChannel::PreRelease || !note.pre_release)
+            && should_update(current, &note.version)
+    })
+}
+
 /// Which releases to offer.
 ///
 /// Java splits this across two tasks (`CheckForUpdateTask` and
@@ -67,25 +125,6 @@ impl ClientRelease {
     pub fn is_installable(&self) -> bool {
         !self.download_url.is_empty()
     }
-
-    /// Whether a release of this shape is one the client insists on.
-    ///
-    /// The release half of [`ClientUpdateState::required_release`], split out
-    /// because the answer is wanted before the release reaches state: the
-    /// notification raised for a new version has to know whether it is
-    /// announcing news or a requirement.
-    ///
-    /// A prerelease counts. It did not, on the reasoning that opting into
-    /// prereleases is opting into testing rather than into being locked out by
-    /// every nightly, and that reasoning does not survive this project's
-    /// release history: every release it has ever published is marked as a
-    /// prerelease on GitHub, so "a prerelease never forces" meant "nothing
-    /// ever forces". What the channel decides is whether a build is *offered*
-    /// at all; once it has been offered and this client can install it, being
-    /// two releases behind is the same problem either way.
-    pub fn is_required(&self) -> bool {
-        self.is_installable()
-    }
 }
 
 /// One published release of this client and what it changed: a row of the
@@ -110,6 +149,10 @@ pub struct ClientReleaseNotes {
     /// published without notes, which every release before the changelog
     /// snippets was.
     pub blocks: Vec<ChangelogBlock>,
+    /// Published to be installed at once: the body carries
+    /// [`crate::protocol::changelog::REQUIRED_UPDATE_LINE`].
+    #[serde(default)]
+    pub required: bool,
 }
 
 /// Status of the release-notes list. Mirrors `ChangelogStatus`.
@@ -189,6 +232,14 @@ impl ClientUpdateStatus {
 #[serde(rename_all = "camelCase")]
 pub struct ClientUpdateState {
     pub status: ClientUpdateStatus,
+    /// The offered release has passed the grace period or the release-count limit.
+    #[serde(default)]
+    pub overdue: bool,
+    /// Install was asked for while the last game was still finishing (FA
+    /// closing, its replay or a lesson result being saved). The installer
+    /// starts once that is done, so the click is not lost.
+    #[serde(default)]
+    pub install_waiting: bool,
     /// The running build's version, filled in by the first check.
     pub current_version: String,
     pub release: Option<ClientRelease>,
@@ -243,29 +294,13 @@ impl ClientUpdateState {
         (showing && release.version != self.dismissed_version).then_some(release)
     }
 
-    /// The release the client must be updated to before it can be used again.
-    ///
-    /// A banner can be waved away, and an out-of-date client is not only a
-    /// client missing features: it is a client still running whatever was
-    /// wrong with the last build. So a stable release that this client can
-    /// install itself stops being an offer and becomes a gate.
-    ///
-    /// Two conditions, and each one is a refusal to trap somebody:
-    ///
-    /// - **A release with no installer for this platform never forces.** That
-    ///   is a normal outcome, not an error - a release may ship a Windows
-    ///   installer and nothing else - and gating on an update the client has
-    ///   no way to apply would leave that user with a client they cannot use
-    ///   and cannot fix.
-    /// - **Nothing forces until a check has actually found something.** A
-    ///   failed or unreachable check leaves `release` as `None`, so an update
-    ///   server having a bad day cannot lock every client out.
-    ///
-    /// Deliberately independent of [`Self::banner_release`]'s dismissal: the
-    /// point of a gate is that it is not the user's to dismiss.
+    /// An installable release becomes required only after the grace period or
+    /// release-count limit. This delivers fixes within days without interrupting
+    /// everyone on release day. Dismissal never postpones that deadline, and a
+    /// release with no installer cannot lock players out.
     pub fn required_release(&self) -> Option<&ClientRelease> {
         let release = self.release.as_ref()?;
-        if !release.is_required() {
+        if !self.overdue || !release.is_installable() {
             return None;
         }
         match &self.status {
@@ -301,6 +336,8 @@ pub enum ClientUpdateEvent {
     Available {
         release: ClientRelease,
     },
+    /// The held release has become required, independently of dismissal.
+    Overdue,
     /// A check settled, whichever way it went. Separate from the outcome
     /// because the outcome is often identical to the previous one, and "we
     /// asked, just now" is the part the user pressed the button for.
@@ -318,6 +355,12 @@ pub enum ClientUpdateEvent {
     Downloaded {
         path: String,
     },
+    /// Install waits for the last game to finish; see
+    /// [`ClientUpdateState::install_waiting`].
+    InstallWaiting,
+    /// The wait ended without installing: a new game, join or search began,
+    /// or the game took too long to finish. The installer stays ready.
+    InstallWaitEnded,
     Installing,
     Failed {
         reason: String,
@@ -345,7 +388,7 @@ pub enum ClientUpdateEvent {
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum ClientUpdateCommand {
     /// Ask the release source what the newest build is. Runs automatically at
-    /// startup unless the user turned that off.
+    /// startup and every six hours.
     Check,
     /// Fetch the installer for the release already in state.
     Download,
@@ -381,18 +424,31 @@ pub fn reduce(state: &mut ClientUpdateState, event: &ClientUpdateEvent) {
         ClientUpdateEvent::CheckStarted { current_version } => {
             state.current_version = current_version.clone();
             state.status = ClientUpdateStatus::Checking;
+            // Asking again is asking to be told again. "Not now" hid the
+            // notice for that version, and "Check now" in Settings then found
+            // the same version and showed nothing: the update could not be
+            // brought back short of a restart. No automatic check reaches
+            // this with a dismissal in place: the startup check runs before
+            // anything can be dismissed, and the six-hour ticker skips its
+            // check while a release is held.
+            state.dismissed_version.clear();
         }
         ClientUpdateEvent::UpToDate => {
             // Drop any previously offered release: the user may have installed
             // it out of band, and keeping it would leave a stale banner behind
             // a status that says everything is current.
             state.release = None;
+            state.overdue = false;
             state.status = ClientUpdateStatus::UpToDate;
         }
         ClientUpdateEvent::Available { release } => {
+            if state.release.as_ref().map(|known| &known.version) != Some(&release.version) {
+                state.overdue = false;
+            }
             state.release = Some(release.clone());
             state.status = ClientUpdateStatus::Available;
         }
+        ClientUpdateEvent::Overdue => state.overdue = true,
         ClientUpdateEvent::DownloadProgressed {
             received_bytes,
             total_bytes,
@@ -416,8 +472,16 @@ pub fn reduce(state: &mut ClientUpdateState, event: &ClientUpdateEvent) {
         ClientUpdateEvent::Downloaded { path } => {
             state.status = ClientUpdateStatus::Ready { path: path.clone() }
         }
-        ClientUpdateEvent::Installing => state.status = ClientUpdateStatus::Installing,
+        ClientUpdateEvent::InstallWaiting => {
+            state.install_waiting = matches!(state.status, ClientUpdateStatus::Ready { .. })
+        }
+        ClientUpdateEvent::InstallWaitEnded => state.install_waiting = false,
+        ClientUpdateEvent::Installing => {
+            state.install_waiting = false;
+            state.status = ClientUpdateStatus::Installing
+        }
         ClientUpdateEvent::Failed { reason } => {
+            state.install_waiting = false;
             state.status = ClientUpdateStatus::Failed {
                 reason: reason.clone(),
             }
@@ -622,6 +686,120 @@ pub fn whats_new_on_startup(
 mod tests {
     use super::*;
 
+    #[test]
+    fn update_notice_policy() {
+        let now = chrono::DateTime::parse_from_rfc3339("2026-10-16T12:00:00Z")
+            .unwrap()
+            .to_utc();
+        let mut candidate = release("1.0.0");
+        candidate.published_at = "2026-10-14T12:00:00Z".into();
+        assert!(!is_overdue(&candidate, now, 1, false));
+        assert!(is_overdue(
+            &candidate,
+            now + chrono::Duration::days(1),
+            1,
+            false
+        ));
+        assert!(is_overdue(&candidate, now, 2, false));
+        assert!(is_overdue(&candidate, now, 1, true));
+        for date in ["", "broken", "2027-01-01T00:00:00Z"] {
+            candidate.published_at = date.into();
+            assert!(!is_overdue(&candidate, now, 1, false));
+        }
+        let mut published = vec![notes("0.9.0"), notes("1.0.0"), notes("1.1.0"), notes("bad")];
+        published[1].pre_release = false;
+        published.push(published[1].clone());
+        assert_eq!(
+            releases_behind("0.9.0", &published, ReleaseChannel::Stable),
+            1
+        );
+        assert_eq!(
+            releases_behind("0.9.0", &published, ReleaseChannel::PreRelease),
+            2
+        );
+        // Only a required release the player is behind, on their channel.
+        assert!(!behind_a_required_release(
+            "0.9.0",
+            &published,
+            ReleaseChannel::PreRelease
+        ));
+        published[2].required = true;
+        assert!(behind_a_required_release(
+            "0.9.0",
+            &published,
+            ReleaseChannel::PreRelease
+        ));
+        assert!(!behind_a_required_release(
+            "0.9.0",
+            &published,
+            ReleaseChannel::Stable
+        ));
+        assert!(!behind_a_required_release(
+            "1.1.0",
+            &published,
+            ReleaseChannel::PreRelease
+        ));
+        published[2].required = false;
+
+        let mut state = ClientUpdateState::default();
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::Available {
+                release: candidate.clone(),
+            },
+        );
+        assert!(state.required_release().is_none());
+        reduce(&mut state, &ClientUpdateEvent::Overdue);
+        assert!(state.required_release().is_some());
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::Available {
+                release: candidate.clone(),
+            },
+        );
+        assert!(state.overdue, "the same offer keeps its deadline");
+        candidate.version = "1.1.0".into();
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::Available { release: candidate },
+        );
+        assert!(!state.overdue);
+        reduce(&mut state, &ClientUpdateEvent::Overdue);
+        reduce(&mut state, &ClientUpdateEvent::UpToDate);
+        assert!(!state.overdue);
+    }
+
+    #[test]
+    fn checking_again_brings_a_dismissed_update_back() {
+        let mut state = ClientUpdateState::default();
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::Available {
+                release: release("1.0.0"),
+            },
+        );
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::Dismissed {
+                version: "1.0.0".into(),
+            },
+        );
+        assert!(state.banner_release().is_none());
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::CheckStarted {
+                current_version: "0.9.0".into(),
+            },
+        );
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::Available {
+                release: release("1.0.0"),
+            },
+        );
+        assert!(state.banner_release().is_some());
+    }
+
     fn release(version: &str) -> ClientRelease {
         ClientRelease {
             version: version.into(),
@@ -792,6 +970,35 @@ mod tests {
     /// A called-off download puts the offer back, not a failure, and a late
     /// cancel cannot take back an installer that is already whole.
     #[test]
+    fn waiting_to_install_holds_only_for_a_ready_installer_and_ends_with_it() {
+        let mut state = ClientUpdateState::default();
+        reduce(&mut state, &ClientUpdateEvent::InstallWaiting);
+        assert!(!state.install_waiting, "nothing to install");
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::Downloaded {
+                path: "setup.exe".into(),
+            },
+        );
+        reduce(&mut state, &ClientUpdateEvent::InstallWaiting);
+        assert!(state.install_waiting);
+        reduce(&mut state, &ClientUpdateEvent::InstallWaitEnded);
+        assert!(!state.install_waiting);
+        assert!(matches!(state.status, ClientUpdateStatus::Ready { .. }));
+        for end in [
+            ClientUpdateEvent::Installing,
+            ClientUpdateEvent::Failed { reason: "x".into() },
+        ] {
+            state.status = ClientUpdateStatus::Ready {
+                path: "setup.exe".into(),
+            };
+            reduce(&mut state, &ClientUpdateEvent::InstallWaiting);
+            reduce(&mut state, &end);
+            assert!(!state.install_waiting);
+        }
+    }
+
+    #[test]
     fn a_cancelled_download_puts_the_offer_back() {
         let mut state = ClientUpdateState::default();
         reduce(
@@ -957,6 +1164,7 @@ mod tests {
         adjust(&mut found);
         let mut state = ClientUpdateState::default();
         reduce(&mut state, &ClientUpdateEvent::Available { release: found });
+        reduce(&mut state, &ClientUpdateEvent::Overdue);
         state
     }
 
@@ -1067,6 +1275,7 @@ mod tests {
                 level: 3,
                 text: "Features".into(),
             }],
+            required: false,
         }
     }
 

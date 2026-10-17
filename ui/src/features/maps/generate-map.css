@@ -115,6 +115,23 @@
   line-height: 1.4;
 }
 
+/* The output folder: the chosen path, read-only, with Browse and Reset. */
+.generate-map-folder {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.generate-map-folder input {
+  flex: 1;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+.generate-map-folder > button {
+  flex: none;
+}
+
 /* Seed input group */
 .generate-map-seed {
   display: flex;

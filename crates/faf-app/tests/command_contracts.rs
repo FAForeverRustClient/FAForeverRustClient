@@ -748,8 +748,8 @@ fn single_flight_cases() -> Vec<SingleFlightCase> {
             setup: vec![],
             first: ModsCommand::LoadVault.into(),
             first_gate: "mod-vault".into(),
-            // The other command under the key: a reload asked for by a person.
-            again: ModsCommand::ReloadVault.into(),
+            // A second load, as another tab mounting would send.
+            again: ModsCommand::LoadVault.into(),
             again_gate: "mod-vault".into(),
             probe: client_update_probe(),
         },

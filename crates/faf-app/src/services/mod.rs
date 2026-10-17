@@ -128,3 +128,6 @@ mod progress_tests {
         assert_eq!(percent_of(2_000, Some(1_000)), Some(100));
     }
 }
+
+#[cfg(test)]
+mod catalogue_tests;

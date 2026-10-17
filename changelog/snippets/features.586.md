@@ -1,0 +1,2 @@
+- The map generator's output folder is picked with Browse instead of typed (Maps, Generate, advanced options).
+- Generated maps in a tournament's map pool show their size.

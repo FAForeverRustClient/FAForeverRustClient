@@ -1551,3 +1551,6 @@ mod tests {
         assert_eq!(app.snapshot().session.status, ConnectionStatus::Connected);
     }
 }
+
+#[cfg(test)]
+mod client_update_tests;

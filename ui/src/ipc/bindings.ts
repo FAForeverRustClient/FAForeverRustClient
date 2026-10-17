@@ -1789,6 +1789,11 @@ export type ClientReleaseNotes = {
 	 *  snippets was.
 	 */
 	blocks: ChangelogBlock[],
+	/**
+	 *  Published to be installed at once: the body carries
+	 *  [`crate::protocol::changelog::REQUIRED_UPDATE_LINE`].
+	 */
+	required?: boolean,
 };
 
 /**  Status of the release-notes list. Mirrors `ChangelogStatus`. */
@@ -1799,7 +1804,7 @@ export type ClientReleaseNotesStatus = { type: "idle" } | { type: "loading" } | 
 export type ClientUpdateCommand =
 /**
  *  Ask the release source what the newest build is. Runs automatically at
- *  startup unless the user turned that off.
+ *  startup and every six hours.
  */
 { type: "check" } |
 /**  Fetch the installer for the release already in state. */
@@ -1848,6 +1853,8 @@ export type ClientUpdateEvent =
 } } | { type: "upToDate" } | { type: "available"; payload: {
 	release: ClientRelease,
 } } |
+/**  The held release has become required, independently of dismissal. */
+{ type: "overdue" } |
 /**
  *  A check settled, whichever way it went. Separate from the outcome
  *  because the outcome is often identical to the previous one, and "we
@@ -1866,7 +1873,17 @@ export type ClientUpdateEvent =
  */
 { type: "downloadCancelled" } | { type: "downloaded"; payload: {
 	path: string,
-} } | { type: "installing" } | { type: "failed"; payload: {
+} } |
+/**
+ *  Install waits for the last game to finish; see
+ *  [`ClientUpdateState::install_waiting`].
+ */
+{ type: "installWaiting" } |
+/**
+ *  The wait ended without installing: a new game, join or search began,
+ *  or the game took too long to finish. The installer stays ready.
+ */
+{ type: "installWaitEnded" } | { type: "installing" } | { type: "failed"; payload: {
 	reason: string,
 } } | { type: "dismissed"; payload: {
 	version: string,
@@ -1887,6 +1904,14 @@ export type ClientUpdateEvent =
 
 export type ClientUpdateState = {
 	status: ClientUpdateStatus,
+	/**  The offered release has passed the grace period or the release-count limit. */
+	overdue?: boolean,
+	/**
+	 *  Install was asked for while the last game was still finishing (FA
+	 *  closing, its replay or a lesson result being saved). The installer
+	 *  starts once that is done, so the click is not lost.
+	 */
+	installWaiting?: boolean,
 	/**  The running build's version, filled in by the first check. */
 	currentVersion: string,
 	release: ClientRelease | null,
@@ -5287,6 +5312,10 @@ export type MapsEvent = { type: "vaultLoading" } | { type: "vaultProgress"; payl
 	reason: string,
 } } | { type: "vaultLoaded"; payload: {
 	maps: VaultMap[],
+} } |
+/**  Apply a quiet catalogue delta without replacing unrelated folder lookups. */
+{ type: "vaultUpdated"; payload: {
+	maps: VaultMap[],
 } } | { type: "vaultLoadFailed"; payload: {
 	reason: string,
 } } |
@@ -5380,6 +5409,8 @@ export type MapsState = {
 	 *  deliberately not what the Maps tab browses; see `browse` below.
 	 */
 	vault: VaultMap[],
+	/**  Versions explicitly resolved for live folders, retained across full refreshes. */
+	resolvedVaultVersions?: number[],
 	vaultStatus: MapListStatus,
 	vaultProgress?: CatalogueProgress | null,
 	/**
@@ -5985,6 +6016,11 @@ export type ModsEvent = { type: "vaultLoading" } | { type: "vaultProgress"; payl
 	reason: string,
 } } | { type: "vaultLoaded"; payload: {
 	mods: VaultMod[],
+} } |
+/**  Apply changed mod records and explicit withdrawals to the lookup index. */
+{ type: "vaultUpdated"; payload: {
+	mods: VaultMod[],
+	removedIds: number[],
 } } | { type: "vaultLoadFailed"; payload: {
 	reason: string,
 } } | { type: "installedLoading" } | { type: "installedLoaded"; payload: {
@@ -12944,15 +12980,27 @@ export type UpdatePreferences = {
 	 *  request made before login.
 	 */
 	automatic: boolean,
+	/**  Fetch installers while idle; off by default for slow or metered connections. */
+	backgroundDownload: boolean,
 	/**
 	 *  Also offer prereleases. Java's `preReleaseCheckEnabled`, where it picks
 	 *  between two entirely separate check tasks.
 	 *
 	 *  On by default: every release of this client so far has been published
 	 *  as a prerelease, so a client on the stable channel was never offered
-	 *  one. A settings file that already stores the choice keeps it.
+	 *  one. A settings file that stores `false` from before
+	 *  [`UpdatePreferences::channel_choice_version`] is switched on once.
 	 */
 	preRelease: boolean,
+	/**
+	 *  Which channel default the stored [`Self::pre_release`] was written
+	 *  under. Same shape as `NotificationPreferences::sound_choice_version`:
+	 *  every save writes every field, so a `false` stored before prereleases
+	 *  became the default is the old default, not evidence of a choice, and
+	 *  it left those players on a channel that has never had a release.
+	 *  Version zero is a file written before this field existed.
+	 */
+	channelChoiceVersion: number,
 	/**
 	 *  Show what changed, once, on the first start after the client was
 	 *  updated. See `whats_new_on_startup` in the client-update slice.
@@ -12975,7 +13023,9 @@ export type UpdatePreferences = {
 /**  A change to [`UpdatePreferences`]. */
 export type UpdatePreferencesPatch = {
 	automatic?: boolean,
+	backgroundDownload?: boolean,
 	preRelease?: boolean,
+	channelChoiceVersion?: number,
 	showWhatsNew?: boolean,
 	lastSeenVersion?: string | null,
 };
@@ -13182,10 +13232,9 @@ export type VaultMap = {
 	/**
 	 *  Whether the author has withdrawn this version from the vault.
 	 *
-	 *  Always `false` in an ordinary search, which filters hidden versions out
-	 *  server side; only "my maps" asks for them, so only there is this ever
-	 *  `true` (mirrors `MapVersion.hidden`, which both reference clients read
-	 *  on the detail view).
+	 *  Ordinary searches exclude withdrawn versions. "My maps" and catalogue
+	 *  deltas include them; deltas remove them from the lookup index (mirrors
+	 *  `MapVersion.hidden`, which both reference clients read on the detail view).
 	 */
 	hidden: boolean,
 	recommended: boolean,

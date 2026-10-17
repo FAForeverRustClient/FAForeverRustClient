@@ -24,21 +24,32 @@ on:
   workflow_dispatch:
     inputs:
       prerelease:
-        # This flag is the client's update policy, not a label. `pick_release`
-        # in `infra/client_update.rs` skips a prerelease for anyone on the
-        # stable channel, and `ClientRelease::is_required`
-        # refuses to gate on one. So:
+        # This flag decides who is offered the release, not a label.
+        # `pick_release` in `infra/client_update.rs` skips a prerelease for
+        # anyone on the stable channel. So:
         #
-        #   checked   - players whose settings allow prereleases are told, with
-        #               a banner they can dismiss. Players who opted out are
-        #               not offered it. Since 0.8.0, allowing prereleases is the
-        #               default; an existing explicit choice is preserved.
-        #   unchecked - every client is told, and a client that can install it
-        #               must: the update gate stands until it is.
+        #   checked   - offered to players whose settings allow prereleases.
+        #               That is the default, and a `false` stored under the
+        #               old default is switched on once on load.
+        #   unchecked - offered to every client.
         #
-        description: 'Mark as a prerelease: offered when prereleases are enabled, without forcing an update'
+        # Either way an offer is a sidebar notice first, and becomes the update
+        # gate three days after publishing or two releases behind (`is_overdue`
+        # in the client-update slice), unless `required` below skips that.
+        description: 'Mark as a prerelease: offered only to clients that allow prereleases (the default)'
         type: boolean
         default: true
+      required:
+        # For a security fix, or a change the server will not talk to older
+        # clients without: every client behind this release on its channel
+        # raises the update gate at once instead of after the grace period.
+        # It works through a line put first in the notes, which players also
+        # read on GitHub and Discord; the client looks for exactly this line
+        # (`REQUIRED_UPDATE_LINE` in `protocol/changelog.rs`, whose test reads
+        # this file).
+        description: 'Required update: clients behind it must install it at once, without the grace period'
+        type: boolean
+        default: false
       allow_existing_tag:
         # A failed build no longer needs this: nothing was published, so the
         # draft is still there and a plain re-run picks it up. This is for
@@ -119,6 +130,7 @@ jobs:
       - name: Combine the changelog snippets
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          REQUIRED: ${{ inputs.required }}
         run: |
           PREVIOUS=$(git describe --tags --abbrev=0 --match 'v*' --exclude "v$VERSION" HEAD 2>/dev/null || true)
           echo "Snippets added since ${PREVIOUS:-the beginning}"
@@ -131,6 +143,13 @@ jobs:
           # message itself and splits anything over Discord's 2000 characters
           # into follow-up messages in the same thread.
           printf '\n\nDownload the installer for your platform from the assets below.\n' >> release-notes.md
+          if [ "$REQUIRED" = "true" ]; then
+            {
+              printf '%s\n\n' '**Required update.** Older versions of the client ask to install it right away.'
+              cat release-notes.md
+            } > release-notes.required.md
+            mv release-notes.required.md release-notes.md
+          fi
           cat release-notes.md
 
       # Finds a draft left behind by a run whose builds failed and builds into
@@ -236,6 +255,19 @@ jobs:
 
       - name: Verify bundled Java runtime
         run: node scripts/check-java-runtime.mjs
+
+      # linuxdeploy resolves the dependencies of every library in the AppImage,
+      # the bundled JRE's included, and the JRE's own libraries need
+      # `libjvm.so`, which sits in its `lib/server` where linuxdeploy does not
+      # look: 0.9.1's first run failed with "Could not find dependency:
+      # libjvm.so". On the search path it is found. linuxdeploy then also
+      # copies one into `usr/lib`, which nothing loads (25 MB); the JRE's
+      # libraries keep `$ORIGIN` and load their own, and the bundled java runs
+      # the ICE adapter from the extracted AppImage (checked in a throwaway
+      # workflow, 2026-10-16).
+      - name: Let linuxdeploy find the bundled JRE's libjvm
+        if: matrix.platform == 'ubuntu-22.04'
+        run: echo "LD_LIBRARY_PATH=$GITHUB_WORKSPACE/natives/jre/lib/server:$GITHUB_WORKSPACE/natives/jre/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
 
       - name: Build and publish release
         uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0.6.2

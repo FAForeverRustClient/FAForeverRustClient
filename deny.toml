@@ -43,6 +43,15 @@ confidence-threshold = 0.9
 name = "r-efi"
 allow = ["MIT", "Apache-2.0"]
 
+[[licenses.exceptions]]
+# zip 9 reads bzip2 entries through this Rust port of libbzip2, under the
+# original libbzip2 licence: BSD-style, with the added term that altered
+# versions say so. The client shipped the same code before, compiled from C
+# through `bzip2-sys`, whose crate metadata says MIT OR Apache-2.0 and hid it.
+# Allowed for this crate alone rather than for the whole tree.
+name = "libbz2-rs-sys"
+allow = ["bzip2-1.0.6"]
+
 [bans]
 # Duplicates are a fact of a Tauri dependency tree (three `winnow`s, two
 # `reqwest`s), and forcing them to one version is upstream's work, not a gate

@@ -5,6 +5,7 @@
 //! See ARCHITECTURE.md §5 for the full Port table.
 
 pub mod auth;
+pub mod catalogue;
 pub mod changelog;
 pub mod chat;
 pub mod clan;

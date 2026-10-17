@@ -289,6 +289,17 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
         loop {
             match events.recv().await {
                 Ok(event) => {
+                    #[cfg(windows)]
+                    if matches!(
+                        event.event,
+                        AppEvent::ClientUpdate(faf_domain::state::ClientUpdateEvent::Installing)
+                    ) {
+                        // Explicit exit bypasses close-to-tray and the window's
+                        // recovery handler. Release the single-instance slot
+                        // before the installer replaces files and restarts us.
+                        handle.exit(0);
+                        return;
+                    }
                     let _ = handle.emit(
                         EVENT_CHANNEL,
                         FrontendMessage::Event {
@@ -310,6 +321,14 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
                     let started = std::time::Instant::now();
                     let (replacement, snapshot) = event_core.subscribe_versioned_with_snapshot();
                     events = replacement;
+                    #[cfg(windows)]
+                    if matches!(
+                        snapshot.state.client_update.status,
+                        faf_domain::state::ClientUpdateStatus::Installing
+                    ) {
+                        handle.exit(0);
+                        return;
+                    }
                     let bytes = serde_json::to_vec(&snapshot.state).map_or(0, |json| json.len());
                     let _ = handle.emit(
                         EVENT_CHANNEL,

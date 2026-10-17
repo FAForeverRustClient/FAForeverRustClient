@@ -1,0 +1,1 @@
+- Map and mod lookups start from a saved copy, so the client downloads only what changed instead of the whole vault on every start.

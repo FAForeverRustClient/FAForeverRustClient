@@ -39,6 +39,37 @@ pub trait ModsPort: Send + Sync {
         self.list_vault().await
     }
 
+    /// Read a validated, API-specific saved lookup catalogue before any network work.
+    async fn load_catalogue_cache(&self) -> Option<super::catalogue::CachedCatalogue<VaultMod>> {
+        None
+    }
+
+    async fn save_catalogue_cache(
+        &self,
+        _cache: super::catalogue::CachedCatalogue<VaultMod>,
+    ) -> Result<(), String> {
+        Ok(())
+    }
+
+    async fn catalogue_full(
+        &self,
+        progress: Option<tokio::sync::mpsc::Sender<faf_domain::state::maps::CatalogueProgress>>,
+    ) -> Result<super::catalogue::CatalogueBatch<VaultMod>, String> {
+        Ok(super::catalogue::CatalogueBatch {
+            entries: self.list_vault_with_progress(progress).await?,
+            newest_change: String::new(),
+            removed_ids: Vec::new(),
+            pages: 0,
+        })
+    }
+
+    async fn catalogue_delta(
+        &self,
+        _since: &str,
+    ) -> Result<super::catalogue::CatalogueBatch<VaultMod>, String> {
+        Err("incremental catalogue reads are unavailable".into())
+    }
+
     /// One page of a server-side vault search, as `MapsPort::search_vault`.
     async fn search_vault(&self, query: ModVaultQuery) -> Result<ModSearchPage, String>;
 

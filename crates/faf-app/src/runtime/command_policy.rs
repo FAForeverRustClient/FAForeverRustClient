@@ -55,6 +55,11 @@ pub(crate) enum Key {
     MapVault,
     /// The whole mod catalogue crawl.
     ModVault,
+    /// "Check for updates" on installed mods: a read of the mod catalogue that
+    /// has to happen even while a background load is running. Its own key, so
+    /// that load cannot drop it; it then waits for that load inside the
+    /// service (`ModsContext::catalogue_writer`).
+    ModVaultCheck,
     /// The changelog index. A dropped load loses nothing: the one running ends
     /// by selecting the newest patch itself.
     Changelog,
@@ -383,7 +388,12 @@ fn map_generator(command: &MapGeneratorCommand) -> CommandPolicy {
 fn mods(command: &ModsCommand) -> CommandPolicy {
     match command {
         ModsCommand::CancelVaultLoad => PRIORITY,
-        ModsCommand::LoadVault | ModsCommand::ReloadVault => single_flight(Key::ModVault),
+        // A second load while one runs is dropped: every tab that shows mods
+        // asks on mount, and queued they each ran a crawl of their own. A
+        // manual check has its own key, so a running load cannot drop it; it
+        // waits for that load in the service, then makes its own request.
+        ModsCommand::LoadVault => single_flight(Key::ModVault),
+        ModsCommand::ReloadVault => single_flight(Key::ModVaultCheck),
         ModsCommand::SearchVault { .. }
         | ModsCommand::LoadInstalled
         | ModsCommand::QueryDownloadSizes { .. } => ORDINARY,
@@ -861,8 +871,12 @@ mod tests {
             Admission::SingleFlight(Key::MapVault)
         );
         assert_eq!(
-            admission(ModsCommand::ReloadVault.into()),
+            admission(ModsCommand::LoadVault.into()),
             Admission::SingleFlight(Key::ModVault)
+        );
+        assert_eq!(
+            admission(ModsCommand::ReloadVault.into()),
+            Admission::SingleFlight(Key::ModVaultCheck)
         );
         assert_eq!(
             admission(

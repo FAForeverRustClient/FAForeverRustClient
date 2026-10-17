@@ -5,6 +5,7 @@ import { Row } from "./GenerateMapControls";
 import { Select } from "../../design-system/Select";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { native } from "../../ipc/native";
 import { isUsablePresetName, MAX_PRESET_NAME } from "../../shared/generatorPresets";
 import { GENERATION_TYPES, deletePreset, preflight, loadHelp } from "./generatorCommands";
 
@@ -121,14 +122,34 @@ export function GeneratorAdvancedOptions({ model }: {
           </div>
         </Row>
 
+        {/* Chosen in the folder dialog, not typed: the backend accepts only a
+            folder the player picked or the one already saved (`picked_paths`),
+            since the generator writes wherever this names. */}
         <Row label={t("maps.generate.outputPath")}>
-          <input
-            className="generate-map-control"
-            value={form.outputPath}
-            aria-label={t("maps.generate.outputPath")}
-            placeholder={t("maps.generate.outputPathHint")}
-            onChange={(e) => set("outputPath", e.target.value)}
-          />
+          <div className="generate-map-folder">
+            <input
+              className="generate-map-control"
+              value={form.outputPath}
+              readOnly
+              aria-label={t("maps.generate.outputPath")}
+              placeholder={t("maps.generate.outputPathHint")}
+              title={form.outputPath || undefined}
+            />
+            <Button
+              onClick={() => {
+                void native.selectDirectory(form.outputPath || undefined).then((folder) => {
+                  if (folder) set("outputPath", folder);
+                });
+              }}
+            >
+              {t("settings.paths.browse")}
+            </Button>
+            {form.outputPath !== "" && (
+              <Button title={t("settings.paths.resetHint")} onClick={() => set("outputPath", "")}>
+                {t("settings.paths.reset")}
+              </Button>
+            )}
+          </div>
         </Row>
 
         <Row

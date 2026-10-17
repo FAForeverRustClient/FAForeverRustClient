@@ -4811,6 +4811,8 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
                 LobbyEvent::InGame.into(),
+                // A full disconnect mid-game keeps the game; its exit ends it.
+                LobbyEvent::Disconnected.into(),
                 LobbyEvent::GameTerminated.into(),
                 LobbyEvent::Disconnected.into(),
             ],
@@ -5345,6 +5347,7 @@ fn cases() -> Vec<Case> {
                     },
                 }
                 .into(),
+                ClientUpdateEvent::Overdue.into(),
                 ClientUpdateEvent::DownloadProgressed {
                     received_bytes: 2048,
                     total_bytes: 4096,
@@ -5363,13 +5366,27 @@ fn cases() -> Vec<Case> {
                 .into(),
                 // Too late: the installer is whole and stays ready.
                 ClientUpdateEvent::DownloadCancelled.into(),
+                // Asked for while the last game was finishing: held, then
+                // given up, then held again until the installer starts.
+                ClientUpdateEvent::InstallWaiting.into(),
+                ClientUpdateEvent::InstallWaitEnded.into(),
+                ClientUpdateEvent::InstallWaiting.into(),
                 ClientUpdateEvent::Installing.into(),
+                // Nothing ready to wait with.
+                ClientUpdateEvent::InstallWaiting.into(),
                 ClientUpdateEvent::Dismissed {
                     version: "0.3.0".into(),
                 }
                 .into(),
+                // Checking again takes the dismissal back.
+                ClientUpdateEvent::CheckStarted {
+                    current_version: "0.2.0".into(),
+                }
+                .into(),
                 // A later check finding nothing must clear the offer, not keep
                 // a dismissed release lying around under an up-to-date status.
+                ClientUpdateEvent::Available { release: ClientRelease { version: "0.4.0".into(), ..ClientRelease::default() } }.into(),
+                ClientUpdateEvent::Overdue.into(),
                 ClientUpdateEvent::UpToDate.into(),
                 ClientUpdateEvent::CheckCompleted {
                     at: "2026-02-01T09:05:00Z".into(),
@@ -8364,6 +8381,25 @@ fn transition_cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        case("map catalogue deltas replace versions, remove hidden maps and preserve folder lookups", vec![
+            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(1, 11, "first.v0001"), conformance_vault_map(2, 22, "second.v0001")] }.into(),
+            MapsEvent::VaultFoldersResolved { maps: vec![conformance_vault_map(9, 99, "resolved.v0001")] }.into(),
+            MapsEvent::VaultUpdated { maps: vec![conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(3, 33, "third.v0001"), VaultMap { hidden: true, ..conformance_vault_map(2, 22, "second.v0001") }] }.into(),
+            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(3, 33, "third.v0001")] }.into(),
+        ]),
+        case("a map catalogue delta keeps a looked-up older version of a changed map and lists each version once", vec![
+            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(1, 11, "first.v0001")] }.into(),
+            MapsEvent::VaultFoldersResolved { maps: vec![conformance_vault_map(1, 10, "first.v0000")] }.into(),
+            MapsEvent::VaultUpdated { maps: vec![conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(1, 10, "first.v0000")] }.into(),
+        ]),
+        case("a mod catalogue delta that lists a mod twice holds it once", vec![
+            ModsEvent::VaultLoaded { mods: vec![vault_mod(1, "old")] }.into(),
+            ModsEvent::VaultUpdated { mods: vec![vault_mod(3, "added"), vault_mod(1, "new"), vault_mod(3, "added")], removed_ids: vec![] }.into(),
+        ]),
+        case("mod catalogue deltas replace versions and remove withdrawn mods", vec![
+            ModsEvent::VaultLoaded { mods: vec![vault_mod(1, "old"), vault_mod(2, "removed")] }.into(),
+            ModsEvent::VaultUpdated { mods: vec![vault_mod(1, "new"), vault_mod(3, "added")], removed_ids: vec![2] }.into(),
+        ]),
         // ── mods ─────────────────────────────────────────────────────────
         case(
             "a mod catalogue reload called off keeps the catalogue it would have replaced",
@@ -9569,6 +9605,7 @@ fn client_release_notes(version: &str) -> ClientReleaseNotes {
                 }],
             },
         ],
+        required: false,
     }
 }
 

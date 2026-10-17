@@ -82,13 +82,23 @@ pub struct UpdatePreferences {
     /// page alone, still sends nothing about the user, and is still the only
     /// request made before login.
     pub automatic: bool,
+    /// Fetch installers while idle; off by default for slow or metered connections.
+    pub background_download: bool,
     /// Also offer prereleases. Java's `preReleaseCheckEnabled`, where it picks
     /// between two entirely separate check tasks.
     ///
     /// On by default: every release of this client so far has been published
     /// as a prerelease, so a client on the stable channel was never offered
-    /// one. A settings file that already stores the choice keeps it.
+    /// one. A settings file that stores `false` from before
+    /// [`UpdatePreferences::channel_choice_version`] is switched on once.
     pub pre_release: bool,
+    /// Which channel default the stored [`Self::pre_release`] was written
+    /// under. Same shape as `NotificationPreferences::sound_choice_version`:
+    /// every save writes every field, so a `false` stored before prereleases
+    /// became the default is the old default, not evidence of a choice, and
+    /// it left those players on a channel that has never had a release.
+    /// Version zero is a file written before this field existed.
+    pub channel_choice_version: u8,
     /// Show what changed, once, on the first start after the client was
     /// updated. See `whats_new_on_startup` in the client-update slice.
     pub show_whats_new: bool,
@@ -104,11 +114,17 @@ pub struct UpdatePreferences {
     pub last_seen_version: Option<String>,
 }
 
+/// Bump to move stored [`UpdatePreferences::pre_release`] values onto a new
+/// default once, for files written under the old one.
+const UPDATE_CHANNEL_CHOICE_VERSION: u8 = 1;
+
 impl Default for UpdatePreferences {
     fn default() -> Self {
         Self {
             automatic: true,
+            background_download: false,
             pre_release: true,
+            channel_choice_version: UPDATE_CHANNEL_CHOICE_VERSION,
             show_whats_new: true,
             last_seen_version: None,
         }
@@ -137,7 +153,9 @@ impl<'de> Deserialize<'de> for UpdatePreferences {
         #[serde(rename_all = "camelCase", default)]
         struct Wire {
             automatic: bool,
+            background_download: bool,
             pre_release: bool,
+            channel_choice_version: u8,
             show_whats_new: bool,
             last_seen_version: Option<String>,
         }
@@ -147,7 +165,11 @@ impl<'de> Deserialize<'de> for UpdatePreferences {
                 let defaults = UpdatePreferences::default();
                 Self {
                     automatic: defaults.automatic,
+                    background_download: defaults.background_download,
                     pre_release: defaults.pre_release,
+                    // Zero, not the current version: a file that does not
+                    // mention the field is the one the correction is for.
+                    channel_choice_version: 0,
                     show_whats_new: defaults.show_whats_new,
                     last_seen_version: defaults.last_seen_version,
                 }
@@ -157,7 +179,9 @@ impl<'de> Deserialize<'de> for UpdatePreferences {
         let wire = Wire::deserialize(deserializer)?;
         Ok(Self {
             automatic: wire.automatic,
-            pre_release: wire.pre_release,
+            background_download: wire.background_download,
+            pre_release: wire.pre_release || wire.channel_choice_version < 1,
+            channel_choice_version: UPDATE_CHANNEL_CHOICE_VERSION,
             show_whats_new: wire.show_whats_new,
             last_seen_version: wire.last_seen_version,
         })
@@ -176,7 +200,9 @@ preference_patch! {
     /// A change to [`UpdatePreferences`].
     UpdatePreferencesPatch for UpdatePreferences {
         automatic: bool,
+        background_download: bool,
         pre_release: bool,
+        channel_choice_version: u8,
         show_whats_new: bool,
         last_seen_version: Option<String>,
     }
@@ -187,12 +213,29 @@ mod tests {
     use super::*;
 
     #[test]
+    fn update_notice_background_download_is_opt_in() {
+        let settings: SettingsState =
+            serde_json::from_str(r#"{"updates":{"automatic":true,"preRelease":true}}"#).unwrap();
+        assert!(!settings.updates.background_download);
+        let patch: UpdatePreferencesPatch =
+            serde_json::from_str(r#"{"backgroundDownload":true}"#).unwrap();
+        let updated = patch.apply_to(settings.updates.clone());
+        assert!(updated.background_download);
+        assert_eq!(updated.automatic, settings.updates.automatic);
+        assert_eq!(updated.pre_release, settings.updates.pre_release);
+        assert_eq!(
+            updated.last_seen_version,
+            settings.updates.last_seen_version
+        );
+    }
+
+    #[test]
     fn a_settings_file_from_before_whats_new_shows_it_and_has_seen_nothing() {
         // `None` is how the update to the build that starts recording this is
         // told apart: it reads as an update from an older build, so that
         // update shows the popup (a fresh install is recorded at load).
         let settings: SettingsState =
-            serde_json::from_str(r#"{"updates":{"automatic":true,"preRelease":false}}"#).unwrap();
+            serde_json::from_str(r#"{"updates":{"automatic":false,"preRelease":true}}"#).unwrap();
         assert!(settings.updates.show_whats_new);
         assert_eq!(settings.updates.last_seen_version, None);
 
@@ -200,7 +243,7 @@ mod tests {
             serde_json::from_str(r#"{"lastSeenVersion":"0.4.0"}"#).unwrap();
         let updated = patch.apply_to(settings.updates.clone());
         assert_eq!(updated.last_seen_version.as_deref(), Some("0.4.0"));
-        assert!(!updated.pre_release, "an untouched field is left alone");
+        assert!(!updated.automatic, "an untouched field is left alone");
     }
 
     #[test]
@@ -242,5 +285,27 @@ mod tests {
             settings.updates.channel(),
             super::super::ReleaseChannel::PreRelease
         );
+    }
+
+    #[test]
+    fn prereleases_stored_off_under_the_old_default_are_switched_on_once() {
+        let old: SettingsState =
+            serde_json::from_str(r#"{"updates":{"preRelease":false}}"#).unwrap();
+        assert!(old.updates.pre_release);
+        assert_eq!(
+            old.updates.channel(),
+            super::super::ReleaseChannel::PreRelease
+        );
+
+        // Turned off since: the saved file names the current version, and the
+        // choice survives every later load.
+        let mut chosen = old.updates.clone();
+        chosen.pre_release = false;
+        let saved = serde_json::to_string(&chosen).unwrap();
+        let reloaded: UpdatePreferences = serde_json::from_str(&saved).unwrap();
+        assert!(!reloaded.pre_release);
+        let again: UpdatePreferences =
+            serde_json::from_str(&serde_json::to_string(&reloaded).unwrap()).unwrap();
+        assert!(!again.pre_release);
     }
 }

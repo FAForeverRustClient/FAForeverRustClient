@@ -184,6 +184,43 @@ async fn an_older_release_is_reported_as_up_to_date_rather_than_offered() {
 }
 
 #[tokio::test]
+async fn update_notice_fresh_offer_respects_background_download_setting() {
+    for enabled in [false, true] {
+        let mut candidate = release("0.3.0");
+        candidate.published_at = chrono::Utc::now().to_rfc3339();
+        let h = harness("0.2.0", Ok(Some(candidate)), Ok("installer".into()));
+        h.app
+            .dispatch_and_wait(
+                SettingsCommand::PatchUpdates {
+                    patch: UpdatePreferences {
+                        background_download: enabled,
+                        ..Default::default()
+                    }
+                    .into(),
+                }
+                .into(),
+            )
+            .await
+            .unwrap();
+        h.app
+            .dispatch_and_wait(ClientUpdateCommand::Check.into())
+            .await
+            .unwrap();
+        let state = h.app.snapshot().client_update;
+        assert!(!state.overdue);
+        assert_eq!(
+            h.calls.lock().unwrap().downloaded.len(),
+            usize::from(enabled)
+        );
+        if enabled {
+            assert!(matches!(state.status, ClientUpdateStatus::Ready { .. }));
+        } else {
+            assert_eq!(state.status, ClientUpdateStatus::Available);
+        }
+    }
+}
+
+#[tokio::test]
 async fn a_development_build_is_never_offered_an_update() {
     // `App::new("test", …)` is what every test and every `cargo run` produces.
     // Offering an installer over a local build would be actively destructive.
@@ -494,6 +531,7 @@ async fn an_optional_update_is_not_announced_when_announcements_are_off() {
     // is exactly the update somebody turning announcements off meant.
     let mut optional = release("0.3.0");
     optional.download_url = String::new();
+    optional.published_at = chrono::Utc::now().to_rfc3339();
     let h = announcements_off(Ok(Some(optional))).await;
 
     settle(
@@ -686,6 +724,7 @@ fn release_notes(version: &str) -> ClientReleaseNotes {
         pre_release: true,
         notes_url: format!("https://example.invalid/releases/tag/v{version}"),
         blocks: vec![],
+        required: false,
     }
 }
 
