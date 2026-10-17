@@ -5347,6 +5347,7 @@ fn cases() -> Vec<Case> {
                     },
                 }
                 .into(),
+                ClientUpdateEvent::Overdue.into(),
                 ClientUpdateEvent::DownloadProgressed {
                     received_bytes: 2048,
                     total_bytes: 4096,
@@ -5365,13 +5366,27 @@ fn cases() -> Vec<Case> {
                 .into(),
                 // Too late: the installer is whole and stays ready.
                 ClientUpdateEvent::DownloadCancelled.into(),
+                // Asked for while the last game was finishing: held, then
+                // given up, then held again until the installer starts.
+                ClientUpdateEvent::InstallWaiting.into(),
+                ClientUpdateEvent::InstallWaitEnded.into(),
+                ClientUpdateEvent::InstallWaiting.into(),
                 ClientUpdateEvent::Installing.into(),
+                // Nothing ready to wait with.
+                ClientUpdateEvent::InstallWaiting.into(),
                 ClientUpdateEvent::Dismissed {
                     version: "0.3.0".into(),
                 }
                 .into(),
+                // Checking again takes the dismissal back.
+                ClientUpdateEvent::CheckStarted {
+                    current_version: "0.2.0".into(),
+                }
+                .into(),
                 // A later check finding nothing must clear the offer, not keep
                 // a dismissed release lying around under an up-to-date status.
+                ClientUpdateEvent::Available { release: ClientRelease { version: "0.4.0".into(), ..ClientRelease::default() } }.into(),
+                ClientUpdateEvent::Overdue.into(),
                 ClientUpdateEvent::UpToDate.into(),
                 ClientUpdateEvent::CheckCompleted {
                     at: "2026-02-01T09:05:00Z".into(),
@@ -9571,6 +9586,7 @@ fn client_release_notes(version: &str) -> ClientReleaseNotes {
                 }],
             },
         ],
+        required: false,
     }
 }
 

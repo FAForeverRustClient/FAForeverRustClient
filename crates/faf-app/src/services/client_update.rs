@@ -13,13 +13,15 @@ use std::time::Duration;
 
 use faf_domain::state::{
     should_update, whats_new_on_startup, ClientRelease, ClientReleaseNotesStatus,
-    ClientUpdateCommand, ClientUpdateEvent, ClientUpdateStatus, NotificationAction,
-    NotificationKind, SettingsEvent, WhatsNewOnStartup,
+    ClientUpdateCommand, ClientUpdateEvent, ClientUpdateStatus, JoinState, MatchmakingState,
+    NotificationAction, NotificationKind, SettingsEvent, WhatsNewOnStartup,
 };
 
 use crate::ports::DownloadProgress;
 use crate::runtime::{Cancellable, EventSink, ServiceCtx};
 use crate::services;
+
+mod background;
 
 /// The installer download in flight, so `CancelDownload` can reach it. Owned
 /// by this service.
@@ -28,6 +30,7 @@ pub struct ClientUpdateContext {
     /// One at most: a download holds `Key::ClientUpdate`. Keyed by nothing,
     /// since there is only the one.
     downloads: Cancellable<()>,
+    background: background::BackgroundDownloads,
 }
 
 pub async fn handle(cmd: ClientUpdateCommand, ctx: &ServiceCtx, out: &EventSink) {
@@ -157,6 +160,7 @@ const RECHECK_INTERVAL: Duration = Duration::from_secs(6 * 60 * 60);
 /// guards inside `check` would drop one of them, but the one they drop is not
 /// specified, and a checked-for-nothing request at startup is not free.
 pub fn spawn(ctx: Arc<ServiceCtx>, sink: EventSink) {
+    background::spawn(ctx.clone(), sink.clone());
     tokio::spawn(async move {
         let mut ticker = tokio::time::interval(RECHECK_INTERVAL);
         ticker.tick().await;
@@ -170,6 +174,7 @@ pub fn spawn(ctx: Arc<ServiceCtx>, sink: EventSink) {
             // has been found is news the client is already showing; the ticker
             // exists for the client that has not heard any yet.
             if sink.with_state(|state| state.client_update.release.is_some()) {
+                reevaluate_overdue(&ctx, &sink, chrono::Utc::now());
                 continue;
             }
             crate::runtime::run_command(ClientUpdateCommand::Check.into(), &ctx, &sink).await;
@@ -206,8 +211,26 @@ async fn check(ctx: &ServiceCtx, out: &EventSink) {
         Ok(None) => out.emit(ClientUpdateEvent::UpToDate),
         Ok(Some(release)) => {
             if should_update(&current, &release.version) {
-                announce(&release, &current, out);
-                out.emit(ClientUpdateEvent::Available { release })
+                let notes = ctx
+                    .ports
+                    .client_update
+                    .cached_release_notes()
+                    .unwrap_or_default();
+                let behind =
+                    faf_domain::state::client_update::releases_behind(&current, &notes, channel);
+                let required = faf_domain::state::client_update::behind_a_required_release(
+                    &current, &notes, channel,
+                );
+                if !faf_domain::state::client_update::is_overdue(
+                    &release,
+                    chrono::Utc::now(),
+                    behind,
+                    required,
+                ) {
+                    announce(&release, &current, out, false);
+                }
+                out.emit(ClientUpdateEvent::Available { release });
+                reevaluate_overdue(ctx, out, chrono::Utc::now());
             } else {
                 out.emit(ClientUpdateEvent::UpToDate)
             }
@@ -232,11 +255,58 @@ async fn check(ctx: &ServiceCtx, out: &EventSink) {
     out.emit(ClientUpdateEvent::CheckCompleted {
         at: chrono::Utc::now().to_rfc3339(),
     });
+    // The check has finished writing its outcome. Hand its key back, which
+    // the download needs, and leave starting it to the background observer
+    // on a task of its own: awaited here, the check (and the settings load
+    // that runs the startup check) lasted as long as the installer download.
+    crate::runtime::end_turn();
+    ctx.client_update.background.offer();
 }
 
-/// Put a new version in the notification centre as well as on the banner.
+/// Emit `Overdue` once the held release has passed its grace period, the
+/// player has fallen too far behind, or a release they are behind was
+/// published as required, and announce it. No network: it reads the
+/// release and the notes the last check left, which is what lets the six-hour
+/// ticker move a client left open for days into the gate.
+pub(crate) fn reevaluate_overdue(
+    ctx: &ServiceCtx,
+    out: &EventSink,
+    now: chrono::DateTime<chrono::Utc>,
+) {
+    let candidate = out.with_state(|state| {
+        let update = &state.client_update;
+        if update.overdue {
+            return None;
+        }
+        let release = update.release.as_ref()?;
+        let notes = ctx
+            .ports
+            .client_update
+            .cached_release_notes()
+            .unwrap_or_else(|| update.notes.clone());
+        let channel = state.settings.updates.channel();
+        let behind = faf_domain::state::client_update::releases_behind(
+            &update.current_version,
+            &notes,
+            channel,
+        );
+        let required = faf_domain::state::client_update::behind_a_required_release(
+            &update.current_version,
+            &notes,
+            channel,
+        );
+        faf_domain::state::client_update::is_overdue(release, now, behind, required)
+            .then(|| (release.clone(), update.current_version.clone()))
+    });
+    if let Some((release, current)) = candidate {
+        out.emit(ClientUpdateEvent::Overdue);
+        announce(&release, &current, out, true);
+    }
+}
+
+/// Put a new version in the notification centre as well as in the sidebar.
 ///
-/// The banner is at the top of the workspace and a settings line is three
+/// The sidebar notice is quiet and a settings line is three
 /// clicks away; neither reaches somebody who is in a game lobby when the
 /// startup check lands. This is the one thing the client has that persists
 /// across tabs and carries an unread mark.
@@ -252,15 +322,16 @@ async fn check(ctx: &ServiceCtx, out: &EventSink) {
 /// the version was dismissed, which is the user saying they know, or it is
 /// already the release on offer, which means this check told us nothing new and
 /// a second click on "Check now" should not add a second identical entry.
-fn announce(release: &ClientRelease, current: &str, out: &EventSink) {
+fn announce(release: &ClientRelease, current: &str, out: &EventSink, required: bool) {
     let skip = out.with_state(|state| {
-        (!state.settings.updates.automatic && !release.is_required())
-            || state.client_update.dismissed_version == release.version
-            || state
-                .client_update
-                .release
-                .as_ref()
-                .is_some_and(|known| known.version == release.version)
+        !required
+            && (!state.settings.updates.automatic
+                || state.client_update.dismissed_version == release.version
+                || state
+                    .client_update
+                    .release
+                    .as_ref()
+                    .is_some_and(|known| known.version == release.version))
     });
     if skip {
         return;
@@ -293,6 +364,10 @@ async fn download(ctx: &ServiceCtx, out: &EventSink) {
     if state.status.is_busy() {
         return;
     }
+    let automatic = background::is_background_request();
+    if automatic && !background::allowed(ctx, out) {
+        return;
+    }
     let Some(release) = state.release.clone() else {
         return; // Nothing is on offer; a stray click.
     };
@@ -310,6 +385,14 @@ async fn download(ctx: &ServiceCtx, out: &EventSink) {
     // first report only comes with the first chunk, and until then the offer
     // read as if Download had not been pressed.
     let ticket = ctx.client_update.downloads.begin(());
+    if automatic {
+        ctx.client_update
+            .background
+            .begin(ticket.called_off.clone());
+    }
+    if automatic && !background::allowed(ctx, out) {
+        ctx.client_update.background.pause();
+    }
     out.emit(ClientUpdateEvent::DownloadProgressed {
         received_bytes: 0,
         total_bytes: 0,
@@ -321,6 +404,7 @@ async fn download(ctx: &ServiceCtx, out: &EventSink) {
     // used to go at the cancel, with the worker still running, and a download
     // pressed straight after wrote the same partial file the old worker was
     // about to truncate or delete.
+    let version = release.version.clone();
     let called_off = ticket.called_off.clone();
     let mut updates = ctx
         .ports
@@ -346,6 +430,12 @@ async fn download(ctx: &ServiceCtx, out: &EventSink) {
         }
     }
     ctx.client_update.downloads.end(&ticket);
+    if automatic {
+        ctx.client_update.background.end();
+    }
+    if automatic && !called_off.is_cancelled() && !matches!(finished, Some(Ok(_))) {
+        ctx.client_update.background.failed(&version);
+    }
     out.emit(match finished {
         // Complete before the call-off reached it: the installer is in
         // place, and saying so is the truth.
@@ -360,6 +450,16 @@ async fn download(ctx: &ServiceCtx, out: &EventSink) {
             reason: "the download stopped without finishing".into(),
         },
     });
+    if automatic
+        && ctx
+            .client_update
+            .background
+            .paused
+            .swap(false, std::sync::atomic::Ordering::AcqRel)
+    {
+        crate::runtime::end_turn();
+        background::maybe_start(ctx, out).await;
+    }
 }
 
 async fn install(ctx: &ServiceCtx, out: &EventSink) {
@@ -372,10 +472,79 @@ async fn install(ctx: &ServiceCtx, out: &EventSink) {
         return;
     };
 
-    out.emit(ClientUpdateEvent::Installing);
-    if let Err(reason) = ctx.ports.client_update.install(path).await {
-        out.emit(ClientUpdateEvent::Failed { reason });
+    // Recheck at the command boundary: the offer may have been clicked just
+    // before a game, lesson or search started. Never close an active client.
+    // The notice and the gate are hidden then, so this only drops a click
+    // that raced the start.
+    if playing(out) {
+        return;
     }
+    // The last game can still be finishing after the notice came back: FA
+    // closing, its replay upload or a lesson result being saved. Dropping the
+    // click then left a button that did nothing, so wait for it instead, and
+    // say so. A new game, join or search ends the wait without installing.
+    if finishing(ctx) {
+        out.emit(ClientUpdateEvent::InstallWaiting);
+        let deadline = tokio::time::Instant::now() + INSTALL_WAIT_LIMIT;
+        loop {
+            tokio::time::sleep(INSTALL_WAIT_POLL).await;
+            let still_ready = out.with_state(|state| {
+                state.client_update.status == ClientUpdateStatus::Ready { path: path.clone() }
+            });
+            if !still_ready || playing(out) || tokio::time::Instant::now() >= deadline {
+                out.emit(ClientUpdateEvent::InstallWaitEnded);
+                return;
+            }
+            if !finishing(ctx) {
+                break;
+            }
+        }
+    }
+    match ctx.ports.client_update.install(path).await {
+        // On Windows the shell exits on this event. A spawn failure must never
+        // publish it, or the player would lose the client without an update.
+        Ok(()) => out.emit(ClientUpdateEvent::Installing),
+        Err(reason) => out.emit(ClientUpdateEvent::Failed { reason }),
+    }
+}
+
+/// How long Install waits for the last game to finish before giving up.
+/// A replay upload or lesson result takes seconds; this is the backstop.
+const INSTALL_WAIT_LIMIT: Duration = Duration::from_secs(120);
+const INSTALL_WAIT_POLL: Duration = Duration::from_millis(500);
+
+/// A game, join, matchmaker search, lesson or tutorial launch is under way:
+/// the client must not close.
+fn playing(out: &EventSink) -> bool {
+    out.with_state(|state| {
+        // A join that ended in failure is over: it must not hold the update
+        // back as though a game were running.
+        !matches!(
+            state.lobby.join,
+            JoinState::Idle | JoinState::Failed { .. } | JoinState::LaunchFailed { .. }
+        ) || !matches!(
+            state.lobby.matchmaking,
+            MatchmakingState::Idle | MatchmakingState::Cancelled { .. }
+        ) || matches!(
+            state.training.lesson_launch,
+            faf_domain::state::LessonLaunch::Preparing { .. }
+                | faf_domain::state::LessonLaunch::Playing { .. }
+        ) || matches!(
+            state.tutorials.launch,
+            faf_domain::state::TutorialLaunchStatus::Preparing { .. }
+        )
+    })
+}
+
+/// The last game is still winding down where the UI cannot see it.
+fn finishing(ctx: &ServiceCtx) -> bool {
+    ctx.ports.process.game_running()
+        || ctx.ports.process.replay_upload_pending()
+        || ctx
+            .training
+            .lesson_results
+            .load(std::sync::atomic::Ordering::Acquire)
+            != 0
 }
 
 fn dismiss(out: &EventSink) {
