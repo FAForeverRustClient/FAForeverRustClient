@@ -7617,6 +7617,71 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        // ── linux runtime ────────────────────────────────────────────────
+        case(
+            "the linux runtime is checked, found lacking, then installed",
+            vec![
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::Checking,
+                }
+                .into(),
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::Missing {
+                        prerequisites: vec![
+                            LinuxPrerequisite::UserNamespaces,
+                            LinuxPrerequisite::Vulkan32,
+                        ],
+                        distribution: LinuxDistribution::Debian,
+                    },
+                }
+                .into(),
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::Downloading {
+                        component: LinuxRuntimeComponent::Proton,
+                        downloaded_bytes: 1_048_576,
+                        total_bytes: 516_611_656,
+                    },
+                }
+                .into(),
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::Installing {
+                        step: LinuxRuntimeStep::Unpacking {
+                            component: LinuxRuntimeComponent::SteamRuntime,
+                        },
+                    },
+                }
+                .into(),
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::Installing {
+                        step: LinuxRuntimeStep::InstallingDirectX,
+                    },
+                }
+                .into(),
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::Ready,
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "a failed linux runtime install is retried",
+            vec![
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::Failed {
+                        reason: "GE-Proton10-34.tar.gz did not match its checksum".into(),
+                    },
+                }
+                .into(),
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::Checking,
+                }
+                .into(),
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::NotNeeded,
+                }
+                .into(),
+            ],
+        ),
         // ── settings ─────────────────────────────────────────────────────
         case(
             "settings apply each group",
@@ -10189,6 +10254,11 @@ const EVENT_ENUM_SOURCES: &[(&str, &str, &str)] = &[
         "GalacticWar",
         "GalacticWarEvent",
         include_str!("../src/state/galactic_war.rs"),
+    ),
+    (
+        "LinuxRuntime",
+        "LinuxRuntimeEvent",
+        include_str!("../src/state/linux_runtime.rs"),
     ),
     (
         "Guides",

@@ -17,6 +17,7 @@ pub mod galactic_war;
 pub mod guides;
 pub mod install;
 pub mod leaderboard;
+pub mod linux_runtime;
 pub mod lobby;
 pub mod map_generator;
 pub mod maps;
@@ -87,6 +88,10 @@ pub use leaderboard::{
     BoardRating, LeaderboardCommand, LeaderboardEntry, LeaderboardEvent, LeaderboardMode,
     LeaderboardState, LeaderboardStatus, LeaderboardTier, League, LeagueSeason, PlayerRatings,
     RatingLeaderboard, RatingPage, RatingQuery, SeasonLeaderboard,
+};
+pub use linux_runtime::{
+    LinuxDistribution, LinuxPrerequisite, LinuxRuntimeCommand, LinuxRuntimeComponent,
+    LinuxRuntimeEvent, LinuxRuntimeState, LinuxRuntimeStatus, LinuxRuntimeStep,
 };
 pub use lobby::{
     rating_for_game, rating_gate_blocks, reconcile_avatar, remember_avatar,
@@ -255,6 +260,7 @@ pub struct AppState {
     pub tutorials: TutorialsState,
     pub uploads: UploadsState,
     pub galactic_war: GalacticWarState,
+    pub linux_runtime: LinuxRuntimeState,
     pub guides: GuidesState,
     pub client_update: ClientUpdateState,
     pub settings: SettingsState,
