@@ -997,6 +997,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "playerCard.note.add": "Añadir una nota",
   "playerCard.avatar.fallbackHint": "Si un avatar que llevas deja de ser tuyo, como un avatar de torneo que pasa al siguiente ganador, el cliente vuelve al que elegiste antes.",
   "playerCard.avatar.none": "Sin avatar",
+  "playerCard.avatar.selectFailed": "No se pudo poner este avatar.",
   "playerCard.avatar.wearing": "Lleva {name}",
   "playerCard.avatar.wearingNone": "No lleva avatar",
   "playerCard.hero.memberSince": "Miembro desde {date}",

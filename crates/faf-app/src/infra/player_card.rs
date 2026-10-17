@@ -199,38 +199,47 @@ impl PlayerCardClient {
     /// row here at all, which is exactly why this cannot be one request.
     async fn fill_ratings(&self, players: &mut [PlayerSummary], token: &str) {
         let ids: Vec<String> = players.iter().map(|player| player.id.to_string()).collect();
-        if ids.is_empty() {
-            return;
-        }
-        let Ok(mut url) = self.url("leaderboardRating") else {
-            return;
-        };
-        url.query_pairs_mut()
-            .append_pair("filter", &format!("player.id=in=({})", ids.join(",")))
-            .append_pair("include", "leaderboard")
-            // Two boards per account at most matter here, but the API pages by
-            // rows: every board every account sits on is a row.
-            .append_pair("page[size]", &(ids.len() * 12).to_string());
-        let Ok(doc) = self.get(url, token).await else {
-            return;
-        };
-        let index = index(&doc);
-        for entry in &doc.data {
-            let Some(player_id) =
-                rel_one(entry, "player").and_then(|key| key.1.parse::<i32>().ok())
-            else {
+        // Only the two boards read below, and few enough accounts per request
+        // that both rows of every one fit on one page. The API pages by rows
+        // and quietly cuts any `page[size]` above 100 down to 100; asking for
+        // every board of a hundred accounts at once returned the first hundred
+        // rows of some twelve hundred, so most of a Hall of Fame came back with
+        // no global rating at all (#587).
+        for batch in ids.chunks(RATING_BATCH) {
+            let Ok(mut url) = self.url("leaderboardRating") else {
+                return;
+            };
+            url.query_pairs_mut()
+                .append_pair(
+                    "filter",
+                    &format!(
+                        "player.id=in=({});leaderboard.technicalName=in=({GLOBAL_BOARD},{LADDER_BOARD})",
+                        batch.join(",")
+                    ),
+                )
+                .append_pair("include", "leaderboard")
+                .append_pair("page[size]", &API_PAGE_LIMIT.to_string());
+            let Ok(doc) = self.get(url, token).await else {
                 continue;
             };
-            let Some(board) = related(entry, "leaderboard", &index) else {
-                continue;
-            };
-            let rating = displayed_rating(number(entry, "rating"));
-            let board = text(board, "technicalName");
-            for player in players.iter_mut().filter(|held| held.id == player_id) {
-                match board.as_str() {
-                    GLOBAL_BOARD => player.global_rating = Some(rating),
-                    LADDER_BOARD => player.ladder_rating = Some(rating),
-                    _ => {}
+            let index = index(&doc);
+            for entry in &doc.data {
+                let Some(player_id) =
+                    rel_one(entry, "player").and_then(|key| key.1.parse::<i32>().ok())
+                else {
+                    continue;
+                };
+                let Some(board) = related(entry, "leaderboard", &index) else {
+                    continue;
+                };
+                let rating = displayed_rating(number(entry, "rating"));
+                let board = text(board, "technicalName");
+                for player in players.iter_mut().filter(|held| held.id == player_id) {
+                    match board.as_str() {
+                        GLOBAL_BOARD => player.global_rating = Some(rating),
+                        LADDER_BOARD => player.ladder_rating = Some(rating),
+                        _ => {}
+                    }
                 }
             }
         }
@@ -422,21 +431,32 @@ impl PlayerCardPort for PlayerCardClient {
         if wanted.is_empty() {
             return Ok(Vec::new());
         }
-        let filter = format!("login=in=({})", wanted.join(","));
-        let limit = i32::try_from(wanted.len()).unwrap_or(i32::MAX);
-        self.summaries(&filter, limit).await
+        // In pages the API will answer whole: it cuts `page[size]` to 100.
+        let mut found = Vec::with_capacity(wanted.len());
+        for batch in wanted.chunks(API_PAGE_LIMIT) {
+            let filter = format!("login=in=({})", batch.join(","));
+            found.extend(self.summaries(&filter, page_size(batch.len())).await?);
+        }
+        Ok(found)
     }
 
     async fn players_by_id(&self, ids: &[i32]) -> Result<Vec<PlayerSummary>, RequestError> {
         if ids.is_empty() {
             return Ok(Vec::new());
         }
-        let filter = format!(
-            "id=in=({})",
-            ids.iter().map(i32::to_string).collect::<Vec<_>>().join(",")
-        );
-        let limit = i32::try_from(ids.len()).unwrap_or(i32::MAX);
-        self.summaries(&filter, limit).await
+        let mut found = Vec::with_capacity(ids.len());
+        for batch in ids.chunks(API_PAGE_LIMIT) {
+            let filter = format!(
+                "id=in=({})",
+                batch
+                    .iter()
+                    .map(i32::to_string)
+                    .collect::<Vec<_>>()
+                    .join(",")
+            );
+            found.extend(self.summaries(&filter, page_size(batch.len())).await?);
+        }
+        Ok(found)
     }
 
     async fn load_profile(
@@ -1513,6 +1533,16 @@ const MIN_SEARCH_LENGTH: usize = 3;
 /// Leaderboards whose rating a signup post means by "rating".
 const GLOBAL_BOARD: &str = "global";
 const LADDER_BOARD: &str = "ladder_1v1";
+/// The most rows the API returns for one request, whatever `page[size]` says.
+const API_PAGE_LIMIT: usize = 100;
+/// Accounts per rating request: two boards each, so every row fits one page.
+const RATING_BATCH: usize = API_PAGE_LIMIT / 2;
+// One row per board, two boards: a batch must never outgrow the page.
+const _: () = assert!(RATING_BATCH * 2 <= API_PAGE_LIMIT);
+
+fn page_size(rows: usize) -> i32 {
+    i32::try_from(rows.min(API_PAGE_LIMIT)).unwrap_or(1)
+}
 
 /// Read the picker-sized view of each account in a `player` document.
 fn parse_summaries(doc: &JsonApiDoc) -> Vec<PlayerSummary> {

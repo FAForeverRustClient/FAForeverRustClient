@@ -91,6 +91,11 @@ pub struct InstalledMap {
     /// `None` when the file system would not say.
     #[serde(default)]
     pub installed_at: Option<String>,
+    /// The scenario's `type`: `skirmish` for a map to play, `campaign_coop`
+    /// for a co-op mission and `campaign` for a lesson, which the host
+    /// dialog leaves out (#599). `None` when the file does not say.
+    #[serde(default)]
+    pub map_type: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -777,6 +782,7 @@ mod tests {
             version: Some("1".into()),
             description: None,
             installed_at: None,
+            map_type: None,
         }
     }
 

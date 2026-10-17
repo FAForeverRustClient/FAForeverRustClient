@@ -1014,6 +1014,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "playerCard.note.add": "Dodaj notatkę",
   "playerCard.avatar.fallbackHint": "Jeśli awatar, którego używasz, przestanie być twój, na przykład awatar turniejowy przechodzący na kolejnego zwycięzcę, klient wróci do tego, który wybrałeś wcześniej.",
   "playerCard.avatar.none": "Bez awatara",
+  "playerCard.avatar.selectFailed": "Nie udało się założyć tego awatara.",
   "playerCard.avatar.wearing": "Nosi: {name}",
   "playerCard.avatar.wearingNone": "Bez noszonego awatara",
   "playerCard.hero.memberSince": "Konto od: {date}",
