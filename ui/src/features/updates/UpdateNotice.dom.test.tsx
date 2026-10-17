@@ -77,6 +77,18 @@ describe("UpdateNotice states", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it.each([
+    { type: "failed", payload: { id: 1, reason: "The game is full" } },
+    { type: "launchFailed", payload: { reason: "The game did not start" } },
+  ] as const)("offers the update again after a join that ended in $type", (join) => {
+    seedStore((state) => ({ ...state,
+      lobby: { ...state.lobby, join },
+      clientUpdate: { ...state.clientUpdate, release, overdue: false, status: { type: "ready", payload: { path: "installer" } } },
+    }));
+    render(<UpdateNotice />);
+    expect(screen.getByRole("button", { name: "Update and reopen" })).toBeDefined();
+  });
+
   it("says it is waiting for the last game, and sends nothing while it does", async () => {
     const user = userEvent.setup();
     seedStore((state) => ({ ...state, clientUpdate: { ...state.clientUpdate,

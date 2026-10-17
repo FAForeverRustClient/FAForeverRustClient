@@ -366,6 +366,25 @@ async fn update_install_is_refused_during_a_join() {
 }
 
 #[tokio::test]
+async fn update_install_runs_after_a_join_that_failed() {
+    let (ctx, sink, script) = harness();
+    run_command(ClientUpdateCommand::Check.into(), &ctx, &sink).await;
+    sink.emit(faf_domain::state::ClientUpdateEvent::Downloaded {
+        path: "installer".into(),
+    });
+    sink.emit(LobbyEvent::Joining {
+        id: 1,
+        prepared: false,
+    });
+    sink.emit(LobbyEvent::JoinFailed {
+        id: 1,
+        reason: "the game is full".into(),
+    });
+    run_command(ClientUpdateCommand::Install.into(), &ctx, &sink).await;
+    assert_eq!(script.installs.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
 async fn update_install_waits_for_a_lesson_result_save_then_installs() {
     let (ctx, sink, script) = harness();
     run_command(ClientUpdateCommand::Check.into(), &ctx, &sink).await;

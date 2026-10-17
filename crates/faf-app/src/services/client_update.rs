@@ -517,20 +517,22 @@ const INSTALL_WAIT_POLL: Duration = Duration::from_millis(500);
 /// the client must not close.
 fn playing(out: &EventSink) -> bool {
     out.with_state(|state| {
-        !matches!(state.lobby.join, JoinState::Idle)
-            || !matches!(
-                state.lobby.matchmaking,
-                MatchmakingState::Idle | MatchmakingState::Cancelled { .. }
-            )
-            || matches!(
-                state.training.lesson_launch,
-                faf_domain::state::LessonLaunch::Preparing { .. }
-                    | faf_domain::state::LessonLaunch::Playing { .. }
-            )
-            || matches!(
-                state.tutorials.launch,
-                faf_domain::state::TutorialLaunchStatus::Preparing { .. }
-            )
+        // A join that ended in failure is over: it must not hold the update
+        // back as though a game were running.
+        !matches!(
+            state.lobby.join,
+            JoinState::Idle | JoinState::Failed { .. } | JoinState::LaunchFailed { .. }
+        ) || !matches!(
+            state.lobby.matchmaking,
+            MatchmakingState::Idle | MatchmakingState::Cancelled { .. }
+        ) || matches!(
+            state.training.lesson_launch,
+            faf_domain::state::LessonLaunch::Preparing { .. }
+                | faf_domain::state::LessonLaunch::Playing { .. }
+        ) || matches!(
+            state.tutorials.launch,
+            faf_domain::state::TutorialLaunchStatus::Preparing { .. }
+        )
     })
 }
 
