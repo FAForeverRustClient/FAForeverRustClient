@@ -382,6 +382,14 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
         }
         let _ = startup_core.try_dispatch(AppCommand::Auth(AuthCommand::Restore));
         let _ = startup_core.try_dispatch(AppCommand::Session(SessionCommand::Hello));
+        // After the settings, because a launch command of the player's own
+        // means the runtime is not wanted, and the original game's folder
+        // picked under Paths is where the check looks for the game.
+        if cfg!(target_os = "linux") {
+            let _ = startup_core.try_dispatch(AppCommand::LinuxRuntime(
+                faf_domain::state::LinuxRuntimeCommand::Prepare,
+            ));
+        }
     });
 
     core
