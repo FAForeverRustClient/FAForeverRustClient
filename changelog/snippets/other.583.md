@@ -1,5 +1,4 @@
-- Updates become required after three days or when two newer releases are available.
-- Releases marked as required prompt installation immediately.
-- Completed installers are reused instead of downloaded again.
-- Older cached installers are removed after a successful download.
-- Prerelease updates turn on once for existing installations; later choices in Settings, Updates are preserved.
+- An update only becomes required three days after its release or once you are two versions behind; until then "Not now" hides it.
+- An update marked as required, such as a security fix, has to be installed straight away.
+- A downloaded installer is kept for the next try instead of downloaded again, and older ones are deleted.
+- Clients that had pre-release updates off from an older default now get them, since every release so far is a pre-release (Settings, Updates).
