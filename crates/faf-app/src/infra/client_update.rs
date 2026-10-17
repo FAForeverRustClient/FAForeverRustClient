@@ -40,6 +40,7 @@ use faf_domain::state::{
 };
 use serde_json::Value;
 use std::cmp::Ordering;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 use tokio::sync::mpsc;
@@ -654,9 +655,10 @@ fn pick_asset(assets: Option<&Value>) -> Option<Asset> {
 
 /// Install the update and return.
 ///
-/// A Linux AppImage replaces the image this process was launched from. An
-/// `.msi` is data, not a program, so it goes through `msiexec`. Everything else
-/// is executed directly, matching Java's `ProcessBuilder(command)`.
+/// A Linux AppImage replaces the image this process was launched from, and the
+/// shell then restarts into it. An `.msi` is data, not a program, so it goes
+/// through `msiexec`. Everything else is executed directly, matching Java's
+/// `ProcessBuilder(command)`.
 async fn start_installer(path: &Path) -> Result<(), String> {
     if !path.is_file() {
         return Err(format!("{} is no longer there", path.display()));
@@ -666,11 +668,15 @@ async fn start_installer(path: &Path) -> Result<(), String> {
     // downloaded copy from the update cache would run the new version once but
     // leave the AppImage the user normally launches unchanged. Put the new
     // image over that file instead; the running process keeps using the old
-    // inode until it exits, and the next launch uses the replacement.
+    // inode until it exits. Copying some hundred megabytes is blocking work,
+    // so it stays off the async workers.
     #[cfg(target_os = "linux")]
     if path.extension().is_some_and(|ext| ext == "AppImage") {
-        if let Some(installed) = std::env::var_os("APPIMAGE") {
-            return replace_appimage(path, Path::new(&installed));
+        if let Some(installed) = running_appimage() {
+            let downloaded = path.to_path_buf();
+            return tokio::task::spawn_blocking(move || replace_appimage(&downloaded, &installed))
+                .await
+                .map_err(|e| format!("could not replace the AppImage: {e}"))?;
         }
     }
 
@@ -690,6 +696,39 @@ async fn start_installer(path: &Path) -> Result<(), String> {
         .spawn()
         .map(|_child| ())
         .map_err(|e| format!("could not start the installer: {e}"))
+}
+
+/// The AppImage file this process runs from, if it runs from one.
+///
+/// `APPIMAGE` alone is no proof. The AppImage runtime sets it for the program
+/// it starts and every child inherits it, so a client started from a terminal
+/// inside some other AppImage (an editor, say) sees that one's path, and an
+/// update would overwrite the editor with this client. The runtime mounts the
+/// image at `APPDIR` and runs this binary from inside the mount, so the two
+/// variables describe this process only when its executable is under `APPDIR`.
+#[cfg(target_os = "linux")]
+pub fn running_appimage() -> Option<PathBuf> {
+    appimage_of(
+        std::env::var_os("APPIMAGE").as_deref(),
+        std::env::var_os("APPDIR").as_deref(),
+        std::env::current_exe().ok().as_deref(),
+    )
+}
+
+/// [`running_appimage`]'s decision, apart from the process it reads.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn appimage_of(
+    appimage: Option<&OsStr>,
+    appdir: Option<&OsStr>,
+    executable: Option<&Path>,
+) -> Option<PathBuf> {
+    let appimage = PathBuf::from(appimage.filter(|value| !value.is_empty())?);
+    let appdir = Path::new(appdir?);
+    // `/` or an empty value would hold every executable on the machine.
+    if appdir.parent().is_none() {
+        return None;
+    }
+    executable?.starts_with(appdir).then_some(appimage)
 }
 
 /// Atomically replace a running AppImage without modifying the inode mounted
@@ -1195,6 +1234,57 @@ mod tests {
             ..ClientRelease::default()
         };
         assert!(client.installer_path(&release).is_err());
+    }
+
+    #[test]
+    fn the_image_is_this_clients_when_it_runs_from_the_images_mount() {
+        let image = OsStr::new("/home/p/Apps/FAForever.AppImage");
+        let mount = OsStr::new("/tmp/.mount_FAForeY2");
+        let executable = Path::new("/tmp/.mount_FAForeY2/usr/bin/faf-client");
+        assert_eq!(
+            appimage_of(Some(image), Some(mount), Some(executable)),
+            Some(PathBuf::from("/home/p/Apps/FAForever.AppImage"))
+        );
+        assert_eq!(appimage_of(None, Some(mount), Some(executable)), None);
+        assert_eq!(appimage_of(Some(image), None, Some(executable)), None);
+        assert_eq!(
+            appimage_of(Some(OsStr::new("")), Some(mount), Some(executable)),
+            None
+        );
+        // A root or empty APPDIR would hold every executable there is.
+        assert_eq!(
+            appimage_of(Some(image), Some(OsStr::new("/")), Some(executable)),
+            None
+        );
+        assert_eq!(
+            appimage_of(Some(image), Some(OsStr::new("")), Some(executable)),
+            None
+        );
+    }
+
+    #[test]
+    fn an_inherited_appimage_variable_never_names_another_programs_image() {
+        // Started from a terminal inside an editor's AppImage: both variables
+        // are the editor's.
+        let editor = OsStr::new("/home/p/Apps/Editor.AppImage");
+        let editor_mount = OsStr::new("/tmp/.mount_EditorX1");
+        for executable in [
+            // This client as its own AppImage would have had both variables
+            // reset by its runtime, so this pairing means it is not one.
+            "/tmp/.mount_FAForeY2/usr/bin/faf-client",
+            // A .deb or .rpm install.
+            "/usr/bin/faf-client",
+        ] {
+            assert_eq!(
+                appimage_of(
+                    Some(editor),
+                    Some(editor_mount),
+                    Some(Path::new(executable))
+                ),
+                None,
+                "{executable}"
+            );
+        }
     }
 
     #[cfg(target_os = "linux")]
