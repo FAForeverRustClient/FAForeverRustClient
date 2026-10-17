@@ -7062,6 +7062,38 @@
         {
           "event": {
             "event": {
+              "type": "disconnected"
+            },
+            "kind": "Lobby"
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "inGame"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "event": {
               "type": "gameTerminated"
             },
             "kind": "Lobby"
@@ -7087,7 +7119,7 @@
               "ownerId": null
             },
             "playMode": "custom",
-            "status": "connected",
+            "status": "disconnected",
             "vetoes": []
           }
         },

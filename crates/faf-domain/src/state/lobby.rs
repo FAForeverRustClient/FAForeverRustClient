@@ -1160,9 +1160,23 @@ pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
             state.status = LobbyStatus::Disconnected;
             state.games.clear();
             state.live_games.clear();
-            state.join = JoinState::Idle;
+            // A running game outlives a full disconnect as it outlives a
+            // reconnect (see `Connecting`): Forged Alliance is still on
+            // screen, and its exit still ends the join with `GameTerminated`.
+            // Forgetting it let the Play tab offer a second game, and the
+            // update gate and background downloads take an idle join to mean
+            // nobody is playing. A join that had not launched yet is over.
+            let game_kept = matches!(state.join, JoinState::Launched { .. } | JoinState::InGame);
+            if !game_kept {
+                state.join = JoinState::Idle;
+            }
             state.matchmaker_queues.clear();
-            state.matchmaking = MatchmakingState::Idle;
+            // A matchmaker launch stays with its game; one whose game never
+            // started is over with the connection, and a search always is,
+            // since the server ends it then.
+            if !(game_kept && matches!(state.matchmaking, MatchmakingState::Launching { .. })) {
+                state.matchmaking = MatchmakingState::Idle;
+            }
             state.party = PartyState::default();
             state.vetoes.clear();
             state.available_avatars.clear();
@@ -1686,6 +1700,24 @@ mod tests {
         };
         reduce(&mut s, &LobbyEvent::Disconnected);
         assert_eq!(s, LobbyState::default());
+    }
+
+    #[test]
+    fn a_running_game_outlives_a_full_disconnect_until_it_exits() {
+        let mut s = LobbyState {
+            status: LobbyStatus::Connected,
+            join: JoinState::InGame,
+            matchmaking: MatchmakingState::Launching {
+                queue_name: "ladder1v1".into(),
+            },
+            ..Default::default()
+        };
+        reduce(&mut s, &LobbyEvent::Disconnected);
+        assert_eq!(s.status, LobbyStatus::Disconnected);
+        assert_eq!(s.join, JoinState::InGame);
+        assert!(matches!(s.matchmaking, MatchmakingState::Launching { .. }));
+        reduce(&mut s, &LobbyEvent::GameTerminated);
+        assert_eq!(s.join, JoinState::Idle);
     }
 
     fn launch(uid: i32) -> GameLaunch {

@@ -640,8 +640,8 @@ fn write_archive(
     let file = std::fs::File::create(target)
         .map_err(|error| format!("could not create the archive: {error}"))?;
     let mut writer = zip::ZipWriter::new(file);
-    let options: zip::write::FileOptions<'_, ()> =
-        zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
 
     let mut stack = vec![source.to_path_buf()];
     let mut wrote_anything = false;
@@ -1417,7 +1417,7 @@ version = 3
         let file = std::fs::File::open(&archive).unwrap();
         let mut zip = zip::ZipArchive::new(file).unwrap();
         let names: Vec<String> = (0..zip.len())
-            .map(|index| zip.by_index(index).unwrap().name().to_string())
+            .map(|index| zip.by_index(index).unwrap().name().unwrap().to_string())
             .collect();
 
         assert!(names.iter().all(|name| name.starts_with("my_map.v0001/")));

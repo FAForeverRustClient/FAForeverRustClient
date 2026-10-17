@@ -24,10 +24,14 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
+use faf_domain::protocol::map_generator::split_command_line;
 use faf_domain::state::settings::{
     GamePreferences, GamePreferencesPatch, PathPreferences, PathPreferencesPatch,
 };
-use faf_domain::state::{ReplayCommand, SettingsCommand, SettingsState, UploadsCommand};
+use faf_domain::state::{
+    GeneratorOptions, MapGeneratorCommand, ReplayCommand, SettingsCommand, SettingsState,
+    UploadsCommand,
+};
 use faf_domain::AppCommand;
 use serde::Deserialize;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
@@ -222,6 +226,18 @@ pub(crate) async fn admit(
         AppCommand::Settings(SettingsCommand::PatchPaths { patch }) => {
             admit_paths(picked, patch, &settings().paths)
         }
+        // Where the map generator writes: the output and preview folders, and
+        // the raw arguments that replace every other option. The saved
+        // recipe is the "already stored" value, so a folder picked in an
+        // earlier session keeps working.
+        AppCommand::Settings(SettingsCommand::SetMapGenerator { preferences }) => {
+            admit_generator(picked, preferences, &settings().map_generator)
+        }
+        AppCommand::MapGenerator(
+            MapGeneratorCommand::Generate { options }
+            | MapGeneratorCommand::SetOptions { options }
+            | MapGeneratorCommand::Preflight { options },
+        ) => admit_generator(picked, options, &settings().map_generator),
         AppCommand::Settings(SettingsCommand::PatchGame { patch }) => {
             match launch_change(patch, &settings().game) {
                 Some(change) => confirm_launch_change(window, change).await,
@@ -333,6 +349,47 @@ fn admit_paths(
     Ok(())
 }
 
+/// The map generator's output and preview folders, picked or already
+/// stored, and raw arguments with no folder of their own: the generator is a
+/// program the client starts, and a folder named there would be written to
+/// whatever the page said.
+fn admit_generator(
+    picked: &PickedPaths,
+    options: &GeneratorOptions,
+    stored: &GeneratorOptions,
+) -> Result<(), String> {
+    admit_path(picked, &options.output_path, &stored.output_path)?;
+    admit_path(picked, &options.preview_path, &stored.preview_path)?;
+    match raw_argument_folder_flag(&options.command_line_args) {
+        Some(flag) => Err(format!(
+            "{flag} is not accepted in the raw arguments: choose the output folder with its button"
+        )),
+        None => Ok(()),
+    }
+}
+
+/// A folder flag in the generator's raw arguments, if there is one, in any
+/// spelling the generator accepts (`--out-path x` or `--out-path=x`).
+///
+/// Read with the same splitter the launch uses
+/// (`map_generator::split_command_line`), never a simpler one: that splitter
+/// drops quotes anywhere in a word, so `--out-"path"` reached the generator
+/// as `--out-path` while a whitespace split saw a harmless word. An `@file`
+/// argument is refused too: the generator's argument parser (picocli) reads
+/// further arguments from that file, where any flag could hide.
+fn raw_argument_folder_flag(arguments: &str) -> Option<&'static str> {
+    const FLAGS: [&str; 3] = ["--out-path", "--folder-path", "--preview-path"];
+    split_command_line(arguments).iter().find_map(|word| {
+        if word.starts_with('@') {
+            return Some("@file");
+        }
+        let name = word.split('=').next().unwrap_or(word);
+        FLAGS
+            .into_iter()
+            .find(|flag| name.eq_ignore_ascii_case(flag))
+    })
+}
+
 /// The launch settings a patch would change, when it changes them to
 /// something other than nothing.
 #[derive(Debug, PartialEq)]
@@ -422,6 +479,49 @@ async fn confirm_launch_change(window: &tauri::Window, change: LaunchChange) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn generator_raw_arguments_may_not_name_a_folder() {
+        for refused in [
+            "--map-size 512 --out-path C:/x",
+            "--folder-path=C:/x",
+            "--PREVIEW-PATH C:/x",
+            "\"--out-path\" C:/x",
+            // Quotes inside a word vanish when the launch splits it.
+            "--out-\"path\" C:/x",
+            "--'folder'-path=C:/x",
+            "--map-size 512 \"--preview-\"path C:/x",
+            // picocli reads more arguments from the named file.
+            "@C:/args.txt",
+            "--map-size 512 \"@args\"",
+        ] {
+            assert!(raw_argument_folder_flag(refused).is_some(), "{refused}");
+        }
+        for allowed in [
+            "",
+            "--map-size 512 --spawn-count 4",
+            "--seed path",
+            "--seed \"a@b\"",
+        ] {
+            assert!(raw_argument_folder_flag(allowed).is_none(), "{allowed}");
+        }
+    }
+
+    #[test]
+    fn a_generator_folder_must_be_picked_or_already_stored() {
+        let picked = PickedPaths::default();
+        let stored = GeneratorOptions {
+            output_path: "D:/maps".into(),
+            ..GeneratorOptions::default()
+        };
+        let with = |output: &str| GeneratorOptions {
+            output_path: output.into(),
+            ..GeneratorOptions::default()
+        };
+        assert!(admit_generator(&picked, &with(""), &stored).is_ok());
+        assert!(admit_generator(&picked, &with("D:/maps"), &stored).is_ok());
+        assert!(admit_generator(&picked, &with("C:/Windows"), &stored).is_err());
+    }
 
     #[cfg(windows)]
     #[test]
