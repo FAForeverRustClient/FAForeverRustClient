@@ -1671,8 +1671,8 @@ impl PlayerDirectory {
         let mut restored = Vec::with_capacity(ids.len());
         for id in ids {
             if let Some(profile) = self.departed.remove(&id) {
-                if !self.profiles.contains_key(&id) {
-                    self.profiles.insert(id, profile.clone());
+                if let std::collections::btree_map::Entry::Vacant(slot) = self.profiles.entry(id) {
+                    slot.insert(profile.clone());
                     restored.push(profile);
                 }
             }
