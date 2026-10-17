@@ -452,7 +452,7 @@ mod tests {
     fn build_map_zip(map_folder: &str) -> Vec<u8> {
         let mut buf = std::io::Cursor::new(Vec::new());
         let mut writer = zip::ZipWriter::new(&mut buf);
-        let options: zip::write::FileOptions<'_, ()> = zip::write::FileOptions::default();
+        let options = zip::write::SimpleFileOptions::default();
         writer
             .start_file(format!("{map_folder}/{map_folder}.scmap"), options)
             .unwrap();

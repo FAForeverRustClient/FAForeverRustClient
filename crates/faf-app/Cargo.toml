@@ -44,7 +44,9 @@ flate2 = "1"
 md5 = "0.7"
 # Extracts downloaded map zips into FA's replay-mode default search paths
 # (see infra/game_updater.rs::ensure_map_available).
-zip = "2"
+# The formats zip 2 read by default, so no vault archive that installed before
+# is refused now. Its bzip2 backend needs an exception in deny.toml.
+zip = { version = "9", default-features = false, features = ["aes-crypto", "bzip2", "deflate", "deflate64", "lzma", "time", "xz", "zstd"] }
 # Parses the API's RFC3339 startTime/endTime to compute vault replay
 # duration (see infra/replay.rs::parse_vault_replays).
 chrono = "0.4"
