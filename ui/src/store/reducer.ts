@@ -14,6 +14,7 @@ import { reduceEvents } from "./reducers/events";
 import { reduceGalacticWar } from "./reducers/galacticWar";
 import { reduceGuides } from "./reducers/guides";
 import { reduceLeaderboard } from "./reducers/leaderboard";
+import { reduceLinuxRuntime } from "./reducers/linuxRuntime";
 import { reduceLobby } from "./reducers/lobby";
 import { reduceMapGenerator } from "./reducers/mapGenerator";
 import { reduceMaps } from "./reducers/maps";
@@ -89,6 +90,8 @@ export function applyEvent(state: AppState, event: AppEvent): AppState {
       return { ...state, uploads: reduceUploads(state.uploads, event.event) };
     case "GalacticWar":
       return { ...state, galacticWar: reduceGalacticWar(state.galacticWar, event.event) };
+    case "LinuxRuntime":
+      return { ...state, linuxRuntime: reduceLinuxRuntime(state.linuxRuntime, event.event) };
     case "ClientUpdate":
       return { ...state, clientUpdate: reduceClientUpdate(state.clientUpdate, event.event) };
     case "Settings":

@@ -10,10 +10,11 @@ use specta::Type;
 use crate::state::{
     AuthCommand, ChangelogCommand, ChatCommand, ClanCommand, ClientUpdateCommand,
     ConnectivityCommand, CoopCommand, EventsCommand, GalacticWarCommand, GuidesCommand,
-    LeaderboardCommand, LobbyCommand, MapGeneratorCommand, MapsCommand, ModsCommand, NavCommand,
-    NotificationCommand, PlayerCardCommand, ReplayCommand, ReportingCommand, ReviewsCommand,
-    SessionCommand, SettingsCommand, SocialCommand, StreamsCommand, TourneyCommand, TourneyRead,
-    TourneyWrite, TrainingCommand, TutorialsCommand, UploadsCommand,
+    LeaderboardCommand, LinuxRuntimeCommand, LobbyCommand, MapGeneratorCommand, MapsCommand,
+    ModsCommand, NavCommand, NotificationCommand, PlayerCardCommand, ReplayCommand,
+    ReportingCommand, ReviewsCommand, SessionCommand, SettingsCommand, SocialCommand,
+    StreamsCommand, TourneyCommand, TourneyRead, TourneyWrite, TrainingCommand, TutorialsCommand,
+    UploadsCommand,
 };
 
 // No `Eq`: `ReplayCommand` carries a `ReplayQuery`, which has an `f32`
@@ -47,6 +48,7 @@ pub enum AppCommand {
     Events(EventsCommand),
     Uploads(UploadsCommand),
     GalacticWar(GalacticWarCommand),
+    LinuxRuntime(LinuxRuntimeCommand),
     Guides(GuidesCommand),
     ClientUpdate(ClientUpdateCommand),
     Settings(SettingsCommand),
@@ -212,6 +214,12 @@ impl From<ReviewsCommand> for AppCommand {
 impl From<UploadsCommand> for AppCommand {
     fn from(c: UploadsCommand) -> Self {
         AppCommand::Uploads(c)
+    }
+}
+
+impl From<LinuxRuntimeCommand> for AppCommand {
+    fn from(c: LinuxRuntimeCommand) -> Self {
+        AppCommand::LinuxRuntime(c)
     }
 }
 

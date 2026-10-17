@@ -422,6 +422,7 @@ const INITIAL: AppState = {
     statisticsStatus: { type: "idle" },
     playerFaction: { type: "unknown" },
   },
+  linuxRuntime: { status: { type: "notNeeded" } },
   clientUpdate: {
     overdue: false,
     installWaiting: false,
