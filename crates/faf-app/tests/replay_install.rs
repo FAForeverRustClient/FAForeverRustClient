@@ -359,7 +359,7 @@ async fn an_overlay_replay_installs_its_base_build_and_overlay_revision_from_the
 
     let retail_slashed = retail.display().to_string().replace('\\', "/");
 
-    let expected_path = if cfg!(target_os = "linux") {
+    let expected_path = if !cfg!(windows) {
         format!("Z:{retail_slashed}")
     } else {
         retail_slashed
