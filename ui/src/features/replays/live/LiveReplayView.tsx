@@ -5,7 +5,7 @@ import { useAppStore } from "../../../store/store";
 import { isGeneratedMap, mapPresentation, mapSize } from "../../../shared/mapPresentation";
 import { isCustomGameRanked } from "../../../shared/gameRules";
 import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
-import { useForgetFiltersOnLeave } from "../../../shared/filterMemory";
+import { useRememberedFilters } from "../../../shared/filterMemory";
 import { LiveReplayControls } from "./LiveReplayControls";
 import { LiveReplayCards } from "./LiveReplayCards";
 import { LiveReplayDetail } from "./LiveReplayDetail";
@@ -51,8 +51,16 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   // says what they are playing. See the effect below.
   const lookups = useAppStore((s) => s.state.replays.onlineLookups);
   const { openPlayerMenu, playerMenu } = usePlayerMenu();
-  const [filters, setFilters] = useState<LiveFilters>(browsing.liveReplayFilters);
-  const filtersDirty = useRef(false);
+  // Remembered the way every other list's filters are (#590): for the
+  // session, or across a restart, as `general.filterMemory` says, and written
+  // down when the tab is left. They used to live in a browsing preference of
+  // their own, debounced on the way out and echoed back in; a change made
+  // just before leaving the tab never arrived. That preference is still read
+  // once, so filters kept across a restart by an older build come back.
+  const { filters, setFilters } = useRememberedFilters<LiveFilters>("replays.live", {
+    ...DEFAULT_LIVE_FILTERS,
+    ...browsing.liveReplayFilters,
+  });
   const [filtersOpen, setFiltersOpen] = useState(false);
   // The game whose detail window is open. The grid and the table both open
   // it, the way the vault's grid and list do.
@@ -89,36 +97,6 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
     // this rated" is a question about the map and about the sim mods.
     ipc.send({ kind: "Mods", command: { type: "loadVault" } });
   }, []);
-
-  useEffect(() => {
-    if (!filtersDirty.current) setFilters(browsing.liveReplayFilters);
-  }, [browsing.liveReplayFilters]);
-
-  useEffect(() => {
-    if (!filtersDirty.current) return;
-    const timer = window.setTimeout(() => {
-      filtersDirty.current = false;
-      ipc.send({
-        kind: "Settings",
-        command: {
-          type: "patchBrowsing",
-          payload: { patch: { liveReplayFilters: filters } },
-        },
-      });
-    }, 200);
-    return () => window.clearTimeout(timer);
-  }, [filters]);
-
-  // With filters never remembered (#447), the next visit starts unfiltered.
-  useForgetFiltersOnLeave(() => {
-    ipc.send({
-      kind: "Settings",
-      command: {
-        type: "patchBrowsing",
-        payload: { patch: { liveReplayFilters: DEFAULT_LIVE_FILTERS } },
-      },
-    });
-  });
 
   const gameTypes = useMemo(
     () => [...new Set(liveGames.map((game) => game.gameType).filter(Boolean))].sort(),
@@ -253,7 +231,6 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
 
   const setFilter = <K extends keyof LiveFilters>(key: K, value: LiveFilters[K]) => {
     setVisibleCount(LIVE_REPLAY_BATCH_SIZE);
-    filtersDirty.current = true;
     setFilters((current) => ({ ...current, [key]: value }));
   };
 
@@ -293,7 +270,6 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
         onToggleFilters={() => setFiltersOpen((open) => !open)}
         onClear={() => {
           setVisibleCount(LIVE_REPLAY_BATCH_SIZE);
-          filtersDirty.current = true;
           setFilters(DEFAULT_LIVE_FILTERS);
         }}
       />
