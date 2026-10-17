@@ -54,6 +54,37 @@ pub trait MapsPort: Send + Sync {
         self.list_vault().await
     }
 
+    /// Read a validated, API-specific saved lookup catalogue before any network work.
+    async fn load_catalogue_cache(&self) -> Option<super::catalogue::CachedCatalogue<VaultMap>> {
+        None
+    }
+
+    async fn save_catalogue_cache(
+        &self,
+        _cache: super::catalogue::CachedCatalogue<VaultMap>,
+    ) -> Result<(), String> {
+        Ok(())
+    }
+
+    async fn catalogue_full(
+        &self,
+        progress: Option<tokio::sync::mpsc::Sender<faf_domain::state::maps::CatalogueProgress>>,
+    ) -> Result<super::catalogue::CatalogueBatch<VaultMap>, String> {
+        Ok(super::catalogue::CatalogueBatch {
+            entries: self.list_vault_with_progress(progress).await?,
+            newest_change: String::new(),
+            removed_ids: Vec::new(),
+            pages: 0,
+        })
+    }
+
+    async fn catalogue_delta(
+        &self,
+        _since: &str,
+    ) -> Result<super::catalogue::CatalogueBatch<VaultMap>, String> {
+        Err("incremental catalogue reads are unavailable".into())
+    }
+
     /// One page of a server-side vault search. This is what the Maps tab
     /// browses; [`Self::list_vault`] only feeds the folder-name lookup index.
     async fn search_vault(&self, query: MapVaultQuery) -> Result<MapSearchPage, String>;

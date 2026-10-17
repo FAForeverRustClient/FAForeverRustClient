@@ -50,6 +50,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -113,6 +114,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": {
               "pages": 2,
@@ -173,6 +175,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -230,6 +233,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -290,6 +294,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -45322,6 +45327,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -45382,6 +45388,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -45442,6 +45449,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -45527,6 +45535,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -45593,6 +45602,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -45656,6 +45666,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -45744,6 +45755,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -45824,6 +45836,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -45905,6 +45918,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -46094,6 +46108,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -46205,6 +46220,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -46320,6 +46336,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -46431,6 +46448,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -46545,6 +46563,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -46656,6 +46675,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -46747,6 +46767,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [
               {
                 "author": "Rackover",
@@ -46859,6 +46880,9 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [
+              33
+            ],
             "vault": [
               {
                 "author": "Rackover",
@@ -47021,6 +47045,10 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [
+              33,
+              11
+            ],
             "vault": [
               {
                 "author": "Rackover",
@@ -47134,6 +47162,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -47220,6 +47249,9 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [
+              44
+            ],
             "vault": [
               {
                 "author": "Rackover",
@@ -47357,6 +47389,9 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [
+              44
+            ],
             "vault": [
               {
                 "author": "Rackover",
@@ -47494,6 +47529,10 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [
+              44,
+              55
+            ],
             "vault": [
               {
                 "author": "Rackover",
@@ -47656,6 +47695,10 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [
+              44,
+              55
+            ],
             "vault": [
               {
                 "author": "Rackover",
@@ -69188,6 +69231,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -69270,6 +69314,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -69362,6 +69407,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -69449,6 +69495,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -69535,6 +69582,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -69622,6 +69670,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -69724,6 +69773,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -69817,6 +69867,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -69908,6 +69959,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -69990,6 +70042,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -70058,6 +70111,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -70132,6 +70186,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -70194,6 +70249,7 @@
             "matchmakerPoolsStatus": {
               "type": "loading"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -70299,6 +70355,7 @@
             "matchmakerPoolsStatus": {
               "type": "ready"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -70379,6 +70436,7 @@
             "matchmakerPoolsStatus": {
               "type": "loading"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -70506,6 +70564,7 @@
             "matchmakerPoolsStatus": {
               "type": "ready"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -70608,6 +70667,7 @@
             "matchmakerPoolsStatus": {
               "type": "loading"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -70716,6 +70776,7 @@
               },
               "type": "failed"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -70801,6 +70862,7 @@
             "matchmakerPoolsStatus": {
               "type": "ready"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -70867,6 +70929,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -70931,6 +70994,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -70996,6 +71060,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -71061,6 +71126,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -71125,6 +71191,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -71190,6 +71257,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -71250,6 +71318,7 @@
             "matchmakerPoolsStatus": {
               "type": "idle"
             },
+            "resolvedVaultVersions": [],
             "vault": [],
             "vaultProgress": null,
             "vaultStatus": {
@@ -71257,6 +71326,1695 @@
             },
             "visibilityStatus": {
               "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "map catalogue deltas replace versions, remove hidden maps and preserve folder lookups",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "maps": [
+                  {
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "first.v0001",
+                    "downloadUrl": "",
+                    "folderName": "first.v0001",
+                    "gamesPlayed": 0,
+                    "height": 1024,
+                    "hidden": false,
+                    "mapId": 1,
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": "",
+                    "version": "1",
+                    "versionGamesPlayed": 0,
+                    "versionId": 11,
+                    "width": 1024
+                  },
+                  {
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "second.v0001",
+                    "downloadUrl": "",
+                    "folderName": "second.v0001",
+                    "gamesPlayed": 0,
+                    "height": 1024,
+                    "hidden": false,
+                    "mapId": 2,
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": "",
+                    "version": "1",
+                    "versionGamesPlayed": 0,
+                    "versionId": 22,
+                    "width": 1024
+                  }
+                ]
+              },
+              "type": "vaultLoaded"
+            },
+            "kind": "Maps"
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "resolvedVaultVersions": [],
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "first.v0001",
+                "downloadUrl": "",
+                "folderName": "first.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 11,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "second.v0001",
+                "downloadUrl": "",
+                "folderName": "second.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 2,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 22,
+                "width": 1024
+              }
+            ],
+            "vaultProgress": null,
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "maps": [
+                  {
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "resolved.v0001",
+                    "downloadUrl": "",
+                    "folderName": "resolved.v0001",
+                    "gamesPlayed": 0,
+                    "height": 1024,
+                    "hidden": false,
+                    "mapId": 9,
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": "",
+                    "version": "1",
+                    "versionGamesPlayed": 0,
+                    "versionId": 99,
+                    "width": 1024
+                  }
+                ]
+              },
+              "type": "vaultFoldersResolved"
+            },
+            "kind": "Maps"
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "resolvedVaultVersions": [
+              99
+            ],
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "first.v0001",
+                "downloadUrl": "",
+                "folderName": "first.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 11,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "second.v0001",
+                "downloadUrl": "",
+                "folderName": "second.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 2,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 22,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "resolved.v0001",
+                "downloadUrl": "",
+                "folderName": "resolved.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 9,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 99,
+                "width": 1024
+              }
+            ],
+            "vaultProgress": null,
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "maps": [
+                  {
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "first.v0002",
+                    "downloadUrl": "",
+                    "folderName": "first.v0002",
+                    "gamesPlayed": 0,
+                    "height": 1024,
+                    "hidden": false,
+                    "mapId": 1,
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": "",
+                    "version": "1",
+                    "versionGamesPlayed": 0,
+                    "versionId": 12,
+                    "width": 1024
+                  },
+                  {
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "third.v0001",
+                    "downloadUrl": "",
+                    "folderName": "third.v0001",
+                    "gamesPlayed": 0,
+                    "height": 1024,
+                    "hidden": false,
+                    "mapId": 3,
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": "",
+                    "version": "1",
+                    "versionGamesPlayed": 0,
+                    "versionId": 33,
+                    "width": 1024
+                  },
+                  {
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "second.v0001",
+                    "downloadUrl": "",
+                    "folderName": "second.v0001",
+                    "gamesPlayed": 0,
+                    "height": 1024,
+                    "hidden": true,
+                    "mapId": 2,
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": "",
+                    "version": "1",
+                    "versionGamesPlayed": 0,
+                    "versionId": 22,
+                    "width": 1024
+                  }
+                ]
+              },
+              "type": "vaultUpdated"
+            },
+            "kind": "Maps"
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "resolvedVaultVersions": [
+              99
+            ],
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "resolved.v0001",
+                "downloadUrl": "",
+                "folderName": "resolved.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 9,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 99,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "first.v0002",
+                "downloadUrl": "",
+                "folderName": "first.v0002",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 12,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "third.v0001",
+                "downloadUrl": "",
+                "folderName": "third.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 3,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 33,
+                "width": 1024
+              }
+            ],
+            "vaultProgress": null,
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "maps": [
+                  {
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "third.v0001",
+                    "downloadUrl": "",
+                    "folderName": "third.v0001",
+                    "gamesPlayed": 0,
+                    "height": 1024,
+                    "hidden": false,
+                    "mapId": 3,
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": "",
+                    "version": "1",
+                    "versionGamesPlayed": 0,
+                    "versionId": 33,
+                    "width": 1024
+                  }
+                ]
+              },
+              "type": "vaultLoaded"
+            },
+            "kind": "Maps"
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "resolvedVaultVersions": [
+              99
+            ],
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "third.v0001",
+                "downloadUrl": "",
+                "folderName": "third.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 3,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 33,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "resolved.v0001",
+                "downloadUrl": "",
+                "folderName": "resolved.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 9,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 99,
+                "width": 1024
+              }
+            ],
+            "vaultProgress": null,
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a map catalogue delta keeps a looked-up older version of a changed map and lists each version once",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "maps": [
+                  {
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "first.v0001",
+                    "downloadUrl": "",
+                    "folderName": "first.v0001",
+                    "gamesPlayed": 0,
+                    "height": 1024,
+                    "hidden": false,
+                    "mapId": 1,
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": "",
+                    "version": "1",
+                    "versionGamesPlayed": 0,
+                    "versionId": 11,
+                    "width": 1024
+                  }
+                ]
+              },
+              "type": "vaultLoaded"
+            },
+            "kind": "Maps"
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "resolvedVaultVersions": [],
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "first.v0001",
+                "downloadUrl": "",
+                "folderName": "first.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 11,
+                "width": 1024
+              }
+            ],
+            "vaultProgress": null,
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "maps": [
+                  {
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "first.v0000",
+                    "downloadUrl": "",
+                    "folderName": "first.v0000",
+                    "gamesPlayed": 0,
+                    "height": 1024,
+                    "hidden": false,
+                    "mapId": 1,
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": "",
+                    "version": "1",
+                    "versionGamesPlayed": 0,
+                    "versionId": 10,
+                    "width": 1024
+                  }
+                ]
+              },
+              "type": "vaultFoldersResolved"
+            },
+            "kind": "Maps"
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "resolvedVaultVersions": [
+              10
+            ],
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "first.v0001",
+                "downloadUrl": "",
+                "folderName": "first.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 11,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "first.v0000",
+                "downloadUrl": "",
+                "folderName": "first.v0000",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 10,
+                "width": 1024
+              }
+            ],
+            "vaultProgress": null,
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "maps": [
+                  {
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "first.v0002",
+                    "downloadUrl": "",
+                    "folderName": "first.v0002",
+                    "gamesPlayed": 0,
+                    "height": 1024,
+                    "hidden": false,
+                    "mapId": 1,
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": "",
+                    "version": "1",
+                    "versionGamesPlayed": 0,
+                    "versionId": 12,
+                    "width": 1024
+                  },
+                  {
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "first.v0002",
+                    "downloadUrl": "",
+                    "folderName": "first.v0002",
+                    "gamesPlayed": 0,
+                    "height": 1024,
+                    "hidden": false,
+                    "mapId": 1,
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": "",
+                    "version": "1",
+                    "versionGamesPlayed": 0,
+                    "versionId": 12,
+                    "width": 1024
+                  },
+                  {
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "first.v0000",
+                    "downloadUrl": "",
+                    "folderName": "first.v0000",
+                    "gamesPlayed": 0,
+                    "height": 1024,
+                    "hidden": false,
+                    "mapId": 1,
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": "",
+                    "version": "1",
+                    "versionGamesPlayed": 0,
+                    "versionId": 10,
+                    "width": 1024
+                  }
+                ]
+              },
+              "type": "vaultUpdated"
+            },
+            "kind": "Maps"
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "resolvedVaultVersions": [
+              10
+            ],
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "first.v0000",
+                "downloadUrl": "",
+                "folderName": "first.v0000",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 10,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "first.v0002",
+                "downloadUrl": "",
+                "folderName": "first.v0002",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 12,
+                "width": 1024
+              }
+            ],
+            "vaultProgress": null,
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a mod catalogue delta that lists a mod twice holds it once",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "mods": [
+                  {
+                    "author": "Someone",
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "Mod old",
+                    "downloadUrl": "",
+                    "filename": "old.zip",
+                    "modId": 1,
+                    "modType": "ui",
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "uid": "old",
+                    "updatedAt": "2026-01-01T00:00:00Z",
+                    "uploader": "Someone",
+                    "uploaderId": 4711,
+                    "version": "3",
+                    "versionId": 10
+                  }
+                ]
+              },
+              "type": "vaultLoaded"
+            },
+            "kind": "Mods"
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "dateFieldUpdated": true,
+              "exactName": false,
+              "maxRatingTenths": null,
+              "minRatingTenths": null,
+              "modType": "",
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "searchDescriptions": false,
+              "sortBy": "rating",
+              "sortDescending": true,
+              "uploaderId": null
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "downloadSizes": {},
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "toggleStatus": {
+              "type": "idle"
+            },
+            "vault": [
+              {
+                "author": "Someone",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "Mod old",
+                "downloadUrl": "",
+                "filename": "old.zip",
+                "modId": 1,
+                "modType": "ui",
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "uid": "old",
+                "updatedAt": "2026-01-01T00:00:00Z",
+                "uploader": "Someone",
+                "uploaderId": 4711,
+                "version": "3",
+                "versionId": 10
+              }
+            ],
+            "vaultProgress": null,
+            "vaultStatus": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "mods": [
+                  {
+                    "author": "Someone",
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "Mod added",
+                    "downloadUrl": "",
+                    "filename": "added.zip",
+                    "modId": 3,
+                    "modType": "ui",
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "uid": "added",
+                    "updatedAt": "2026-01-01T00:00:00Z",
+                    "uploader": "Someone",
+                    "uploaderId": 4711,
+                    "version": "3",
+                    "versionId": 30
+                  },
+                  {
+                    "author": "Someone",
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "Mod new",
+                    "downloadUrl": "",
+                    "filename": "new.zip",
+                    "modId": 1,
+                    "modType": "ui",
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "uid": "new",
+                    "updatedAt": "2026-01-01T00:00:00Z",
+                    "uploader": "Someone",
+                    "uploaderId": 4711,
+                    "version": "3",
+                    "versionId": 10
+                  },
+                  {
+                    "author": "Someone",
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "Mod added",
+                    "downloadUrl": "",
+                    "filename": "added.zip",
+                    "modId": 3,
+                    "modType": "ui",
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "uid": "added",
+                    "updatedAt": "2026-01-01T00:00:00Z",
+                    "uploader": "Someone",
+                    "uploaderId": 4711,
+                    "version": "3",
+                    "versionId": 30
+                  }
+                ],
+                "removedIds": []
+              },
+              "type": "vaultUpdated"
+            },
+            "kind": "Mods"
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "dateFieldUpdated": true,
+              "exactName": false,
+              "maxRatingTenths": null,
+              "minRatingTenths": null,
+              "modType": "",
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "searchDescriptions": false,
+              "sortBy": "rating",
+              "sortDescending": true,
+              "uploaderId": null
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "downloadSizes": {},
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "toggleStatus": {
+              "type": "idle"
+            },
+            "vault": [
+              {
+                "author": "Someone",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "Mod added",
+                "downloadUrl": "",
+                "filename": "added.zip",
+                "modId": 3,
+                "modType": "ui",
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "uid": "added",
+                "updatedAt": "2026-01-01T00:00:00Z",
+                "uploader": "Someone",
+                "uploaderId": 4711,
+                "version": "3",
+                "versionId": 30
+              },
+              {
+                "author": "Someone",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "Mod new",
+                "downloadUrl": "",
+                "filename": "new.zip",
+                "modId": 1,
+                "modType": "ui",
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "uid": "new",
+                "updatedAt": "2026-01-01T00:00:00Z",
+                "uploader": "Someone",
+                "uploaderId": 4711,
+                "version": "3",
+                "versionId": 10
+              }
+            ],
+            "vaultProgress": null,
+            "vaultStatus": {
+              "type": "ready"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mod catalogue deltas replace versions and remove withdrawn mods",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "mods": [
+                  {
+                    "author": "Someone",
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "Mod old",
+                    "downloadUrl": "",
+                    "filename": "old.zip",
+                    "modId": 1,
+                    "modType": "ui",
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "uid": "old",
+                    "updatedAt": "2026-01-01T00:00:00Z",
+                    "uploader": "Someone",
+                    "uploaderId": 4711,
+                    "version": "3",
+                    "versionId": 10
+                  },
+                  {
+                    "author": "Someone",
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "Mod removed",
+                    "downloadUrl": "",
+                    "filename": "removed.zip",
+                    "modId": 2,
+                    "modType": "ui",
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "uid": "removed",
+                    "updatedAt": "2026-01-01T00:00:00Z",
+                    "uploader": "Someone",
+                    "uploaderId": 4711,
+                    "version": "3",
+                    "versionId": 20
+                  }
+                ]
+              },
+              "type": "vaultLoaded"
+            },
+            "kind": "Mods"
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "dateFieldUpdated": true,
+              "exactName": false,
+              "maxRatingTenths": null,
+              "minRatingTenths": null,
+              "modType": "",
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "searchDescriptions": false,
+              "sortBy": "rating",
+              "sortDescending": true,
+              "uploaderId": null
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "downloadSizes": {},
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "toggleStatus": {
+              "type": "idle"
+            },
+            "vault": [
+              {
+                "author": "Someone",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "Mod old",
+                "downloadUrl": "",
+                "filename": "old.zip",
+                "modId": 1,
+                "modType": "ui",
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "uid": "old",
+                "updatedAt": "2026-01-01T00:00:00Z",
+                "uploader": "Someone",
+                "uploaderId": 4711,
+                "version": "3",
+                "versionId": 10
+              },
+              {
+                "author": "Someone",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "Mod removed",
+                "downloadUrl": "",
+                "filename": "removed.zip",
+                "modId": 2,
+                "modType": "ui",
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "uid": "removed",
+                "updatedAt": "2026-01-01T00:00:00Z",
+                "uploader": "Someone",
+                "uploaderId": 4711,
+                "version": "3",
+                "versionId": 20
+              }
+            ],
+            "vaultProgress": null,
+            "vaultStatus": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "mods": [
+                  {
+                    "author": "Someone",
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "Mod new",
+                    "downloadUrl": "",
+                    "filename": "new.zip",
+                    "modId": 1,
+                    "modType": "ui",
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "uid": "new",
+                    "updatedAt": "2026-01-01T00:00:00Z",
+                    "uploader": "Someone",
+                    "uploaderId": 4711,
+                    "version": "3",
+                    "versionId": 10
+                  },
+                  {
+                    "author": "Someone",
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "description": "",
+                    "displayName": "Mod added",
+                    "downloadUrl": "",
+                    "filename": "added.zip",
+                    "modId": 3,
+                    "modType": "ui",
+                    "ranked": false,
+                    "ratingTenths": 0,
+                    "recommended": false,
+                    "reviews": 0,
+                    "thumbnailUrl": "",
+                    "uid": "added",
+                    "updatedAt": "2026-01-01T00:00:00Z",
+                    "uploader": "Someone",
+                    "uploaderId": 4711,
+                    "version": "3",
+                    "versionId": 30
+                  }
+                ],
+                "removedIds": [
+                  2
+                ]
+              },
+              "type": "vaultUpdated"
+            },
+            "kind": "Mods"
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "dateFieldUpdated": true,
+              "exactName": false,
+              "maxRatingTenths": null,
+              "minRatingTenths": null,
+              "modType": "",
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "searchDescriptions": false,
+              "sortBy": "rating",
+              "sortDescending": true,
+              "uploaderId": null
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "downloadSizes": {},
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "toggleStatus": {
+              "type": "idle"
+            },
+            "vault": [
+              {
+                "author": "Someone",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "Mod new",
+                "downloadUrl": "",
+                "filename": "new.zip",
+                "modId": 1,
+                "modType": "ui",
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "uid": "new",
+                "updatedAt": "2026-01-01T00:00:00Z",
+                "uploader": "Someone",
+                "uploaderId": 4711,
+                "version": "3",
+                "versionId": 10
+              },
+              {
+                "author": "Someone",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "Mod added",
+                "downloadUrl": "",
+                "filename": "added.zip",
+                "modId": 3,
+                "modType": "ui",
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "uid": "added",
+                "updatedAt": "2026-01-01T00:00:00Z",
+                "uploader": "Someone",
+                "uploaderId": 4711,
+                "version": "3",
+                "versionId": 30
+              }
+            ],
+            "vaultProgress": null,
+            "vaultStatus": {
+              "type": "ready"
             }
           }
         }
@@ -123565,6 +125323,7 @@
       "matchmakerPoolsStatus": {
         "type": "idle"
       },
+      "resolvedVaultVersions": [],
       "vault": [],
       "vaultProgress": null,
       "vaultStatus": {

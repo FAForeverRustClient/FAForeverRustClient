@@ -80,6 +80,7 @@ const INITIAL: AppState = {
     recentMatchmakerStatus: { type: "idle" },
   },
   maps: {
+    resolvedVaultVersions: [],
     vault: [],
     vaultStatus: { type: "idle" },
     vaultProgress: null,

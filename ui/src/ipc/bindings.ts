@@ -5312,6 +5312,10 @@ export type MapsEvent = { type: "vaultLoading" } | { type: "vaultProgress"; payl
 	reason: string,
 } } | { type: "vaultLoaded"; payload: {
 	maps: VaultMap[],
+} } |
+/**  Apply a quiet catalogue delta without replacing unrelated folder lookups. */
+{ type: "vaultUpdated"; payload: {
+	maps: VaultMap[],
 } } | { type: "vaultLoadFailed"; payload: {
 	reason: string,
 } } |
@@ -5405,6 +5409,8 @@ export type MapsState = {
 	 *  deliberately not what the Maps tab browses; see `browse` below.
 	 */
 	vault: VaultMap[],
+	/**  Versions explicitly resolved for live folders, retained across full refreshes. */
+	resolvedVaultVersions?: number[],
 	vaultStatus: MapListStatus,
 	vaultProgress?: CatalogueProgress | null,
 	/**
@@ -6010,6 +6016,11 @@ export type ModsEvent = { type: "vaultLoading" } | { type: "vaultProgress"; payl
 	reason: string,
 } } | { type: "vaultLoaded"; payload: {
 	mods: VaultMod[],
+} } |
+/**  Apply changed mod records and explicit withdrawals to the lookup index. */
+{ type: "vaultUpdated"; payload: {
+	mods: VaultMod[],
+	removedIds: number[],
 } } | { type: "vaultLoadFailed"; payload: {
 	reason: string,
 } } | { type: "installedLoading" } | { type: "installedLoaded"; payload: {
@@ -13221,10 +13232,9 @@ export type VaultMap = {
 	/**
 	 *  Whether the author has withdrawn this version from the vault.
 	 *
-	 *  Always `false` in an ordinary search, which filters hidden versions out
-	 *  server side; only "my maps" asks for them, so only there is this ever
-	 *  `true` (mirrors `MapVersion.hidden`, which both reference clients read
-	 *  on the detail view).
+	 *  Ordinary searches exclude withdrawn versions. "My maps" and catalogue
+	 *  deltas include them; deltas remove them from the lookup index (mirrors
+	 *  `MapVersion.hidden`, which both reference clients read on the detail view).
 	 */
 	hidden: boolean,
 	recommended: boolean,
