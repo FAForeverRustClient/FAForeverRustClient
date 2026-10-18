@@ -1,1 +1,1 @@
-- Matches and lobbies on a generated map start sooner: the map is generated while the game updates, and every map generator start is faster.
+- Matchmaker games on a generated map start sooner: the map is generated while the game updates, and every map generator start is faster.

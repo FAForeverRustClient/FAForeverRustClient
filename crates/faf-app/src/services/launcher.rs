@@ -427,21 +427,27 @@ async fn prepare_map_and_mod(
     use faf_domain::protocol::map_generator::is_generated_map;
 
     let cache_rolling_branches = out.with_state(|state| state.settings.game.cache_rolling_branches);
-    // Side by side, for the reason the launch gives (#596). A join called off
-    // stops both: each watches the same token.
-    let (generated, prepared) = tokio::join!(
-        ensure_generated_map(map, ctx, out),
-        prepare_request(
-            GamePreparation {
-                featured_mod: featured_mod.to_string(),
-                map_folder: (!map.is_empty() && !is_generated_map(map)).then(|| map.to_string()),
-                cache_rolling_branches,
-            },
-            ctx,
-            out,
-        ),
-    );
-    generated.and(prepared)
+    // One after the other here, unlike the launch (#596): a join or a host is
+    // something the player can still call off while its map is generated,
+    // and then the updater is not to start at all, rather than start and be
+    // stopped half-way through the game's files
+    // (`cancelling_join_closes_its_generator_and_does_not_start_the_updater`).
+    ensure_generated_map(map, ctx, out).await?;
+    // Called off while its map was being generated: the updater is not
+    // started for a join nobody wants any more.
+    if ctx.lobby.launch_called_off().is_cancelled() {
+        return Ok(());
+    }
+    prepare_request(
+        GamePreparation {
+            featured_mod: featured_mod.to_string(),
+            map_folder: (!map.is_empty() && !is_generated_map(map)).then(|| map.to_string()),
+            cache_rolling_branches,
+        },
+        ctx,
+        out,
+    )
+    .await
 }
 
 /// Make sure a generated map exists locally, generating it if not.
