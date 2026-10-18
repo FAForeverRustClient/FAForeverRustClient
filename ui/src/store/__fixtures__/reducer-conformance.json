@@ -11938,6 +11938,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -11964,7 +11966,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -12063,6 +12067,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -12089,7 +12095,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -12186,6 +12194,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -12212,7 +12222,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -12309,6 +12321,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -12335,7 +12349,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -12430,6 +12446,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -12456,7 +12474,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -12552,6 +12572,7 @@
                     "poolAssign": [],
                     "premadeTeams": false,
                     "prize": null,
+                    "proposal": null,
                     "publishAt": null,
                     "published": false,
                     "qualifiers": [],
@@ -12728,6 +12749,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -12829,6 +12851,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -12855,7 +12879,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -12952,6 +12978,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -12978,7 +13006,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -13074,6 +13104,7 @@
                     "poolAssign": [],
                     "premadeTeams": false,
                     "prize": null,
+                    "proposal": null,
                     "publishAt": null,
                     "published": false,
                     "qualifiers": [],
@@ -13212,6 +13243,7 @@
                     "poolAssign": [],
                     "premadeTeams": false,
                     "prize": null,
+                    "proposal": null,
                     "publishAt": null,
                     "published": false,
                     "qualifiers": [],
@@ -13388,6 +13420,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -13526,6 +13559,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -13627,6 +13661,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -13653,7 +13689,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -13786,6 +13824,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -13924,6 +13963,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -14025,6 +14065,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -14051,7 +14093,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -14181,6 +14225,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -14319,6 +14364,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -14420,6 +14466,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -14446,7 +14494,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -14541,6 +14591,7 @@
                   "poolAssign": [],
                   "premadeTeams": false,
                   "prize": null,
+                  "proposal": null,
                   "publishAt": null,
                   "published": false,
                   "qualifiers": [],
@@ -14709,6 +14760,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -14853,6 +14905,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -14991,6 +15044,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -15092,6 +15146,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -15118,7 +15174,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -15246,6 +15304,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -15390,6 +15449,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -15528,6 +15588,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -15631,6 +15692,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -15657,7 +15720,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -15795,6 +15860,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -15939,6 +16005,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -16077,6 +16144,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -16178,6 +16246,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -16204,7 +16274,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -16327,6 +16399,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -16471,6 +16544,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -16609,6 +16683,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -16710,6 +16785,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -16736,7 +16813,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -16864,6 +16943,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -17008,6 +17088,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -17146,6 +17227,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -17249,6 +17331,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -17275,7 +17359,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -17404,6 +17490,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -17548,6 +17635,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -17686,6 +17774,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -17787,6 +17876,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -17813,7 +17904,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -17948,6 +18041,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -18101,6 +18195,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -18239,6 +18334,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -18340,6 +18436,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -18366,7 +18464,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -18494,6 +18594,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -18647,6 +18748,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -18785,6 +18887,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -18888,6 +18991,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -18914,7 +19019,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -19050,6 +19157,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -19188,6 +19296,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -19289,6 +19398,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -19315,7 +19426,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -19452,6 +19565,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -19590,6 +19704,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -19691,6 +19806,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -19717,7 +19834,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -19864,6 +19983,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -20002,6 +20122,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -20103,6 +20224,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -20129,7 +20252,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -20224,6 +20349,7 @@
                   "poolAssign": [],
                   "premadeTeams": false,
                   "prize": null,
+                  "proposal": null,
                   "publishAt": null,
                   "published": false,
                   "qualifiers": [],
@@ -20406,6 +20532,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -20544,6 +20671,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -20645,6 +20773,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -20671,7 +20801,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -20767,6 +20899,7 @@
                     "poolAssign": [],
                     "premadeTeams": false,
                     "prize": null,
+                    "proposal": null,
                     "publishAt": null,
                     "published": false,
                     "qualifiers": [],
@@ -20950,6 +21083,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -21051,6 +21185,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -21077,7 +21213,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -21177,6 +21315,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -21203,7 +21343,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -21333,6 +21475,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -21359,7 +21503,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -21454,6 +21600,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -21480,7 +21628,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -21585,6 +21735,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -21611,7 +21763,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -21725,6 +21879,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -21751,7 +21907,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -21846,6 +22004,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -21872,7 +22032,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -21973,6 +22135,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -21999,7 +22163,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -22091,6 +22257,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -22117,7 +22285,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -22217,6 +22387,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -22243,7 +22415,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -22338,6 +22512,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -22364,7 +22540,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -22465,6 +22643,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -22491,7 +22671,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -22586,6 +22768,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -22612,7 +22796,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -22721,6 +22907,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -22747,7 +22935,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -22844,6 +23034,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -22870,7 +23062,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -22992,6 +23186,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -23018,7 +23214,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -23126,6 +23324,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -23152,7 +23352,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -23270,6 +23472,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -23296,7 +23500,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -23435,6 +23641,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -23461,7 +23669,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -23569,6 +23779,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -23595,7 +23807,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -23705,6 +23919,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -23731,7 +23947,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -23845,6 +24063,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -23871,7 +24091,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -23905,6 +24127,8 @@
                     "importer": false,
                     "loggedIn": true,
                     "oauth": true,
+                    "proposalDays": 0,
+                    "proposals": false,
                     "siteAdmin": false,
                     "siteAdminAccount": false
                   },
@@ -23987,6 +24211,8 @@
                 "importer": false,
                 "loggedIn": true,
                 "oauth": true,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -24013,7 +24239,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -24042,7 +24270,9 @@
                         "tournamentName": "Cup"
                       }
                     ],
+                    "newProposals": null,
                     "newRequests": null,
+                    "proposals": 1,
                     "requests": 2
                   },
                   "type": "pending"
@@ -24124,6 +24354,8 @@
                 "importer": false,
                 "loggedIn": true,
                 "oauth": true,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -24159,7 +24391,9 @@
                     "tournamentName": "Cup"
                   }
                 ],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": 1,
                 "requests": 2
               }
             },
@@ -24254,6 +24488,8 @@
                 "importer": false,
                 "loggedIn": true,
                 "oauth": true,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -24289,7 +24525,9 @@
                     "tournamentName": "Cup"
                   }
                 ],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": 1,
                 "requests": 2
               }
             },
@@ -24398,6 +24636,8 @@
                 "importer": false,
                 "loggedIn": true,
                 "oauth": true,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -24444,7 +24684,9 @@
                     "tournamentName": "Cup"
                   }
                 ],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": 1,
                 "requests": 2
               }
             },
@@ -24539,6 +24781,8 @@
                 "importer": false,
                 "loggedIn": true,
                 "oauth": true,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -24585,7 +24829,9 @@
                     "tournamentName": "Cup"
                   }
                 ],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": 1,
                 "requests": 2
               }
             },
@@ -24682,6 +24928,8 @@
                 "importer": false,
                 "loggedIn": true,
                 "oauth": true,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -24732,7 +24980,9 @@
                     "tournamentName": "Cup"
                   }
                 ],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": 1,
                 "requests": 2
               }
             },
@@ -24764,6 +25014,7 @@
                     "logs": [],
                     "me": null,
                     "oauth": false,
+                    "proposals": null,
                     "role": "editor",
                     "siteAdmins": []
                   },
@@ -24846,6 +25097,8 @@
                 "importer": false,
                 "loggedIn": true,
                 "oauth": true,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -24864,6 +25117,7 @@
                 "logs": [],
                 "me": null,
                 "oauth": false,
+                "proposals": null,
                 "role": "editor",
                 "siteAdmins": []
               },
@@ -24908,7 +25162,9 @@
                     "tournamentName": "Cup"
                   }
                 ],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": 1,
                 "requests": 2
               }
             },
@@ -25014,6 +25270,8 @@
                 "importer": false,
                 "loggedIn": true,
                 "oauth": true,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -25032,6 +25290,7 @@
                 "logs": [],
                 "me": null,
                 "oauth": false,
+                "proposals": null,
                 "role": "editor",
                 "siteAdmins": []
               },
@@ -25076,7 +25335,9 @@
                     "tournamentName": "Cup"
                   }
                 ],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": 1,
                 "requests": 2
               }
             },
@@ -25182,6 +25443,8 @@
                 "importer": false,
                 "loggedIn": true,
                 "oauth": true,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -25200,6 +25463,7 @@
                 "logs": [],
                 "me": null,
                 "oauth": false,
+                "proposals": null,
                 "role": "editor",
                 "siteAdmins": []
               },
@@ -25244,7 +25508,9 @@
                     "tournamentName": "Cup"
                   }
                 ],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": 1,
                 "requests": 2
               }
             },
@@ -25339,6 +25605,8 @@
                 "importer": false,
                 "loggedIn": true,
                 "oauth": true,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -25357,6 +25625,7 @@
                 "logs": [],
                 "me": null,
                 "oauth": false,
+                "proposals": null,
                 "role": "editor",
                 "siteAdmins": []
               },
@@ -25401,7 +25670,9 @@
                     "tournamentName": "Cup"
                   }
                 ],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": 1,
                 "requests": 2
               }
             },
@@ -25500,6 +25771,8 @@
                 "importer": false,
                 "loggedIn": true,
                 "oauth": true,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -25518,6 +25791,7 @@
                 "logs": [],
                 "me": null,
                 "oauth": false,
+                "proposals": null,
                 "role": "editor",
                 "siteAdmins": []
               },
@@ -25562,7 +25836,9 @@
                     "tournamentName": "Cup"
                   }
                 ],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": 1,
                 "requests": 2
               }
             },
@@ -25660,6 +25936,8 @@
                 "importer": false,
                 "loggedIn": true,
                 "oauth": true,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -25678,6 +25956,7 @@
                 "logs": [],
                 "me": null,
                 "oauth": false,
+                "proposals": null,
                 "role": "editor",
                 "siteAdmins": []
               },
@@ -25722,7 +26001,9 @@
                     "tournamentName": "Cup"
                   }
                 ],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": 1,
                 "requests": 2
               }
             },
@@ -25825,6 +26106,7 @@
                       "poolAssign": [],
                       "premadeTeams": false,
                       "prize": null,
+                      "proposal": null,
                       "publishAt": null,
                       "published": false,
                       "qualifiers": [],
@@ -26025,6 +26307,7 @@
                   "poolAssign": [],
                   "premadeTeams": false,
                   "prize": null,
+                  "proposal": null,
                   "publishAt": null,
                   "published": false,
                   "qualifiers": [],
@@ -26118,6 +26401,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -26144,7 +26429,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -26291,6 +26578,7 @@
                   "poolAssign": [],
                   "premadeTeams": false,
                   "prize": null,
+                  "proposal": null,
                   "publishAt": null,
                   "published": false,
                   "qualifiers": [],
@@ -26384,6 +26672,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -26410,7 +26700,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -26505,6 +26797,7 @@
                   "poolAssign": [],
                   "premadeTeams": false,
                   "prize": null,
+                  "proposal": null,
                   "publishAt": null,
                   "published": false,
                   "qualifiers": [],
@@ -26697,6 +26990,7 @@
                   "poolAssign": [],
                   "premadeTeams": false,
                   "prize": null,
+                  "proposal": null,
                   "publishAt": null,
                   "published": false,
                   "qualifiers": [],
@@ -26790,6 +27084,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -26816,7 +27112,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -26901,6 +27199,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -27100,6 +27399,7 @@
                   "poolAssign": [],
                   "premadeTeams": false,
                   "prize": null,
+                  "proposal": null,
                   "publishAt": null,
                   "published": false,
                   "qualifiers": [],
@@ -27193,6 +27493,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -27219,7 +27521,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -27370,6 +27674,7 @@
                   "poolAssign": [],
                   "premadeTeams": false,
                   "prize": null,
+                  "proposal": null,
                   "publishAt": null,
                   "published": false,
                   "qualifiers": [],
@@ -27463,6 +27768,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -27489,7 +27796,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -27590,6 +27899,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -27616,7 +27927,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -27716,6 +28029,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -27742,7 +28057,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -27834,6 +28151,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -27860,7 +28179,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -27971,6 +28292,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -27997,7 +28320,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -28097,6 +28422,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -28123,7 +28450,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -28234,6 +28563,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -28260,7 +28591,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -28360,6 +28693,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -28386,7 +28721,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -28494,6 +28831,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -28520,7 +28859,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -28617,6 +28958,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -28643,7 +28986,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -28743,6 +29088,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -28769,7 +29116,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -28861,6 +29210,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -28887,7 +29238,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -29006,6 +29359,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -29032,7 +29387,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -29143,6 +29500,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -29169,7 +29528,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -29267,6 +29628,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -29293,7 +29656,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -29390,6 +29755,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -29416,7 +29783,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -29539,6 +29908,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -29565,7 +29936,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -29732,6 +30105,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -29758,7 +30133,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -29881,6 +30258,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -29907,7 +30286,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -30074,6 +30455,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -30100,7 +30483,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -30252,6 +30637,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -30278,7 +30665,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -30384,6 +30773,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -30410,7 +30801,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -30524,6 +30917,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -30550,7 +30945,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -30651,6 +31048,7 @@
                     "poolAssign": [],
                     "premadeTeams": false,
                     "prize": null,
+                    "proposal": null,
                     "publishAt": null,
                     "published": false,
                     "qualifiers": [],
@@ -30789,6 +31187,7 @@
                     "poolAssign": [],
                     "premadeTeams": false,
                     "prize": null,
+                    "proposal": null,
                     "publishAt": null,
                     "published": false,
                     "qualifiers": [],
@@ -30965,6 +31364,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -31103,6 +31503,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -31204,6 +31605,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -31230,7 +31633,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -31325,6 +31730,7 @@
                   "poolAssign": [],
                   "premadeTeams": false,
                   "prize": null,
+                  "proposal": null,
                   "publishAt": null,
                   "published": false,
                   "qualifiers": [],
@@ -31493,6 +31899,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -31637,6 +32044,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -31775,6 +32183,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -31876,6 +32285,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -31902,7 +32313,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -32066,6 +32479,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -32210,6 +32624,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -32348,6 +32763,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -32449,6 +32865,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -32475,7 +32893,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -32620,6 +33040,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -32764,6 +33185,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -32902,6 +33324,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -33003,6 +33426,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -33029,7 +33454,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -33171,6 +33598,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -33315,6 +33743,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -33453,6 +33882,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -33554,6 +33984,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -33580,7 +34012,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -33748,6 +34182,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -33892,6 +34327,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -34030,6 +34466,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -34131,6 +34568,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -34157,7 +34596,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -34314,6 +34755,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -34458,6 +34900,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -34596,6 +35039,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -34697,6 +35141,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -34723,7 +35169,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -34879,6 +35327,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -35023,6 +35472,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -35161,6 +35611,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -35262,6 +35713,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -35288,7 +35741,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -35456,6 +35911,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -35600,6 +36056,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -35738,6 +36195,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -35850,6 +36308,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -35876,7 +36336,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -36033,6 +36495,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -36177,6 +36640,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -36315,6 +36779,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -36416,6 +36881,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -36442,7 +36909,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -36589,6 +37058,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -36733,6 +37203,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -36871,6 +37342,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -36972,6 +37444,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -36998,7 +37472,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -37145,6 +37621,7 @@
               "poolAssign": [],
               "premadeTeams": false,
               "prize": null,
+              "proposal": null,
               "publishAt": null,
               "published": false,
               "qualifiers": [],
@@ -37289,6 +37766,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -37427,6 +37905,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -37528,6 +38007,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -37554,7 +38035,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -37687,6 +38170,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -37825,6 +38309,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -37926,6 +38411,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -37952,7 +38439,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -86949,6 +87438,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -86975,7 +87466,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -87071,6 +87564,7 @@
                     "poolAssign": [],
                     "premadeTeams": false,
                     "prize": null,
+                    "proposal": null,
                     "publishAt": null,
                     "published": false,
                     "qualifiers": [],
@@ -87209,6 +87703,7 @@
                     "poolAssign": [],
                     "premadeTeams": false,
                     "prize": null,
+                    "proposal": null,
                     "publishAt": null,
                     "published": false,
                     "qualifiers": [],
@@ -87385,6 +87880,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -87523,6 +88019,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -87624,6 +88121,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -87650,7 +88149,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -87783,6 +88284,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -87921,6 +88423,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -88022,6 +88525,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -88048,7 +88553,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -88178,6 +88685,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -88316,6 +88824,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -88417,6 +88926,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -88443,7 +88954,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -88538,6 +89051,7 @@
                   "poolAssign": [],
                   "premadeTeams": false,
                   "prize": null,
+                  "proposal": null,
                   "publishAt": null,
                   "published": false,
                   "qualifiers": [],
@@ -88713,6 +89227,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -88851,6 +89366,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -88952,6 +89468,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -88978,7 +89496,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -89116,6 +89636,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -89254,6 +89775,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -89355,6 +89877,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -89381,7 +89905,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -89538,6 +90064,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -89676,6 +90203,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -89777,6 +90305,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -89803,7 +90333,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -89950,6 +90482,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -90088,6 +90621,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -90189,6 +90723,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -90215,7 +90751,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -90359,6 +90897,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -90497,6 +91036,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -90598,6 +91138,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -90624,7 +91166,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -90776,6 +91320,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -90914,6 +91459,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -91015,6 +91561,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -91041,7 +91589,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -91189,6 +91739,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -91327,6 +91878,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -91428,6 +91980,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -91454,7 +92008,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -91606,6 +92162,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -91744,6 +92301,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -91845,6 +92403,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -91871,7 +92431,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -91971,6 +92533,7 @@
                     "poolAssign": [],
                     "premadeTeams": false,
                     "prize": null,
+                    "proposal": null,
                     "publishAt": null,
                     "published": false,
                     "qualifiers": [],
@@ -92147,6 +92710,7 @@
                 "poolAssign": [],
                 "premadeTeams": false,
                 "prize": null,
+                "proposal": null,
                 "publishAt": null,
                 "published": false,
                 "qualifiers": [],
@@ -92248,6 +92812,8 @@
                 "importer": false,
                 "loggedIn": false,
                 "oauth": false,
+                "proposalDays": 0,
+                "proposals": false,
                 "siteAdmin": false,
                 "siteAdminAccount": false
               },
@@ -92274,7 +92840,9 @@
               },
               "pending": {
                 "items": [],
+                "newProposals": null,
                 "newRequests": null,
+                "proposals": null,
                 "requests": null
               }
             },
@@ -96059,6 +96627,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -96333,6 +96902,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -96584,6 +97154,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -96857,6 +97428,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -97123,6 +97695,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -97397,6 +97970,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -97795,6 +98369,7 @@
           "playerReporting": true,
           "presetId": null,
           "prize": null,
+          "proposal": false,
           "rating": {
             "cap": null,
             "max": null,
@@ -97868,6 +98443,7 @@
           "playerReporting": true,
           "presetId": null,
           "prize": null,
+          "proposal": false,
           "rating": {
             "cap": null,
             "max": null,
@@ -97941,6 +98517,7 @@
           "playerReporting": true,
           "presetId": null,
           "prize": null,
+          "proposal": false,
           "rating": {
             "cap": null,
             "max": null,
@@ -98014,6 +98591,7 @@
           "playerReporting": true,
           "presetId": null,
           "prize": null,
+          "proposal": false,
           "rating": {
             "cap": null,
             "max": null,
@@ -98087,6 +98665,7 @@
           "playerReporting": true,
           "presetId": null,
           "prize": null,
+          "proposal": false,
           "rating": {
             "cap": null,
             "max": null,
@@ -98160,6 +98739,7 @@
           "playerReporting": true,
           "presetId": null,
           "prize": null,
+          "proposal": false,
           "rating": {
             "cap": null,
             "max": 1200,
@@ -98233,6 +98813,7 @@
           "playerReporting": true,
           "presetId": null,
           "prize": null,
+          "proposal": false,
           "rating": {
             "cap": null,
             "max": null,
@@ -98306,6 +98887,7 @@
           "playerReporting": true,
           "presetId": null,
           "prize": null,
+          "proposal": false,
           "rating": {
             "cap": null,
             "max": null,
@@ -98379,6 +98961,7 @@
           "playerReporting": true,
           "presetId": null,
           "prize": null,
+          "proposal": false,
           "rating": {
             "cap": null,
             "max": null,
@@ -98452,6 +99035,7 @@
           "playerReporting": true,
           "presetId": null,
           "prize": null,
+          "proposal": false,
           "rating": {
             "cap": null,
             "max": null,
@@ -98525,6 +99109,7 @@
           "playerReporting": true,
           "presetId": null,
           "prize": null,
+          "proposal": false,
           "rating": {
             "cap": null,
             "max": 1200,
@@ -98727,6 +99312,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -98993,6 +99579,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -99259,6 +99846,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -99529,6 +100117,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -99799,6 +100388,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -100069,6 +100659,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -100339,6 +100930,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -100605,6 +101197,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -100875,6 +101468,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -101141,6 +101735,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -101464,6 +102059,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -101790,6 +102386,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -102112,6 +102709,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -102438,6 +103036,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -102753,6 +103352,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -103069,6 +103669,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -103384,6 +103985,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -103700,6 +104302,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -103984,6 +104587,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -104267,6 +104871,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -104550,6 +105155,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -104812,6 +105418,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -104997,6 +105604,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -105182,6 +105790,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -105367,6 +105976,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -105552,6 +106162,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -105737,6 +106348,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -105922,6 +106534,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -106107,6 +106720,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -106292,6 +106906,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -106477,6 +107092,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -107184,6 +107800,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -107322,6 +107939,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [
@@ -107483,6 +108101,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -107621,6 +108240,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [
@@ -107782,6 +108402,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -107920,6 +108541,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [
@@ -108081,6 +108703,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -108219,6 +108842,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [
@@ -108380,6 +109004,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -108518,6 +109143,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [
@@ -108679,6 +109305,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -108817,6 +109444,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [
@@ -108978,6 +109606,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -109116,6 +109745,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [
@@ -109650,6 +110280,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -109809,6 +110440,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -110125,6 +110757,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -110290,6 +110923,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -110485,6 +111119,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -110672,6 +111307,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -110818,6 +111454,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -111049,6 +111686,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -111210,6 +111848,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -111461,6 +112100,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": true,
           "qualifiers": [],
@@ -111794,6 +112434,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": true,
           "qualifiers": [],
@@ -112049,6 +112690,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": true,
           "qualifiers": [],
@@ -112268,6 +112910,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": true,
           "qualifiers": [],
@@ -112552,6 +113195,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": true,
           "qualifiers": [],
@@ -112859,6 +113503,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": true,
           "qualifiers": [],
@@ -113165,6 +113810,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": true,
           "qualifiers": [],
@@ -113469,6 +114115,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -113773,6 +114420,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -114007,6 +114655,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": true,
           "qualifiers": [],
@@ -114248,6 +114897,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": true,
           "qualifiers": [],
@@ -114568,6 +115218,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": true,
           "qualifiers": [],
@@ -114950,6 +115601,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": true,
           "qualifiers": [],
@@ -115332,6 +115984,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": true,
           "qualifiers": [],
@@ -115714,6 +116367,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": true,
           "qualifiers": [],
@@ -116091,6 +116745,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": true,
           "qualifiers": [],
@@ -116402,6 +117057,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": true,
           "qualifiers": [],
@@ -116703,6 +117359,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -117075,6 +117732,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -117481,6 +118139,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -117739,6 +118398,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -118090,6 +118750,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -118442,6 +119103,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -118796,6 +119458,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -119046,6 +119709,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -119231,6 +119895,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -119412,6 +120077,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -119672,6 +120338,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -119962,6 +120629,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -120320,6 +120988,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -120726,6 +121395,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -121000,6 +121670,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -121266,6 +121937,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -121483,6 +122155,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -121671,6 +122344,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -122067,6 +122741,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -122334,6 +123009,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -122601,6 +123277,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -122868,6 +123545,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -123135,6 +123813,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -123402,6 +124081,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -123669,6 +124349,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -123936,6 +124617,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -124175,6 +124857,7 @@
           "poolAssign": [],
           "premadeTeams": false,
           "prize": null,
+          "proposal": null,
           "publishAt": null,
           "published": false,
           "qualifiers": [],
@@ -125891,6 +126574,8 @@
           "importer": false,
           "loggedIn": false,
           "oauth": false,
+          "proposalDays": 0,
+          "proposals": false,
           "siteAdmin": false,
           "siteAdminAccount": false
         },
@@ -125917,7 +126602,9 @@
         },
         "pending": {
           "items": [],
+          "newProposals": null,
           "newRequests": null,
+          "proposals": null,
           "requests": null
         }
       },

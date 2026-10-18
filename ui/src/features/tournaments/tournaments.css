@@ -9120,3 +9120,202 @@ button.tournament-chat-author:hover {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* Tournament proposals (issue 569): the box on the event, where the publish
+   banner sits, framed like it and tinted by where the proposal stands. */
+.tournament-proposal-box,
+.tournament-proposal-intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-strong);
+}
+
+.tournament-proposal-box p,
+.tournament-proposal-intro p {
+  margin: 0;
+}
+
+.tournament-proposal-box.is-waiting {
+  border-color: var(--color-warn);
+}
+
+.tournament-proposal-box.is-taken {
+  border-color: var(--color-ok);
+}
+
+.tournament-proposal-box.is-director {
+  border-color: var(--color-accent);
+}
+
+.tournament-proposal-head {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.tournament-proposal-box.is-waiting .tournament-proposal-head {
+  color: var(--color-warn-text);
+}
+
+.tournament-proposal-box.is-taken .tournament-proposal-head {
+  color: var(--color-ok-text);
+}
+
+.tournament-proposal-box.is-director .tournament-proposal-head {
+  color: var(--color-accent);
+}
+
+.tournament-proposal-answers {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+.tournament-proposal-answers .is-free {
+  color: var(--color-ok-text);
+}
+
+.tournament-proposal-answers .is-kept {
+  color: var(--color-warn-text);
+}
+
+.tournament-proposal-last.is-declined {
+  color: var(--color-error-text);
+}
+
+.tournament-proposal-last.is-timeout,
+.tournament-proposal-last.is-released {
+  color: var(--color-warn-text);
+}
+
+.tournament-proposal-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  text-align: left;
+}
+
+.tournament-proposal-dialog p {
+  margin: 0;
+}
+
+.tournament-proposal-dialog fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.tournament-proposal-dialog legend {
+  margin-bottom: var(--space-1);
+  font-weight: 650;
+}
+
+.tournament-proposal-warn {
+  color: var(--color-warn-text);
+}
+
+.tournament-proposal-credit {
+  margin: 0;
+  font-size: 12px;
+}
+
+.tournament-host-mode {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  border: 0;
+}
+
+.tournament-row-tag.is-proposal.is-wait {
+  color: var(--color-warn-text);
+  border-color: color-mix(in srgb, var(--color-warn) 40%, transparent);
+}
+
+.tournament-row-tag.is-proposal.is-ok {
+  color: var(--color-ok-text);
+  border-color: color-mix(in srgb, var(--color-ok) 40%, transparent);
+}
+
+.tournament-row-tag.is-proposal.is-no {
+  color: var(--color-error-text);
+  border-color: color-mix(in srgb, var(--color-error) 40%, transparent);
+}
+
+.tournament-row-tag.is-proposal.is-warn {
+  color: var(--color-warn-text);
+}
+
+.tournaments-group-note {
+  margin: 0 0 var(--space-2);
+  font-size: 12px;
+}
+
+/* The console's Proposals tab: one card per proposal waiting. */
+.tournament-proposal-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tournament-proposal-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tournament-proposal-card p {
+  margin: 0;
+}
+
+.tournament-proposal-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.tournament-proposal-card-head .tournament-link-button {
+  font-weight: 700;
+}
+
+.tournament-proposal-note {
+  padding: var(--space-2);
+  border-left: 2px solid var(--color-border-strong);
+}
+
+.tournament-proposal-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-2);
+}
+
+.tournament-proposal-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tournament-proposal-fact > .muted {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tournament-proposal-description {
+  font-size: 12px;
+  white-space: pre-line;
+}

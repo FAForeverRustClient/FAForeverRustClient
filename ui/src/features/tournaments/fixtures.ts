@@ -59,6 +59,7 @@ export function tourney(over: Partial<Tourney> = {}): Tourney {
     imported: false,
     published: true,
     publishAt: null,
+    proposal: null,
     playerCount: 0,
     teamCount: 0,
     players: [],

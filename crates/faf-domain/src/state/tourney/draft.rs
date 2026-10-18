@@ -162,6 +162,9 @@ pub struct TourneyDraft {
     /// Whether the draft snakes back on every other pass. Only read for a
     /// captains draft, and sent only then.
     pub draft_snakes: bool,
+    /// Create it as a proposal to the TD team rather than to host it (#569).
+    /// Only read on creation; a proposal is always created as community.
+    pub proposal: bool,
     pub category: TourneyCategory,
     pub competition: Competition,
     /// 1 to 6. A size of one makes the formation solo whatever is asked for.

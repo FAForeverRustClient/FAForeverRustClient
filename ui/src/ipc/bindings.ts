@@ -6761,6 +6761,12 @@ export type PendingSummary = {
 	 */
 	requests: number | null,
 	newRequests: number | null,
+	/**
+	 *  Proposals waiting for a tournament director, and how many of them
+	 *  are new since the last dismiss; `None` without that alert (#569).
+	 */
+	proposals: number | null,
+	newProposals: number | null,
 };
 
 /**  One line of a pick phase's log. */
@@ -7584,6 +7590,94 @@ export type ProbeFailure =
 { type: "network"; payload: {
 	reason: string,
 } };
+
+/**  How a director runs a proposal they take over. */
+export type ProposalArea =
+/**  The maps, map pools and vetoes. */
+"maps" |
+/**  The format and bracket. */
+"format";
+
+/**
+ *  One proposal waiting for a director, as the console lists it: enough of
+ *  the event to decide on, without opening it.
+ */
+export type ProposalCard = {
+	tournamentId: string,
+	name: string,
+	byName: string,
+	proposedAt: number | null,
+	until: number | null,
+	note: string,
+	lockMaps: boolean,
+	lockFormat: boolean,
+	keep: boolean,
+	/**  Proposed or organised by this account, so another director decides. */
+	mine: boolean,
+	competition: Competition,
+	teamSize: number,
+	bracketKind: BracketKind,
+	/**  The planned start, if the proposer set one. */
+	eventDate: number | null,
+	eventDays: number,
+	signupMode: SignupMode,
+	maxTeams: number,
+	minTeams: number,
+	ratingKind: RatingKind,
+	minRating: number | null,
+	maxRating: number | null,
+	mapCount: number,
+	/**  Each pool as "name: maps". */
+	pools: string[],
+	prize: Prize | null,
+	rewards: string,
+	description: string,
+};
+
+/**  One decision in the console's "Recent decisions". */
+export type ProposalDecision = {
+	tournamentId: string,
+	name: string,
+	/**  The same words as [`ProposalStep::act`]. */
+	act: string,
+	byName: string,
+	at: number | null,
+	reason: string,
+	proposer: string,
+};
+
+/**  The console's Proposals tab. */
+export type ProposalQueue = {
+	pending: ProposalCard[],
+	recent: ProposalDecision[],
+	/**  How many days a proposal waits, and the site's default for it. */
+	days: number,
+	daysDefault: number,
+};
+
+/**  Where a proposal stands. */
+export type ProposalState =
+/**  Being built, or back with its proposer. */
+"draft" |
+/**  Waiting for a tournament director; nothing in it can change. */
+"proposed" |
+/**  A director took it over and runs it. */
+"taken";
+
+/**
+ *  The last thing that happened to a proposal: who declined it, gave it back,
+ *  or let it come back by not deciding.
+ */
+export type ProposalStep = {
+	/**
+	 *  The service's word: `declined`, `timeout`, `withdrawn`, `released`,
+	 *  `taken`, `proposed`, `unlocked maps`, `unlocked format`.
+	 */
+	act: string,
+	byName: string,
+	at: number | null,
+	reason: string,
+};
 
 /**
  *  A tournament whose result feeds entrants into another one.
@@ -9624,6 +9718,11 @@ export type SiteAdminData = {
 	me: number | null,
 	/**  The global bans, on official tournaments. */
 	bans: TourneyBan[],
+	/**
+	 *  The Proposals tab, for directors and site admins while the site takes
+	 *  proposals (#569).
+	 */
+	proposals: ProposalQueue | null,
 };
 
 /**  A read's answer. */
@@ -9659,6 +9758,12 @@ export type SiteWrite =
 } } |
 /**  Hide the access-request alert until a new request comes in. */
 { type: "dismissRequests" } |
+/**  Hide the proposals alert until a new proposal comes in. */
+{ type: "dismissProposals" } |
+/**  How many days a proposal waits for a director, 7 to 90. */
+{ type: "proposalDays"; payload: {
+	days: number,
+} } |
 /**  Ask for hosting, editor or importer access, with an optional note. */
 { type: "requestAccess"; payload: {
 	kind: AccessKind,
@@ -10241,6 +10346,12 @@ export type Tourney = {
 	 */
 	publishAt: number | null,
 	/**
+	 *  The proposal behind this event, where it is one (#569): proposed to
+	 *  the TD team by a player, for a tournament director to run. `None` for
+	 *  an event somebody hosts themselves, and for a reader not sent it.
+	 */
+	proposal: TourneyProposal | null,
+	/**
 	 *  How many have entered, and how many teams they formed.
 	 *
 	 *  Held separately because the list endpoint sends only these numbers while
@@ -10500,6 +10611,10 @@ export type TourneyAccount = {
 	adminStandDown: boolean,
 	/**  May host: approved per account, a director, or on the site-admin list. */
 	allowed: boolean,
+	/**  Whether the site takes tournament proposals (#569): on with FAF login. */
+	proposals: boolean,
+	/**  How many days a proposal waits for a director before it goes back. */
+	proposalDays: number,
 };
 
 /**
@@ -10897,7 +11012,49 @@ export type TourneyAdmin =
 { type: "mapSecret"; payload: {
 	mapId: string | null,
 	secret: boolean,
-} };
+} } |
+/**
+ *  Propose it to the TD team (`proposal_submit`, #569): whether the
+ *  director must keep the maps and the format as they are, whether the
+ *  proposer stays a co-organiser, and a note of up to 1000 characters.
+ */
+{ type: "proposalSubmit"; payload: {
+	lockMaps: boolean,
+	lockFormat: boolean,
+	keep: boolean,
+	note: string,
+} } |
+/**  Take it back from the TD team to change it (`proposal_withdraw`). */
+{ type: "proposalWithdraw" } |
+/**
+ *  Take it over and run it (`proposal_take`), as an official or a
+ *  community event, with a note to the proposer of up to 300 characters.
+ */
+{ type: "proposalTake"; payload: {
+	category: TourneyCategory,
+	note: string,
+} } |
+/**  Send it back with what is missing (`proposal_decline`). */
+{ type: "proposalDecline"; payload: {
+	reason: string,
+} } |
+/**  Give a taken-over proposal back to its proposer (`proposal_release`). */
+{ type: "proposalRelease"; payload: {
+	reason: string,
+} } |
+/**
+ *  Lift a lock the proposer asked for (`proposal_unlock`). A site admin
+ *  who is not the proposer says why.
+ */
+{ type: "proposalUnlock"; payload: {
+	area: ProposalArea,
+	reason: string,
+} } |
+/**
+ *  Make it the proposer's own draft again, to host themselves
+ *  (`proposal_drop`).
+ */
+{ type: "proposalDrop" };
 
 /**
  *  One account this event's organisers keep out of it (`ban_set`).
@@ -11010,6 +11167,11 @@ export type TourneyDraft = {
 	 *  captains draft, and sent only then.
 	 */
 	draftSnakes: boolean,
+	/**
+	 *  Create it as a proposal to the TD team rather than to host it (#569).
+	 *  Only read on creation; a proposal is always created as community.
+	 */
+	proposal: boolean,
 	category: TourneyCategory,
 	competition: Competition,
 	/**  1 to 6. A size of one makes the formation solo whatever is asked for. */
@@ -11456,6 +11618,58 @@ export type TourneyPreset = {
 	 *  exactly as it fills from an existing event; `None` where not allowed.
 	 */
 	apply: Tourney | null,
+};
+
+/**
+ *  A proposal as one viewer may see it.
+ *
+ *  The detail sends the whole record to its proposer, its organisers and the
+ *  directors, and only `credit` to anyone else once the event is out; the
+ *  list sends a short form of it (`prop`) on unpublished rows. One type for
+ *  the three, with what a reader was not sent left empty.
+ */
+export type TourneyProposal = {
+	/**  `None` for the public view, which is only the credit. */
+	state: ProposalState | null,
+	/**  Who proposed it. */
+	byName: string,
+	proposedAt: number | null,
+	/**  When it goes back to its proposer if no director decides. */
+	until: number | null,
+	/**  How many days a proposal waits, the site's setting. */
+	days: number,
+	/**  The director must keep the maps, pools and vetoes as proposed. */
+	lockMaps: boolean,
+	/**  The director must keep the format and bracket as proposed. */
+	lockFormat: boolean,
+	/**  The proposer stays a co-organiser once it is taken over. */
+	keep: boolean,
+	/**  The proposer's note to the TD team. */
+	note: string,
+	takenByName: string,
+	takenAt: number | null,
+	/**  The director's note to the proposer, on taking it over. */
+	takeNote: string,
+	last: ProposalStep | null,
+	/**  This account proposed it. */
+	mine: boolean,
+	/**  This account is one of its named organisers. */
+	organizer: boolean,
+	canSubmit: boolean,
+	canWithdraw: boolean,
+	/**
+	 *  Take it over or decline it: a director who neither proposed it nor
+	 *  organises it.
+	 */
+	canDecide: boolean,
+	/**  Turn it back into an ordinary draft that its proposer hosts. */
+	canDrop: boolean,
+	/**  Give it back to its proposer. */
+	canRelease: boolean,
+	/**  Lift a lock the proposer asked for. */
+	canUnlock: boolean,
+	/**  "Proposed by X and run by the TD team", on the published event. */
+	credit: string,
 };
 
 /**

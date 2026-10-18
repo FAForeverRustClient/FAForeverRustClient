@@ -5735,6 +5735,8 @@ fn cases() -> Vec<Case> {
                         }],
                         requests: Some(2),
                         new_requests: None,
+                        proposals: Some(1),
+                        new_proposals: None,
                     }),
                 }
                 .into(),

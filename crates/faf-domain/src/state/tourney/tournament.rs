@@ -200,6 +200,10 @@ pub struct Tourney {
     /// When publication is scheduled for, in Unix seconds, or `None` for an
     /// event that is either already out or has no date set.
     pub publish_at: Option<u32>,
+    /// The proposal behind this event, where it is one (#569): proposed to
+    /// the TD team by a player, for a tournament director to run. `None` for
+    /// an event somebody hosts themselves, and for a reader not sent it.
+    pub proposal: Option<TourneyProposal>,
     /// How many have entered, and how many teams they formed.
     ///
     /// Held separately because the list endpoint sends only these numbers while

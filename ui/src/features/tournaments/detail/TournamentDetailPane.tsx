@@ -34,6 +34,8 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import { AuditLogPanel } from "./AuditLogPanel";
 import type { SitePage } from "../site/sitePages";
 import { PublishBanner } from "./PublishBanner";
+import { ProposalBox } from "./ProposalBox";
+import { proposalHoldsPublishing } from "../proposals";
 import { DisplaySettingsDialog } from "./DisplaySettingsDialog";
 import { PinButton, PinnedChat } from "./PinnedChat";
 import { swissShowsBracket } from "../bracket/swissPresentation";
@@ -569,7 +571,16 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           ))}
       </nav>
 
-      {mayPublish(event) && (
+      {/* A proposal's own box (#569), where the publish banner sits: while
+          its proposer builds it or it waits for a director, publishing is not
+          theirs to do, so the banner stays away. */}
+      <ProposalBox
+        event={event}
+        busy={busy}
+        siteAdmin={props.siteAdmin ?? false}
+        admin={actions.organiser.admin}
+      />
+      {mayPublish(event) && !proposalHoldsPublishing(event) && (
         <PublishBanner
           event={event}
           assetBase={props.assetBase}

@@ -3,6 +3,7 @@
 
 import type { MessageKey, MessageValues } from "../../../i18n";
 import type { PendingItem } from "../../../ipc/bindings";
+import { proposalPendingKey } from "../proposals";
 
 type Translate = (key: MessageKey, values?: MessageValues) => string;
 
@@ -52,6 +53,10 @@ export function pendingText(item: PendingItem, t: Translate): string {
       return t("tournaments.pending.fveto", { count });
     case "checkin":
       return t("tournaments.pending.checkin");
+    // What became of this account's proposal (#569): the reason is on the
+    // event's own page, a click away.
+    case "prop":
+      return t(proposalPendingKey(item.text));
     default:
       return item.text;
   }
