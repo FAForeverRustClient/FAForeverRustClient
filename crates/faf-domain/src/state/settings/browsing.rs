@@ -992,13 +992,18 @@ mod tests {
 
     #[test]
     fn hosts_always_shown_become_rules_of_the_always_show_list() {
-        let mut browsing = BrowsingPreferences::default();
-        browsing.whitelisted_hosts = vec![" Nuggets ".into(), "Aurora".into()];
-        browsing.custom_games_browser.allow_rules = vec![CustomGameFilterRule {
-            field: CustomGameFilterField::Host,
-            constraint: CustomGameFilterConstraint::Equals,
-            value: "nuggets".into(),
-        }];
+        let browsing = BrowsingPreferences {
+            whitelisted_hosts: vec![" Nuggets ".into(), "Aurora".into()],
+            custom_games_browser: CustomGameBrowserPreferences {
+                allow_rules: vec![CustomGameFilterRule {
+                    field: CustomGameFilterField::Host,
+                    constraint: CustomGameFilterConstraint::Equals,
+                    value: "nuggets".into(),
+                }],
+                ..CustomGameBrowserPreferences::default()
+            },
+            ..BrowsingPreferences::default()
+        };
 
         let normalized = browsing.normalized();
 
