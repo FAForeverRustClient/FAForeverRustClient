@@ -1,0 +1,1 @@
+- Maps with several selected styles generate side by side, and Settings can set how many map generators run at once.
