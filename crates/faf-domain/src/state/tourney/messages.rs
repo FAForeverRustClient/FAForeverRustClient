@@ -227,6 +227,38 @@ pub enum TourneyAdmin {
         map_id: Option<String>,
         secret: bool,
     },
+    /// Propose it to the TD team (`proposal_submit`, #569): whether the
+    /// director must keep the maps and the format as they are, whether the
+    /// proposer stays a co-organiser, and a note of up to 1000 characters.
+    #[serde(rename_all = "camelCase")]
+    ProposalSubmit {
+        lock_maps: bool,
+        lock_format: bool,
+        keep: bool,
+        note: String,
+    },
+    /// Take it back from the TD team to change it (`proposal_withdraw`).
+    ProposalWithdraw,
+    /// Take it over and run it (`proposal_take`), as an official or a
+    /// community event, with a note to the proposer of up to 300 characters.
+    #[serde(rename_all = "camelCase")]
+    ProposalTake {
+        category: TourneyCategory,
+        note: String,
+    },
+    /// Send it back with what is missing (`proposal_decline`).
+    #[serde(rename_all = "camelCase")]
+    ProposalDecline { reason: String },
+    /// Give a taken-over proposal back to its proposer (`proposal_release`).
+    #[serde(rename_all = "camelCase")]
+    ProposalRelease { reason: String },
+    /// Lift a lock the proposer asked for (`proposal_unlock`). A site admin
+    /// who is not the proposer says why.
+    #[serde(rename_all = "camelCase")]
+    ProposalUnlock { area: ProposalArea, reason: String },
+    /// Make it the proposer's own draft again, to host themselves
+    /// (`proposal_drop`).
+    ProposalDrop,
 }
 
 /// Everything the tournament tab can ask for, in two halves: the writes,

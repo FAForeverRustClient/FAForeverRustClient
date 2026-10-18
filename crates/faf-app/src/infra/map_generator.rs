@@ -33,9 +33,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use faf_domain::protocol::map_generator::{self, GeneratorVersion, VersionPolicy};
-use faf_domain::state::{
-    GeneratorOptionLists, GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus,
-};
+use faf_domain::state::{GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus};
 use serde::Deserialize;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
@@ -52,16 +50,6 @@ use crate::ports::{GeneratorUpdate, MapGeneratorPort};
 /// virus scanner reading every entry, the JVM start alone can outlast a tight
 /// limit, and the cost is paid six times over before the dialog is usable.
 const OPTION_QUERY_TIMEOUT: Duration = Duration::from_secs(30);
-
-/// How long a fetched release list stays fresh.
-///
-/// GitHub allows sixty unauthenticated requests an hour per address, and the
-/// generate dialog spends four of them every time it opens or changes release:
-/// two to list the versions, two to resolve the newest. A few minutes of
-/// clicking through releases exhausts the budget, and then the version picker
-/// has nothing to offer and no way to say why. The list barely changes in a
-/// month, so ten minutes of reuse costs nothing.
-const RELEASE_LIST_TTL: Duration = Duration::from_secs(600);
 
 /// How long `--parse` may take. It resolves options and prints JSON without
 /// generating anything, so this is a JVM startup and little else.
@@ -317,9 +305,15 @@ fn user_maps_dir() -> PathBuf {
     crate::infra::maps::maps_dir()
 }
 
-/// The release list as it is held between fetches: when it arrived, and the
-/// tags themselves.
-type RememberedReleases = Arc<tokio::sync::Mutex<Option<(std::time::Instant, Vec<String>)>>>;
+/// The release list, once it has arrived in this session.
+///
+/// Fetched once and kept until the client closes, as the Java client does
+/// (its `getNewestGenerator` is `@Cacheable`, #596). Every fresh Generate
+/// asked GitHub again once ten minutes had passed, up to ten pages before the
+/// run could start, and the list barely changes in a month. GitHub allows
+/// sixty unauthenticated requests an hour per address, which the dialog's
+/// clicking through releases used to run out of too.
+type RememberedReleases = Arc<tokio::sync::Mutex<Option<Vec<String>>>>;
 
 pub struct NeroxisMapGenerator {
     config: MapGeneratorConfig,
@@ -649,6 +643,7 @@ impl NeroxisMapGenerator {
 
         let mut command = Command::new(self.config.java_path());
         command
+            .args(jvm_options(jar))
             .arg("-jar")
             .arg(jar)
             .args(&args)
@@ -836,6 +831,7 @@ impl NeroxisMapGenerator {
     ) -> Result<String, String> {
         let mut command = Command::new(self.config.java_path());
         command
+            .args(jvm_options(jar))
             .arg("-jar")
             .arg(jar)
             .args(args)
@@ -896,10 +892,8 @@ impl NeroxisMapGenerator {
     /// nothing because page three timed out.
     async fn fetch_releases(&self) -> Result<Vec<GitHubRelease>, String> {
         let mut remembered = self.releases.lock().await;
-        if let Some((fetched_at, tags)) = remembered.as_ref() {
-            if fetched_at.elapsed() < RELEASE_LIST_TTL {
-                return Ok(releases_from_tags(tags));
-            }
+        if let Some(tags) = remembered.as_ref() {
+            return Ok(releases_from_tags(tags));
         }
 
         let mut all: Vec<GitHubRelease> = Vec::new();
@@ -969,7 +963,7 @@ impl NeroxisMapGenerator {
         if !all.is_empty() {
             let tags: Vec<String> = all.iter().map(|r| r.tag_name.clone()).collect();
             self.store_release_tags(&tags).await;
-            *remembered = Some((std::time::Instant::now(), tags));
+            *remembered = Some(tags);
         }
         Ok(all)
     }
@@ -1147,6 +1141,16 @@ impl NeroxisMapGenerator {
         } else {
             self.config.maps_dir()
         };
+        // Waiting for the lock can be waiting for this very map: "Generate" in
+        // a lobby's details and then joining it queue the join's run behind
+        // the first, which then rebuilt the same terrain from scratch only to
+        // find the folder there at the end (#596).
+        if let Some(name) = map_name
+            .as_ref()
+            .filter(|name| destination.join(name).is_dir())
+        {
+            return RunOutcome::Generated(vec![name.clone()]);
+        }
         let staging = destination.join(format!(".faf-install-{:016x}", rand::random::<u64>()));
         if let Err(error) = tokio::fs::create_dir_all(&staging).await {
             return RunOutcome::Failed(format!("could not stage generated maps: {error}"));
@@ -1250,16 +1254,13 @@ impl NeroxisMapGenerator {
         }
 
         // A batch whose selections leave something to choose becomes one run
-        // per map, each with its own pick (#414), and a list left on "Random"
-        // is a choice among everything this release offers; otherwise this is
-        // the single run it always was. Reproducing by name never has a
+        // per map, each with its own pick (#414); otherwise, "Random"
+        // included, it is the single run the generator batches itself, which
+        // is three times as fast (#596). Reproducing by name never has a
         // choice to make.
         let batch = match map_name {
             Some(_) => vec![options],
-            None => {
-                let all = self.known_option_lists(&version.to_string()).await;
-                map_generator::plan_batch(&options, &all, rand::random::<u64>)
-            }
+            None => map_generator::plan_batch(&options, rand::random::<u64>),
         };
         // Every command line is built before anything is downloaded, so an
         // unusable option is refused without side effects, as it always was.
@@ -1357,26 +1358,6 @@ impl NeroxisMapGenerator {
         let mut all: HashMap<String, HashMap<String, Vec<String>>> =
             serde_json::from_str(&raw).ok()?;
         all.remove(version)
-    }
-
-    /// The option lists already read for a version, from the cache the dialog
-    /// fills when it opens.
-    ///
-    /// Not queried here: that is six JVM starts in front of a run the user is
-    /// waiting on. A list that is missing stays empty, which leaves that choice
-    /// to the generator, as it was before "Random" was re-rolled per map.
-    async fn known_option_lists(&self, version: &str) -> GeneratorOptionLists {
-        let mut cached = self.cached_options(version).await.unwrap_or_default();
-        let mut take =
-            |query: GeneratorOptionQuery| cached.remove(query.flag()).unwrap_or_default();
-        GeneratorOptionLists {
-            symmetries: take(GeneratorOptionQuery::Symmetries),
-            styles: take(GeneratorOptionQuery::Styles),
-            terrain_styles: take(GeneratorOptionQuery::TerrainStyles),
-            texture_styles: take(GeneratorOptionQuery::TextureStyles),
-            resource_styles: take(GeneratorOptionQuery::ResourceStyles),
-            prop_styles: take(GeneratorOptionQuery::PropStyles),
-        }
     }
 
     async fn store_options(&self, version: &str, query: GeneratorOptionQuery, values: &[String]) {
@@ -1533,6 +1514,34 @@ fn strip_ansi(line: &str) -> String {
 /// [`strip_ansi`] over a whole multi-line block.
 fn strip_ansi_block(text: &str) -> String {
     text.lines().map(strip_ansi).collect::<Vec<_>>().join("\n")
+}
+
+/// The JVM's own options, in front of `-jar`, for every run of the generator
+/// and every query to it (#596).
+///
+/// Every run is a fresh JVM that loads and verifies the same few thousand
+/// classes of the same JAR before it does any work, and a Maps-tab run starts
+/// one for the `--parse` before the run itself. A dynamic class-data archive
+/// (AppCDS, JDK 19 and later) keeps that work in a file beside the JAR: the
+/// first run writes it, every later one maps it in. One archive per JAR, so a
+/// new generator release starts its own; a different Java finds the archive
+/// does not fit and writes it again, which is what the option is for.
+///
+/// `IgnoreUnrecognizedVMOptions` first, because the Java can be one the user
+/// chose: an older one that does not know an option would otherwise refuse to
+/// start at all, and generating would fail where it only had to be slower.
+/// The CDS log tags off, since unified logging writes to stdout, which is the
+/// generator's own progress stream.
+fn jvm_options(jar: &Path) -> Vec<std::ffi::OsString> {
+    let mut archive = std::ffi::OsString::from("-XX:SharedArchiveFile=");
+    archive.push(jar.with_extension("jsa"));
+    vec![
+        "-XX:+IgnoreUnrecognizedVMOptions".into(),
+        "-XX:+AutoCreateSharedArchive".into(),
+        archive,
+        "-Xlog:cds=off".into(),
+        "-Xlog:cds+dynamic=off".into(),
+    ]
 }
 
 /// Render an argument list for the log, quoting anything with spaces so a
@@ -1944,6 +1953,25 @@ impl MapGeneratorPort for FakeMapGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_jvm_keeps_its_class_data_in_an_archive_beside_its_jar() {
+        let jar = Path::new("generator").join("NeroxisGen_1.22.1.jar");
+        let options: Vec<String> = jvm_options(&jar)
+            .into_iter()
+            .map(|option| option.to_string_lossy().into_owned())
+            .collect();
+        // Ignoring unknown options has to come first to cover the rest.
+        assert_eq!(options[0], "-XX:+IgnoreUnrecognizedVMOptions");
+        assert!(options.contains(&"-XX:+AutoCreateSharedArchive".to_string()));
+        let archive = format!(
+            "-XX:SharedArchiveFile={}",
+            Path::new("generator")
+                .join("NeroxisGen_1.22.1.jsa")
+                .display()
+        );
+        assert!(options.contains(&archive));
+    }
 
     #[tokio::test]
     async fn non_utf8_console_output_does_not_hide_the_next_map_name() {

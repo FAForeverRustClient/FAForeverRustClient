@@ -57,6 +57,8 @@ export function TournamentSitePages({ page, busy, setPage, openPage, openEventPa
           onSearchAccounts={(query) => send({ type: "searchAccounts", payload: { query } })}
           onWrite={siteWrite}
           onRetry={reread}
+          onAdminister={(tournamentId, change) => send({ type: "administer", payload: { tournamentId, change } })}
+          onOpenEvent={openEventPage}
         />
       )}
       {page.kind === "series" &&

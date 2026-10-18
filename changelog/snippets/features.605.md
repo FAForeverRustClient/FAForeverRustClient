@@ -1,0 +1,1 @@
+- Tournaments can be proposed to the TD team: build it the way you want it played, and a tournament director takes it over and runs it. Directors find waiting proposals in the list, the pending bar and the console.

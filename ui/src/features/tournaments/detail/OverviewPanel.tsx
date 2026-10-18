@@ -36,6 +36,7 @@ import { RichLine } from "../RichLine";
 import { swissMatchRecord, swissRecordsBefore } from "../bracket/swissRecords";
 import { teamNameOf } from "../bracket/matchParts";
 import { OFFICIAL_ARTICLES, type SitePage } from "../site/sitePages";
+import { ProposalCredit } from "./ProposalBox";
 
 interface OverviewPanelProps {
   event: Tourney;
@@ -125,6 +126,10 @@ export function OverviewPanel({
             </p>
           </section>
         )}
+
+        {/* Who proposed it, once the TD team runs it (#569): where the
+            website puts it, after the imported note. */}
+        <ProposalCredit event={event} />
 
         {/* The most recent announcement, as one strip on the page everyone
             opens first. The News section still holds all of them; this is the
