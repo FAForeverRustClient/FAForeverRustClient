@@ -93,44 +93,12 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             out.emit(MapGeneratorEvent::OptionsChanged {
                 options: options.clone(),
             });
-            // Ask the generator to resolve the options before committing to a
-            // run. It costs one JVM start and turns "the map generator failed"
-            // after three minutes into the generator's own precise complaint
-            // before anything has begun. Raw arguments skip it: they are the
-            // documented escape hatch, and `--parse` would reject flags we
-            // deliberately do not understand.
-            if options.command_line_args.is_empty() {
-                let preflight = ctx.ports.map_generator.preflight(options.clone()).await;
-                // A run called off while it was being checked has no result to
-                // report either way: a refusal here would turn `Cancelled` into
-                // `Failed` and raise an error about options nobody is waiting on.
-                if cancelled_before_start(out) || !ctx.map_generator.is_current(generation) {
-                    return;
-                }
-                match preflight {
-                    Ok(map_name) => out.emit(MapGeneratorEvent::NamePredicted { map_name }),
-                    Err(reason) => {
-                        out.emit(MapGeneratorEvent::StatusChanged {
-                            status: GeneratorStatus::Failed {
-                                reason: reason.clone(),
-                            },
-                        });
-                        services::notifications::add_failure(
-                            out,
-                            services::notifications::Text::new(
-                                "notifications.msg.mapOptionsRejected",
-                            ),
-                            "Those options will not generate",
-                            reason,
-                        );
-                        return;
-                    }
-                }
-            }
-            // Cancellation during preflight prevents a JVM from being started.
-            if cancelled_before_start(out) || !ctx.map_generator.is_current(generation) {
-                return;
-            }
+            // Straight to the run, as the Java client does (#596). A `--parse`
+            // first cost a whole JVM start, about a second, on every
+            // Generate. The run itself refuses options it cannot use the
+            // moment it starts, with the generator's own complaint as the
+            // failure reason, so nothing waits three minutes to hear it; the
+            // dialog's own Preflight still works the name out on request.
             let updates = ctx.ports.map_generator.generate(options).await;
             // Dropping this receiver stops this run if cancellation landed
             // while the port was starting it.
