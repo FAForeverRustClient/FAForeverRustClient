@@ -2251,6 +2251,7 @@ export const en = {
   // Player card: own avatar picker.
   "playerCard.avatar.fallbackHint": "If an avatar you wear stops being yours, such as a tournament avatar passing to the next winner, the client switches back to the one you chose before it.",
   "playerCard.avatar.none": "No avatar",
+  "playerCard.avatar.selectFailed": "This avatar could not be put on.",
   "playerCard.avatar.wearing": "Wearing {name}",
   "playerCard.avatar.wearingNone": "No avatar worn",
 

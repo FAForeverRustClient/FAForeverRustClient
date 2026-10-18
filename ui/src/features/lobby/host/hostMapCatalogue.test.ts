@@ -6,6 +6,7 @@ import {
   buildHostCatalogue,
   buildVaultIndex,
   filterHostMaps,
+  nonSkirmishFolders,
   NO_PICKER_FILTERS,
   NO_RANGE,
   resolveChosenMap,
@@ -102,6 +103,27 @@ describe("buildHostCatalogue", () => {
       "neroxis_map_generator_1.0.0_abc",
     );
     expect(entry).toMatchObject({ ranked: true });
+  });
+
+  it("leaves out co-op missions and lessons, keeps maps that do not say (#599)", () => {
+    const installed: InstalledMap[] = [
+      { folderName: "SCCA_Coop_R06.v0023", displayName: "Cybran Mission 6", mapType: "campaign_coop" },
+      { folderName: "FAF_Lesson_Economy_01", displayName: "Economy", mapType: "campaign" },
+      { folderName: "setons.v0001", displayName: "Setons", mapType: "skirmish" },
+      { folderName: "homebrew", displayName: "Homebrew" },
+    ];
+    const catalogue = buildHostCatalogue(installed, buildVaultIndex([]), "official");
+    expect(catalogue.has("scca_coop_r06.v0023")).toBe(false);
+    expect(catalogue.has("faf_lesson_economy_01")).toBe(false);
+    expect(catalogue.has("setons.v0001")).toBe(true);
+    expect(catalogue.has("homebrew")).toBe(true);
+    expect(nonSkirmishFolders(installed)).toEqual(new Set(["scca_coop_r06.v0023", "faf_lesson_economy_01"]));
+  });
+
+  it("takes the vault's type when the installed map does not say", () => {
+    const vault = [vaultMap({ folderName: "fort.v0003", displayName: "Fort", mapType: "campaign_coop" })];
+    const installed: InstalledMap[] = [{ folderName: "fort.v0003", displayName: "Fort" }];
+    expect(buildHostCatalogue(installed, buildVaultIndex(vault), "official").has("fort.v0003")).toBe(false);
   });
 });
 

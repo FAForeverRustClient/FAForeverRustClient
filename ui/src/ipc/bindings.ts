@@ -4080,6 +4080,12 @@ export type InstalledMap = {
 	 *  `None` when the file system would not say.
 	 */
 	installedAt?: string | null,
+	/**
+	 *  The scenario's `type`: `skirmish` for a map to play, `campaign_coop`
+	 *  for a co-op mission and `campaign` for a lesson, which the host
+	 *  dialog leaves out (#599). `None` when the file does not say.
+	 */
+	mapType?: string | null,
 };
 
 /**
