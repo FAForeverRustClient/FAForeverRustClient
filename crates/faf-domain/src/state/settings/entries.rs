@@ -212,7 +212,11 @@ mod tests {
     }
 
     #[test]
-    fn whitelisted_hosts_keep_their_spelling_and_take_members_one_at_a_time() {
+    fn a_host_added_to_the_old_list_becomes_an_always_show_rule() {
+        // #593: the hosts always shown are `Host equals` rules of the
+        // game browser's always-show list now. An older build still sends
+        // the list command, and what it adds lands there, once per host
+        // whatever its case, with the spelling it first came in.
         let settings = SettingsState::default();
         let settings = applied(
             settings.clone(),
@@ -225,28 +229,14 @@ mod tests {
         );
         let settings = applied(
             settings.clone(),
-            list_member_changed(&settings, PreferenceList::WhitelistedHosts, "aurora", true),
-        );
-        // A login keeps its case, unlike a map folder, and the list is sorted.
-        assert_eq!(settings.browsing.whitelisted_hosts, ["aurora", "Nuggets"]);
-
-        // The same host in another case is not added twice.
-        let again = applied(
-            settings.clone(),
             list_member_changed(&settings, PreferenceList::WhitelistedHosts, "NUGGETS", true),
         );
-        assert_eq!(again.browsing.whitelisted_hosts, ["aurora", "Nuggets"]);
-
-        let removed = applied(
-            settings.clone(),
-            list_member_changed(
-                &settings,
-                PreferenceList::WhitelistedHosts,
-                "nuggets",
-                false,
-            ),
-        );
-        assert_eq!(removed.browsing.whitelisted_hosts, ["aurora"]);
+        assert!(settings.browsing.whitelisted_hosts.is_empty());
+        let rules = &settings.browsing.custom_games_browser.allow_rules;
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].field, CustomGameFilterField::Host);
+        assert_eq!(rules[0].constraint, CustomGameFilterConstraint::Equals);
+        assert_eq!(rules[0].value, "Nuggets");
     }
 
     #[test]

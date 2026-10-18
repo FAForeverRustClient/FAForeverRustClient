@@ -516,11 +516,10 @@ export type BrowsingPreferences = {
 	/**
 	 *  Hosts whose games the game browser always shows, by login (#492).
 	 *
-	 *  The exception to every hide switch and filter rule rather than one
-	 *  more of them: somebody who hides modded and unranked games still wants
-	 *  to see what a particular host has opened. Not a filter in
-	 *  `FilterMemory`'s sense either, because it narrows nothing, so
-	 *  [`BrowsingPreferences::without_filters`] leaves it as it is.
+	 *  Read only to be moved: normalising turns each host into a `Host
+	 *  equals` rule of `custom_games_browser.allow_rules` (#593) and leaves
+	 *  this empty. Kept so a file written before that, and an older build's
+	 *  `setListMember`, still arrive.
 	 */
 	whitelistedHosts: string[],
 	/**  Active preset filter in the map vault ("recommended", "favorites", "rating", "newest", "played", "all"). */
@@ -2262,6 +2261,15 @@ export type CustomGameBrowserPreferences = {
 	applyFilters: boolean,
 	rules: CustomGameFilterRule[],
 	/**
+	 *  The other direction from `rules`: a game matching any of these stays
+	 *  in the list whatever the hide switches and the rules say (#593). The
+	 *  same builder, so "always show games with mod X" is one rule rather
+	 *  than a list per field. Not a filter in `FilterMemory`'s sense, since
+	 *  it narrows nothing, so `without_filters` leaves it as it is. Holds the
+	 *  former always-shown hosts as `Host equals` rules.
+	 */
+	allowRules: CustomGameFilterRule[],
+	/**
 	 *  Pixel widths of the list view's columns, left to right.
 	 *
 	 *  Empty means "the stylesheet decides", which is both the default and
@@ -2308,6 +2316,7 @@ export type CustomGameBrowserPreferencesPatch = {
 	hideFoes?: boolean,
 	applyFilters?: boolean,
 	rules?: CustomGameFilterRule[],
+	allowRules?: CustomGameFilterRule[],
 	columnWidths?: number[],
 	columnOrder?: number[],
 	detailWidth?: number,

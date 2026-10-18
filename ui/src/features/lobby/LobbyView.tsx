@@ -97,7 +97,6 @@ export function LobbyView() {
     games: lobby.games,
     search,
     gameBrowser,
-    whitelistedHosts: browsing.whitelistedHosts,
     foes: social.foes,
     mapVault: maps.vault,
     modVault: mods.vault,
@@ -335,11 +334,8 @@ export function LobbyView() {
               applyFilters: nextRules.length > 0 ? true : applyFilters,
             })
           }
-          whitelistedHosts={browsing.whitelistedHosts}
-          onWhitelistHost={(host, member) => ipc.send({
-            kind: "Settings",
-            command: { type: "setListMember", payload: { list: "whitelistedHosts", value: host, member } },
-          })}
+          allowRules={gameBrowser.allowRules}
+          onAllowChange={(nextRules) => updateGameBrowser({ allowRules: nextRules })}
           onClose={() => setFiltersOpen(false)}
         />
       )}

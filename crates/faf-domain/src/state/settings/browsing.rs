@@ -83,11 +83,10 @@ pub struct BrowsingPreferences {
     pub favorite_mods: Vec<String>,
     /// Hosts whose games the game browser always shows, by login (#492).
     ///
-    /// The exception to every hide switch and filter rule rather than one
-    /// more of them: somebody who hides modded and unranked games still wants
-    /// to see what a particular host has opened. Not a filter in
-    /// `FilterMemory`'s sense either, because it narrows nothing, so
-    /// [`BrowsingPreferences::without_filters`] leaves it as it is.
+    /// Read only to be moved: normalising turns each host into a `Host
+    /// equals` rule of `custom_games_browser.allow_rules` (#593) and leaves
+    /// this empty. Kept so a file written before that, and an older build's
+    /// `setListMember`, still arrive.
     pub whitelisted_hosts: Vec<String>,
     /// Active preset filter in the map vault ("recommended", "favorites", "rating", "newest", "played", "all").
     pub map_vault_preset: String,
@@ -450,7 +449,22 @@ impl BrowsingPreferences {
             .into_iter()
             .map(|uid| uid.to_ascii_lowercase())
             .collect();
-        self.whitelisted_hosts = normalize_logins(self.whitelisted_hosts, 256);
+        // The hosts always shown (#492) are rules of the always-show list now
+        // (#593): `Host equals`, which matches a host in any case as the list
+        // did. Moved on every normalisation, so a file written before, and a
+        // `setListMember` from an older build, both end up there.
+        let hosts = std::mem::take(&mut self.whitelisted_hosts);
+        if !hosts.is_empty() {
+            let mut allow = std::mem::take(&mut self.custom_games_browser.allow_rules);
+            allow.extend(normalize_logins(hosts, 256).into_iter().map(|host| {
+                CustomGameFilterRule {
+                    field: CustomGameFilterField::Host,
+                    constraint: CustomGameFilterConstraint::Equals,
+                    value: host,
+                }
+            }));
+            self.custom_games_browser.allow_rules = normalize_rules(allow);
+        }
         self.map_vault_preset = match self.map_vault_preset.trim().to_ascii_lowercase().as_str() {
             "favorites" => "favorites".into(),
             // Kept even when signed out: the preset outlives the session it was
@@ -719,6 +733,7 @@ mod tests {
                     ],
                     // Out of bounds in both directions, plus a seventh column
                     // the list does not have.
+                    allow_rules: Vec::new(),
                     column_widths: vec![10, 5_000, 200, 200, 200, 200, 200],
                     // A column twice and one missing: not an order.
                     column_order: vec![0, 0, 2, 3, 4, 5],
@@ -973,6 +988,53 @@ mod tests {
         // Nor are the hosts always shown: they narrow nothing.
         assert_eq!(cleared.whitelisted_hosts, ["Nuggets"]);
         assert_eq!(cleared.favorite_maps, vec!["setons_clutch".to_owned()]);
+    }
+
+    #[test]
+    fn hosts_always_shown_become_rules_of_the_always_show_list() {
+        let browsing = BrowsingPreferences {
+            whitelisted_hosts: vec![" Nuggets ".into(), "Aurora".into()],
+            custom_games_browser: CustomGameBrowserPreferences {
+                allow_rules: vec![CustomGameFilterRule {
+                    field: CustomGameFilterField::Host,
+                    constraint: CustomGameFilterConstraint::Equals,
+                    value: "nuggets".into(),
+                }],
+                ..CustomGameBrowserPreferences::default()
+            },
+            ..BrowsingPreferences::default()
+        };
+
+        let normalized = browsing.normalized();
+
+        assert!(normalized.whitelisted_hosts.is_empty());
+        let values: Vec<&str> = normalized
+            .custom_games_browser
+            .allow_rules
+            .iter()
+            .map(|rule| rule.value.as_str())
+            .collect();
+        // The rule already there and the same host from the list are one rule.
+        assert_eq!(values.len(), 2);
+        assert!(values
+            .iter()
+            .any(|value| value.eq_ignore_ascii_case("nuggets")));
+        assert!(values.contains(&"Aurora"));
+        assert!(normalized
+            .custom_games_browser
+            .allow_rules
+            .iter()
+            .all(|rule| rule.field == CustomGameFilterField::Host
+                && rule.constraint == CustomGameFilterConstraint::Equals));
+        // Not a filter: a restart without remembered filters keeps it.
+        assert_eq!(
+            normalized
+                .clone()
+                .without_filters()
+                .custom_games_browser
+                .allow_rules,
+            normalized.custom_games_browser.allow_rules
+        );
     }
 
     #[test]
