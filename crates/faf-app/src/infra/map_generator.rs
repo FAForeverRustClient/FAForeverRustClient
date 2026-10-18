@@ -27,13 +27,14 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
 use faf_domain::protocol::map_generator::{self, GeneratorVersion, VersionPolicy};
 use faf_domain::state::{GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus};
+use futures_util::stream::{FuturesUnordered, StreamExt as _};
 use serde::Deserialize;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
@@ -343,6 +344,10 @@ pub struct NeroxisMapGenerator {
     /// asked for it in Settings; shared with the run task, which is why it is
     /// behind an `Arc` like the cancel signal.
     show_window: Arc<AtomicBool>,
+    /// How many generators a run of separately picked maps may keep going at
+    /// once, `0` for [`automatic_instances`]. Behind an `Arc` for the same
+    /// reason as the window switch.
+    parallel_instances: Arc<AtomicU32>,
 }
 
 impl NeroxisMapGenerator {
@@ -359,6 +364,7 @@ impl NeroxisMapGenerator {
             installing: Arc::new(tokio::sync::Mutex::new(())),
             releases: Arc::new(tokio::sync::Mutex::new(None)),
             show_window: Arc::new(AtomicBool::new(false)),
+            parallel_instances: Arc::new(AtomicU32::new(0)),
         }
     }
 
@@ -386,6 +392,7 @@ impl NeroxisMapGenerator {
             installing: Arc::clone(&self.installing),
             releases: Arc::clone(&self.releases),
             show_window: Arc::clone(&self.show_window),
+            parallel_instances: Arc::clone(&self.parallel_instances),
         }
     }
 
@@ -1253,6 +1260,9 @@ impl NeroxisMapGenerator {
             options.preview_path = self.preview_dir().to_string_lossy().into_owned();
         }
 
+        // Every run of a batch shares the size, which is what bounds how many
+        // of them fit in memory at once.
+        let map_size = options.map_size;
         // A batch whose selections leave something to choose becomes one run
         // per map, each with its own pick (#414); otherwise, "Random"
         // included, it is the single run the generator batches itself, which
@@ -1285,26 +1295,58 @@ impl NeroxisMapGenerator {
             return self.run_generator(version, &jar, args, tx).await;
         }
 
-        // Sequential on purpose: each run is a CPU-bound JVM, and running
-        // them side by side would only make every one of them slower.
+        // Several at once, as many as the player allowed or the computer can
+        // carry. One generator keeps only about one and a half cores busy:
+        // on a four-core machine three 896 maps took 32.8 s one after the
+        // other, 24.5 s three at a time, and two took 18.2 s side by side
+        // against 27.4 s. Four at once ran out of memory there and took
+        // 160 s, which is why the count is bounded by free memory as well as
+        // by cores: see `automatic_instances`.
+        let total = runs.len();
+        let limit = match self.parallel_instances.load(Ordering::Relaxed) {
+            0 => automatic_instances(map_size),
+            chosen => chosen,
+        }
+        .clamp(1, total as u32) as usize;
+        let mut runs = runs.into_iter();
+        let mut running = FuturesUnordered::new();
+        for args in runs.by_ref().take(limit) {
+            running.push(self.run_generator(version, &jar, args, tx));
+        }
         let mut maps = Vec::new();
-        for args in runs {
-            match self.run_generator(version, &jar, args, tx).await {
+        let mut failure = None;
+        let mut cancelled = false;
+        while let Some(outcome) = running.next().await {
+            match outcome {
                 RunOutcome::Generated(names) => maps.extend(names),
-                RunOutcome::Cancelled => return RunOutcome::Cancelled,
-                RunOutcome::Failed(reason) if maps.is_empty() => return RunOutcome::Failed(reason),
-                // Report how far the batch got. Staging is discarded when
-                // the batch fails, so no incomplete batch is installed.
+                RunOutcome::Cancelled => cancelled = true,
                 RunOutcome::Failed(reason) => {
-                    return RunOutcome::Failed(format!(
-                        "{reason} (after {} of {} maps were generated)",
-                        maps.len(),
-                        batch.len()
-                    ))
+                    failure.get_or_insert(reason);
+                }
+            }
+            // Nothing new starts once a run failed or was stopped, but the
+            // ones already going are waited for rather than dropped: a cancel
+            // reaches every one of them anyway, and a JVM dropped mid-run
+            // would still be writing into staging while it is removed.
+            if failure.is_none() && !cancelled {
+                if let Some(args) = runs.next() {
+                    running.push(self.run_generator(version, &jar, args, tx));
                 }
             }
         }
-        RunOutcome::Generated(maps)
+        if cancelled {
+            return RunOutcome::Cancelled;
+        }
+        match failure {
+            None => RunOutcome::Generated(maps),
+            Some(reason) if maps.is_empty() => RunOutcome::Failed(reason),
+            // Report how far the batch got. Staging is discarded when the
+            // batch fails, so no incomplete batch is installed.
+            Some(reason) => RunOutcome::Failed(format!(
+                "{reason} (after {} of {total} maps were generated)",
+                maps.len()
+            )),
+        }
     }
 
     /// Resolve options through the generator's own `--parse`, returning the map
@@ -1544,6 +1586,112 @@ fn jvm_options(jar: &Path) -> Vec<std::ffi::OsString> {
     ]
 }
 
+/// How much memory one generator may take for a map of this size, in bytes.
+///
+/// Measured with release 1.22.2 on the bundled Java 25, which sizes its heap
+/// at a quarter of the machine's memory and grows into it: the peak working
+/// set was 352 MB for a 256 map, 1.05 GB for 512 and 2.41 GB for 1024, close
+/// to linear in the map's edge. 2.5 MB per unit of size covers each of those
+/// with a little to spare; an unknown size is budgeted as a 20 km map.
+///
+/// Budgeted rather than capped with `-Xmx`: a 1024 map needs more than 1 GB
+/// of heap, and a generator that runs out of memory does not exit, it hangs
+/// until the timeout.
+fn generator_memory_budget(map_size: Option<u32>) -> u64 {
+    const PER_UNIT: u64 = 5 * 1024 * 1024 / 2;
+    const FLOOR: u64 = 512 * 1024 * 1024;
+    (u64::from(map_size.unwrap_or(1024)) * PER_UNIT).max(FLOOR)
+}
+
+/// How many generators this computer can run side by side for maps of this
+/// size, when the player left the choice to the client.
+///
+/// Two bounds, and the lower one wins. Cores: one generator keeps about one
+/// and a half of them busy, yet three on four cores still made maps faster
+/// than two, so three quarters of the cores. Memory: every generator gets its
+/// [`generator_memory_budget`] out of four fifths of what is free right now,
+/// the rest left for the game and the client. Where free memory cannot be
+/// read, two at most, which was a third faster than one on a four-core
+/// machine with 12 GB and is safe on less.
+pub fn automatic_instances(map_size: Option<u32>) -> u32 {
+    let cores = std::thread::available_parallelism().map_or(1, |n| n.get() as u64);
+    let by_cores = (cores * 3 / 4).max(1);
+    let by_memory = match available_memory() {
+        Some(free) => free / 5 * 4 / generator_memory_budget(map_size),
+        None => 2,
+    };
+    by_cores.min(by_memory).clamp(
+        1,
+        u64::from(faf_domain::state::settings::MAX_MAP_GENERATOR_INSTANCES),
+    ) as u32
+}
+
+/// Physical memory the system could hand out right now, in bytes.
+#[cfg(windows)]
+fn available_memory() -> Option<u64> {
+    /// `MEMORYSTATUSEX` from `sysinfoapi.h`.
+    #[repr(C)]
+    struct MemoryStatus {
+        length: u32,
+        memory_load: u32,
+        total_physical: u64,
+        available_physical: u64,
+        total_page_file: u64,
+        available_page_file: u64,
+        total_virtual: u64,
+        available_virtual: u64,
+        available_extended_virtual: u64,
+    }
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GlobalMemoryStatusEx(buffer: *mut MemoryStatus) -> i32;
+    }
+    let mut status = MemoryStatus {
+        length: std::mem::size_of::<MemoryStatus>() as u32,
+        memory_load: 0,
+        total_physical: 0,
+        available_physical: 0,
+        total_page_file: 0,
+        available_page_file: 0,
+        total_virtual: 0,
+        available_virtual: 0,
+        available_extended_virtual: 0,
+    };
+    // Sound: the buffer is a writable `MEMORYSTATUSEX` whose `dwLength` names
+    // its size, which is all the call requires, and it writes nothing else.
+    let ok = unsafe { GlobalMemoryStatusEx(&mut status) };
+    (ok != 0).then_some(status.available_physical)
+}
+
+/// Physical memory the system could hand out right now, in bytes: the
+/// kernel's own estimate, which counts reclaimable cache as available.
+#[cfg(target_os = "linux")]
+fn available_memory() -> Option<u64> {
+    let meminfo = std::fs::read_to_string("/proc/meminfo").ok()?;
+    meminfo_available(&meminfo)
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
+fn available_memory() -> Option<u64> {
+    None
+}
+
+/// `MemAvailable` out of `/proc/meminfo`, which states it in kibibytes.
+#[cfg_attr(not(any(target_os = "linux", test)), allow(dead_code))]
+fn meminfo_available(meminfo: &str) -> Option<u64> {
+    meminfo
+        .lines()
+        .find_map(|line| line.strip_prefix("MemAvailable:"))
+        .and_then(|rest| {
+            rest.trim()
+                .trim_end_matches("kB")
+                .trim()
+                .parse::<u64>()
+                .ok()
+        })
+        .map(|kib| kib * 1024)
+}
+
 /// Render an argument list for the log, quoting anything with spaces so a
 /// logged command line can be pasted back into a shell.
 fn shell_quote_all(args: &[String]) -> String {
@@ -1578,6 +1726,10 @@ fn releases_from_tags(tags: &[String]) -> Vec<GitHubRelease> {
 impl MapGeneratorPort for NeroxisMapGenerator {
     fn set_show_window(&self, show: bool) {
         self.show_window.store(show, Ordering::Relaxed);
+    }
+
+    fn set_parallel_instances(&self, instances: u32) {
+        self.parallel_instances.store(instances, Ordering::Relaxed);
     }
 
     async fn generate_named(&self, map_name: String) -> mpsc::Receiver<GeneratorUpdate> {
@@ -2648,5 +2800,40 @@ mod tests {
         assert!(
             matches!(status, GeneratorStatus::Failed { reason } if reason.contains("not a generated map")),
         );
+    }
+
+    #[test]
+    fn free_memory_is_read_from_the_kernels_mem_available_line() {
+        let meminfo = "MemTotal:       16303848 kB\nMemFree:          812344 kB\n\
+                       MemAvailable:    9437184 kB\nBuffers:          123456 kB\n";
+        assert_eq!(meminfo_available(meminfo), Some(9_437_184 * 1024));
+        // A kernel too old for the line says nothing rather than zero, which
+        // would have allowed no generator at all.
+        assert_eq!(meminfo_available("MemTotal: 1 kB\nMemFree: 1 kB\n"), None);
+    }
+
+    #[test]
+    fn a_generator_is_budgeted_by_the_size_of_its_map() {
+        const MB: u64 = 1024 * 1024;
+        // Above every measured peak: 352 MB, 1.05 GB and 2.41 GB.
+        assert!(generator_memory_budget(Some(256)) >= 352 * MB);
+        assert!(generator_memory_budget(Some(512)) >= 1075 * MB);
+        assert!(generator_memory_budget(Some(1024)) >= 2468 * MB);
+        // Nothing smaller than half a gigabyte, whatever the size says.
+        assert_eq!(generator_memory_budget(Some(1)), 512 * MB);
+        // An unknown size is treated as a 20 km map, not as a small one.
+        assert_eq!(
+            generator_memory_budget(None),
+            generator_memory_budget(Some(1024))
+        );
+    }
+
+    #[test]
+    fn the_automatic_count_is_at_least_one_and_never_past_the_cap() {
+        for size in [None, Some(256), Some(1024), Some(u32::MAX)] {
+            let instances = automatic_instances(size);
+            assert!(instances >= 1);
+            assert!(instances <= faf_domain::state::settings::MAX_MAP_GENERATOR_INSTANCES);
+        }
     }
 }

@@ -183,6 +183,21 @@ pub struct GamePreferences {
     /// rather than a quota that refuses new maps once it is full.
     #[serde(default)]
     pub keep_generated_maps_limit: u32,
+    /// How many map generators may run at the same time, or `0` to let the
+    /// client decide from the computer's cores and free memory.
+    ///
+    /// Only a run of several maps that each need their own generator uses
+    /// this: one where several styles, symmetries or a density range were
+    /// selected, so every map gets its own pick. A single map, and a batch the
+    /// generator makes in one go, stay one process either way.
+    ///
+    /// A setting rather than a fixed number because the right one is the
+    /// computer's: one generator keeps about one and a half cores busy and
+    /// needs up to two and a half gigabytes for a 20 km map, so two at once
+    /// were a third faster on a four-core machine with 12 GB and four at once
+    /// ran out of memory and took four times as long.
+    #[serde(default)]
+    pub map_generator_instances: u32,
     /// Show Forged Alliance as being played on Steam while a game runs, and
     /// only then (issue 364).
     ///
@@ -209,6 +224,11 @@ pub struct GamePreferences {
 /// a different route than `0` does deliberately.
 pub const MAX_KEPT_GENERATED_MAPS: u32 = 500;
 
+/// The most map generators a player may ask to run at once. Above any core
+/// count this client is likely to meet, and there so a hand-edited settings
+/// file cannot ask for a thousand JVMs.
+pub const MAX_MAP_GENERATOR_INSTANCES: u32 = 16;
+
 fn default_cache_lifetime_days() -> Option<u32> {
     Some(30)
 }
@@ -232,6 +252,7 @@ impl Default for GamePreferences {
             pipe_live_replay: false,
             keep_generated_maps: false,
             keep_generated_maps_limit: 0,
+            map_generator_instances: 0,
             steam_presence: false,
             borderless_window: false,
         }
@@ -250,6 +271,9 @@ impl GamePreferences {
         self.launch_wrapper = self.launch_wrapper.trim().to_owned();
         self.keep_generated_maps_limit =
             self.keep_generated_maps_limit.min(MAX_KEPT_GENERATED_MAPS);
+        self.map_generator_instances = self
+            .map_generator_instances
+            .min(MAX_MAP_GENERATOR_INSTANCES);
         self
     }
 }
@@ -285,6 +309,7 @@ preference_patch! {
         pipe_live_replay: bool,
         keep_generated_maps: bool,
         keep_generated_maps_limit: u32,
+        map_generator_instances: u32,
         steam_presence: bool,
         borderless_window: bool,
     }

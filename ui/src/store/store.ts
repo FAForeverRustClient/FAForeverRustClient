@@ -614,6 +614,7 @@ const INITIAL: AppState = {
       pipeLiveReplay: false,
       keepGeneratedMaps: false,
       keepGeneratedMapsLimit: 0,
+      mapGeneratorInstances: 0,
       steamPresence: false,
       borderlessWindow: false,
     },
