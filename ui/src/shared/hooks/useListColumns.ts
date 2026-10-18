@@ -6,7 +6,8 @@
 // table, the matchmaker's recent games), so a change to how columns behave is
 // made here and reaches all of them. The Play tab's game list keeps its own
 // width arithmetic, which predates the shared one, and shares the order half
-// through `useColumnOrder`. What the header looks like is `list-head.css`.
+// through `useColumnOrder` and the spare-room half through `withSpareRoom`.
+// What the header looks like is `list-head.css`.
 
 import { useMemo, type RefObject } from "react";
 import type { BrowsingPreferences } from "../../ipc/bindings";
@@ -51,6 +52,9 @@ function saveBrowsing(patch: Partial<BrowsingPreferences>): void {
  * @param floors the narrowest each designed column is drawn: see
  *   `useColumnWidths`. A column of buttons needs one, or a narrow window
  *   squeezes its buttons out of the list.
+ * @param fixed the designed columns a wide window does not widen: a
+ *   thumbnail, or a column of buttons. Every other column shares the spare
+ *   room before the flexible one takes the rest.
  */
 export function useListColumns({
   widthsField,
@@ -60,6 +64,7 @@ export function useListColumns({
   headerRef,
   layout = "table",
   floors,
+  fixed,
 }: {
   widthsField: NumberListField;
   orderField: NumberListField;
@@ -68,6 +73,7 @@ export function useListColumns({
   headerRef: RefObject<HTMLElement | null>;
   layout?: "grid" | "table";
   floors?: readonly number[];
+  fixed?: readonly number[];
 }): ListColumns {
   const stored = useAppStore((state) => state.state.settings.browsing[orderField]);
   const columnOrder = useColumnOrder(
@@ -82,7 +88,7 @@ export function useListColumns({
   const orderKey = columnOrder.order.join(",");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const order = useMemo(() => columnOrder.order, [orderKey]);
-  const widths = useColumnWidths(widthsField, defaults, flexible, { layout, floors, order });
+  const widths = useColumnWidths(widthsField, defaults, flexible, { layout, floors, order, fixed });
   return {
     order,
     moving: columnOrder.moving,

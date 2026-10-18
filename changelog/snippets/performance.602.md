@@ -1,0 +1,1 @@
+- Map generation is faster: several random maps are made in one go (about three times as fast), and every map generator start is quicker. Matchmaker games on a generated map also generate it while the game updates.

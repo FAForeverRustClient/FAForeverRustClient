@@ -875,6 +875,16 @@ async fn run_session(
                         for raw in raws {
                             games.apply(raw, &player_ratings, &mut delta);
                         }
+                        let restored = directory.restore_seated(games.seated());
+                        if !restored.is_empty() {
+                            for profile in &restored {
+                                restore_player_ratings(&mut player_ratings, profile);
+                            }
+                            games.refresh_ratings(&player_ratings, &mut delta);
+                            if tx.send(LobbyUpdate::PlayersSeen(restored)).await.is_err() {
+                                break 'connection;
+                            }
+                        }
                         if replaces_the_list {
                             if tx.send(LobbyUpdate::Games(games.snapshot())).await.is_err() {
                                 break 'connection; // consumer gone
@@ -1597,9 +1607,16 @@ struct PlayerDirectory {
     /// later player update silently drop offline friends from the social list.
     logins: BTreeMap<i64, String>,
     profiles: BTreeMap<i64, PlayerProfile>,
+    /// The last profile of each account an offline notice removed, until it
+    /// is seen again: see `restore_seated`.
+    departed: BTreeMap<i64, PlayerProfile>,
     friend_ids: Vec<i64>,
     foe_ids: Vec<i64>,
 }
+
+/// How many removed profiles the directory keeps. A day's coming and going on
+/// FAF, at a few hundred bytes each.
+const DEPARTED_LIMIT: usize = 4096;
 
 impl PlayerDirectory {
     fn login(&self, id: i32) -> Option<String> {
@@ -1619,7 +1636,48 @@ impl PlayerDirectory {
         {
             self.logins.insert(id, login.to_string());
         }
-        self.profiles.remove(&id)
+        let profile = self.profiles.remove(&id)?;
+        if self.departed.len() >= DEPARTED_LIMIT {
+            self.departed.pop_first();
+        }
+        self.departed.insert(id, profile.clone());
+        Some(profile)
+    }
+
+    /// Bring back the removed profiles of players a game lists, and return
+    /// them.
+    ///
+    /// An offline notice is not always true. When an account signs in again,
+    /// the server registers the new connection and only then drops the old
+    /// one, and dropping it deletes the player by id, which by then is the
+    /// new connection's entry, and broadcasts the old one as `offline`
+    /// (`player_service.remove_player`). Everyone else's client forgets a
+    /// player who is still online, and the server sends no new `player_info`
+    /// for them until their avatar or rating changes. Seated in a lobby, they
+    /// showed with no flag, no rating and an unrated average (#595).
+    ///
+    /// `game_info` lists only connected players, so a seat is proof enough.
+    fn restore_seated<'a>(&mut self, seated: impl Iterator<Item = &'a str>) -> Vec<PlayerProfile> {
+        if self.departed.is_empty() {
+            return Vec::new();
+        }
+        let wanted: std::collections::BTreeSet<String> = seated.map(str::to_lowercase).collect();
+        let ids: Vec<i64> = self
+            .departed
+            .iter()
+            .filter(|(_, profile)| wanted.contains(&profile.login.to_lowercase()))
+            .map(|(id, _)| *id)
+            .collect();
+        let mut restored = Vec::with_capacity(ids.len());
+        for id in ids {
+            if let Some(profile) = self.departed.remove(&id) {
+                if let std::collections::btree_map::Entry::Vacant(slot) = self.profiles.entry(id) {
+                    slot.insert(profile.clone());
+                    restored.push(profile);
+                }
+            }
+        }
+        restored
     }
 
     /// Record one `player_info`/`me` entry. Returns the profile only when it is
@@ -1635,6 +1693,7 @@ impl PlayerDirectory {
             .to_string();
         let id = player.get("id").and_then(Value::as_i64)?;
         self.logins.insert(id, login.clone());
+        self.departed.remove(&id);
 
         let string_field = |key: &str| {
             player
@@ -1862,6 +1921,27 @@ fn id_list(value: &Value, key: &str) -> Vec<i64> {
 type PlayerRatings = BTreeMap<String, BTreeMap<String, i32>>;
 
 pub(crate) const GLOBAL_LEADERBOARD: &str = "global";
+
+/// Put a restored player's ratings back, from the profile that kept them.
+fn restore_player_ratings(ratings: &mut PlayerRatings, profile: &PlayerProfile) {
+    if ratings.contains_key(&profile.login) {
+        return;
+    }
+    let boards: BTreeMap<String, i32> = if profile.ratings.is_empty() {
+        // Only the estimate `update_player_ratings` falls back to, if any.
+        if profile.global_rating == 0 {
+            return;
+        }
+        BTreeMap::from([(GLOBAL_LEADERBOARD.to_string(), profile.global_rating)])
+    } else {
+        profile
+            .ratings
+            .iter()
+            .map(|rating| (rating.leaderboard.clone(), rating.rating))
+            .collect()
+    };
+    ratings.insert(profile.login.clone(), boards);
+}
 
 fn update_player_ratings(ratings: &mut PlayerRatings, player: &Value) {
     let Some(login) = player
@@ -2332,6 +2412,15 @@ impl GameSet {
         self.games.values().cloned().collect()
     }
 
+    /// Every player in an open or a running game, observers included.
+    fn seated(&self) -> impl Iterator<Item = &str> {
+        self.games
+            .values()
+            .chain(self.live_games.values())
+            .flat_map(|game| game.teams.values().flatten())
+            .map(String::as_str)
+    }
+
     fn snapshot_live(&self) -> Vec<Game> {
         self.live_games.values().cloned().collect()
     }
@@ -2643,6 +2732,56 @@ mod tests {
         assert!(directory
             .remove(&json!({ "id": 7, "login": "Aurora", "state": "offline" }))
             .is_none());
+    }
+
+    #[test]
+    fn a_player_a_game_seats_comes_back_after_a_false_offline_notice() {
+        // #595: a re-login's old connection is broadcast offline after the
+        // new one registered. The player is still online, and a game lists
+        // them; their profile and ratings come back from what was kept.
+        let mut directory = PlayerDirectory::default();
+        directory
+            .observe(&json!({
+                "id": 480156, "login": "OGlobal2500lader", "country": "DE",
+                "ratings": { "global": { "rating": [2016.0, 95.0], "number_of_games": 4200 } }
+            }))
+            .unwrap();
+        directory
+            .remove(&json!({ "id": 480156, "login": "OGlobal2500lader", "state": "offline" }))
+            .unwrap();
+
+        // Not seated anywhere: stays gone.
+        assert!(directory
+            .restore_seated(["Somebody"].into_iter())
+            .is_empty());
+
+        let restored = directory.restore_seated(["oglobal2500lader"].into_iter());
+        assert_eq!(restored.len(), 1);
+        assert_eq!(restored[0].country, "de");
+        let mut ratings = PlayerRatings::new();
+        restore_player_ratings(&mut ratings, &restored[0]);
+        assert_eq!(ratings["OGlobal2500lader"]["global"], 1731);
+
+        // Once only: the profile is back in the directory.
+        assert!(directory
+            .restore_seated(["OGlobal2500lader"].into_iter())
+            .is_empty());
+    }
+
+    #[test]
+    fn a_player_seen_again_is_no_longer_waiting_to_be_restored() {
+        let mut directory = PlayerDirectory::default();
+        directory
+            .observe(&json!({ "id": 7, "login": "Aurora" }))
+            .unwrap();
+        directory
+            .remove(&json!({ "id": 7, "login": "Aurora", "state": "offline" }))
+            .unwrap();
+        directory
+            .observe(&json!({ "id": 7, "login": "Aurora" }))
+            .unwrap();
+        assert!(directory.departed.is_empty());
+        assert!(directory.restore_seated(["Aurora"].into_iter()).is_empty());
     }
 
     #[test]

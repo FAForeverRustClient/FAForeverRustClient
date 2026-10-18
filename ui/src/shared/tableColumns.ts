@@ -49,6 +49,26 @@ export function resolveColumnWidths(
 }
 
 /**
+ * The widths with the flexible column held to at most [`MAX_COLUMN_GROWTH`]
+ * times its designed width.
+ *
+ * The flexible column takes whatever the others leave, so its stored width is
+ * only its share when the list is too narrow for everything. A drag on a wide
+ * window used to store what it was drawn at instead: 1492 pixels for the live
+ * table's game column on one screen, which then filled the window by itself
+ * and left `withSpareRoom` nothing to share out (#591). Held here, such a
+ * width does no harm, and the room goes back to every column.
+ */
+export function withFlexibleBounded(
+  widths: readonly number[],
+  flexible: number,
+  defaults: readonly number[],
+): number[] {
+  const bound = Math.round((defaults[flexible] ?? 0) * MAX_COLUMN_GROWTH);
+  return widths.map((width, index) => (index === flexible && bound > 0 ? Math.min(width, bound) : width));
+}
+
+/**
  * The CSS `grid-template-columns` for a set of widths.
  *
  * Every column is the width it was given except the flexible one, which is
@@ -178,6 +198,58 @@ export function fitColumns(
     held[index] ? floorOf(index) : Math.max(floorOf(index), Math.floor(width * scale)),
   );
   return { drawn, scale, total: sum(drawn), overflow: false };
+}
+
+/**
+ * How far spare room widens a column beyond its own width, the flexible one
+ * apart. Up to here the whole list widens in proportion, which is what a
+ * 1440p window needs; on a still wider one, what is left goes to the flexible
+ * column rather than to a figure column wider than any figure in it.
+ */
+export const MAX_COLUMN_GROWTH = 2.5;
+
+/**
+ * The fitted widths with the room the columns leave in `space` shared out.
+ *
+ * At the designed widths a wide window gave every spare pixel to the flexible
+ * column: a title across half the screen beside names and figures at the
+ * widths the 1100 pixel window can afford (#559, for the Play tab, and #591
+ * for every other list). So every column grows by the factor the list is
+ * wider than its columns, up to [`MAX_COLUMN_GROWTH`] times its own width,
+ * and the flexible column takes the rest, as it always has.
+ *
+ * `fixed` columns keep their width: a thumbnail, or a column of buttons that
+ * would only stretch its buttons apart. `topUp` first raises one column to a
+ * comfortable width, for a column of chips that shows none below it.
+ *
+ * Only with every column at its full width: where the columns do not fit as
+ * stored, the widths are as fitted, including the odd pixel the rounding
+ * leaves over. Unmeasured (zero), nothing changes either.
+ */
+export function withSpareRoom(
+  fit: ColumnFit,
+  space: number,
+  flexible: number,
+  { fixed = [], topUp }: {
+    fixed?: readonly number[];
+    topUp?: { column: number; width: number };
+  } = {},
+): number[] {
+  const result = [...fit.drawn];
+  if (fit.overflow || fit.scale < 1) return result;
+  const spare = space - sum(result);
+  if (spare <= 0) return result;
+  if (topUp) {
+    result[topUp.column] += Math.min(spare, Math.max(0, topUp.width - result[topUp.column]));
+  }
+  const factor = space / sum(result);
+  // The limit counts from a topped-up width, so that column grows from its
+  // comfortable width rather than stopping where the figures do.
+  return result.map((width, index) =>
+    index === flexible || fixed.includes(index)
+      ? width
+      : Math.floor(Math.min(width * factor, width * MAX_COLUMN_GROWTH)),
+  );
 }
 
 /**

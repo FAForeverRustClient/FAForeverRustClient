@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { activeFilterCount, cleanFilterValue, rulesWithPending } from "./gameFilterRules";
+import type { Game } from "../../../ipc/bindings";
+import {
+  activeFilterCount,
+  cleanFilterValue,
+  matchesRule,
+  rulesWithPending,
+  shownDespiteFilters,
+} from "./gameFilterRules";
 import type { GameFilterRule } from "./GameFiltersModal";
 
 describe("activeFilterCount", () => {
@@ -105,5 +112,63 @@ describe("rulesWithPending", () => {
     const next = rulesWithPending([], { field: "title", constraint: "contains", value: '"test"' }, null);
 
     expect(next).toEqual([{ field: "title", constraint: "contains", value: "test" }]);
+  });
+});
+
+function game(overrides: Partial<Game> = {}): Game {
+  return {
+    id: 1,
+    title: "Come play",
+    host: "Nuggets",
+    players: 3,
+    maxPlayers: 8,
+    map: "Setons Clutch",
+    modName: "faf",
+    averageRating: 1200,
+    ratingType: "global",
+    passwordProtected: false,
+    visibility: "public",
+    gameType: "custom",
+    launchedAt: null,
+    hostedAt: null,
+    ratingMin: null,
+    ratingMax: null,
+    enforceRatingRange: false,
+    teams: { "1": ["Nuggets"] },
+    simMods: {},
+    ...overrides,
+  };
+}
+
+describe("the mod field (#593)", () => {
+  const modded = game({ simMods: { "a1b2": "Roguelike FAF" } });
+
+  it("matches a sim mod as well as the featured mod", () => {
+    expect(matchesRule(modded, { field: "mod", constraint: "contains", value: "roguelike" }, [])).toBe(true);
+    expect(matchesRule(modded, { field: "mod", constraint: "equals", value: "faf" }, [])).toBe(true);
+    expect(matchesRule(game(), { field: "mod", constraint: "contains", value: "roguelike" }, [])).toBe(false);
+  });
+
+  it("does not equal only when none of the game's mods is the value", () => {
+    const rule: GameFilterRule = { field: "mod", constraint: "notEquals", value: "roguelike faf" };
+    expect(matchesRule(modded, rule, [])).toBe(false);
+    expect(matchesRule(game(), rule, [])).toBe(true);
+  });
+});
+
+describe("games always shown (#593)", () => {
+  const hidden = () => false;
+
+  it("keeps a game an always-show rule matches, whatever would hide it", () => {
+    const rules: GameFilterRule[] = [{ field: "mod", constraint: "contains", value: "roguelike" }];
+    expect(shownDespiteFilters(game({ simMods: { x: "Roguelike" } }), rules, [], hidden)).toBe(true);
+    expect(shownDespiteFilters(game(), rules, [], hidden)).toBe(false);
+    expect(shownDespiteFilters(game(), rules, [], () => true)).toBe(true);
+  });
+
+  it("matches a host in any case, as the hosts list it replaced did", () => {
+    const rules: GameFilterRule[] = [{ field: "host", constraint: "equals", value: "nuggets" }];
+    expect(shownDespiteFilters(game({ host: "NUGGETS" }), rules, [], hidden)).toBe(true);
+    expect(shownDespiteFilters(game({ host: "Zed" }), rules, [], hidden)).toBe(false);
   });
 });

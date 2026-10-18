@@ -3095,6 +3095,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -46180,6 +46181,7 @@
                     "folderName": "scmp_009",
                     "height": 512,
                     "installedAt": null,
+                    "mapType": null,
                     "maxPlayers": 6,
                     "version": "1.0",
                     "width": 512
@@ -46230,6 +46232,7 @@
                 "folderName": "scmp_009",
                 "height": 512,
                 "installedAt": null,
+                "mapType": null,
                 "maxPlayers": 6,
                 "version": "1.0",
                 "width": 512
@@ -61185,6 +61188,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -61476,6 +61480,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -61777,6 +61782,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -62072,6 +62078,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -62367,6 +62374,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -62672,6 +62680,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -62983,6 +62992,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -63291,6 +63301,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -63607,6 +63618,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -64006,6 +64018,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -64367,6 +64380,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -64730,6 +64744,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -65063,6 +65078,7 @@
                 "preferences": {
                   "coopBoardColumns": [],
                   "customGamesBrowser": {
+                    "allowRules": [],
                     "applyFilters": true,
                     "columnOrder": [],
                     "columnWidths": [
@@ -65206,6 +65222,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": true,
                 "columnOrder": [],
                 "columnWidths": [
@@ -69742,6 +69759,7 @@
                     "folderName": "scmp_009",
                     "height": 512,
                     "installedAt": null,
+                    "mapType": null,
                     "maxPlayers": 8,
                     "version": null,
                     "width": 512
@@ -69789,6 +69807,7 @@
                 "folderName": "scmp_009",
                 "height": 512,
                 "installedAt": null,
+                "mapType": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -69870,6 +69889,7 @@
                 "folderName": "scmp_009",
                 "height": 512,
                 "installedAt": null,
+                "mapType": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -69958,6 +69978,7 @@
                 "folderName": "scmp_009",
                 "height": 512,
                 "installedAt": null,
+                "mapType": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -70045,6 +70066,7 @@
                 "folderName": "scmp_009",
                 "height": 512,
                 "installedAt": null,
+                "mapType": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -70133,6 +70155,7 @@
                 "folderName": "scmp_009",
                 "height": 512,
                 "installedAt": null,
+                "mapType": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -70181,6 +70204,7 @@
                     "folderName": "scmp_009",
                     "height": 512,
                     "installedAt": null,
+                    "mapType": null,
                     "maxPlayers": 8,
                     "version": null,
                     "width": 512
@@ -70191,6 +70215,7 @@
                     "folderName": "setons_clutch.v0003",
                     "height": 512,
                     "installedAt": null,
+                    "mapType": null,
                     "maxPlayers": 8,
                     "version": null,
                     "width": 512
@@ -70238,6 +70263,7 @@
                 "folderName": "scmp_009",
                 "height": 512,
                 "installedAt": null,
+                "mapType": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -70248,6 +70274,7 @@
                 "folderName": "setons_clutch.v0003",
                 "height": 512,
                 "installedAt": null,
+                "mapType": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -70325,6 +70352,7 @@
                 "folderName": "scmp_009",
                 "height": 512,
                 "installedAt": null,
+                "mapType": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -70335,6 +70363,7 @@
                 "folderName": "setons_clutch.v0003",
                 "height": 512,
                 "installedAt": null,
+                "mapType": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -70417,6 +70446,7 @@
                 "folderName": "scmp_009",
                 "height": 512,
                 "installedAt": null,
+                "mapType": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -70427,6 +70457,7 @@
                 "folderName": "setons_clutch.v0003",
                 "height": 512,
                 "installedAt": null,
+                "mapType": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -70470,6 +70501,7 @@
                     "folderName": "setons_clutch.v0003",
                     "height": 512,
                     "installedAt": null,
+                    "mapType": null,
                     "maxPlayers": 8,
                     "version": null,
                     "width": 512
@@ -70517,6 +70549,7 @@
                 "folderName": "setons_clutch.v0003",
                 "height": 512,
                 "installedAt": null,
+                "mapType": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -70586,6 +70619,7 @@
                 "folderName": "setons_clutch.v0003",
                 "height": 512,
                 "installedAt": null,
+                "mapType": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -70658,6 +70692,7 @@
                 "folderName": "setons_clutch.v0003",
                 "height": 512,
                 "installedAt": null,
+                "mapType": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -81041,6 +81076,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -81343,6 +81379,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -81674,6 +81711,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -81991,6 +82029,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -82297,6 +82336,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -82592,6 +82632,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -82890,6 +82931,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -83212,6 +83254,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -83503,6 +83546,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -83806,6 +83850,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -84107,6 +84152,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -84402,6 +84448,7 @@
                   "browsing": {
                     "coopBoardColumns": [],
                     "customGamesBrowser": {
+                      "allowRules": [],
                       "applyFilters": false,
                       "columnOrder": [],
                       "columnWidths": [],
@@ -84687,6 +84734,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -126227,6 +126275,7 @@
       "browsing": {
         "coopBoardColumns": [],
         "customGamesBrowser": {
+          "allowRules": [],
           "applyFilters": false,
           "columnOrder": [],
           "columnWidths": [],

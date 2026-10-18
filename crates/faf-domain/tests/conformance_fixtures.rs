@@ -6549,6 +6549,7 @@ fn cases() -> Vec<Case> {
                         version: Some("1.0".into()),
                         description: None,
                         installed_at: None,
+                        map_type: None,
                     }],
                 }
                 .into(),
@@ -7840,6 +7841,7 @@ fn cases() -> Vec<Case> {
                                     value: "NOISY".into(),
                                 },
                             ],
+                            allow_rules: Vec::new(),
                             column_widths: vec![320, 180, 90, 110, 80],
                             column_order: Vec::new(),
                             detail_width: 360,
@@ -9425,6 +9427,7 @@ fn installed_map(folder_name: &str) -> InstalledMap {
         version: None,
         description: None,
         installed_at: None,
+        map_type: None,
     }
 }
 

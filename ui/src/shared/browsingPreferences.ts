@@ -156,6 +156,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
     hideFoes: false,
     applyFilters: false,
     rules: [],
+    allowRules: [],
     columnWidths: [],
     columnOrder: [],
     detailWidth: 0,
@@ -311,11 +312,10 @@ function normalizeModVaultPreset(preset: string | undefined): string {
     : "recommended";
 }
 
-function normalizeCustomGamesBrowser(
-  preferences: CustomGameBrowserPreferences,
-): CustomGameBrowserPreferences {
+/** Twin of `normalize_rules` in `game_browser.rs`. */
+function normalizeRules(candidates: readonly CustomGameFilterRule[]): CustomGameFilterRule[] {
   const rules: CustomGameFilterRule[] = [];
-  for (const candidate of preferences.rules) {
+  for (const candidate of candidates) {
     const rule = { ...candidate, value: truncateTrimmed(candidate.value, 128) };
     if (
       !rule.value ||
@@ -331,6 +331,12 @@ function normalizeCustomGamesBrowser(
     rules.push(rule);
     if (rules.length === 64) break;
   }
+  return rules;
+}
+
+function normalizeCustomGamesBrowser(
+  preferences: CustomGameBrowserPreferences,
+): CustomGameBrowserPreferences {
   return {
     ...preferences,
     sortReversed: Boolean(preferences.sortReversed),
@@ -339,7 +345,8 @@ function normalizeCustomGamesBrowser(
     hideUnranked: Boolean(preferences.hideUnranked),
     hideFoes: Boolean(preferences.hideFoes),
     applyFilters: Boolean(preferences.applyFilters),
-    rules,
+    rules: normalizeRules(preferences.rules),
+    allowRules: normalizeRules(preferences.allowRules ?? []),
     columnWidths: (preferences.columnWidths ?? [])
       .slice(0, MAX_BROWSER_COLUMNS)
       .map((width) =>

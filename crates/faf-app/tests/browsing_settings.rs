@@ -80,6 +80,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                             constraint: CustomGameFilterConstraint::Contains,
                             value: "  gap  ".into(),
                         }],
+                        allow_rules: Vec::new(),
                         column_widths: Vec::new(),
                         column_order: Vec::new(),
                         detail_width: 0,

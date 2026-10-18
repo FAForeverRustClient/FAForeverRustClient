@@ -224,8 +224,10 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         LobbyCommand::LoadAvatars => avatars::load_avatars(ctx, out),
         LobbyCommand::SelectAvatar { url } => {
-            if avatars::select_avatar(ctx, out, url.clone()) {
-                avatars::remember_own_avatar(ctx, out, url.as_deref().unwrap_or_default()).await;
+            // Remembered in the server's spelling, which is what the fallback
+            // compares with the avatar list and `player_info`.
+            if let Some(sent) = avatars::select_avatar(ctx, out, url) {
+                avatars::remember_own_avatar(ctx, out, &sent).await;
             }
         }
         LobbyCommand::DeclineModReplacement => {
