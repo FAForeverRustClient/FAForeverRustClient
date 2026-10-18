@@ -6,6 +6,7 @@ import {
   MAX_COLUMN_GROWTH,
   resolveColumnWidths,
   withBoundaryTraded,
+  withFlexibleBounded,
   withSpareRoom,
 } from "./tableColumns";
 
@@ -222,5 +223,27 @@ describe("the spare room of a wide list (#591)", () => {
 
   it("changes nothing before the list is measured", () => {
     expect(withSpareRoom(fitColumns(WIDTHS, [], 0), 0, FLEXIBLE)).toEqual(WIDTHS);
+  });
+});
+
+describe("a flexible column stored at its drawn width (#591)", () => {
+  it("is held to its growth limit, so the spare room is shared again", () => {
+    // What one player's settings held after a drag on a wide window.
+    const stored = [120, 79, 1492, 84, 84, 150, 130, 128];
+    const bounded = withFlexibleBounded(stored, FLEXIBLE, WIDTHS);
+    expect(bounded[FLEXIBLE]).toBe(WIDTHS[FLEXIBLE] * MAX_COLUMN_GROWTH);
+    expect(bounded.filter((_, index) => index !== FLEXIBLE)).toEqual(stored.filter((_, index) => index !== FLEXIBLE));
+
+    const space = 2200;
+    const drawn = withSpareRoom(fitColumns(bounded, [], space), space, FLEXIBLE, { fixed: [7] });
+    // Every other column grew, rather than the game column taking it all.
+    drawn.forEach((width, index) => {
+      if (index === FLEXIBLE || index === 7) return;
+      expect(width).toBeGreaterThan(stored[index]);
+    });
+  });
+
+  it("leaves an ordinary width alone", () => {
+    expect(withFlexibleBounded(WIDTHS, FLEXIBLE, WIDTHS)).toEqual(WIDTHS);
   });
 });

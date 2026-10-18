@@ -49,6 +49,26 @@ export function resolveColumnWidths(
 }
 
 /**
+ * The widths with the flexible column held to at most [`MAX_COLUMN_GROWTH`]
+ * times its designed width.
+ *
+ * The flexible column takes whatever the others leave, so its stored width is
+ * only its share when the list is too narrow for everything. A drag on a wide
+ * window used to store what it was drawn at instead: 1492 pixels for the live
+ * table's game column on one screen, which then filled the window by itself
+ * and left `withSpareRoom` nothing to share out (#591). Held here, such a
+ * width does no harm, and the room goes back to every column.
+ */
+export function withFlexibleBounded(
+  widths: readonly number[],
+  flexible: number,
+  defaults: readonly number[],
+): number[] {
+  const bound = Math.round((defaults[flexible] ?? 0) * MAX_COLUMN_GROWTH);
+  return widths.map((width, index) => (index === flexible && bound > 0 ? Math.min(width, bound) : width));
+}
+
+/**
  * The CSS `grid-template-columns` for a set of widths.
  *
  * Every column is the width it was given except the flexible one, which is

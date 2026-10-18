@@ -19,6 +19,7 @@ import {
   gridColumnSpace,
   resolveColumnWidths,
   withBoundaryTraded,
+  withFlexibleBounded,
   withSpareRoom,
 } from "../tableColumns";
 
@@ -138,7 +139,8 @@ export function useColumnWidths(
   // column reaches its floor at twice its floor's width.
   const storedFloorOf = (index: number) => drawnFloors[index] / dragScale.current;
 
-  const resolve = () => resolveColumnWidths(stored, defaults);
+  // The flexible column held to a sane width: see `withFlexibleBounded`.
+  const resolve = () => withFlexibleBounded(resolveColumnWidths(stored, defaults), flexible, defaults);
   const current = dragged ?? resolve();
   const fit = fitColumns(current, drawnFloors, space);
   const { scale } = fit;
