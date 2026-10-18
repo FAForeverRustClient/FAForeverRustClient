@@ -140,6 +140,7 @@ fn installed_map(folder: &str) -> InstalledMap {
         version: None,
         description: None,
         installed_at: None,
+        map_type: None,
     }
 }
 

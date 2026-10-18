@@ -1871,6 +1871,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
 
   "playerCard.avatar.fallbackHint": "Wenn ein Avatar, den du trägst, nicht mehr dir gehört, etwa ein Turnier-Avatar, der an den nächsten Sieger geht, wechselt der Client zurück zu dem, den du davor gewählt hattest.",
   "playerCard.avatar.none": "Kein Avatar",
+  "playerCard.avatar.selectFailed": "Dieser Avatar konnte nicht angelegt werden.",
   "playerCard.avatar.wearing": "Trägt {name}",
   "playerCard.avatar.wearingNone": "Kein Avatar angelegt",
   "playerCard.hero.memberSince": "Mitglied seit {date}",

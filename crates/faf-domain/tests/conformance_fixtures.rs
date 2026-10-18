@@ -6547,6 +6547,7 @@ fn cases() -> Vec<Case> {
                         version: Some("1.0".into()),
                         description: None,
                         installed_at: None,
+                        map_type: None,
                     }],
                 }
                 .into(),
@@ -9424,6 +9425,7 @@ fn installed_map(folder_name: &str) -> InstalledMap {
         version: None,
         description: None,
         installed_at: None,
+        map_type: None,
     }
 }
 
