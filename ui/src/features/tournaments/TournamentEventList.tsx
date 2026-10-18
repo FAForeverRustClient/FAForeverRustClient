@@ -27,6 +27,7 @@ import {
   statusPill,
 } from "./orientation";
 import { send } from "./tourneyCommands";
+import { daysLeftText, proposalChip } from "./proposals";
 import type { EventListFold } from "./useEventListFold";
 
 /**
@@ -43,6 +44,7 @@ import type { EventListFold } from "./useEventListFold";
  * and without a heading the first card starts level with the detail pane.
  */
 const LIVE_GROUPS: [Exclude<ListGroup, "past">, MessageKey | null][] = [
+  ["proposals", "tournaments.proposal.listTitle"],
   ["drafts", null],
   ["ongoing", "tournaments.list.ongoing"],
   ["upcoming", "tournaments.list.upcoming"],
@@ -109,6 +111,7 @@ export function TournamentEventList({ now, fold }: Props) {
     const rating = listRatingParts(event, t);
     const teamsLine = listTeamsLine(event, t);
     const prize = formatPrize(event.prize);
+    const chip = event.proposal === null ? null : proposalChip(event.proposal);
     // The field, then its rating gate on a line of its own: together they are
     // four facts, which wrap in a column this wide.
     const facts = [
@@ -166,6 +169,15 @@ export function TournamentEventList({ now, fold }: Props) {
                 {t(event.canManage ? "tournaments.list.draftBadge" : "tournaments.list.viewOnly")}
               </span>
             )}
+            {/* Where its proposal stands (#569), as the website's chip. */}
+            {!event.published && chip !== null && event.proposal !== null && (
+              <span className={`tournament-row-tag is-proposal is-${chip.tone}`}>
+                {t(chip.key, {
+                  left: daysLeftText(event.proposal.until, now, t),
+                  name: event.proposal.takenByName,
+                })}
+              </span>
+            )}
           </span>
           <span className="tournament-row-name">{event.name || t("tournaments.untitled")}</span>
           <span className="tournament-row-body">
@@ -219,6 +231,7 @@ export function TournamentEventList({ now, fold }: Props) {
                 <span className="tournaments-group-count">{groups[group].length}</span>
               </h3>
             )}
+            {group === "proposals" && <p className="muted tournaments-group-note">{t("tournaments.proposal.listNote")}</p>}
             <ul>{groups[group].map(row)}</ul>
           </section>
         ),

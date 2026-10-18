@@ -247,6 +247,8 @@ interface PendingBarProps {
   onGo: (tournamentId: string, section: string) => void;
   onReview: () => void;
   onDismiss: () => void;
+  /** Hide the proposals alert until a new proposal comes in (#569). */
+  onDismissProposals: () => void;
   /** Whether the console is on screen, where the alert would be noise. */
   inConsole: boolean;
 }
@@ -256,12 +258,13 @@ interface PendingBarProps {
  * bar. The first item and how many more, with a way there; for a site admin
  * or a director, the access requests nobody has answered yet.
  */
-export function PendingBar({ pending, openId, onGo, onReview, onDismiss, inConsole }: PendingBarProps) {
+export function PendingBar({ pending, openId, onGo, onReview, onDismiss, onDismissProposals, inConsole }: PendingBarProps) {
   const { t } = useTranslation();
   const items = pending.items.filter((item) => item.tournamentId !== openId);
   const first = items[0];
   const alert = pending.requests !== null && !inConsole;
-  if (first === undefined && !alert) return null;
+  const proposals = pending.proposals !== null && !inConsole;
+  if (first === undefined && !alert && !proposals) return null;
   return (
     <div className="tournament-pending">
       {first !== undefined && (
@@ -291,6 +294,28 @@ export function PendingBar({ pending, openId, onGo, onReview, onDismiss, inConso
             title={t("tournaments.pending.dismissTitle")}
             aria-label={t("tournaments.pending.dismiss")}
             onClick={onDismiss}
+          >
+            {"×"}
+          </button>
+        </div>
+      )}
+      {/* Proposals waiting for a tournament director (#569). */}
+      {proposals && (
+        <div className="tournament-pending-bar is-admin" role="status">
+          <span>
+            {"\u{1F514}"}{" "}
+            {t("tournaments.pending.proposals", { count: pending.proposals ?? 1 })}
+            {pending.newProposals !== null && pending.newProposals < (pending.proposals ?? 0) && (
+              <> {t("tournaments.pending.newRequests", { count: pending.newProposals })}</>
+            )}
+          </span>
+          <Button onClick={onReview}>{t("tournaments.pending.review")}</Button>
+          <button
+            type="button"
+            className="tournament-link-button"
+            title={t("tournaments.pending.dismissProposalsTitle")}
+            aria-label={t("tournaments.pending.dismiss")}
+            onClick={onDismissProposals}
           >
             {"×"}
           </button>

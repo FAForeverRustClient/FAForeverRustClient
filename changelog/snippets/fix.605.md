@@ -1,0 +1,1 @@
+- The checkboxes in the tournament forms look like the ones in the rest of the client again instead of wide empty bars.

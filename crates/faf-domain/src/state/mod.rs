@@ -201,6 +201,10 @@ pub use tourney::{EarlyFinish, Rename, RenameCheck, Survivors, TourneyBan};
 pub use tourney::{ImportedGroup, ImportedPlacing, ImportedRow};
 pub use tourney::{PendingImage, PickSettings, PlanLists, SwissExtras, TourneyPreset};
 pub use tourney::{PickLogEntry, PickMade, PickPhase, Playoffs, StageTwoPlan, TeamRecord};
+pub use tourney::{
+    ProposalArea, ProposalCard, ProposalDecision, ProposalQueue, ProposalState, ProposalStep,
+    TourneyProposal,
+};
 pub use training::{
     compose_contribution, compose_review_request, compose_url, contribution_problem,
     filter_resources, game_mode_of, hosted_guide, hosted_recording, kind_label, leaderboard_word,

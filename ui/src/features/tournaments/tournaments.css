@@ -2040,11 +2040,16 @@
  * other feature that shows a control styles its own, so this is the tournament
  * tab's, in one place rather than per panel. Without it a native white control
  * sits on a dark surface, which is what the whole feature looked like.
+ *
+ * Text fields only: a checkbox or a radio given this padding was stretched
+ * into a wide empty bar instead of the client's own box (the format's "3rd
+ * place match" and the rest). `:where` keeps the rule as weak as it was, so
+ * whatever overrides it still does.
  */
-.tournament-field input,
+.tournament-field input:where(:not([type="checkbox"], [type="radio"])),
 .tournament-field select,
 .tournament-field textarea,
-.tournament-form input,
+.tournament-form input:where(:not([type="checkbox"], [type="radio"])),
 .tournament-form select,
 .tournament-form textarea {
   background: var(--color-surface-raised);
@@ -2062,7 +2067,7 @@
   line-height: 1.45;
 }
 
-.tournament-field input:hover:not(:disabled),
+.tournament-field input:where(:not([type="checkbox"], [type="radio"])):hover:not(:disabled),
 .tournament-field select:hover:not(:disabled),
 .tournament-field textarea:hover:not(:disabled) {
   border-color: var(--color-accent-glow);
@@ -2073,16 +2078,6 @@
 .tournament-field textarea:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-/* A checkbox is the one control that must not stretch: it is a box beside a
-   label, not a field. */
-.tournament-field input[type="checkbox"],
-.tournament-checkbox input,
-.tournament-check input {
-  width: auto;
-  min-width: 0;
-  accent-color: var(--color-accent);
 }
 
 .tournament-checkbox,
@@ -9119,4 +9114,418 @@ button.tournament-chat-author:hover {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* Tournament proposals (issue 569): the card on the event and the two
+   dialogs, in the launch overlays' three bands (a raised head saying what
+   this is and where it stands, the body, a foot with the actions, the main
+   one last) and their option cards. */
+.proposal-card {
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.proposal-card-head,
+.proposal-dialog-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.proposal-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--color-muted);
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.proposal-card[data-tone="waiting"] .proposal-icon {
+  color: var(--color-warn-text);
+  background: color-mix(in srgb, var(--color-warn) 12%, var(--color-surface-hover));
+  border-color: color-mix(in srgb, var(--color-warn) 40%, var(--color-border));
+}
+
+.proposal-card[data-tone="taken"] .proposal-icon {
+  color: var(--color-ok-text);
+  background: color-mix(in srgb, var(--color-ok) 12%, var(--color-surface-hover));
+  border-color: color-mix(in srgb, var(--color-ok) 40%, var(--color-border));
+}
+
+.proposal-card[data-tone="director"] .proposal-icon {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.proposal-heading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.proposal-eyebrow {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.proposal-heading strong {
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proposal-card-body,
+.proposal-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.proposal-card-body p,
+.proposal-dialog-body p {
+  margin: 0;
+}
+
+.proposal-card-foot,
+.proposal-dialog-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.proposal-hint {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.proposal-lead {
+  color: var(--color-muted);
+}
+
+/* What the proposer asked: one line each, an icon saying free or kept. */
+.proposal-answers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.proposal-answers li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.proposal-answers li > svg {
+  flex: 0 0 auto;
+  margin-top: 3px;
+  color: var(--color-ok-text);
+}
+
+.proposal-answers li[data-kept] > svg {
+  color: var(--color-warn-text);
+}
+
+.proposal-answers li:last-child > svg {
+  color: var(--color-muted);
+}
+
+/* A note somebody wrote, or what came of the proposal last: the launch
+   overlays' notice box. */
+.proposal-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.proposal-note > svg {
+  flex: 0 0 auto;
+  margin-top: 3px;
+  color: var(--color-muted);
+}
+
+.proposal-note[data-tone="warn"] {
+  background: color-mix(in srgb, var(--color-warn) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-warn) 40%, var(--color-border));
+}
+
+.proposal-note[data-tone="warn"] > svg {
+  color: var(--color-warn-text);
+}
+
+.proposal-note[data-tone="error"] {
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-error) 40%, var(--color-border));
+}
+
+.proposal-note[data-tone="error"] > svg {
+  color: var(--color-error-text);
+}
+
+/* A kept area on a taken-over proposal, with its way to lift it. */
+.proposal-lock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.proposal-lock > svg {
+  flex: 0 0 auto;
+  color: var(--color-warn-text);
+}
+
+.proposal-lock > span {
+  flex: 1 1 240px;
+}
+
+.proposal-credit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+/* The dialogs: the launch overlays' frame, edge to edge bands. */
+.modal-panel.proposal-dialog {
+  width: min(520px, calc(100vw - 32px));
+  max-width: 520px;
+  padding: 0;
+  overflow: hidden auto;
+}
+
+.proposal-dialog > .modal-close {
+  top: var(--space-3);
+  right: var(--space-3);
+}
+
+.proposal-dialog-head {
+  padding-right: calc(var(--space-4) + 28px);
+}
+
+.proposal-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.proposal-section h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.proposal-options {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* A choice as a card, as the access request's options are. */
+.proposal-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-3);
+  padding: 10px 12px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.proposal-option:hover {
+  border-color: var(--color-border-strong);
+}
+
+.proposal-option.is-chosen {
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface-raised));
+  border-color: var(--color-accent);
+}
+
+/* Keyboard focus only: a dialog focuses its first choice as it opens, and a
+   ring on it then reads as that choice being made. */
+.proposal-option:has(input:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.proposal-option input:focus-visible {
+  outline: none;
+}
+
+.proposal-option input {
+  margin: 2px 0 0;
+}
+
+.proposal-option input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+}
+
+.proposal-option-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.proposal-option-copy strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.proposal-option-copy span {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* A text field under its label in sentence case, not an all-caps caption. */
+.proposal-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.proposal-field > span {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.proposal-field textarea,
+.proposal-field input {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text);
+  font-size: 13px;
+  line-height: 1.45;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+}
+
+.proposal-field textarea:hover,
+.proposal-field input:hover {
+  border-color: var(--color-muted);
+}
+
+.tournament-row-tag.is-proposal.is-wait {
+  color: var(--color-warn-text);
+  border-color: color-mix(in srgb, var(--color-warn) 40%, transparent);
+}
+
+.tournament-row-tag.is-proposal.is-ok {
+  color: var(--color-ok-text);
+  border-color: color-mix(in srgb, var(--color-ok) 40%, transparent);
+}
+
+.tournament-row-tag.is-proposal.is-no {
+  color: var(--color-error-text);
+  border-color: color-mix(in srgb, var(--color-error) 40%, transparent);
+}
+
+.tournament-row-tag.is-proposal.is-warn {
+  color: var(--color-warn-text);
+}
+
+.tournaments-group-note {
+  margin: 0 0 var(--space-2);
+  font-size: 12px;
+}
+
+/* The console's Proposals tab: one card per proposal waiting. */
+.tournament-proposal-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tournament-proposal-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tournament-proposal-card p {
+  margin: 0;
+}
+
+.tournament-proposal-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.tournament-proposal-card-head .tournament-link-button {
+  font-weight: 700;
+}
+
+.tournament-proposal-note {
+  padding: var(--space-2);
+  border-left: 2px solid var(--color-border-strong);
+}
+
+.tournament-proposal-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-2);
+}
+
+.tournament-proposal-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tournament-proposal-fact > .muted {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tournament-proposal-description {
+  font-size: 12px;
+  white-space: pre-line;
 }

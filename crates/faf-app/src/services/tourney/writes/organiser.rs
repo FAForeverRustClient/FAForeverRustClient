@@ -217,6 +217,19 @@ pub(super) async fn administer(
     ctx: &ServiceCtx,
     out: &EventSink,
 ) {
+    // A proposal's step changes what waits on whom (#569): the proposer's
+    // pending items, a director's alert and the console's queue, none of
+    // which is part of the reload a write gets.
+    let proposal = matches!(
+        change,
+        TourneyAdmin::ProposalSubmit { .. }
+            | TourneyAdmin::ProposalWithdraw
+            | TourneyAdmin::ProposalTake { .. }
+            | TourneyAdmin::ProposalDecline { .. }
+            | TourneyAdmin::ProposalRelease { .. }
+            | TourneyAdmin::ProposalUnlock { .. }
+            | TourneyAdmin::ProposalDrop
+    );
     write(TourneyAction::Administering, ctx, out, {
         let tournament_id = tournament_id.clone();
         async move {
@@ -227,6 +240,9 @@ pub(super) async fn administer(
         }
     })
     .await;
+    if proposal {
+        super::super::site::reload_site(ctx, out).await;
+    }
 }
 
 pub(super) async fn add_organiser(
