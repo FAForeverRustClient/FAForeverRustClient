@@ -537,8 +537,17 @@ pub(super) fn documents_vault_dir() -> Option<PathBuf> {
     Some(crate::infra::faf_content::vault_dir())
 }
 
+/// A path the way FA reads it from `fa_path.lua`: forward slashes, and a Linux
+/// path on the `Z:` drive Wine maps the filesystem root to.
+///
+/// The spelling is [`game_visible_path`]'s, so the command line and this file
+/// cannot drift apart. Unlike the command line it does not wait for a launch
+/// wrapper: outside Windows the only program that ever reads this file is FA
+/// running under Wine.
+///
+/// [`game_visible_path`]: crate::infra::game::game_visible_path
 fn slashed(path: &Path) -> String {
-    path.display().to_string().replace('\\', "/")
+    crate::infra::game::game_visible_path(path, !cfg!(windows)).replace('\\', "/")
 }
 
 /// Whether every one of the version offsets in `exe_path` already holds
@@ -910,6 +919,23 @@ mod tests {
         copy_retail_binaries(&temp.path().join("missing"), &faf).unwrap();
 
         assert_eq!(std::fs::read_dir(faf.join("bin")).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn fa_path_lua_names_a_linux_path_on_wines_z_drive() {
+        // Spelled out rather than built with `slashed`, so the test fails if
+        // the translation does.
+        let steam = Path::new(
+            "/home/player/.local/share/Steam/steamapps/common/Supreme Commander Forged Alliance",
+        );
+        let expected = if cfg!(windows) {
+            "/home/player/.local/share/Steam/steamapps/common/Supreme Commander Forged Alliance"
+        } else {
+            "Z:/home/player/.local/share/Steam/steamapps/common/Supreme Commander Forged Alliance"
+        };
+        assert_eq!(slashed(steam), expected);
+        // A Windows path keeps its drive and only turns its separators.
+        assert_eq!(slashed(Path::new(r"C:\Games\FA")), "C:/Games/FA");
     }
 
     #[test]
