@@ -106,6 +106,8 @@ export function LiveReplayTable(props: Props) {
     defaults: DEFAULT_COLUMN_PX,
     flexible: FLEXIBLE_COLUMN,
     floors: COLUMN_FLOOR_PX,
+    // The Watch button keeps its width on a wide window.
+    fixed: [7],
     headerRef,
   });
   const { order, moving, widths: columns } = list;

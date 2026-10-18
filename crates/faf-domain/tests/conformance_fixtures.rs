@@ -7838,6 +7838,7 @@ fn cases() -> Vec<Case> {
                                     value: "NOISY".into(),
                                 },
                             ],
+                            allow_rules: Vec::new(),
                             column_widths: vec![320, 180, 90, 110, 80],
                             column_order: Vec::new(),
                             detail_width: 360,

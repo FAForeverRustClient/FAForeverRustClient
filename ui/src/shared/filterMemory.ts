@@ -13,8 +13,8 @@
 // `browsing.rememberedFilters` for the next one.
 //
 // A few keep theirs in a browsing preference of its own, which predates this
-// setting (the game browser's switches, the live replay filters, the vault
-// presets, the replay vault's player). Those already outlive a tab switch, the
+// setting (the game browser's switches, the vault presets, the replay vault's
+// player). The live replay filters did too, until #590. Those already outlive a tab switch, the
 // backend clears them at startup unless the setting says otherwise, and
 // `useForgetFiltersOnLeave` clears them when the tab is left while the setting
 // is "never".

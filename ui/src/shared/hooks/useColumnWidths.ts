@@ -19,6 +19,8 @@ import {
   gridColumnSpace,
   resolveColumnWidths,
   withBoundaryTraded,
+  withFlexibleBounded,
+  withSpareRoom,
 } from "../tableColumns";
 
 /** The settings fields that hold a table's column widths. */
@@ -31,7 +33,8 @@ export interface ColumnWidths {
   widths: number[];
   /**
    * What to draw with: `widths` fitted to the list's space, no column under
-   * its floor. See the note on fitting in `tableColumns`.
+   * its floor, and on a list wider than its columns the spare room shared
+   * out (`withSpareRoom`). See the note on fitting in `tableColumns`.
    */
   drawn: number[];
   /**
@@ -78,6 +81,8 @@ const FLEXIBLE_FLOOR_PX = 80;
  * @param order for a table whose columns can be moved: the column drawn at
  *   each position. A divider's `boundary` is then a drawn position, and the
  *   two columns it trades between are the ones either side of it on screen.
+ * @param fixed the columns, in designed order, that spare room does not
+ *   widen: a thumbnail, or a column of buttons.
  */
 export function useColumnWidths(
   field: ColumnField,
@@ -87,10 +92,12 @@ export function useColumnWidths(
     layout = "table",
     floors,
     order,
+    fixed,
   }: {
     layout?: "grid" | "table";
     floors?: readonly number[];
     order?: readonly number[];
+    fixed?: readonly number[];
   } = {},
 ): ColumnWidths {
   const stored = useAppStore((state) => state.state.settings.browsing[field]);
@@ -132,10 +139,14 @@ export function useColumnWidths(
   // column reaches its floor at twice its floor's width.
   const storedFloorOf = (index: number) => drawnFloors[index] / dragScale.current;
 
-  const resolve = () => resolveColumnWidths(stored, defaults);
+  // The flexible column held to a sane width: see `withFlexibleBounded`.
+  const resolve = () => withFlexibleBounded(resolveColumnWidths(stored, defaults), flexible, defaults);
   const current = dragged ?? resolve();
   const fit = fitColumns(current, drawnFloors, space);
   const { scale } = fit;
+  // On a wide window every column shares the spare room before the flexible
+  // one takes the rest (#591), as the Play tab's list does.
+  const drawn = withSpareRoom(fit, space, flexible, { fixed });
 
   // A table whose floors do not fit has to be wider than its scroller, and its
   // scroller hides sideways overflow so that a window being resized never
@@ -164,19 +175,21 @@ export function useColumnWidths(
 
   return {
     widths: current,
-    drawn: fit.drawn,
+    drawn,
     overflow: fit.overflow,
     total: fit.total,
     containerRef: setContainer,
     onStart: (handle) => {
       dragScale.current = scale;
-      // A list wider than its columns draws the flexible column wider than
-      // its stored width. The drag starts from what is on screen, or the
-      // divider would jump by the difference.
+      // A list wider than its columns draws every column wider than its
+      // stored width, the flexible one the most. The drag starts from what is
+      // on screen, or the divider would jump by the difference.
       const drawnFlexible = scale >= 1 ? drawnColumnWidth(handle, flexible) : null;
       origin.current = drawnFlexible === null
         ? current
-        : current.map((width, index) => (index === flexible ? Math.max(width, drawnFlexible) : width));
+        : current.map((width, index) =>
+          index === flexible ? Math.max(width, drawnFlexible) : Math.max(width, drawn[index] ?? width),
+        );
     },
     onDrag: (boundary, delta) => {
       const base = (origin.current ??= current);
