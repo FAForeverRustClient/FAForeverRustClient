@@ -111,6 +111,8 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
     defaults: DEFAULT_COLUMN_PX,
     flexible: FLEXIBLE_COLUMN,
     floors: COLUMN_FLOOR_PX,
+    // The thumbnail and the replay buttons keep their width on a wide window.
+    fixed: [0, REPLAY_COLUMN],
     headerRef,
   });
   const { order, moving, widths: columns } = list;

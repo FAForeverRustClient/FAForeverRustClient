@@ -3095,6 +3095,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -60698,6 +60699,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -60989,6 +60991,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -61290,6 +61293,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -61585,6 +61589,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -61880,6 +61885,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -62185,6 +62191,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -62496,6 +62503,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -62804,6 +62812,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -63120,6 +63129,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -63519,6 +63529,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -63880,6 +63891,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -64243,6 +64255,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -64576,6 +64589,7 @@
                 "preferences": {
                   "coopBoardColumns": [],
                   "customGamesBrowser": {
+                    "allowRules": [],
                     "applyFilters": true,
                     "columnOrder": [],
                     "columnWidths": [
@@ -64719,6 +64733,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": true,
                 "columnOrder": [],
                 "columnWidths": [
@@ -80572,6 +80587,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -80874,6 +80890,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -81205,6 +81222,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -81522,6 +81540,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -81828,6 +81847,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -82123,6 +82143,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -82421,6 +82442,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -82743,6 +82765,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -83034,6 +83057,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -83337,6 +83361,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -83638,6 +83663,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -83933,6 +83959,7 @@
                   "browsing": {
                     "coopBoardColumns": [],
                     "customGamesBrowser": {
+                      "allowRules": [],
                       "applyFilters": false,
                       "columnOrder": [],
                       "columnWidths": [],
@@ -84218,6 +84245,7 @@
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
+                "allowRules": [],
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
@@ -125564,6 +125592,7 @@
       "browsing": {
         "coopBoardColumns": [],
         "customGamesBrowser": {
+          "allowRules": [],
           "applyFilters": false,
           "columnOrder": [],
           "columnWidths": [],

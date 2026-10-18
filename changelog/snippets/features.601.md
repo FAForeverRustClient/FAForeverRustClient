@@ -1,0 +1,2 @@
+- The game filters of the Play tab can now also always show games: the same rules as for hiding, for example every game with a certain mod. The hosts you always showed are kept as such rules.
+- The Mod filter also matches sim mods, not only the featured mod.
