@@ -4,6 +4,7 @@
 
 import { useState } from "react";
 import { Button } from "../../../design-system/Button";
+import { Icon } from "../../../design-system/Icon";
 import type { ProposalCard, ProposalQueue, SiteWrite, TourneyAdmin } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -88,14 +89,19 @@ function Card({ card, busy, onAdminister, onOpenEvent, onTake }: {
         <Fact label={t("tournaments.proposal.factRewards")}>{rewards}</Fact>
       </div>
       {card.description !== "" && <p className="muted tournament-proposal-description">{card.description}</p>}
-      <ul className="tournament-proposal-answers">
-        <li className={card.lockMaps ? "is-kept" : "is-free"}>
+      <ul className="proposal-answers">
+        <li data-kept={card.lockMaps || undefined}>
+          <Icon name={card.lockMaps ? "lock" : "check"} size={14} />
           {t(card.lockMaps ? "tournaments.proposal.answerMapsKeep" : "tournaments.proposal.answerMapsFree")}
         </li>
-        <li className={card.lockFormat ? "is-kept" : "is-free"}>
+        <li data-kept={card.lockFormat || undefined}>
+          <Icon name={card.lockFormat ? "lock" : "check"} size={14} />
           {t(card.lockFormat ? "tournaments.proposal.answerFormatKeep" : "tournaments.proposal.answerFormatFree")}
         </li>
-        <li>{t(card.keep ? "tournaments.proposal.theyKeep" : "tournaments.proposal.theyHandOver", { name: card.byName })}</li>
+        <li>
+          <Icon name="user" size={14} />
+          {t(card.keep ? "tournaments.proposal.theyKeep" : "tournaments.proposal.theyHandOver", { name: card.byName })}
+        </li>
       </ul>
       {card.mine ? (
         <p className="muted">{t("tournaments.proposal.mineNote")}</p>

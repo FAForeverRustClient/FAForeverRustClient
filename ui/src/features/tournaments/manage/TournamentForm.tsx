@@ -22,6 +22,7 @@
 import { useState, type ClipboardEvent, type ReactNode } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
+import { Icon } from "../../../design-system/Icon";
 import type {
   DescImageAnswer,
   CopySource,
@@ -427,22 +428,26 @@ export function TournamentForm({
           an account that may host. One that may not can only propose, and is
           not asked. */}
       {!editing && proposing === "choice" && (
-        <fieldset className="tournament-host-mode" aria-label={t("tournaments.form.hostMode")}>
-          <label className="tournament-check">
+        <div className="proposal-options" role="radiogroup" aria-label={t("tournaments.form.hostMode")}>
+          <label className={draft.proposal ? "proposal-option" : "proposal-option is-chosen"}>
             <input type="radio" name="tournament-host-mode" checked={!draft.proposal} onChange={() => set({ proposal: false })} />
-            {t("tournaments.form.hostMyself")}
+            <span className="proposal-option-copy">
+              <strong>{t("tournaments.form.hostMyself")}</strong>
+            </span>
           </label>
-          <label className="tournament-check">
+          <label className={draft.proposal ? "proposal-option is-chosen" : "proposal-option"}>
             <input type="radio" name="tournament-host-mode" checked={draft.proposal} onChange={() => set({ proposal: true })} />
-            {t("tournaments.form.proposeIt")}
+            <span className="proposal-option-copy">
+              <strong>{t("tournaments.form.proposeIt")}</strong>
+            </span>
           </label>
-        </fieldset>
+        </div>
       )}
       {proposal && (
-        <section className="surface tournament-proposal-intro">
-          <strong className="tournament-proposal-head">{t("tournaments.proposal.head")}</strong>
-          <p>{t("tournaments.form.proposeIntro")}</p>
-        </section>
+        <p className="proposal-note">
+          <Icon name="flag" size={15} />
+          <span>{t("tournaments.form.proposeIntro")}</span>
+        </p>
       )}
 
       {!editing && onLoadTemplate !== undefined && (
