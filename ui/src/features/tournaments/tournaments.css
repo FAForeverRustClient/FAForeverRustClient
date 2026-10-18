@@ -2040,11 +2040,16 @@
  * other feature that shows a control styles its own, so this is the tournament
  * tab's, in one place rather than per panel. Without it a native white control
  * sits on a dark surface, which is what the whole feature looked like.
+ *
+ * Text fields only: a checkbox or a radio given this padding was stretched
+ * into a wide empty bar instead of the client's own box (the format's "3rd
+ * place match" and the rest). `:where` keeps the rule as weak as it was, so
+ * whatever overrides it still does.
  */
-.tournament-field input,
+.tournament-field input:where(:not([type="checkbox"], [type="radio"])),
 .tournament-field select,
 .tournament-field textarea,
-.tournament-form input,
+.tournament-form input:where(:not([type="checkbox"], [type="radio"])),
 .tournament-form select,
 .tournament-form textarea {
   background: var(--color-surface-raised);
@@ -2062,7 +2067,7 @@
   line-height: 1.45;
 }
 
-.tournament-field input:hover:not(:disabled),
+.tournament-field input:where(:not([type="checkbox"], [type="radio"])):hover:not(:disabled),
 .tournament-field select:hover:not(:disabled),
 .tournament-field textarea:hover:not(:disabled) {
   border-color: var(--color-accent-glow);
@@ -2073,16 +2078,6 @@
 .tournament-field textarea:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-/* A checkbox is the one control that must not stretch: it is a box beside a
-   label, not a field. */
-.tournament-field input[type="checkbox"],
-.tournament-checkbox input,
-.tournament-check input {
-  width: auto;
-  min-width: 0;
-  accent-color: var(--color-accent);
 }
 
 .tournament-checkbox,
@@ -9395,17 +9390,6 @@ button.tournament-chat-author:hover {
 
 .proposal-option input {
   margin: 2px 0 0;
-}
-
-/* Inside the create form, whose rule for its text fields would otherwise
-   stretch and fill the radio as well. */
-.tournament-form .proposal-option input {
-  width: 16px;
-  height: 16px;
-  min-width: 0;
-  padding: 0;
-  background: none;
-  border: 0;
 }
 
 .proposal-option input[type="radio"] {
