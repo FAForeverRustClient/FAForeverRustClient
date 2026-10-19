@@ -1051,7 +1051,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.general.startPage.label": "Strona startowa",
   "settings.general.autoLogin.label": "Automatyczne logowanie",
   "settings.general.keepRunningDuringGame.label": "Działaj dalej podczas gry",
-  "settings.general.keepRunningDuringGame.hint": "Zamknięcie okna lub wybranie \"Quit\" w zasobniku podczas gry chowa klienta do zasobnika, a gra zachowuje połączenie. Klient zamknie się sam po zakończeniu gry, chyba że otworzysz go ponownie. Wyłączone: pyta przed zamknięciem.",
+  "settings.general.keepRunningDuringGame.hint": "Klient minimalizuje się do zasobnika i zamyka sam po zakończeniu gry. Po wyłączeniu tej opcji pyta przed zamknięciem.",
   "settings.general.filterMemory.label": "Zapamiętuj filtry",
   "settings.general.filterMemory.never": "Nigdy",
   "settings.general.filterMemory.session": "Do zamknięcia klienta",

@@ -431,6 +431,30 @@ fn refuse(ctx: &ServiceCtx, out: &EventSink, reason: String) {
     }
 }
 
+/// Report the anti-ghosting delay with a catalogue entry so the notification
+/// body can be shown in the user's language.
+fn refuse_live_delay(ctx: &ServiceCtx, out: &EventSink, waiting: u32) {
+    let reason = format!(
+        "Live replays are delayed by five minutes so nobody can watch \
+         an ongoing game for an advantage. Try again in {}.",
+        describe(waiting)
+    );
+    let slot = ctx.replays.launch_slot();
+    notifications::add_required_text(
+        out,
+        NotificationKind::Error,
+        notifications::Text::new("notifications.msg.liveReplayDelayed")
+            .with("minutes", waiting / 60)
+            .with("seconds", waiting % 60),
+        "Replay failed",
+        reason.clone(),
+        None,
+    );
+    if slot.cancellation.is_none() {
+        out.emit(ReplayEvent::Failed { reason });
+    }
+}
+
 pub(crate) fn cancel_live_tracking(out: &EventSink) {
     if out.with_state(|state| state.replays.live_tracking.is_some()) {
         out.emit(ReplayEvent::LiveTrackingCleared);
@@ -458,15 +482,7 @@ async fn watch_live(target: LiveReplayTarget, ctx: &ServiceCtx, out: &EventSink)
         (waiting, player)
     });
     if waiting > 0 {
-        refuse(
-            ctx,
-            out,
-            format!(
-                "Live replays are delayed by five minutes so nobody can watch \
-                 an ongoing game for an advantage. Try again in {}.",
-                describe(waiting)
-            ),
-        );
+        refuse_live_delay(ctx, out, waiting);
         return;
     }
 

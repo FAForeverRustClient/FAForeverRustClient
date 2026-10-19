@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { ClientNotification } from "../../ipc/bindings";
+import { t } from "../../i18n";
 import { de } from "../../i18n/catalog/de";
 import { en } from "../../i18n/catalog/en";
 import { resetLocaleForTests, setLocale } from "../../i18n/store";
@@ -21,6 +22,23 @@ function item(overrides: Partial<ClientNotification> = {}): ClientNotification {
 
 describe("a notification's text (#458)", () => {
   afterEach(() => resetLocaleForTests());
+
+  it("translates the live replay delay notification in Russian", () => {
+    const notice = item({
+      kind: "error",
+      title: en["notifications.msg.liveReplayDelayed.title"],
+      body: en["notifications.msg.liveReplayDelayed.body"],
+      text: {
+        key: "notifications.msg.liveReplayDelayed",
+        params: { minutes: "3", seconds: "17" },
+      },
+    });
+    setLocale("ru");
+    expect(notificationTitle(notice)).toBe(t("notifications.msg.liveReplayDelayed.title"));
+    expect(notificationBody(notice)).toBe(
+      t("notifications.msg.liveReplayDelayed.body", { minutes: 3, seconds: 17 }),
+    );
+  });
 
   it("is translated from the catalogue entry the backend attached", () => {
     setLocale("de");

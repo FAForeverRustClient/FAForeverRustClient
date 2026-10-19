@@ -603,6 +603,13 @@
   min-width: calc(2 * (154px + 6px + var(--generate-map-tools-width, 0px)) + 20px);
 }
 
+.generate-map-density-pair {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 20px;
+}
+
 /* A pair of cells whose contents differ in height -- here a single dropdown
    beside a field with buttons under it -- top-aligned rather than stretched.
    Stretched, each cell was as tall as the taller of the two and `.generate-map-row`
@@ -1001,6 +1008,10 @@
 
 @media (max-width: 720px) {
   .generate-map-grid-2col {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .generate-map-density-pair {
     grid-template-columns: minmax(0, 1fr);
   }
 
