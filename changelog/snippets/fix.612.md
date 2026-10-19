@@ -1,0 +1,1 @@
+- Live replays with the "Live replays workaround" setting on can be started again after an earlier one was closed, without restarting the client.
