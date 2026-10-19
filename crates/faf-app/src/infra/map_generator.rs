@@ -1297,11 +1297,12 @@ impl NeroxisMapGenerator {
 
         // Several at once, as many as the player allowed or the computer can
         // carry. One generator keeps only about one and a half cores busy:
-        // on a four-core machine three 896 maps took 32.8 s one after the
-        // other, 24.5 s three at a time, and two took 18.2 s side by side
-        // against 27.4 s. Four at once ran out of memory there and took
-        // 160 s, which is why the count is bounded by free memory as well as
-        // by cores: see `automatic_instances`.
+        // on a four-core machine three 896 maps took 30.3 s one after the
+        // other and 22.2 s three at a time (with the parallel collector, see
+        // `jvm_options`). Four at once were slower again there, 40.8 s, and
+        // with 12 GB of memory they swapped and took 160 s, which is why the
+        // count is bounded by free memory as well as by cores: see
+        // `automatic_instances`.
         let total = runs.len();
         let limit = match self.parallel_instances.load(Ordering::Relaxed) {
             0 => automatic_instances(map_size),
@@ -1574,6 +1575,13 @@ fn strip_ansi_block(text: &str) -> String {
 /// start at all, and generating would fail where it only had to be slower.
 /// The CDS log tags off, since unified logging writes to stdout, which is the
 /// generator's own progress stream.
+///
+/// The parallel collector instead of Java's default G1, because a generator
+/// is a batch job: throughput is all that counts, and G1's concurrent threads
+/// compete with the generator for the same cores. Alone it makes no
+/// difference, but three side by side on four cores made three 896 maps in
+/// 22.2 and 22.5 s against 29.2 and 31.8 s with G1, which was barely faster
+/// than the 31.5 s of running them one after the other.
 fn jvm_options(jar: &Path) -> Vec<std::ffi::OsString> {
     let mut archive = std::ffi::OsString::from("-XX:SharedArchiveFile=");
     archive.push(jar.with_extension("jsa"));
@@ -1583,22 +1591,25 @@ fn jvm_options(jar: &Path) -> Vec<std::ffi::OsString> {
         archive,
         "-Xlog:cds=off".into(),
         "-Xlog:cds+dynamic=off".into(),
+        "-XX:+UseParallelGC".into(),
     ]
 }
 
 /// How much memory one generator may take for a map of this size, in bytes.
 ///
-/// Measured with release 1.22.2 on the bundled Java 25, which sizes its heap
-/// at a quarter of the machine's memory and grows into it: the peak working
-/// set was 352 MB for a 256 map, 1.05 GB for 512 and 2.41 GB for 1024, close
-/// to linear in the map's edge. 2.5 MB per unit of size covers each of those
-/// with a little to spare; an unknown size is budgeted as a 20 km map.
+/// Measured with release 1.22.2 on the bundled Java 25 and the parallel
+/// collector, which sizes its heap at a quarter of the machine's memory and
+/// grows into it, so the peak rises with the machine: on 12 GB the peak
+/// working set was 352 MB for a 256 map, 1.05 GB for 512 and 2.41 GB for
+/// 1024, on 24 GB 1.23 GB for 512 and up to 3.19 GB for 1024. Close to linear
+/// in the map's edge either way; 3.25 MB per unit of size covers all of them,
+/// and an unknown size is budgeted as a 20 km map.
 ///
 /// Budgeted rather than capped with `-Xmx`: a 1024 map needs more than 1 GB
 /// of heap, and a generator that runs out of memory does not exit, it hangs
 /// until the timeout.
 fn generator_memory_budget(map_size: Option<u32>) -> u64 {
-    const PER_UNIT: u64 = 5 * 1024 * 1024 / 2;
+    const PER_UNIT: u64 = 13 * 1024 * 1024 / 4;
     const FLOOR: u64 = 512 * 1024 * 1024;
     (u64::from(map_size.unwrap_or(1024)) * PER_UNIT).max(FLOOR)
 }
@@ -1608,7 +1619,7 @@ fn generator_memory_budget(map_size: Option<u32>) -> u64 {
 ///
 /// Two bounds, and the lower one wins. Cores: one generator keeps about one
 /// and a half of them busy, yet three on four cores still made maps faster
-/// than two, so three quarters of the cores. Memory: every generator gets its
+/// than two and four made them slower, so three quarters of the cores. Memory: every generator gets its
 /// [`generator_memory_budget`] out of four fifths of what is free right now,
 /// the rest left for the game and the client. Where free memory cannot be
 /// read, two at most, which was a third faster than one on a four-core
@@ -2123,6 +2134,8 @@ mod tests {
                 .display()
         );
         assert!(options.contains(&archive));
+        // A batch job's collector, see `jvm_options`.
+        assert!(options.contains(&"-XX:+UseParallelGC".to_string()));
     }
 
     #[tokio::test]
@@ -2815,10 +2828,10 @@ mod tests {
     #[test]
     fn a_generator_is_budgeted_by_the_size_of_its_map() {
         const MB: u64 = 1024 * 1024;
-        // Above every measured peak: 352 MB, 1.05 GB and 2.41 GB.
+        // Above every measured peak: 352 MB, 1.23 GB and 3.19 GB.
         assert!(generator_memory_budget(Some(256)) >= 352 * MB);
-        assert!(generator_memory_budget(Some(512)) >= 1075 * MB);
-        assert!(generator_memory_budget(Some(1024)) >= 2468 * MB);
+        assert!(generator_memory_budget(Some(512)) >= 1260 * MB);
+        assert!(generator_memory_budget(Some(1024)) >= 3267 * MB);
         // Nothing smaller than half a gigabyte, whatever the size says.
         assert_eq!(generator_memory_budget(Some(1)), 512 * MB);
         // An unknown size is treated as a 20 km map, not as a small one.

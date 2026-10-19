@@ -193,9 +193,10 @@ pub struct GamePreferences {
     ///
     /// A setting rather than a fixed number because the right one is the
     /// computer's: one generator keeps about one and a half cores busy and
-    /// needs up to two and a half gigabytes for a 20 km map, so two at once
-    /// were a third faster on a four-core machine with 12 GB and four at once
-    /// ran out of memory and took four times as long.
+    /// needs up to about three gigabytes for a 20 km map, so three at once
+    /// were a third faster on a four-core machine, four at once were slower
+    /// again, and with 12 GB of memory four ran out of it and took four times
+    /// as long.
     #[serde(default)]
     pub map_generator_instances: u32,
     /// Show Forged Alliance as being played on Steam while a game runs, and

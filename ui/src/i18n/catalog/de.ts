@@ -1369,7 +1369,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.game.showReplayProgressHint": "Ein Fenster, während das Replay geholt wird und Forged Alliance sich öffnet. Die Statusleiste zeigt denselben Fortschritt in jedem Fall.",
   "settings.game.autoGenerateMaps": "Fehlende Karten automatisch erzeugen",
   "settings.game.mapGeneratorInstances": "Gleichzeitig laufende Map-Generatoren",
-  "settings.game.mapGeneratorInstancesHint": "Gilt, wenn mehrere Stile, Symmetrien oder Dichten ausgewählt sind und jede Karte einen eigenen Generator braucht. Ein Generator lastet etwa anderthalb Kerne aus und braucht für eine 20-km-Karte bis zu 2,5 GB Arbeitsspeicher.",
+  "settings.game.mapGeneratorInstancesHint": "Gilt, wenn mehrere Stile, Symmetrien oder Dichten ausgewählt sind und jede Karte einen eigenen Generator braucht. Ein Generator lastet etwa anderthalb Kerne aus und braucht für eine 20-km-Karte bis zu etwa 3 GB Arbeitsspeicher.",
   "settings.game.mapGeneratorInstances.automatic": "Automatisch ({count} auf diesem Computer)",
   "settings.game.mapGeneratorInstances.automaticPending": "Automatisch",
   "settings.game.keepGeneratedMaps": "Generierte Karten behalten",

@@ -1212,7 +1212,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.game.additionalGameLaunch": "Dodatkowe argumenty uruchamiania gry",
   "settings.game.autoGenerateMaps": "Automatycznie generuj brakujące mapy",
   "settings.game.mapGeneratorInstances": "Generatory map działające jednocześnie",
-  "settings.game.mapGeneratorInstancesHint": "Używane, gdy wybrano kilka stylów, symetrii lub gęstości i każda mapa potrzebuje własnego generatora. Jeden generator zajmuje około półtora rdzenia i potrzebuje do 2,5 GB pamięci dla mapy 20 km.",
+  "settings.game.mapGeneratorInstancesHint": "Używane, gdy wybrano kilka stylów, symetrii lub gęstości i każda mapa potrzebuje własnego generatora. Jeden generator zajmuje około półtora rdzenia i potrzebuje do około 3 GB pamięci dla mapy 20 km.",
   "settings.game.mapGeneratorInstances.automatic": "Automatycznie ({count} na tym komputerze)",
   "settings.game.mapGeneratorInstances.automaticPending": "Automatycznie",
   "settings.game.cacheLifetime": "Przechowywanie pamięci podręcznej gry",
