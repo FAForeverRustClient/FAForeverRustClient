@@ -2806,7 +2806,7 @@ fn signup_event() -> FakeEvent {
         - Report the score in your match chat\n\
         - No pausing past 30 seconds without asking\n\n\
         Questions go to the organisers, or type `!organizer` in chat. \
-        The full ruleset is in the [FAF tournament rules](https://tournaments.doodlepros.com/faq)."
+        The full ruleset is in the [FAF tournament rules](https://tournaments.faforever.com/faq)."
         .into();
     event.rewards = "**1st** Champion avatar + 500 credits\n\
         **2nd** Faction avatar\n\

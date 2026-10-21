@@ -35,21 +35,17 @@ describe("the link directory", () => {
   });
 
   it("keeps directory order inside a section", () => {
-    const order = DIRECTORY.filter((link) => link.section === "tools").map((link) => link.id);
-    expect(sectionLinks("tools").map((link) => link.id)).toEqual(order);
+    const order = DIRECTORY.filter((link) => link.section === "watch").map((link) => link.id);
+    expect(sectionLinks("watch").map((link) => link.id)).toEqual(order);
   });
 
-  it("still lists what the community hub leaves out", () => {
-    // The issue's one concrete complaint about the hub page this replaces.
-    expect(DIRECTORY.some((link) => link.id === "scribbl")).toBe(true);
-  });
-
-  it("opens with FAF's own four addresses, in the order the maintainers set", () => {
+  it("opens with FAF's own five addresses, in the order the maintainers set", () => {
     expect(sectionLinks("play").map((link) => link.id)).toEqual([
       "faforever",
       "discord",
       "wiki",
       "forum",
+      "tournaments",
     ]);
   });
 

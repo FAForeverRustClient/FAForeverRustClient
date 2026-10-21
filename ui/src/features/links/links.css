@@ -35,19 +35,22 @@
 
 /* ── cards ─────────────────────────────────────────────────────────── */
 
-/* Four fixed columns, so the help row below sits on the same lines as the
-   directory above; two on a narrow window. Cards in a row stretch to one
-   height. */
+/* Two columns for the directory sections, four for the help row below (3:1);
+   cards in a row stretch to one height. */
 .links-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
   padding-top: var(--space-4);
 }
 
+.links-grid-help {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 @container (max-width: 760px) {
   .links-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 }
 
