@@ -377,7 +377,6 @@ export function MatchmakingPanel({
                   // Your own search is in the server's numbers and is not
                   // somebody you could be matched against.
                   inRange={playersInRatingRange(queue, queueRating, searchingThisQueue ? 1 : 0)}
-                  ownSearches={searchingThisQueue ? 1 : 0}
                   placement={queuePlacement}
                   onToggle={() => toggleQueue(queue)}
                   onOpenMapPool={() => openMapPool(queue)}

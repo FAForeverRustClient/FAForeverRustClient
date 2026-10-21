@@ -1734,18 +1734,20 @@
   bottom: 10px;
   transform: translateX(-50%);
   z-index: 20;
+  box-sizing: border-box;
   display: grid;
-  gap: 1px;
-  min-width: 190px;
-  padding: 10px 10px 8px;
+  gap: 2px;
+  width: calc(100% - 20px);
+  max-width: 240px;
+  padding: 8px 10px;
   background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-popover);
-  font-size: 12px;
+  font-size: 11px;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 100ms ease;
+  transition: opacity var(--transition-fast);
 }
 
 /* Anywhere on the card, not only on the words "n queued". The breakdown is
@@ -1757,71 +1759,78 @@
   opacity: 1;
 }
 
-/* The title over a hairline, so the list reads as a small table with a
-   heading rather than as one more line of it. */
+/* Thetitle over a hairline, so the chart reads as a figure with a heading
+   rather than as one more line of the card. */
 .matchmaker-queue-breakdown-head {
   display: grid;
-  gap: 2px;
-  margin: 0 0 4px;
-  padding: 0 2px 6px;
+  margin: 0 0 2px;
+  padding: 0 2px 5px;
   border-bottom: 1px solid var(--color-border);
 }
 
 .matchmaker-queue-breakdown b {
+  overflow: hidden;
   color: var(--color-muted);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: .03em;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-/* Your matchmaking rating under the title: the number the arrow follows. */
-.matchmaker-queue-breakdown-head span {
-  color: var(--color-subtle);
+.matchmaker-queue-plot {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  color: var(--color-accent);
+}
+
+.matchmaker-queue-axis {
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+}
+
+.matchmaker-queue-grid {
+  stroke: var(--color-border);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+.matchmaker-queue-tick {
+  fill: var(--color-muted);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
-/* A band: the marker column, the range, the count at the right. */
-.matchmaker-queue-band {
-  display: grid;
-  grid-template-columns: 14px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 6px;
-  min-height: 22px;
-  padding: 0 2px;
+.matchmaker-queue-curve-fill {
+  fill: color-mix(in srgb, currentColor 14%, transparent);
+  stroke: none;
 }
 
-.matchmaker-queue-band-marker {
-  display: grid;
-  place-items: center;
-  color: var(--color-text);
+.matchmaker-queue-curve-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.matchmaker-queue-breakdown em {
-  color: var(--color-muted);
-  font-style: normal;
-  font-variant-numeric: tabular-nums;
+.matchmaker-queue-marker-line {
+  stroke: var(--color-muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
 }
 
-.matchmaker-queue-breakdown i {
-  color: var(--color-subtle);
-  font-style: normal;
-  font-variant-numeric: tabular-nums;
+.matchmaker-queue-marker-halo {
+  fill: var(--color-surface-raised);
+  stroke: none;
 }
 
-/* Green is the one signal that waiting here can produce a game: a band
-   holding somebody who would take this search. The count says how many. */
-.matchmaker-queue-band.is-in-range i {
-  color: var(--color-ok-text);
-  font-weight: 600;
-}
-
-/* Your own band: the arrow points at it and its range is in full text
-   colour. No colour of its own, so it never reads as the green above. */
-.matchmaker-queue-band.is-mine em {
-  color: var(--color-text);
-  font-weight: 600;
+.matchmaker-queue-marker-dot {
+  fill: var(--color-accent);
+  stroke: none;
 }
 
 /* The latest matchmaker games (issue 301), as a table built like the

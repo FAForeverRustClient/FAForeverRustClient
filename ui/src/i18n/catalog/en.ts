@@ -684,11 +684,9 @@ export const en = {
   "lobby.galacticWar.how.client.body": "Galactic War runs as its own application with its own login. This client installs it, keeps it current and starts it; everything after that happens in the Galactic War window.",
   "lobby.matchmaker.inRange": "{count} in your range",
   "lobby.matchmaker.queueByRating": "Players in queue by rating",
-  "lobby.matchmaker.yourMatchmakingRating": "Matched on your mean rating: {rating}",
   "lobby.matchmaker.queuedCount": { one: "{count} queued", other: "{count} queued" },
   "lobby.matchmaker.activeCount": { one: "{count} active", other: "{count} active" },
   "lobby.party.ofPlayers": "{count} of {max} players",
-  "lobby.matchmaker.someOfBand": "{inRange} of {count}",
   "lobby.matchmaker.inRangeHint": "Players waiting in this queue who could be matched with you after a few minutes of waiting, not counting your own search.",
   "lobby.matchmaker.mapPool": "Map pool",
   // What a queue actually does to your game. The questions it answers are the
