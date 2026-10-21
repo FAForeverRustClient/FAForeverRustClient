@@ -1,0 +1,3 @@
+- External community tool, mini-game, and third-party document links are removed from the External links and Training tabs.
+- The Tournaments entry in External links is now named FAF Tournaments.
+- The browser sign-in page no longer loads fonts from Google Fonts.

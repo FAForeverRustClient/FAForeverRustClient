@@ -38,15 +38,10 @@ export type LinkOrigin = "official" | "community";
 
 /**
  * The groups, in the order they are drawn.
- *
- * Purpose first, origin second: somebody looking for a rating history wants the
- * tools, and whether FAF or a player wrote the tool is the next question, not
- * the first. Splitting the page into "official" and "community" instead would
- * bury the things people come here for under a provenance question.
  */
-export type LinkSection = "play" | "tools" | "games" | "watch";
+export type LinkSection = "play" | "watch";
 
-export const LINK_SECTIONS: LinkSection[] = ["play", "tools", "games", "watch"];
+export const LINK_SECTIONS: LinkSection[] = ["play", "watch"];
 
 export interface DirectoryLink {
   /** Stable id, used as the React key and in tests. */
@@ -131,70 +126,7 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     hint: "links.entry.tournamentsHint",
     href: "https://tournaments.faforever.com/",
     origin: "official",
-    section: "tools",
-  },
-  {
-    id: "tracker",
-    icon: "leaderboard",
-    name: "links.entry.tracker",
-    hint: "links.entry.trackerHint",
-    href: "https://faftracker.xyz/",
-    origin: "community",
-    section: "tools",
-  },
-  {
-    id: "companion",
-    icon: "activity",
-    name: "links.entry.companion",
-    hint: "links.entry.companionHint",
-    href: "https://fa-companion.services.atlantishq.de/",
-    origin: "community",
-    section: "tools",
-  },
-  {
-    id: "mapgen",
-    icon: "maps",
-    name: "links.entry.mapgen",
-    hint: "links.entry.mapgenHint",
-    href: "https://mapgen.services.atlantishq.de/",
-    origin: "community",
-    section: "tools",
-  },
-  {
-    id: "tierlists",
-    icon: "list",
-    name: "links.entry.tierlists",
-    hint: "links.entry.tierlistsHint",
-    href: "https://fa-companion.services.atlantishq.de/tierlist-overview",
-    origin: "community",
-    section: "tools",
-  },
-  {
-    id: "daily",
-    icon: "calendar",
-    name: "links.entry.daily",
-    hint: "links.entry.dailyHint",
-    href: "https://daily.doodlepros.com/",
-    origin: "community",
-    section: "games",
-  },
-  {
-    id: "guessr",
-    icon: "eye",
-    name: "links.entry.guessr",
-    hint: "links.entry.guessrHint",
-    href: "https://fafguessr.doodlepros.com/",
-    origin: "community",
-    section: "games",
-  },
-  {
-    id: "scribbl",
-    icon: "edit",
-    name: "links.entry.scribbl",
-    hint: "links.entry.scribblHint",
-    href: "https://fafscribbl.doodlepros.com/",
-    origin: "community",
-    section: "games",
+    section: "play",
   },
   {
     id: "twitch",
