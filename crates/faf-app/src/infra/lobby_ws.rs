@@ -8,14 +8,19 @@
 //! ## Protocol
 //! First, `GET {api}/lobby/access` (bearer token) returns `{ accessUrl }`: a
 //! one-time verified `wss://…/?verify=…` URL (connecting to the bare host 403s).
-//! Then, newline-delimited JSON messages (the Python client uses binary frames;
-//! we accept/send the same wire form), keyed by `command`:
+//! Then, newline-delimited JSON messages in WebSocket text frames, keyed by
+//! `command`:
 //!
 //! 1. → `ask_session { version, user_agent }`
 //! 2. ← `session { session }`
 //! 3. → `auth { token, unique_id, session }`
-//! 4. ← `welcome { me }` (or `authentication_failed`)
+//! 4. ← `welcome { me }` (or `authentication_failure` / `authentication_failed`)
 //! 5. ← `game_info { … }` / `game_info { games: [ … ] }`: pushed continuously
+//!
+//! Since 2026-10-21 the socket ends at `faf-message-broker`, not at the lobby
+//! server. The broker answers steps 1 to 3 itself and relays everything else
+//! over RabbitMQ; `welcome` is the lobby server's, and arrives once it has
+//! picked the new session up.
 //!
 //! ## `unique_id` (anti-smurf)
 //! The lobby `auth` also requires a `unique_id`: a machine fingerprint produced by
@@ -71,6 +76,19 @@ const MAX_CONSECUTIVE_FAILURES: u32 = 10;
 /// `ServerConnection`, and the interval has to be short enough to beat the
 /// shortest idle timeout a home router is likely to apply to an open flow.
 const LOBBY_KEEPALIVE_INTERVAL: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// How long a connection may take from an open socket to `welcome` before it
+/// is given up and opened again.
+///
+/// The lobby server used to enforce this itself (`LOGIN_TIMEOUT`, five
+/// minutes) by closing the socket. The broker has no such limit, and it keeps
+/// the socket open while the lobby server behind it is down: the sign-in the
+/// broker announced in that time is lost, and the lobby server, once it is
+/// back, takes the session over without a `welcome`. A client that waited for
+/// one then waited for good, with no lobbies to show. A fresh connection is
+/// announced again, and gets one. A minute leaves room for `faf-uid`, which
+/// needs fifteen seconds on a cold first run.
+const SIGN_IN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 
 /// Configuration for the real lobby client.
 #[derive(Debug, Clone)]
@@ -468,11 +486,7 @@ async fn run_session(
         "version": config.version,
         "user_agent": LOBBY_USER_AGENT,
     });
-    if write
-        .send(Message::binary(encode_lobby_message(&ask).into_bytes()))
-        .await
-        .is_err()
-    {
+    if write.send(lobby_frame(&ask)).await.is_err() {
         tracing::error!("failed to request a lobby session");
         return SessionEnd::Dropped {
             authenticated: false,
@@ -502,10 +516,14 @@ async fn run_session(
     let (proof_tx, mut proof_rx) = mpsc::channel::<Result<String, String>>(1);
     // The session id the pending proof was computed for, sent back in `auth`.
     let mut session_id = String::new();
-    // Gates client→server frames. The lobby only tolerates the handshake before
-    // authentication and aborts the connection on anything else, so queued
-    // frames wait in `outgoing` until `welcome` rather than racing `auth`.
+    // Gates client→server frames. The broker only tolerates the handshake
+    // (and `ping` / `pong`) before authentication and closes the socket on
+    // anything else, so queued frames wait in `outgoing` until `welcome`
+    // rather than racing `auth`.
     let mut authenticated = false;
+    // See `SIGN_IN_TIMEOUT`. Only armed until `welcome`.
+    let sign_in_deadline = tokio::time::sleep(SIGN_IN_TIMEOUT);
+    tokio::pin!(sign_in_deadline);
     // Keepalive, as `ServerConnection`'s timer does it in the Python client.
     //
     // Nothing was sent from this side before: the connection only ever
@@ -538,6 +556,15 @@ async fn run_session(
                 ending = SessionEnd::Cancelled;
                 break;
             }
+            () = &mut sign_in_deadline, if !authenticated => {
+                tracing::warn!(
+                    timeout_seconds = SIGN_IN_TIMEOUT.as_secs(),
+                    session = %session_id,
+                    "the lobby never confirmed the sign-in; opening a new connection"
+                );
+                let _ = write.send(Message::Close(None)).await;
+                break 'connection;
+            }
             // Ten seconds without a single frame from the server.
             _ = keepalive.tick(), if authenticated => {
                 if ping_unanswered {
@@ -549,7 +576,7 @@ async fn run_session(
                 }
                 ping_unanswered = true;
                 if write
-                    .send(Message::binary(encode_lobby_message(&ping_frame()).into_bytes()))
+                    .send(lobby_frame(&ping_frame()))
                     .await
                     .is_err()
                 {
@@ -596,7 +623,7 @@ async fn run_session(
                     }
                 }
                 if write
-                    .send(Message::binary(encode_lobby_message(&frame).into_bytes()))
+                    .send(lobby_frame(&frame))
                     .await
                     .is_err()
                 {
@@ -639,7 +666,7 @@ async fn run_session(
                     "session": session_id,
                 });
                 if write
-                    .send(Message::binary(encode_lobby_message(&auth).into_bytes()))
+                    .send(lobby_frame(&auth))
                     .await
                     .is_err()
                 {
@@ -681,7 +708,7 @@ async fn run_session(
                     "ping" => {
                         let pong = json!({ "command": "pong" });
                         if write
-                            .send(Message::binary(encode_lobby_message(&pong).into_bytes()))
+                            .send(lobby_frame(&pong))
                             .await
                             .is_err()
                         {
@@ -705,7 +732,9 @@ async fn run_session(
                             let _ = proof_tx.send(proof).await;
                         });
                     }
-                    "authentication_failed" => {
+                    // `authentication_failure` is the broker's name for it,
+                    // `authentication_failed` the lobby server's.
+                    "authentication_failed" | "authentication_failure" => {
                         let reason = server_text(
                             &value,
                             "The lobby server rejected authentication.",
@@ -730,10 +759,7 @@ async fn run_session(
                             }
                         }
                         let _ = write
-                            .send(Message::binary(
-                                encode_lobby_message(&json!({ "command": "matchmaker_info" }))
-                                    .into_bytes(),
-                            ))
+                            .send(lobby_frame(&json!({ "command": "matchmaker_info" })))
                             .await;
                     }
                     "player_info" => {
@@ -986,10 +1012,7 @@ async fn run_session(
                             break 'connection;
                         }
                         let _ = write
-                            .send(Message::binary(
-                                encode_lobby_message(&json!({ "command": "match_ready" }))
-                                    .into_bytes(),
-                            ))
+                            .send(lobby_frame(&json!({ "command": "match_ready" })))
                             .await;
                     }
                     "match_cancelled" => {
@@ -1091,6 +1114,18 @@ async fn run_session(
                             Ok(()) => {}
                             Err(_) => break 'connection,
                         }
+                    }
+                    "failed_message" => {
+                        // The broker refused to pass a frame on: a command it
+                        // has no schema for, or one that does not match it.
+                        // The connection stays up, and the frame is lost; this
+                        // is the only trace of it, so it says what it can.
+                        tracing::warn!(
+                            message = value.get("message").and_then(Value::as_str).unwrap_or(""),
+                            key = value.get("message_key").and_then(Value::as_str).unwrap_or(""),
+                            request = value.get("request_id").and_then(Value::as_str).unwrap_or(""),
+                            "the message broker refused a frame from this client"
+                        );
                     }
                     _ => {} // player_info variants without ratings, …
                 }
@@ -1288,6 +1323,18 @@ fn parse_available_avatars(message: &Value) -> Vec<AvailableAvatar> {
 /// the Java client uses a line encoder; keep the same wire contract here.
 fn encode_lobby_message(value: &Value) -> String {
     format!("{value}\n")
+}
+
+/// One client frame as it goes onto the socket: a text frame, always.
+///
+/// These used to be binary frames, which the lobby server read as readily as
+/// text. `faf-message-broker`, which took over the socket on 2026-10-21, has
+/// only an `@OnTextMessage` handler, and Quarkus hands a binary frame to a
+/// callback that does nothing. `ask_session` vanished without an answer, and
+/// the client sat on "connecting" with no lobbies to show. The Java client
+/// writes strings (`sendString` in `FafLobbyClient`).
+fn lobby_frame(value: &Value) -> Message {
+    Message::text(encode_lobby_message(value))
 }
 
 /// Decode the lobby's newline-delimited JSON transport. The reference clients
@@ -2859,6 +2906,17 @@ mod tests {
         assert_eq!(reconnect_delay(1_000), RECONNECT_BACKOFF_MAX);
         // And it cannot overflow its way back to an immediate retry.
         assert_eq!(reconnect_delay(u32::MAX), RECONNECT_BACKOFF_MAX);
+    }
+
+    #[test]
+    fn every_client_frame_is_a_newline_terminated_text_frame() {
+        // The message broker drops binary frames without a word: see
+        // `lobby_frame`.
+        let frame = lobby_frame(&json!({ "command": "ask_session" }));
+        let Message::Text(text) = frame else {
+            panic!("the broker only reads text frames, got {frame:?}");
+        };
+        assert_eq!(text.as_str(), "{\"command\":\"ask_session\"}\n");
     }
 
     #[test]
