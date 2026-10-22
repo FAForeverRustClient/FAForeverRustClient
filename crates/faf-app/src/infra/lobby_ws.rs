@@ -1120,10 +1120,15 @@ async fn run_session(
                         // has no schema for, or one that does not match it.
                         // The connection stays up, and the frame is lost; this
                         // is the only trace of it, so it says what it can.
+                        // Read out here: inside the macro, `Value` is
+                        // tracing's own trait, not serde_json's type.
+                        let reason = value.get("message").and_then(Value::as_str).unwrap_or("");
+                        let key = value.get("message_key").and_then(Value::as_str).unwrap_or("");
+                        let request = value.get("request_id").and_then(Value::as_str).unwrap_or("");
                         tracing::warn!(
-                            message = value.get("message").and_then(Value::as_str).unwrap_or(""),
-                            key = value.get("message_key").and_then(Value::as_str).unwrap_or(""),
-                            request = value.get("request_id").and_then(Value::as_str).unwrap_or(""),
+                            reason,
+                            key,
+                            request,
                             "the message broker refused a frame from this client"
                         );
                     }
