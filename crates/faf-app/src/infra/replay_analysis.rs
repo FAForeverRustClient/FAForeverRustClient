@@ -69,6 +69,22 @@ const MOVE_PREVIOUS_COMMAND: i32 = 40;
 const MAX_RECORDED_ORDERS: usize = 200_000;
 const MAX_RECORDED_POINTS: usize = 200_000;
 
+/// The same ceiling for the notify channel and the per-player command times
+/// the activity graph is drawn from. Neither had one: a small compressed
+/// replay could repeat a notify record or an order millions of times, and
+/// every copy was kept, serialised and sent to the webview. A long team game
+/// has a few hundred notices and a few hundred thousand command times.
+const MAX_RECORDED_NOTICES: usize = 10_000;
+const MAX_NOTICE_CHARS: usize = 500;
+const MAX_RECORDED_COMMAND_TICKS: usize = 1_000_000;
+
+/// A day of game time at ten ticks a second, which no real game reaches.
+///
+/// An `Advance` record carries any `u32`, so a seven-byte record used to
+/// declare four billion ticks, and the activity graph allocates one value per
+/// tick: gigabytes for a file of a few bytes.
+const MAX_REPLAY_TICKS: u32 = 10 * 60 * 60 * 24;
+
 /// The sentence the simulation wraps its end-of-game statistics in.
 ///
 /// The whole record reads
@@ -342,6 +358,7 @@ fn walk(
     let mut notices = Vec::new();
     let mut stats: Vec<ReplayPlayerStats> = Vec::new();
     let mut command_ticks: HashMap<i32, Vec<u32>> = HashMap::new();
+    let mut recorded_command_ticks = 0_usize;
     let mut last_tick: HashMap<i32, u32> = HashMap::new();
     // The dedup key, per client: the same command type repeated back to back
     // on the same tick is one action, because the stream emits one record per
@@ -364,13 +381,12 @@ fn walk(
 
         match op {
             ADVANCE => {
-                if payload.len() >= 4 {
-                    ticks = ticks.saturating_add(u32::from_le_bytes([
-                        payload[0], payload[1], payload[2], payload[3],
-                    ]));
+                let advance = if payload.len() >= 4 {
+                    u32::from_le_bytes([payload[0], payload[1], payload[2], payload[3]])
                 } else {
-                    ticks = ticks.saturating_add(1);
-                }
+                    1
+                };
+                ticks = ticks.saturating_add(advance).min(MAX_REPLAY_TICKS);
             }
             SET_COMMAND_SOURCE => {
                 source = payload.first().map_or(-1, |index| i32::from(*index));
@@ -408,8 +424,10 @@ fn walk(
                     }
                     if previous.insert(source, (ticks, order.command))
                         != Some((ticks, order.command))
+                        && recorded_command_ticks < MAX_RECORDED_COMMAND_TICKS
                     {
                         command_ticks.entry(source).or_default().push(ticks);
+                        recorded_command_ticks += 1;
                     }
                     if orders.len() < MAX_RECORDED_ORDERS {
                         orders.push(ReplayOrder {
@@ -606,7 +624,7 @@ fn read_callback(
         return;
     }
 
-    if function != "GiveResourcesToPlayer" {
+    if function != "GiveResourcesToPlayer" || notices.len() >= MAX_RECORDED_NOTICES {
         return;
     }
     let Some(Value::Object(message)) = args.get("Msg").or_else(|| args.get("msg")) else {
@@ -630,7 +648,7 @@ fn read_callback(
     notices.push(ReplayNotice {
         tick: ticks,
         source,
-        text: text.to_string(),
+        text: text.chars().take(MAX_NOTICE_CHARS).collect(),
     });
 }
 
@@ -975,6 +993,25 @@ mod tests {
         assert_eq!(out.notices[0].tick, 120);
         // `From` is one-based, and this is the index the armies carry.
         assert_eq!(out.notices[0].source, 0);
+    }
+
+    #[test]
+    fn a_replay_cannot_declare_more_time_or_notices_than_a_game_has() {
+        // Two `Advance` records of four billion ticks each: a few bytes that
+        // asked the activity graph for gigabytes.
+        let mut stream = source(0);
+        stream.extend_from_slice(&advance(u32::MAX));
+        stream.extend_from_slice(&advance(u32::MAX));
+        let long_text = "x".repeat(MAX_NOTICE_CHARS * 2);
+        stream.extend_from_slice(&notify(&long_text, 1.0));
+        for _ in 0..MAX_RECORDED_NOTICES + 5 {
+            stream.extend_from_slice(&notify("again", 1.0));
+        }
+
+        let out = walked(&stream, &[0]);
+        assert_eq!(out.ticks, MAX_REPLAY_TICKS);
+        assert_eq!(out.notices.len(), MAX_RECORDED_NOTICES);
+        assert_eq!(out.notices[0].text.chars().count(), MAX_NOTICE_CHARS);
     }
 
     #[test]

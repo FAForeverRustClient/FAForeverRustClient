@@ -191,11 +191,21 @@ export function analysedPlayers(analysis: ReplayAnalysis): AnalysedPlayer[] {
  * is tens of thousands of ticks, and the quadratic version of this took longer
  * than reading the file did.
  */
+/**
+ * A day of game time, as the backend caps it (`MAX_REPLAY_TICKS`). Held here
+ * as well: the series is one value per tick, and a replay that claims four
+ * billion ticks asked this for gigabytes before anything could look at it.
+ */
+export const MAX_ACTIVITY_TICKS = 10 * 60 * 60 * 24;
+
 export function rollingActions(
   commandTicks: readonly number[],
-  ticks: number,
+  claimedTicks: number,
   window = ACTIVITY_WINDOW_TICKS,
 ): Uint16Array {
+  const ticks = Number.isFinite(claimedTicks)
+    ? Math.min(Math.max(Math.floor(claimedTicks), 0), MAX_ACTIVITY_TICKS)
+    : 0;
   const series = new Uint16Array(Math.max(ticks, 1));
   if (commandTicks.length === 0 || ticks <= 0) return series;
 

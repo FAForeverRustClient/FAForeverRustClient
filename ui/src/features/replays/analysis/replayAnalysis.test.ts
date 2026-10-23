@@ -7,6 +7,7 @@ import {
   commandName,
   formatGameTime,
   heatmapBins,
+  MAX_ACTIVITY_TICKS,
   ordersInWindow,
   peakOf,
   playerColor,
@@ -35,6 +36,12 @@ describe("the rolling count behind the activity graph", () => {
     expect(series[0]).toBe(1);
     expect(series[1]).toBe(1);
     expect(series[599]).toBe(1);
+  });
+
+  it("never sizes the series past a day of game time, whatever the replay claims", () => {
+    expect(rollingActions([0], 4_294_967_295).length).toBe(MAX_ACTIVITY_TICKS);
+    expect(rollingActions([], Number.POSITIVE_INFINITY).length).toBe(1);
+    expect(rollingActions([], Number.NaN).length).toBe(1);
   });
 
   it("is all zeroes for a player who did nothing", () => {
