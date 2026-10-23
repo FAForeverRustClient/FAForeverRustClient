@@ -39,9 +39,10 @@
 }
 
 /* A filter that adjusts the current search: a tick and its label, as the
-   Custom Games toolbar draws its own. Muted while off, full text once ticked,
-   so the row says which ones are on without reading every box. As tall as the
-   buttons beside it, so the row's baseline holds. */
+   Custom Games toolbar draws its own. The box is the client's one checkbox
+   (styles.css), focus ring included; the tick says which ones are on, and the
+   label stays muted like the toolbar's. As tall as the buttons beside it, so
+   the row's baseline holds. */
 .search-panel-check {
   display: inline-flex;
   align-items: center;
@@ -55,21 +56,8 @@
   user-select: none;
 }
 
-.search-panel-check:hover,
-.search-panel-check:has(input:checked) {
-  color: var(--color-text);
-}
-
 .search-panel-check input {
   margin: 0;
-  accent-color: var(--color-text);
-  cursor: pointer;
-}
-
-.search-panel-check:has(input:focus-visible) {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
 }
 
 .search-panel-secondary > .btn-ghost.active {
