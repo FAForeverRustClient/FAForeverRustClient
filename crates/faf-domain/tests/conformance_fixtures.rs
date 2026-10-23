@@ -7906,6 +7906,23 @@ fn cases() -> Vec<Case> {
                         matchmaker_invite_order: Vec::new(),
                         mod_vault_preset: "recommended".into(),
                         mod_presets: Vec::new(),
+                        search_presets: vec![
+                            faf_domain::state::SearchPreset {
+                                list: "  replays.online  ".into(),
+                                name: "  Gap 1800+  ".into(),
+                                query: r#"  {"map":"Dual Gap"}  "#.into(),
+                            },
+                            faf_domain::state::SearchPreset {
+                                list: "REPLAYS.ONLINE".into(),
+                                name: "gap 1800+".into(),
+                                query: r#"{"map":"Duplicate"}"#.into(),
+                            },
+                            faf_domain::state::SearchPreset {
+                                list: "replays.local".into(),
+                                name: "Gap 1800+".into(),
+                                query: r#"{"map":"Local Gap"}"#.into(),
+                            },
+                        ],
                         leaderboard_rating_columns: vec!["games".into(), "updated".into()],
                         leaderboard_include_former_names: false,
                         replay_vault_player: String::new(),

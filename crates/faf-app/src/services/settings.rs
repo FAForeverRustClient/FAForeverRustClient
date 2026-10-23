@@ -482,6 +482,18 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             });
             persist(ctx, out).await;
         }
+        SettingsCommand::SaveSearchPreset { preset } => {
+            merge(ctx, out, |settings| {
+                (domain::search_preset_saved(settings, preset), ())
+            });
+            persist(ctx, out).await;
+        }
+        SettingsCommand::DeleteSearchPreset { list, name } => {
+            merge(ctx, out, |settings| {
+                (domain::search_preset_deleted(settings, &list, &name), ())
+            });
+            persist(ctx, out).await;
+        }
         SettingsCommand::SetMapGenerator { preferences } => {
             out.emit(SettingsEvent::MapGeneratorChanged { preferences });
             persist(ctx, out).await;

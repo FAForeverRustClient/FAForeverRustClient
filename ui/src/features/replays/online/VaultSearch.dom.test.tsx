@@ -106,3 +106,20 @@ describe("Online replay search and paging", () => {
     expect(titleField().value).toBe("from elsewhere");
   });
 });
+
+describe("Online replay search filter checkboxes", () => {
+  it("draws the three search adjustments as checkboxes that run the search", async () => {
+    const user = userEvent.setup();
+    mountVault();
+    const exact = screen.getByRole("checkbox", { name: "Exact player name" });
+    const short = screen.getByRole("checkbox", { name: "Skip short games" });
+    expect(screen.getByRole("checkbox", { name: "Recent only" })).toBeDefined();
+    expect((exact as HTMLInputElement).checked).toBe(executed.exactPlayer);
+    expect((short as HTMLInputElement).checked).toBe(false);
+
+    await user.click(short);
+
+    expect(searches()).toEqual([{ ...executed, minDurationMinutes: 5, page: 1 }]);
+    expect((short as HTMLInputElement).checked).toBe(true);
+  });
+});

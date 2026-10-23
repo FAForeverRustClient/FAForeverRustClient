@@ -2563,6 +2563,223 @@ input.replay-options-filter {
   font-weight: 600;
 }
 
+/* -- Saved search presets (ReplaySavedSearches.tsx) ------------------- */
+
+.replay-saved-searches {
+  flex-direction: row;
+  align-items: center;
+}
+
+.replay-saved-searches > .btn-ghost.has-active-preset {
+  border-color: var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface-raised));
+  color: var(--color-text);
+}
+
+.replay-saved-searches > .btn-ghost[aria-expanded="true"] {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+}
+
+.replay-saved-searches-popover {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(360px, 88vw);
+  min-width: 280px;
+  max-width: 360px;
+  max-height: none;
+  overflow: hidden;
+  padding: var(--space-2);
+}
+
+.replay-preset-save-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.replay-preset-save-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.replay-preset-name-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
+  font-size: 13px;
+}
+
+input.replay-preset-name-input {
+  line-height: 30px;
+}
+
+.replay-preset-save-btn {
+  flex: 0 0 auto;
+  height: 32px;
+  white-space: nowrap;
+}
+
+.replay-preset-overwrite-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.replay-preset-deleted {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.replay-preset-undo {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.replay-preset-undo:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.replay-preset-empty {
+  padding: var(--space-2) var(--space-1);
+}
+
+.replay-preset-list-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-height: 0;
+}
+
+.replay-preset-filter {
+  margin-bottom: 0;
+}
+
+.replay-preset-filter:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+.replay-preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
+  /* No scrollbar gutter: a compact preset pop-up whose rows stretch to its edges; reserving a strip shrinks every summary line when fewer than five presets are saved. */
+}
+
+.replay-preset-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  border-radius: var(--radius-sm);
+}
+
+.replay-preset-row:hover,
+.replay-preset-row.is-active {
+  background: var(--color-surface-hover);
+}
+
+.replay-preset-apply {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px var(--space-2);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.replay-preset-apply:active {
+  opacity: 0.85;
+}
+
+.replay-preset-apply:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.replay-preset-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.replay-preset-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-preset-check {
+  flex: none;
+  color: var(--color-accent);
+}
+
+.replay-preset-summary {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-preset-delete {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 4px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.replay-preset-delete:hover {
+  background: color-mix(in srgb, var(--color-error) 14%, transparent);
+  color: var(--color-error-text);
+}
+
+.replay-preset-delete:active {
+  background: color-mix(in srgb, var(--color-error) 22%, transparent);
+}
+
+.replay-preset-delete:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+  color: var(--color-error-text);
+}
+
 /* ------------------------------------------------------------------------
    The vault and local replay dialog: a hero over the map, a strip of facts,
    the lineup, and a flat toolbar along the floor. The live dialog shares the

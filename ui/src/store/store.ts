@@ -699,6 +699,7 @@ const INITIAL: AppState = {
       matchmakerInviteColumns: [],
       matchmakerInviteOrder: [],
       modPresets: [],
+      searchPresets: [],
       leaderboardRatingColumns: ["games", "updated"],
       leaderboardIncludeFormerNames: false,
       replayVaultPlayer: "",

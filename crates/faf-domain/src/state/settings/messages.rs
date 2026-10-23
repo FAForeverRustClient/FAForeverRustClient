@@ -213,6 +213,16 @@ pub enum SettingsCommand {
     DeleteModPreset {
         name: String,
     },
+    /// Save a named search preset for one list, replacing one of the same name
+    /// in place.
+    SaveSearchPreset {
+        preset: SearchPreset,
+    },
+    /// Delete the named search preset from one list.
+    DeleteSearchPreset {
+        list: String,
+        name: String,
+    },
     CheckInstalls,
     RefreshGameCache,
     ClearGameCache,

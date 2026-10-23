@@ -3178,6 +3178,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -61271,6 +61272,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -61563,6 +61565,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -61865,6 +61868,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -62161,6 +62165,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -62457,6 +62462,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -62763,6 +62769,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -63075,6 +63082,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -63384,6 +63392,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -63701,6 +63710,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -64101,6 +64111,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -64463,6 +64474,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -64827,6 +64839,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -65192,6 +65205,23 @@
                   "replayListOrder": [],
                   "replayVaultPlayer": "",
                   "replaysView": "list",
+                  "searchPresets": [
+                    {
+                      "list": "  replays.online  ",
+                      "name": "  Gap 1800+  ",
+                      "query": "  {\"map\":\"Dual Gap\"}  "
+                    },
+                    {
+                      "list": "REPLAYS.ONLINE",
+                      "name": "gap 1800+",
+                      "query": "{\"map\":\"Duplicate\"}"
+                    },
+                    {
+                      "list": "replays.local",
+                      "name": "Gap 1800+",
+                      "query": "{\"map\":\"Local Gap\"}"
+                    }
+                  ],
                   "vaultPageSize": 48,
                   "whitelistedHosts": []
                 }
@@ -65329,6 +65359,18 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "list",
+              "searchPresets": [
+                {
+                  "list": "replays.online",
+                  "name": "Gap 1800+",
+                  "query": "{\"map\":\"Dual Gap\"}"
+                },
+                {
+                  "list": "replays.local",
+                  "name": "Gap 1800+",
+                  "query": "{\"map\":\"Local Gap\"}"
+                }
+              ],
               "vaultPageSize": 48,
               "whitelistedHosts": []
             },
@@ -81159,6 +81201,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -81462,6 +81505,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -81794,6 +81838,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -82112,6 +82157,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -82419,6 +82465,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -82715,6 +82762,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -83014,6 +83062,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -83337,6 +83386,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -83629,6 +83679,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -83933,6 +83984,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -84235,6 +84287,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -84531,6 +84584,7 @@
                     "replayListOrder": [],
                     "replayVaultPlayer": "",
                     "replaysView": "tiles",
+                    "searchPresets": [],
                     "vaultPageSize": 0,
                     "whitelistedHosts": []
                   },
@@ -84817,6 +84871,7 @@
               "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
+              "searchPresets": [],
               "vaultPageSize": 0,
               "whitelistedHosts": []
             },
@@ -126358,6 +126413,7 @@
         "replayListOrder": [],
         "replayVaultPlayer": "",
         "replaysView": "tiles",
+        "searchPresets": [],
         "vaultPageSize": 0,
         "whitelistedHosts": []
       },
