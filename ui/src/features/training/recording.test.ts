@@ -58,6 +58,34 @@ describe("parseEnvelope", () => {
     expect(parseEnvelope(JSON.stringify(noDuration))).toBeNull();
     expect(parseEnvelope(JSON.stringify(envelope()))).not.toBeNull();
   });
+
+  it("refuses a run the panes could not finish drawing", () => {
+    const valid = JSON.stringify(envelope());
+    // `1e309` parses as Infinity, which passed `> 0`: the minute ticks along
+    // the flow chart then never reached the end.
+    expect(parseEnvelope(valid.replace('"durationMs":60000', '"durationMs":1e309'))).toBeNull();
+    expect(parseEnvelope(valid.replace('"durationMs":60000', '"durationMs":1e15'))).toBeNull();
+
+    // A build tree nested past the walk's budget, or a node without builds.
+    let deep = node({ entityId: "leaf", category: "engie" });
+    for (let depth = 0; depth < 300; depth += 1) {
+      deep = node({ entityId: String(depth), category: "engie", builds: [deep] });
+    }
+    expect(parseEnvelope(JSON.stringify(envelope({ bo: deep })))).toBeNull();
+    const broken = envelope();
+    (broken.bo as { builds: unknown[] }).builds = [{ entityId: "1" }];
+    expect(parseEnvelope(JSON.stringify(broken))).toBeNull();
+
+    // Paths that are not arrays of points, or too many points in all.
+    const noPoints = envelope();
+    (noPoints as { paths: unknown[] }).paths = [{ id: "1" }];
+    expect(parseEnvelope(JSON.stringify(noPoints))).toBeNull();
+    const crowded = envelope();
+    (crowded as { paths: unknown[] }).paths = [
+      { id: "1", points: Array.from({ length: 500_001 }, () => 0) },
+    ];
+    expect(parseEnvelope(JSON.stringify(crowded))).toBeNull();
+  });
 });
 
 describe("toLanes", () => {

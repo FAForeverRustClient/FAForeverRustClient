@@ -73,11 +73,58 @@ export type Lane = {
 };
 
 /**
+ * Bounds on a document the panes are willing to draw. A training run is a few
+ * minutes of one player's opening; these leave room for a whole game and stop
+ * a document that would hang or exhaust the page. `durationMs` sizes the flow
+ * chart and its minute ticks, so an infinite one (`1e309` in the JSON) looped
+ * for ever and a huge finite one drew a chart kilometres wide.
+ */
+const MAX_DURATION_MS = 3 * 60 * 60 * 1000;
+const MAX_BUILD_NODES = 20_000;
+const MAX_BUILD_DEPTH = 200;
+const MAX_MARKERS = 20_000;
+const MAX_PATHS = 10_000;
+const MAX_PATH_POINTS = 500_000;
+
+/**
+ * Every node of the build tree is an object with a `builds` array, within the
+ * node and depth budgets. Walked with a stack rather than by recursion: the
+ * check must not be the thing a deep tree overflows.
+ */
+function buildTreeFits(root: unknown): boolean {
+  const stack: Array<{ node: unknown; depth: number }> = [{ node: root, depth: 0 }];
+  let nodes = 0;
+  while (stack.length > 0) {
+    const { node, depth } = stack.pop()!;
+    nodes += 1;
+    if (nodes > MAX_BUILD_NODES || depth > MAX_BUILD_DEPTH) return false;
+    if (typeof node !== "object" || node === null) return false;
+    const builds = (node as { builds?: unknown }).builds;
+    if (!Array.isArray(builds)) return false;
+    for (const child of builds) stack.push({ node: child, depth: depth + 1 });
+  }
+  return true;
+}
+
+function pathsFit(paths: unknown[]): boolean {
+  if (paths.length > MAX_PATHS) return false;
+  let points = 0;
+  for (const path of paths) {
+    const list = (path as { points?: unknown } | null)?.points;
+    if (!Array.isArray(list)) return false;
+    points += list.length;
+    if (points > MAX_PATH_POINTS) return false;
+  }
+  return true;
+}
+
+/**
  * Is this parsed JSON an envelope this pane can draw?
  *
  * The document arrives over the network from a repository, so it is checked
  * rather than trusted. What is checked is only what the panes actually read: a
- * schema tag, a duration, a build tree and the two arrays. A run missing map
+ * schema tag, a finite and bounded duration, a well-formed build tree and the
+ * two arrays, each within the budgets above. A run missing map
  * dimensions is still valid and still draws its flow; the map pane says why it
  * cannot draw itself.
  */
@@ -92,13 +139,20 @@ export function parseEnvelope(text: string): Envelope | null {
   if (typeof value !== "object" || value === null) return null;
   const env = value as Partial<Envelope>;
   if (env.schema !== "faf-bo/1") return null;
-  if (!env.meta || typeof env.meta.durationMs !== "number" || env.meta.durationMs <= 0) {
+  const duration = env.meta?.durationMs;
+  if (
+    typeof duration !== "number"
+    || !Number.isFinite(duration)
+    || duration <= 0
+    || duration > MAX_DURATION_MS
+  ) {
     return null;
   }
-  if (!env.bo || typeof env.bo.entityId !== "string" || !Array.isArray(env.bo.builds)) {
+  if (!env.bo || typeof env.bo.entityId !== "string" || !buildTreeFits(env.bo)) {
     return null;
   }
-  if (!Array.isArray(env.markers) || !Array.isArray(env.paths)) return null;
+  if (!Array.isArray(env.markers) || env.markers.length > MAX_MARKERS) return null;
+  if (!Array.isArray(env.paths) || !pathsFit(env.paths)) return null;
   return env as Envelope;
 }
 
