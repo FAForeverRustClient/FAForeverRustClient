@@ -88,7 +88,7 @@ impl ReplayPlaybackPort for ReplayPlayback {
     ) -> Result<Option<String>, String> {
         let _playback_guard = self.lock.lock().await;
         self.live
-            .start(&self.preparation, self.process.as_ref(), target, player)
+            .start(&self.preparation, &self.process, target, player)
             .await
     }
 
@@ -159,6 +159,9 @@ impl ReplayPlayback {
         // Alliance still has open leaves an install the next launch sits on a
         // loading screen over. See `ProcessPort::stop_replay`.
         self.process.stop_replay().await;
+        // A live replay on the pipe transport may still be relaying into the
+        // window just closed; nothing will read from it again.
+        self.live.end_session().await;
         let replay = prepare_scfareplay(&path).await?;
         let mod_name = normalize_mod(&replay.mod_name);
         let mut warning = None;
