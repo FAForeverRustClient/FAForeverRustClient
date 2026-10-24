@@ -48,7 +48,12 @@ export function RunMap({ env, previewUrl, hovered, onHover }: Props) {
 
   // The ACU is dropped: it barely moves, and its route only clutters the view.
   const paths = useMemo(() => markerPaths(env).filter((p) => p.cat !== "acu"), [env]);
-  const cats = useMemo(() => [...new Set(paths.map((p) => p.cat))].sort(), [paths]);
+  const counts = useMemo(() => {
+    const byCat = new Map<string, number>();
+    for (const path of paths) byCat.set(path.cat, (byCat.get(path.cat) ?? 0) + 1);
+    return byCat;
+  }, [paths]);
+  const cats = useMemo(() => [...counts.keys()].sort(), [counts]);
   const [active, setActive] = useState<string[]>(() =>
     cats.filter((c) => DEFAULT_CATS.includes(c)),
   );
@@ -71,14 +76,16 @@ export function RunMap({ env, previewUrl, hovered, onHover }: Props) {
   // A category this client has no word for is shown as the recorder named it
   // rather than hidden.
   const catLabel = (cat: string) => {
-    const key: MessageKey | undefined = CAT_LABELS[cat];
+    const key: MessageKey | undefined = Object.prototype.hasOwnProperty.call(CAT_LABELS, cat)
+      ? CAT_LABELS[cat] : undefined;
     return key ? t(key) : cat;
   };
 
   const toggle = (cat: string) =>
     setActive((prev) => (prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]));
 
-  const shown = paths.filter((p) => active.includes(p.cat));
+  const activeCats = new Set(active);
+  const shown = paths.filter((p) => activeCats.has(p.cat));
   const mass = env.markers.filter((m) => m.type === "Mass");
   const hydro = env.markers.filter((m) => m.type === "Hydrocarbon");
   const spawns = env.markers.filter((m) => m.type === "Blank Marker" || m.type === "Spawn");
@@ -96,7 +103,7 @@ export function RunMap({ env, previewUrl, hovered, onHover }: Props) {
             <input type="checkbox" checked={active.includes(cat)} onChange={() => toggle(cat)} />
             <span className="training-run-swatch" style={{ background: catColor(cat) }} />
             {catLabel(cat)}
-            <span className="muted">{paths.filter((p) => p.cat === cat).length}</span>
+            <span className="muted">{counts.get(cat)}</span>
           </label>
         ))}
       </div>

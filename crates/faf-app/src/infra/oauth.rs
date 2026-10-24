@@ -704,6 +704,14 @@ struct Redirect {
 /// only after five minutes of looking hung.
 const MAX_REDIRECT_REQUEST_BYTES: u64 = 8 * 1024;
 
+/// How long one loopback connection may take to send its request line, and
+/// to take the answer. The browser sends the redirect at once.
+const REDIRECT_CONNECTION_DEADLINE: Duration = Duration::from_secs(10);
+
+/// Connections handled at the same time. More are closed on arrival; the
+/// browser's is one of the first, and a flood should not grow without bound.
+const MAX_PENDING_REDIRECT_CONNECTIONS: usize = 16;
+
 /// Accept loopback connections until one carries the OAuth redirect, then send
 /// a minimal HTML page back to the browser.
 ///
@@ -712,23 +720,41 @@ const MAX_REDIRECT_REQUEST_BYTES: u64 = 8 * 1024;
 /// decide whether the login worked. The state check below is what stops a
 /// stranger's request being *believed*; this is what stops it being the only
 /// one heard. The caller's `LOGIN_TIMEOUT` still bounds the whole wait.
+///
+/// Each connection is read on a task of its own, under its own deadline. One
+/// at a time, a connection that sent nothing held the browser's in the queue
+/// behind it until the whole sign-in timed out.
 async fn accept_redirect(listener: &TcpListener, state: &str) -> AuthResult<Redirect> {
+    let mut connections = tokio::task::JoinSet::new();
     loop {
-        match accept_one_redirect(listener, state).await {
-            Ok(redirect) => return Ok(redirect),
-            // A connection that said nothing useful is not the browser. Keep
-            // listening; the timeout is the thing that gives up.
-            Err(reason) => tracing::debug!(%reason, "ignoring a loopback connection"),
+        tokio::select! {
+            accepted = listener.accept() => match accepted {
+                Ok((stream, _)) if connections.len() < MAX_PENDING_REDIRECT_CONNECTIONS => {
+                    let state = state.to_owned();
+                    connections.spawn(async move {
+                        tokio::time::timeout(
+                            REDIRECT_CONNECTION_DEADLINE,
+                            answer_redirect(stream, &state),
+                        )
+                        .await
+                        .unwrap_or_else(|_| Err(AuthError::new("the connection sent nothing in time")))
+                    });
+                }
+                Ok(_) => tracing::debug!("closing a loopback connection over the limit"),
+                Err(reason) => tracing::debug!(%reason, "a loopback connection failed"),
+            },
+            Some(finished) = connections.join_next(), if !connections.is_empty() => match finished {
+                Ok(Ok(redirect)) => return Ok(redirect),
+                // A connection that said nothing useful is not the browser.
+                // Keep listening; the timeout is the thing that gives up.
+                Ok(Err(reason)) => tracing::debug!(%reason, "ignoring a loopback connection"),
+                Err(reason) => tracing::debug!(%reason, "a loopback connection's task failed"),
+            },
         }
     }
 }
 
-async fn accept_one_redirect(listener: &TcpListener, state: &str) -> AuthResult<Redirect> {
-    let (mut stream, _) = listener
-        .accept()
-        .await
-        .map_err(|e| AuthError::new(format!("Redirect connection failed: {e}")))?;
-
+async fn answer_redirect(mut stream: tokio::net::TcpStream, state: &str) -> AuthResult<Redirect> {
     // Read only the request line: that carries `?code=...&state=...`.
     let request_line = {
         let mut reader = BufReader::new((&mut stream).take(MAX_REDIRECT_REQUEST_BYTES));
@@ -1307,6 +1333,40 @@ mod tests {
         assert!(real.starts_with("HTTP/1.1 200"), "{real}");
         let redirect = waiting.await.unwrap().unwrap();
         assert_eq!(redirect.code.as_deref(), Some("abc"));
+    }
+
+    #[tokio::test]
+    async fn a_silent_connection_does_not_hold_up_the_browser() {
+        use tokio::io::AsyncReadExt;
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let waiting = tokio::spawn(async move { accept_redirect(&listener, "expected").await });
+        // Connected first, and never sends a line.
+        let _silent = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .unwrap();
+        let mut browser = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .unwrap();
+        browser
+            .write_all(
+                b"GET /?code=abc&state=expected HTTP/1.1
+
+",
+            )
+            .await
+            .unwrap();
+        // Well inside the per-connection deadline: answered while the silent
+        // connection is still open.
+        let redirect = tokio::time::timeout(Duration::from_secs(2), waiting)
+            .await
+            .expect("the browser's redirect was not held behind the silent connection")
+            .unwrap()
+            .unwrap();
+        assert_eq!(redirect.code.as_deref(), Some("abc"));
+        let mut answer = String::new();
+        let _ = browser.read_to_string(&mut answer).await;
+        assert!(answer.starts_with("HTTP/1.1 200"), "{answer}");
     }
 
     fn adapter() -> Arc<OAuthAuth> {

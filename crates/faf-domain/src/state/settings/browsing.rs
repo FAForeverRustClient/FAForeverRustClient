@@ -23,6 +23,22 @@ pub enum ReplayChatTransfers {
     Only,
 }
 
+/// A named search preset saved by the user for one list (for example
+/// `"replays.online"` or `"replays.local"`).
+///
+/// Like [`BrowsingPreferences::remembered_filters`], `query` is a JSON document
+/// only that list reads and writes, so adding a field to a list's search form
+/// never invalidates presets saved by an older build. Unlike
+/// `remembered_filters`, a preset is saved deliberately under a name and is
+/// never cleared by [`BrowsingPreferences::without_filters`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchPreset {
+    pub list: String,
+    pub name: String,
+    pub query: String,
+}
+
 /// The widest table the client draws, plus room. Only a bound on a file.
 pub const MAX_TABLE_COLUMNS: usize = 16;
 
@@ -142,6 +158,9 @@ pub struct BrowsingPreferences {
     /// Only the word is shared with `mod_vault_preset` above, which is a vault
     /// *filter*. These are the user's own saved selections.
     pub mod_presets: Vec<ModPreset>,
+    /// Named search presets saved by the user in search panels such as the
+    /// online and local replay tabs.
+    pub search_presets: Vec<SearchPreset>,
     /// Visible column keys in the rating leaderboard table.
     pub leaderboard_rating_columns: Vec<String>,
     /// Whether the rating leaderboard's player search also matches names a
@@ -231,6 +250,7 @@ impl Default for BrowsingPreferences {
             matchmaker_invite_columns: Vec::new(),
             matchmaker_invite_order: Vec::new(),
             mod_presets: Vec::new(),
+            search_presets: Vec::new(),
             leaderboard_rating_columns: DEFAULT_LEADERBOARD_RATING_COLUMNS
                 .iter()
                 .map(|col| (*col).to_owned())
@@ -290,6 +310,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             #[serde(default)]
             matchmaker_invite_order: Vec<u32>,
             mod_presets: Vec<ModPreset>,
+            #[serde(default)]
+            search_presets: Vec<SearchPreset>,
             leaderboard_rating_columns: Vec<String>,
             #[serde(default)]
             leaderboard_include_former_names: bool,
@@ -335,6 +357,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     matchmaker_invite_columns: defaults.matchmaker_invite_columns,
                     matchmaker_invite_order: defaults.matchmaker_invite_order,
                     mod_presets: defaults.mod_presets,
+                    search_presets: defaults.search_presets,
                     leaderboard_rating_columns: defaults.leaderboard_rating_columns,
                     leaderboard_include_former_names: defaults.leaderboard_include_former_names,
                     replay_vault_player: defaults.replay_vault_player,
@@ -376,6 +399,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             matchmaker_invite_columns: wire.matchmaker_invite_columns,
             matchmaker_invite_order: wire.matchmaker_invite_order,
             mod_presets: wire.mod_presets,
+            search_presets: wire.search_presets,
             leaderboard_rating_columns: wire.leaderboard_rating_columns,
             leaderboard_include_former_names: wire.leaderboard_include_former_names,
             replay_vault_player: wire.replay_vault_player,
@@ -394,6 +418,13 @@ const MATCHMAKER_FACTIONS: [&str; 4] = ["UEF", "Aeon", "Cybran", "Seraphim"];
 const MAX_MOD_PRESETS: usize = 64;
 const MAX_MOD_PRESET_NAME_CHARS: usize = 64;
 const MAX_MODS_PER_PRESET: usize = 512;
+
+/// Caps for saved search presets, bounded per list and across all lists.
+const MAX_SEARCH_PRESETS_PER_LIST: usize = 64;
+const MAX_SEARCH_PRESETS_TOTAL: usize = 256;
+const MAX_SEARCH_PRESET_LIST_CHARS: usize = 64;
+const MAX_SEARCH_PRESET_NAME_CHARS: usize = 64;
+const MAX_SEARCH_PRESET_QUERY_CHARS: usize = 8 * 1024;
 
 impl BrowsingPreferences {
     pub(super) fn normalized(mut self) -> Self {
@@ -491,6 +522,7 @@ impl BrowsingPreferences {
             _ => "recommended".into(),
         };
         self.mod_presets = normalize_mod_presets(std::mem::take(&mut self.mod_presets));
+        self.search_presets = normalize_search_presets(std::mem::take(&mut self.search_presets));
         let selected_columns: Vec<String> = VALID_LEADERBOARD_RATING_COLUMNS
             .iter()
             .filter(|canonical| {
@@ -630,6 +662,7 @@ preference_patch! {
         matchmaker_invite_columns: Vec<u32>,
         matchmaker_invite_order: Vec<u32>,
         mod_presets: Vec<ModPreset>,
+        search_presets: Vec<SearchPreset>,
         leaderboard_rating_columns: Vec<String>,
         leaderboard_include_former_names: bool,
         replay_vault_player: String,
@@ -670,6 +703,46 @@ fn normalize_mod_presets(presets: Vec<ModPreset>) -> Vec<ModPreset> {
             uids: normalize_labels(preset.uids, MAX_MODS_PER_PRESET, 128),
         });
         if normalized.len() == MAX_MOD_PRESETS {
+            break;
+        }
+    }
+    normalized
+}
+
+/// Bound the user's saved search presets the way `normalize_mod_presets` and
+/// `normalize_remembered_filters` bound theirs.
+///
+/// Names are unique within each `list` (case-insensitively, first wins on
+/// repair); two different lists such as `"replays.online"` and
+/// `"replays.local"` may each have a preset of the same name. A preset whose
+/// `query` exceeds the bound or is empty is dropped whole rather than cut in
+/// half.
+fn normalize_search_presets(presets: Vec<SearchPreset>) -> Vec<SearchPreset> {
+    let mut normalized: Vec<SearchPreset> = Vec::new();
+    for preset in presets {
+        let list = truncate_trimmed(preset.list, MAX_SEARCH_PRESET_LIST_CHARS);
+        let name = truncate_trimmed(preset.name, MAX_SEARCH_PRESET_NAME_CHARS);
+        let query = preset.query.trim().to_owned();
+        if list.is_empty()
+            || name.is_empty()
+            || query.is_empty()
+            || query.chars().count() > MAX_SEARCH_PRESET_QUERY_CHARS
+            || normalized.iter().any(|existing| {
+                existing.list.eq_ignore_ascii_case(&list)
+                    && existing.name.eq_ignore_ascii_case(&name)
+            })
+        {
+            continue;
+        }
+        let in_list = normalized
+            .iter()
+            .filter(|existing| existing.list.eq_ignore_ascii_case(&list))
+            .count();
+        if in_list >= MAX_SEARCH_PRESETS_PER_LIST {
+            continue;
+        }
+        normalized.push(SearchPreset { list, name, query });
+        if normalized.len() == MAX_SEARCH_PRESETS_TOTAL {
             break;
         }
     }
@@ -805,6 +878,7 @@ mod tests {
                 matchmaker_invite_order: Vec::new(),
                 mod_vault_preset: "  UI  ".into(),
                 mod_presets: Vec::new(),
+                search_presets: Vec::new(),
                 leaderboard_rating_columns: vec![
                     "deviation".into(),
                     "MEAN".into(),
@@ -1135,5 +1209,55 @@ mod tests {
                 ["UEF", "Aeon", "Cybran", "Seraphim"]
             );
         }
+    }
+
+    #[test]
+    fn saved_search_presets_are_deduplicated_per_list_and_survive_without_filters() {
+        let browsing = BrowsingPreferences {
+            search_presets: vec![
+                SearchPreset {
+                    list: "  replays.online  ".into(),
+                    name: "  Gap 1800+  ".into(),
+                    query: r#"  {"map":"Dual Gap"}  "#.into(),
+                },
+                SearchPreset {
+                    list: "REPLAYS.ONLINE".into(),
+                    name: "gap 1800+".into(),
+                    query: r#"{"map":"Duplicate"}"#.into(),
+                },
+                SearchPreset {
+                    list: "replays.local".into(),
+                    name: "Gap 1800+".into(),
+                    query: r#"{"map":"Dual Gap"}"#.into(),
+                },
+                SearchPreset {
+                    list: "replays.online".into(),
+                    name: String::new(),
+                    query: r#"{"map":"Unnamed"}"#.into(),
+                },
+                SearchPreset {
+                    list: "replays.online".into(),
+                    name: "Oversized".into(),
+                    query: "x".repeat(MAX_SEARCH_PRESET_QUERY_CHARS + 1),
+                },
+            ],
+            remembered_filters: BTreeMap::from([(
+                "replays.online".into(),
+                r#"{"player":"Ada"}"#.into(),
+            )]),
+            ..BrowsingPreferences::default()
+        }
+        .normalized();
+
+        assert_eq!(browsing.search_presets.len(), 2);
+        assert_eq!(browsing.search_presets[0].list, "replays.online");
+        assert_eq!(browsing.search_presets[0].name, "Gap 1800+");
+        assert_eq!(browsing.search_presets[0].query, r#"{"map":"Dual Gap"}"#);
+        assert_eq!(browsing.search_presets[1].list, "replays.local");
+        assert_eq!(browsing.search_presets[1].name, "Gap 1800+");
+
+        let cleared = browsing.without_filters();
+        assert!(cleared.remembered_filters.is_empty());
+        assert_eq!(cleared.search_presets.len(), 2);
     }
 }

@@ -1,0 +1,1 @@
+- Replay searches can be saved and run again in one click, in Replays > Online and Local.
