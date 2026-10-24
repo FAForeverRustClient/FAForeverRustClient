@@ -418,9 +418,6 @@
     {
       "id": "faf-guide-in-depth",
       "kind": "guide",
-      "related": [
-        "eco-compendium"
-      ],
       "summary": "A long-form explanation of the concepts FAF is played on.",
       "title": "The FAF guide: basic concepts in depth",
       "topics": [
@@ -497,20 +494,6 @@
       "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/forum-arma-ladder-1v1.md"
     },
     {
-      "id": "eco-compendium",
-      "kind": "guide",
-      "related": [
-        "faf-guide-in-depth"
-      ],
-      "summary": "A reference on economy: what to build, when, and why the numbers say so.",
-      "title": "The eco compendium",
-      "topics": [
-        "economy"
-      ],
-      "updatedAt": "2026-09-05",
-      "url": "https://docs.google.com/document/d/1T7iWUZtmVKdUQZKOdDSPCfIbHa5Pj2MzqBoBQJ9OK3Y/edit"
-    },
-    {
       "id": "five-by-five-guide",
       "kind": "guide",
       "summary": "Playing the 5x5 map size.",
@@ -523,26 +506,10 @@
       "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/five-by-five-guide.md"
     },
     {
-      "id": "hotkey-guide",
-      "kind": "guide",
-      "level": "intermediate",
-      "related": [
-        "ui-mod-guide"
-      ],
-      "summary": "Setting up hotkeys, and which ones are worth the habit.",
-      "title": "Hotkey guide",
-      "topics": [
-        "interface"
-      ],
-      "updatedAt": "2026-09-05",
-      "url": "https://app.notion.com/p/Hotkey-Guide-22895eec16af8001a395c81153e6829b"
-    },
-    {
       "id": "ui-mod-guide",
       "kind": "guide",
       "related": [
-        "forum-ui-mods-improving-player",
-        "hotkey-guide"
+        "forum-ui-mods-improving-player"
       ],
       "summary": "Which UI mods do what, and which ones to start with.",
       "title": "UI mod guide",
@@ -811,19 +778,6 @@
       ],
       "updatedAt": "2026-10-06",
       "url": "https://www.youtube.com/watch?v=ePFfw0p3Xd8&list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
-    },
-    {
-      "author": "Sheppy",
-      "id": "fa-companion-maps",
-      "kind": "guide",
-      "summary": "A map directory with build orders attached to each map, kept outside FAF.",
-      "title": "FA Companion: build orders by map",
-      "topics": [
-        "buildOrder",
-        "mapControl"
-      ],
-      "updatedAt": "2026-10-06",
-      "url": "https://fa-companion.services.atlantishq.de/maps"
     },
     {
       "author": "Seraphim-Noob",

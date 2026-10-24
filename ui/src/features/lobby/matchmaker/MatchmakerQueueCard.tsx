@@ -4,8 +4,103 @@ import type { MatchmakerQueue, PlayerLeaguePlacement, PlayerRatingSummary } from
 import { UNLISTED_DIVISION_IMAGE } from "./MatchmakerPlayerCard";
 import { formatClockDuration } from "../../../shared/format/durations";
 import { placementLabel } from "../../../shared/leagueNames";
-import { queueRatingBuckets } from "./queueRatingRange";
+import {
+  queueRatingGraph,
+  RATING_GRAPH_DOMAIN,
+  RATING_GRAPH_TICKS,
+  type QueueRatingGraph,
+} from "./queueRatingRange";
 import { formatNumber, t } from "../../../i18n";
+
+const PLOT_WIDTH = 204;
+const PLOT_HEIGHT = 76;
+const PLOT_PAD = { left: 8, right: 8, top: 8, bottom: 18 };
+
+function QueueRatingPlot({ graph }: { graph: QueueRatingGraph }) {
+  const [from, to] = RATING_GRAPH_DOMAIN;
+  const innerWidth = PLOT_WIDTH - PLOT_PAD.left - PLOT_PAD.right;
+  const base = PLOT_HEIGHT - PLOT_PAD.bottom;
+  const usableHeight = base - PLOT_PAD.top;
+  const x = (rating: number) => PLOT_PAD.left + ((rating - from) / (to - from)) * innerWidth;
+  const y = (value: number) => base - value * usableHeight;
+
+  const coords = graph.points.map((point) => `${x(point.rating).toFixed(1)},${y(point.value).toFixed(1)}`);
+  const linePath = `M ${coords.join(" L ")}`;
+  const areaPath = `${linePath} L ${x(to).toFixed(1)},${base} L ${x(from).toFixed(1)},${base} Z`;
+
+  return (
+    <svg
+      className="matchmaker-queue-plot"
+      viewBox={`0 0 ${PLOT_WIDTH} ${PLOT_HEIGHT}`}
+      aria-hidden
+    >
+      <line
+        className="matchmaker-queue-grid"
+        x1={PLOT_PAD.left}
+        x2={PLOT_WIDTH - PLOT_PAD.right}
+        y1={base - usableHeight * 0.5}
+        y2={base - usableHeight * 0.5}
+      />
+      <path className="matchmaker-queue-curve-fill" d={areaPath} />
+      <path className="matchmaker-queue-curve-line" d={linePath} />
+      <line
+        className="matchmaker-queue-axis"
+        x1={PLOT_PAD.left}
+        x2={PLOT_WIDTH - PLOT_PAD.right}
+        y1={base}
+        y2={base}
+      />
+      {RATING_GRAPH_TICKS.map((tick, index) => (
+        <g key={tick}>
+          <line
+            className="matchmaker-queue-axis"
+            x1={x(tick)}
+            x2={x(tick)}
+            y1={base}
+            y2={base + 3}
+          />
+          <text
+            className="matchmaker-queue-tick"
+            x={x(tick)}
+            y={PLOT_HEIGHT - 2}
+            textAnchor={
+              index === 0
+                ? "start"
+                : index === RATING_GRAPH_TICKS.length - 1
+                  ? "end"
+                  : "middle"
+            }
+          >
+            {formatNumber(tick)}
+          </text>
+        </g>
+      ))}
+      {graph.marker && (
+        <g className="matchmaker-queue-marker">
+          <line
+            className="matchmaker-queue-marker-line"
+            x1={x(graph.marker.rating)}
+            x2={x(graph.marker.rating)}
+            y1={PLOT_PAD.top}
+            y2={base}
+          />
+          <circle
+            className="matchmaker-queue-marker-halo"
+            cx={x(graph.marker.rating)}
+            cy={y(graph.marker.value)}
+            r={4.5}
+          />
+          <circle
+            className="matchmaker-queue-marker-dot"
+            cx={x(graph.marker.rating)}
+            cy={y(graph.marker.value)}
+            r={2.75}
+          />
+        </g>
+      )}
+    </svg>
+  );
+}
 
 export type QueueDisplayState = "idle" | "searching" | "found" | "launching" | "cancelled";
 
@@ -48,10 +143,6 @@ interface Props {
    * worth a number.
    */
   inRange: number | null;
-  /** Your own search in this queue, which the server counts and you are not
-   *  looking for. The breakdown has to subtract it in the same place the
-   *  headline count does. */
-  ownSearches: number;
   /** This queue's league placement, for the badge under the rating. */
   placement: PlayerLeaguePlacement | null;
   onToggle: () => void;
@@ -68,7 +159,6 @@ export function MatchmakerQueueCard({
   secondsUntilPop,
   rating,
   inRange,
-  ownSearches,
   placement,
   onToggle,
   onOpenMapPool,
@@ -77,10 +167,7 @@ export function MatchmakerQueueCard({
   // any of them is near you, and "in range: 0" says only that none is: the
   // question both leave open is whether the queue is empty around your rating
   // or empty everywhere, which decides whether waiting is worth it.
-  const buckets = queueRatingBuckets(queue, rating, ownSearches);
-  // Only when a band is marked as yours, which is when the rating is certain
-  // enough to place you at all.
-  const myMean = buckets.some((bucket) => bucket.mine) ? (rating?.mean ?? null) : null;
+  const graph = queueRatingGraph(queue, rating);
   return (
     <article
       className={
@@ -153,7 +240,7 @@ export function MatchmakerQueueCard({
           <span><Icon name="hourglass" size={14} /> {formatClockDuration(secondsUntilPop)}</span>
           <span className="matchmaker-queue-queued">
             <Icon name="users" size={14} /> {t("lobby.matchmaker.queuedCount", { count: queue.numPlayers })}
-            {buckets.length > 0 && (
+            {graph && (
               // Shown while the pointer is anywhere on the card, and anchored
               // here because this is the count it breaks down. Hover-only and
               // `pointer-events: none`, because this sits inside the card's
@@ -162,46 +249,8 @@ export function MatchmakerQueueCard({
               <span className="matchmaker-queue-breakdown" aria-hidden>
                 <span className="matchmaker-queue-breakdown-head">
                   <b>{t("lobby.matchmaker.queueByRating")}</b>
-                  {/* The bands are the server's search windows, centred on
-                      each player's mean, so the arrow follows your mean too
-                      and not the conservative rating on the card. Saying the
-                      number is what keeps the arrow from looking misplaced. */}
-                  {myMean !== null && (
-                    <span>{t("lobby.matchmaker.yourMatchmakingRating", {
-                      rating: Math.round(myMean).toLocaleString("en-US"),
-                    })}</span>
-                  )}
                 </span>
-                {/* Green is the count of a band holding somebody who would
-                    take this search: whether waiting here can produce a game.
-                    Your own band is marked by the arrow in the first column
-                    rather than by a colour, so the two never read as one
-                    signal. Neither needed a line of explanation under the
-                    list, so there is none. */}
-                {buckets.map((bucket) => (
-                  <span
-                    key={bucket.min}
-                    className={[
-                      "matchmaker-queue-band",
-                      bucket.inRange > 0 ? "is-in-range" : "",
-                      bucket.mine ? "is-mine" : "",
-                    ].filter(Boolean).join(" ")}
-                  >
-                    <span className="matchmaker-queue-band-marker">
-                      {bucket.mine && <Icon name="arrowRight" size={12} />}
-                    </span>
-                    <em>{bucket.min} – {bucket.max}</em>
-                    {/* How many are waiting in the band, always. Whether any of
-                        them would match you is the green, so a band nobody in
-                        which reaches you reads as its plain count rather than
-                        "0 of 1", which read as an empty band. Only a band
-                        where some but not all would match says how many do.
-                        See `RatingBucket.inRange`. */}
-                    <i>{bucket.inRange > 0 && bucket.inRange < bucket.count
-                      ? t("lobby.matchmaker.someOfBand", { inRange: bucket.inRange, count: bucket.count })
-                      : bucket.count}</i>
-                  </span>
-                ))}
+                <QueueRatingPlot graph={graph} />
               </span>
             )}
           </span>

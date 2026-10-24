@@ -115,6 +115,13 @@ describe("browsing preferences", () => {
         { name: "REPLAY WATCHING", uids: ["z"] },
         { name: "   ", uids: ["c"] },
       ],
+      searchPresets: [
+        { list: "  replays.online  ", name: "  Gap 1800+  ", query: "  {\"map\":\"Dual Gap\"}  " },
+        { list: "REPLAYS.ONLINE", name: "gap 1800+", query: "{\"map\":\"Duplicate\"}" },
+        { list: "replays.local", name: "Gap 1800+", query: "{\"map\":\"Local Gap\"}" },
+        { list: "replays.online", name: "   ", query: "{}" },
+        { list: "replays.online", name: "Oversized", query: "x".repeat(8 * 1024 + 1) },
+      ],
       leaderboardRatingColumns: ["deviation", "MEAN", "invalid_column"],
       leaderboardIncludeFormerNames: true,
       replayVaultPlayer: "  VindexNoob  ",
@@ -133,6 +140,10 @@ describe("browsing preferences", () => {
     expect(normalized.modPresets).toEqual([
       { name: "Replay watching", uids: ["a", "b"] },
       { name: "Vanilla", uids: [] },
+    ]);
+    expect(normalized.searchPresets).toEqual([
+      { list: "replays.online", name: "Gap 1800+", query: "{\"map\":\"Dual Gap\"}" },
+      { list: "replays.local", name: "Gap 1800+", query: "{\"map\":\"Local Gap\"}" },
     ]);
     expect(normalized.customGamesView).toBe("list");
     expect(normalized.replaysView).toBe("list");

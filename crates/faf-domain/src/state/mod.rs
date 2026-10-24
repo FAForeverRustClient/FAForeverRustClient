@@ -159,9 +159,9 @@ pub use settings::{
     DiscordPreferences, EventReminder, EventsPreferences, FilterMemory, GameCacheInfo,
     GamePreferences, GeneralPreferences, HostGamePreferences, IceAdapter, LiveReplayFilters,
     NotificationPreferences, NotificationSound, NotificationSoundChoices, PathPreferences,
-    PlayerNote, ReplayChatTransfers, ReplayNote, SettingsCommand, SettingsEvent, SettingsState,
-    SocialPreferences, Theme, ToastPosition, UiDensity, UpdatePreferences, WeekStart,
-    MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_RAIL_BELOW,
+    PlayerNote, ReplayChatTransfers, ReplayNote, SearchPreset, SettingsCommand, SettingsEvent,
+    SettingsState, SocialPreferences, Theme, ToastPosition, UiDensity, UpdatePreferences,
+    WeekStart, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_RAIL_BELOW,
 };
 pub use social::{
     LoginLookup, PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent,

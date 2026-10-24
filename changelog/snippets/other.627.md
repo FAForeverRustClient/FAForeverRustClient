@@ -1,0 +1,1 @@
+- Recent only, Exact player name and Skip short games in the replay search are now checkboxes.

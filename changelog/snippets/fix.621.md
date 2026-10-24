@@ -1,0 +1,1 @@
+- The client signs in to FAF again after the server update of 21 October, and shows the lobbies again.

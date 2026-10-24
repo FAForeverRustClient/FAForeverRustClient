@@ -163,6 +163,39 @@ pub fn mod_preset_deleted(settings: &SettingsState, name: &str) -> SettingsEvent
     }
 }
 
+fn same_search_slot(left_list: &str, left_name: &str, right_list: &str, right_name: &str) -> bool {
+    left_list.trim().eq_ignore_ascii_case(right_list.trim())
+        && left_name.trim().eq_ignore_ascii_case(right_name.trim())
+}
+
+/// The event that saves one search preset, replacing the one of the same name
+/// in that list in place (so the list order stays put on overwrite) or adding
+/// it at the end.
+pub fn search_preset_saved(settings: &SettingsState, preset: SearchPreset) -> SettingsEvent {
+    let mut next = settings.clone();
+    let presets = &mut next.browsing.search_presets;
+    match presets.iter_mut().find(|existing| {
+        same_search_slot(&existing.list, &existing.name, &preset.list, &preset.name)
+    }) {
+        Some(existing) => *existing = preset,
+        None => presets.push(preset),
+    }
+    SettingsEvent::BrowsingChanged {
+        preferences: Box::new(next.normalized().browsing),
+    }
+}
+
+/// The event that deletes the search preset called `name` in `list`.
+pub fn search_preset_deleted(settings: &SettingsState, list: &str, name: &str) -> SettingsEvent {
+    let mut next = settings.clone();
+    next.browsing
+        .search_presets
+        .retain(|preset| !same_search_slot(&preset.list, &preset.name, list, name));
+    SettingsEvent::BrowsingChanged {
+        preferences: Box::new(next.normalized().browsing),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -330,5 +363,59 @@ mod tests {
 
         let next = applied(next.clone(), mod_preset_deleted(&next, "TEAM"));
         assert_eq!(next.browsing.mod_presets.len(), 1);
+    }
+
+    #[test]
+    fn a_saved_search_preset_replaces_its_namesake_in_the_same_list_only() {
+        let mut settings = SettingsState::default();
+        settings.browsing.search_presets = vec![
+            SearchPreset {
+                list: "replays.online".into(),
+                name: "Gap".into(),
+                query: r#"{"map":"Dual Gap"}"#.into(),
+            },
+            SearchPreset {
+                list: "replays.online".into(),
+                name: "Setons".into(),
+                query: r#"{"map":"Seton"}"#.into(),
+            },
+            SearchPreset {
+                list: "replays.local".into(),
+                name: "Gap".into(),
+                query: r#"{"map":"Local Gap"}"#.into(),
+            },
+        ];
+
+        let next = applied(
+            settings.clone(),
+            search_preset_saved(
+                &settings,
+                SearchPreset {
+                    list: "replays.online".into(),
+                    name: "gap".into(),
+                    query: r#"{"map":"Adaptive Dual Gap"}"#.into(),
+                },
+            ),
+        );
+        assert_eq!(next.browsing.search_presets.len(), 3);
+        assert_eq!(next.browsing.search_presets[0].name, "gap");
+        assert_eq!(
+            next.browsing.search_presets[0].query,
+            r#"{"map":"Adaptive Dual Gap"}"#
+        );
+        assert_eq!(next.browsing.search_presets[1].name, "Setons");
+        assert_eq!(next.browsing.search_presets[2].list, "replays.local");
+        assert_eq!(
+            next.browsing.search_presets[2].query,
+            r#"{"map":"Local Gap"}"#
+        );
+
+        let next = applied(
+            next.clone(),
+            search_preset_deleted(&next, "replays.online", "GAP"),
+        );
+        assert_eq!(next.browsing.search_presets.len(), 2);
+        assert_eq!(next.browsing.search_presets[0].name, "Setons");
+        assert_eq!(next.browsing.search_presets[1].list, "replays.local");
     }
 }

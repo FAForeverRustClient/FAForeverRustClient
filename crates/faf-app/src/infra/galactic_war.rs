@@ -47,7 +47,11 @@ use tokio::process::{Child, Command};
 use tokio::sync::{mpsc, Notify};
 
 use crate::infra::session::TokenStore;
-use crate::infra::{data_dir, env_or, http::shared_http_client, vault_install};
+use crate::infra::{
+    data_dir, env_or,
+    http::{https_only_download_client, shared_http_client},
+    is_loopback, vault_install,
+};
 use crate::ports::{GalacticWarPort, InstallProgress};
 
 /// Generous for a ~45 MB archive, bounded enough that a broken or hostile
@@ -93,6 +97,10 @@ impl GalacticWarConfig {
 pub struct GalacticWarGateway {
     config: GalacticWarConfig,
     http: reqwest::Client,
+    /// For the archive and its checksum. The archive is unpacked and run, so
+    /// it gets the policy the client installer and the map generator have:
+    /// redirects are followed, but never off HTTPS.
+    downloads: reqwest::Client,
     /// The FAF session's access token, for the one call that needs it
     /// ([`GalacticWarPort::player_faction`]). Empty unless given one.
     tokens: TokenStore,
@@ -106,6 +114,7 @@ impl GalacticWarGateway {
         Self {
             config,
             http: shared_http_client(),
+            downloads: https_only_download_client(),
             tokens: TokenStore::new(),
             child: Arc::new(Mutex::new(None)),
             exited: Arc::new(Notify::new()),
@@ -125,10 +134,22 @@ impl GalacticWarGateway {
     /// Whether the access token may be sent to `url`: over an encrypted
     /// connection, or to this machine for a gateway run locally. The token is
     /// FAF's, and the gateway is not a FAF host.
+    ///
+    /// The host is read from the parsed URL. Comparing the text's prefix let
+    /// `http://localhost.example.invalid/` and `http://localhost@remote/`
+    /// through: both start with `http://localhost` and name another machine.
     fn may_carry_token(url: &str) -> bool {
-        url.starts_with("https://")
-            || url.starts_with("http://127.0.0.1")
-            || url.starts_with("http://localhost")
+        let Ok(parsed) = url::Url::parse(url) else {
+            return false;
+        };
+        if !parsed.username().is_empty() || parsed.password().is_some() {
+            return false;
+        }
+        match parsed.scheme() {
+            "https" => true,
+            "http" => is_loopback(&parsed),
+            _ => false,
+        }
     }
 
     fn api_url(&self, path: &str) -> String {
@@ -241,7 +262,7 @@ impl GalacticWarGateway {
     async fn expected_digest(&self, url: &str) -> Result<Option<String>, String> {
         let unreadable = || "could not read the Galactic War archive's checksum".to_string();
         let response = self
-            .http
+            .downloads
             .get(format!("{url}.sha256"))
             .timeout(API_TIMEOUT)
             .send()
@@ -280,7 +301,7 @@ impl GalacticWarGateway {
         url: &str,
         progress: &mpsc::Sender<InstallProgress>,
     ) -> Result<Vec<u8>, String> {
-        let response = self.http.get(url).send().await.map_err(|error| {
+        let response = self.downloads.get(url).send().await.map_err(|error| {
             format!(
                 "could not download the Galactic War client: {}",
                 crate::infra::http::describe_transport_error(&error)
@@ -559,6 +580,7 @@ impl GalacticWarPort for GalacticWarGateway {
         let worker = Self {
             config: self.config.clone(),
             http: self.http.clone(),
+            downloads: self.downloads.clone(),
             tokens: self.tokens.clone(),
             child: self.child.clone(),
             exited: self.exited.clone(),
@@ -667,6 +689,21 @@ mod tests {
         assert!(!GalacticWarGateway::may_carry_token(
             "http://gw.example/player/1/faction"
         ));
+        assert!(GalacticWarGateway::may_carry_token(
+            "http://127.0.0.1:8080/x"
+        ));
+        assert!(GalacticWarGateway::may_carry_token("http://[::1]:8080/x"));
+        // Hosts that only start like this machine's name.
+        for remote in [
+            "http://localhost.example.invalid/player/1/faction",
+            "http://localhost@remote.example.invalid/player/1/faction",
+            "http://127.0.0.1.example.invalid/player/1/faction",
+            "https://user:secret@gw.example/player/1/faction",
+            "ftp://localhost/player/1/faction",
+            "not a url",
+        ] {
+            assert!(!GalacticWarGateway::may_carry_token(remote), "{remote}");
+        }
     }
 
     #[test]

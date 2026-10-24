@@ -590,6 +590,11 @@ export type BrowsingPreferences = {
 	 *  *filter*. These are the user's own saved selections.
 	 */
 	modPresets: ModPreset[],
+	/**
+	 *  Named search presets saved by the user in search panels such as the
+	 *  online and local replay tabs.
+	 */
+	searchPresets: SearchPreset[],
 	/**  Visible column keys in the rating leaderboard table. */
 	leaderboardRatingColumns: string[],
 	/**
@@ -666,6 +671,7 @@ export type BrowsingPreferencesPatch = {
 	matchmakerInviteColumns?: number[],
 	matchmakerInviteOrder?: number[],
 	modPresets?: ModPreset[],
+	searchPresets?: SearchPreset[],
 	leaderboardRatingColumns?: string[],
 	leaderboardIncludeFormerNames?: boolean,
 	replayVaultPlayer?: string,
@@ -9433,6 +9439,22 @@ export type RoundMaps = {
 	mapIds: string[],
 };
 
+/**
+ *  A named search preset saved by the user for one list (for example
+ *  `"replays.online"` or `"replays.local"`).
+ *
+ *  Like [`BrowsingPreferences::remembered_filters`], `query` is a JSON document
+ *  only that list reads and writes, so adding a field to a list's search form
+ *  never invalidates presets saved by an older build. Unlike
+ *  `remembered_filters`, a preset is saved deliberately under a name and is
+ *  never cleared by [`BrowsingPreferences::without_filters`].
+ */
+export type SearchPreset = {
+	list: string,
+	name: string,
+	query: string,
+};
+
 export type SeasonLeaderboard = {
 	entries: LeaderboardEntry[],
 	tiers: LeaderboardTier[],
@@ -9664,6 +9686,18 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 } } |
 /**  Delete the named mod set. */
 { type: "deleteModPreset"; payload: {
+	name: string,
+} } |
+/**
+ *  Save a named search preset for one list, replacing one of the same name
+ *  in place.
+ */
+{ type: "saveSearchPreset"; payload: {
+	preset: SearchPreset,
+} } |
+/**  Delete the named search preset from one list. */
+{ type: "deleteSearchPreset"; payload: {
+	list: string,
 	name: string,
 } } | { type: "checkInstalls" } | { type: "refreshGameCache" } | { type: "clearGameCache" };
 

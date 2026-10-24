@@ -646,6 +646,8 @@ fn settings(command: &SettingsCommand) -> CommandPolicy {
         | SettingsCommand::SetPlayerNameColor { .. }
         | SettingsCommand::SaveModPreset { .. }
         | SettingsCommand::DeleteModPreset { .. }
+        | SettingsCommand::SaveSearchPreset { .. }
+        | SettingsCommand::DeleteSearchPreset { .. }
         | SettingsCommand::CheckInstalls
         | SettingsCommand::RefreshGameCache
         | SettingsCommand::ClearGameCache => service_guarded(ServiceGuard::Settings),
