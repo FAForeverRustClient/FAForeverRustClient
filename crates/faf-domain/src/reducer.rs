@@ -5,9 +5,9 @@
 
 use crate::state::{
     auth, changelog, chat, clan, client_update, connectivity, coop, events, galactic_war, guides,
-    install, leaderboard, lobby, map_generator, maps, mods, nav, notifications, player_card,
-    replays, reporting, reviews, session, settings, social, streams, tourney, training, tutorials,
-    uploads,
+    install, leaderboard, linux_runtime, lobby, map_generator, maps, mods, nav, notifications,
+    player_card, replays, reporting, reviews, session, settings, social, streams, tourney,
+    training, tutorials, uploads,
 };
 use crate::{AppEvent, AppState};
 
@@ -38,6 +38,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) {
         AppEvent::Changelog(e) => changelog::reduce(&mut state.changelog, e),
         AppEvent::Uploads(e) => uploads::reduce(&mut state.uploads, e),
         AppEvent::GalacticWar(e) => galactic_war::reduce(&mut state.galactic_war, e),
+        AppEvent::LinuxRuntime(e) => linux_runtime::reduce(&mut state.linux_runtime, e),
         AppEvent::Guides(e) => guides::reduce(&mut state.guides, e),
         AppEvent::ClientUpdate(e) => client_update::reduce(&mut state.client_update, e),
         AppEvent::Install(e) => install::reduce(&mut state.install, e),

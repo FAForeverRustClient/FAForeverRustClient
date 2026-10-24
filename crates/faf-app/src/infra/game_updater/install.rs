@@ -197,9 +197,38 @@ fn steam_retail_install_paths() -> Vec<PathBuf> {
     out
 }
 
+/// The original game, wherever [`retail_install_dir`] would look, or `None`
+/// when it is nowhere. Unlike that function it never falls back to the FAF
+/// install: the Linux runtime asks whether there is a game to run at all.
+pub(crate) fn find_retail_install() -> Option<PathBuf> {
+    if let Ok(dir) = std::env::var("FAF_GAME_INSTALL_DIR") {
+        if !dir.is_empty() {
+            return Some(PathBuf::from(dir));
+        }
+    }
+    crate::infra::paths::original_game_dir()
+        .into_iter()
+        .chain(crate::infra::game::reference_retail_install_paths())
+        .chain(typical_retail_install_paths())
+        .chain(steam_retail_install_paths())
+        .find(|dir| is_retail_install(dir))
+}
+
+/// Steam's own folder outside Windows: the first of [`steam_roots`] that
+/// holds a library list, which is how faf-linux's `setup.sh` picks it. The
+/// Linux runtime hands it to Proton and loads its overlay from it.
+pub(crate) fn steam_install_dir() -> Option<PathBuf> {
+    if cfg!(windows) {
+        return None;
+    }
+    steam_roots()
+        .into_iter()
+        .find(|root| root.join("steamapps").join("libraryfolders.vdf").is_file())
+}
+
 /// Where Steam itself is installed: under Program Files on Windows; outside
 /// it, `~/.steam/steam` (the Java client's guess), its usual target
-/// `~/.local/share/Steam`, and the Flatpak's.
+/// `~/.local/share/Steam`, the Flatpak's and the Snap's.
 fn steam_roots() -> Vec<PathBuf> {
     let mut roots: Vec<PathBuf> = program_files_dirs()
         .into_iter()
@@ -211,6 +240,7 @@ fn steam_roots() -> Vec<PathBuf> {
             roots.push(home.join(".steam").join("steam"));
             roots.push(home.join(".local").join("share").join("Steam"));
             roots.push(home.join(".var/app/com.valvesoftware.Steam/.local/share/Steam"));
+            roots.push(home.join("snap/steam/common/.local/share/Steam"));
         }
     }
     roots

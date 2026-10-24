@@ -91,6 +91,7 @@ pub(crate) mod jsonapi;
 pub mod jsonrpc;
 pub mod leaderboard;
 pub(crate) mod league_keys;
+pub mod linux_runtime;
 pub mod lobby_fake;
 pub mod lobby_ws;
 pub mod map_generator;
@@ -639,6 +640,7 @@ pub fn fake_ports() -> Ports {
         uploads: Arc::new(FakeUploads),
         client_update: Arc::new(FakeClientUpdates),
         galactic_war: Arc::new(FakeGalacticWar),
+        linux_runtime: Arc::new(crate::ports::NoLinuxRuntime),
         game_cache: Arc::new(game_cache::NoGameCache),
         notification_sounds: Arc::new(notification_sounds::NoStoredSounds),
         game_logs: Arc::new(game_logs::NoGameLogs),
@@ -838,6 +840,7 @@ pub fn real_ports() -> Ports {
         uploads,
         client_update,
         galactic_war,
+        linux_runtime: Arc::new(linux_runtime::LinuxRuntimeGateway::new()),
         game_cache: Arc::new(game_cache::DiskGameCache),
         notification_sounds: Arc::new(notification_sounds::StoredSounds),
         game_logs: Arc::new(game_logs::DiskGameLogs),
