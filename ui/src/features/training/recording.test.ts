@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ellipsize,
+  catColor,
   markerPaths,
   parseEnvelope,
   runStalls,
@@ -43,6 +44,10 @@ function envelope(over: Partial<Envelope> = {}): Envelope {
   };
 }
 
+const trail = (over: Partial<Envelope["paths"][number]> = {}): Envelope["paths"][number] => ({
+  id: "0", name: "ACU", cat: "acu", ordinal: 1, birth: 0, points: [], ...over,
+});
+
 describe("parseEnvelope", () => {
   it("refuses anything that is not a run this pane can draw", () => {
     // The document arrives over the network from a repository, so what is
@@ -65,6 +70,7 @@ describe("parseEnvelope", () => {
     // the flow chart then never reached the end.
     expect(parseEnvelope(valid.replace('"durationMs":60000', '"durationMs":1e309'))).toBeNull();
     expect(parseEnvelope(valid.replace('"durationMs":60000', '"durationMs":1e15'))).toBeNull();
+    expect(parseEnvelope(valid.replace('"durationMs":60000', '"durationMs":1e-300'))).toBeNull();
 
     // A build tree nested past the walk's budget, or a node without builds.
     let deep = node({ entityId: "leaf", category: "engie" });
@@ -85,6 +91,58 @@ describe("parseEnvelope", () => {
       { id: "1", points: Array.from({ length: 500_001 }, () => 0) },
     ];
     expect(parseEnvelope(JSON.stringify(crowded))).toBeNull();
+  });
+
+  const malformed: Array<[string, Record<string, unknown>]> = [
+    ["a numeric child name", { bo: { ...envelope().bo, builds: [
+      { ...node({ entityId: "child", category: "unit" }), name: 42 },
+    ] } }],
+    ["a null node", { bo: null }],
+    ["a null child", { bo: { ...envelope().bo, builds: [null] } }],
+    ["a numeric category", { bo: { ...envelope().bo, category: 1 } }],
+    ["a numeric entity id", { bo: { ...envelope().bo, entityId: 1 } }],
+    ["a string start time", { bo: { ...envelope().bo, startTime: "0" } }],
+    ["an inverted finish time", { bo: { ...envelope().bo, startTime: 10, finishTime: 1 } }],
+    ["an invalid node coordinate", { bo: { ...envelope().bo, x: null } }],
+    ["a null marker", { markers: [null] }],
+    ["a numeric marker name", { markers: [{ type: "Mass", name: 1, x: 0, z: 0 }] }],
+    ["a string marker coordinate", { markers: [{ type: "Mass", name: "m", x: "0", z: 0 }] }],
+    ["a null path", { paths: [null] }],
+    ["a numeric path name", { paths: [{ ...trail(), name: 1 }] }],
+    ["a null path category", { paths: [{ ...trail(), cat: null }] }],
+    ["a string ordinal", { paths: [{ ...trail(), ordinal: "1" }] }],
+    ["a string birth time", { paths: [{ ...trail(), birth: "0" }] }],
+    ["a null path point", { paths: [{ ...trail(), points: [null] }] }],
+    ["an invalid path coordinate", { paths: [{ ...trail(), points: [{ t: 0, x: null, z: 0 }] }] }],
+    ["unsorted path samples", { paths: [trail({ points: [{ t: 10, x: 0, z: 0 }, { t: 0, x: 0, z: 0 }] })] }],
+    ["a string map", { meta: { ...envelope().meta, map: "map" } }],
+    ["invalid map dimensions", { meta: { ...envelope().meta, map: { sizeX: "256" } } }],
+    ["subnormal map dimensions", { meta: { ...envelope().meta, map: { sizeX: 1e-300 } } }],
+    ["an incomplete playable rectangle", { meta: { ...envelope().meta, map: { playable: {} } } }],
+    ["a null metadata object", { meta: null }],
+    ["a numeric run name", { meta: { ...envelope().meta, name: 1 } }],
+    ["invalid economy fields", { eco: { fields: "massStored" } }],
+    ["a null economy row", { eco: { fields: [], rows: [null] } }],
+    ["a short economy row", { eco: { fields: ["massStored"], rows: [[0]] } }],
+    ["a string economy value", { eco: { fields: ["massStored"], rows: [[0, "0"]] } }],
+    ["invalid economy labels", { eco: { labels: { massStored: 42 } } }],
+  ];
+  it.each(malformed)("refuses %s before drawing", (_name, over) => {
+    expect(parseEnvelope(JSON.stringify({ ...envelope(), ...over }))).toBeNull();
+  });
+
+  it("normalizes missing legacy map and economy metadata before derivation", () => {
+    const legacy = { ...envelope(), meta: { name: "old run", durationMs: 60_000 }, eco: undefined };
+    const accepted = parseEnvelope(JSON.stringify(legacy))!;
+    expect(accepted.meta.map).toEqual({ name: "", sizeX: null, sizeZ: null, playable: null });
+    expect(toLanes(accepted.bo)).toEqual([]);
+    expect(markerPaths(accepted)).toEqual([]);
+    expect(runStalls(accepted)).toEqual({ mass: [], energy: [] });
+  });
+
+  it("rejects non-finite coordinates even when JSON parses them as numbers", () => {
+    const text = JSON.stringify(envelope()).replace('"x":10', '"x":1e309');
+    expect(parseEnvelope(text)).toBeNull();
   });
 });
 
@@ -129,6 +187,66 @@ describe("toLanes", () => {
 });
 
 describe("markerPaths", () => {
+  it("derives 50,000 accepted samples across 19,999 reclaim actions without a cross product", () => {
+    const env = envelope();
+    env.meta.durationMs = 3 * 60 * 60 * 1000;
+    env.bo.builds = Array.from({ length: 19_999 }, (_, i) => node({
+      entityId: "0", category: "reclaim", startTime: i * 500, finishTime: i * 500 + 1,
+    }));
+    const t = 19_998 * 500;
+    env.paths = [trail({ points: Array.from({ length: 50_000 }, () => ({ t, x: 1, z: 1 })) })];
+    const accepted = parseEnvelope(JSON.stringify(env))!;
+    expect(accepted).not.toBeNull();
+    const [route] = markerPaths(accepted);
+    expect(route.points).toHaveLength(50_001);
+    expect(route.points.slice(1).every((p) => p.reclaim)).toBe(true);
+    expect(toLanes(accepted.bo)[0].bars).toHaveLength(19_999);
+  });
+
+  it("refuses duplicate routes that would repeatedly derive the same producer", () => {
+    expect(parseEnvelope(JSON.stringify(envelope({ paths: [trail(), trail()] })))).toBeNull();
+  });
+
+  it("bounds output when overlapping reclaim runs would repeatedly splice the same samples", () => {
+    const env = envelope();
+    env.bo.builds = Array.from({ length: 8 }, (_, i) => node({
+      entityId: String(i), category: i % 2 ? "structure" : "reclaim",
+      startTime: 0, finishTime: 10_000,
+    }));
+    env.paths = [trail({ points: Array.from({ length: 30_000 }, () => ({ t: 0, x: 0, z: 0 })) })];
+    expect(parseEnvelope(JSON.stringify(env))).toBeNull();
+  });
+
+  it("bounds resource snapping across every producer", () => {
+    const env = envelope();
+    env.bo.builds = ["a", "b"].map((id) => node({
+      entityId: id, category: "engie", builds: Array.from({ length: 60 }, (_, i) =>
+        node({ entityId: `${id}-${i}`, category: "mex" })),
+    }));
+    env.markers = Array.from({ length: 20_000 }, (_, i) => ({ type: "Mass", name: String(i), x: 0, z: 0 }));
+    env.paths = [trail({ id: "a" }), trail({ id: "b" })];
+    expect(parseEnvelope(JSON.stringify({ ...env, paths: env.paths.slice(0, 1) }))).not.toBeNull();
+    expect(parseEnvelope(JSON.stringify(env))).toBeNull();
+  });
+
+  it("bounds the combined output of distinct raw routes", () => {
+    const points = Array.from({ length: 60_000 }, () => ({ t: 0, x: 0, z: 0 }));
+    const paths = [trail({ id: "a", points }), trail({ id: "b", points })];
+    expect(parseEnvelope(JSON.stringify(envelope({ paths: paths.slice(0, 1) })))).not.toBeNull();
+    expect(parseEnvelope(JSON.stringify(envelope({ paths })))).toBeNull();
+  });
+
+  it("preserves travel gaps between merged reclaim windows", () => {
+    const env = envelope();
+    env.bo.builds = [
+      node({ entityId: "0", category: "reclaim", startTime: 10_000, finishTime: 11_000 }),
+      node({ entityId: "0", category: "reclaim", startTime: 20_000, finishTime: 21_000 }),
+    ];
+    env.paths = [trail({ points: [10_500, 15_000, 20_500].map((t) => ({ t, x: 0, z: 0 })) })];
+    const accepted = parseEnvelope(JSON.stringify(env))!;
+    expect(markerPaths(accepted)[0].points.map((p) => p.reclaim)).toEqual([false, true, false, true]);
+  });
+
   it("routes a builder through its build sites and snaps them onto resources", () => {
     const env = envelope({
       bo: node({
@@ -302,6 +420,10 @@ describe("stallSpans", () => {
 });
 
 describe("ellipsize", () => {
+  it("treats unknown categories as data, including object prototype names", () => {
+    expect(catColor("constructor")).toBe(catColor("unit"));
+    expect(catColor("toString")).toBe(catColor("unit"));
+  });
   it("leaves a name that fits alone", () => {
     expect(ellipsize("T1 Engineer", 20)).toBe("T1 Engineer");
     expect(ellipsize("exact", 5)).toBe("exact");

@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import type { ReplayAnalysis, ReplayPoint } from "../../../ipc/bindings";
 import {
   analysedPlayers,
+  activitySeries,
   blurBins,
   commandName,
   formatGameTime,
   heatmapBins,
   MAX_ACTIVITY_TICKS,
+  MAX_ACTIVITY_SAMPLES,
+  MAX_ACTIVITY_TOTAL_SAMPLES,
   ordersInWindow,
   peakOf,
   playerColor,
@@ -23,14 +26,14 @@ describe("the rolling count behind the activity graph", () => {
     // Three orders in the first second, nothing after. Every tick of the
     // first minute still sees all three, because the window starts there and
     // reaches forward.
-    const series = rollingActions([0, 5, 9], 1_200);
+    const { values: series } = rollingActions([0, 5, 9], 600);
     expect(series[0]).toBe(3);
     expect(series[1]).toBe(2);
     expect(series[10]).toBe(0);
   });
 
   it("drops an order out of the window once the minute has passed it", () => {
-    const series = rollingActions([0, 600], 1_200);
+    const { values: series } = rollingActions([0, 600], 1_000);
     // The order at tick 600 is a minute away from tick 0, which is the far
     // edge of the window rather than inside it.
     expect(series[0]).toBe(1);
@@ -38,10 +41,12 @@ describe("the rolling count behind the activity graph", () => {
     expect(series[599]).toBe(1);
   });
 
-  it("never sizes the series past a day of game time, whatever the replay claims", () => {
-    expect(rollingActions([0], 4_294_967_295).length).toBe(MAX_ACTIVITY_TICKS);
-    expect(rollingActions([], Number.POSITIVE_INFINITY).length).toBe(1);
-    expect(rollingActions([], Number.NaN).length).toBe(1);
+  it("allocates by drawing resolution, whatever duration the replay claims", () => {
+    const series = rollingActions([0], 4_294_967_295);
+    expect(series.values.length).toBeLessThanOrEqual(MAX_ACTIVITY_SAMPLES);
+    expect(series.step).toBe(Math.ceil(MAX_ACTIVITY_TICKS / MAX_ACTIVITY_SAMPLES));
+    expect(rollingActions([], Number.POSITIVE_INFINITY).values.length).toBe(0);
+    expect(rollingActions([], Number.NaN).values.length).toBe(0);
   });
 
   it("is all zeroes for a player who did nothing", () => {
@@ -49,9 +54,48 @@ describe("the rolling count behind the activity graph", () => {
   });
 
   it("never reads past the end of the game", () => {
-    const series = rollingActions([90], 100);
+    const { values: series } = rollingActions([90, 100, 105], 100);
     expect(series.length).toBe(100);
-    expect(series[0]).toBe(1);
+    // An order at the final simulation tick is real; one after it is not.
+    expect(series[0]).toBe(2);
+    expect(series[99]).toBe(1);
+  });
+
+  it("matches an independent forward-window count at every sample", () => {
+    const commands = [0, 5, 9, 599, 600, 600, 601, 1_100, 5_000, 8_631, 8_999];
+    const { values, step } = rollingActions(commands, 9_000);
+    for (let i = 0; i < values.length; i += 1) {
+      const from = i * step;
+      expect(values[i]).toBe(commands.filter((tick) => tick >= from && tick < from + 600).length);
+    }
+  });
+
+  it("does not wrap high counts at 65,536 actions", () => {
+    expect(rollingActions(Array<number>(70_000).fill(0), 100).values[0]).toBe(70_000);
+  });
+
+  it("keeps allocation and peak scans bounded over all 255 replay sources", () => {
+    const empty = Array.from({ length: 255 }, (_, source) => ({
+      source, commandTicks: [] as number[], lastTick: MAX_ACTIVITY_TICKS,
+    }));
+    const idle = activitySeries(empty, MAX_ACTIVITY_TICKS);
+    expect([...idle.values()].reduce((size, entry) => size + entry.values.byteLength, 0)).toBe(0);
+    expect(peakOf(idle.values())).toBe(0);
+
+    const active = activitySeries(empty.map((entry) => ({ ...entry, commandTicks: [0] })),
+      MAX_ACTIVITY_TICKS);
+    const samples = [...active.values()].reduce((size, entry) => size + entry.values.length, 0);
+    expect(active.size).toBe(255);
+    expect(samples).toBeLessThanOrEqual(MAX_ACTIVITY_TOTAL_SAMPLES);
+    expect(peakOf(active.values())).toBe(1);
+  });
+
+  it("ignores duplicate and impossible sources without multiplying their series", () => {
+    const entry = { source: 0, commandTicks: [0], lastTick: 100 };
+    const series = activitySeries([entry, entry, { ...entry, source: -1 },
+      { ...entry, source: 256 }, { ...entry, source: 0.5 }], 100);
+    expect(series.size).toBe(1);
+    expect(series.get(0)?.values[0]).toBe(1);
   });
 });
 

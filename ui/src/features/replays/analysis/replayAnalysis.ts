@@ -183,50 +183,92 @@ export function analysedPlayers(analysis: ReplayAnalysis): AnalysedPlayer[] {
 }
 
 /**
- * A rolling count of actions, one value per tick.
- *
- * At tick `t` the value is how many orders the player gave in the minute
- * starting there, which is the line the activity graph draws. Built by sliding
- * a window rather than by counting each tick's minute from scratch: a long game
- * is tens of thousands of ticks, and the quadratic version of this took longer
- * than reading the file did.
- */
-/**
- * A day of game time, as the backend caps it (`MAX_REPLAY_TICKS`). Held here
- * as well: the series is one value per tick, and a replay that claims four
- * billion ticks asked this for gigabytes before anything could look at it.
+ * The backend's duration cap remains a guard on the time axis. Allocations
+ * depend on drawing resolution and a shared budget, never on this duration.
  */
 export const MAX_ACTIVITY_TICKS = 10 * 60 * 60 * 24;
+export const MAX_ACTIVITY_SAMPLES = 1000;
+export const MAX_ACTIVITY_TOTAL_SAMPLES = 32_000;
+const MAX_ACTIVITY_SOURCES = 256;
+const MAX_ACTIVITY_COMMANDS = 1_000_000;
 
+export interface ActivitySeries {
+  /** Sample i counts the forward minute beginning at i * step. */
+  step: number;
+  values: Uint32Array;
+}
+
+/**
+ * Count each order into the range of sampled windows that contain it, then
+ * take a prefix sum. Work is linear in orders plus samples, even for an empty
+ * day-long game. Counts stay exact at each sampled time, including duplicates
+ * on the same tick; no dense array over the game's ticks is needed.
+ */
 export function rollingActions(
   commandTicks: readonly number[],
   claimedTicks: number,
   window = ACTIVITY_WINDOW_TICKS,
-): Uint16Array {
+  sampleLimit = MAX_ACTIVITY_SAMPLES,
+): ActivitySeries {
   const ticks = Number.isFinite(claimedTicks)
     ? Math.min(Math.max(Math.floor(claimedTicks), 0), MAX_ACTIVITY_TICKS)
     : 0;
-  const series = new Uint16Array(Math.max(ticks, 1));
-  if (commandTicks.length === 0 || ticks <= 0) return series;
-
-  const perTick = new Uint16Array(ticks + window);
-  for (const tick of commandTicks) {
-    if (tick >= 0 && tick < perTick.length) perTick[tick] += 1;
+  const limit = Number.isFinite(sampleLimit)
+    ? Math.max(1, Math.min(Math.floor(sampleLimit), MAX_ACTIVITY_SAMPLES)) : MAX_ACTIVITY_SAMPLES;
+  const step = Math.max(1, Math.ceil(ticks / limit));
+  if (commandTicks.length === 0 || ticks === 0 || !Number.isSafeInteger(window) || window <= 0) {
+    return { step, values: new Uint32Array(0) };
   }
+  const count = Math.ceil(ticks / step);
+  const changes = new Int32Array(count + 1);
+  for (let i = 0; i < Math.min(commandTicks.length, MAX_ACTIVITY_COMMANDS); i += 1) {
+    const tick = commandTicks[i];
+    if (!Number.isSafeInteger(tick) || tick < 0 || tick > ticks) continue;
+    // i*step <= tick < i*step + window. The right edge is exclusive.
+    const first = Math.max(0, Math.floor((tick - window) / step) + 1);
+    const last = Math.min(count - 1, Math.floor(tick / step));
+    if (first > last) continue;
+    changes[first] += 1;
+    changes[last + 1] -= 1;
+  }
+  const values = new Uint32Array(count);
   let running = 0;
-  for (let tick = 0; tick < window && tick < perTick.length; tick += 1) running += perTick[tick];
-  series[0] = running;
-  for (let tick = 1; tick < ticks; tick += 1) {
-    running += perTick[tick + window - 1] - perTick[tick - 1];
-    series[tick] = running;
+  for (let i = 0; i < count; i += 1) {
+    running += changes[i];
+    values[i] = running;
   }
-  return series;
+  return { step, values };
+}
+
+/** At most 128 KiB of counts across every source, also bounding SVG output. */
+export function activitySeries(
+  activity: ReplayAnalysis["activity"],
+  ticks: number,
+): Map<number, ActivitySeries> {
+  const sources = new Map<number, ReplayAnalysis["activity"][number]>();
+  let commands = 0;
+  // Sources are bytes in the replay protocol. Bound iteration as well as the
+  // map, even if a caller supplies duplicates or impossible source ids.
+  for (let i = 0; i < Math.min(activity.length, MAX_ACTIVITY_SOURCES); i += 1) {
+    const entry = activity[i];
+    if (
+      !Number.isInteger(entry.source) || entry.source < 0 || entry.source >= MAX_ACTIVITY_SOURCES
+      || sources.has(entry.source) || commands + entry.commandTicks.length > MAX_ACTIVITY_COMMANDS
+    ) continue;
+    sources.set(entry.source, entry);
+    commands += entry.commandTicks.length;
+  }
+  const sampleLimit = Math.min(MAX_ACTIVITY_SAMPLES,
+    Math.floor(MAX_ACTIVITY_TOTAL_SAMPLES / Math.max(1, sources.size)));
+  return new Map([...sources.values()].map((entry) => [
+    entry.source, rollingActions(entry.commandTicks, ticks, ACTIVITY_WINDOW_TICKS, sampleLimit),
+  ]));
 }
 
 /** The tallest value across a set of series, for a shared y axis. */
-export function peakOf(series: Iterable<Uint16Array>): number {
+export function peakOf(series: Iterable<ActivitySeries>): number {
   let peak = 0;
-  for (const values of series) {
+  for (const { values } of series) {
     for (const value of values) if (value > peak) peak = value;
   }
   return peak;
