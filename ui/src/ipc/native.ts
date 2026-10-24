@@ -171,6 +171,15 @@ export const native = {
     return invoke<string | null>("system_date_pattern");
   },
 
+  /**
+   * How many map generators the client would run side by side for maps of
+   * this size when the count is left to it, from the computer's cores and
+   * the memory free right now.
+   */
+  mapGeneratorAutomaticInstances(mapSize: number | null): Promise<number> {
+    return invoke<number>("map_generator_automatic_instances", { mapSize });
+  },
+
   /** Which engine the interface is being rendered by. */
   webviewEngine(): Promise<WebviewEngine> {
     return invoke<WebviewEngine>("webview_engine");

@@ -430,6 +430,17 @@ pub(crate) fn webview_engine() -> WebviewEngine {
     }
 }
 
+/// How many map generators the client would run side by side for maps of
+/// this size, when the player leaves the count to it.
+///
+/// A plain request rather than state, like the date pattern below: free
+/// memory changes from one moment to the next, and the settings page only
+/// wants the number it shows beside the field while it is open.
+#[tauri::command]
+pub(crate) fn map_generator_automatic_instances(map_size: Option<u32>) -> u32 {
+    faf_app::infra::map_generator::automatic_instances(map_size)
+}
+
 /// The short date pattern of the user's regional format, as Windows spells it
 /// (`dd.MM.yyyy`, `M/d/yyyy`, `yyyy-MM-dd`), or `None` where there is none.
 ///

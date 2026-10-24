@@ -3360,6 +3360,23 @@ export type GamePreferences = {
 	 */
 	keepGeneratedMapsLimit?: number,
 	/**
+	 *  How many map generators may run at the same time, or `0` to let the
+	 *  client decide from the computer's cores and free memory.
+	 *
+	 *  Only a run of several maps that each need their own generator uses
+	 *  this: one where several styles, symmetries or a density range were
+	 *  selected, so every map gets its own pick. A single map, and a batch the
+	 *  generator makes in one go, stay one process either way.
+	 *
+	 *  A setting rather than a fixed number because the right one is the
+	 *  computer's: one generator keeps about one and a half cores busy and
+	 *  needs up to about three gigabytes for a 20 km map, so three at once
+	 *  were a third faster on a four-core machine, four at once were slower
+	 *  again, and with 12 GB of memory four ran out of it and took four times
+	 *  as long.
+	 */
+	mapGeneratorInstances?: number,
+	/**
 	 *  Show Forged Alliance as being played on Steam while a game runs, and
 	 *  only then (issue 364).
 	 *
@@ -3399,6 +3416,7 @@ export type GamePreferencesPatch = {
 	pipeLiveReplay?: boolean,
 	keepGeneratedMaps?: boolean,
 	keepGeneratedMapsLimit?: number,
+	mapGeneratorInstances?: number,
 	steamPresence?: boolean,
 	borderlessWindow?: boolean,
 };

@@ -1347,6 +1347,10 @@ export const ru: Partial<Record<MessageKey, Message>> = {
 
   "settings.game.additionalGameLaunch": "Дополнительные аргументы запуска",
   "settings.game.autoGenerateMaps": "Автоматически генерировать карты",
+  "settings.game.mapGeneratorInstances": "Одновременно работающие генераторы карт",
+  "settings.game.mapGeneratorInstancesHint": "Используется, когда выбрано несколько стилей, симметрий или плотностей и каждой карте нужен свой генератор. Один генератор занимает около полутора ядер и требует около 3 ГБ памяти для карты 20 км.",
+  "settings.game.mapGeneratorInstances.automatic": "Автоматически ({count} на этом компьютере)",
+  "settings.game.mapGeneratorInstances.automaticPending": "Автоматически",
   "settings.game.cacheLifetime": "Срок хранения кэша игры",
   "settings.game.cacheLifetime.days": "{days} дн.",
   "settings.game.cacheLifetime.default": "30 дней (по умолчанию)",

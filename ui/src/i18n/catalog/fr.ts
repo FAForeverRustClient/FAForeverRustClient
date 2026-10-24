@@ -1273,6 +1273,10 @@ export const fr: Partial<Record<MessageKey, Message>> = {
 
   "settings.game.additionalGameLaunch": "Arguments de lancement supplémentaires",
   "settings.game.autoGenerateMaps": "Générer automatiquement les cartes manquantes",
+  "settings.game.mapGeneratorInstances": "Générateurs de cartes simultanés",
+  "settings.game.mapGeneratorInstancesHint": "Utilisé quand plusieurs styles, symétries ou densités sont sélectionnés et que chaque carte a besoin de son propre générateur. Un générateur occupe environ un cœur et demi et demande jusqu'à environ 3 Go de mémoire pour une carte de 20 km.",
+  "settings.game.mapGeneratorInstances.automatic": "Automatique ({count} sur cet ordinateur)",
+  "settings.game.mapGeneratorInstances.automaticPending": "Automatique",
   "settings.game.cacheLifetime": "Rétention du cache du jeu",
   "settings.game.cacheLifetime.days": "{days} jours",
   "settings.game.cacheLifetime.default": "30 jours (par défaut)",
