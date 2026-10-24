@@ -1,0 +1,1 @@
+- The Linux AppImage now updates itself: the new version replaces the AppImage you start the client from, and the client restarts into it.
