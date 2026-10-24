@@ -107,6 +107,17 @@ impl JsonRpcClient {
                         }
                     }
                 }
+                // Whatever is still unparsed is a message that has not ended
+                // yet. The adapters write one short line per message, so past
+                // the budget it is not one: end the connection, as a closed
+                // stream does, rather than keep reparsing a growing buffer.
+                if exceeds_budget(&buffer) {
+                    tracing::warn!(
+                        bytes = buffer.len(),
+                        "closing an adapter connection that sent an unending message"
+                    );
+                    break;
+                }
             }
             answers.lock().unwrap().clear();
         });
@@ -196,8 +207,18 @@ fn route(value: &Value, reply_tx: &mpsc::UnboundedSender<String>) -> Option<RpcN
     })
 }
 
-/// The most a malformed message may hold back while its line end is awaited.
+/// The most a message may hold back while its end is awaited, malformed or
+/// merely incomplete.
 const MAX_UNPARSED_BYTES: usize = 1 << 20;
+
+/// Whether the unparsed rest of the stream is past [`MAX_UNPARSED_BYTES`].
+///
+/// An incomplete object (a string or array that is never closed) returns from
+/// [`parse_objects`] before its own cap, which only applies to malformed
+/// input, so the reader checks this after every read.
+fn exceeds_budget(buffer: &[u8]) -> bool {
+    buffer.len() > MAX_UNPARSED_BYTES
+}
 
 /// Drain every complete JSON object from `buffer`, leaving any partial trailing
 /// object for the next read. Handles concatenated and newline-separated objects.
@@ -271,6 +292,17 @@ mod tests {
         let objs = parse_objects(&mut buf);
         assert_eq!(objs.len(), 1);
         assert_eq!(objs[0]["method"], "c");
+    }
+
+    #[test]
+    fn an_object_that_never_ends_is_over_budget() {
+        let mut buf = br#"{"method":"a","params":[""#.to_vec();
+        buf.extend(std::iter::repeat_n(b'x', MAX_UNPARSED_BYTES));
+        assert!(parse_objects(&mut buf).is_empty());
+        // Held back as incomplete, never dropped by the parser itself: the
+        // reader has to see this and close the connection.
+        assert!(exceeds_budget(&buf));
+        assert!(!exceeds_budget(br#"{"method":"a","par"#));
     }
 
     #[test]

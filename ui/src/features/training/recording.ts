@@ -73,33 +73,242 @@ export type Lane = {
 };
 
 /**
+ * Bounds on a document the panes are willing to draw. A training run is a few
+ * minutes of one player's opening; these leave room for a whole game and stop
+ * a document that would hang or exhaust the page. `durationMs` sizes the flow
+ * chart and its minute ticks, so an infinite one (`1e309` in the JSON) looped
+ * for ever and a huge finite one drew a chart kilometres wide.
+ */
+const MAX_DURATION_MS = 3 * 60 * 60 * 1000;
+const MAX_BUILD_NODES = 20_000;
+const MAX_BUILD_DEPTH = 200;
+const MAX_MARKERS = 20_000;
+const MAX_PATHS = 10_000;
+const MAX_PATH_POINTS = 500_000;
+const MAX_DOCUMENT_CHARS = 8 * 1024 * 1024;
+const MAX_ROUTE_POINTS = 100_000;
+const MAX_SNAP_CHECKS = 2_000_000;
+const MAX_COORDINATE = 1_000_000;
+const MAX_ECO_VALUES = 500_000;
+
+type JsonObject = Record<string, unknown>;
+type Path = Envelope["paths"][number];
+
+const isObject = (value: unknown): value is JsonObject =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+const isText = (value: unknown): value is string =>
+  typeof value === "string" && value.length <= 4096;
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+const isTime = (value: unknown): value is number =>
+  isFiniteNumber(value) && value >= 0 && value <= MAX_DURATION_MS;
+const isCoordinate = (value: unknown): value is number =>
+  isFiniteNumber(value) && Math.abs(value) <= MAX_COORDINATE;
+
+/**
+ * Check every field used by the panes and index the first node for each id.
+ * Reclaim leaves legitimately reuse their producer's id. Walk with a stack:
+ * validation must not be the thing a deep tree overflows.
+ */
+function buildTreeIndex(root: unknown): Map<string, BoNode> | null {
+  const stack: Array<{ node: unknown; depth: number }> = [{ node: root, depth: 0 }];
+  const index = new Map<string, BoNode>();
+  let nodes = 0;
+  while (stack.length > 0) {
+    const { node, depth } = stack.pop()!;
+    nodes += 1;
+    if (nodes > MAX_BUILD_NODES || depth > MAX_BUILD_DEPTH || !isObject(node)) return null;
+    if (
+      !isText(node.name) || !isText(node.category) || !isText(node.entityId)
+      || !isTime(node.startTime)
+      || (node.finishTime !== null && (!isTime(node.finishTime) || node.finishTime < node.startTime))
+      || !isCoordinate(node.x) || !isCoordinate(node.z)
+      || !Array.isArray(node.builds)
+    ) return null;
+    // Unused descriptive fields were absent in some older recordings.
+    if (node.description === undefined) node.description = "";
+    if (node.unitId === undefined) node.unitId = null;
+    if (!isText(node.description) || (node.unitId !== null && !isText(node.unitId))) return null;
+    if (nodes + stack.length + node.builds.length > MAX_BUILD_NODES) return null;
+    if (!index.has(node.entityId)) index.set(node.entityId, node as BoNode);
+    for (let i = node.builds.length - 1; i >= 0; i -= 1) {
+      stack.push({ node: node.builds[i], depth: depth + 1 });
+    }
+  }
+  return index;
+}
+
+function pathsFit(paths: unknown[]): boolean {
+  if (paths.length > MAX_PATHS) return false;
+  const ids = new Set<string>();
+  let points = 0;
+  for (const path of paths) {
+    if (
+      !isObject(path) || !isText(path.id) || ids.has(path.id)
+      || !isText(path.name) || !isText(path.cat)
+      || !Number.isSafeInteger(path.ordinal) || (path.ordinal as number) < 0
+      || !isTime(path.birth) || !Array.isArray(path.points)
+    ) return false;
+    ids.add(path.id);
+    points += path.points.length;
+    if (points > MAX_PATH_POINTS) return false;
+    let previous = 0;
+    for (const point of path.points) {
+      if (
+        !isObject(point) || !isTime(point.t) || point.t < previous
+        || !isCoordinate(point.x) || !isCoordinate(point.z)
+      ) return false;
+      previous = point.t;
+    }
+  }
+  return true;
+}
+
+function parseMap(value: unknown): Envelope["meta"]["map"] | null {
+  if (value === undefined || value === null) {
+    return { name: "", sizeX: null, sizeZ: null, playable: null };
+  }
+  if (!isObject(value)) return null;
+  const name = value.name ?? "";
+  const sizeX = value.sizeX ?? null;
+  const sizeZ = value.sizeZ ?? null;
+  const dimension = (n: unknown): n is number | null =>
+    n === null || n === 0 || (isCoordinate(n) && n >= 1);
+  if (!isText(name) || !dimension(sizeX) || !dimension(sizeZ)) return null;
+  let playable: Envelope["meta"]["map"]["playable"] = null;
+  if (value.playable !== undefined && value.playable !== null) {
+    const rect = value.playable;
+    if (
+      !isObject(rect) || !isCoordinate(rect.x0) || !isCoordinate(rect.z0)
+      || !isCoordinate(rect.x1) || !isCoordinate(rect.z1)
+      || rect.x1 < rect.x0 || rect.z1 < rect.z0
+    ) return null;
+    playable = { x0: rect.x0, z0: rect.z0, x1: rect.x1, z1: rect.z1 };
+  }
+  return { name, sizeX: sizeX || null, sizeZ: sizeZ || null, playable };
+}
+
+function parseEco(value: unknown): Envelope["eco"] | null {
+  if (value === undefined || value === null) return { fields: [], labels: {}, rows: [] };
+  if (!isObject(value)) return null;
+  const fields: unknown = value.fields ?? [];
+  const labels: unknown = value.labels ?? {};
+  const rows: unknown = value.rows ?? [];
+  if (
+    !Array.isArray(fields) || fields.length > 128 || !fields.every(isText)
+    || !isObject(labels) || !Object.values(labels).every(isText)
+    || !Array.isArray(rows) || rows.length > 50_000
+    || rows.length * (fields.length + 1) > MAX_ECO_VALUES
+  ) return null;
+  let previous = 0;
+  for (const row of rows) {
+    if (
+      !Array.isArray(row) || row.length !== fields.length + 1
+      || !row.every(isFiniteNumber) || !isTime(row[0]) || row[0] < previous
+    ) return null;
+    previous = row[0];
+  }
+  return { fields, labels: labels as Record<string, string>, rows: rows as number[][] };
+}
+
+/** First sample at or after time, or strictly after it for an inclusive end. */
+function pointIndex(points: Path["points"], time: number, after = false): number {
+  let lo = 0;
+  let hi = points.length;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (points[mid].t < time || (after && points[mid].t === time)) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+function reclaimRun(builds: BoNode[], start: number) {
+  let end = start;
+  let from = Number.POSITIVE_INFINITY;
+  let to = 0;
+  while (end < builds.length && builds[end].category === "reclaim") {
+    const node = builds[end];
+    from = Math.min(from, node.startTime);
+    to = Math.max(to, node.finishTime ?? node.startTime);
+    end += 1;
+  }
+  return { end, from, to };
+}
+
+/** Bound combinations, not just individual arrays, before creating SVG data. */
+function routesFit(env: Envelope, nodes: Map<string, BoNode>): boolean {
+  const mass = env.markers.filter((m) => m.type === "Mass").length;
+  const hydro = env.markers.filter((m) => m.type === "Hydrocarbon").length;
+  let points = 0;
+  let snapChecks = 0;
+  for (const path of env.paths) {
+    const node = nodes.get(path.id);
+    if (!node || node.builds.length === 0) points += path.points.length;
+    else {
+      points += 1;
+      for (let i = 0; i < node.builds.length;) {
+        const child = node.builds[i];
+        if (child.category === "reclaim") {
+          const run = reclaimRun(node.builds, i);
+          points += pointIndex(path.points, run.to, true) - pointIndex(path.points, run.from);
+          i = run.end;
+        } else {
+          points += 1;
+          snapChecks += child.category === "mex" ? mass : child.category === "power" ? hydro : 0;
+          i += 1;
+        }
+        if (points > MAX_ROUTE_POINTS || snapChecks > MAX_SNAP_CHECKS) return false;
+      }
+    }
+    if (points > MAX_ROUTE_POINTS) return false;
+  }
+  return true;
+}
+
+/**
  * Is this parsed JSON an envelope this pane can draw?
  *
  * The document arrives over the network from a repository, so it is checked
- * rather than trusted. What is checked is only what the panes actually read: a
- * schema tag, a duration, a build tree and the two arrays. A run missing map
+ * rather than trusted. Every consumed field and the total derivation cost are
+ * checked before returning the typed document. A run missing map
  * dimensions is still valid and still draws its flow; the map pane says why it
  * cannot draw itself.
  */
 export function parseEnvelope(text: string): Envelope | null {
-  if (!text) return null;
+  if (!text || text.length > MAX_DOCUMENT_CHARS) return null;
   let value: unknown;
   try {
     value = JSON.parse(text);
   } catch {
     return null;
   }
-  if (typeof value !== "object" || value === null) return null;
-  const env = value as Partial<Envelope>;
-  if (env.schema !== "faf-bo/1") return null;
-  if (!env.meta || typeof env.meta.durationMs !== "number" || env.meta.durationMs <= 0) {
+  if (!isObject(value) || value.schema !== "faf-bo/1" || !isObject(value.meta)) return null;
+  const duration = value.meta.durationMs;
+  if (
+    typeof duration !== "number"
+    || !Number.isFinite(duration)
+    || duration < 1
+    || duration > MAX_DURATION_MS
+  ) {
     return null;
   }
-  if (!env.bo || typeof env.bo.entityId !== "string" || !Array.isArray(env.bo.builds)) {
-    return null;
+  const nodes = buildTreeIndex(value.bo);
+  const map = parseMap(value.meta.map);
+  const eco = parseEco(value.eco);
+  if (!nodes || !map || !eco || !isText(value.meta.name)) return null;
+  if (!Array.isArray(value.markers) || value.markers.length > MAX_MARKERS) return null;
+  for (const marker of value.markers) {
+    if (
+      !isObject(marker) || !isText(marker.type) || !isText(marker.name)
+      || !isCoordinate(marker.x) || !isCoordinate(marker.z)
+    ) return null;
   }
-  if (!Array.isArray(env.markers) || !Array.isArray(env.paths)) return null;
-  return env as Envelope;
+  if (!Array.isArray(value.paths) || !pathsFit(value.paths)) return null;
+  value.meta.map = map;
+  value.eco = eco;
+  const env = value as Envelope;
+  return routesFit(env, nodes) ? env : null;
 }
 
 /**
@@ -127,7 +336,8 @@ export const CAT_COLOR: Record<string, string> = {
 /** The colour a leg is painted while the unit was actually reclaiming. */
 export const RECLAIM_COLOR = "#fdd835";
 
-export const catColor = (cat: string): string => CAT_COLOR[cat] ?? CAT_COLOR.unit;
+export const catColor = (cat: string): string =>
+  Object.prototype.hasOwnProperty.call(CAT_COLOR, cat) ? CAT_COLOR[cat] : CAT_COLOR.unit;
 
 /**
  * Split the two air types worth telling apart out of the coarse `unit` bucket.
@@ -281,25 +491,31 @@ export function markerPaths(env: Envelope): MarkerPath[] {
       // only while it sits inside an individual reclaim's window: the gaps
       // between actions are travel, and a drive between two reclaim sites
       // should not read as reclaiming the whole way.
-      let j = i;
-      while (j < node.builds.length && node.builds[j].category === "reclaim") j += 1;
+      const run = reclaimRun(node.builds, i);
       const windows = node.builds
-        .slice(i, j)
-        .map((n) => [n.startTime, n.finishTime ?? n.startTime] as const);
-      const from = windows[0][0];
-      const to = windows[windows.length - 1][1];
+        .slice(i, run.end)
+        .map((n) => [n.startTime - 2000, (n.finishTime ?? n.startTime) + 2000] as const)
+        .sort((left, right) => left[0] - right[0]);
       // Dilated so back-to-back reclaims and the roughly one-second sampling
       // gap read as one continuous sweep, while a real drive between sites is a
       // gap well beyond this and still falls through as travel.
-      const tolerance = 2000;
-      const reclaiming = (t: number) =>
-        windows.some(([a, b2]) => t >= a - tolerance && t <= b2 + tolerance);
-      for (const q of raw) {
-        if (q.t >= from && q.t <= to) {
-          points.push({ x: q.x, z: q.z, reclaim: reclaiming(q.t) });
-        }
+      // Merge once, then sweep sorted samples. Testing every sample against
+      // every action made a small recording require a billion comparisons.
+      const merged: Array<[number, number]> = [];
+      for (const [from, to] of windows) {
+        const last = merged[merged.length - 1];
+        if (last && from <= last[1]) last[1] = Math.max(last[1], to);
+        else merged.push([from, to]);
       }
-      i = j;
+      let interval = 0;
+      const stop = pointIndex(raw, run.to, true);
+      for (let qIndex = pointIndex(raw, run.from); qIndex < stop; qIndex += 1) {
+        const q = raw[qIndex];
+        while (interval < merged.length && merged[interval][1] < q.t) interval += 1;
+        const reclaim = interval < merged.length && q.t >= merged[interval][0];
+        points.push({ x: q.x, z: q.z, reclaim });
+      }
+      i = run.end;
     }
     return { ...base, cat: refineCat(p.cat, p.name), derived: true, points };
   });
@@ -314,16 +530,15 @@ export function markerPaths(env: Envelope): MarkerPath[] {
  */
 export function stallSpans(env: Envelope, field: string): { from: number; to: number }[] {
   const index = env.eco?.fields?.indexOf(field) ?? -1;
-  // The envelope check does not cover `eco`, so a document with the field
-  // named and no rows is possible and must not throw.
+  // Also tolerate callers constructing a legacy envelope without rows.
   const rows = Array.isArray(env.eco?.rows) ? env.eco.rows : [];
   if (index < 0) return [];
 
   const spans: { from: number; to: number }[] = [];
   let start: number | null = null;
   for (const row of rows) {
-    const [t, ...values] = row;
-    if (values[index] <= 1) {
+    const t = row[0];
+    if (row[index + 1] <= 1) {
       if (start === null) start = t;
     } else if (start !== null) {
       spans.push({ from: start, to: t });
