@@ -17,6 +17,12 @@ export interface Section {
   text: string;
   /** 1 for a section heading, 2 for what sits inside one (a unit, a sub-heading). */
   depth: 1 | 2;
+  /**
+   * The icon a unit's section opens with, for its entry in the contents. A
+   * header naming a whole family gives its first unit's: the family's icons
+   * differ mostly by faction, and a row of them is noise at this size.
+   */
+  iconUrl?: string;
 }
 
 export const anchorFor = (index: number) => `changelog-block-${index}`;
@@ -31,7 +37,9 @@ export function noteSections(blocks: ChangelogBlock[], skipFirst: boolean): Sect
     if (block.type === "heading" && block.payload.level <= 3) {
       return [{ id: anchorFor(index), text: block.payload.text, depth: block.payload.level <= 2 ? 1 : 2 }];
     }
-    if (block.type === "unit") return [{ id: anchorFor(index), text: block.payload.name, depth: 2 }];
+    if (block.type === "unit") {
+      return [{ id: anchorFor(index), text: block.payload.name, depth: 2, iconUrl: block.payload.units[0]?.iconUrl }];
+    }
     return [];
   });
 }
@@ -188,14 +196,30 @@ export function NoteContentsColumn({
           <li key={section.id}>
             <button
               type="button"
-              className={`changelog-toc-item depth-${section.depth}${
+              className={`changelog-toc-item depth-${section.depth}${section.iconUrl ? " has-icon" : ""}${
                 activeSectionId === section.id ? " is-active" : ""
               }`}
               aria-current={activeSectionId === section.id ? "location" : undefined}
               title={section.depth === 2 ? section.text : undefined}
               onClick={() => onJump(section.id)}
             >
-              {section.text}
+              {section.iconUrl ? (
+                <>
+                  <img
+                    className="changelog-toc-icon"
+                    src={section.iconUrl}
+                    alt=""
+                    loading="lazy"
+                    draggable={false}
+                    /* A unit the site has no icon for keeps its slot, so its
+                       name still lines up with the units around it. */
+                    onError={(event) => event.currentTarget.classList.add("is-missing")}
+                  />
+                  <span className="changelog-toc-text">{section.text}</span>
+                </>
+              ) : (
+                section.text
+              )}
             </button>
           </li>
         ))}

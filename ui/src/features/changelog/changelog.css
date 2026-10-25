@@ -568,6 +568,37 @@
   overflow-wrap: normal;
 }
 
+/* A unit carries its icon, small beside the name: the name is still what the
+   entry says, the icon lets a reader who knows the unit by sight find it in a
+   long patch. The name is cut short in its own span, since the row is now a
+   flex row and the button's own ellipsis would not reach it. */
+.changelog-toc-item.has-icon {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.changelog-toc-icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  border-radius: 3px;
+  user-select: none;
+}
+
+.changelog-toc-icon.is-missing {
+  visibility: hidden;
+}
+
+.changelog-toc-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .changelog-toc-item:hover {
   color: var(--color-text);
 }

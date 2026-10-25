@@ -1,0 +1,1 @@
+- Unit entries in the patch notes contents list now show unit icons.
