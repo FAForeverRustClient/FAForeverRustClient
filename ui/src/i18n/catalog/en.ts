@@ -52,7 +52,7 @@ export const en = {
   "nav.tab.events.description": "What is on, and when",
   "nav.tab.training.label": "Training",
   "nav.tab.training.description": "Get better at FAF",
-  "nav.tab.changelog.label": "Changelog",
+  "nav.tab.changelog.label": "Changelogs",
   "nav.tab.changelog.description": "Game patch notes from the FAF developers",
   "changelog.releases": "Releases",
   "changelog.contents": "On this page",

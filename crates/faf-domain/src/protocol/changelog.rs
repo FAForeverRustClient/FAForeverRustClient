@@ -484,9 +484,15 @@ fn parse_blocks(body: &str) -> Vec<ChangelogBlock> {
 
         if is_list_marker(line) {
             flush_paragraph(&mut paragraph, &mut blocks);
+            if let Some(unit) = list_unit_block(line) {
+                blocks.push(unit);
+                index += 1;
+                continue;
+            }
             let start = index;
             while index < lines.len()
                 && (is_list_marker(lines[index]) || lines[index].trim().is_empty())
+                && list_unit_block(lines[index]).is_none()
             {
                 // A blank line only continues the list if a further item follows.
                 if lines[index].trim().is_empty()
@@ -523,17 +529,8 @@ fn flush_paragraph(paragraph: &mut Vec<String>, blocks: &mut Vec<ChangelogBlock>
 
     // Before the `{% unit %}` tag existed this bold line *was* the unit header,
     // so reading it gives the archive the same icons the newest patch has.
-    if let Some((name, ids)) = unit_header(&text) {
-        blocks.push(ChangelogBlock::Unit {
-            units: ids
-                .into_iter()
-                .map(|unit_id| ChangelogUnit {
-                    icon_url: unit_icon_url(&unit_id),
-                    unit_id,
-                })
-                .collect(),
-            name,
-        });
+    if let Some(unit) = prose_unit_block(&text) {
+        blocks.push(unit);
         return;
     }
 
@@ -556,6 +553,27 @@ fn parse_unit_open(trimmed: &str) -> Option<String> {
 fn is_list_marker(line: &str) -> bool {
     let trimmed = line.trim_start();
     trimmed.starts_with("- ") || trimmed == "-"
+}
+
+/// Older balance notes nest unit headings under the change's description.
+/// They become normal unit sections, splitting the surrounding list without
+/// changing the order of descriptions, stat groups or repeated unit entries.
+fn list_unit_block(line: &str) -> Option<ChangelogBlock> {
+    prose_unit_block(line.trim_start().strip_prefix("- ")?)
+}
+
+fn prose_unit_block(text: &str) -> Option<ChangelogBlock> {
+    let (name, ids) = unit_header(text)?;
+    Some(ChangelogBlock::Unit {
+        units: ids
+            .into_iter()
+            .map(|unit_id| ChangelogUnit {
+                icon_url: unit_icon_url(&unit_id),
+                unit_id,
+            })
+            .collect(),
+        name,
+    })
 }
 
 /// Build the item tree from indentation. The template indents nested changes by
@@ -650,39 +668,79 @@ fn split_on_arrow(values: &str) -> Option<(&str, &str)> {
 /// Recognise the older prose form of a unit header, which predates the
 /// `{% unit %}` tag and is all the archive has to identify a unit by.
 ///
-/// Shape: a line that is entirely bold and ends in a parenthesised list of
-/// unit ids, e.g. `**Yathsou: T3 Submarine Hunter (XSS0304):**`. Every id
-/// must look like one, so a bold sentence that merely ends in a bracket stays
-/// a sentence.
+/// Shape: an entirely bold line ending in blueprint ids, such as
+/// `**Yathsou: T3 Submarine Hunter (XSS0304):**`. Families use commas, an
+/// ampersand or "and"; some headings give each unit its own parenthesised id.
+/// Parentheses describing the unit stay in its name. The trailing group must
+/// contain only valid blueprint ids, so ordinary bold prose stays prose.
 fn unit_header(text: &str) -> Option<(String, Vec<String>)> {
     let inner = text.trim().strip_prefix("**")?.strip_suffix("**")?.trim();
     let inner = inner.strip_suffix(':').unwrap_or(inner).trim_end();
-    let open = inner.rfind('(')?;
-    let ids = inner[open + 1..].strip_suffix(')')?;
+    let (_, trailing_ids) = inner.rsplit_once('(')?;
+    unit_ids(trailing_ids.strip_suffix(')')?)?;
 
-    let ids: Vec<String> = ids.split(',').map(|id| id.trim().to_string()).collect();
-    if !ids.iter().all(|id| is_unit_id(id)) {
-        return None;
+    let mut rest = inner;
+    let mut name = String::new();
+    let mut ids: Vec<String> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    while let Some(open) = rest.find('(') {
+        let close = open + rest[open..].find(')')?;
+        name.push_str(&rest[..open]);
+        if let Some(group) = unit_ids(&rest[open + 1..close]) {
+            for id in group {
+                if seen.insert(id.to_ascii_uppercase()) {
+                    ids.push(id);
+                }
+            }
+        } else {
+            name.push_str(&rest[open..=close]);
+        }
+        rest = &rest[close + 1..];
     }
-
-    let name = inner[..open]
-        .trim()
-        .trim_end_matches(':')
-        .trim()
-        .to_string();
+    name.push_str(rest);
+    let name = collapse_whitespace(name.trim().trim_end_matches(':').trim());
     (!name.is_empty()).then_some((name, ids))
 }
 
-/// Blueprint ids are three letters then four digits (`XSS0304`, `UEB1303`).
+fn unit_ids(text: &str) -> Option<Vec<String>> {
+    let mut ids = Vec::new();
+    for group in text.split([',', '&']) {
+        let mut words = group.split_whitespace();
+        let id = words.next()?;
+        if !is_unit_id(id) {
+            return None;
+        }
+        ids.push(id.to_string());
+        while let Some(separator) = words.next() {
+            if !separator.eq_ignore_ascii_case("and") {
+                return None;
+            }
+            let id = words.next()?;
+            if !is_unit_id(id) {
+                return None;
+            }
+            ids.push(id.to_string());
+        }
+    }
+    Some(ids)
+}
+
+/// Blueprint ids normally have three letters and four digits (`XSS0304`).
+/// Some FAF units use four letters and three digits instead (`DSLK004`).
 ///
 /// The digits matter: allowing letters there made `finally` a unit id, because
 /// it is also seven characters. A looser rule turns any bracketed word into a
 /// unit and asks the site for an icon that does not exist.
 fn is_unit_id(candidate: &str) -> bool {
     let bytes = candidate.as_bytes();
-    bytes.len() == 7
-        && bytes[..3].iter().all(u8::is_ascii_alphabetic)
-        && bytes[3..].iter().all(u8::is_ascii_digit)
+    if bytes.len() != 7 {
+        return false;
+    }
+    let letters = bytes
+        .iter()
+        .take_while(|byte| byte.is_ascii_alphabetic())
+        .count();
+    (3..=4).contains(&letters) && bytes[letters..].iter().all(u8::is_ascii_digit)
 }
 
 /// Inline parsing for the handful of constructs the patch notes actually use.
@@ -1701,6 +1759,62 @@ mod tests {
     }
 
     #[test]
+    fn legacy_unit_header_variants_validate_ids_and_preserve_names() {
+        let cases: [(&str, &str, &[&str]); 6] = [
+            (
+                "**Aeon and Seraphim snipers (XAL0305 & XSL0305):**",
+                "Aeon and Seraphim snipers",
+                &["XAL0305", "XSL0305"],
+            ),
+            (
+                "**Snipers (XAL0305 and XSL0305):**",
+                "Snipers",
+                &["XAL0305", "XSL0305"],
+            ),
+            (
+                "**Barracuda (XRS0204) and Megalith (XRL0403):**",
+                "Barracuda and Megalith",
+                &["XRS0204", "XRL0403"],
+            ),
+            (
+                "**Engineers (all factions) (UEL0105, UAL0105, URL0105, XSL0105):**",
+                "Engineers (all factions)",
+                &["UEL0105", "UAL0105", "URL0105", "XSL0105"],
+            ),
+            (
+                "**UEF Engineers (uel0105, UEL0105):**",
+                "UEF Engineers",
+                &["uel0105"],
+            ),
+            (
+                "**Uyanah: T3 Lightning Tank (DSLK004):**",
+                "Uyanah: T3 Lightning Tank",
+                &["DSLK004"],
+            ),
+        ];
+        for (text, expected_name, expected_ids) in cases {
+            let (name, ids) = unit_header(text).unwrap_or_else(|| panic!("missed {text}"));
+            assert_eq!(name, expected_name);
+            assert_eq!(ids, expected_ids, "wrong unit icons for {text}");
+        }
+
+        for text in [
+            "**Snipers (XAL0305 & finally):**",
+            "**Snipers (XAL0305,):**",
+            "**Snipers (& XAL0305):**",
+            "**Snipers (XAL0305 and):**",
+            "**Snipers (XAL0305 and and XSL0305):**",
+            "**Snipers (XAL0305 XSL0305):**",
+            "**Snipers (XAL0305), changed:**",
+            "**Engineers (all factions):**",
+            "**Factory (UEB12345):**",
+            "**Factory (UE12345):**",
+        ] {
+            assert!(unit_header(text).is_none(), "wrongly matched {text}");
+        }
+    }
+
+    #[test]
     fn a_rendered_balance_row_reads_as_the_change_it_is() {
         let entry = parse_rendered_entry(
             "fafbeta",
@@ -1845,6 +1959,7 @@ mod real_document_tests {
     use super::*;
 
     const INDEX_HTML: &str = include_str!("fixtures/changelog-index.html");
+    const POST_3818: &str = include_str!("fixtures/changelog-3818.md");
     const POST_3837: &str = include_str!("fixtures/changelog-3837.md");
     const POST_3836: &str = include_str!("fixtures/changelog-3836.md");
     /// The built page for the rolling beta branch, which is where its notes
@@ -2043,6 +2158,113 @@ mod real_document_tests {
             !change_values(&entry.blocks).any(|value| value.ends_with('-')),
             "an arrow was split in the wrong place"
         );
+    }
+
+    #[test]
+    fn legacy_nested_unit_headings_preserve_the_published_3818_changes() {
+        let entry = parse_entry("3818", POST_3818);
+        let units: Vec<(&str, &[ChangelogUnit])> = entry
+            .blocks
+            .iter()
+            .filter_map(|block| match block {
+                ChangelogBlock::Unit { name, units } => Some((name.as_str(), units.as_slice())),
+                _ => None,
+            })
+            .collect();
+
+        assert_eq!(
+            units.len(),
+            17,
+            "every published unit heading must be navigable"
+        );
+        let ids: Vec<Vec<&str>> = units
+            .iter()
+            .map(|(_, units)| units.iter().map(|unit| unit.unit_id.as_str()).collect())
+            .collect();
+        assert_eq!(
+            ids,
+            vec![
+                vec!["UAA0310"],
+                vec!["XSA0203"],
+                vec!["XSS0304"],
+                vec!["XSS0201"],
+                vec!["UEB4301"],
+                vec!["UAB2301"],
+                vec!["XSB2301"],
+                vec!["UEA0001"],
+                vec!["XSA0203"],
+                vec!["XAL0305", "XSL0305"],
+                vec!["XSL0305"],
+                vec!["UAS0305"],
+                vec!["XSS0203"],
+                vec!["XSS0304"],
+                vec!["XRS0204", "XRL0403"],
+                vec!["XRL0305"],
+                vec!["XSS0201"],
+            ],
+            "unit order and repeated changes to the same unit must be retained"
+        );
+        assert_eq!(units[9].0, "Aeon and Seraphim snipers");
+        assert_eq!(units[14].0, "Barracuda and Megalith");
+        for (_, units) in &units {
+            for unit in *units {
+                assert_eq!(unit.icon_url, unit_icon_url(&unit.unit_id));
+            }
+        }
+        assert_eq!(
+            count_changes(&entry.blocks),
+            51,
+            "no stat changes may disappear"
+        );
+
+        let czar = entry
+            .blocks
+            .iter()
+            .position(|block| {
+                matches!(block, ChangelogBlock::Unit { name, .. }
+                if name == "CZAR: Experimental Aircraft Carrier")
+            })
+            .unwrap();
+        let ChangelogBlock::List {
+            items: descriptions,
+        } = &entry.blocks[czar - 1]
+        else {
+            panic!("the Czar's description must remain before its heading");
+        };
+        assert!(descriptions
+            .last()
+            .unwrap()
+            .spans
+            .iter()
+            .any(|span| matches!(
+                span,
+                ChangelogSpan::Issue { number, .. } if number == "6551"
+            )));
+        let ChangelogBlock::List { items: categories } = &entry.blocks[czar + 1] else {
+            panic!("the Czar's stat groups must follow its heading");
+        };
+        assert_eq!(
+            categories[0].spans,
+            vec![ChangelogSpan::Text("Intel".into())]
+        );
+        assert_eq!(
+            categories[0].children[0].change,
+            Some(ChangelogChange {
+                label: "VisionRadius".into(),
+                old: "70".into(),
+                new: "100".into(),
+            })
+        );
+        assert!(entry.blocks.iter().any(|block| matches!(
+            block,
+            ChangelogBlock::Paragraph { spans } if spans.iter().any(|span| matches!(
+                span,
+                ChangelogSpan::Text(text) if text.contains("This fixes them consistently missing shots")
+            ))
+        )), "explanatory paragraphs between stat changes must survive");
+        assert!(entry.blocks.iter().any(|block| matches!(
+            block, ChangelogBlock::Heading { text, .. } if text == "Features"
+        )));
     }
 
     fn change_values(blocks: &[ChangelogBlock]) -> impl Iterator<Item = String> + '_ {
