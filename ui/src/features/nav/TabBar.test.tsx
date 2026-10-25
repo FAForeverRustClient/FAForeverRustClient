@@ -4,7 +4,6 @@
 // once at import time (which is the failure mode a module-level label constant
 // would have had).
 
-import "../../testing/catalogues";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { resetLocaleForTests, setLocale } from "../../i18n/store";

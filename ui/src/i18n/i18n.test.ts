@@ -1,4 +1,3 @@
-import "../testing/catalogues";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { CATALOGUES } from "./catalog";

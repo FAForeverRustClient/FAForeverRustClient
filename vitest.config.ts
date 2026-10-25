@@ -19,5 +19,8 @@ export default defineConfig({
     // getting that mapping wrong publishes a wrong date to every client
     // silently. The rest of `scripts/` is build glue that fails loudly.
     include: ["ui/src/**/*.test.ts", "ui/src/**/*.test.tsx", "scripts/**/*.test.mjs"],
+    // The client loads non-English catalogues on demand. Tests read any
+    // language synchronously, so every file starts with all of them loaded.
+    setupFiles: ["ui/src/testing/catalogues.ts"],
   },
 });

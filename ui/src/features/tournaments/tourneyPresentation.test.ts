@@ -6,7 +6,6 @@
 // that were wrong on screen: an event whose signups have not opened saying
 // "Signups open", and an abandoned one sitting in the live list.
 
-import "../../testing/catalogues";
 import { afterEach, describe, expect, it } from "vitest";
 import { resetLocaleForTests, setLocale } from "../../i18n/store";
 import {
