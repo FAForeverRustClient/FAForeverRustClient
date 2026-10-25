@@ -55,14 +55,7 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             });
             if ctx.ports.map_generator.is_installed(&map_name) {
                 // Already reproduced: report success without spawning Java.
-                let previews = ctx
-                    .ports
-                    .map_generator
-                    .map_previews(std::slice::from_ref(&map_name))
-                    .await;
-                if !previews.is_empty() {
-                    out.emit(MapGeneratorEvent::PreviewsLoaded { previews });
-                }
+                emit_previews(std::slice::from_ref(&map_name), ctx, out).await;
                 if !ctx.map_generator.is_current(generation) {
                     return;
                 }
@@ -192,10 +185,7 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             if wanted.is_empty() {
                 return;
             }
-            let previews = ctx.ports.map_generator.map_previews(&wanted).await;
-            if !previews.is_empty() {
-                out.emit(MapGeneratorEvent::PreviewsLoaded { previews });
-            }
+            emit_previews(&wanted, ctx, out).await;
         }
         MapGeneratorCommand::DecodeNames { map_names } => {
             // No IO at all: a generated map name carries its own parameters,
@@ -450,10 +440,7 @@ pub(crate) async fn record_generated_maps(maps: &[String], ctx: &ServiceCtx, out
         evict_generated_maps(&before, &after, ctx, out).await;
         services::settings::persist(ctx, out).await;
     }
-    let previews = ctx.ports.map_generator.map_previews(maps).await;
-    if !previews.is_empty() {
-        out.emit(MapGeneratorEvent::PreviewsLoaded { previews });
-    }
+    emit_previews(maps, ctx, out).await;
     refresh_installed_maps(ctx, out).await;
 }
 
@@ -615,5 +602,25 @@ async fn load_options(explicit_version: Option<String>, ctx: &ServiceCtx, out: &
             "Could not read the map generator options",
             reason,
         );
+    }
+}
+
+/// One IPC payload at a time, including runs whose combined art exceeds the cache budget.
+async fn emit_previews(names: &[String], ctx: &ServiceCtx, out: &EventSink) {
+    let mut pending: Vec<_> = names.iter().take(64).cloned().collect();
+    while !pending.is_empty() {
+        let previews = ctx.ports.map_generator.map_previews(&pending).await;
+        if previews.is_empty() {
+            break;
+        }
+        let before = pending.len();
+        pending.retain(|name| {
+            !previews.contains_key(name) && !previews.contains_key(&name.to_lowercase())
+        });
+        out.emit(MapGeneratorEvent::PreviewsLoaded { previews });
+        if pending.len() == before {
+            break;
+        }
+        tokio::task::yield_now().await;
     }
 }

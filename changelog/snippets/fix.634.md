@@ -1,0 +1,1 @@
+- Matchmaking queue rating graphs no longer cover the queue details and map pool button.

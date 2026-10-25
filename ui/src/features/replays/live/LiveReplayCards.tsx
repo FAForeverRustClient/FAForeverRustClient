@@ -15,7 +15,8 @@
 // and this one holds a button with a menu behind it, which is not something a
 // button may contain.
 
-import { memo, useEffect, useState } from "react";
+import { useForegroundInterval } from "../../../shared/hooks/useForegroundInterval";
+import { memo, useState } from "react";
 import type { Game, LiveReplayTracking, ReplayPlayer, ReplayTeam } from "../../../ipc/bindings";
 import { Button } from "../../../design-system/Button";
 import { ipc } from "../../../ipc/client";
@@ -82,16 +83,9 @@ export function LiveReplayCards(props: Props) {
   const [waitNow, setWaitNow] = useState(() => Date.now());
   const hasDelayedReplay = props.games.some(({ game }) => replayDelayRemaining(game, waitNow) > 0);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setAgeNow(Date.now()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
+  useForegroundInterval(() => setAgeNow(Date.now()), 60_000, true);
 
-  useEffect(() => {
-    if (!hasDelayedReplay) return;
-    const timer = window.setInterval(() => setWaitNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, [hasDelayedReplay]);
+  useForegroundInterval(() => setWaitNow(Date.now()), 1000, hasDelayedReplay);
 
   return (
     <div className="live-replay-card-wrap">

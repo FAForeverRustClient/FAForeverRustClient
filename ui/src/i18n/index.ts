@@ -12,6 +12,7 @@
 // 3. **Formatting follows the language.** Dates and numbers go through the same
 //    locale, so a German UI does not print `Aug 10, 2026`.
 
+import { numberFormatter, pluralFormatter } from "./formatters";
 import { CATALOGUES as CATALOGUE_REGISTRY } from "./catalog";
 import { en, type Message, type MessageKey, type PluralMessage } from "./catalog/en";
 import { intlTag, type Locale } from "./locales";
@@ -82,7 +83,7 @@ function resolve(key: MessageKey, locale: Locale): Message {
 
 function selectPlural(message: PluralMessage, locale: Locale, values?: MessageValues): string {
   const count = typeof values?.count === "number" ? values.count : 0;
-  const category = new Intl.PluralRules(intlTag(locale)).select(count);
+  const category = pluralFormatter(intlTag(locale)).select(count);
   // Ask `Intl` which CLDR category applies, then use the authored form for it.
   // Languages differ in which categories they need at all: English and French
   // only ever produce `one` and `other`, while Russian also produces `few` and
@@ -154,7 +155,7 @@ export function translateCoopMissionName(
 }
 
 export function formatNumber(value: number, locale: Locale = getLocale()): string {
-  return new Intl.NumberFormat(intlTag(locale)).format(value);
+  return numberFormatter(intlTag(locale)).format(value);
 }
 
 /**
@@ -164,7 +165,7 @@ export function formatNumber(value: number, locale: Locale = getLocale()): strin
  * the decimal separator is a comma and a full stop groups thousands.
  */
 export function formatDecimal(value: number, locale: Locale = getLocale()): string {
-  return new Intl.NumberFormat(intlTag(locale), {
+  return numberFormatter(intlTag(locale), {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   }).format(value);

@@ -103,7 +103,7 @@ export function assignedPlayerColor(
  */
 export function resolvePlayerStyle(
   name: string,
-  social: SocialState,
+  social: Pick<SocialState, "friends" | "foes">,
   preferences: ChatPreferences,
   selfName?: string,
 ): CSSProperties | undefined {

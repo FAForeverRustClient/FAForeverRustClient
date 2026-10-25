@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useForegroundInterval } from "../../../shared/hooks/useForegroundInterval";
+import { useState } from "react";
 import { Modal } from "../../../design-system/Modal";
 import { Button } from "../../../design-system/Button";
 import { Icon, type IconName } from "../../../design-system/Icon";
@@ -73,10 +74,7 @@ export function MatchmakerExplainer({
   // Counted down to the instant the server named, as the queue cards are
   // (#390): the delta it sent is only true at the moment it arrived.
   const [clock, setClock] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setClock(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
+  useForegroundInterval(() => setClock(Date.now()), 1000, true);
   return (
     <Modal onClose={onClose} className="matchmaker-explainer-modal" ariaLabel={t("lobby.matchmaker.explain.title")}>
       <header className="matchmaker-explainer-head">

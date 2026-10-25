@@ -290,19 +290,42 @@ export function peakOf(series: Iterable<ActivitySeries>): number {
  * order sitting on the window's first tick is judged against the one before
  * it and not by where the pointer happens to be.
  */
-export function ordersInWindow(
-  orders: readonly ReplayOrder[],
-  from: number,
-  window = ACTIVITY_WINDOW_TICKS,
-): Map<number, ReplayOrder[]> {
-  const grouped = new Map<number, ReplayOrder[]>();
-  const previous = new Map<number, { tick: number; command: number }>();
+const ORDER_INDEX = new WeakMap<readonly ReplayOrder[], readonly ReplayOrder[]>();
+
+/** Deduplicate once per immutable recording, before applying window bounds. */
+export function indexOrders(orders: readonly ReplayOrder[]): readonly ReplayOrder[] {
+  const known = ORDER_INDEX.get(orders);
+  if (known) return known;
+  const previous = new Map<number, ReplayOrder>();
+  const indexed: ReplayOrder[] = [];
   for (const order of orders) {
     const last = previous.get(order.source);
-    const repeated = last?.tick === order.tick && last?.command === order.command;
-    previous.set(order.source, { tick: order.tick, command: order.command });
-    if (repeated) continue;
-    if (order.tick < from || order.tick >= from + window) continue;
+    previous.set(order.source, order);
+    if (last?.tick !== order.tick || last.command !== order.command) indexed.push(order);
+  }
+  indexed.sort((a, b) => a.tick - b.tick);
+  ORDER_INDEX.set(orders, indexed);
+  return indexed;
+}
+
+export function ordersInWindow(
+  orders: readonly ReplayOrder[], from: number, window = ACTIVITY_WINDOW_TICKS,
+): Map<number, ReplayOrder[]> {
+  const indexed = indexOrders(orders);
+  const lowerBound = (tick: number) => {
+    let low = 0;
+    let high = indexed.length;
+    while (low < high) {
+      const mid = (low + high) >>> 1;
+      if (indexed[mid].tick < tick) low = mid + 1;
+      else high = mid;
+    }
+    return low;
+  };
+  const grouped = new Map<number, ReplayOrder[]>();
+  const end = lowerBound(from + window);
+  for (let i = lowerBound(from); i < end; i++) {
+    const order = indexed[i];
     const own = grouped.get(order.source);
     if (own) own.push(order);
     else grouped.set(order.source, [order]);
@@ -369,38 +392,27 @@ export function heatmapBins(
 export function blurBins(bins: HeatmapBins, radius: number): HeatmapBins {
   if (radius <= 0) return bins;
   const { size } = bins;
-  let source: Float32Array<ArrayBuffer> = bins.cells;
+  radius = Math.min(size - 1, Math.floor(radius));
+  let source: Float32Array<ArrayBuffer> = new Float32Array(bins.cells);
   let target: Float32Array<ArrayBuffer> = new Float32Array(size * size);
   for (let pass = 0; pass < 3; pass += 1) {
-    // Horizontal, then vertical, reusing the two buffers.
-    for (let y = 0; y < size; y += 1) {
-      for (let x = 0; x < size; x += 1) {
+    // Sliding windows make each pass linear in the grid area, at any radius.
+    for (let axis = 0; axis < 2; axis++) {
+      for (let row = 0; row < size; row++) {
+        const at = (column: number) => axis === 0 ? row * size + column : column * size + row;
         let total = 0;
-        let count = 0;
-        for (let offset = -radius; offset <= radius; offset += 1) {
-          const sampled = x + offset;
-          if (sampled < 0 || sampled >= size) continue;
-          total += source[y * size + sampled];
-          count += 1;
+        for (let i = 0; i <= Math.min(radius, size - 1); i++) total += source[at(i)];
+        for (let column = 0; column < size; column++) {
+          const count = Math.min(size - 1, column + radius) - Math.max(0, column - radius) + 1;
+          target[at(column)] = Math.max(0, total / count);
+          const remove = column - radius;
+          const add = column + radius + 1;
+          if (remove >= 0) total -= source[at(remove)];
+          if (add < size) total += source[at(add)];
         }
-        target[y * size + x] = count > 0 ? total / count : 0;
       }
+      [source, target] = [target, source];
     }
-    [source, target] = [target, source];
-    for (let y = 0; y < size; y += 1) {
-      for (let x = 0; x < size; x += 1) {
-        let total = 0;
-        let count = 0;
-        for (let offset = -radius; offset <= radius; offset += 1) {
-          const sampled = y + offset;
-          if (sampled < 0 || sampled >= size) continue;
-          total += source[sampled * size + x];
-          count += 1;
-        }
-        target[y * size + x] = count > 0 ? total / count : 0;
-      }
-    }
-    [source, target] = [target, source];
   }
   let peak = 0;
   for (const value of source) if (value > peak) peak = value;
