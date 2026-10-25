@@ -7,6 +7,7 @@
 // backend `Settings` slice, at which point this module reads from there instead
 // and the rest of the app keeps calling the same `t()`.
 
+import { catalogueLoaded, loadCatalogue } from "./catalog";
 import { DEFAULT_LOCALE, isLocale, matchLocale, type Locale } from "./locales";
 
 const STORAGE_KEY = "faf.locale";
@@ -69,8 +70,27 @@ export function getLocale(): Locale {
   return current;
 }
 
+let selection = 0;
+
+/** Load the chosen catalogue before mounting, with English available on failure. */
+export async function initializeLocale(): Promise<void> {
+  try { await loadCatalogue(current); }
+  catch { current = DEFAULT_LOCALE; }
+}
+
 export function setLocale(locale: Locale): void {
-  if (locale === current) return;
+  const request = ++selection;
+  if (locale === current && catalogueLoaded(locale)) return;
+  if (!catalogueLoaded(locale)) {
+    void loadCatalogue(locale).then(() => {
+      if (request === selection) activateLocale(locale);
+    }).catch(() => console.warn("Could not load the selected language"));
+    return;
+  }
+  activateLocale(locale);
+}
+
+function activateLocale(locale: Locale): void {
   current = locale;
   try {
     if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, locale);
@@ -87,6 +107,7 @@ export function subscribeToLocale(listener: Listener): () => void {
 
 /** Test seam: restores the module to a known state between cases. */
 export function resetLocaleForTests(locale: Locale = DEFAULT_LOCALE): void {
+  selection++;
   current = locale;
   listeners.clear();
 }

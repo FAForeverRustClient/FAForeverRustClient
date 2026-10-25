@@ -2,7 +2,7 @@
 // and the active tab's view. Routing is a pure lookup in the tab registry on nav
 // state: no router. Theme selection now lives in the Settings tab.
 
-import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import { ipc } from "../../ipc/client";
 import { ViewErrorBoundary } from "../../shared/components/ErrorBoundary";
@@ -106,7 +106,6 @@ export function AppShell() {
   const contentRef = useRef<HTMLElement>(null);
 
   const openTab = openTabForMode(auth.mode, activeTab);
-  const ActiveView = TABS[openTab].Component;
 
   // The scroll container outlives the view inside it: only the class and the
   // children change on a tab switch, so the previous tab's scroll position was
@@ -304,11 +303,7 @@ export function AppShell() {
           tabIndex={-1}
         >
           <div className={`content-inner content-${openTab}`}>
-            <ViewErrorBoundary resetKey={openTab}>
-              <Suspense fallback={<div className="muted" role="status">{t("shell.loadingSection")}</div>}>
-                <ActiveView />
-              </Suspense>
-            </ViewErrorBoundary>
+            <ActiveTabView tab={openTab} />
           </div>
         </section>
 
@@ -333,3 +328,14 @@ export function AppShell() {
     </div>
   );
 }
+
+// Directory and shell updates must not redraw the active feature's entire tree.
+const ActiveTabView = memo(function ActiveTabView({ tab }: { tab: keyof typeof TABS }) {
+  const { t } = useTranslation();
+  const View = TABS[tab].Component;
+  return <ViewErrorBoundary resetKey={tab}>
+    <Suspense fallback={<div className="muted" role="status">{t("shell.loadingSection")}</div>}>
+      <View />
+    </Suspense>
+  </ViewErrorBoundary>;
+});

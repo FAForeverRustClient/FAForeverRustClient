@@ -258,3 +258,12 @@ describe("naming things", () => {
     expect(formatGameTime(36_000 + 6_000 + 50)).toBe("1:10:05");
   });
 });
+
+it("does not overwrite raw heatmap bins when smoothing changes", () => {
+  const cells = new Float32Array([0, 0, 0, 0, 9, 0, 0, 0, 0]);
+  const raw = { cells, size: 3, peak: 9 };
+  const first = blurBins(raw, 1);
+  blurBins(raw, 2);
+  expect([...raw.cells]).toEqual([0, 0, 0, 0, 9, 0, 0, 0, 0]);
+  expect([...blurBins(raw, 1).cells]).toEqual([...first.cells]);
+});

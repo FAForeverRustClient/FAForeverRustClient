@@ -2,9 +2,12 @@
 
 use std::path::{Component, Path};
 
-pub fn cleanup_interrupted_work(generator_output: &str) {
+/// Restores interrupted replacements and snapshots expendable artifacts.
+/// Deletion happens later without rescanning folders that may now be in use.
+pub fn recover_interrupted_work(generator_output: &str) -> InterruptedCleanup {
+    let mut cleanup = InterruptedCleanup::default();
     for root in [super::maps::maps_dir(), super::mods::mods_dir()] {
-        sweep(&root, Artifact::Install);
+        collect(&root, Artifact::Install, &mut cleanup);
     }
     if !generator_output.is_empty() {
         let selected = std::path::PathBuf::from(generator_output);
@@ -13,22 +16,30 @@ pub fn cleanup_interrupted_work(generator_output: &str) {
         } else {
             super::maps::maps_dir().join(selected)
         };
-        sweep(&root, Artifact::Install);
+        collect(&root, Artifact::Install, &mut cleanup);
     }
     if let Ok(root) = super::data_dir() {
-        sweep(&root.join("galactic-war"), Artifact::Install);
+        collect(&root.join("galactic-war"), Artifact::Install, &mut cleanup);
     }
-    sweep(
+    collect(
         &std::env::temp_dir().join(super::APP_SLUG),
         Artifact::Download,
+        &mut cleanup,
     );
-    sweep(
+    collect(
+        &std::env::temp_dir().join(super::APP_SLUG),
+        Artifact::ReplaySpool,
+        &mut cleanup,
+    );
+    collect(
         &super::map_generator::generator_dir(),
         Artifact::GeneratorDownload,
+        &mut cleanup,
     );
     if let Ok(root) = super::cache_dir() {
-        sweep(&root, Artifact::Upload);
+        collect(&root, Artifact::Upload, &mut cleanup);
     }
+    cleanup
 }
 
 #[derive(Clone, Copy)]
@@ -36,6 +47,7 @@ enum Artifact {
     Install,
     Download,
     GeneratorDownload,
+    ReplaySpool,
     Upload,
 }
 
@@ -44,6 +56,9 @@ fn matches_artifact(name: &str, kind: Artifact) -> bool {
         Artifact::Install => super::vault_install::is_install_staging_name(name),
         Artifact::Download => name.strip_prefix(".faf-download-").is_some_and(|suffix| {
             suffix.len() == 16 && suffix.bytes().all(|byte| byte.is_ascii_hexdigit())
+        }),
+        Artifact::ReplaySpool => name.strip_prefix(".faf-replay-").is_some_and(|suffix| {
+            suffix.len() == 16 && suffix.bytes().all(|byte| byte.is_ascii_alphanumeric())
         }),
         Artifact::GeneratorDownload => name
             .strip_prefix("MapGenerator_")
@@ -61,8 +76,40 @@ fn matches_artifact(name: &str, kind: Artifact) -> bool {
     }
 }
 
-fn sweep(root: &Path, kind: Artifact) {
-    let Ok(entries) = std::fs::read_dir(root) else {
+#[derive(Default)]
+pub struct InterruptedCleanup {
+    paths: Vec<(std::path::PathBuf, bool, Option<std::time::SystemTime>)>,
+}
+
+impl InterruptedCleanup {
+    pub fn finish(self) {
+        for (path, directory, modified) in self.paths {
+            let Ok(metadata) = std::fs::symlink_metadata(&path) else {
+                continue;
+            };
+            if metadata.file_type().is_symlink()
+                || metadata.is_dir() != directory
+                || metadata.modified().ok() != modified
+            {
+                continue;
+            }
+            let result = if directory {
+                std::fs::remove_dir_all(&path)
+            } else {
+                std::fs::remove_file(&path)
+            };
+            if result.is_err() {
+                tracing::warn!("an interrupted-work artifact was retained");
+            }
+        }
+    }
+}
+
+fn collect(root: &Path, kind: Artifact, cleanup: &mut InterruptedCleanup) {
+    let Ok(root) = root.canonicalize() else {
+        return;
+    };
+    let Ok(entries) = std::fs::read_dir(&root) else {
         return;
     };
     for entry in entries.flatten() {
@@ -73,20 +120,36 @@ fn sweep(root: &Path, kind: Artifact) {
             continue;
         }
         let path = entry.path();
-        let outcome = match kind {
-            Artifact::Install if file_type.is_dir() => recover_replacement(root, &path)
-                .and_then(|()| std::fs::remove_dir_all(&path).map_err(|error| error.to_string())),
-            Artifact::Download | Artifact::GeneratorDownload | Artifact::Upload
-                if file_type.is_file() =>
-            {
-                std::fs::remove_file(&path).map_err(|error| error.to_string())
-            }
-            _ => continue,
-        };
-        if outcome.is_err() {
-            tracing::warn!("an interrupted-work artifact could not be cleaned up; it was retained");
+        if path.parent() != Some(root.as_path()) {
+            continue;
         }
+        match kind {
+            Artifact::Install if file_type.is_dir() => {
+                if recover_replacement(&root, &path).is_err() {
+                    tracing::warn!("an interrupted replacement was retained for recovery");
+                    continue;
+                }
+            }
+            Artifact::Download
+            | Artifact::GeneratorDownload
+            | Artifact::ReplaySpool
+            | Artifact::Upload
+                if file_type.is_file() => {}
+            _ => continue,
+        }
+        let modified = path
+            .metadata()
+            .and_then(|metadata| metadata.modified())
+            .ok();
+        cleanup.paths.push((path, file_type.is_dir(), modified));
     }
+}
+
+#[cfg(test)]
+fn sweep(root: &Path, kind: Artifact) {
+    let mut cleanup = InterruptedCleanup::default();
+    collect(root, kind, &mut cleanup);
+    cleanup.finish();
 }
 
 fn recovery_target(root: &Path, text: &str) -> Result<std::path::PathBuf, String> {
@@ -140,6 +203,28 @@ fn recover_replacement(root: &Path, staging: &Path) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn performance_cleanup_restores_first_and_only_deletes_the_initial_snapshot() {
+        let root = tempfile::tempdir().unwrap();
+        let stage = root.path().join(".faf-install-0123456789abcdef");
+        std::fs::create_dir_all(stage.join("previous")).unwrap();
+        std::fs::write(stage.join("previous/keep"), "saved").unwrap();
+        std::fs::write(
+            stage.join("restore.json"),
+            r#"{"previous":"mod","target":"mod"}"#,
+        )
+        .unwrap();
+        let mut cleanup = InterruptedCleanup::default();
+        collect(root.path(), Artifact::Install, &mut cleanup);
+        assert!(root.path().join("mod/keep").exists());
+        assert!(stage.exists());
+        let new_stage = root.path().join(".faf-install-fedcba9876543210");
+        std::fs::create_dir(&new_stage).unwrap();
+        cleanup.finish();
+        assert!(!stage.exists());
+        assert!(new_stage.exists());
+    }
 
     #[test]
     fn cleanup_recovers_interrupted_swap_and_spares_unrelated_files() {

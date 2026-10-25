@@ -35,10 +35,7 @@
 //! resume at an offset: the server reconciles, the client does not have to.
 //! The Python client does the same thing for the same documented reason.
 //!
-//! The consequence is that the bytes seen so far are held in memory for the
-//! length of the game. They already are, one layer up: the local file cannot be
-//! compressed before FA has finished. So this is a second copy of something
-//! single-digit megabytes in size, capped either way.
+//! Capture and retransmission share a disk spool; only one frame is buffered.
 //!
 //! ## What is deliberately not here
 //!
@@ -49,20 +46,13 @@
 
 use std::time::Duration;
 
+use super::replay_spool::ReplaySpool;
 use futures_util::{SinkExt, StreamExt};
-use tokio::sync::mpsc;
+use tokio::io::AsyncReadExt;
 use tokio_tungstenite::tungstenite::Message;
 
 use super::session::TokenStore;
 use super::{env_or, fetch_access_url, validated_ws_url};
-
-/// Ceiling on the retransmit buffer, i.e. on one game's whole replay stream.
-///
-/// Matches the recorder's own cap. Past it the relay stops buffering and
-/// carries on forwarding live: a stream this large is already pathological,
-/// and dropping the *new* bytes rather than the old ones would be the wrong
-/// half to lose.
-const MAX_BUFFERED_BYTES: usize = 512 * 1024 * 1024;
 
 /// How long to keep trying to hand the server a finished game's stream after FA
 /// has exited.
@@ -113,7 +103,11 @@ impl ReplayRelayConfig {
     #[cfg(test)]
     fn for_test(user_api_base: &str, tokens: TokenStore) -> Self {
         Self {
-            http: reqwest::Client::new(),
+            http: reqwest::Client::builder()
+                .no_proxy()
+                .timeout(Duration::from_secs(5))
+                .build()
+                .unwrap(),
             user_api_base: user_api_base.to_string(),
             tokens,
             retry_delay: Duration::from_millis(1),
@@ -122,45 +116,30 @@ impl ReplayRelayConfig {
     }
 }
 
-/// A running relay. Feed it every chunk FA sends, then [`Self::finish`].
+/// A relay reading the recorder's durable spool without blocking capture.
 pub(crate) struct ReplayRelay {
-    chunks: mpsc::UnboundedSender<Vec<u8>>,
     task: tokio::task::JoinHandle<()>,
 }
 
 impl ReplayRelay {
-    /// Start relaying, without waiting for the connection to come up.
-    ///
-    /// Connecting takes an HTTP round trip and a TLS handshake, and FA starts
-    /// streaming the moment it reaches the recorder. So the queue accepts bytes
-    /// from the first instant and the connection catches up with them: the
-    /// alternative, holding the game's first chunks hostage to a network call,
-    /// buys nothing, since those chunks have to be re-sent on a reconnect
-    /// anyway.
-    pub(crate) fn start(config: ReplayRelayConfig, game_id: i32) -> Self {
-        let (chunks, rx) = mpsc::unbounded_channel();
-        let task = tokio::spawn(relay(config, game_id, rx));
-        Self { chunks, task }
+    pub(super) fn start(config: ReplayRelayConfig, game_id: i32, spool: ReplaySpool) -> Self {
+        Self {
+            task: tokio::spawn(relay(config, game_id, spool)),
+        }
     }
 
-    /// Hand one chunk of FA's stream to the relay, exactly as it arrived.
-    pub(crate) fn send(&self, chunk: &[u8]) {
-        // The receiver only goes away when the relay task has given up, which
-        // it logs on its own; failing here would say nothing new and must not
-        // stop the local recording.
-        let _ = self.chunks.send(chunk.to_vec());
-    }
-
-    /// Close the stream and wait, briefly, for the tail of it to land.
-    ///
-    /// Dropping the sender is what tells the relay the game is over; the wait
-    /// is bounded because a client that hangs on a shutdown is worse than a
-    /// replay that missed its last frames.
-    pub(crate) async fn finish(self, timeout: Duration) {
-        drop(self.chunks);
-        if tokio::time::timeout(timeout, self.task).await.is_err() {
+    pub(crate) async fn finish(mut self, timeout: Duration) {
+        if tokio::time::timeout(timeout, &mut self.task).await.is_err() {
+            self.task.abort();
+            let _ = (&mut self.task).await;
             tracing::warn!("gave up waiting for the replay upload to finish");
         }
+    }
+}
+
+impl Drop for ReplayRelay {
+    fn drop(&mut self) {
+        self.task.abort();
     }
 }
 
@@ -174,45 +153,31 @@ enum Pumped {
 }
 
 /// Connect, forward, reconnect, until the game ends and the stream is delivered.
-async fn relay(config: ReplayRelayConfig, game_id: i32, mut rx: mpsc::UnboundedReceiver<Vec<u8>>) {
-    // Every byte FA has sent, in order, prefix included: what a fresh
-    // connection is given before it starts streaming live again.
-    let mut stream: Vec<u8> = Vec::new();
-    let mut game_over = false;
+async fn relay(config: ReplayRelayConfig, game_id: i32, mut spool: ReplaySpool) {
     let mut attempts_after_game = 0u32;
-
     loop {
         match connect(&config).await {
-            Ok(ws) => match pump(ws, &mut rx, &mut stream, &mut game_over).await {
+            Ok(ws) => match pump(ws, &mut spool).await {
                 Pumped::Finished => {
-                    tracing::info!(game_id, bytes = stream.len(), "replay uploaded to FAF");
+                    tracing::info!(
+                        game_id,
+                        bytes = spool.progress().len,
+                        "replay uploaded to FAF"
+                    );
                     return;
                 }
                 Pumped::Lost => {
-                    tracing::warn!(game_id, "replay upload connection dropped; retrying");
+                    tracing::warn!(game_id, "replay upload connection dropped; retrying")
                 }
             },
-            Err(error) => {
-                tracing::warn!(%error, game_id, "could not reach the FAF replay service");
-            }
+            Err(error) => tracing::warn!(%error, game_id, "could not reach the FAF replay service"),
         }
-
-        // Nothing is connected between here and the next attempt, so the game's
-        // bytes would otherwise pile up unread. Collecting them now is also the
-        // only place a failed *connection* learns that FA has finished, and the
-        // one thing that guarantees the loop below terminates: a service that
-        // accepts and immediately hangs up would otherwise be retried forever,
-        // because `pump` only reports the end of the game when it gets as far
-        // as reading the queue.
-        drain(&mut rx, &mut stream, &mut game_over);
-
-        if game_over {
+        if spool.progress().finished {
             attempts_after_game += 1;
             if attempts_after_game >= config.final_flush_attempts {
                 tracing::warn!(
                     game_id,
-                    bytes = stream.len(),
-                    "this game's replay could not be uploaded; the local copy was still written"
+                    "replay upload stopped; local capture is independent"
                 );
                 return;
             }
@@ -246,55 +211,36 @@ type WsStream =
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
 
 /// Send everything buffered, then everything that arrives, until one side ends.
-async fn pump(
-    ws: WsStream,
-    rx: &mut mpsc::UnboundedReceiver<Vec<u8>>,
-    stream: &mut Vec<u8>,
-    game_over: &mut bool,
-) -> Pumped {
+async fn pump(ws: WsStream, spool: &mut ReplaySpool) -> Pumped {
     let (mut write, mut read) = ws.split();
-
-    // The catch-up send. On the first connection this is whatever FA produced
-    // while the handshake was in flight; on a later one it is the whole game so
-    // far, which is what makes a reconnect recover rather than truncate.
-    //
-    // Sent in slices rather than as one frame: the stream is a byte stream that
-    // the far end concatenates, so the framing carries no meaning, and a whole
-    // game in a single frame is exactly the shape a WebSocket peer's maximum
-    // frame size refuses. Nothing else here can produce a frame that large,
-    // since live chunks are bounded by the recorder's read buffer.
-    for slice in stream.chunks(CATCH_UP_FRAME_BYTES) {
-        if write.send(Message::Binary(slice.to_vec())).await.is_err() {
-            return Pumped::Lost;
-        }
-    }
-    if *game_over {
-        return close(write).await;
-    }
-
+    let Ok(mut file) = spool.open_async().await else {
+        return Pumped::Lost;
+    };
+    let mut offset = 0;
+    let mut buffer = vec![0; CATCH_UP_FRAME_BYTES];
     loop {
-        tokio::select! {
-            chunk = rx.recv() => match chunk {
-                Some(chunk) => {
-                    buffer(stream, &chunk);
-                    if write.send(Message::Binary(chunk)).await.is_err() {
-                        return Pumped::Lost;
-                    }
-                }
-                // The recorder dropped its sender: FA has closed its end.
-                None => {
-                    *game_over = true;
-                    return close(write).await;
-                }
-            },
-            // Read only to notice the connection going away, and to keep the
-            // protocol's keepalives answered: a pong is queued by the read half
-            // and goes out with the next frame we send, of which a live game
-            // produces a steady supply.
-            message = read.next() => match message {
-                Some(Ok(_)) => {}
-                Some(Err(_)) | None => return Pumped::Lost,
-            },
+        let progress = spool.progress();
+        if offset < progress.len {
+            let count = (progress.len - offset).min(buffer.len() as u64) as usize;
+            if file.read_exact(&mut buffer[..count]).await.is_err()
+                || write
+                    .send(Message::Binary(buffer[..count].to_vec()))
+                    .await
+                    .is_err()
+            {
+                return Pumped::Lost;
+            }
+            offset += count as u64;
+        } else if progress.finished {
+            return close(write).await;
+        } else {
+            tokio::select! {
+                () = spool.changed() => {},
+                message = read.next() => match message {
+                    Some(Ok(Message::Close(_))) | Some(Err(_)) | None => return Pumped::Lost,
+                    Some(Ok(_)) => { if write.flush().await.is_err() { return Pumped::Lost; } }
+                },
+            }
         }
     }
 }
@@ -309,64 +255,38 @@ async fn close(mut write: futures_util::stream::SplitSink<WsStream, Message>) ->
     Pumped::Finished
 }
 
-/// Take everything queued without waiting, for the stretches with no connection
-/// to send it on.
-fn drain(rx: &mut mpsc::UnboundedReceiver<Vec<u8>>, stream: &mut Vec<u8>, game_over: &mut bool) {
-    loop {
-        match rx.try_recv() {
-            Ok(chunk) => buffer(stream, &chunk),
-            Err(mpsc::error::TryRecvError::Empty) => return,
-            Err(mpsc::error::TryRecvError::Disconnected) => {
-                *game_over = true;
-                return;
-            }
-        }
-    }
-}
-
-/// Append to the retransmit buffer, up to the cap.
-fn buffer(stream: &mut Vec<u8>, chunk: &[u8]) {
-    if stream.len() + chunk.len() > MAX_BUFFERED_BYTES {
-        return;
-    }
-    stream.extend_from_slice(chunk);
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn performance_finishing_a_stalled_relay_aborts_and_joins_its_task() {
+        struct Dropped(std::sync::Arc<std::sync::atomic::AtomicBool>);
+        impl Drop for Dropped {
+            fn drop(&mut self) {
+                self.0.store(true, std::sync::atomic::Ordering::SeqCst);
+            }
+        }
+        let dropped = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let guard = Dropped(dropped.clone());
+        let (started, ready) = tokio::sync::oneshot::channel();
+        let relay = ReplayRelay {
+            task: tokio::spawn(async move {
+                let _guard = guard;
+                let _ = started.send(());
+                std::future::pending::<()>().await;
+            }),
+        };
+        ready.await.unwrap();
+        relay.finish(Duration::from_millis(1)).await;
+        assert!(dropped.load(std::sync::atomic::Ordering::SeqCst));
+    }
 
     fn oneshot() -> (
         tokio::sync::oneshot::Sender<()>,
         tokio::sync::oneshot::Receiver<()>,
     ) {
         tokio::sync::oneshot::channel()
-    }
-
-    #[test]
-    fn the_retransmit_buffer_stops_at_the_cap() {
-        let mut stream = vec![0u8; MAX_BUFFERED_BYTES - 1];
-        buffer(&mut stream, &[1, 2, 3]);
-        assert_eq!(stream.len(), MAX_BUFFERED_BYTES - 1, "over-cap chunk kept");
-        buffer(&mut stream, &[9]);
-        assert_eq!(stream.len(), MAX_BUFFERED_BYTES);
-    }
-
-    #[tokio::test]
-    async fn draining_notices_that_the_game_ended() {
-        let (tx, mut rx) = mpsc::unbounded_channel();
-        tx.send(b"P/1/me\0".to_vec()).unwrap();
-        tx.send(vec![7, 8]).unwrap();
-        drop(tx);
-
-        let mut stream = Vec::new();
-        let mut game_over = false;
-        drain(&mut rx, &mut stream, &mut game_over);
-
-        // The prefix is part of the stream: it is the server's handshake, and
-        // only the local file strips it.
-        assert_eq!(stream, b"P/1/me\0\x07\x08");
-        assert!(game_over);
     }
 
     #[tokio::test]
@@ -377,8 +297,10 @@ mod tests {
         // that retried forever would be a client that never stops trying to
         // upload a replay nobody can authenticate.
         let config = ReplayRelayConfig::for_test("http://127.0.0.1:1", TokenStore::new());
-        let relay = ReplayRelay::start(config, 4711);
-        relay.send(b"P/4711/me\0payload");
+        let (spool, mut writer) = ReplaySpool::create().await.unwrap();
+        let relay = ReplayRelay::start(config, 4711, spool);
+        writer.append(b"P/4711/me\0payload").await.unwrap();
+        drop(writer);
         tokio::time::timeout(
             Duration::from_secs(10),
             relay.finish(Duration::from_secs(10)),
@@ -472,9 +394,11 @@ mod tests {
         tokens.set("a-token");
         drop(accepted_rx);
 
-        let relay = ReplayRelay::start(ReplayRelayConfig::for_test(&api_base, tokens), 4711);
-        relay.send(b"P/4711/Nory\0");
-        relay.send(b"hello replay");
+        let (spool, mut writer) = ReplaySpool::create().await.unwrap();
+        let relay = ReplayRelay::start(ReplayRelayConfig::for_test(&api_base, tokens), 4711, spool);
+        writer.append(b"P/4711/Nory\0").await.unwrap();
+        writer.append(b"hello replay").await.unwrap();
+        drop(writer);
         relay.finish(Duration::from_secs(10)).await;
 
         let bytes = tokio::time::timeout(Duration::from_secs(10), received)
@@ -496,13 +420,21 @@ mod tests {
         let tokens = TokenStore::new();
         tokens.set("a-token");
 
-        let relay = ReplayRelay::start(ReplayRelayConfig::for_test(&api_base, tokens), 4711);
-        relay.send(b"P/4711/Nory\0before the drop ");
+        let (spool, mut writer) = ReplaySpool::create().await.unwrap();
+        let relay = ReplayRelay::start(ReplayRelayConfig::for_test(&api_base, tokens), 4711, spool);
+        writer
+            .append(b"P/4711/Nory\0before the drop ")
+            .await
+            .unwrap();
         // Only once the *second* connection is up, so the game is still running
         // when the first one dies: ending it earlier would let the relay finish
         // on the connection this test means to break.
-        accepted_rx.await.unwrap();
-        relay.send(b"after the drop");
+        tokio::time::timeout(Duration::from_secs(10), accepted_rx)
+            .await
+            .expect("local replay reconnect timed out")
+            .unwrap();
+        writer.append(b"after the drop").await.unwrap();
+        drop(writer);
         relay.finish(Duration::from_secs(10)).await;
 
         let bytes = tokio::time::timeout(Duration::from_secs(10), received)
@@ -518,10 +450,12 @@ mod tests {
         // anything: a replay service that is down cannot be allowed to stall
         // the loop that writes the player's own local file.
         let config = ReplayRelayConfig::for_test("http://127.0.0.1:1", TokenStore::new());
-        let relay = ReplayRelay::start(config, 4711);
+        let (spool, mut writer) = ReplaySpool::create().await.unwrap();
+        let relay = ReplayRelay::start(config, 4711, spool);
         for _ in 0..1000 {
-            relay.send(&[0u8; 1024]);
+            writer.append(&[0u8; 1024]).await.unwrap();
         }
+        drop(writer);
         relay.finish(Duration::from_secs(10)).await;
     }
 }

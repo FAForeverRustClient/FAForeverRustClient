@@ -2,6 +2,7 @@
 // reads the tab keeps going while it is mounted: the first load and the
 // pending-requests poll.
 
+import { useForegroundInterval } from "../../shared/hooks/useForegroundInterval";
 import { useEffect, useState } from "react";
 import type { SiteWrite } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
@@ -31,12 +32,7 @@ export function useTourneySite() {
     }
   }, []);
 
-  useEffect(() => {
-    const poll = () => send({ type: "loadSite", payload: { read: "pending" } });
-    poll();
-    const timer = window.setInterval(poll, 30_000);
-    return () => window.clearInterval(timer);
-  }, []);
+  useForegroundInterval(() => send({ type: "loadSite", payload: { read: "pending" } }), 30_000);
 
   const siteWrite = (write: SiteWrite) => send({ type: "siteWrite", payload: { write } });
   /** Open a page, reading what it shows as it opens. */

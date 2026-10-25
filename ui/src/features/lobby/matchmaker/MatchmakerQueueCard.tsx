@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type { MatchmakerQueue, PlayerLeaguePlacement, PlayerRatingSummary } from "../../../ipc/bindings";
@@ -167,7 +168,7 @@ export function MatchmakerQueueCard({
   // any of them is near you, and "in range: 0" says only that none is: the
   // question both leave open is whether the queue is empty around your rating
   // or empty everywhere, which decides whether waiting is worth it.
-  const graph = queueRatingGraph(queue, rating);
+  const graph = useMemo(() => queueRatingGraph(queue, rating), [queue, rating?.mean, rating?.deviation, rating?.gamesPlayed]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <article
       className={

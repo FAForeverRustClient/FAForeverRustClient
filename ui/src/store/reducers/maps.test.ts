@@ -118,3 +118,22 @@ describe("local map previews", () => {
     expect(after.localPreviewOrder).toEqual([]);
   });
 });
+
+it("evicts large previews by bytes before reaching the entry cap", () => {
+  const image = "A".repeat(8 * 1024 * 1024 + 1);
+  let current = state();
+  for (const folder of ["old", "new"]) current = reduceMaps(current, {
+    type: "localPreviewsLoaded", payload: { previews: { [folder]: { small: image, large: null } } },
+  });
+  expect(Object.keys(current.localPreviews)).toEqual(["new"]);
+});
+
+it("applies the same byte budget to folders whose names are prototype properties", () => {
+  const image = "A".repeat(8 * 1024 * 1024 + 1);
+  const previews = Object.fromEntries(["__proto__", "constructor"].map((name) =>
+    [name, { small: image, large: null }]));
+  const next = reduceMaps(state(), { type: "localPreviewsLoaded", payload: { previews } });
+  expect(Object.keys(next.localPreviews)).toEqual(["constructor"]);
+  expect(next.localPreviewOrder).toEqual(["constructor"]);
+  expect(Object.getPrototypeOf(next.localPreviews)).toBe(Object.prototype);
+});

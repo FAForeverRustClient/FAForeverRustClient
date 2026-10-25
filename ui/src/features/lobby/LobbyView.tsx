@@ -1,3 +1,4 @@
+import { useForegroundInterval } from "../../shared/hooks/useForegroundInterval";
 import { useEffect, useState } from "react";
 import { ipc } from "../../ipc/client";
 import type { Game } from "../../ipc/bindings";
@@ -193,12 +194,7 @@ export function LobbyView() {
   // nobody" is what that looks like from outside. Only the statistics are
   // asked for, not the install check, and only while this tab is mounted: the
   // gateway is a service outside FAF and this is not a background poller.
-  useEffect(() => {
-    const ask = () => ipc.send({ kind: "GalacticWar", command: { type: "refreshStatistics" } });
-    ask();
-    const timer = setInterval(ask, GALACTIC_WAR_POLL_MS);
-    return () => clearInterval(timer);
-  }, []);
+  useForegroundInterval(() => ipc.send({ kind: "GalacticWar", command: { type: "refreshStatistics" } }), GALACTIC_WAR_POLL_MS);
 
   return (
     <div className="play-view">

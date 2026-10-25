@@ -92,11 +92,15 @@ pub(crate) fn open_client_folder(kind: String, app: tauri::AppHandle) -> Result<
 /// dialog pointed at a directory that does not exist yet falls back to the
 /// default, which is the behaviour this exists to avoid.
 #[tauri::command]
-pub(crate) fn client_folder_path(kind: String) -> Result<String, String> {
-    let path = faf_app::infra::client_folder(&kind)?;
-    std::fs::create_dir_all(&path)
-        .map_err(|error| format!("could not create {}: {error}", path.display()))?;
-    Ok(path.to_string_lossy().into_owned())
+pub(crate) async fn client_folder_path(kind: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = faf_app::infra::client_folder(&kind)?;
+        std::fs::create_dir_all(&path)
+            .map_err(|error| format!("could not create {}: {error}", path.display()))?;
+        Ok(path.to_string_lossy().into_owned())
+    })
+    .await
+    .map_err(|_| "file worker stopped".to_string())?
 }
 
 /// Copy a picked sound file into the client's own sounds directory.
@@ -105,18 +109,24 @@ pub(crate) fn client_folder_path(kind: String) -> Result<String, String> {
 /// It is not always the name that was picked: see `import_sound` for why a
 /// collision gets a suffix rather than overwriting.
 #[tauri::command]
-pub(crate) fn import_notification_sound(
+pub(crate) async fn import_notification_sound(
     path: String,
     picked: tauri::State<'_, PickedPaths>,
 ) -> Result<String, String> {
     picked.require(&path)?;
-    faf_app::infra::notification_sounds::import_sound(std::path::Path::new(&path))
+    tauri::async_runtime::spawn_blocking(move || {
+        faf_app::infra::notification_sounds::import_sound(std::path::Path::new(&path))
+    })
+    .await
+    .map_err(|_| "file worker stopped".to_string())?
 }
 
 /// The sounds the player has added, by name.
 #[tauri::command]
-pub(crate) fn list_notification_sounds() -> Result<Vec<String>, String> {
-    faf_app::infra::notification_sounds::list_sounds()
+pub(crate) async fn list_notification_sounds() -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(faf_app::infra::notification_sounds::list_sounds)
+        .await
+        .map_err(|_| "file worker stopped".to_string())?
 }
 
 /// One stored sound, as bytes the webview can decode.
@@ -125,20 +135,28 @@ pub(crate) fn list_notification_sounds() -> Result<Vec<String>, String> {
 /// protocol would need the whole data directory opened up to reach one file,
 /// and this is a couple of hundred kilobytes read once and cached by the page.
 #[tauri::command]
-pub(crate) fn read_notification_sound(name: String) -> Result<Vec<u8>, String> {
-    let path = faf_app::infra::notification_sounds::sound_path(&name)?;
-    std::fs::read(&path).map_err(|error| format!("could not read {}: {error}", path.display()))
+pub(crate) async fn read_notification_sound(name: String) -> Result<Vec<u8>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = faf_app::infra::notification_sounds::sound_path(&name)?;
+        std::fs::read(&path).map_err(|error| format!("could not read {}: {error}", path.display()))
+    })
+    .await
+    .map_err(|_| "file worker stopped".to_string())?
 }
 
 /// Copy a picked picture in as the interface's background (#439). Returns the
 /// name it was stored under, which is what goes in the settings.
 #[tauri::command]
-pub(crate) fn import_background_image(
+pub(crate) async fn import_background_image(
     path: String,
     picked: tauri::State<'_, PickedPaths>,
 ) -> Result<String, String> {
     picked.require(&path)?;
-    faf_app::infra::backgrounds::import_background(std::path::Path::new(&path))
+    tauri::async_runtime::spawn_blocking(move || {
+        faf_app::infra::backgrounds::import_background(std::path::Path::new(&path))
+    })
+    .await
+    .map_err(|_| "file worker stopped".to_string())?
 }
 
 /// The stored background's bytes, read here for the same reason the sounds
@@ -148,11 +166,15 @@ pub(crate) fn import_background_image(
 /// through JSON as an array of numbers, about four characters a byte, so a
 /// 20 MB picture became some 80 MB of JSON to build and parse on every start.
 #[tauri::command]
-pub(crate) fn read_background_image(name: String) -> Result<tauri::ipc::Response, String> {
-    let path = faf_app::infra::backgrounds::background_path(&name)?;
-    std::fs::read(&path)
-        .map(tauri::ipc::Response::new)
-        .map_err(|error| format!("could not read {}: {error}", path.display()))
+pub(crate) async fn read_background_image(name: String) -> Result<tauri::ipc::Response, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = faf_app::infra::backgrounds::background_path(&name)?;
+        std::fs::read(&path)
+            .map(tauri::ipc::Response::new)
+            .map_err(|error| format!("could not read {}: {error}", path.display()))
+    })
+    .await
+    .map_err(|_| "file worker stopped".to_string())?
 }
 
 /// An installed map's clean picture and where its mass, hydros and spawns are,
@@ -203,13 +225,18 @@ pub(crate) async fn reveal_replay(path: String, app: tauri::AppHandle) -> Result
 }
 
 #[tauri::command]
-pub(crate) fn read_latest_log(
+pub(crate) async fn read_latest_log(
     kind: String,
     app: tauri::AppHandle,
 ) -> Result<Option<LogPreview>, String> {
-    const MAX_PREVIEW_BYTES: u64 = 512 * 1024;
     let directory = log_directory(&kind, &app)?;
-    let Some(path) = std::fs::read_dir(&directory)
+    tauri::async_runtime::spawn_blocking(move || read_log_preview(&directory))
+        .await
+        .map_err(|_| "log worker stopped".to_string())?
+}
+
+fn read_log_preview(directory: &std::path::Path) -> Result<Option<LogPreview>, String> {
+    let Some(path) = std::fs::read_dir(directory)
         .ok()
         .into_iter()
         .flatten()
@@ -224,15 +251,7 @@ pub(crate) fn read_latest_log(
     else {
         return Ok(None);
     };
-    let bytes =
-        std::fs::read(&path).map_err(|error| format!("could not read latest log: {error}"))?;
-    // Analyse the whole file, then truncate for display. The other way round
-    // would miss any trace older than the preview window, which is most of them
-    // in a long game.
-    let whole = String::from_utf8_lossy(&bytes);
-    let issues = faf_domain::protocol::log_analysis::analyze_game_log(&whole);
-    let start = bytes.len().saturating_sub(MAX_PREVIEW_BYTES as usize);
-    let content = String::from_utf8_lossy(&bytes[start..]).into_owned();
+    let (content, issues) = faf_app::infra::game_logs::analyzed_tail(&path, 512 * 1024)?;
     Ok(Some(LogPreview {
         file_name: path
             .file_name()

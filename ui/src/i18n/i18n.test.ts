@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { CATALOGUES } from "./catalog";
 import { de } from "./catalog/de";
-import type { Message } from "./catalog/en";
 import { en } from "./catalog/en";
 import {
   formatNumber,
@@ -39,7 +38,7 @@ describe("catalogue integrity", () => {
     // Every catalogue, not just the two oldest: a new language is exactly where
     // an encoding slip is most likely and least likely to be noticed.
     for (const [code, catalogue] of Object.entries(CATALOGUES)) {
-      const entries = Object.entries(catalogue) as [string, Message][];
+      const entries = Object.entries(catalogue);
       for (const [key, message] of entries) {
         const forms: string[] = typeof message === "string"
           ? [message]

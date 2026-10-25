@@ -22,6 +22,7 @@ pub(super) const REPLAY_HEAD_BYTES: u64 = 64 * 1024;
 /// in the binary Lua army table that follows it.
 #[derive(Default)]
 pub(super) struct LocalBodyInfo {
+    header_complete: bool,
     pub(super) player_stats: HashMap<String, BodyPlayerStats>,
     /// The armies as the engine loaded them, in slot order: `(team, name)`.
     ///
@@ -105,6 +106,13 @@ fn extract_map_folder(path: &str) -> String {
 /// `None` means the body yielded nothing at all: an empty body, or one whose
 /// compression no longer decodes. See [`playable_body`].
 pub(super) fn local_body_player_stats(body: &[u8], compression: &str) -> Option<LocalBodyInfo> {
+    local_body_player_stats_reader(body, compression)
+}
+
+pub(super) fn local_body_player_stats_reader(
+    body: impl Read,
+    compression: &str,
+) -> Option<LocalBodyInfo> {
     let prefix = if compression.eq_ignore_ascii_case("zstd") {
         zstd::stream::read::Decoder::new(body)
             .map(read_replay_body_prefix)
@@ -179,18 +187,24 @@ pub(super) fn playable_body(info: Option<&LocalBodyInfo>) -> bool {
 }
 
 fn read_replay_body_prefix(mut reader: impl Read) -> Vec<u8> {
-    read_replay_body_prefix_limit(&mut reader, LOCAL_REPLAY_BODY_PREFIX_BYTES as usize)
-}
-
-fn read_replay_body_prefix_limit(mut reader: impl Read, limit: usize) -> Vec<u8> {
     let mut prefix = Vec::new();
-    let mut chunk = [0_u8; 16 * 1024];
-    while prefix.len() < limit {
-        let remaining = limit - prefix.len();
-        let size = remaining.min(chunk.len());
+    let mut chunk = [0; 16 * 1024];
+    // Checked at doubling sizes, so a header that never completes costs about
+    // two parses of the full prefix rather than one per chunk.
+    let mut next_check = chunk.len();
+    while prefix.len() < LOCAL_REPLAY_BODY_PREFIX_BYTES as usize {
+        let size = chunk
+            .len()
+            .min(LOCAL_REPLAY_BODY_PREFIX_BYTES as usize - prefix.len());
         match reader.read(&mut chunk[..size]) {
             Ok(0) | Err(_) => break,
-            Ok(read) => prefix.extend_from_slice(&chunk[..read]),
+            Ok(count) => prefix.extend_from_slice(&chunk[..count]),
+        }
+        if prefix.len() >= next_check {
+            if parse_local_body_info(&prefix).header_complete {
+                break;
+            }
+            next_check = prefix.len() * 2;
         }
     }
     prefix
@@ -362,6 +376,7 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
     LocalBodyInfo {
         player_stats: stats,
         armies: if armies_complete { armies } else { Vec::new() },
+        header_complete: armies_complete,
         map_name,
         game_version,
     }
@@ -499,6 +514,17 @@ fn replay_displayed_rating(data: &serde_json::Map<String, Value>) -> Option<i32>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn performance_metadata_decoding_stops_before_the_command_stream() {
+        let mut body = super::super::test_support::local_body_with_army_after(b"\r\n\x1a\0");
+        body.resize(512 * 1024, 0);
+        let mut reader = Cursor::new(body.as_slice());
+        let prefix = read_replay_body_prefix(&mut reader);
+        assert!(parse_local_body_info(&prefix).header_complete);
+        assert!(reader.position() < 32 * 1024);
+        assert_eq!(parse_local_body_info(&prefix).armies.len(), 3);
+    }
     use crate::infra::replay::test_support::{local_body_with_army_after, qcompressed_body};
 
     #[test]

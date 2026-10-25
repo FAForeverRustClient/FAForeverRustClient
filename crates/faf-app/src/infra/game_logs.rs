@@ -15,6 +15,63 @@ use crate::ports::GameLogsPort;
 const MAX_GAME_LOGS: usize = 50;
 static NEXT_LOG_ID: AtomicU64 = AtomicU64::new(1);
 
+/// Scan a fixed snapshot of the log, retaining only the requested display tail.
+pub fn analyzed_tail(
+    path: &Path,
+    max_bytes: u64,
+) -> Result<(String, Vec<faf_domain::protocol::log_analysis::LogIssue>), String> {
+    let read = || -> std::io::Result<_> {
+        let mut file = std::fs::File::open(path)?;
+        let length = file.metadata()?.len();
+        let mut analyzer = faf_domain::protocol::log_analysis::GameLogAnalyzer::default();
+        let mut buffer = vec![0; 64 * 1024];
+        let mut snapshot = Read::by_ref(&mut file).take(length);
+        loop {
+            let count = snapshot.read(&mut buffer)?;
+            if count == 0 {
+                break;
+            }
+            analyzer.push(&buffer[..count]);
+        }
+        let start = length.saturating_sub(max_bytes);
+        file.seek(SeekFrom::Start(start))?;
+        let mut tail = Vec::new();
+        file.take(length - start).read_to_end(&mut tail)?;
+        Ok((
+            String::from_utf8_lossy(&tail).into_owned(),
+            analyzer.issues(),
+        ))
+    };
+    read().map_err(|error| format!("could not read latest log: {error}"))
+}
+
+#[cfg(test)]
+mod performance_tests {
+    use super::*;
+
+    #[test]
+    fn performance_log_preview_detects_old_issues_outside_its_bounded_tail() {
+        use std::io::Write;
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(b"info: Minimized true\nwarning: SND\nXACT\n")
+            .unwrap();
+        let padding = [b'.'; 64 * 1024];
+        for _ in 0..12 {
+            file.write_all(&padding).unwrap();
+        }
+        let (tail, issues) = analyzed_tail(file.path(), 512 * 1024).unwrap();
+        assert_eq!(tail.len(), 512 * 1024);
+        assert!(!tail.contains("Minimized"));
+        assert_eq!(
+            issues,
+            vec![
+                faf_domain::protocol::log_analysis::LogIssue::GameMinimized,
+                faf_domain::protocol::log_analysis::LogIssue::SoundDriver,
+            ]
+        );
+    }
+}
+
 /// How much of a log the report excerpt reads, from its end. A long game's
 /// log runs to a few megabytes; this takes all of one, and the end of a
 /// pathological one, without holding an unbounded file in memory.
