@@ -30,12 +30,13 @@ import { useRememberedFilter } from "../../shared/filterMemory";
 import { plainError } from "../../shared/plainError";
 import { formatDate } from "../../shared/format/dates";
 import { FeaturedModIcon } from "../../shared/components/FeaturedModIcon";
-import { ChangelogBlockView } from "../../shared/components/ChangelogBlocks";
-import type { ChangelogBlock, ChangelogRelease, ChangelogSection } from "../../ipc/bindings";
+import type { ChangelogBlock, ChangelogRelease, ChangelogSearchMatch, ChangelogSection } from "../../ipc/bindings";
 import { ClientReleasesView } from "./ClientReleasesView";
+import { PatchSearch } from "./PatchSearch";
 import {
   anchorFor,
   keepCurrentRowInView,
+  NoteBlocks,
   NoteContentsColumn,
   NoteJumpRow,
   noteSections,
@@ -65,10 +66,11 @@ const selectSection = (section: ChangelogSection) =>
 export function ChangelogView() {
   const { t } = useTranslation();
   const section = useAppStore((state) => state.state.nav.changelogSection);
+  const [jumpTarget, setJumpTarget] = useState<ChangelogSearchMatch | null>(null);
 
   return (
     <div className="changelog-workspace">
-      <div className="vault-subnav">
+      <div className="vault-subnav changelog-subnav">
         <SectionTabs
           active={section}
           ariaLabel={t("changelog.section.aria")}
@@ -76,9 +78,14 @@ export function ChangelogView() {
           onChange={selectSection}
           idPrefix="changelog-section"
         />
+        <PatchSearch onChoose={match => {
+          setJumpTarget(match);
+          selectSection("game");
+          ipc.send({ kind: "Changelog", command: { type: "select", payload: { id: match.releaseId } } });
+        }} />
       </div>
       <div className="changelog-panel" {...sectionPanelProps("changelog-section", section)}>
-        {section === "client" ? <ClientReleasesView /> : <GameChangelogView />}
+        {section === "client" ? <ClientReleasesView /> : <GameChangelogView jumpTarget={jumpTarget} onJumped={() => setJumpTarget(null)} />}
       </div>
     </div>
   );
@@ -114,17 +121,24 @@ function noteTitle(blocks: ChangelogBlock[], fallback: string, hasDate: boolean)
   return { title: text || fallback, skipFirst: true };
 }
 
-function GameChangelogView() {
+function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSearchMatch | null; onJumped: () => void }) {
   const { t } = useTranslation();
-  const changelog = useAppStore((state) => state.state.changelog);
+  // Search progress changes independently of the note and its release list.
+  const releases = useAppStore((state) => state.state.changelog.releases);
+  const status = useAppStore((state) => state.state.changelog.status);
+  const entryStatus = useAppStore((state) => state.state.changelog.entryStatus);
+  const selectedId = useAppStore((state) => state.state.changelog.selected);
+  const entries = useAppStore((state) => state.state.changelog.entries);
+  const changelog = { releases, status, entryStatus, selected: selectedId, entries };
   // Remembered as the filter setting says (#447).
   const [search, setSearch] = useRememberedFilter("changelog.search", "", (value) => typeof value === "string");
   /// The years the reader has flipped from their default, folded or open.
   const [toggledGroups, setToggledGroups] = useState<Set<string>>(() => new Set());
   const listRef = useRef<HTMLElement>(null);
+  const initialJump = useRef(jumpTarget);
 
   useEffect(() => {
-    ipc.send({ kind: "Changelog", command: { type: "load" } });
+    if (!initialJump.current) ipc.send({ kind: "Changelog", command: { type: "load" } });
   }, []);
 
   const query = search.trim().toLocaleLowerCase();
@@ -184,10 +198,20 @@ function GameChangelogView() {
   );
 
   const sections = useMemo<Section[]>(
-    () => (entry ? noteSections(entry.blocks, heading.skipFirst) : []),
-    [entry, heading.skipFirst],
+    () => (entry ? noteSections(entry.blocks, heading.skipFirst, t("changelog.historicalBalance")) : []),
+    [entry, heading.skipFirst, t],
   );
   const { scrollRef, tocRef, activeSectionId, onNoteScroll, jumpTo } = useNoteContents(sections, changelog.selected);
+
+  useEffect(() => {
+    if (!jumpTarget || entry?.id !== jumpTarget.releaseId || loadingEntry) return;
+    const frame = requestAnimationFrame(() => {
+      const [first, ...nested] = jumpTarget.blockPath;
+      jumpTo([anchorFor(first ?? 0), ...nested].join("-"));
+      onJumped();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [entry, jumpTarget, loadingEntry, jumpTo, onJumped]);
 
   useEffect(() => {
     keepCurrentRowInView(listRef.current);
@@ -428,11 +452,7 @@ function GameChangelogView() {
                 <p className="changelog-list-note">{t("changelog.pick")}</p>
               )}
 
-              {entry?.blocks.map((block, index) =>
-                heading.skipFirst && index === 0 ? null : (
-                  <ChangelogBlockView key={index} block={block} anchorId={anchorFor(index)} />
-                ),
-              )}
+              {entry && <NoteBlocks blocks={entry.blocks} skipFirst={heading.skipFirst} />}
             </div>
 
             <NoteContentsColumn

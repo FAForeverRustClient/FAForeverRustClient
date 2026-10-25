@@ -793,6 +793,15 @@ export type ChangelogBlock = { type: "heading"; payload: {
 	name: string,
 } } | { type: "list"; payload: {
 	items: ChangelogListItem[],
+} } | { type: "codeBlock"; payload: {
+	text: string,
+} } |
+/**  Original detail retained separately when the current post is a summary. */
+{ type: "historicalBalance"; payload: {
+	patchId: string,
+	sourceUrl: string,
+	blocks: ChangelogBlock[],
+	unavailable: boolean,
 } };
 
 /**
@@ -806,6 +815,10 @@ export type ChangelogChange = {
 };
 
 export type ChangelogCommand =
+/**  Search public patch text locally. An empty query cancels the current run. */
+{ type: "search"; payload: {
+	query: string,
+} } |
 /**
  *  Fetch the release index. Sent on every visit to the tab, and answered
  *  with a fresh read: a release published while the client was open has to
@@ -835,7 +848,9 @@ export type ChangelogEntryStatus = { type: "idle" } | { type: "loading"; payload
 	reason: string,
 } };
 
-export type ChangelogEvent = { type: "loading" } | { type: "loaded"; payload: {
+export type ChangelogEvent = { type: "searchUpdated"; payload: {
+	search: ChangelogSearchState,
+} } | { type: "loading" } | { type: "loaded"; payload: {
 	releases: ChangelogRelease[],
 } } | { type: "loadFailed"; payload: {
 	reason: string,
@@ -876,6 +891,23 @@ export type ChangelogRelease = {
 	webUrl: string,
 };
 
+export type ChangelogSearchMatch = {
+	releaseId: string,
+	blockPath: number[],
+	excerpt: string,
+	occurrences: number,
+};
+
+export type ChangelogSearchState = {
+	requestId: number,
+	query: string,
+	status: ChangelogStatus,
+	scanned: number,
+	total: number,
+	failed: number,
+	matches: ChangelogSearchMatch[],
+};
+
 /**
  *  The list open inside Changelog: FAForever's game patches, or this client's
  *  own releases. See [`MapsSection`].
@@ -897,6 +929,7 @@ export type ChangelogSpan = { type: "text"; payload: string } | { type: "strong"
 } };
 
 export type ChangelogState = {
+	search?: ChangelogSearchState,
 	releases: ChangelogRelease[],
 	status: ChangelogStatus,
 	/**  Release id currently shown, empty before the first selection. */
@@ -918,7 +951,8 @@ export type ChangelogStatus = { type: "idle" } | { type: "loading" } | { type: "
 
 /**  One unit named by a header, with the icon the site would show for it. */
 export type ChangelogUnit = {
-	unitId: string,
+	/**  Historical illustrations can identify a unit without naming its blueprint. */
+	unitId?: string | null,
 	iconUrl: string,
 };
 

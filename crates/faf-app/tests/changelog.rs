@@ -15,12 +15,219 @@ use async_trait::async_trait;
 use faf_app::infra::fake_ports;
 use faf_app::ports::ChangelogPort;
 use faf_app::{App, Ports};
-use faf_domain::protocol::changelog::{ChangelogEntry, ChangelogRelease};
+use faf_domain::protocol::changelog::{ChangelogBlock, ChangelogEntry, ChangelogRelease};
 use faf_domain::state::{ChangelogCommand, ChangelogEntryStatus, ChangelogStatus};
+
+struct ArchivePort {
+    calls: Arc<Mutex<HashMap<String, u32>>>,
+    index_calls: Arc<AtomicU32>,
+    active: Arc<AtomicU32>,
+    maximum: Arc<AtomicU32>,
+    fail_first: bool,
+}
+
+struct ActiveRead(Arc<AtomicU32>);
+impl Drop for ActiveRead {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::AcqRel);
+    }
+}
+
+#[async_trait]
+impl ChangelogPort for ArchivePort {
+    async fn list_releases(&self) -> Result<Vec<ChangelogRelease>, String> {
+        self.index_calls.fetch_add(1, Ordering::AcqRel);
+        Ok(vec![
+            rolling("fafbeta"),
+            release("3800", "2024-01-01"),
+            release("3801", "2024-02-01"),
+            release("3802", "2024-03-01"),
+        ])
+    }
+    async fn load_entry(&self, release: ChangelogRelease) -> Result<ChangelogEntry, String> {
+        let active = self.active.fetch_add(1, Ordering::AcqRel) + 1;
+        self.maximum.fetch_max(active, Ordering::AcqRel);
+        let _read = ActiveRead(self.active.clone());
+        tokio::time::sleep(Duration::from_millis(40)).await;
+        let reads = *self
+            .calls
+            .lock()
+            .unwrap()
+            .entry(release.id.clone())
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
+        if self.fail_first && release.id == "3801" && reads == 1 {
+            return Err("temporary source failure".into());
+        }
+        Ok(ChangelogEntry {
+            title: format!("{} - read {reads}", release.id),
+            id: release.id.clone(),
+            blocks: vec![ChangelogBlock::CodeBlock {
+                text: format!("Published Cooper changes for {}", release.id),
+            }],
+        })
+    }
+}
+
+fn archive_harness(fail_first: bool) -> (Harness, Arc<AtomicU32>, Arc<AtomicU32>) {
+    let calls = Arc::new(Mutex::new(HashMap::new()));
+    let index_calls = Arc::new(AtomicU32::new(0));
+    let active = Arc::new(AtomicU32::new(0));
+    let maximum = Arc::new(AtomicU32::new(0));
+    let (app, app_loop) = App::new(
+        "test",
+        Ports {
+            changelog: Arc::new(ArchivePort {
+                calls: calls.clone(),
+                index_calls: index_calls.clone(),
+                active: active.clone(),
+                maximum: maximum.clone(),
+                fail_first,
+            }),
+            ..fake_ports()
+        },
+    );
+    tokio::spawn(app_loop.run());
+    (
+        Harness {
+            app,
+            entry_calls: calls,
+            index_calls,
+        },
+        active,
+        maximum,
+    )
+}
+
+async fn archive_search(harness: &Harness, query: &str) {
+    harness
+        .app
+        .dispatch(
+            ChangelogCommand::Search {
+                query: query.into(),
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+    harness
+        .until("archive search did not complete", |app| {
+            let search = app.snapshot().changelog.search;
+            search.query == query && search.status == ChangelogStatus::Ready
+        })
+        .await;
+}
+
+#[tokio::test]
+async fn archive_search_preserves_selection_limits_downloads_and_reuses_dated_notes() {
+    let (harness, _, maximum) = archive_harness(false);
+    harness.load().await;
+    archive_search(&harness, "Cooper").await;
+    assert_eq!(harness.selected(), "3802");
+    assert_eq!(harness.app.snapshot().changelog.search.matches.len(), 4);
+    assert!(maximum.load(Ordering::Acquire) <= 4);
+    archive_search(&harness, "Published").await;
+    assert_eq!(harness.reads_of("3800"), 1);
+    assert_eq!(harness.reads_of("3801"), 1);
+    assert_eq!(harness.reads_of("3802"), 1);
+    assert_eq!(
+        harness.reads_of("fafbeta"),
+        1,
+        "typing another archive query should reuse the short rolling-note cache"
+    );
+    harness.select("3800").await;
+    harness
+        .until("search result could not be selected", |app| {
+            app.snapshot().changelog.selected == "3800"
+        })
+        .await;
+    assert_eq!(
+        harness.reads_of("3800"),
+        1,
+        "select should reuse the archive cache"
+    );
+    harness.select("fafbeta").await;
+    harness
+        .until("rolling selection did not refresh", |app| {
+            let state = app.snapshot().changelog;
+            state.selected == "fafbeta" && state.entry_status == ChangelogEntryStatus::Ready
+        })
+        .await;
+    assert_eq!(
+        harness.reads_of("fafbeta"),
+        2,
+        "opening a rolling note still fetches it fresh"
+    );
+}
+
+#[tokio::test]
+async fn archive_search_cancel_drops_requests_and_never_publishes_old_results() {
+    let (harness, active, _) = archive_harness(false);
+    harness.load().await;
+    harness
+        .app
+        .dispatch(
+            ChangelogCommand::Search {
+                query: "Cooper".into(),
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+    harness
+        .until("search did not start", |_| {
+            active.load(Ordering::Acquire) > 0
+        })
+        .await;
+    harness
+        .app
+        .dispatch(
+            ChangelogCommand::Search {
+                query: String::new(),
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+    harness
+        .until("search did not cancel", |app| {
+            app.snapshot().changelog.search.status == ChangelogStatus::Idle
+        })
+        .await;
+    settle().await;
+    assert_eq!(active.load(Ordering::Acquire), 0);
+    assert!(harness.app.snapshot().changelog.search.matches.is_empty());
+    archive_search(&harness, "absent").await;
+    assert!(harness.app.snapshot().changelog.search.matches.is_empty());
+}
+
+#[tokio::test]
+async fn archive_search_reports_partial_failures_and_retries_uncached_sources() {
+    let (harness, _, _) = archive_harness(true);
+    harness.load().await;
+    archive_search(&harness, "Cooper").await;
+    assert_eq!(harness.app.snapshot().changelog.search.failed, 1);
+    assert_eq!(harness.app.snapshot().changelog.search.matches.len(), 3);
+    archive_search(&harness, "Published").await;
+    assert_eq!(harness.app.snapshot().changelog.search.failed, 0);
+    assert_eq!(harness.app.snapshot().changelog.search.matches.len(), 4);
+    assert_eq!(harness.reads_of("3801"), 2);
+    assert_eq!(harness.reads_of("3800"), 1);
+}
+
+#[tokio::test]
+async fn archive_search_can_load_the_index_without_selecting_a_note() {
+    let (harness, _, _) = archive_harness(false);
+    archive_search(&harness, "Cooper").await;
+    assert_eq!(harness.selected(), "");
+    assert!(harness.app.snapshot().changelog.entries.is_empty());
+    assert_eq!(harness.app.snapshot().changelog.releases.len(), 4);
+}
 
 /// A changelog source with a scripted delay per note, so a response can be
 /// made to overtake one requested before it.
 struct ScriptedChangelog {
+    missing_original_on_first_read: bool,
     releases: Vec<ChangelogRelease>,
     /// How long each note takes to answer, by release id. Absent means instant.
     delays: HashMap<String, Duration>,
@@ -54,8 +261,17 @@ impl ChangelogPort for ScriptedChangelog {
             // Numbered so a second read of the same release is distinguishable
             // from the first one being handed back out of the cache.
             title: format!("{id} - read {reads}"),
+            blocks: if self.missing_original_on_first_read && id == "3801" {
+                vec![ChangelogBlock::HistoricalBalance {
+                    patch_id: id.clone(),
+                    source_url: "https://example.invalid/original".into(),
+                    blocks: Vec::new(),
+                    unavailable: reads == 1,
+                }]
+            } else {
+                Vec::new()
+            },
             id,
-            blocks: Vec::new(),
         })
     }
 }
@@ -91,10 +307,18 @@ struct Harness {
 /// Three dated releases, newest last, and the rolling beta entry above them.
 /// `3800` is the slow one throughout: it is always the request that must lose.
 fn harness(index_delay: Duration) -> Harness {
+    harness_with_original_failure(index_delay, false)
+}
+
+fn harness_with_original_failure(
+    index_delay: Duration,
+    missing_original_on_first_read: bool,
+) -> Harness {
     let index_calls = Arc::new(AtomicU32::new(0));
     let entry_calls = Arc::new(Mutex::new(HashMap::new()));
     let ports = Ports {
         changelog: Arc::new(ScriptedChangelog {
+            missing_original_on_first_read,
             releases: vec![
                 rolling("fafbeta"),
                 release("3800", "2024-01-01"),
@@ -187,6 +411,38 @@ impl Harness {
 /// Long enough for the slow note (300 ms) to have answered if it were going to.
 async fn settle() {
     tokio::time::sleep(Duration::from_millis(500)).await;
+}
+
+#[tokio::test]
+async fn an_unavailable_original_can_be_retried_and_the_complete_note_is_cached() {
+    let harness = harness_with_original_failure(Duration::ZERO, true);
+    harness.load().await;
+    harness.select("3801").await;
+    harness
+        .until("the summary never landed", |app| {
+            app.snapshot().changelog.selected == "3801"
+        })
+        .await;
+    assert_eq!(harness.reads_of("3801"), 1);
+    harness.select("3801").await;
+    harness
+        .until("the unavailable original was kept in the cache", |_| {
+            harness.title() == "3801 - read 2"
+        })
+        .await;
+    harness.select("3802").await;
+    harness
+        .until("the newer note never landed", |app| {
+            app.snapshot().changelog.selected == "3802"
+        })
+        .await;
+    harness.select("3801").await;
+    harness
+        .until("the original was not selected again", |app| {
+            app.snapshot().changelog.selected == "3801"
+        })
+        .await;
+    assert_eq!(harness.reads_of("3801"), 2);
 }
 
 #[tokio::test]

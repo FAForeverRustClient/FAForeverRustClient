@@ -19,6 +19,12 @@
   font-size: 20px;
 }
 
+.changelog-historical {
+  margin-top: calc(var(--space-4) * 2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
 .changelog-heading-3 {
   margin-top: 24px;
   font-size: 17px;
@@ -44,6 +50,12 @@
 
 .changelog-list .changelog-list {
   margin: 4px 0 6px;
+}
+
+.changelog-list + .changelog-list {
+  margin-top: 24px;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
 }
 
 .changelog-list li {
@@ -174,3 +186,73 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
 }
+
+/* The text and, beside it, the copy button's column. */
+.changelog-code-container {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0 0 var(--space-4);
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.changelog-code-block {
+  margin: 0;
+  padding: var(--space-4);
+  overflow: auto;
+  scrollbar-gutter: stable;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre;
+  tab-size: 4;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+/* Square and icon-only, in the column beside the text (see the container),
+   so no line ever runs underneath it. */
+.changelog-code-copy {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  margin: var(--space-2) var(--space-2) 0 0;
+  padding: 0;
+  background: var(--color-surface);
+}
+
+.changelog-code-copy:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.changelog-code-copy.is-copied svg {
+  color: var(--color-ok);
+}
+
+.changelog-code-block code {
+  font: inherit;
+}
+
+.changelog-code-block:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.changelog-code-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+

@@ -7,9 +7,10 @@
 // beside the note when the surface is wide enough to have room for one, and as
 // a row of jump links above it when it is not (see `changelog.css`).
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { ChangelogBlock } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
+import { ChangelogBlockView } from "../../shared/components/ChangelogBlocks";
 
 /** A section of the open note, as the contents list and the jump row name it. */
 export interface Section {
@@ -27,21 +28,55 @@ export interface Section {
 
 export const anchorFor = (index: number) => `changelog-block-${index}`;
 
+/** A heading that only names a faction, as 3775 labels each faction's units. */
+const FACTION_LABEL = /^(aeon|uef|cybran|seraphim|sera|nomads?)$/i;
+
+const compact = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+
 /**
  * The sections of a note: its `h2` and `h3` headings and its units, in order.
  * `skipFirst` leaves out the first block when it has become the page title.
+ *
+ * Inside an original balance section, which renders a level lower, the cutoff
+ * still follows the source's own `h3`: there it groups units, 3761's
+ * "Frigates" or "Cruisers", and many of those units are named only by
+ * faction, so without the group the contents read "Aeon, Cybran, Aeon". Left
+ * out are a faction label (3775), a source date, and a label naming one unit
+ * of the header it sits under, such as "Stinger" under "Stinger & Vulthoo".
  */
-export function noteSections(blocks: ChangelogBlock[], skipFirst: boolean): Section[] {
-  return blocks.flatMap((block, index): Section[] => {
-    if (skipFirst && index === 0) return [];
-    if (block.type === "heading" && block.payload.level <= 3) {
-      return [{ id: anchorFor(index), text: block.payload.text, depth: block.payload.level <= 2 ? 1 : 2 }];
+export function noteSections(
+  blocks: ChangelogBlock[], skipFirst: boolean, historicalLabel: string, headingOffset = 0,
+): Section[] {
+  const sections: Section[] = [];
+  let unitName = "";
+  blocks.forEach((block, index) => {
+    if (skipFirst && index === 0) return;
+    if (block.type === "historicalBalance") {
+      const id = anchorFor(index);
+      sections.push({ id, text: historicalLabel, depth: 1 }, ...noteSections(block.payload.blocks, false, historicalLabel, headingOffset + 1)
+        .map(section => ({ ...section, id: `${id}-${section.id.slice("changelog-block-".length)}`, depth: 2 as const })));
+      return;
+    }
+    if (block.type === "heading") {
+      const { level: sourceLevel, text } = block.payload;
+      if (sourceLevel <= 2) unitName = "";
+      const nested = headingOffset > 0;
+      const label = nested && (
+        /^\s*date\s*:/i.test(text)
+        || FACTION_LABEL.test(text.trim())
+        || (unitName !== "" && compact(text) !== "" && unitName.includes(compact(text)))
+      );
+      if (sourceLevel <= 3 && !label) {
+        sections.push({ id: anchorFor(index), text, depth: sourceLevel + headingOffset <= 2 ? 1 : 2 });
+      }
+      return;
     }
     if (block.type === "unit") {
-      return [{ id: anchorFor(index), text: block.payload.name, depth: 2, iconUrl: block.payload.units[0]?.iconUrl }];
+      unitName = compact(block.payload.name);
+      sections.push({ id: anchorFor(index), text: block.payload.name, depth: 2, iconUrl: block.payload.units[0]?.iconUrl });
     }
-    return [];
   });
+  return sections;
 }
 
 /**
@@ -111,7 +146,9 @@ export function useNoteContents(sections: Section[], selection: string) {
     else if (rect.top < bounds.top) nav.scrollTop -= bounds.top - rect.top + 8;
   }, [activeSectionId]);
 
-  const onNoteScroll = () => {
+  // Both kept stable for the memoized contents column: a new function on
+  // every render redrew its whole list each time the reader scrolled.
+  const onNoteScroll = useCallback(() => {
     if (isClickScrolling.current) return;
     const container = scrollRef.current;
     if (!container || sections.length === 0) return;
@@ -128,9 +165,9 @@ export function useNoteContents(sections: Section[], selection: string) {
       else break;
     }
     setActiveSectionId(currentId);
-  };
+  }, [sections]);
 
-  const jumpTo = (id: string) => {
+  const jumpTo = useCallback((id: string) => {
     setActiveSectionId(id);
     isClickScrolling.current = true;
     if (clickScrollTimeout.current) clearTimeout(clickScrollTimeout.current);
@@ -144,10 +181,31 @@ export function useNoteContents(sections: Section[], selection: string) {
     // Smooth or instant per the stylesheet's `scroll-behavior`, which
     // honours a request for reduced motion.
     container.scrollTo({ top: Math.max(0, container.scrollTop + offset - 16) });
-  };
+  }, []);
 
   return { scrollRef, tocRef, activeSectionId, onNoteScroll, jumpTo };
 }
+
+/**
+ * The note itself, drawn again only when the note changes. The view around it
+ * redraws on every keystroke in the release filter and every time the current
+ * section changes while scrolling, and a long note redrawn with it (3761's
+ * original balance notes are close to 300 blocks) made both lag.
+ */
+export const NoteBlocks = memo(function NoteBlocks({ blocks, skipFirst = false }: {
+  blocks: ChangelogBlock[];
+  skipFirst?: boolean;
+}) {
+  return (
+    <>
+      {blocks.map((block, index) =>
+        skipFirst && index === 0 ? null : (
+          <ChangelogBlockView key={index} block={block} anchorId={anchorFor(index)} />
+        ),
+      )}
+    </>
+  );
+});
 
 /**
  * The sections as a row of jump links, for a surface too narrow for the
@@ -174,8 +232,11 @@ export function NoteJumpRow({ sections, onJump }: { sections: Section[]; onJump:
   );
 }
 
-/** The contents column beside the note, when the surface has room for it. */
-export function NoteContentsColumn({
+/**
+ * The contents column beside the note, when the surface has room for it.
+ * Memoized like the note: a long patch lists over a hundred entries here.
+ */
+export const NoteContentsColumn = memo(function NoteContentsColumn({
   sections,
   activeSectionId,
   navRef,
@@ -226,4 +287,4 @@ export function NoteContentsColumn({
       </ul>
     </nav>
   );
-}
+});

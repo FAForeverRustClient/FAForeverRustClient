@@ -3,6 +3,9 @@ import type { ChangelogEvent, ChangelogState } from "../../ipc/bindings";
 /** Twin of `faf_domain::state::changelog::reduce`. */
 export function reduceChangelog(state: ChangelogState, event: ChangelogEvent): ChangelogState {
   switch (event.type) {
+    case "searchUpdated":
+      return event.payload.search.requestId >= (state.search?.requestId ?? 0)
+        ? { ...state, search: event.payload.search } : state;
     case "loading":
       return { ...state, status: { type: "loading" } };
     case "loaded":

@@ -437,6 +437,7 @@ const INITIAL: AppState = {
     whatsNew: null,
   },
   changelog: {
+    search: { requestId: 0, query: "", status: { type: "idle" }, scanned: 0, total: 0, failed: 0, matches: [] },
     releases: [],
     status: { type: "idle" },
     selected: "",
