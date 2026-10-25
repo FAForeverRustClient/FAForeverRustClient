@@ -25,7 +25,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "nav.tab.events.description": "Was ansteht, und wann",
   "nav.tab.training.label": "Training",
   "nav.tab.training.description": "Besser werden in FAF",
-  "nav.tab.changelog.label": "Changelog",
+  "nav.tab.changelog.label": "Changelogs",
   "nav.tab.changelog.description": "Patch Notes der FAF-Entwickler",
   "changelog.releases": "Versionen",
   "changelog.branches": "Branches",
