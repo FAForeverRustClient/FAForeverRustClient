@@ -16,6 +16,8 @@ import { baseMapName } from "../mapPresentation";
 /// own "already known" check cannot see a sibling that has not landed yet:
 /// without this, a grid of tiles all failing at once would each fire.
 const requested = new Set<string>();
+const pending = new Set<string>();
+let scheduled = false;
 
 /// The installed list the guard above was built against. Installing a map can
 /// give it art it did not have, and the reducer drops the cache for that
@@ -28,6 +30,7 @@ export function loadLocalMapPreviews(mapNames: string[]): void {
   if (installed !== guardedList) {
     guardedList = installed;
     requested.clear();
+    pending.clear();
   }
   const wanted = [...new Set(mapNames.map(baseMapName).filter(Boolean))].filter((name) => {
     if (requested.has(name)) return false;
@@ -35,15 +38,23 @@ export function loadLocalMapPreviews(mapNames: string[]): void {
     return true;
   });
   if (wanted.length === 0) return;
-  ipc.send({
-    kind: "Maps",
-    command: { type: "loadLocalPreviews", payload: { folderNames: wanted } },
+  for (const name of wanted) pending.add(name);
+  if (scheduled) return;
+  scheduled = true;
+  queueMicrotask(() => {
+    scheduled = false;
+    const names = [...pending];
+    pending.clear();
+    for (let i = 0; i < names.length; i += 64) {
+      ipc.send({ kind: "Maps", command: { type: "loadLocalPreviews", payload: { folderNames: names.slice(i, i + 64) } } });
+    }
   });
 }
 
 /** Test seam: the module-level guard would otherwise leak between cases. */
 export function resetLocalMapPreviewRequests(): void {
   requested.clear();
+  pending.clear();
   guardedList = null;
 }
 

@@ -2,6 +2,7 @@
 // so what it offers is worth pinning: a player who cannot sign in has to be
 // able to see, from here, that the games on their own disk are still watchable.
 
+import "../../testing/catalogues";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { resetLocaleForTests, setLocale } from "../../i18n/store";

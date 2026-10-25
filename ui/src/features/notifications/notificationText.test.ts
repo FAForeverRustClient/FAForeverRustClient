@@ -1,3 +1,4 @@
+import "../../testing/catalogues";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ClientNotification } from "../../ipc/bindings";
 import { de } from "../../i18n/catalog/de";

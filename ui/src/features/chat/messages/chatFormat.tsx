@@ -4,6 +4,7 @@
 // Everything here is pure: the components stay declarative and these stay
 // unit-reasonable.
 
+import { dateFormatter } from "../../../i18n/formatters";
 import type { CSSProperties, ReactNode } from "react";
 import type { ChatPreferences, ChatUser, PlayerProfile, SocialState } from "../../../ipc/bindings";
 import { EMOJI_PATTERN, emojiName } from "./emoji";
@@ -28,7 +29,7 @@ export function isAdmin(user: ChatUser | undefined): boolean {
 export function resolvedNickStyle(
   name: string,
   user: ChatUser | undefined,
-  social: SocialState,
+  social: Pick<SocialState, "friends" | "foes">,
   preferences: ChatPreferences,
   selfName?: string,
 ): CSSProperties | undefined {
@@ -418,11 +419,11 @@ export function formatTime(timestamp: string, use24HourTime = true): string {
   const date = new Date(timestamp);
   return Number.isNaN(date.getTime())
     ? ""
-    : date.toLocaleTimeString("en-US", {
+    : dateFormatter("en-US", {
         hour: "2-digit",
         minute: "2-digit",
         ...hourCycleOptions(use24HourTime),
-      });
+      }).format(date);
 }
 
 /**

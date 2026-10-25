@@ -43,11 +43,13 @@
 //! written whether or not the upload worked, and the upload is attempted
 //! whether or not the file could be written.
 
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
 use tokio::io::AsyncReadExt;
 use tokio::net::TcpListener;
 
+use super::replay_spool::ReplaySpool;
 use crate::infra::replay_relay::{ReplayRelay, ReplayRelayConfig};
 use crate::ports::ReplayMetadata;
 
@@ -56,11 +58,7 @@ const POST_PREFIX: &[u8] = b"P/";
 /// The header FA sends when *reading* a replay back (the playback path).
 const GET_PREFIX: &[u8] = b"G/";
 
-/// Ceiling on the buffered replay body. The body has to be complete before it
-/// can be compressed and framed behind the JSON header, so it is held in
-/// memory; this bounds what a misbehaving peer on the loopback port can make
-/// this process allocate. A long game is single-digit megabytes, so the cap is
-/// far above anything FA produces and is never expected to be reached.
+/// Disk budget for one raw replay, including its protocol prefix.
 const MAX_REPLAY_BYTES: usize = 512 * 1024 * 1024;
 
 /// How long the end of a game waits for the upload to be acknowledged.
@@ -139,11 +137,7 @@ impl Drop for ReplayRecorder {
     }
 }
 
-/// Read the whole stream, then write it as a `.fafreplay`.
-///
-/// The body is buffered rather than streamed to disk because the file it goes
-/// into is `header + zstd(body)`: neither the compression nor the `complete`
-/// flag in the header can be settled before FA has finished sending.
+/// Capture once to disk while the relay reads independently.
 async fn record(
     mut stream: tokio::net::TcpStream,
     directory: &Path,
@@ -153,10 +147,10 @@ async fn record(
     // Started with the connection, not with the first chunk: the upload has an
     // access-token request and a TLS handshake to get through before it can
     // take a byte, and FA is already streaming.
-    let relay = relay.map(|config| ReplayRelay::start(config, metadata.uid));
+    let (spool, mut writer) = ReplaySpool::create().await?;
+    let relay = relay.map(|config| ReplayRelay::start(config, metadata.uid, spool.clone()));
     let mut buffer = vec![0u8; 64 * 1024];
-    let mut body: Vec<u8> = Vec::new();
-    let mut header_done = false;
+
     // When FA reached the recorder, which is within a second or two of the
     // game starting. It stands in for a launch time the lobby never reported,
     // and the point of it is that it is taken *now* rather than when the file
@@ -180,36 +174,22 @@ async fn record(
                 break;
             }
         };
-        let mut chunk = &buffer[..read];
-
-        // Before the header is stripped, deliberately. `P/<uid>/<player>\0` is
-        // the replay service's handshake and has to reach it intact; it is only
-        // the *file* that must not contain it. Sending the two destinations
-        // different bytes here is the entire difference between them.
-        if let Some(relay) = &relay {
-            relay.send(chunk);
-        }
-
-        if !header_done {
-            header_done = true;
-            chunk = strip_header(chunk);
-        }
-
-        if body.len() + chunk.len() > MAX_REPLAY_BYTES {
+        if spool.progress().len + read as u64 > MAX_REPLAY_BYTES as u64 {
             tracing::warn!(
                 uid = metadata.uid,
-                "replay exceeded the size cap; truncating"
+                "replay exceeded the disk budget; truncating"
             );
             break;
         }
-        body.extend_from_slice(chunk);
+        if let Err(error) = writer.append(&buffer[..read]).await {
+            tracing::warn!(%error, uid = metadata.uid, "could not append replay data");
+            break;
+        }
     }
 
-    // The local file first, the upload's tail second. The player's own copy is
-    // a disk write that always succeeds in milliseconds and must not be made to
-    // wait behind a network call; the relay has been streaming the whole game
-    // already, so what is left for it here is the last chunk and a close frame.
-    let written = write_local(directory, metadata, body, complete, opened_at).await;
+    // Finalize the local copy independently of the relay's network progress.
+    drop(writer);
+    let written = write_local(directory, metadata, spool, complete, opened_at).await;
 
     // Awaited rather than detached: FA has exited, so nothing else is keeping
     // this stream's task alive, and dropping the relay here would cut the
@@ -225,33 +205,57 @@ async fn record(
 async fn write_local(
     directory: &Path,
     metadata: &ReplayMetadata,
-    body: Vec<u8>,
+    spool: ReplaySpool,
     complete: bool,
     opened_at: f64,
 ) -> Result<(), String> {
-    if body.is_empty() {
-        return Err("the game sent no replay data".into());
-    }
-
-    tokio::fs::create_dir_all(directory)
-        .await
-        .map_err(|error| format!("could not create {}: {error}", directory.display()))?;
-    let path = directory.join(replay_file_name(metadata));
-    let raw_bytes = body.len();
-    let file = build_fafreplay(metadata, body, complete, opened_at)?;
-    let bytes = file.len();
-    tokio::fs::write(&path, file)
-        .await
-        .map_err(|error| format!("could not write {}: {error}", path.display()))?;
-
-    tracing::info!(
-        path = %path.display(),
-        raw_bytes,
-        bytes,
-        complete,
-        "replay recorded"
-    );
-    Ok(())
+    let directory = directory.to_owned();
+    let metadata = metadata.clone();
+    tokio::task::spawn_blocking(move || {
+        let mut source = spool
+            .open()
+            .map_err(|error| format!("could not read replay spool: {error}"))?;
+        let mut prefix = vec![0; 64 * 1024];
+        let read = source
+            .read(&mut prefix)
+            .map_err(|error| error.to_string())?;
+        let body = strip_header(&prefix[..read]);
+        let offset = read - body.len();
+        if spool.progress().len <= offset as u64 {
+            return Err("the game sent no replay data".into());
+        }
+        source
+            .seek(SeekFrom::Start(offset as u64))
+            .map_err(|error| error.to_string())?;
+        std::fs::create_dir_all(&directory)
+            .map_err(|error| format!("could not create replay directory: {error}"))?;
+        let mut output = tempfile::NamedTempFile::new_in(&directory)
+            .map_err(|error| format!("could not create replay file: {error}"))?;
+        let header = replay_header(&metadata, complete, opened_at)?;
+        output
+            .write_all(&header)
+            .map_err(|error| error.to_string())?;
+        let mut encoder = zstd::stream::write::Encoder::new(output.as_file_mut(), 0)
+            .map_err(|error| format!("could not compress replay: {error}"))?;
+        std::io::copy(
+            &mut source.take(spool.progress().len - offset as u64),
+            &mut encoder,
+        )
+        .map_err(|error| error.to_string())?;
+        encoder.finish().map_err(|error| error.to_string())?;
+        output
+            .persist(directory.join(replay_file_name(&metadata)))
+            .map_err(|error| format!("could not save replay: {}", error.error))?;
+        tracing::info!(
+            uid = metadata.uid,
+            raw_bytes = spool.progress().len,
+            complete,
+            "replay recorded"
+        );
+        Ok(())
+    })
+    .await
+    .map_err(|_| "replay compression worker stopped".to_string())?
 }
 
 /// `<uid>-<recorder>.fafreplay`, the name the Python client uses, so one shared
@@ -279,9 +283,21 @@ fn replay_file_name(metadata: &ReplayMetadata) -> String {
 /// which is the matchmaker path and any game that had already left the public
 /// listing. Taking it from the recorder rather than from this call is what
 /// makes `game_end - launched_at` a duration rather than zero.
+#[cfg(test)]
 pub(crate) fn build_fafreplay(
     metadata: &ReplayMetadata,
     body: Vec<u8>,
+    complete: bool,
+    started_at: f64,
+) -> Result<Vec<u8>, String> {
+    let mut file = replay_header(metadata, complete, started_at)?;
+    let compressed = zstd::stream::encode_all(&body[..], 0).map_err(|error| error.to_string())?;
+    file.extend_from_slice(&compressed);
+    Ok(file)
+}
+
+fn replay_header(
+    metadata: &ReplayMetadata,
     complete: bool,
     started_at: f64,
 ) -> Result<Vec<u8>, String> {
@@ -321,10 +337,6 @@ pub(crate) fn build_fafreplay(
     let mut file = serde_json::to_vec(&header)
         .map_err(|error| format!("could not build the replay header: {error}"))?;
     file.push(b'\n');
-    // Level 0 is zstd's default, matching the Python client's `zstd.compress`.
-    let compressed = zstd::stream::encode_all(&body[..], 0)
-        .map_err(|error| format!("could not compress the replay: {error}"))?;
-    file.extend_from_slice(&compressed);
     Ok(file)
 }
 
@@ -363,6 +375,23 @@ fn strip_header(chunk: &[u8]) -> &[u8] {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn performance_spooled_capture_strips_a_fragmented_prefix_and_compresses_all_chunks() {
+        let root = tempfile::tempdir().unwrap();
+        let (spool, mut writer) = ReplaySpool::create().await.unwrap();
+        writer.append(b"P/4711/").await.unwrap();
+        writer.append(b"Nory\0first ").await.unwrap();
+        writer.append(b"second").await.unwrap();
+        drop(writer);
+        write_local(root.path(), &metadata(), spool, true, 1_788_000_000.0)
+            .await
+            .unwrap();
+        let (header, body) =
+            parse(&std::fs::read(root.path().join("4711-Nory.fafreplay")).unwrap());
+        assert_eq!(body, b"first second");
+        assert_eq!(header["complete"], true);
+    }
 
     #[test]
     fn the_post_header_is_stripped() {

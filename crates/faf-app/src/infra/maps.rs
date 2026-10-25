@@ -636,7 +636,7 @@ async fn list_installed_dir(dir: &std::path::Path) -> Result<Vec<InstalledMap>, 
         Err(e) => return Err(format!("could not read {}: {e}", dir.display())),
     };
 
-    let mut installed = Vec::new();
+    let mut reads = Vec::new();
     while let Some(entry) = entries
         .next_entry()
         .await
@@ -656,47 +656,53 @@ async fn list_installed_dir(dir: &std::path::Path) -> Result<Vec<InstalledMap>, 
             continue;
         }
 
-        let scenario_info = find_and_parse_scenario_lua(&folder_path).await;
-        let display_name = scenario_info
-            .as_ref()
-            .and_then(|s| s.name.clone())
-            .filter(|n| !n.trim().is_empty())
-            .unwrap_or_else(|| display_name_from_folder(&folder_name));
+        reads.push(async move {
+            let scenario_info = find_and_parse_scenario_lua(&folder_path).await;
+            let display_name = scenario_info
+                .as_ref()
+                .and_then(|s| s.name.clone())
+                .filter(|n| !n.trim().is_empty())
+                .unwrap_or_else(|| display_name_from_folder(&folder_name));
 
-        let version = scenario_info
-            .as_ref()
-            .and_then(|s| s.version.clone())
-            .or_else(|| version_from_folder(&folder_name));
+            let version = scenario_info
+                .as_ref()
+                .and_then(|s| s.version.clone())
+                .or_else(|| version_from_folder(&folder_name));
 
-        let (max_players, width, height) = if let Some(ref s) = scenario_info {
-            (s.max_players, s.width, s.height)
-        } else {
-            (0, 0, 0)
-        };
+            let (max_players, width, height) = if let Some(ref s) = scenario_info {
+                (s.max_players, s.width, s.height)
+            } else {
+                (0, 0, 0)
+            };
 
-        let map_type = scenario_info.as_ref().and_then(|s| s.map_type.clone());
-        let description = scenario_info.and_then(|s| s.description);
-        // The folder's own modification time: an install unpacks into a fresh
-        // folder, so this is when the map arrived (#453).
-        let installed_at = entry
-            .metadata()
-            .await
-            .and_then(|meta| meta.modified())
-            .ok()
-            .map(|modified| chrono::DateTime::<chrono::Utc>::from(modified).to_rfc3339());
+            let map_type = scenario_info.as_ref().and_then(|s| s.map_type.clone());
+            let description = scenario_info.and_then(|s| s.description);
+            // The folder's own modification time: an install unpacks into a fresh
+            // folder, so this is when the map arrived (#453).
+            let installed_at = entry
+                .metadata()
+                .await
+                .and_then(|meta| meta.modified())
+                .ok()
+                .map(|modified| chrono::DateTime::<chrono::Utc>::from(modified).to_rfc3339());
 
-        installed.push(InstalledMap {
-            folder_name,
-            display_name,
-            max_players,
-            width,
-            height,
-            version,
-            description,
-            installed_at,
-            map_type,
+            InstalledMap {
+                folder_name,
+                display_name,
+                max_players,
+                width,
+                height,
+                version,
+                description,
+                installed_at,
+                map_type,
+            }
         });
     }
+    let mut installed: Vec<_> = futures_util::StreamExt::collect(
+        futures_util::StreamExt::buffered(futures_util::stream::iter(reads), 8),
+    )
+    .await;
     installed.sort_by(|a, b| a.display_name.cmp(&b.display_name));
     Ok(installed)
 }
@@ -793,32 +799,8 @@ async fn local_previews_in(
         return out;
     }
 
-    // Newest version per base name, in one pass over the maps folder.
-    let mut newest: std::collections::HashMap<String, (u32, PathBuf)> =
-        std::collections::HashMap::new();
-    let Ok(mut entries) = tokio::fs::read_dir(dir).await else {
-        // Still record the look, so the UI does not spin on a missing folder.
-        for name in folder_names.iter().take(MAX_PREVIEW_REQUEST) {
-            out.insert(base_folder_name(name), LocalMapPreview::default());
-        }
-        return out;
-    };
-    while let Ok(Some(entry)) = entries.next_entry().await {
-        if !entry.file_type().await.map(|t| t.is_dir()).unwrap_or(false) {
-            continue;
-        }
-        let name = entry.file_name().to_string_lossy().to_string();
-        let base = base_folder_name(&name);
-        let version = version_from_folder(&name.to_lowercase())
-            .and_then(|v| v.parse::<u32>().ok())
-            .unwrap_or(0);
-        match newest.get(&base) {
-            Some((known, _)) if *known >= version => {}
-            _ => {
-                newest.insert(base, (version, entry.path()));
-            }
-        }
-    }
+    let newest = newest_map_folders(dir).await;
+    let mut payload_bytes = 0;
 
     for requested in folder_names.iter().take(MAX_PREVIEW_REQUEST) {
         let base = base_folder_name(requested);
@@ -843,9 +825,65 @@ async fn local_previews_in(
                 preview.large = read_preview_data_url(&path).await;
             }
         }
+        let bytes = preview.small.as_ref().map_or(0, String::len)
+            + preview.large.as_ref().map_or(0, String::len);
+        if payload_bytes + bytes > faf_domain::state::maps::MAX_LOCAL_PREVIEW_BYTES {
+            break;
+        }
+        payload_bytes += bytes;
         out.insert(base, preview);
     }
     out
+}
+
+type MapFolderIndex = std::sync::Arc<std::collections::HashMap<String, (u32, PathBuf)>>;
+type CachedMapFolderIndex = (std::time::SystemTime, std::time::Instant, MapFolderIndex);
+
+async fn newest_map_folders(dir: &std::path::Path) -> MapFolderIndex {
+    static CACHE: std::sync::OnceLock<
+        tokio::sync::Mutex<std::collections::HashMap<PathBuf, CachedMapFolderIndex>>,
+    > = std::sync::OnceLock::new();
+    let mut cache = CACHE.get_or_init(Default::default).lock().await;
+    let stamp = tokio::fs::metadata(dir)
+        .await
+        .and_then(|metadata| metadata.modified())
+        .ok();
+    if let Some((modified, at, index)) = cache.get(dir) {
+        if Some(*modified) == stamp && at.elapsed() < std::time::Duration::from_secs(2) {
+            return index.clone();
+        }
+    }
+    let mut newest = std::collections::HashMap::new();
+    let Ok(mut entries) = tokio::fs::read_dir(dir).await else {
+        return std::sync::Arc::new(newest);
+    };
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        if !entry.file_type().await.map(|t| t.is_dir()).unwrap_or(false) {
+            continue;
+        }
+        let name = entry.file_name().to_string_lossy().to_string();
+        let base = base_folder_name(&name);
+        let version = version_from_folder(&name.to_lowercase())
+            .and_then(|v| v.parse::<u32>().ok())
+            .unwrap_or(0);
+        match newest.get(&base) {
+            Some((known, _)) if *known >= version => {}
+            _ => {
+                newest.insert(base, (version, entry.path()));
+            }
+        }
+    }
+    let index = std::sync::Arc::new(newest);
+    if let Some(stamp) = stamp {
+        if cache.len() >= 8 {
+            cache.clear();
+        }
+        cache.insert(
+            dir.to_owned(),
+            (stamp, std::time::Instant::now(), index.clone()),
+        );
+    }
+    index
 }
 
 /// The `.small.png` / `.large.png` a map folder carries, if any.
@@ -866,33 +904,57 @@ async fn preview_files_in(folder: &std::path::Path) -> (Option<PathBuf>, Option<
     (small, large)
 }
 
-async fn read_preview_data_url(path: &std::path::Path) -> Option<String> {
+pub(super) async fn read_preview_data_url(path: &std::path::Path) -> Option<String> {
     use base64::Engine as _;
+    use tokio::io::AsyncReadExt;
     let size = tokio::fs::metadata(path).await.ok()?.len();
     if size == 0 || size > MAX_PREVIEW_BYTES {
         return None;
     }
-    let bytes = tokio::fs::read(path).await.ok()?;
+    let file = tokio::fs::File::open(path).await.ok()?;
+    let mut bytes = Vec::new();
+    file.take(MAX_PREVIEW_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .await
+        .ok()?;
+    if bytes.is_empty() || bytes.len() as u64 > MAX_PREVIEW_BYTES {
+        return None;
+    }
+    let mime = if path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| matches!(ext.to_ascii_lowercase().as_str(), "jpg" | "jpeg"))
+    {
+        "image/jpeg"
+    } else {
+        "image/png"
+    };
     Some(format!(
-        "data:image/png;base64,{}",
+        "data:{mime};base64,{}",
         base64::engine::general_purpose::STANDARD.encode(&bytes)
     ))
 }
 
 async fn find_and_parse_scenario_lua(folder_path: &std::path::Path) -> Option<ScenarioInfo> {
+    static CACHE: std::sync::OnceLock<super::file_cache::FileCache<ScenarioInfo>> =
+        std::sync::OnceLock::new();
     let mut rd = tokio::fs::read_dir(folder_path).await.ok()?;
     while let Ok(Some(entry)) = rd.next_entry().await {
         let name = entry.file_name().to_string_lossy().to_lowercase();
         if name.ends_with("_scenario.lua") || name == "scenario.lua" {
-            if let Ok(contents) = tokio::fs::read_to_string(entry.path()).await {
-                return Some(parse_scenario_lua(&contents));
+            if let Some(info) = CACHE
+                .get_or_init(Default::default)
+                .text(&entry.path(), parse_scenario_lua)
+                .await
+            {
+                return Some(info);
             }
         }
     }
     None
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct ScenarioInfo {
     pub name: Option<String>,
     pub width: i32,

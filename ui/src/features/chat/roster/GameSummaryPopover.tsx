@@ -1,3 +1,4 @@
+import { useForegroundInterval } from "../../../shared/hooks/useForegroundInterval";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { SocialState, VaultMap } from "../../../ipc/bindings";
@@ -111,12 +112,7 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
   // Only the one card currently visible needs a clock, and only while it is
   // open: a several-hundred-user channel must not run a timer per badge.
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
-  useEffect(() => {
-    if (!open) return;
-    setNow(Math.floor(Date.now() / 1000));
-    const timer = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 30_000);
-    return () => window.clearInterval(timer);
-  }, [open]);
+  useForegroundInterval(() => setNow(Math.floor(Date.now() / 1000)), 30_000, open);
 
   const { t } = useTranslation();
   const status = t(STATUS_LABEL[presence.status]);

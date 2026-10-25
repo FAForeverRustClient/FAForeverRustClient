@@ -1,3 +1,4 @@
+import "../../testing/catalogues";
 import { afterEach, describe, expect, it } from "vitest";
 import { resetLocaleForTests, setLocale } from "../../i18n/store";
 import { clientIntlTag, formatDate, formatDateTime, formatShortDate, formatShortDateTime } from "./dates";
