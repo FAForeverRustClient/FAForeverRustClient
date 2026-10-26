@@ -71,7 +71,9 @@ fn span_text(spans: &[ChangelogSpan]) -> String {
                 text.clone()
             }
             ChangelogSpan::Link { text, .. } => text.clone(),
-            ChangelogSpan::Issue { number, .. } => format!("#{number}"),
+            ChangelogSpan::Issue { number, label, .. } => {
+                label.clone().unwrap_or_else(|| format!("#{number}"))
+            }
         })
         .collect()
 }
@@ -268,7 +270,7 @@ impl<'a> Matcher<'a> {
             if let Some(name) = name {
                 push_context(
                     &mut child_context,
-                    depth.saturating_add(2).min(3),
+                    depth.saturating_add(2).min(6),
                     &name,
                     false,
                 );
@@ -426,7 +428,7 @@ impl Enricher<'_> {
             if let Some(name) = &name {
                 push_context(
                     &mut child_context,
-                    depth.saturating_add(2).min(3),
+                    depth.saturating_add(2).min(6),
                     name,
                     false,
                 );
@@ -462,7 +464,9 @@ impl Enricher<'_> {
             }
             if nested {
                 if let Some(name) = name {
-                    let level = depth.saturating_add(2).min(3);
+                    // Preserve the list hierarchy: a tier and its unit groups
+                    // are different levels (3714's Tech 3 Land / Tanks/Bots).
+                    let level = depth.saturating_add(2).min(6);
                     push_context(&mut self.context, level, &name, false);
                     self.blocks
                         .push(ChangelogBlock::Heading { level, text: name });
@@ -721,6 +725,60 @@ pub(super) fn strike_change(html: &str) -> Option<ChangelogChange> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn published_3714_keeps_tiers_and_unit_groups_at_distinct_heading_levels() {
+        let entry =
+            super::super::parse_entry("3714", include_str!("../fixtures/changelog-3714.md"));
+        let headings: Vec<_> = entry
+            .blocks
+            .iter()
+            .filter_map(|block| match block {
+                ChangelogBlock::Heading { level, text } => Some((*level, text.as_str())),
+                _ => None,
+            })
+            .collect();
+        for (level, name) in [
+            (2, "Land"),
+            (3, "Tech 1 Land"),
+            (3, "Tech 2 Land"),
+            (3, "Tech 3 Land"),
+            (4, "Tanks/Bots"),
+            (4, "Snipers"),
+            (4, "Mobile Artillery"),
+            (4, "Tech 3 Engineer"),
+            (3, "Experimentals"),
+            (2, "Air"),
+        ] {
+            assert!(headings.contains(&(level, name)), "{name}: {headings:?}");
+        }
+        let tanks = entry.blocks.iter().position(|block| matches!(block, ChangelogBlock::Heading { text, .. } if text == "Tanks/Bots")).unwrap();
+        let snipers = entry
+            .blocks
+            .iter()
+            .position(
+                |block| matches!(block, ChangelogBlock::Heading { text, .. } if text == "Snipers"),
+            )
+            .unwrap();
+        let names: Vec<_> = entry.blocks[tanks + 1..snipers]
+            .iter()
+            .filter_map(|block| match block {
+                ChangelogBlock::Unit { name, .. } => Some(name.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            names,
+            [
+                "Harbinger",
+                "Titan",
+                "Loyalist",
+                "Percival",
+                "Brick",
+                "Othuum"
+            ]
+        );
+    }
 
     #[test]
     fn original_balance_supplements_restore_all_four_summary_posts() {

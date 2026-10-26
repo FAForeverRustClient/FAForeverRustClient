@@ -2424,6 +2424,17 @@
               "type": "idle"
             },
             "releases": [],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 0,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
             "selected": "",
             "status": {
               "type": "loading"
@@ -2464,6 +2475,17 @@
                 "year": "2026"
               }
             ],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 0,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
             "selected": "",
             "status": {
               "type": "ready"
@@ -2498,6 +2520,17 @@
                 "year": "2026"
               }
             ],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 0,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
             "selected": "3837",
             "status": {
               "type": "ready"
@@ -2555,6 +2588,17 @@
                 "year": "2026"
               }
             ],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 0,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
             "selected": "3837",
             "status": {
               "type": "ready"
@@ -2603,9 +2647,480 @@
                 "year": "2026"
               }
             ],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 0,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
             "selected": "3837",
             "status": {
               "type": "ready"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "archive progress preserves the selected note and ignores stale results after cancellation",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "entry": {
+                  "blocks": [],
+                  "id": "3837",
+                  "title": "Current patch"
+                }
+              },
+              "type": "entryLoaded"
+            },
+            "kind": "Changelog"
+          },
+          "expected": {
+            "entries": {
+              "3837": {
+                "blocks": [],
+                "id": "3837",
+                "title": "Current patch"
+              }
+            },
+            "entryStatus": {
+              "type": "ready"
+            },
+            "releases": [],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 0,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
+            "selected": "3837",
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "search": {
+                  "failed": 0,
+                  "matches": [],
+                  "query": "shield",
+                  "requestId": 2,
+                  "scanned": 0,
+                  "status": {
+                    "type": "loading"
+                  },
+                  "total": 171
+                }
+              },
+              "type": "searchUpdated"
+            },
+            "kind": "Changelog"
+          },
+          "expected": {
+            "entries": {
+              "3837": {
+                "blocks": [],
+                "id": "3837",
+                "title": "Current patch"
+              }
+            },
+            "entryStatus": {
+              "type": "ready"
+            },
+            "releases": [],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "shield",
+              "requestId": 2,
+              "scanned": 0,
+              "status": {
+                "type": "loading"
+              },
+              "total": 171
+            },
+            "selected": "3837",
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "search": {
+                  "failed": 0,
+                  "matches": [
+                    {
+                      "blockPath": [
+                        3
+                      ],
+                      "excerpt": "Shield radius increased",
+                      "occurrences": 1,
+                      "releaseId": "3837"
+                    }
+                  ],
+                  "query": "shield",
+                  "requestId": 2,
+                  "scanned": 8,
+                  "status": {
+                    "type": "loading"
+                  },
+                  "total": 171
+                }
+              },
+              "type": "searchUpdated"
+            },
+            "kind": "Changelog"
+          },
+          "expected": {
+            "entries": {
+              "3837": {
+                "blocks": [],
+                "id": "3837",
+                "title": "Current patch"
+              }
+            },
+            "entryStatus": {
+              "type": "ready"
+            },
+            "releases": [],
+            "search": {
+              "failed": 0,
+              "matches": [
+                {
+                  "blockPath": [
+                    3
+                  ],
+                  "excerpt": "Shield radius increased",
+                  "occurrences": 1,
+                  "releaseId": "3837"
+                }
+              ],
+              "query": "shield",
+              "requestId": 2,
+              "scanned": 8,
+              "status": {
+                "type": "loading"
+              },
+              "total": 171
+            },
+            "selected": "3837",
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "search": {
+                  "failed": 0,
+                  "matches": [
+                    {
+                      "blockPath": [
+                        3
+                      ],
+                      "excerpt": "Shield radius increased",
+                      "occurrences": 1,
+                      "releaseId": "3837"
+                    }
+                  ],
+                  "query": "old query",
+                  "requestId": 1,
+                  "scanned": 171,
+                  "status": {
+                    "type": "ready"
+                  },
+                  "total": 171
+                }
+              },
+              "type": "searchUpdated"
+            },
+            "kind": "Changelog"
+          },
+          "expected": {
+            "entries": {
+              "3837": {
+                "blocks": [],
+                "id": "3837",
+                "title": "Current patch"
+              }
+            },
+            "entryStatus": {
+              "type": "ready"
+            },
+            "releases": [],
+            "search": {
+              "failed": 0,
+              "matches": [
+                {
+                  "blockPath": [
+                    3
+                  ],
+                  "excerpt": "Shield radius increased",
+                  "occurrences": 1,
+                  "releaseId": "3837"
+                }
+              ],
+              "query": "shield",
+              "requestId": 2,
+              "scanned": 8,
+              "status": {
+                "type": "loading"
+              },
+              "total": 171
+            },
+            "selected": "3837",
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "search": {
+                  "failed": 0,
+                  "matches": [
+                    {
+                      "blockPath": [
+                        3
+                      ],
+                      "excerpt": "Shield radius increased",
+                      "occurrences": 1,
+                      "releaseId": "3837"
+                    }
+                  ],
+                  "query": "shield",
+                  "requestId": 2,
+                  "scanned": 171,
+                  "status": {
+                    "type": "ready"
+                  },
+                  "total": 171
+                }
+              },
+              "type": "searchUpdated"
+            },
+            "kind": "Changelog"
+          },
+          "expected": {
+            "entries": {
+              "3837": {
+                "blocks": [],
+                "id": "3837",
+                "title": "Current patch"
+              }
+            },
+            "entryStatus": {
+              "type": "ready"
+            },
+            "releases": [],
+            "search": {
+              "failed": 0,
+              "matches": [
+                {
+                  "blockPath": [
+                    3
+                  ],
+                  "excerpt": "Shield radius increased",
+                  "occurrences": 1,
+                  "releaseId": "3837"
+                }
+              ],
+              "query": "shield",
+              "requestId": 2,
+              "scanned": 171,
+              "status": {
+                "type": "ready"
+              },
+              "total": 171
+            },
+            "selected": "3837",
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "search": {
+                  "failed": 0,
+                  "matches": [],
+                  "query": "",
+                  "requestId": 3,
+                  "scanned": 0,
+                  "status": {
+                    "type": "idle"
+                  },
+                  "total": 0
+                }
+              },
+              "type": "searchUpdated"
+            },
+            "kind": "Changelog"
+          },
+          "expected": {
+            "entries": {
+              "3837": {
+                "blocks": [],
+                "id": "3837",
+                "title": "Current patch"
+              }
+            },
+            "entryStatus": {
+              "type": "ready"
+            },
+            "releases": [],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 3,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
+            "selected": "3837",
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "search": {
+                  "failed": 0,
+                  "matches": [
+                    {
+                      "blockPath": [
+                        3
+                      ],
+                      "excerpt": "Shield radius increased",
+                      "occurrences": 1,
+                      "releaseId": "3837"
+                    }
+                  ],
+                  "query": "shield",
+                  "requestId": 2,
+                  "scanned": 171,
+                  "status": {
+                    "type": "ready"
+                  },
+                  "total": 171
+                }
+              },
+              "type": "searchUpdated"
+            },
+            "kind": "Changelog"
+          },
+          "expected": {
+            "entries": {
+              "3837": {
+                "blocks": [],
+                "id": "3837",
+                "title": "Current patch"
+              }
+            },
+            "entryStatus": {
+              "type": "ready"
+            },
+            "releases": [],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 3,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
+            "selected": "3837",
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "search": {
+                  "failed": 1,
+                  "matches": [],
+                  "query": "shield",
+                  "requestId": 4,
+                  "scanned": 1,
+                  "status": {
+                    "payload": {
+                      "reason": "patch sources are unavailable"
+                    },
+                    "type": "failed"
+                  },
+                  "total": 171
+                }
+              },
+              "type": "searchUpdated"
+            },
+            "kind": "Changelog"
+          },
+          "expected": {
+            "entries": {
+              "3837": {
+                "blocks": [],
+                "id": "3837",
+                "title": "Current patch"
+              }
+            },
+            "entryStatus": {
+              "type": "ready"
+            },
+            "releases": [],
+            "search": {
+              "failed": 1,
+              "matches": [],
+              "query": "shield",
+              "requestId": 4,
+              "scanned": 1,
+              "status": {
+                "payload": {
+                  "reason": "patch sources are unavailable"
+                },
+                "type": "failed"
+              },
+              "total": 171
+            },
+            "selected": "3837",
+            "status": {
+              "type": "idle"
             }
           }
         }
@@ -93603,6 +94118,17 @@
               "type": "idle"
             },
             "releases": [],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 0,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
             "selected": "",
             "status": {
               "type": "loading"
@@ -93643,6 +94169,17 @@
                 "year": "2026"
               }
             ],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 0,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
             "selected": "",
             "status": {
               "type": "ready"
@@ -93677,6 +94214,17 @@
                 "year": "2026"
               }
             ],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 0,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
             "selected": "3837",
             "status": {
               "type": "ready"
@@ -93708,6 +94256,17 @@
                 "year": "2026"
               }
             ],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 0,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
             "selected": "3837",
             "status": {
               "type": "loading"
@@ -93742,6 +94301,17 @@
                 "year": "2026"
               }
             ],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 0,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
             "selected": "3837",
             "status": {
               "payload": {
@@ -125715,6 +126285,17 @@
         "type": "idle"
       },
       "releases": [],
+      "search": {
+        "failed": 0,
+        "matches": [],
+        "query": "",
+        "requestId": 0,
+        "scanned": 0,
+        "status": {
+          "type": "idle"
+        },
+        "total": 0
+      },
       "selected": "",
       "status": {
         "type": "idle"

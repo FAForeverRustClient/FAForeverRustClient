@@ -32,6 +32,21 @@ it("opens grouped references individually through the existing native URL opener
   expect(openUrl).toHaveBeenLastCalledWith("https://github.com/FAForever/fa/issues/6482");
 });
 
+it("opens an unmarked numeric citation while preserving its source label", async () => {
+  const user = userEvent.setup();
+  render(<ChangelogBlockView anchorId={anchorFor(0)} block={{ type: "paragraph", payload: { spans: [
+    { type: "text", payload: "Jip (" },
+    { type: "issue", payload: { number: "4124", url: "https://github.com/FAForever/fa/issues/4124" } },
+    { type: "issue", payload: { number: "4188", url: "https://github.com/FAForever/fa/issues/4188" } },
+    { type: "text", payload: ", " },
+    { type: "issue", payload: { number: "4230", url: "https://github.com/FAForever/fa/issues/4230", label: "4230" } },
+    { type: "text", payload: ")" },
+  ] } }} />);
+  expect(document.getElementById(anchorFor(0))?.textContent).toBe("Jip (#4124#4188, 4230)");
+  await user.click(screen.getByRole("button", { name: "4230" }));
+  expect(openUrl).toHaveBeenCalledWith("https://github.com/FAForever/fa/issues/4230");
+});
+
 it("renders a separate code box and copies its exact lines without interpreting markup", async () => {
   const user = userEvent.setup();
   const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
@@ -128,6 +143,42 @@ it("keeps ordinary h3 sections in the main note's contents", () => {
     { id: anchorFor(0), text: "Balance", depth: 1 },
     { id: anchorFor(1), text: "Land", depth: 2 },
   ]);
+});
+
+it("nests tier groups and unit links beneath their source headings, and returns to sibling sections", async () => {
+  const blocks: ChangelogBlock[] = [
+    { type: "heading", payload: { level: 2, text: "Land" } },
+    { type: "heading", payload: { level: 3, text: "Tech 3 Land" } },
+    { type: "heading", payload: { level: 4, text: "Tanks/Bots" } },
+    { type: "unit", payload: { name: "Brick", units: [{ unitId: "URL0303", iconUrl: "https://example.invalid/brick.png" }] } },
+    { type: "heading", payload: { level: 4, text: "Snipers" } },
+    { type: "heading", payload: { level: 3, text: "Experimentals" } },
+    { type: "unit", payload: { name: "Megalith", units: [] } },
+    { type: "heading", payload: { level: 2, text: "Air" } },
+    { type: "unit", payload: { name: "Jester", units: [] } },
+  ];
+  const sections = noteSections(blocks, false, en["changelog.historicalBalance"]);
+  expect(sections.map(section => [section.text, section.depth])).toEqual([
+    ["Land", 1], ["Tech 3 Land", 2], ["Tanks/Bots", 3], ["Brick", 4], ["Snipers", 3],
+    ["Experimentals", 2], ["Megalith", 3], ["Air", 1], ["Jester", 2],
+  ]);
+  const onJump = vi.fn();
+  render(<>
+    {blocks.map((block, index) => <ChangelogBlockView key={index} block={block} anchorId={anchorFor(index)} />)}
+    <NoteContentsColumn sections={sections} activeSectionId={anchorFor(3)} navRef={createRef<HTMLElement>()} onJump={onJump} />
+  </>);
+  const nav = within(screen.getByRole("navigation", { name: en["changelog.contents"] }));
+  const tanks = nav.getByRole("button", { name: "Tanks/Bots" }).closest("li")!;
+  const tier = nav.getByRole("button", { name: "Tech 3 Land" }).closest("li")!;
+  const experimentals = nav.getByRole("button", { name: "Experimentals" }).closest("li")!;
+  expect(within(tanks).getByRole("button", { name: "Brick" }).getAttribute("aria-current")).toBe("location");
+  expect(within(tier).getByRole("button", { name: "Snipers" })).toBeTruthy();
+  expect(within(tier).queryByRole("button", { name: "Experimentals" })).toBeNull();
+  expect(within(experimentals).getByRole("button", { name: "Megalith" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Tanks/Bots", level: 4 })).toBeTruthy();
+  expect(sections.every(section => document.getElementById(section.id))).toBe(true);
+  await userEvent.setup().click(nav.getByRole("button", { name: "Brick" }));
+  expect(onJump).toHaveBeenCalledWith(anchorFor(3));
 });
 
 it("labels the complete original separately and connects its contents anchors and source link", async () => {

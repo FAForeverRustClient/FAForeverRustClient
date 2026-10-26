@@ -30,7 +30,9 @@
   font-size: 17px;
 }
 
-.changelog-heading-4 {
+.changelog-heading-4,
+.changelog-heading-5,
+.changelog-heading-6 {
   margin-top: 20px;
   font-size: 14px;
   color: var(--color-muted);
@@ -234,7 +236,7 @@
 }
 
 .changelog-code-copy.is-copied svg {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .changelog-code-block code {

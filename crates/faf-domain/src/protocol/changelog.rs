@@ -95,6 +95,9 @@ pub enum ChangelogSpan {
     Issue {
         number: String,
         url: String,
+        /// The source label when a numeric citation omitted its hash.
+        #[serde(default)]
+        label: Option<String>,
     },
 }
 
@@ -458,7 +461,7 @@ fn is_installer_trailer(block: &ChangelogBlock) -> bool {
 
 fn relink_issues(spans: &mut [ChangelogSpan], issue_base: &str) {
     for span in spans {
-        if let ChangelogSpan::Issue { number, url } = span {
+        if let ChangelogSpan::Issue { number, url, .. } = span {
             *url = format!("{issue_base}/{number}");
         }
     }
@@ -1063,6 +1066,7 @@ pub fn parse_spans(text: &str) -> Vec<ChangelogSpan> {
         if let Some((number, consumed)) = issue_reference(&rest) {
             push_text(&mut plain, &mut spans);
             spans.push(ChangelogSpan::Issue {
+                label: None,
                 url: format!("{ISSUE_BASE}/{number}"),
                 number,
             });
@@ -1104,38 +1108,68 @@ fn push_text(plain: &mut String, spans: &mut Vec<ChangelogSpan>) {
 /// The existing HTTPS issue route also resolves GitHub pull-request numbers.
 fn grouped_references(rest: &str) -> Option<(Vec<ChangelogSpan>, usize)> {
     let inner = rest.strip_prefix('(')?;
-    let end = inner.bytes().take(1025).position(|byte| byte == b')')?;
-    let groups: Vec<&str> = inner[..end].split(',').collect();
-    if groups.iter().any(|group| group.trim().is_empty()) {
+    if !inner.starts_with('#') {
         return None;
     }
-    // Some older contributor lists wrap without a comma between source lines.
-    let parts: Vec<&str> = groups
-        .iter()
-        .flat_map(|group| group.split_whitespace())
-        .collect();
-    if !(2..=128).contains(&parts.len())
-        || parts.iter().any(|part| {
-            let number = part.strip_prefix('#').unwrap_or("");
-            number.is_empty()
-                || number.len() > 20
-                || !number.bytes().all(|byte| byte.is_ascii_digit())
-        })
-    {
+    let end = inner.bytes().take(1025).position(|byte| byte == b')')?;
+    let content = &inner[..end];
+    let bytes = content.as_bytes();
+    let mut references = Vec::new();
+    let mut cursor = 0;
+    while cursor < bytes.len() {
+        let start = cursor;
+        let marked = bytes[cursor] == b'#';
+        if marked {
+            cursor += 1;
+        }
+        let digits = cursor;
+        while cursor < bytes.len() && bytes[cursor].is_ascii_digit() {
+            cursor += 1;
+        }
+        if cursor == digits || cursor - digits > 20 || references.len() >= 128 {
+            return None;
+        }
+        references.push((start + 1, digits + 1, cursor + 1, marked));
+        if cursor == bytes.len() {
+            break;
+        }
+        // An explicit next hash also separates references in old typoed lists.
+        if bytes[cursor] == b'#' {
+            continue;
+        }
+        let separator = cursor;
+        while cursor < bytes.len() && bytes[cursor].is_ascii_whitespace() {
+            cursor += 1;
+        }
+        if cursor < bytes.len() && bytes[cursor] == b',' {
+            cursor += 1;
+            while cursor < bytes.len() && bytes[cursor].is_ascii_whitespace() {
+                cursor += 1;
+            }
+            if cursor == bytes.len() {
+                return None;
+            }
+        } else if cursor == separator {
+            return None;
+        }
+    }
+    if references.len() < 2 {
         return None;
     }
     let source = &rest[..end + 2];
     let mut spans = Vec::new();
     let mut cursor = 0;
-    for part in parts {
-        let offset = cursor + source[cursor..].find(part)?;
-        spans.push(ChangelogSpan::Text(source[cursor..offset].into()));
-        let number = &part[1..];
+    for (start, digits, end, marked) in references {
+        if start > cursor {
+            spans.push(ChangelogSpan::Text(source[cursor..start].into()));
+        }
+        let number = &source[digits..end];
         spans.push(ChangelogSpan::Issue {
             number: number.into(),
             url: format!("{ISSUE_BASE}/{number}"),
+            label: (!marked).then(|| number.into()),
         });
-        cursor = offset + part.len();
+        cursor = end;
     }
     spans.push(ChangelogSpan::Text(source[cursor..].into()));
     Some((spans, end + 2))
@@ -1667,6 +1701,7 @@ fn anchor_span(text: &str, url: String) -> Option<ChangelogSpan> {
     if let Some(number) = text.strip_prefix('#') {
         if !number.is_empty() && number.chars().all(|c| c.is_ascii_digit()) {
             return Some(ChangelogSpan::Issue {
+                label: None,
                 url: if url.is_empty() {
                     format!("{ISSUE_BASE}/{number}")
                 } else {
@@ -1827,11 +1862,13 @@ mod tests {
                 ChangelogSpan::Text("Before ".into()),
                 ChangelogSpan::Text("(".into()),
                 ChangelogSpan::Issue {
+                    label: None,
                     number: "6481".into(),
                     url: format!("{ISSUE_BASE}/6481")
                 },
                 ChangelogSpan::Text(", ".into()),
                 ChangelogSpan::Issue {
+                    label: None,
                     number: "6482".into(),
                     url: format!("{ISSUE_BASE}/6482")
                 },
@@ -1883,11 +1920,50 @@ mod tests {
         let ChangelogBlock::List { items } = &blocks[0] else {
             panic!("missing release list");
         };
-        assert!(items[0]
-            .spans
-            .iter()
-            .any(|span| matches!(span, ChangelogSpan::Issue { number, url }
-            if number == "34" && url == &format!("{CLIENT_ISSUES}/34"))));
+        assert!(items[0].spans.iter().any(
+            |span| matches!(span, ChangelogSpan::Issue { number, url, .. }
+            if number == "34" && url == &format!("{CLIENT_ISSUES}/34"))
+        ));
+        let blocks = parse_release_notes("- Change (#12#34, 56).", CLIENT_ISSUES);
+        let ChangelogBlock::List { items } = &blocks[0] else {
+            panic!("missing release list");
+        };
+        assert!(items[0].spans.iter().any(|span| matches!(span, ChangelogSpan::Issue { number, url, label }
+            if number == "56" && label.as_deref() == Some("56") && url == &format!("{CLIENT_ISSUES}/56"))));
+        assert!(parse_html_spans("Change (#12#34, 56).").iter().any(|span| matches!(span,
+            ChangelogSpan::Issue { number, label, .. } if number == "56" && label.as_deref() == Some("56"))));
+    }
+
+    #[test]
+    fn numeric_citation_labels_are_backward_compatible_and_reject_malformed_tokens() {
+        let legacy: ChangelogSpan = serde_json::from_str(r##"{"type":"issue","payload":{"number":"12","url":"https://github.com/FAForever/fa/issues/12"}}"##).unwrap();
+        assert!(matches!(&legacy, ChangelogSpan::Issue { label: None, .. }));
+        assert_eq!(
+            serde_json::from_str::<ChangelogSpan>(&serde_json::to_string(&legacy).unwrap())
+                .unwrap(),
+            legacy
+        );
+        for text in [
+            "(#12#34oops, 56)",
+            "(#12, 56/../../other)",
+            "(#12, javascript:56)",
+            "(#12, 56.7)",
+            "(#12, -56)",
+            "(#12, １２３)",
+            "(#12, 123456789012345678901)",
+        ] {
+            assert!(
+                !parse_spans(text)
+                    .iter()
+                    .any(|span| matches!(span, ChangelogSpan::Issue { .. })),
+                "{text}"
+            );
+        }
+        let source = "`(#12#34, 56)`";
+        assert_eq!(
+            parse_spans(source),
+            vec![ChangelogSpan::Code("(#12#34, 56)".into())]
+        );
     }
 
     #[test]
@@ -2192,6 +2268,7 @@ mod tests {
                 },
                 ChangelogSpan::Text(" ".into()),
                 ChangelogSpan::Issue {
+                    label: None,
                     number: "7121".into(),
                     url: "https://github.com/FAForever/fa/issues/7121".into()
                 },
@@ -2234,6 +2311,7 @@ mod tests {
         );
         // This repository's pull request, not FAForever/fa's.
         assert!(items[1].spans.contains(&ChangelogSpan::Issue {
+            label: None,
             number: "507".into(),
             url: "https://github.com/Org/Repo/issues/507".into(),
         }));
@@ -2573,6 +2651,7 @@ mod tests {
                 ChangelogSpan::Code("ACUUnit.lua".into()),
                 ChangelogSpan::Text(" (".into()),
                 ChangelogSpan::Issue {
+                    label: None,
                     number: "7215".into(),
                     url: "https://github.com/FAForever/fa/pull/7215".into(),
                 },
@@ -2622,6 +2701,67 @@ mod real_document_tests {
     const POST_3836: &str = include_str!("fixtures/changelog-3836.md");
 
     #[test]
+    fn published_3745_contributor_citations_recover_missing_separators_and_hashes() {
+        let entry = parse_entry("3745", POST_3745);
+        let contributors = entry
+            .blocks
+            .iter()
+            .position(|block| {
+                matches!(block,
+            ChangelogBlock::Heading { text, .. } if text == "Contributors")
+            })
+            .unwrap();
+        let ChangelogBlock::List { items } = &entry.blocks[contributors + 1] else {
+            panic!("missing contributors");
+        };
+        let jip = items.iter().find(|item| matches!(item.spans.first(), Some(ChangelogSpan::Text(text)) if text.starts_with("Jip "))).unwrap();
+        let references: Vec<_> = jip
+            .spans
+            .iter()
+            .filter_map(|span| match span {
+                ChangelogSpan::Issue { number, url, label } => {
+                    assert_eq!(url, &format!("{ISSUE_BASE}/{number}"));
+                    if label.is_some() {
+                        assert_eq!(label.as_deref(), Some("4230"));
+                    }
+                    Some(number.as_str())
+                }
+                _ => None,
+            })
+            .collect();
+        assert_eq!(references.len(), 48);
+        assert_eq!(&references[..3], ["4119", "4124", "4188"]);
+        assert_eq!(references.last(), Some(&"4230"));
+        let rendered: String = jip
+            .spans
+            .iter()
+            .map(|span| match span {
+                ChangelogSpan::Text(text) => text.clone(),
+                ChangelogSpan::Issue { number, label, .. } => {
+                    label.clone().unwrap_or_else(|| format!("#{number}"))
+                }
+                _ => panic!("unexpected contributor formatting"),
+            })
+            .collect();
+        let source = POST_3745
+            .split_once("- Jip ")
+            .unwrap()
+            .1
+            .split_once("\n- iczero")
+            .unwrap()
+            .0;
+        assert_eq!(
+            rendered,
+            format!(
+                "Jip {}",
+                source.split_whitespace().collect::<Vec<_>>().join(" ")
+            )
+        );
+        assert!(rendered.contains("#4124#4188"));
+        assert!(rendered.ends_with(", 4230)"));
+    }
+
+    #[test]
     fn published_3728_wrapped_contributor_references_are_links_in_one_bullet() {
         let entry = parse_entry("3728", POST_3728);
         let headings: Vec<_> = entry
@@ -2652,7 +2792,7 @@ mod real_document_tests {
             .spans
             .iter()
             .filter_map(|span| match span {
-                ChangelogSpan::Issue { number, url } => {
+                ChangelogSpan::Issue { number, url, .. } => {
                     assert_eq!(url, &format!("{ISSUE_BASE}/{number}"));
                     Some(number.as_str())
                 }
@@ -2771,7 +2911,7 @@ mod real_document_tests {
             .spans
             .iter()
             .filter_map(|span| match span {
-                ChangelogSpan::Issue { number, url } => Some((number.as_str(), url.as_str())),
+                ChangelogSpan::Issue { number, url, .. } => Some((number.as_str(), url.as_str())),
                 _ => None,
             })
             .collect();

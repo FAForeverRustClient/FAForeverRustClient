@@ -1,0 +1,11 @@
+- Older game changelogs now show their original unit pictures and section headings.
+- Summary-only game changelogs now include a separate section with the original balance notes.
+- Code blocks in changelogs keep their line breaks and have a button to copy their text.
+- The Cooper's stats in patch 3822 no longer run into the following artillery changes.
+- Older unit stat lines without bullets now display their old and new values.
+- Grouped balance changes in patch 3822 now show unit headings with pictures.
+- Numeric PR lists in changelogs now link entries with missing separators or hash markers.
+- Wrapped PR references no longer appear as headings in older game changelogs.
+- The contents list in older patch notes now groups units under their tier and category.
+- Patch notes now use a slightly wider text column.
+- Changelog copy-confirmation icons now use readable colors in all themes.

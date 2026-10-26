@@ -7,7 +7,7 @@
 // beside the note when the surface is wide enough to have room for one, and as
 // a row of jump links above it when it is not (see `changelog.css`).
 
-import { memo, useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import type { ChangelogBlock } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ChangelogBlockView } from "../../shared/components/ChangelogBlocks";
@@ -16,8 +16,8 @@ import { ChangelogBlockView } from "../../shared/components/ChangelogBlocks";
 export interface Section {
   id: string;
   text: string;
-  /** 1 for a section heading, 2 for what sits inside one (a unit, a sub-heading). */
-  depth: 1 | 2;
+  /** Section, tier, unit group and unit. Deeper source levels share the last indent. */
+  depth: 1 | 2 | 3 | 4;
   /**
    * The icon a unit's section opens with, for its entry in the contents. A
    * header naming a whole family gives its first unit's: the family's icons
@@ -32,13 +32,14 @@ export const anchorFor = (index: number) => `changelog-block-${index}`;
 const FACTION_LABEL = /^(aeon|uef|cybran|seraphim|sera|nomads?)$/i;
 
 const compact = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+const contentsDepth = (depth: number) => Math.max(1, Math.min(4, depth)) as Section["depth"];
 
 /**
- * The sections of a note: its `h2` and `h3` headings and its units, in order.
+ * The sections of a note: its section, tier and group headings and its units.
  * `skipFirst` leaves out the first block when it has become the page title.
  *
  * Inside an original balance section, which renders a level lower, the cutoff
- * still follows the source's own `h3`: there it groups units, 3761's
+ * follows the source hierarchy: there it groups units, 3761's
  * "Frigates" or "Cruisers", and many of those units are named only by
  * faction, so without the group the contents read "Aeon, Cybran, Aeon". Left
  * out are a faction label (3775), a source date, and a label naming one unit
@@ -49,12 +50,13 @@ export function noteSections(
 ): Section[] {
   const sections: Section[] = [];
   let unitName = "";
+  let groupDepth = headingOffset;
   blocks.forEach((block, index) => {
     if (skipFirst && index === 0) return;
     if (block.type === "historicalBalance") {
       const id = anchorFor(index);
-      sections.push({ id, text: historicalLabel, depth: 1 }, ...noteSections(block.payload.blocks, false, historicalLabel, headingOffset + 1)
-        .map(section => ({ ...section, id: `${id}-${section.id.slice("changelog-block-".length)}`, depth: 2 as const })));
+      sections.push({ id, text: historicalLabel, depth: contentsDepth(headingOffset + 1) }, ...noteSections(block.payload.blocks, false, historicalLabel, headingOffset + 1)
+        .map(section => ({ ...section, id: `${id}-${section.id.slice("changelog-block-".length)}` })));
       return;
     }
     if (block.type === "heading") {
@@ -66,14 +68,16 @@ export function noteSections(
         || FACTION_LABEL.test(text.trim())
         || (unitName !== "" && compact(text) !== "" && unitName.includes(compact(text)))
       );
-      if (sourceLevel <= 3 && !label) {
-        sections.push({ id: anchorFor(index), text, depth: sourceLevel + headingOffset <= 2 ? 1 : 2 });
+      if (sourceLevel <= 4 && !label) {
+        unitName = "";
+        groupDepth = Math.max(1, sourceLevel + headingOffset - 1);
+        sections.push({ id: anchorFor(index), text, depth: contentsDepth(groupDepth) });
       }
       return;
     }
     if (block.type === "unit") {
       unitName = compact(block.payload.name);
-      sections.push({ id: anchorFor(index), text: block.payload.name, depth: 2, iconUrl: block.payload.units[0]?.iconUrl });
+      sections.push({ id: anchorFor(index), text: block.payload.name, depth: contentsDepth(Math.max(2, groupDepth + 1)), iconUrl: block.payload.units[0]?.iconUrl });
     }
   });
   return sections;
@@ -248,42 +252,44 @@ export const NoteContentsColumn = memo(function NoteContentsColumn({
   onJump: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const tree = useMemo(() => {
+    type Branch = { section: Section; children: Branch[] };
+    const roots: Branch[] = [];
+    const parents: Branch[] = [];
+    for (const section of sections) {
+      while (parents.length && parents[parents.length - 1].section.depth >= section.depth) parents.pop();
+      const branch: Branch = { section, children: [] };
+      (parents[parents.length - 1]?.children ?? roots).push(branch);
+      parents.push(branch);
+    }
+    return roots;
+  }, [sections]);
   if (sections.length === 0) return null;
+  const item = ({ section, children }: (typeof tree)[number]): ReactNode => (
+    <li key={section.id}>
+      <button
+        type="button"
+        className={`changelog-toc-item depth-${section.depth}${section.iconUrl ? " has-icon" : ""}${children.length ? " is-group" : ""}${
+          activeSectionId === section.id ? " is-active" : ""
+        }`}
+        aria-current={activeSectionId === section.id ? "location" : undefined}
+        title={section.depth > 1 ? section.text : undefined}
+        onClick={() => onJump(section.id)}
+      >
+        {section.iconUrl ? <>
+          <img className="changelog-toc-icon" src={section.iconUrl} alt="" loading="lazy" draggable={false}
+            onError={(event) => event.currentTarget.classList.add("is-missing")} />
+          <span className="changelog-toc-text">{section.text}</span>
+        </> : section.text}
+      </button>
+      {children.length > 0 && <ul className="changelog-toc-children">{children.map(item)}</ul>}
+    </li>
+  );
   return (
     <nav className="changelog-toc" ref={navRef} aria-label={t("changelog.contents")}>
       <p className="changelog-toc-title">{t("changelog.contents")}</p>
       <ul className="changelog-toc-list">
-        {sections.map((section) => (
-          <li key={section.id}>
-            <button
-              type="button"
-              className={`changelog-toc-item depth-${section.depth}${section.iconUrl ? " has-icon" : ""}${
-                activeSectionId === section.id ? " is-active" : ""
-              }`}
-              aria-current={activeSectionId === section.id ? "location" : undefined}
-              title={section.depth === 2 ? section.text : undefined}
-              onClick={() => onJump(section.id)}
-            >
-              {section.iconUrl ? (
-                <>
-                  <img
-                    className="changelog-toc-icon"
-                    src={section.iconUrl}
-                    alt=""
-                    loading="lazy"
-                    draggable={false}
-                    /* A unit the site has no icon for keeps its slot, so its
-                       name still lines up with the units around it. */
-                    onError={(event) => event.currentTarget.classList.add("is-missing")}
-                  />
-                  <span className="changelog-toc-text">{section.text}</span>
-                </>
-              ) : (
-                section.text
-              )}
-            </button>
-          </li>
-        ))}
+        {tree.map(item)}
       </ul>
     </nav>
   );

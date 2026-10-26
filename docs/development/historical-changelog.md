@@ -62,6 +62,14 @@ Subs and Cruisers. Faction sublabels (3775), labels naming one unit of the
 header above them ("Stinger" under "Stinger & Vulthoo") and source dates stay
 in the article without filling the contents list.
 
+Historical list categories keep their original nesting when promoted to
+headings. For example, 3714 groups Land, Tech 3 Land, Tanks/Bots and the
+individual units at successive levels. Snipers and Mobile Artillery remain
+siblings of Tanks/Bots. The contents list uses nested lists and caps visual
+indentation at four levels; long unit names retain their full hover titles.
+The article renders headings through h6, with deeper labels sharing the quiet
+group style. Anchors and active-section tracking use the same block IDs.
+
 Fenced Markdown text and rendered HTML `pre` elements become distinct code
 blocks. Their line breaks, blank lines and relative indentation are retained;
 headings, unit IDs and issue syntax inside them remain literal. The reader shows
@@ -118,6 +126,11 @@ numbers. Wrapped contributor references stay in their original bullet rather
 than becoming headings or contents entries. Numeric groups accept commas or
 whitespace, including the missing commas between wrapped lines in 3728. They
 remain limited to 1,024 bytes, 128 references and 20 digits per number.
+Missing separators between explicit hashes and omitted hashes inside an
+otherwise numeric group are accepted, as in 3745's Jip contributor row.
+An optional source label preserves the unmarked `4230` while linking it to the
+same fixed repository. Older payloads default to the usual hash-prefixed label;
+client release references still relink to the client's repository.
 Whitespace and punctuation are retained. Non-numeric or oversized
 groups remain text, and inline/fenced code is not linked. Client release notes
 continue to relink references to the client's repository.

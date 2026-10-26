@@ -22,7 +22,9 @@ fn spans_text(spans: &[ChangelogSpan]) -> String {
                 text.clone()
             }
             ChangelogSpan::Link { text, .. } => text.clone(),
-            ChangelogSpan::Issue { number, .. } => format!("#{number}"),
+            ChangelogSpan::Issue { number, label, .. } => {
+                label.clone().unwrap_or_else(|| format!("#{number}"))
+            }
         })
         .collect()
 }

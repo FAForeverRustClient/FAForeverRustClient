@@ -536,7 +536,7 @@
    there is room for it, at the panel's right. */
 .changelog-note-layout {
   display: grid;
-  grid-template-columns: minmax(0, 72ch);
+  grid-template-columns: minmax(0, 80ch);
   justify-content: space-between;
   gap: 48px;
   padding: 24px 28px 48px;
@@ -594,7 +594,7 @@
 
 @container changelog-note (min-width: 900px) {
   .changelog-note-layout.has-toc {
-    grid-template-columns: minmax(0, 72ch) 220px;
+    grid-template-columns: minmax(0, 80ch) 220px;
   }
 
   .changelog-note-layout.has-toc .changelog-jump {
@@ -634,6 +634,12 @@
   border-left: 1px solid var(--color-border);
 }
 
+.changelog-toc-children {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 /* The active entry is marked on the rail the list hangs from: a 1px line
    that turns to text colour, in place of a coloured bar. */
 .changelog-toc-item {
@@ -656,7 +662,9 @@
 
 /* A unit is one line, cut short with its full name on hover: wrapped, a
    column of two-line unit names read as ragged text rather than as a list. */
-.changelog-toc-item.depth-2 {
+.changelog-toc-item.depth-2,
+.changelog-toc-item.depth-3,
+.changelog-toc-item.depth-4 {
   padding-left: 24px;
   overflow: hidden;
   font-size: 12px;
@@ -664,6 +672,24 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow-wrap: normal;
+}
+
+.changelog-toc-item.depth-3 {
+  padding-left: 36px;
+}
+
+.changelog-toc-item.depth-4 {
+  padding-left: 48px;
+}
+
+.changelog-toc-item.is-group {
+  margin-top: var(--space-2);
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.changelog-toc-list > li:first-child > .changelog-toc-item.is-group {
+  margin-top: 0;
 }
 
 /* A unit carries its icon, small beside the name: the name is still what the

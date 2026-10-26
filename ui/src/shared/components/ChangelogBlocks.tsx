@@ -46,7 +46,7 @@ export function ChangelogSpans({ spans }: { spans: ChangelogSpan[] }) {
                 title={span.payload.url}
                 onClick={() => void native.openUrl(span.payload.url)}
               >
-                #{span.payload.number}
+                {span.payload.label ?? `#${span.payload.number}`}
               </button>
             );
           default:
@@ -149,8 +149,8 @@ export function ChangelogBlockView({ block, anchorId, headingOffset = 0 }: {
   switch (block.type) {
     case "heading": {
       // The page title is the one `h1`; the note's sections start at `h2`.
-      const level = Math.min(Math.max(block.payload.level + headingOffset, 2), 4);
-      const Tag = `h${level}` as "h2" | "h3" | "h4";
+      const level = Math.min(Math.max(block.payload.level + headingOffset, 2), 6);
+      const Tag = `h${level}` as "h2" | "h3" | "h4" | "h5" | "h6";
       return (
         <Tag id={anchorId} className={`changelog-heading changelog-heading-${level}`}>
           {block.payload.text}

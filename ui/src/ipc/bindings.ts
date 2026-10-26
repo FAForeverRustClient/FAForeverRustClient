@@ -926,6 +926,8 @@ export type ChangelogSpan = { type: "text"; payload: string } | { type: "strong"
 { type: "issue"; payload: {
 	number: string,
 	url: string,
+	/**  The source label when a numeric citation omitted its hash. */
+	label?: string | null,
 } };
 
 export type ChangelogState = {
