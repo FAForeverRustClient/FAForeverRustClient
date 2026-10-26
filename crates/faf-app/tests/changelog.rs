@@ -478,9 +478,15 @@ async fn a_revisit_while_the_index_is_in_flight_does_not_fetch_it_twice() {
 }
 
 #[tokio::test]
-async fn every_visit_reads_the_index_again() {
+async fn every_visit_refreshes_the_index_without_changing_the_open_patch() {
     let harness = harness(Duration::ZERO);
     harness.load().await;
+    harness.select("3801").await;
+    harness
+        .until("the older patch never opened", |app| {
+            app.snapshot().changelog.selected == "3801"
+        })
+        .await;
 
     // A release published while the client is open can only appear if the list
     // is read again, which is the half of "the tab does not auto update" that
@@ -495,8 +501,102 @@ async fn every_visit_reads_the_index_again() {
     assert_eq!(harness.index_calls.load(Ordering::Acquire), 2);
     assert_eq!(
         harness.selected(),
-        "3802",
-        "and it still opens on the newest"
+        "3801",
+        "a refresh must preserve the note the reader left open"
+    );
+    assert_eq!(
+        harness.reads_of("3801"),
+        1,
+        "dated notes still use the session cache"
+    );
+}
+
+#[tokio::test]
+async fn returning_to_a_rolling_note_refreshes_it_without_selecting_a_dated_patch() {
+    let harness = harness(Duration::ZERO);
+    harness.load().await;
+    harness.select("fafbeta").await;
+    harness
+        .until("the rolling note never opened", |app| {
+            app.snapshot().changelog.selected == "fafbeta"
+        })
+        .await;
+    harness
+        .app
+        .dispatch(ChangelogCommand::Load.into())
+        .await
+        .unwrap();
+    harness
+        .until("the rolling note did not refresh", |_| {
+            harness.reads_of("fafbeta") == 2
+        })
+        .await;
+    assert_eq!(harness.selected(), "fafbeta");
+    assert_eq!(harness.index_calls.load(Ordering::Acquire), 2);
+}
+
+#[tokio::test]
+async fn an_index_refresh_does_not_interrupt_an_opening_note() {
+    for selection_first in [false, true] {
+        let harness = harness(Duration::from_millis(60));
+        harness.load().await;
+        if selection_first {
+            harness.select_and_await_start("3800").await;
+        }
+        harness
+            .app
+            .dispatch(ChangelogCommand::Load.into())
+            .await
+            .unwrap();
+        harness
+            .until("the refresh never started", |_| {
+                harness.index_calls.load(Ordering::Acquire) == 2
+            })
+            .await;
+        if !selection_first {
+            harness.select_and_await_start("3800").await;
+        }
+        harness
+            .until("the refresh replaced the requested note", |app| {
+                let state = app.snapshot().changelog;
+                state.selected == "3800" && state.entry_status == ChangelogEntryStatus::Ready
+            })
+            .await;
+        assert_eq!(
+            harness.reads_of("3800"),
+            1,
+            "an in-flight selection must not be restarted"
+        );
+    }
+}
+
+#[tokio::test]
+async fn an_index_refresh_does_not_refetch_a_newer_completed_selection() {
+    let harness = harness(Duration::from_millis(60));
+    harness.load().await;
+    harness
+        .app
+        .dispatch(ChangelogCommand::Load.into())
+        .await
+        .unwrap();
+    harness
+        .until("the refresh never started", |_| {
+            harness.index_calls.load(Ordering::Acquire) == 2
+        })
+        .await;
+    harness.select("fafbeta").await;
+    harness
+        .until("the rolling note never opened", |app| {
+            let state = app.snapshot().changelog;
+            state.selected == "fafbeta" && state.entry_status == ChangelogEntryStatus::Ready
+        })
+        .await;
+    settle().await;
+    assert_eq!(harness.selected(), "fafbeta");
+    assert_eq!(
+        harness.reads_of("fafbeta"),
+        1,
+        "the refresh must not repeat the user's completed request"
     );
 }
 

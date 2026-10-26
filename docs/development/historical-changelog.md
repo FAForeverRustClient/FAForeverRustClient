@@ -38,6 +38,21 @@ matches stay as written. Image-only headings have a null blueprint ID and use
 the verified original image URL. Illustrated bold captions beside an image are
 handled like subheadings.
 
+Renamed ACU upgrades can also match the complete ordered sequence of source
+stat changes, bounded to 128 changes and 16 KiB. A sequence must identify
+exactly one source entry; faction captions cannot match this way. Separate
+upgrades sharing one source title remain separate when their stats differ.
+This restores 3696's renamed Seraphim upgrades and distinguishes the Aeon
+and UEF Personal Shield Generator pictures without changing published names.
+
+Plain captions preceding stat lists inside an experimental-unit card are
+recorded too. This restores all twelve experimentals in 3696, including the
+source's "GC" caption, identified by its complete published stats. Their
+pictures use exact, unambiguous heading aliases or asset names already
+verified in the same pinned source tree, preferring the current patch.
+Conflicting pictures are omitted. A rendered unit's stat list remains scoped
+to that unit on repeated enrichment, preserving its internal labels.
+
 Bold captions inside one heading's original card are also recorded as
 fingerprints, such as the three missiles under 3718's Nukes. A post bullet with
 such a caption restores that heading above it; stat lines are never matched
@@ -77,6 +92,30 @@ a scrollable monospace box with a square copy button in a column of its own
 beside the text, so no line runs underneath it. This restores the two unit
 rosters in 3822 and the Lua example in 3745. Copies contain only the original
 block text; a clipboard failure leaves it selectable.
+
+Inside Balance sections, nested list captions ending in valid blueprint IDs
+also become unit headings. This restores thirteen entries in 3810 and five
+in 3813, using the IDs explicitly provided by the notes. The introduction
+stays before the affected units; weapon sublists and following changes retain
+their order. Plain prose, inline code, fenced examples and captions outside
+Balance stay in their original form. Captions are bounded to 256 bytes and
+list traversal to 32 levels. The pictures and contents links use the same
+renderer and anchors as other unit headings.
+The published image set currently lacks SRL0310 (Pulsar); its header, source ID
+and contents link remain available through the existing missing-image fallback.
+
+The game index refresh keeps a selected release that is still in the index,
+including a rolling branch. Only a first visit or a removed selection chooses
+the newest dated note. An in-flight selection is left to complete, and a
+selection made during an index refresh takes precedence. Rolling notes still
+reload when revisited.
+
+Each reader remembers one reading position, its active contents entry and its
+release-list scroll offset for the session. The game list also remembers its
+expanded years. This presentation state survives tab and section unmounts;
+the selected release remains in backend state. Restoration waits for the
+note's content, happens before paint and retries on the next frame. Choosing
+a different note starts at the top; refreshing the same note keeps its offset.
 
 The standard client find dialog remains on Ctrl+F. The top-right **Search all
 patches** button opens an additional archive search using the shared modal.

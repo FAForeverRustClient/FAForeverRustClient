@@ -29,9 +29,11 @@ import {
   NoteJumpRow,
   noteSections,
   useNoteContents,
+  useNoteListPosition,
   type Section,
 } from "./noteReader";
 import "./changelog.css";
+import { changelogViewMemory } from "./viewMemory";
 
 const loadNotes = () => ipc.send({ kind: "ClientUpdate", command: { type: "loadNotes" } });
 
@@ -134,6 +136,8 @@ export function ClientReleasesView() {
   // Remembered as the filter setting says (#447), apart from the game list's.
   const [search, setSearch] = useRememberedFilter("changelog.clientSearch", "", (value) => typeof value === "string");
   const listRef = useRef<HTMLElement>(null);
+  const listedSelection = useRef(changelogViewMemory.client.position?.selection);
+  const onListScroll = useNoteListPosition(listRef, "client", status.type === "ready");
 
   // Cheap after the startup check, which has read the list already.
   useEffect(() => {
@@ -168,10 +172,11 @@ export function ClientReleasesView() {
     () => noteSections(blocks, false, t("changelog.historicalBalance")),
     [blocks, t],
   );
-  const { scrollRef, tocRef, activeSectionId, onNoteScroll, jumpTo } = useNoteContents(sections, selection);
+  const { scrollRef, tocRef, activeSectionId, onNoteScroll, jumpTo } = useNoteContents(sections, selection, "client", Boolean(selected));
 
   useEffect(() => {
-    keepCurrentRowInView(listRef.current);
+    if (listedSelection.current !== selection) keepCurrentRowInView(listRef.current);
+    listedSelection.current = selection;
   }, [selection]);
 
   // Up and down walk the list and open what they land on, as in the game
@@ -233,6 +238,7 @@ export function ClientReleasesView() {
 
         <nav
           ref={listRef}
+          onScroll={onListScroll}
           className="changelog-releases"
           aria-label={t("changelog.client.releases")}
           onKeyDown={onListKeyDown}

@@ -37,6 +37,12 @@ struct Illustration {
     /// without the heading they were grouped under on the original page.
     #[serde(default)]
     members: Vec<String>,
+    /// The complete ordered stat sequence, used when captions were renamed.
+    #[serde(default)]
+    changes: Option<String>,
+    /// A plain source caption whose picture may be verified in another page.
+    #[serde(default)]
+    unillustrated: bool,
 }
 
 fn manifest() -> &'static Manifest {
@@ -97,11 +103,13 @@ type Context = Vec<(u8, String, bool)>;
 
 struct Matcher<'a> {
     associate_prose: bool,
+    associate_changes: bool,
     headings: &'a [Illustration],
     aliases: HashMap<String, Vec<usize>>,
     paragraphs: HashMap<&'a str, Vec<usize>>,
     issues: HashMap<&'a str, Vec<usize>>,
     members: HashMap<&'a str, Vec<usize>>,
+    changes: HashMap<&'a str, Vec<usize>>,
     contexts: Vec<Vec<String>>,
 }
 
@@ -109,11 +117,13 @@ impl<'a> Matcher<'a> {
     fn new(headings: &'a [Illustration]) -> Self {
         let mut matcher = Self {
             associate_prose: true,
+            associate_changes: true,
             headings,
             aliases: HashMap::new(),
             paragraphs: HashMap::new(),
             issues: HashMap::new(),
             members: HashMap::new(),
+            changes: HashMap::new(),
             contexts: headings
                 .iter()
                 .map(|heading| heading.context.iter().map(|part| normalize(part)).collect())
@@ -137,6 +147,9 @@ impl<'a> Matcher<'a> {
                 if !candidates.contains(&index) {
                     candidates.push(index);
                 }
+            }
+            if let Some(changes) = &heading.changes {
+                matcher.changes.entry(changes).or_default().push(index);
             }
         }
         matcher
@@ -237,6 +250,64 @@ impl<'a> Matcher<'a> {
         self.contexts.iter().any(|context| context.contains(&name))
     }
 
+    fn changed_caption(&self, items: &[ChangelogListItem]) -> Option<usize> {
+        if !self.associate_changes {
+            return None;
+        }
+        fn collect(items: &[ChangelogListItem], atoms: &mut Vec<String>, depth: u8) -> Option<()> {
+            if depth >= 32 {
+                return None;
+            }
+            for item in items {
+                if let Some(change) = &item.change {
+                    if change.label.len() + change.old.len() + change.new.len() > 16 * 1024 {
+                        return None;
+                    }
+                    atoms.push(normalize(&change.label));
+                    for value in [&change.old, &change.new] {
+                        atoms.push(
+                            value
+                                .chars()
+                                .filter(|c| !c.is_whitespace())
+                                .flat_map(char::to_lowercase)
+                                .collect(),
+                        );
+                    }
+                    if atoms.len() > 128 * 3 {
+                        return None;
+                    }
+                }
+                collect(&item.children, atoms, depth + 1)?;
+            }
+            Some(())
+        }
+        let mut atoms = Vec::new();
+        collect(items, &mut atoms, 0)?;
+        if atoms.is_empty() {
+            return None;
+        }
+        let encoded: String = atoms
+            .iter()
+            .map(|value| format!("{}:{value};", value.len()))
+            .collect();
+        if encoded.len() > 16 * 1024 {
+            return None;
+        }
+        let candidates = self.changes.get(fingerprint(&encoded).as_str())?;
+        (candidates.len() == 1).then(|| candidates[0])
+    }
+
+    fn caption(&self, name: &str, items: &[ChangelogListItem], context: &Context) -> Option<usize> {
+        let faction = matches!(
+            normalize(name).as_str(),
+            "aeon" | "uef" | "cybran" | "seraphim" | "sera" | "all" | "allfactions"
+        );
+        (!faction)
+            .then(|| self.changed_caption(items))
+            .flatten()
+            .or_else(|| self.heading(name, context))
+    }
+
     fn existing(&self, name: &str, context: &Context) -> Option<usize> {
         self.heading(name, context).or_else(|| {
             let mut candidates = self
@@ -261,7 +332,7 @@ impl<'a> Matcher<'a> {
                 .flatten();
             if name
                 .as_ref()
-                .is_some_and(|name| self.heading(name, context).is_some())
+                .is_some_and(|name| self.caption(name, &item.children, context).is_some())
                 || self.reference(&item.spans).is_some()
             {
                 return true;
@@ -317,6 +388,68 @@ fn safe_image(path: &str) -> bool {
             .any(|extension| lower.ends_with(extension))
 }
 
+fn image_aliases(heading: &Illustration) -> Vec<String> {
+    let mut names: Vec<String> = heading.aliases.iter().map(|name| normalize(name)).collect();
+    if heading.images.len() == 1 {
+        if let Some(file) = heading.images[0].rsplit('/').next() {
+            if let Some((stem, _)) = file.rsplit_once('.') {
+                names.push(normalize(stem));
+            }
+        }
+    }
+    names
+}
+
+fn verified_images(name: &str, local: &[Illustration]) -> Vec<String> {
+    fn insert(map: &mut HashMap<String, Option<Vec<String>>>, heading: &Illustration) {
+        if heading.images.is_empty() || heading.unillustrated {
+            return;
+        }
+        for alias in image_aliases(heading) {
+            map.entry(alias)
+                .and_modify(|images| {
+                    if images
+                        .as_ref()
+                        .is_some_and(|images| images != &heading.images)
+                    {
+                        *images = None;
+                    }
+                })
+                .or_insert_with(|| Some(heading.images.clone()));
+        }
+    }
+    // Prefer a picture explicitly verified in this patch. Otherwise an exact,
+    // unambiguous caption or asset name from the same pinned tree may supply
+    // it. Never guess blueprint IDs or resolve conflicting illustrations.
+    let key = normalize(name);
+    let mut candidates = local.iter().filter(|heading| {
+        !heading.unillustrated
+            && !heading.images.is_empty()
+            && image_aliases(heading).contains(&key)
+    });
+    if let Some(first) = candidates.next() {
+        return if candidates.all(|heading| heading.images == first.images) {
+            first.images.clone()
+        } else {
+            Vec::new()
+        };
+    }
+    static IMAGES: OnceLock<HashMap<String, Option<Vec<String>>>> = OnceLock::new();
+    IMAGES
+        .get_or_init(|| {
+            let mut images = HashMap::new();
+            for patch in manifest().patches.values() {
+                for heading in &patch.headings {
+                    insert(&mut images, heading);
+                }
+            }
+            images
+        })
+        .get(&key)
+        .and_then(Clone::clone)
+        .unwrap_or_default()
+}
+
 struct Enricher<'a> {
     matcher: Matcher<'a>,
     revision: &'a str,
@@ -327,10 +460,15 @@ struct Enricher<'a> {
 
 impl Enricher<'_> {
     fn unit(&mut self, index: usize, name: String) {
+        let heading = &self.matcher.headings[index];
+        let images = if heading.unillustrated {
+            verified_images(&name, self.matcher.headings)
+        } else {
+            heading.images.clone()
+        };
         self.blocks.push(ChangelogBlock::Unit {
             name,
-            units: self.matcher.headings[index]
-                .images
+            units: images
                 .iter()
                 .filter(|path| safe_image(path))
                 .map(|path| ChangelogUnit {
@@ -411,7 +549,7 @@ impl Enricher<'_> {
                 .flatten();
             if let Some(index) = name
                 .as_ref()
-                .and_then(|name| self.matcher.heading(name, &self.context))
+                .and_then(|name| self.matcher.caption(name, &item.children, &self.context))
             {
                 self.flush(&mut pending);
                 self.unit(index, name.unwrap());
@@ -513,6 +651,7 @@ fn enrich_with_associations(entry: &mut ChangelogEntry, associate_prose: bool) {
         blocks: Vec::new(),
     };
     enricher.matcher.associate_prose = associate_prose;
+    enricher.matcher.associate_changes = associate_prose;
     for block in std::mem::take(&mut entry.blocks) {
         match block {
             ChangelogBlock::Heading { level, text } => {
@@ -544,7 +683,20 @@ fn enrich_with_associations(entry: &mut ChangelogEntry, associate_prose: bool) {
                     enricher.blocks.push(ChangelogBlock::Paragraph { spans });
                 }
             }
-            ChangelogBlock::List { items } => enricher.items(items, 0),
+            ChangelogBlock::List { items } => {
+                // A rendered unit's list already belongs to that unit. Its
+                // internal labels must not become new upgrade headings on a
+                // later enrichment pass just because some stats coincide.
+                if matches!(enricher.blocks.last(), Some(ChangelogBlock::Unit { .. }))
+                    && !enricher
+                        .active
+                        .is_some_and(|index| enricher.matcher.has_illustrated_children(index))
+                {
+                    enricher.blocks.push(ChangelogBlock::List { items });
+                } else {
+                    enricher.items(items, 0);
+                }
+            }
             ChangelogBlock::Unit { name, units } => {
                 enricher.active = enricher.matcher.existing(&name, &enricher.context);
                 enricher.blocks.push(ChangelogBlock::Unit { name, units });
@@ -1004,7 +1156,16 @@ mod tests {
         }
         let once = entry.clone();
         enrich(&mut entry);
-        assert_eq!(entry, once, "enrichment must be idempotent");
+        assert!(
+            entry == once,
+            "enrichment must be idempotent; first different block: {:?}",
+            entry
+                .blocks
+                .iter()
+                .zip(&once.blocks)
+                .enumerate()
+                .find(|(_, (after, before))| after != before)
+        );
         entry
     }
 
@@ -1025,6 +1186,168 @@ mod tests {
             .unwrap();
         assert_eq!(titan[0].unit_id, None);
         assert!(titan[0].icon_url.ends_with("/images/titan.png"));
+    }
+
+    #[test]
+    fn historical_3696_restores_experimentals_and_renamed_acu_upgrades() {
+        let experimentals = [
+            "Monkeylord",
+            "Megalith",
+            "Soul Ripper",
+            "Scathis",
+            "Fatboy",
+            "Atlantis",
+            "Novax Center",
+            "Galactic Colossus",
+            "Czar",
+            "Tempest",
+            "Ythotha",
+            "Ahwassa",
+        ];
+        let entry = check(
+            "3696",
+            include_str!("../fixtures/changelog-3696.md"),
+            &experimentals,
+        );
+        let at = |name: &str| {
+            entry
+                .blocks
+                .iter()
+                .position(|block| {
+                    matches!(block,
+            ChangelogBlock::Heading { text, .. } if text == name)
+                })
+                .unwrap()
+        };
+        let units = |blocks: &[ChangelogBlock]| {
+            blocks
+                .iter()
+                .filter_map(|block| match block {
+                    ChangelogBlock::Unit { name, units } => {
+                        Some((name.clone(), units[0].icon_url.clone()))
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        };
+        let experimental_blocks = &entry.blocks[at("Experimental Units") + 1..at("Navy")];
+        let restored = units(experimental_blocks);
+        assert_eq!(
+            restored
+                .iter()
+                .map(|(name, _)| name.as_str())
+                .collect::<Vec<_>>(),
+            experimentals
+        );
+        for ((_, image), file) in restored.iter().zip([
+            "monkeylord",
+            "megalith",
+            "soulripper",
+            "scathis",
+            "fatboy",
+            "atlantis",
+            "novaxcenter",
+            "galacticcolossus",
+            "czar",
+            "tempest",
+            "ythotha",
+            "ahwassa",
+        ]) {
+            assert!(
+                image.ends_with(&format!("/images/{file}.png")),
+                "wrong experimental image: {image}"
+            );
+        }
+        assert_eq!(
+            experimental_blocks
+                .iter()
+                .filter_map(|block| match block {
+                    ChangelogBlock::Heading { level, text } => Some((*level, text.as_str())),
+                    _ => None,
+                })
+                .collect::<Vec<_>>(),
+            [(3, "Cybran"), (3, "UEF"), (3, "Aeon"), (3, "Seraphim")]
+        );
+        assert!(matches!(
+            entry.blocks[at("T3 Land Combat")],
+            ChangelogBlock::Heading { level: 2, .. }
+        ));
+        let upgrades = units(&entry.blocks[..at("T3 Land Combat")]);
+        assert_eq!(upgrades.len(), 8);
+        for ((name, image), (caption, file)) in upgrades.iter().zip([
+            ("Personal Shield Generator", "aeon/shield"),
+            ("Heavy Personal Shield Generator", "aeon/heavyshield"),
+            ("Nano-Repair System", "uef/nano"),
+            ("Personal Shield Generator", "uef/personalsheild"),
+            ("Shield Generator Field", "uef/bubbleshield"),
+            ("Refracting Chronotron Amplifier", "sera/aoe"),
+            ("Nano-Repair System", "sera/nano"),
+            ("Enhanced Nano-Repair System", "sera/nano"),
+        ]) {
+            assert_eq!(name, caption);
+            assert!(
+                image.ends_with(&format!("/images/Enhancements/{file}.png")),
+                "wrong upgrade image: {image}"
+            );
+        }
+    }
+
+    #[test]
+    fn historical_stat_associations_reject_ambiguous_or_different_changes() {
+        let item = ChangelogListItem {
+            spans: Vec::new(),
+            children: Vec::new(),
+            change: Some(ChangelogChange {
+                label: "BuildTime".into(),
+                old: "100".into(),
+                new: "200".into(),
+            }),
+        };
+        let signature = fingerprint("9:buildtime;3:100;3:200;");
+        let mut headings: Vec<Illustration> = serde_json::from_value(serde_json::json!([
+            {"name":"First", "context":[], "aliases":["First"], "images":[], "paragraphs":[], "issues":[], "changes":signature},
+            {"name":"Second", "context":[], "aliases":["Second"], "images":[], "paragraphs":[], "issues":[], "changes":signature}
+        ])).unwrap();
+        assert_eq!(
+            Matcher::new(&headings).changed_caption(std::slice::from_ref(&item)),
+            None
+        );
+        headings.pop();
+        assert_eq!(
+            Matcher::new(&headings).caption("Seraphim", std::slice::from_ref(&item), &Vec::new()),
+            None
+        );
+        assert_eq!(
+            Matcher::new(&headings).changed_caption(std::slice::from_ref(&item)),
+            Some(0)
+        );
+        let different = ChangelogListItem {
+            change: Some(ChangelogChange {
+                new: "201".into(),
+                ..item.change.unwrap()
+            }),
+            ..item
+        };
+        assert_eq!(Matcher::new(&headings).changed_caption(&[different]), None);
+    }
+
+    #[test]
+    fn historical_existing_unit_lists_stay_with_their_parent_when_reenriched() {
+        let parsed = raw("3704", "- Tempest\n  - Mass cost: 24000 → 22000\n");
+        let mut entry = ChangelogEntry {
+            blocks: vec![ChangelogBlock::Unit {
+                name: "Battleships".into(),
+                units: Vec::new(),
+            }],
+            ..parsed.clone()
+        };
+        entry.blocks.extend(parsed.blocks);
+        let before = entry.clone();
+        enrich(&mut entry);
+        assert_eq!(
+            entry, before,
+            "a unit inside a rendered family must not escape its parent's stat list"
+        );
     }
 
     #[test]

@@ -418,7 +418,8 @@
             "images/Enhancements/aeon/t2.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "707c07070c482c95:38"
         },
         {
           "name": "UEF Drone Enhancements",
@@ -432,7 +433,8 @@
             "images/Enhancements/uef/drone.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "b8863f8c5a92cb8d:33"
         },
         {
           "name": "UEF Bubble Shield Enhancements",
@@ -932,7 +934,8 @@
             "images/Enhancements/sera/acutml.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "938245074fcfc92c:64"
         }
       ]
     },
@@ -1453,7 +1456,8 @@
             "images/Enhancements/aeon/sensor.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "11a340353f81e4a8:94"
         },
         {
           "name": "Cybran Stealth Generator",
@@ -1467,7 +1471,8 @@
             "images/Enhancements/cybran/stealth.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "4a669c610e615ff5:40"
         },
         {
           "name": "Siren:",
@@ -2096,7 +2101,8 @@
           "paragraphs": [
             "fcd43acef8d53ab5:245"
           ],
-          "issues": []
+          "issues": [],
+          "changes": "5ece1070f0af5ac0:219"
         },
         {
           "name": "T2 & T3 Upgrade",
@@ -2112,7 +2118,8 @@
           "paragraphs": [
             "e8600114bf1e6ff1:255"
           ],
-          "issues": []
+          "issues": [],
+          "changes": "d52836b757459cb5:102"
         },
         {
           "name": "UEF Nano-Repair",
@@ -2128,7 +2135,8 @@
           "paragraphs": [
             "0f0ae80571806dc2:264"
           ],
-          "issues": []
+          "issues": [],
+          "changes": "4353df951041d5ae:87"
         },
         {
           "name": "Seraphim Nano-Repair",
@@ -2142,7 +2150,8 @@
             "images/Enhancements/sera/nano.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "47b92c450e73e85a:106"
         },
         {
           "name": "Personal Shield",
@@ -2156,7 +2165,8 @@
             "images/Enhancements/aeon/shield.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "f980dfc0e6815ae8:160"
         },
         {
           "name": "Heavy Personal Shield",
@@ -2170,7 +2180,8 @@
             "images/Enhancements/aeon/heavyshield.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "9c5ba76f97a583d7:164"
         }
       ]
     },
@@ -2827,7 +2838,8 @@
           "paragraphs": [
             "168fdc03005780ed:249"
           ],
-          "issues": []
+          "issues": [],
+          "changes": "0a151fd9d051ef08:80"
         },
         {
           "name": "Personal Shield Generator",
@@ -2843,7 +2855,8 @@
           "paragraphs": [
             "9cfa3e3a9d4b90fc:145"
           ],
-          "issues": []
+          "issues": [],
+          "changes": "fe9c825230628603:26"
         },
         {
           "name": "Reclaim",
@@ -3574,7 +3587,8 @@
             "images/Enhancements/aeon/shield.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "c8c76a6f29cc514e:45"
         },
         {
           "name": "Heavy Personal Shield Generator",
@@ -3588,7 +3602,8 @@
             "images/Enhancements/aeon/heavyshield.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "8c4b78e2b3fc34c5:127"
         },
         {
           "name": "Nano-Repair",
@@ -3602,7 +3617,8 @@
             "images/Enhancements/uef/nano.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "0a9fc714758c8990:20"
         },
         {
           "name": "Personal Shield",
@@ -3616,7 +3632,8 @@
             "images/Enhancements/uef/personalsheild.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "71036d8a65a0d989:77"
         },
         {
           "name": "Bubble Shield",
@@ -3630,7 +3647,8 @@
             "images/Enhancements/uef/bubbleshield.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "6279e60bf2ee88ab:45"
         },
         {
           "name": "Damage Upgrade",
@@ -3644,7 +3662,8 @@
             "images/Enhancements/sera/aoe.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "aa116f60bcc914f2:71"
         },
         {
           "name": "Nano Repair",
@@ -3658,7 +3677,23 @@
             "images/Enhancements/sera/nano.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "813d5ae4fa81ffae:94"
+        },
+        {
+          "name": "Nano Repair",
+          "context": [
+            "ACUs"
+          ],
+          "aliases": [
+            "Nano Repair"
+          ],
+          "images": [
+            "images/Enhancements/sera/nano.png"
+          ],
+          "paragraphs": [],
+          "issues": [],
+          "changes": "f7927cececa3bf7a:45"
         },
         {
           "name": "Overcharge",
@@ -3722,6 +3757,148 @@
           ],
           "paragraphs": [],
           "issues": []
+        },
+        {
+          "name": "Monkeylord",
+          "context": [],
+          "aliases": [
+            "Monkeylord"
+          ],
+          "images": [],
+          "paragraphs": [],
+          "issues": [],
+          "changes": "2a624b93626a27aa:43",
+          "unillustrated": true
+        },
+        {
+          "name": "Megalith",
+          "context": [],
+          "aliases": [
+            "Megalith"
+          ],
+          "images": [],
+          "paragraphs": [],
+          "issues": [],
+          "changes": "1c0b6f7db8b01577:22",
+          "unillustrated": true
+        },
+        {
+          "name": "Soul Ripper",
+          "context": [],
+          "aliases": [
+            "Soul Ripper"
+          ],
+          "images": [],
+          "paragraphs": [],
+          "issues": [],
+          "changes": "ee1c108df5c81de1:22",
+          "unillustrated": true
+        },
+        {
+          "name": "Scathis",
+          "context": [],
+          "aliases": [
+            "Scathis"
+          ],
+          "images": [],
+          "paragraphs": [],
+          "issues": [],
+          "changes": "9ff17c1d512f15a2:22",
+          "unillustrated": true
+        },
+        {
+          "name": "Fatboy",
+          "context": [],
+          "aliases": [
+            "Fatboy"
+          ],
+          "images": [],
+          "paragraphs": [],
+          "issues": [],
+          "changes": "71852d38750f3777:99",
+          "unillustrated": true
+        },
+        {
+          "name": "Atlantis",
+          "context": [],
+          "aliases": [
+            "Atlantis"
+          ],
+          "images": [],
+          "paragraphs": [],
+          "issues": [],
+          "changes": "33f4f7ffc0c4547f:22",
+          "unillustrated": true
+        },
+        {
+          "name": "Novax Center",
+          "context": [],
+          "aliases": [
+            "Novax Center"
+          ],
+          "images": [],
+          "paragraphs": [],
+          "issues": [],
+          "changes": "8cce1070fc582e83:22",
+          "unillustrated": true
+        },
+        {
+          "name": "GC",
+          "context": [],
+          "aliases": [],
+          "images": [],
+          "paragraphs": [],
+          "issues": [],
+          "changes": "a39cc0de7a4cb2a0:64",
+          "unillustrated": true
+        },
+        {
+          "name": "Czar",
+          "context": [],
+          "aliases": [
+            "Czar"
+          ],
+          "images": [],
+          "paragraphs": [],
+          "issues": [],
+          "changes": "b25f89eeb5c0cecb:22",
+          "unillustrated": true
+        },
+        {
+          "name": "Tempest",
+          "context": [],
+          "aliases": [
+            "Tempest"
+          ],
+          "images": [],
+          "paragraphs": [],
+          "issues": [],
+          "changes": "66ea147a3fb340cd:44",
+          "unillustrated": true
+        },
+        {
+          "name": "Ythotha",
+          "context": [],
+          "aliases": [
+            "Ythotha"
+          ],
+          "images": [],
+          "paragraphs": [],
+          "issues": [],
+          "changes": "245c66b929bed146:211",
+          "unillustrated": true
+        },
+        {
+          "name": "Ahwassa",
+          "context": [],
+          "aliases": [
+            "Ahwassa"
+          ],
+          "images": [],
+          "paragraphs": [],
+          "issues": [],
+          "changes": "ff7ccde7315965a8:22",
+          "unillustrated": true
         }
       ]
     },
@@ -4352,7 +4529,8 @@
             "images/Enhancements/sera/regenfield.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "6f52b4d36aa18011:130"
         },
         {
           "name": "Advanced Regen Aura",
@@ -4366,7 +4544,8 @@
             "images/Enhancements/sera/advancedregenfield.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "52fb5a3bc6d44bca:138"
         },
         {
           "name": "Aeon Personal Shield",
@@ -4380,7 +4559,8 @@
             "images/Enhancements/aeon/shield.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "51da30aaf7c33356:26"
         },
         {
           "name": "Chrono Dampener",
@@ -4394,7 +4574,8 @@
             "images/Enhancements/aeon/chrono.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "b4b80a9c17c769d3:42"
         },
         {
           "name": "Tactical missile",
@@ -5345,7 +5526,8 @@
             "images/Enhancements/sera/ras.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "5583ca7177767e93:31"
         },
         {
           "name": "Veterancy",
@@ -6382,7 +6564,8 @@
           "paragraphs": [
             "68845be9751eb1ea:83"
           ],
-          "issues": []
+          "issues": [],
+          "changes": "280e756719351dfd:58"
         },
         {
           "name": "Sera ACU Regen Field Upgrade",
@@ -8144,7 +8327,8 @@
             "images/Enhancements/aeon/range.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "d330c2ca9659f1b8:73"
         },
         {
           "name": "Advanced Range",
@@ -8188,7 +8372,8 @@
           "paragraphs": [
             "fb62d5a41a1a3e6b:85"
           ],
-          "issues": []
+          "issues": [],
+          "changes": "398ca2b5b38cb62f:178"
         },
         {
           "name": "Self-Repair",
@@ -8216,7 +8401,8 @@
             "images/Enhancements/cybran/cloack.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "39732df05de9a4ea:15"
         },
         {
           "name": "Torp",
@@ -8230,7 +8416,8 @@
             "images/Enhancements/cybran/torp.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "f9d76c9f61f377be:36"
         },
         {
           "name": "Laser",
@@ -8244,7 +8431,8 @@
             "images/Enhancements/cybran/lazer.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "72d47aab77abd070:14"
         },
         {
           "name": "Advanced Regen Aura",
@@ -8260,7 +8448,8 @@
           "paragraphs": [
             "93b36f26982b4e60:183"
           ],
-          "issues": []
+          "issues": [],
+          "changes": "a8d1bd6094301e15:35"
         },
         {
           "name": "Reactivation Time",
@@ -8858,7 +9047,8 @@
           "paragraphs": [
             "4d73288004840da1:242"
           ],
-          "issues": []
+          "issues": [],
+          "changes": "4ba5d3c05ca579c9:137"
         },
         {
           "name": "Shield discharge",
@@ -9105,7 +9295,8 @@
             "images/Enhancements/uef/teleport.png"
           ],
           "paragraphs": [],
-          "issues": []
+          "issues": [],
+          "changes": "a5cde5e485589215:23"
         },
         {
           "name": "Enhancements",
@@ -9140,7 +9331,8 @@
           "paragraphs": [
             "2b037891fc6f7b6e:145"
           ],
-          "issues": []
+          "issues": [],
+          "changes": "ea7f16b878936fc5:23"
         },
         {
           "name": "Cybran TML",
@@ -9271,7 +9463,8 @@
           "paragraphs": [
             "2b037891fc6f7b6e:145"
           ],
-          "issues": []
+          "issues": [],
+          "changes": "ea7f16b878936fc5:23"
         },
         {
           "name": "Adjust the behavior of the Billy.",

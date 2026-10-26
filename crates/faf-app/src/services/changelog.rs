@@ -2,7 +2,7 @@
 //! demand, and never serve a rolling branch note out of the cache.
 
 use faf_domain::protocol::changelog::{ChangelogBlock, ChangelogEntry, ChangelogRelease};
-use faf_domain::state::{ChangelogCommand, ChangelogEvent, ChangelogStatus};
+use faf_domain::state::{ChangelogCommand, ChangelogEntryStatus, ChangelogEvent, ChangelogStatus};
 
 use crate::runtime::{CancellationSlot, EventSink, LatestRequest, ServiceCtx};
 
@@ -30,12 +30,13 @@ pub async fn handle(cmd: ChangelogCommand, ctx: &ServiceCtx, out: &EventSink) {
 
 async fn load(ctx: &ServiceCtx, out: &EventSink) {
     crate::runtime::expect_admitted(crate::runtime::Key::Changelog);
+    let selection_generation = ctx.changelog.entry_generation.current();
     // One load at a time, including the status read below: that read is a
     // check-then-act, and commands are dispatched concurrently, so without the
     // command policy's single flight (`Key::Changelog`) two visits in quick
     // succession both see "not ready" and both fetch the index. A dropped
     // `Load` loses nothing, because the run already in flight ends by
-    // selecting the newest patch itself.
+    // restoring the open patch, or selecting the newest on the first visit.
 
     // The index is re-read on every visit rather than once per session. It was
     // held for the session on the grounds that it does not change, which is
@@ -53,11 +54,29 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
 
     match ctx.ports.changelog.list_releases().await {
         Ok(releases) => {
-            // Open on the newest dated patch, not one of the rolling branch
-            // entries that are displayed above the release history.
-            let newest = newest_patch_id(&releases);
+            let (selected, pending) = out.with_state(|state| {
+                let pending = matches!(&state.changelog.entry_status,
+                    ChangelogEntryStatus::Loading { id } if releases.iter().any(|release| &release.id == id));
+                (state.changelog.selected.clone(), pending)
+            });
+            // Refreshing the index must not move the reader to a different
+            // note. Only a first visit or a removed release falls back to the
+            // newest dated patch. A selection made during this fetch wins.
+            let chosen = releases
+                .iter()
+                .find(|release| release.id == selected)
+                .map(|release| release.id.clone())
+                .or_else(|| newest_patch_id(&releases));
             out.emit(ChangelogEvent::Loaded { releases });
-            if let Some(id) = newest {
+            if pending
+                || !ctx
+                    .changelog
+                    .entry_generation
+                    .is_current(selection_generation)
+            {
+                return;
+            }
+            if let Some(id) = chosen {
                 select(id, ctx, out).await;
             }
         }

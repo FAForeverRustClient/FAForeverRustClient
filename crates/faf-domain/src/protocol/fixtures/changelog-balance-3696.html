@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html><head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	<meta charset="UTF-8">
+	<title>Patch 3696</title>
+    <link rel="stylesheet" href="../style/balance.css"/>
+</head>
+<body>
+	<main class="grid">
+		<div class="content">
+
+			<div id="intro">
+				<h1>Patch 3696</h1>
+				<h2>Date:<i> May 26 2018</i></h2>
+				<p>There are four main portions to this balance patch. First is the nerf to direct fire T3 Land units.
+				Second is the rebalance of ACU combat upgrades. Third is the increase in Experimental Unit build times and fourth is an
+				overcharge rework. A T3 land rebalance has been promised for a very long time so we are very happy to finally be at the beta stage
+				for this important development in Forged Alliance. The aim is to allow a larger window on a large number of maps
+				for the T2 land stage. It is potentially one of the most interesting stages of the game, with many different unit
+				compositions and matchups coming into play, but for a long time it has been a very short stage of gameplay
+				because of the effectiveness of T3 land and the effectiveness of commanders.
+				The balance team found it necessary to introduce combat ACU upgrade changes, an overcharge rework and Experimental build time increases
+				with the T3 land rebalance. Combat ACU upgrades have been shown to be very strong recently, becoming a staple of teamgames. Some of these
+				upgrades are too dominant and with the T3 land changes, some nerfs are required to prevent the ACU from being too powerful. </p>
+				<p>With the delays this patch has faced, other smaller issues have been admitted into this patch as they were deemed important. The most
+				notable of these are the addition of a delay to teleport, a nerf of shieldboats and several other changes listed below. </p>
+				<h4>- The Balance Team</h4>
+			</div>
+
+			<h2>Land</h2>
+
+			<div id="land">
+
+				<div id="scout" class="card">
+					<h3><img src="/images/selen.png"> Selen: </h3>
+					<p>Removed the Power drain from the stealth/cloak ability while not moving.</p>
+				</div>
+
+				<div id="tanks" class="card">
+					<h3><img src="/images/aurora.png"> Aurora:</h3>
+					<ul>
+						<li>FiringRandomnessWhileMoving: <s>0.3</s> <i class="fa-solid fa-arrow-right"></i> 0.1</li>
+						<li>MuzzleVelocity: <s>30</s> <i class="fa-solid fa-arrow-right"></i> 25</li>
+					</ul>
+				</div>
+
+				<div id="maa" class="card">
+					<h3><img src="/images/ueft1maa.png"> T1 Mobile Anti Air</h3>
+					<p>T1 MAA gets a small damage reduction and mass cost reduction so it doesn't cost more than tanks anymore. Sera MAA is fixed so that is does its intended damage.</p>
+					<ul>
+						Aeon:
+						<li>Mass Cost: <s>55</s> <i class="fa-solid fa-arrow-right"></i> 50</li>
+						<li>Damage: <s>10</s> <i class="fa-solid fa-arrow-right"></i> 8</li>
+						<br>
+						UEF:
+						<li>Mass Cost: <s>55</s> <i class="fa-solid fa-arrow-right"></i> 50</li>
+						<li>Damage: <s>16</s> <i class="fa-solid fa-arrow-right"></i> 14</li>
+						<br>
+						Seraphim:
+						<li>Mass Cost: <s>55</s> <i class="fa-solid fa-arrow-right"></i> 50</li>
+						<li>Damage: <s>8</s> <i class="fa-solid fa-arrow-right"></i> 14</li>
+						Cybran:
+						<li>Mass Cost: <s>55</s> <i class="fa-solid fa-arrow-right"></i> 50</li>
+						<li>Damage: <s>10</s> <i class="fa-solid fa-arrow-right"></i> 9</li>
+					</ul>
+				</div>
+
+				<div id="bettle" class="card">
+					<h3><img src="/images/beetle.png"> Fire Beetle:</h3>
+					<p>Fire beetles are getting a much needed rebalance to encourage their use within armies. </p>
+					<ul>
+						<li>Damage: <s>3500</s> <i class="fa-solid fa-arrow-right"></i> 1500</li>
+						<li>AoE: <s>4.5</s> <i class="fa-solid fa-arrow-right"></i> 6</li>
+						<li>Transport class: <s>2</s> <i class="fa-solid fa-arrow-right"></i> 1</li>
+						<li>Stun ability added. Duration <i class="fa-solid fa-arrow-right"></i> 2s. Stuns all units except Experimentals</li>
+						<li>Friendly Fire <i class="fa-solid fa-arrow-right"></i> Disabled</li>
+						<li>Health: <s>300</s> <i class="fa-solid fa-arrow-right"></i> 500</li>
+					</ul>
+				</div>
+
+				<div id="t3tanks" class="card">
+
+					<h3><img src="/images/harb.png"> Harbinger:</h3>
+					<p>The Harbinger rebalance puts more focus on the shield. The shield accounts for more of the total hp will regen and recharge much more quickly than before. This emphasizes the micro capabilities of the Harb, allowing for more hit and run combat tactics.</p>
+					<ul>
+						<li>BuildTime: <s>4500</s> <i class="fa-solid fa-arrow-right"></i> 3600</li>
+						<li>Health: <s>4600</s> <i class="fa-solid fa-arrow-right"></i> 3050</li>
+						<li>Speed: <s>3</s> <i class="fa-solid fa-arrow-right"></i> 2.85</li>
+						<li>Acceleration: <s>3</s> <i class="fa-solid fa-arrow-right"></i> 3.2</li>
+						<li>Turn Rate: <s>120</s> <i class="fa-solid fa-arrow-right"></i> 130</li>
+						<li>Shield</li>
+						<ul>
+							<li>Shield Health: <s>1300</s> <i class="fa-solid fa-arrow-right"></i> 1000</li>
+							<li>Shield Regen Rate: <s>9</s> <i class="fa-solid fa-arrow-right"></i> 30</li>
+							<li>Shield Recharge Time: <s>63</s> <i class="fa-solid fa-arrow-right"></i> 40</li>
+							<li>ShieldRegenStartTime: <s>3</s> <i class="fa-solid fa-arrow-right"></i> 2</li>
+							<li>Power Drain: <s>25</s> <i class="fa-solid fa-arrow-right"></i> 30</li>
+						</ul>
+						<li>Weapon</li>
+						<ul>
+							<li>Damage: <s>300</s> <i class="fa-solid fa-arrow-right"></i> 320</li>
+							<li>Rate of Fire: <s>1.25</s> <i class="fa-solid fa-arrow-right"></i> 1</li>
+							<li>Range: <s>28</s> <i class="fa-solid fa-arrow-right"></i> 26</li>
+							<li>DPS: <s>375</s> <i class="fa-solid fa-arrow-right"></i> 320</li>
+							<li>Muzzle Velocity: <s>30</s> <i class="fa-solid fa-arrow-right"></i> 40</li>
+						</ul>
+					</ul>
+
+					<h3><img src="/images/othuum.png"> Othuum:</h3>
+					<p>More emphasis is put on the longer range high alpha damage weapon of the Othuum and its target priorities have been fixed to be in line with other T3 tanks.</p>
+					<ul>
+						<li>Health: <s>6700</s> <i class="fa-solid fa-arrow-right"></i> 5000</li>
+						<li>Acceleration: <s>2.6</s> <i class="fa-solid fa-arrow-right"></i> 3.5</li>
+						<li>SizeY: <s>0.45</s> <i class="fa-solid fa-arrow-right"></i> 0.65</li>
+						<li>SizeZ: <s>2.0</s> <i class="fa-solid fa-arrow-right"></i> 2.3</li>
+						<li>First 2 Guns</li>
+						<ul>
+							<li>Damage: <s>75</s> <i class="fa-solid fa-arrow-right"></i> 39</li>
+							<li>Muzzle Velocity: <s>35</s> <i class="fa-solid fa-arrow-right"></i> 40</li>
+							<li>Turret Yaw Speed: <s>90</s> <i class="fa-solid fa-arrow-right"></i> 120</li>
+							<li>Combined DPS: <s>300</s> <i class="fa-solid fa-arrow-right"></i> 156</li>
+						</ul>
+						<li>3rd Gun:</li>
+						<ul>
+							<li>Damage: <s>400</s> <i class="fa-solid fa-arrow-right"></i> 525</li>
+							<li>Range: <s>32</s> <i class="fa-solid fa-arrow-right"></i> 28</li>
+							<li>Muzzle Velocity: <s>30</s> <i class="fa-solid fa-arrow-right"></i> 40</li>
+							<li>DPS: <s>100</s> <i class="fa-solid fa-arrow-right"></i> 131</li>
+						</ul>
+						<li>Torpedo Weapon:</li>
+						<ul>
+							<li>Range: <s>32</s> <i class="fa-solid fa-arrow-right"></i> 28</li>
+						</ul>
+						<li>Target Priorities:</li>
+						<ul>
+							<li>Othuum now priorities T3 over T2 over T1 instead of the reverse.</li>
+						</ul>
+					</ul>
+
+
+					<h3><img src="/images/percy.png"> Percival:</h3>
+					<p>The Percival now has the longest range of the T3 tanks and bots so kiting is now very important, even against Bricks. A turret yaw speed increase and slight muzzle velocity increase enables better micro capabilities.</p>
+					<ul>
+						<li>Health: <s>9300</s> <i class="fa-solid fa-arrow-right"></i> 7200</li>
+						<li>BuildTime: <s>6000</s> <i class="fa-solid fa-arrow-right"></i> 4800</li>
+						<li>Speed: <s>2</s> 2.1</li>
+						<li>Acceleration: <s></s> <i class="fa-solid fa-arrow-right"></i> 2.1</li>
+						<li>TurnRate: <s>60</s> <i class="fa-solid fa-arrow-right"></i> 70</li>
+						<li>Weapon</li>
+						<ul>
+							<li>Damage: <s>1600</s> <i class="fa-solid fa-arrow-right"></i> 1670</li>
+							<li>Rate of Fire: <s>0.25</s> <i class="fa-solid fa-arrow-right"></i> 0.2</li>
+							<li>Range: <s>35</s> <i class="fa-solid fa-arrow-right"></i> 34</li>
+							<li>Muzzle Velocity: <s>35</s> <i class="fa-solid fa-arrow-right"></i> 38</li>
+							<li>Turret Yaw Speed: <s>60</s> <i class="fa-solid fa-arrow-right"></i> 90</li>
+							<li>DPS: <s>400</s> <i class="fa-solid fa-arrow-right"></i> 334</li>
+						</ul>
+					</ul>
+
+
+					<h3><img src="/images/titan.png"> Titan:</h3>
+					<p>The titan has a smaller health shield but this regens very quickly, sometimes even during the course of a battle if you can keep them alive. It's target priorities are also fixed as with the Othuum.</p>
+					<ul>
+						<li>Health: <s>2200</s> <i class="fa-solid fa-arrow-right"></i> 2550</li>
+						<li>Speed: <s>4</s> <i class="fa-solid fa-arrow-right"></i> 3.8</li>
+						<li>Acceleration: <s>4</s> <i class="fa-solid fa-arrow-right"></i> 4.2</li>
+						<li>Shield</li>
+						<ul>
+							<li>Shield: <s>1200</s> <i class="fa-solid fa-arrow-right"></i> 600</li>
+							<li>Recharge Time: <s>60</s> <i class="fa-solid fa-arrow-right"></i> 15</li>
+							<li>Regen Rate: <s>9</s> <i class="fa-solid fa-arrow-right"></i> 20</li>
+						</ul>
+						<ul>
+							<li>Range: <s>20</s> <i class="fa-solid fa-arrow-right"></i> 22</li>
+							<li>Muzzle Velocity: <s>30</s> <i class="fa-solid fa-arrow-right"></i> 35</li>
+							<li>Turn rate: <s>150</s> <i class="fa-solid fa-arrow-right"></i> 120</li>
+						</ul>
+						<li>Target Priorities:</li>
+						<ul>
+							<li>Titan now priorities T3 over T2 over T1 instead of the reverse.</li>
+						</ul>
+					</ul>
+
+					<h3><img src="/images/brick.png"> Brick:</h3>
+					<p>The brick now has slightly less range than a Percy but gains speed, turn rate and muzzle velocity to allow for better micro. </p>
+					<ul>
+						<li>Health: <s>9000</s> <i class="fa-solid fa-arrow-right"></i> 7500</li>
+						<li>BuildTime: <s>6000</s> <i class="fa-solid fa-arrow-right"></i> 4800</li>
+						<li>Speed: <s>2</s> <i class="fa-solid fa-arrow-right"></i> 2.3</li>
+						<li>Acceleration: <s>2</s> <i class="fa-solid fa-arrow-right"></i> 2.3</li>
+						<li>TurnRate: <s>60</s> <i class="fa-solid fa-arrow-right"></i> 65</li>
+						<li>Main Weapon:</li>
+						<ul>
+							<li>Damage: <s>150</s> <i class="fa-solid fa-arrow-right"></i> 125</li>
+							<li>Range: <s>35</s> <i class="fa-solid fa-arrow-right"></i> 32</li>
+							<li>MuzzleVelocity: <s>35</s> <i class="fa-solid fa-arrow-right"></i> 42</li>
+							<li>Turret Yaw Speed: <s>60</s> <i class="fa-solid fa-arrow-right"></i> 90</li>
+							<li>DPS: <s>375</s> <i class="fa-solid fa-arrow-right"></i> 312.5</li>
+						</ul>
+					</ul>
+
+					<h3><img src="/images/loya.png"> Loyalist:</h3>
+					<p>The Loyalist gets a small nerf to many stats, and its stun will no longer affect Experimentals and ACUs.</p>
+
+					<ul>
+						<li>Health: <s>3100</s> <i class="fa-solid fa-arrow-right"></i> 3000</li>
+						<li>Speed: <s>4</s> <i class="fa-solid fa-arrow-right"></i> 3.8</li>
+						<li>Acceleration: <s>4</s> <i class="fa-solid fa-arrow-right"></i> 4.2</li>
+						<li>EMP explosion on death:</li>
+						<ul>
+							<li>Duration: <s>2s</s> <i class="fa-solid fa-arrow-right"></i> 1.4s</li>
+							<li>Affected by Stun: <s>Mobile Units</s> <i class="fa-solid fa-arrow-right"></i> Mobile Units - except for T4 and ACUs</li>
+						</ul>
+						<li>1st Weapon (Disintegrator Pulse Laser):</li>
+						<ul>
+							<li>Damage: <s>175</s> <i class="fa-solid fa-arrow-right"></i> 150</li>
+							<li>Range: <s>25</s> <i class="fa-solid fa-arrow-right"></i> 20</li>
+							<li>DPS: <s>175</s> <i class="fa-solid fa-arrow-right"></i> 150</li>
+						</ul>
+						<li>2nd Weapon (Heavy Electron Bolter):</li>
+						<ul>
+							<li>Damage: <s>12</s> <i class="fa-solid fa-arrow-right"></i> 14</li>
+							<li>Range: <s>25</s> <i class="fa-solid fa-arrow-right"></i> 20</li>
+							<li>Muzzle Velocity: <s>40</s> <i class="fa-solid fa-arrow-right"></i> 35</li>
+							<li>TurretYawSpeed: <s>90</s> <i class="fa-solid fa-arrow-right"></i> 120</li>
+							<li>DPS: <s>30</s> <i class="fa-solid fa-arrow-right"></i> 35</li>
+						</ul>
+					</ul>
+				</div>
+
+				<div id="sniper" class="card">
+					<h3><img src="/images/aeonsniper.png"> Sprite Striker:</h3>
+
+					<p>The aeon sniper is better able to shoot while moving and has a higher rate of fire in exchange for less speed and a higher cost.</p>
+					<ul>
+						<li>Mass Cost: <s>640</s> <i class="fa-solid fa-arrow-right"></i> 720</li>
+						<li>Build Time: <s>3600</s> <i class="fa-solid fa-arrow-right"></i> 4000</li>
+						<li>Health: <s>450</s> <i class="fa-solid fa-arrow-right"></i> 500</li>
+						<li>Speed: <s>3</s> <i class="fa-solid fa-arrow-right"></i> 2.85</li>
+						<li>SizeX: <s>0.8</s> <i class="fa-solid fa-arrow-right"></i> 0.95</li>
+						<li>SizeY: <s>1.15</s> <i class="fa-solid fa-arrow-right"></i> 1.35</li>
+						<li>SizeZ: <s>0.6</s> <i class="fa-solid fa-arrow-right"></i> 0.8</li>
+						<li>Weapon</li>
+						<ul>
+							<li>Firing Randomness while moving: <s>0.5</s> <i class="fa-solid fa-arrow-right"></i> 0.3</li>
+							<li>Rate of Fire: <s>0.142</s> <i class="fa-solid fa-arrow-right"></i> 0.15</li>
+							<li>MuzzleVelocity: <s>120</s> <i class="fa-solid fa-arrow-right"></i> 90</li>
+							<li>TurretYawSpeed: <s>90</s> <i class="fa-solid fa-arrow-right"></i> 110</li>
+						</ul>
+					</ul>
+
+					<h3><img src="/images/serasniper.png"> Usha-Ah:</h3>
+
+					<p>The sera sniper shoots more accurately while moving to avoid it wasting shots and it gets a cost increase and speed decrease.</p>
+					<ul>
+						<li>Mass Cost: <s>640</s> <i class="fa-solid fa-arrow-right"></i> 800</li>
+						<li>Energy Cost: <s>8000</s> <i class="fa-solid fa-arrow-right"></i> 8800</li>
+						<li>Build Time: <s>3600</s> <i class="fa-solid fa-arrow-right"></i> 4300</li>
+						<li>Health: <s>500</s> <i class="fa-solid fa-arrow-right"></i> 700</li>
+						<li>Speed: <s>3</s> <i class="fa-solid fa-arrow-right"></i> 2.5</li>
+						<li>Acceleration: <s>3</s> <i class="fa-solid fa-arrow-right"></i> 2.5</li>
+						<li>UniformScale: <s>0.08</s> <i class="fa-solid fa-arrow-right"></i> 0.095</li>
+						<li>SizeX: <s>0.35</s> <i class="fa-solid fa-arrow-right"></i> 0.45</li>
+						<li>SizeY: <s>1.2</s> <i class="fa-solid fa-arrow-right"></i> 1.55</li>
+						<li>SizeZ: <s>0.7</s> <i class="fa-solid fa-arrow-right"></i> 0.9</li>
+						<li>Default Fire Mode:</li>
+						<ul>
+							<li>Firing Randomness while moving: <s>0.25</s> <i class="fa-solid fa-arrow-right"></i> 0.4</li>
+							<li>Rate of Fire: <s>0.2</s> <i class="fa-solid fa-arrow-right"></i> 0.25</li>
+							<li>Firing Tolerance: <s>0.5</s> <i class="fa-solid fa-arrow-right"></i> 3</li>
+							<li>Muzzle Velocity: <s>120</s> <i class="fa-solid fa-arrow-right"></i> 80</li>
+							<li>TurretYawSpeed: <s>90</s> <i class="fa-solid fa-arrow-right"></i> 70</li>
+						</ul>
+						<li>Ranged Fire Mode:</li>
+						<ul>
+							<li>Firing Randomness while moving: <s>0.5</s> <i class="fa-solid fa-arrow-right"></i> 0.2</li>
+							<li>Rate of Fire: <s>0.07</s> <i class="fa-solid fa-arrow-right"></i> 0.066</li>
+							<li>TurretYawSpeed: <s>90</s> <i class="fa-solid fa-arrow-right"></i> 50</li>
+						</ul>
+					</ul>
+				</div>
+
+				<div id="t3marty" class="card">
+					<h3><img src="/images/UEF_T3_Mobile_Arty.png"> T3 Mobile Artillery:</h3>
+					<ul>
+						<p>Build time is reduced for T3 mobile artillery.</p>
+						<li>Build Time: <s>4800</s> <i class="fa-solid fa-arrow-right"></i> 4300</li>
+					</ul>
+				</div>
+
+				<div id="exp" class="card">
+					<h3>Experimentals</h3>
+
+					<p>Experimentals have had very low buildtimes which often made thoughtless mass sinks. With the T3 land nerf
+					Experimentals will be a stronger force on the battlefield so buildtime is increased to compensate for this and
+					to make XPs less of a cheese weapon thrown up in very short periods of time with little build power.</p>
+
+					<div id="cybran">
+						<h4><img src="/images/monkeylord.png">Cybran:</h4>
+
+						Monkeylord
+						<ul>
+							<li>Build Time: <s>15750</s> <i class="fa-solid fa-arrow-right"></i> 27500</li>
+							<li>Mass Cost: <s>19000</s> <i class="fa-solid fa-arrow-right"></i> 20000</li>
+						</ul>
+						Megalith
+						<ul>
+							<li>Build Time: <s>18750</s> <i class="fa-solid fa-arrow-right"></i> 60 625</li>
+						</ul>
+						Soul Ripper
+						<ul>
+							<li>Build Time: <s>20000</s> <i class="fa-solid fa-arrow-right"></i> 56250</li>
+						</ul>
+						Scathis
+						<ul>
+							<li>Build Time: <s>50000</s> <i class="fa-solid fa-arrow-right"></i> 80000</li>
+						</ul>
+
+					</div>
+
+					<div id="uef">
+						<h4><img src="/images/fatboy.png">UEF:</h4>
+						Fatboy
+						<ul>
+							<li>Build Time: <s>21 000</s> <i class="fa-solid fa-arrow-right"></i> 47 500</li>
+							<li>Shield Recharge Time: <s>160</s> <i class="fa-solid fa-arrow-right"></i> 120</li>
+							<li>Shield Regen Rate: <s>64</s> <i class="fa-solid fa-arrow-right"></i> 100</li>
+							<li>Power Upkeep cost: <s>500</s> <i class="fa-solid fa-arrow-right"></i> 600</li>
+						</ul>
+						Atlantis
+						<ul>
+							<li>Build Time: <s>14 400</s> <i class="fa-solid fa-arrow-right"></i> 20 500</li>
+						</ul>
+						Novax Center
+						<ul>
+							<li>Build Time: <s>25 000</s> <i class="fa-solid fa-arrow-right"></i> 30 000</li>
+						</ul>
+
+
+					</div>
+
+					<div id="aeon">
+						GC
+						<ul>
+							<li>Power Cost: <s>343 750</s> <i class="fa-solid fa-arrow-right"></i> 330 000</li>
+							<li>Build Time: <s>20 625</s> <i class="fa-solid fa-arrow-right"></i> 51500</li>
+							<li>Claws:</li>
+							<ul>
+								<li>Fixed a bug with the claws by adding random EQ code.</li>
+								<li>Rate of Fire: <s>1</s> <i class="fa-solid fa-arrow-right"></i> 0.15</li>
+							</ul>
+						</ul>
+						Czar
+						<ul>
+							<li>Build Time: <s>33 750</s> <i class="fa-solid fa-arrow-right"></i> 50 625</li>
+						</ul>
+						Tempest
+						<ul>
+							<li>Build Time: <s>14 400</s> <i class="fa-solid fa-arrow-right"></i> 28 000</li>
+							<li>Muzzle Velocity: <s>28</s> <i class="fa-solid fa-arrow-right"></i> 35</li>
+						</ul>
+
+
+					</div>
+
+					<div id="sera">
+						Ythotha
+						<ul>
+							<li>Build Time: <s>18750</s> <i class="fa-solid fa-arrow-right"></i> 46 875</li>
+							<li>Mass Cost: <s>25 000</s> <i class="fa-solid fa-arrow-right"></i> 26 500</li>
+							<li>Power Cost: <s>312 500</s> <i class="fa-solid fa-arrow-right"></i> 330 000</li>
+							<li>Weapons</li>
+							<ul>
+								<li>Phason Beam Generator Damage: <s>8000</s> <i class="fa-solid fa-arrow-right"></i> 6000</li>
+								<li>Gatling Plasma Cannon Damage: <s>550</s> <i class="fa-solid fa-arrow-right"></i> 610</li>
+								<li>Heavy Sinn Unthe Cannon Damage: <s>1200</s> <i class="fa-solid fa-arrow-right"></i> 1850</li>
+								<li>Flak Damage: <s>39</s> <i class="fa-solid fa-arrow-right"></i> 46</li>
+								<li>Flak Range: <s>25</s> <i class="fa-solid fa-arrow-right"></i> 21</li>
+							</ul>
+						</ul>
+						Ahwassa
+						<ul>
+							<li>Build Time: <s>36000</s> <i class="fa-solid fa-arrow-right"></i> 67500</li>
+						</ul>
+					</div>
+				</div>
+
+			</div>
+
+			<h2>Air</h2>
+
+			<div id="air">
+
+				<div id="t1bomber" class="card">
+					<h3><img src="/images/t1bomber.png"> T1 Bombers:</h3>
+					<ul>
+						<li>RandomBreakOffDistanceMult: <s>1</s> <i class="fa-solid fa-arrow-right"></i> 1.5</li>
+					</ul>
+				</div>
+
+				<div id="t2trans" class="card">
+					<h3><img src="/images/aeont2transport.png">T2 Transports:</h3>
+					<ul>
+						<li>Mass Cost: <s>300</s> <i class="fa-solid fa-arrow-right"></i> 330</li>
+						<li>Power Cost: <s>12000</s> <i class="fa-solid fa-arrow-right"></i> 13200</li>
+						<li>Speed: <s>15</s> <i class="fa-solid fa-arrow-right"></i> 14.3</li>
+					</ul>
+				</div>
+
+				<div id="expair" class="card">
+					<h3><img src="/images/ahwassa.png"> Ahwassa:</h3>
+					<ul>
+						<li>BombDropThreshold: <s>4</s> <i class="fa-solid fa-arrow-right"></i> 20</li>
+					</ul>
+				</div>
+			</div>
+
+            <h2>Navy</h2>
+
+			<div id="navy">
+
+				<div id="battleship" class="card">
+					<h3><img src="/images/aeonbattleship.png"> Battleships: </h3>
+
+					Seraphim:
+					<ul>
+						<li>FiringRandomness: <s>0.3</s> <i class="fa-solid fa-arrow-right"></i> 0.25</li>
+						<li>MuzzleVelocity: <s>30</s> <i class="fa-solid fa-arrow-right"></i> 40</li>
+					</ul>
+
+					Aeon:
+					<ul>
+						<li>TurnRate: <s>35</s> <i class="fa-solid fa-arrow-right"></i> 40</li>
+						<li>MaxSpeed: <s>3.6</s> <i class="fa-solid fa-arrow-right"></i> 3.7</li>
+						<li>Range: <s>100</s> <i class="fa-solid fa-arrow-right"></i> 105</li>
+					</ul>
+				</div>
+
+				<div id="carrier" class="card">
+					<h3><img src="/images/cybrancarrier.png"> Cybran Carrier: </h3>
+
+					<p>Fixed the aim on the Anti Air weapon of the carrier.</p>
+				</div>
+
+				<div id="bulwark" class="card">
+					<h3><img src="/images/UEF_T2_Shield_Boat.png"> Bulwark: </h3>
+					<ul>
+						<li>Damage Overspill: <s>15%</s> <i class="fa-solid fa-arrow-right"></i> 25%</li>
+						<li>Recharge time: <s>35</s> <i class="fa-solid fa-arrow-right"></i> 40</li>
+					</ul>
+				</div>
+
+				<div id="shard" class="card">
+					<h3><img src="/images/shard.png"> Shard: </h3>
+					<ul>
+						<li>Health: <s>750</s> <i class="fa-solid fa-arrow-right"></i> 800</li>
+					</ul>
+				</div>
+			</div>
+
+			<h2>Structures</h2>
+
+			<div id="structures">
+
+				<div id="factory" class="card">
+					<h3><img src="/images/t3hq.png"> T3 Land HQs:</h3>
+					<ul>
+						<li>Mass Cost: <s>4 920</s> <i class="fa-solid fa-arrow-right"></i> 5 220</li>
+						<li>Power Cost: <s>43 900</s> <i class="fa-solid fa-arrow-right"></i> 47 400</li>
+						<li>Build Time: <s>11 000</s> <i class="fa-solid fa-arrow-right"></i> 12 100</li>
+					</ul>
+				</div>
+
+				<div id="t3pd" class="card">
+					<h3><img src="/images/UEF_T3_PD.png"> Ravager:</h3>
+					<ul>
+						<li>Health: <s>7500</s> <i class="fa-solid fa-arrow-right"></i> 6500</li>
+						<li>Mass Cost: <s>1 800</s> <i class="fa-solid fa-arrow-right"></i> 2 000</li>
+						<li>Power Cost: <s>16 000</s> <i class="fa-solid fa-arrow-right"></i> 17 600</li>
+						<li>Build Time: <s>1 500</s> <i class="fa-solid fa-arrow-right"></i> 2000</li>
+					</ul>
+
+				</div>
+
+				<div id="t3arty" class="card">
+					<h3><img src="/images/duke.png"> T3 Static Artillery:</h3>
+					<p>T3 static arty now have the same range. Cybran gets an increased rate of fire in exchange for lower damage.</p>
+					<ul>
+						<li>UEF/Cybran/Seraphim/Aeon Range: <s>750/700/825/900</s> <i class="fa-solid fa-arrow-right"></i> 825</li>
+					</ul>
+					Cybran:
+					<ul>
+						<li>Damage: <s>4600</s> <i class="fa-solid fa-arrow-right"></i> 3700</li>
+						<li>Rate of Fire: <s>0.1</s> <i class="fa-solid fa-arrow-right"></i> 0.13</li>
+					</ul>
+				</div>
+
+				<div id="eco" class="card">
+					<h3><img src="/images/UEF_T3_Mass_Fabricator.png"> T3 Mass Fabricator:</h3>
+					<p>Adjacency for T3 mass fabs was improved slightly too much in patch 3688 so we are reducing it now. </p>
+					<ul>
+						<li>Adjacency from storage: <s>4.1667%</s> <i class="fa-solid fa-arrow-right"></i> 3%</li>
+						<li>Adjacency for SML: <s>20%</s> <i class="fa-solid fa-arrow-right"></i> 12.5%</li>
+					</ul>
+				</div>
+
+				<div id="civ" class="card">
+					<h3><img src="/images/civ.png"> Civilian Structures</h3>
+
+					<p>Adjusted Civilian Building Mass values to make them more consistent. Civilian buildings will give 50-150 mass.</p>
+				</div>
+
+				<div id="shield" class="card">
+					<h3><img src="/images/Cybran_T2_Static_Shield_L4.png"> Cybran Shield</h3>
+					<p>Added the ED4 Shield to the list of buildable structures and to the hotbuild keygroup for shields.</p>
+				</div>
+			</div>
+
+			<h2>ACUs</h2>
+
+			<div id="ACU">
+
+				<div id="aeonacu" class="card">
+					<h3>Aeon ACU</h3>
+
+					<div id="acushield">
+						<h3><img src="/images/Enhancements/aeon/shield.png"> Personal Shield Generator</h3>
+
+						<ul>
+							<li>BuildCostMass: <s>1000</s> <i class="fa-solid fa-arrow-right"></i> 1300</li>
+							<li>BuildTime: <s>1000</s> <i class="fa-solid fa-arrow-right"></i> 1300</li>
+						</ul>
+					</div>
+
+					<div id="acuheavysheild">
+						<h3><img src="/images/Enhancements/aeon/heavyshield.png"> Heavy Personal Shield Generator</h3>
+
+						<ul>
+							<li>BuildCostEnergy: <s>93750</s> <i class="fa-solid fa-arrow-right"></i> 123750</li>
+							<li>BuildCostMass: <s>1500</s> <i class="fa-solid fa-arrow-right"></i> 2300</li>
+							<li>BuildTime: <s>1750</s> <i class="fa-solid fa-arrow-right"></i> 2450</li>
+							<li>ShieldMaxHealth: <s>29000</s> <i class="fa-solid fa-arrow-right"></i> 25000</li>
+							<li>ShieldRegenRate: <s>37</s> <i class="fa-solid fa-arrow-right"></i> 32</li>
+						</ul>
+
+					</div>
+
+				</div>
+
+				<div id="uefacu" class="card">
+					<h3>UEF ACU</h3>
+
+					<div id="uefnano">
+						<h3><img src="/images/Enhancements/uef/nano.png"> Nano-Repair</h3>
+
+						<ul>
+							<li>NewHealth: <s>2000</s> <i class="fa-solid fa-arrow-right"></i> 1500</li>
+						</ul>
+					</div>
+
+					<div id="uefpersonalshield">
+						<h3><img src="/images/Enhancements/uef/personalsheild.png"> Personal Shield</h3>
+
+						<ul>
+							<li>BuildCostMass: <s>1500</s> <i class="fa-solid fa-arrow-right"></i> 2300</li>
+							<li>ShieldMaxHealth: <s>24000</s> <i class="fa-solid fa-arrow-right"></i> 19000</li>
+							<li>ShieldRegenRate: <s>35</s> <i class="fa-solid fa-arrow-right"></i> 30</li>
+						</ul>
+
+					</div>
+
+					<div id="uefsheildfield">
+						<h3><img src="/images/Enhancements/uef/bubbleshield.png"> Bubble Shield</h3>
+
+						<ul>
+							<li>BuildCostMass: <s>3000</s> <i class="fa-solid fa-arrow-right"></i> 3600</li>
+							<li>BuildTime: <s>2800</s> <i class="fa-solid fa-arrow-right"></i> 3400</li>
+						</ul>
+
+					</div>
+				</div>
+
+				<div id="seraacu" class="card">
+					<h3>Seraphim ACU</h3>
+
+					<div id="gun">
+						<h3><img src="/images/Enhancements/sera/aoe.png"> Damage Upgrade</h3>
+
+						<ul>
+							<li>AdditionalDamage: <s>750</s> <i class="fa-solid fa-arrow-right"></i> 620</li>
+							<li>BuildCostMass: <s>4800</s> <i class="fa-solid fa-arrow-right"></i> 5400</li>
+							<li>BuildTime: <s>4200</s> <i class="fa-solid fa-arrow-right"></i> 4600</li>
+						</ul>
+					</div>
+
+					<div id="nano">
+						<h3><img src="/images/Enhancements/sera/nano.png"> Nano Repair</h3>
+
+						<ul>
+							<li>BuildCostEnergy: <s>42000</s> <i class="fa-solid fa-arrow-right"></i> 56000</li>
+							<li>BuildCostMass: <s>1200</s> <i class="fa-solid fa-arrow-right"></i> 1800</li>
+							<li>BuildTime: <s>1200</s> <i class="fa-solid fa-arrow-right"></i> 1800</li>
+							<li>NewHealth: <s>3000</s> <i class="fa-solid fa-arrow-right"></i> 2000</li>
+						</ul>
+					</div>
+
+					<div id="anano">
+						<h3><img src="/images/Enhancements/sera/nano.png"> Nano Repair</h3>
+
+						<ul>
+							<li>BuildCostMass: <s>4500</s> <i class="fa-solid fa-arrow-right"></i> 5800</li>
+							<li>BuildTime: <s>4200</s> <i class="fa-solid fa-arrow-right"></i> 4600</li>
+						</ul>
+					</div>
+
+				</div>
+			</div>
+
+			<h2>Mechanics</h2>
+			<div id="mechanics">
+
+				<div id="OC" class="card">
+					<h3><img src="/images/orders/overcharge.png"> Overcharge</h3>
+					<p>This is the first rebalance of Overcharge since patch 3605 and it builds upon the premise of requiring energy storage to OC. We have implemented a variable system of Overcharge so to do greater damage you will need more energy in storage. You will still need to buld an energy storage before you can Overcharge and one storage will suffice for killing T2 units. To kill the heaviest T3 units you will need three storages. When you Overcharge the amount of energy required to kill the unit you hit will be drained from your storage. If you do not have enough to kill the target, most of your energy will be drained but not all so that your shields and radar are not effected. </p>
+					<ul>
+						<li>The damage dealt by overcharge now scales with the amount of energy drained from storage.</li>
+						<li>Overcharge will drain as much energy as is required to kill any unit within the area of effect of the OC, or 90% of your stored energy.</li>
+						<li>One energy storage is required to unlock Overcharge.</li>
+						<li>One storage is required to kill T1 and T2 land units.</li>
+						<li>Up to three storages will be required to kill T3 land units.</li>
+						<li>The range of the Area of Effect is now displayed when using Overcharge.</li>
+						<li>The OC indicator will turn orange if you do not have enough energy in storage to kill the unit under the cursor.</li>
+						<li>The OC indicator will turn green if you have enough energy in storage to kill the unit under the cursor.</li>
+						<li>The maximum damage is 15k at a cost of ~45k energy</li>
+					</ul>
+					<p>Damage vs buildings and vs commanders is unchanged from the previous system. We have added new icons to indicate whether you have enough energy to kill the unit under your cursor. Gray is for idle, Orange means you don't have enough energy to kill and green means you will kill the unit if you OC it.</p>
+				</div>
+
+				<div id="vet" class="card">
+					<h3><img src="/images/orders/mechanic.png"> Veterancy</h3>
+					<p>The vet gained from buildings was too high, leading to problems especially with ACU TML.</p>
+					<ul>
+						<li>Veterancy gained from damaging non-combat buildings is reduced by 50%</li>
+						<li>Only a single vet level can be gained for any one kill.</li>
+					</ul>
+				</div>
+
+				<div id="tele" class="card">
+					<h3><img src="/images/orders/teleport.png"> Teleport</h3>
+					<p>Teleporting takes 5 seconds longer. The animation at the teleport destination is unchanged.</p>
+				</div>
+			</div>
+
+			<h2>Bug Fixes</h2>
+
+			<div id="bugs" class="card">
+				<h3><img src="/images/orders/mechanic.png"> Fixes:</h3>
+				<ul>
+					<li>Nuke trajectory is now corrected so it travels parallel to the ground.</li>
+					<li>Selens will no longer lose their radar when there is a power stall.</li>
+					<li>Units with personal shields that are unloading from transports will now take damage on their shield when hit. </li>
+					<li>The seraphim T2 torp defense wreck is no longer invisible.</li>
+				</ul>
+			</div>
+		</div>
+		<div class="sidebar">
+			<div class="iconSidebar">
+				<h2 class="iconSidebarTitle">Contents</h2>
+				<div class="iconSidebarBlank"></div>
+
+				<div class="iconSidebarSubgrid">
+					<h3 class="iconSidebarSubtitle">Land</h3><br>
+						<a href="#scout"><img src="/images/selen.png"></a>
+						<a href="#tanks"><img src="/images/aurora.png"></a>
+						<a href="#maa"><img src="/images/ueft1maa.png"></a>
+						<a href="#bettle"><img src="/images/beetle.png"></a>
+						<a href="#t3tanks"><img src="/images/percy.png"></a>
+						<a href="#sniper"><img src="/images/aeonsniper.png"></a>
+						<a href="#t3marty"><img src="/images/aeont3marty.png"></a>
+						<a href="#exp"><img src="/images/monkeylord.png"></a>
+
+					<h3 class="iconSidebarSubtitle">Air</h3><br>
+						<a href="#t1bomber"><img src="/images/t1bomber.png"></a>
+						<a href="#t2trans"><img src="/images/aeont2transport.png"></a>
+						<a href="#expair"><img src="/images/czar.png"></a>
+
+					<h3 class="iconSidebarSubtitle">Navy</h3><br>
+						<a href="#battleship"><img src="/images/aeonbattleship.png"></a>
+						<a href="#carrier"><img src="/images/cybrancarrier.png"></a>
+						<a href="#bulwark"><img src="/images/UEF_T2_Shield_Boat.png"></a>
+						<a href="#shard"><img src="/images/shard.png"></a>
+
+					<h3 class="iconSidebarSubtitle">Structures</h3><br>
+						<a href="#factory"><img src="/images/t3hq.png"></a>
+						<a href="#t3pd"><img src="/images/UEF_T3_PD.png"></a>
+						<a href="#t3arty"><img src="/images/duke.png"></a>
+						<a href="#eco"><img src="/images/UEF_T3_Mass_Fabricator.png"></a>
+						<a href="#civ"><img src="/images/civ.png"></a>
+						<a href="#shield"><img src="/images/Cybran_T2_Static_Shield_L4.png"></a>
+
+					<h3 class="iconSidebarSubtitle">ACU</h3><br>
+						<a href="#acushield"><img src="/images/Enhancements/aeon/shield.png"></a>
+						<a href="#acuheavysheild"><img src="/images/Enhancements/aeon/heavyshield.png"></a>
+						<a href="#uefnano"><img src="/images/Enhancements/uef/nano.png"></a>
+						<a href="#uefpersonalshield"><img src="/images/Enhancements/uef/personalsheild.png"></a>
+						<a href="#uefsheildfield"><img src="/images/Enhancements/uef/bubbleshield.png"></a>
+						<a href="#gun"><img src="/images/Enhancements/sera/aoe.png"></a>
+						<a href="#nano"><img src="/images/Enhancements/sera/nano.png"></a>
+						<a href="#anano"><img src="/images/Enhancements/sera/advnano.png"></a>
+
+					<h3 class="iconSidebarSubtitle">Mechanics</h3><br>
+						<a href="#OC"><img src="/images/orders/overcharge.png"></a>
+						<a href="#vet"><img src="/images/orders/mechanic.png"></a>
+						<a href="#tele"><img src="/images/orders/teleport.png"></a>
+
+
+					<h3 class="iconSidebarSubtitle">ACU</h3><br>
+						<a href="#bugs"><img src="/images/orders/mechanic.png"></a>
+
+				</div>
+			</div>
+		</div>
+	</main>
+</body>
+<footer >
+	<div class="backtotop"><button><a class="toptext" href="#top">Back to Top</a></button></div><br>
+	<a href="../index.html">Back to Patchnote List</a>
+	<p>© 2015-2024 FAForever</p>
+</footer>
+</html>

@@ -7,10 +7,11 @@
 // beside the note when the surface is wide enough to have room for one, and as
 // a row of jump links above it when it is not (see `changelog.css`).
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject, type UIEvent } from "react";
 import type { ChangelogBlock } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ChangelogBlockView } from "../../shared/components/ChangelogBlocks";
+import { changelogViewMemory, type ChangelogReader } from "./viewMemory";
 
 /** A section of the open note, as the contents list and the jump row name it. */
 export interface Section {
@@ -99,14 +100,33 @@ export function keepCurrentRowInView(list: HTMLElement | null) {
   else if (rect.bottom > bounds.bottom) list.scrollTop += rect.bottom - bounds.bottom;
 }
 
+/** Keep the release list where it was when either reader was left. */
+export function useNoteListPosition(listRef: RefObject<HTMLElement>, reader: ChangelogReader, ready: boolean) {
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list || !ready) return;
+    const memory = changelogViewMemory[reader];
+    list.scrollTo({ top: memory.listTop, behavior: "instant" });
+    return () => {
+      if (list.isConnected) memory.listTop = list.scrollTop;
+    };
+  }, [listRef, reader, ready]);
+  return useCallback((event: UIEvent<HTMLElement>) => {
+    changelogViewMemory[reader].listTop = event.currentTarget.scrollTop;
+  }, [reader]);
+}
+
 /**
  * The note's scroll and the contents that follow it.
  *
  * `selection` names the note on screen: a new one opens at its top and at its
  * first section.
  */
-export function useNoteContents(sections: Section[], selection: string) {
-  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+export function useNoteContents(sections: Section[], selection: string, reader: ChangelogReader, ready = true) {
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(() => {
+    const position = changelogViewMemory[reader].position;
+    return position?.selection === selection ? position.section : null;
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
   const tocRef = useRef<HTMLElement>(null);
   const isClickScrolling = useRef(false);
@@ -118,14 +138,27 @@ export function useNoteContents(sections: Section[], selection: string) {
     };
   }, []);
 
-  // A new note opens at its top at once, not after a long smooth scroll.
-  // Keyed on the selection alone: keyed on the section list too, any store
-  // update that rebuilt the list threw the reader back to the top, and cut
-  // short a jump that was still gliding.
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
-    setActiveSectionId(null);
-  }, [selection]);
+  // Returning to the same reader restores its last note before paint. A
+  // different note starts at the top. Refreshes of that note's blocks do not
+  // reset it. Retry once after layout so asynchronously loaded content fits.
+  useLayoutEffect(() => {
+    const container = scrollRef.current;
+    if (!container || !selection || !ready) return;
+    const memory = changelogViewMemory[reader];
+    const previous = memory.position;
+    const position = previous?.selection === selection ? previous
+      : { selection, top: 0, section: null };
+    memory.position = position;
+    container.scrollTo({ top: position.top, behavior: "instant" });
+    setActiveSectionId(position.section);
+    const frame = requestAnimationFrame(() => {
+      container.scrollTo({ top: position.top, behavior: "instant" });
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      if (container.isConnected && memory.position === position) position.top = container.scrollTop;
+    };
+  }, [reader, selection, ready]);
 
   // The first section is the current one until the reader moves, and a
   // rebuilt list keeps the current one if it still has it.
@@ -153,11 +186,15 @@ export function useNoteContents(sections: Section[], selection: string) {
   // Both kept stable for the memoized contents column: a new function on
   // every render redrew its whole list each time the reader scrolled.
   const onNoteScroll = useCallback(() => {
-    if (isClickScrolling.current) return;
     const container = scrollRef.current;
-    if (!container || sections.length === 0) return;
+    if (!container) return;
+    const memory = changelogViewMemory[reader];
+    if (memory.position?.selection === selection) memory.position.top = container.scrollTop;
+    if (isClickScrolling.current || sections.length === 0) return;
     if (container.scrollHeight - container.scrollTop - container.clientHeight <= 24) {
-      setActiveSectionId(sections[sections.length - 1].id);
+      const last = sections[sections.length - 1].id;
+      if (memory.position?.selection === selection) memory.position.section = last;
+      setActiveSectionId(last);
       return;
     }
     const containerTop = container.getBoundingClientRect().top;
@@ -168,10 +205,13 @@ export function useNoteContents(sections: Section[], selection: string) {
       if (element.getBoundingClientRect().top - containerTop <= 72) currentId = section.id;
       else break;
     }
+    if (memory.position?.selection === selection) memory.position.section = currentId;
     setActiveSectionId(currentId);
-  }, [sections]);
+  }, [sections, reader, selection]);
 
   const jumpTo = useCallback((id: string) => {
+    const position = changelogViewMemory[reader].position;
+    if (position?.selection === selection) position.section = id;
     setActiveSectionId(id);
     isClickScrolling.current = true;
     if (clickScrollTimeout.current) clearTimeout(clickScrollTimeout.current);
@@ -185,7 +225,7 @@ export function useNoteContents(sections: Section[], selection: string) {
     // Smooth or instant per the stylesheet's `scroll-behavior`, which
     // honours a request for reduced motion.
     container.scrollTo({ top: Math.max(0, container.scrollTop + offset - 16) });
-  }, []);
+  }, [reader, selection]);
 
   return { scrollRef, tocRef, activeSectionId, onNoteScroll, jumpTo };
 }

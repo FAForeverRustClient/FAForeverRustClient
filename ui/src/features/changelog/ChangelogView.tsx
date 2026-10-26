@@ -33,6 +33,7 @@ import { FeaturedModIcon } from "../../shared/components/FeaturedModIcon";
 import type { ChangelogBlock, ChangelogRelease, ChangelogSearchMatch, ChangelogSection } from "../../ipc/bindings";
 import { ClientReleasesView } from "./ClientReleasesView";
 import { PatchSearch } from "./PatchSearch";
+import { changelogViewMemory } from "./viewMemory";
 import {
   anchorFor,
   keepCurrentRowInView,
@@ -41,6 +42,7 @@ import {
   NoteJumpRow,
   noteSections,
   useNoteContents,
+  useNoteListPosition,
   type Section,
 } from "./noteReader";
 import "./changelog.css";
@@ -133,8 +135,10 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
   // Remembered as the filter setting says (#447).
   const [search, setSearch] = useRememberedFilter("changelog.search", "", (value) => typeof value === "string");
   /// The years the reader has flipped from their default, folded or open.
-  const [toggledGroups, setToggledGroups] = useState<Set<string>>(() => new Set());
+  const [toggledGroups, setToggledGroups] = useState<Set<string>>(() => new Set(changelogViewMemory.game.years));
   const listRef = useRef<HTMLElement>(null);
+  const listedSelection = useRef(changelogViewMemory.game.position?.selection);
+  const onListScroll = useNoteListPosition(listRef, "game", status.type === "ready");
   const initialJump = useRef(jumpTarget);
 
   useEffect(() => {
@@ -201,7 +205,7 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
     () => (entry ? noteSections(entry.blocks, heading.skipFirst, t("changelog.historicalBalance")) : []),
     [entry, heading.skipFirst, t],
   );
-  const { scrollRef, tocRef, activeSectionId, onNoteScroll, jumpTo } = useNoteContents(sections, changelog.selected);
+  const { scrollRef, tocRef, activeSectionId, onNoteScroll, jumpTo } = useNoteContents(sections, changelog.selected, "game", Boolean(entry));
 
   useEffect(() => {
     if (!jumpTarget || entry?.id !== jumpTarget.releaseId || loadingEntry) return;
@@ -214,7 +218,8 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
   }, [entry, jumpTarget, loadingEntry, jumpTo, onJumped]);
 
   useEffect(() => {
-    keepCurrentRowInView(listRef.current);
+    if (listedSelection.current !== changelog.selected) keepCurrentRowInView(listRef.current);
+    listedSelection.current = changelog.selected;
   }, [changelog.selected]);
 
   const select = (id: string) =>
@@ -225,6 +230,7 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
       const next = new Set(current);
       if (next.has(groupKey)) next.delete(groupKey);
       else next.add(groupKey);
+      changelogViewMemory.game.years = next;
       return next;
     });
   };
@@ -290,6 +296,7 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
 
         <nav
           ref={listRef}
+          onScroll={onListScroll}
           className="changelog-releases"
           aria-label={t("changelog.releases")}
           onKeyDown={onListKeyDown}

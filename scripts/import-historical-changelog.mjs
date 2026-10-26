@@ -33,6 +33,44 @@ export function fingerprint(value) {
   return `${hash.toString(16).padStart(16, "0")}:${bytes.length}`;
 }
 
+export function changeFingerprint(changes) {
+  if (!changes.length || changes.length > 128) return null;
+  const atoms = changes.flatMap(([label, old, value]) => [normalize(label),
+    old.replace(/\s+/gu, "").toLowerCase(), value.replace(/\s+/gu, "").toLowerCase()]);
+  const encoded = `${atoms.map(value => `${new TextEncoder().encode(value).length}:${value}`).join(";")};`;
+  return Buffer.byteLength(encoded) <= 16 * 1024 ? fingerprint(encoded) : null;
+}
+
+function listChanges(list) {
+  const changes = [];
+  for (const original of list.querySelectorAll("li")) {
+    const item = original.cloneNode(true);
+    for (const child of item.querySelectorAll("ul,ol,i")) child.remove();
+    const strikes = item.querySelectorAll("s,del,strike");
+    if (strikes.length !== 1) continue;
+    const old = plain(strikes[0].textContent ?? "");
+    strikes[0].textContent = "\u0000";
+    const parts = (item.textContent ?? "").split("\u0000");
+    if (parts.length !== 2) continue;
+    const label = plain(parts[0]).replace(/:$/, "");
+    const value = plain(parts[1]).replace(/^(?:→|->)\s*/, "");
+    if (label && old && value) changes.push([label, old, value]);
+    if (changes.length > 128) return [];
+  }
+  return changes;
+}
+
+const FACTION = /^(?:aeon|uef|cybran|seraphim|sera|all|all factions):?$/i;
+
+function headingChanges(heading) {
+  if (FACTION.test(plain(heading.textContent ?? ""))) return null;
+  for (let next = heading.nextElementSibling; next; next = next.nextElementSibling) {
+    if (/^H[2-6]$/.test(next.tagName)) break;
+    if (next.tagName === "UL") return changeFingerprint(listChanges(next));
+  }
+  return null;
+}
+
 function plain(value) {
   return value.replaceAll("\u2014", ", ").replace(/\s+/g, " ").trim();
 }
@@ -97,6 +135,8 @@ export async function extractPage(html, version, assets) {
         }).filter(Boolean))].slice(0, 8);
         const record = { name, context: context.map(item => item.name), aliases: aliases(name),
           images: paths, paragraphs: [], issues: [] };
+        const changes = paths.some(path => path.startsWith("images/Enhancements/")) ? headingChanges(heading) : null;
+        if (changes) record.changes = changes;
         const card = heading.closest(".card") ?? heading.parentElement;
         const illustrated = card ? illustrations(card).filter(item => headingImages(item).length) : [];
         if (card && illustrated.length === 1) {
@@ -119,7 +159,7 @@ export async function extractPage(html, version, assets) {
             .map(fingerprint);
           if (members.length) record.members = [...new Set(members)];
         }
-        const key = JSON.stringify([normalize(name), record.context.map(normalize), paths]);
+        const key = JSON.stringify([normalize(name), record.context.map(normalize), paths, changes]);
         const previous = deduplicated.get(key);
         if (previous) {
           previous.paragraphs = [...new Set([...previous.paragraphs, ...record.paragraphs])];
@@ -131,6 +171,25 @@ export async function extractPage(html, version, assets) {
         }
       }
       if (name && name.length <= 256) context.push({ level, name });
+    }
+    // Some old cards use plain text followed by a stat list for each unit.
+    // Their labels are source facts too; the complete stat sequence lets the
+    // client recognize renamed captions without matching arbitrary prose.
+    for (const list of root.querySelectorAll(".card ul")) {
+      if (list.parentElement?.tagName !== "DIV") continue;
+      const card = list.closest(".card");
+      if (list.parentElement === card
+        || !/^experimental(?:s|units)?$/.test(normalize(card?.querySelector("h2,h3")?.textContent ?? ""))) continue;
+      let previous = list.previousSibling;
+      while (previous && ((previous.nodeType === 3 && !previous.textContent?.trim())
+        || previous.nodeName === "BR")) previous = previous.previousSibling;
+      if (previous?.nodeType !== 3) continue;
+      const name = plain(previous.textContent ?? "");
+      if (!name || name.length > 80 || /[:.!?]/.test(name) || FACTION.test(name)) continue;
+      const changes = changeFingerprint(listChanges(list));
+      if (!changes) continue;
+      headings.push({ name, context: [], aliases: aliases(name), images: [], paragraphs: [], issues: [],
+        changes, unillustrated: true });
     }
     return { headings, warnings };
   } finally {

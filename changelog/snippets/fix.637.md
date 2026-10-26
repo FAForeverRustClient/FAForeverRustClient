@@ -10,3 +10,8 @@
 - Patch notes now use a slightly wider text column.
 - Changelog copy-confirmation icons now use readable colors in all themes.
 - Replays and cached catalogues now use a patched compression library.
+- Experimental units in patch 3696 now have individual pictures and contents links.
+- ACU upgrades in patch 3696 now show the correct pictures and contents entries.
+- Copy buttons in changelog code blocks now keep their symbols at a readable size.
+- Nested balance entries in patches 3810 and 3813 now show unit pictures and contents links.
+- Changelogs now remember the open note and reading position when switching tabs.

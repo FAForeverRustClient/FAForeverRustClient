@@ -324,6 +324,7 @@ pub fn parse_entry(id: &str, markdown: &str) -> ChangelogEntry {
         blocks: parse_blocks(body),
     };
     balance_captions(&mut entry.blocks);
+    nested_balance_units(&mut entry.blocks);
     historical::enrich(&mut entry);
     entry
 }
@@ -814,6 +815,11 @@ fn split_on_arrow(values: &str) -> Option<(&str, &str)> {
 /// contain only valid blueprint ids, so ordinary bold prose stays prose.
 fn unit_header(text: &str) -> Option<(String, Vec<String>)> {
     let inner = text.trim().strip_prefix("**")?.strip_suffix("**")?.trim();
+    unit_caption(inner)
+}
+
+fn unit_caption(text: &str) -> Option<(String, Vec<String>)> {
+    let inner = text.trim();
     let inner = inner.strip_suffix(':').unwrap_or(inner).trim_end();
     let (_, trailing_ids) = inner.rsplit_once('(')?;
     unit_ids(trailing_ids.strip_suffix(')')?)?;
@@ -895,6 +901,84 @@ fn balance_captions(blocks: &mut [ChangelogBlock]) {
                 .collect(),
             name,
         };
+    }
+}
+
+/// Older notes put unbolded unit captions and their stats inside a PR's
+/// list item (3810 and 3813). Promote only complete captions ending in
+/// verified-format blueprint IDs, retaining the introduction and stat order.
+fn nested_balance_units(blocks: &mut Vec<ChangelogBlock>) {
+    fn caption(item: &ChangelogListItem) -> Option<(String, Vec<String>)> {
+        if item.change.is_some() || item.children.is_empty() {
+            return None;
+        }
+        let mut text = String::new();
+        for span in &item.spans {
+            match span {
+                ChangelogSpan::Text(value) | ChangelogSpan::Strong(value) => text.push_str(value),
+                _ => return None,
+            }
+            if text.len() > 256 {
+                return None;
+            }
+        }
+        unit_caption(&text)
+    }
+    fn contains(items: &[ChangelogListItem], depth: u8) -> bool {
+        depth < 32
+            && items
+                .iter()
+                .any(|item| caption(item).is_some() || contains(&item.children, depth + 1))
+    }
+    fn flush(pending: &mut Vec<ChangelogListItem>, output: &mut Vec<ChangelogBlock>) {
+        if !pending.is_empty() {
+            output.push(ChangelogBlock::List {
+                items: std::mem::take(pending),
+            });
+        }
+    }
+    fn expand(items: Vec<ChangelogListItem>, depth: u8, output: &mut Vec<ChangelogBlock>) {
+        let mut pending = Vec::new();
+        for mut item in items {
+            if depth >= 32 {
+                pending.push(item);
+            } else if let Some((name, ids)) = caption(&item) {
+                flush(&mut pending, output);
+                output.push(ChangelogBlock::Unit {
+                    name,
+                    units: ids
+                        .into_iter()
+                        .map(|unit_id| ChangelogUnit {
+                            icon_url: unit_icon_url(&unit_id),
+                            unit_id: Some(unit_id),
+                        })
+                        .collect(),
+                });
+                expand(item.children, depth + 1, output);
+            } else if contains(&item.children, depth + 1) {
+                flush(&mut pending, output);
+                let children = std::mem::take(&mut item.children);
+                output.push(ChangelogBlock::List { items: vec![item] });
+                expand(children, depth + 1, output);
+            } else {
+                pending.push(item);
+            }
+        }
+        flush(&mut pending, output);
+    }
+    let mut balance = false;
+    for block in std::mem::take(blocks) {
+        if let ChangelogBlock::Heading { level, ref text } = block {
+            if level <= 2 {
+                balance = text.to_lowercase().contains("balance");
+            }
+        }
+        match block {
+            ChangelogBlock::List { items } if balance && contains(&items, 0) => {
+                expand(items, 0, blocks)
+            }
+            other => blocks.push(other),
+        }
     }
 }
 
@@ -2244,6 +2328,149 @@ mod tests {
         };
         assert_eq!(name, "Naval factories");
         assert!(units.is_empty());
+    }
+
+    #[test]
+    fn nested_balance_captions_restore_3810_and_3813_units_without_changing_stats_or_links() {
+        fn facts(blocks: &[ChangelogBlock]) -> (Vec<ChangelogChange>, Vec<String>) {
+            fn items(
+                list: &[ChangelogListItem],
+                changes: &mut Vec<ChangelogChange>,
+                links: &mut Vec<String>,
+            ) {
+                for item in list {
+                    if let Some(change) = &item.change {
+                        changes.push(change.clone());
+                    }
+                    for span in &item.spans {
+                        if let ChangelogSpan::Link { url, .. } | ChangelogSpan::Issue { url, .. } =
+                            span
+                        {
+                            links.push(url.clone());
+                        }
+                    }
+                    items(&item.children, changes, links);
+                }
+            }
+            let (mut changes, mut links) = (Vec::new(), Vec::new());
+            for block in blocks {
+                if let ChangelogBlock::List { items: list } = block {
+                    items(list, &mut changes, &mut links);
+                }
+            }
+            (changes, links)
+        }
+        for (id, markdown, expected) in [
+            (
+                "3810",
+                include_str!("fixtures/changelog-3810.md"),
+                vec![
+                    "XSS0304", "DELK002", "DALK003", "XSL0303", "UAL0104", "XSA0203", "DRL0204",
+                    "XSS0201", "URS0201", "XES0102", "UAS0401", "UES0401", "XRA0305",
+                ],
+            ),
+            (
+                "3813",
+                include_str!("fixtures/changelog-3813.md"),
+                vec!["URA0401", "SRL0310", "UAS0202", "XRL0302", "URL0001"],
+            ),
+        ] {
+            let original = parse_blocks(split_front_matter(markdown).1);
+            let entry = parse_entry(id, markdown);
+            assert_eq!(
+                facts(&original),
+                facts(&entry.blocks),
+                "{id}: stat and reference order must survive"
+            );
+            let units: Vec<_> = entry
+                .blocks
+                .iter()
+                .filter_map(|block| match block {
+                    ChangelogBlock::Unit { units, .. } => Some(units),
+                    _ => None,
+                })
+                .flatten()
+                .collect();
+            assert_eq!(
+                units
+                    .iter()
+                    .filter_map(|unit| unit.unit_id.as_deref())
+                    .collect::<Vec<_>>(),
+                expected
+            );
+            assert!(units
+                .iter()
+                .all(|unit| unit.icon_url == unit_icon_url(unit.unit_id.as_deref().unwrap())));
+            for (at, block) in entry.blocks.iter().enumerate() {
+                if let ChangelogBlock::Unit { .. } = block {
+                    assert!(
+                        matches!(entry.blocks.get(at + 1), Some(ChangelogBlock::List { items }) if !items.is_empty()),
+                        "{id}: unit stats must follow their caption"
+                    );
+                }
+            }
+        }
+        let entry = parse_entry("3813", include_str!("fixtures/changelog-3813.md"));
+        let soul_ripper = entry
+            .blocks
+            .iter()
+            .position(|block| {
+                matches!(block,
+            ChangelogBlock::Unit { name, .. } if name == "Soul Ripper: Experimental Gunship")
+            })
+            .unwrap();
+        let ChangelogBlock::List { items } = &entry.blocks[soul_ripper + 1] else {
+            panic!("missing weapons");
+        };
+        assert_eq!(items.len(), 1);
+        assert_eq!(
+            items[0].children.len(),
+            3,
+            "weapon stat nesting must survive"
+        );
+    }
+
+    #[test]
+    fn nested_unit_captions_leave_code_nonbalance_sections_and_ambiguous_prose_unchanged() {
+        for markdown in [
+            "## Bug fixes\n- Soul Ripper (URA0401):\n  - Health: 1 -> 2\n",
+            "## Balance\n- `Soul Ripper (URA0401):`\n  - Health: 1 -> 2\n",
+            "## Balance\n- Soul Ripper (not-an-id):\n  - Health: 1 -> 2\n",
+            "## Balance\n- Soul Ripper (URA0401):\n",
+            "## Balance\n```\n- Soul Ripper (URA0401):\n  - Health: 1 -> 2\n```\n",
+        ] {
+            assert_eq!(
+                parse_entry("x", markdown).blocks,
+                parse_blocks(markdown),
+                "{markdown}"
+            );
+        }
+        let mut item = ChangelogListItem {
+            spans: vec![ChangelogSpan::Text("Soul Ripper (URA0401)".into())],
+            change: None,
+            children: vec![ChangelogListItem {
+                spans: vec![ChangelogSpan::Text("Health: 1 -> 2".into())],
+                change: parse_change("Health: 1 -> 2"),
+                children: Vec::new(),
+            }],
+        };
+        for _ in 0..40 {
+            item = ChangelogListItem {
+                spans: vec![ChangelogSpan::Text("Group".into())],
+                change: None,
+                children: vec![item],
+            };
+        }
+        let mut blocks = vec![
+            ChangelogBlock::Heading {
+                level: 2,
+                text: "Balance".into(),
+            },
+            ChangelogBlock::List { items: vec![item] },
+        ];
+        let original = blocks.clone();
+        nested_balance_units(&mut blocks);
+        assert_eq!(blocks, original, "extreme nesting must remain literal");
     }
 
     #[test]

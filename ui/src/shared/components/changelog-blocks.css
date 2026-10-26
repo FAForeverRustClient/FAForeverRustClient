@@ -219,10 +219,11 @@
 
 /* Square and icon-only, in the column beside the text (see the container),
    so no line ever runs underneath it. */
-.changelog-code-copy {
+.changelog-code-copy.btn-ghost {
   display: grid;
   place-items: center;
   width: 32px;
+  min-width: 32px;
   height: 32px;
   min-height: 32px;
   margin: var(--space-2) var(--space-2) 0 0;

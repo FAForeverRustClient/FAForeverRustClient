@@ -1,6 +1,7 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
-import { assetPath, extractPage, fingerprint } from "./import-historical-changelog.mjs";
+import { readFile } from "node:fs/promises";
+import { assetPath, changeFingerprint, extractPage, fingerprint } from "./import-historical-changelog.mjs";
 
 test("historical image paths must exist in the pinned tree and stay on the source host", () => {
   const assets = new Set(["images/Hunter.png", "images/space name.png"]);
@@ -72,4 +73,34 @@ test("bold captions grouped under one illustrated heading are recorded as its me
   const { headings } = await extractPage(html, "3718", new Set(["images/sml.png", "images/t2airhq.png"]));
   assert.deepEqual(headings[0].members, [fingerprint("Experimental Nuclear Missile"), fingerprint("Nuclear Missile")]);
   assert.equal(headings[1].members, undefined, "a card without captions records none");
+});
+
+test("3696 records plain experimental captions and distinguishes renamed upgrades by their complete stats", async () => {
+  const html = await readFile(new URL("../crates/faf-domain/src/protocol/fixtures/changelog-balance-3696.html", import.meta.url), "utf8");
+  const { headings } = await extractPage(html, "3696", new Set([
+    "images/monkeylord.png", "images/fatboy.png", "images/Enhancements/sera/aoe.png", "images/Enhancements/sera/nano.png",
+  ]));
+  assert.deepEqual(headings.filter(heading => heading.unillustrated).map(heading => heading.name), [
+    "Monkeylord", "Megalith", "Soul Ripper", "Scathis", "Fatboy", "Atlantis", "Novax Center", "GC", "Czar", "Tempest", "Ythotha", "Ahwassa",
+  ]);
+  const amplifier = headings.find(heading => heading.name === "Damage Upgrade");
+  assert.equal(amplifier.changes, changeFingerprint([
+    ["AdditionalDamage", "750", "620"], ["BuildCostMass", "4800", "5400"], ["BuildTime", "4200", "4600"],
+  ]));
+  const repair = headings.filter(heading => heading.name === "Nano Repair");
+  assert.equal(repair.length, 2);
+  assert.notEqual(repair[0].changes, repair[1].changes);
+  assert.equal(headings.find(heading => heading.name === "Cybran:").changes, undefined);
+  assert.equal(headings.find(heading => heading.name === "Megalith").changes,
+    changeFingerprint([["Build Time", "18750", "60625"]]));
+});
+
+test("stat fingerprints preserve signs, field boundaries and ordering while ignoring whitespace", () => {
+  assert.equal(changeFingerprint([["Build Time", "18 750", "60 625"]]), changeFingerprint([["BuildTime", "18750", "60625"]]));
+  assert.notEqual(changeFingerprint([["Regen", "-1", "2"]]), changeFingerprint([["Regen", "1", "2"]]));
+  assert.notEqual(changeFingerprint([["Damage", "1", "23"]]), changeFingerprint([["Damage", "12", "3"]]));
+  assert.notEqual(changeFingerprint([["Speed", "1", "2"], ["Health", "1", "2"]]),
+    changeFingerprint([["Health", "1", "2"], ["Speed", "1", "2"]]));
+  assert.equal(changeFingerprint([]), null);
+  assert.equal(changeFingerprint(Array(129).fill(["Speed", "1", "2"])), null);
 });
