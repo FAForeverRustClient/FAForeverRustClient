@@ -1,14 +1,19 @@
 //! Changelog orchestration: refresh the index on every visit, load a note on
 //! demand, and never serve a rolling branch note out of the cache.
 
-use faf_domain::protocol::changelog::ChangelogRelease;
-use faf_domain::state::{ChangelogCommand, ChangelogEvent, ChangelogStatus};
+use faf_domain::protocol::changelog::{ChangelogBlock, ChangelogEntry, ChangelogRelease};
+use faf_domain::state::{ChangelogCommand, ChangelogEntryStatus, ChangelogEvent, ChangelogStatus};
 
-use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+use crate::runtime::{CancellationSlot, EventSink, LatestRequest, ServiceCtx};
+
+mod search;
 
 /// The changelog's request generation. Owned by this service.
 #[derive(Default)]
 pub struct ChangelogContext {
+    search_generation: LatestRequest,
+    search_cancel: CancellationSlot,
+    search_cache: std::sync::Mutex<search::SearchCache>,
     /// Only the newest note may land. Clicking two releases in a row must not
     /// leave the first one's text on screen because it answered second, and a
     /// cached selection must not be overwritten by a slower earlier fetch.
@@ -19,17 +24,19 @@ pub async fn handle(cmd: ChangelogCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         ChangelogCommand::Load => load(ctx, out).await,
         ChangelogCommand::Select { id } => select(id, ctx, out).await,
+        ChangelogCommand::Search { query } => search::run(query, ctx, out).await,
     }
 }
 
 async fn load(ctx: &ServiceCtx, out: &EventSink) {
     crate::runtime::expect_admitted(crate::runtime::Key::Changelog);
+    let selection_generation = ctx.changelog.entry_generation.current();
     // One load at a time, including the status read below: that read is a
     // check-then-act, and commands are dispatched concurrently, so without the
     // command policy's single flight (`Key::Changelog`) two visits in quick
     // succession both see "not ready" and both fetch the index. A dropped
     // `Load` loses nothing, because the run already in flight ends by
-    // selecting the newest patch itself.
+    // restoring the open patch, or selecting the newest on the first visit.
 
     // The index is re-read on every visit rather than once per session. It was
     // held for the session on the grounds that it does not change, which is
@@ -47,11 +54,29 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
 
     match ctx.ports.changelog.list_releases().await {
         Ok(releases) => {
-            // Open on the newest dated patch, not one of the rolling branch
-            // entries that are displayed above the release history.
-            let newest = newest_patch_id(&releases);
+            let (selected, pending) = out.with_state(|state| {
+                let pending = matches!(&state.changelog.entry_status,
+                    ChangelogEntryStatus::Loading { id } if releases.iter().any(|release| &release.id == id));
+                (state.changelog.selected.clone(), pending)
+            });
+            // Refreshing the index must not move the reader to a different
+            // note. Only a first visit or a removed release falls back to the
+            // newest dated patch. A selection made during this fetch wins.
+            let chosen = releases
+                .iter()
+                .find(|release| release.id == selected)
+                .map(|release| release.id.clone())
+                .or_else(|| newest_patch_id(&releases));
             out.emit(ChangelogEvent::Loaded { releases });
-            if let Some(id) = newest {
+            if pending
+                || !ctx
+                    .changelog
+                    .entry_generation
+                    .is_current(selection_generation)
+            {
+                return;
+            }
+            if let Some(id) = chosen {
                 select(id, ctx, out).await;
             }
         }
@@ -97,14 +122,35 @@ async fn select(id: String, ctx: &ServiceCtx, out: &EventSink) {
         return;
     };
 
+    let cached = cached.or_else(|| {
+        ctx.changelog
+            .search_cache
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(&release.source_url)
+            .map(|indexed| indexed.entry.clone())
+    });
+
     // Already read this session: swap the selection without a round trip. Only
     // for a dated post, which is finished the day it is published, so a second
     // read could only return what is already here. A rolling branch page is
     // rewritten every time something is deployed to it, and serving that from
     // a cache pins the reader to whatever it said the first time they opened
     // the tab, which is how "there are new changes in fafbeta and they are not
-    // shown" survives even once the note is fetched correctly.
-    if let Some(entry) = cached.filter(|_| !release.is_rolling()) {
+    // shown" survives even once the note is fetched correctly. A dated post
+    // with an unavailable original balance section must also be retried.
+    if let Some(entry) = cached.filter(|entry| {
+        !release.is_rolling()
+            && !entry.blocks.iter().any(|block| {
+                matches!(
+                    block,
+                    ChangelogBlock::HistoricalBalance {
+                        unavailable: true,
+                        ..
+                    }
+                )
+            })
+    }) {
         out.emit(ChangelogEvent::EntryLoaded { entry });
         return;
     }
@@ -120,4 +166,16 @@ async fn select(id: String, ctx: &ServiceCtx, out: &EventSink) {
         Ok(entry) => out.emit(ChangelogEvent::EntryLoaded { entry }),
         Err(reason) => out.emit(ChangelogEvent::EntryLoadFailed { reason }),
     }
+}
+
+fn complete_entry(entry: &ChangelogEntry) -> bool {
+    !entry.blocks.iter().any(|block| {
+        matches!(
+            block,
+            ChangelogBlock::HistoricalBalance {
+                unavailable: true,
+                ..
+            }
+        )
+    })
 }

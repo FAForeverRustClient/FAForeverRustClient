@@ -7,16 +7,18 @@
 // beside the note when the surface is wide enough to have room for one, and as
 // a row of jump links above it when it is not (see `changelog.css`).
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject, type UIEvent } from "react";
 import type { ChangelogBlock } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
+import { ChangelogBlockView } from "../../shared/components/ChangelogBlocks";
+import { changelogViewMemory, type ChangelogReader } from "./viewMemory";
 
 /** A section of the open note, as the contents list and the jump row name it. */
 export interface Section {
   id: string;
   text: string;
-  /** 1 for a section heading, 2 for what sits inside one (a unit, a sub-heading). */
-  depth: 1 | 2;
+  /** Section, tier, unit group and unit. Deeper source levels share the last indent. */
+  depth: 1 | 2 | 3 | 4;
   /**
    * The icon a unit's section opens with, for its entry in the contents. A
    * header naming a whole family gives its first unit's: the family's icons
@@ -27,21 +29,59 @@ export interface Section {
 
 export const anchorFor = (index: number) => `changelog-block-${index}`;
 
+/** A heading that only names a faction, as 3775 labels each faction's units. */
+const FACTION_LABEL = /^(aeon|uef|cybran|seraphim|sera|nomads?)$/i;
+
+const compact = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+const contentsDepth = (depth: number) => Math.max(1, Math.min(4, depth)) as Section["depth"];
+
 /**
- * The sections of a note: its `h2` and `h3` headings and its units, in order.
+ * The sections of a note: its section, tier and group headings and its units.
  * `skipFirst` leaves out the first block when it has become the page title.
+ *
+ * Inside an original balance section, which renders a level lower, the cutoff
+ * follows the source hierarchy: there it groups units, 3761's
+ * "Frigates" or "Cruisers", and many of those units are named only by
+ * faction, so without the group the contents read "Aeon, Cybran, Aeon". Left
+ * out are a faction label (3775), a source date, and a label naming one unit
+ * of the header it sits under, such as "Stinger" under "Stinger & Vulthoo".
  */
-export function noteSections(blocks: ChangelogBlock[], skipFirst: boolean): Section[] {
-  return blocks.flatMap((block, index): Section[] => {
-    if (skipFirst && index === 0) return [];
-    if (block.type === "heading" && block.payload.level <= 3) {
-      return [{ id: anchorFor(index), text: block.payload.text, depth: block.payload.level <= 2 ? 1 : 2 }];
+export function noteSections(
+  blocks: ChangelogBlock[], skipFirst: boolean, historicalLabel: string, headingOffset = 0,
+): Section[] {
+  const sections: Section[] = [];
+  let unitName = "";
+  let groupDepth = headingOffset;
+  blocks.forEach((block, index) => {
+    if (skipFirst && index === 0) return;
+    if (block.type === "historicalBalance") {
+      const id = anchorFor(index);
+      sections.push({ id, text: historicalLabel, depth: contentsDepth(headingOffset + 1) }, ...noteSections(block.payload.blocks, false, historicalLabel, headingOffset + 1)
+        .map(section => ({ ...section, id: `${id}-${section.id.slice("changelog-block-".length)}` })));
+      return;
+    }
+    if (block.type === "heading") {
+      const { level: sourceLevel, text } = block.payload;
+      if (sourceLevel <= 2) unitName = "";
+      const nested = headingOffset > 0;
+      const label = nested && (
+        /^\s*date\s*:/i.test(text)
+        || FACTION_LABEL.test(text.trim())
+        || (unitName !== "" && compact(text) !== "" && unitName.includes(compact(text)))
+      );
+      if (sourceLevel <= 4 && !label) {
+        unitName = "";
+        groupDepth = Math.max(1, sourceLevel + headingOffset - 1);
+        sections.push({ id: anchorFor(index), text, depth: contentsDepth(groupDepth) });
+      }
+      return;
     }
     if (block.type === "unit") {
-      return [{ id: anchorFor(index), text: block.payload.name, depth: 2, iconUrl: block.payload.units[0]?.iconUrl }];
+      unitName = compact(block.payload.name);
+      sections.push({ id: anchorFor(index), text: block.payload.name, depth: contentsDepth(Math.max(2, groupDepth + 1)), iconUrl: block.payload.units[0]?.iconUrl });
     }
-    return [];
   });
+  return sections;
 }
 
 /**
@@ -60,14 +100,33 @@ export function keepCurrentRowInView(list: HTMLElement | null) {
   else if (rect.bottom > bounds.bottom) list.scrollTop += rect.bottom - bounds.bottom;
 }
 
+/** Keep the release list where it was when either reader was left. */
+export function useNoteListPosition(listRef: RefObject<HTMLElement>, reader: ChangelogReader, ready: boolean) {
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list || !ready) return;
+    const memory = changelogViewMemory[reader];
+    list.scrollTo({ top: memory.listTop, behavior: "instant" });
+    return () => {
+      if (list.isConnected) memory.listTop = list.scrollTop;
+    };
+  }, [listRef, reader, ready]);
+  return useCallback((event: UIEvent<HTMLElement>) => {
+    changelogViewMemory[reader].listTop = event.currentTarget.scrollTop;
+  }, [reader]);
+}
+
 /**
  * The note's scroll and the contents that follow it.
  *
  * `selection` names the note on screen: a new one opens at its top and at its
  * first section.
  */
-export function useNoteContents(sections: Section[], selection: string) {
-  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+export function useNoteContents(sections: Section[], selection: string, reader: ChangelogReader, ready = true) {
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(() => {
+    const position = changelogViewMemory[reader].position;
+    return position?.selection === selection ? position.section : null;
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
   const tocRef = useRef<HTMLElement>(null);
   const isClickScrolling = useRef(false);
@@ -79,14 +138,27 @@ export function useNoteContents(sections: Section[], selection: string) {
     };
   }, []);
 
-  // A new note opens at its top at once, not after a long smooth scroll.
-  // Keyed on the selection alone: keyed on the section list too, any store
-  // update that rebuilt the list threw the reader back to the top, and cut
-  // short a jump that was still gliding.
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
-    setActiveSectionId(null);
-  }, [selection]);
+  // Returning to the same reader restores its last note before paint. A
+  // different note starts at the top. Refreshes of that note's blocks do not
+  // reset it. Retry once after layout so asynchronously loaded content fits.
+  useLayoutEffect(() => {
+    const container = scrollRef.current;
+    if (!container || !selection || !ready) return;
+    const memory = changelogViewMemory[reader];
+    const previous = memory.position;
+    const position = previous?.selection === selection ? previous
+      : { selection, top: 0, section: null };
+    memory.position = position;
+    container.scrollTo({ top: position.top, behavior: "instant" });
+    setActiveSectionId(position.section);
+    const frame = requestAnimationFrame(() => {
+      container.scrollTo({ top: position.top, behavior: "instant" });
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      if (container.isConnected && memory.position === position) position.top = container.scrollTop;
+    };
+  }, [reader, selection, ready]);
 
   // The first section is the current one until the reader moves, and a
   // rebuilt list keeps the current one if it still has it.
@@ -111,12 +183,18 @@ export function useNoteContents(sections: Section[], selection: string) {
     else if (rect.top < bounds.top) nav.scrollTop -= bounds.top - rect.top + 8;
   }, [activeSectionId]);
 
-  const onNoteScroll = () => {
-    if (isClickScrolling.current) return;
+  // Both kept stable for the memoized contents column: a new function on
+  // every render redrew its whole list each time the reader scrolled.
+  const onNoteScroll = useCallback(() => {
     const container = scrollRef.current;
-    if (!container || sections.length === 0) return;
+    if (!container) return;
+    const memory = changelogViewMemory[reader];
+    if (memory.position?.selection === selection) memory.position.top = container.scrollTop;
+    if (isClickScrolling.current || sections.length === 0) return;
     if (container.scrollHeight - container.scrollTop - container.clientHeight <= 24) {
-      setActiveSectionId(sections[sections.length - 1].id);
+      const last = sections[sections.length - 1].id;
+      if (memory.position?.selection === selection) memory.position.section = last;
+      setActiveSectionId(last);
       return;
     }
     const containerTop = container.getBoundingClientRect().top;
@@ -127,10 +205,13 @@ export function useNoteContents(sections: Section[], selection: string) {
       if (element.getBoundingClientRect().top - containerTop <= 72) currentId = section.id;
       else break;
     }
+    if (memory.position?.selection === selection) memory.position.section = currentId;
     setActiveSectionId(currentId);
-  };
+  }, [sections, reader, selection]);
 
-  const jumpTo = (id: string) => {
+  const jumpTo = useCallback((id: string) => {
+    const position = changelogViewMemory[reader].position;
+    if (position?.selection === selection) position.section = id;
     setActiveSectionId(id);
     isClickScrolling.current = true;
     if (clickScrollTimeout.current) clearTimeout(clickScrollTimeout.current);
@@ -144,10 +225,31 @@ export function useNoteContents(sections: Section[], selection: string) {
     // Smooth or instant per the stylesheet's `scroll-behavior`, which
     // honours a request for reduced motion.
     container.scrollTo({ top: Math.max(0, container.scrollTop + offset - 16) });
-  };
+  }, [reader, selection]);
 
   return { scrollRef, tocRef, activeSectionId, onNoteScroll, jumpTo };
 }
+
+/**
+ * The note itself, drawn again only when the note changes. The view around it
+ * redraws on every keystroke in the release filter and every time the current
+ * section changes while scrolling, and a long note redrawn with it (3761's
+ * original balance notes are close to 300 blocks) made both lag.
+ */
+export const NoteBlocks = memo(function NoteBlocks({ blocks, skipFirst = false }: {
+  blocks: ChangelogBlock[];
+  skipFirst?: boolean;
+}) {
+  return (
+    <>
+      {blocks.map((block, index) =>
+        skipFirst && index === 0 ? null : (
+          <ChangelogBlockView key={index} block={block} anchorId={anchorFor(index)} />
+        ),
+      )}
+    </>
+  );
+});
 
 /**
  * The sections as a row of jump links, for a surface too narrow for the
@@ -174,8 +276,11 @@ export function NoteJumpRow({ sections, onJump }: { sections: Section[]; onJump:
   );
 }
 
-/** The contents column beside the note, when the surface has room for it. */
-export function NoteContentsColumn({
+/**
+ * The contents column beside the note, when the surface has room for it.
+ * Memoized like the note: a long patch lists over a hundred entries here.
+ */
+export const NoteContentsColumn = memo(function NoteContentsColumn({
   sections,
   activeSectionId,
   navRef,
@@ -187,43 +292,45 @@ export function NoteContentsColumn({
   onJump: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const tree = useMemo(() => {
+    type Branch = { section: Section; children: Branch[] };
+    const roots: Branch[] = [];
+    const parents: Branch[] = [];
+    for (const section of sections) {
+      while (parents.length && parents[parents.length - 1].section.depth >= section.depth) parents.pop();
+      const branch: Branch = { section, children: [] };
+      (parents[parents.length - 1]?.children ?? roots).push(branch);
+      parents.push(branch);
+    }
+    return roots;
+  }, [sections]);
   if (sections.length === 0) return null;
+  const item = ({ section, children }: (typeof tree)[number]): ReactNode => (
+    <li key={section.id}>
+      <button
+        type="button"
+        className={`changelog-toc-item depth-${section.depth}${section.iconUrl ? " has-icon" : ""}${children.length ? " is-group" : ""}${
+          activeSectionId === section.id ? " is-active" : ""
+        }`}
+        aria-current={activeSectionId === section.id ? "location" : undefined}
+        title={section.depth > 1 ? section.text : undefined}
+        onClick={() => onJump(section.id)}
+      >
+        {section.iconUrl ? <>
+          <img className="changelog-toc-icon" src={section.iconUrl} alt="" loading="lazy" draggable={false}
+            onError={(event) => event.currentTarget.classList.add("is-missing")} />
+          <span className="changelog-toc-text">{section.text}</span>
+        </> : section.text}
+      </button>
+      {children.length > 0 && <ul className="changelog-toc-children">{children.map(item)}</ul>}
+    </li>
+  );
   return (
     <nav className="changelog-toc" ref={navRef} aria-label={t("changelog.contents")}>
       <p className="changelog-toc-title">{t("changelog.contents")}</p>
       <ul className="changelog-toc-list">
-        {sections.map((section) => (
-          <li key={section.id}>
-            <button
-              type="button"
-              className={`changelog-toc-item depth-${section.depth}${section.iconUrl ? " has-icon" : ""}${
-                activeSectionId === section.id ? " is-active" : ""
-              }`}
-              aria-current={activeSectionId === section.id ? "location" : undefined}
-              title={section.depth === 2 ? section.text : undefined}
-              onClick={() => onJump(section.id)}
-            >
-              {section.iconUrl ? (
-                <>
-                  <img
-                    className="changelog-toc-icon"
-                    src={section.iconUrl}
-                    alt=""
-                    loading="lazy"
-                    draggable={false}
-                    /* A unit the site has no icon for keeps its slot, so its
-                       name still lines up with the units around it. */
-                    onError={(event) => event.currentTarget.classList.add("is-missing")}
-                  />
-                  <span className="changelog-toc-text">{section.text}</span>
-                </>
-              ) : (
-                section.text
-              )}
-            </button>
-          </li>
-        ))}
+        {tree.map(item)}
       </ul>
     </nav>
   );
-}
+});

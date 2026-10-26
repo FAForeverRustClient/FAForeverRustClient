@@ -18,21 +18,22 @@ import type { ChangelogBlock, ChangelogListItem, ChangelogSpan, ClientReleaseNot
 import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { useTranslation } from "../../i18n/useTranslation";
-import { ChangelogBlockView } from "../../shared/components/ChangelogBlocks";
 import { useRememberedFilter } from "../../shared/filterMemory";
 import { formatDate } from "../../shared/format/dates";
 import { plainError } from "../../shared/plainError";
 import { useAppStore } from "../../store/store";
 import {
-  anchorFor,
   keepCurrentRowInView,
+  NoteBlocks,
   NoteContentsColumn,
   NoteJumpRow,
   noteSections,
   useNoteContents,
+  useNoteListPosition,
   type Section,
 } from "./noteReader";
 import "./changelog.css";
+import { changelogViewMemory } from "./viewMemory";
 
 const loadNotes = () => ipc.send({ kind: "ClientUpdate", command: { type: "loadNotes" } });
 
@@ -70,11 +71,14 @@ function noteText(blocks: ChangelogBlock[]): string {
     .flatMap((block) => {
       switch (block.type) {
         case "heading":
+        case "codeBlock":
           return [block.payload.text];
         case "unit":
           return [block.payload.name];
         case "list":
           return items(block.payload.items);
+        case "historicalBalance":
+          return [noteText(block.payload.blocks)];
         default:
           return [block.payload.spans.map(spanText).join("")];
       }
@@ -132,6 +136,8 @@ export function ClientReleasesView() {
   // Remembered as the filter setting says (#447), apart from the game list's.
   const [search, setSearch] = useRememberedFilter("changelog.clientSearch", "", (value) => typeof value === "string");
   const listRef = useRef<HTMLElement>(null);
+  const listedSelection = useRef(changelogViewMemory.client.position?.selection);
+  const onListScroll = useNoteListPosition(listRef, "client", status.type === "ready");
 
   // Cheap after the startup check, which has read the list already.
   useEffect(() => {
@@ -162,11 +168,15 @@ export function ClientReleasesView() {
   const selection = selected?.version ?? "";
 
   const blocks = useMemo(() => asSections(selected?.blocks ?? []), [selected]);
-  const sections = useMemo<Section[]>(() => noteSections(blocks, false), [blocks]);
-  const { scrollRef, tocRef, activeSectionId, onNoteScroll, jumpTo } = useNoteContents(sections, selection);
+  const sections = useMemo<Section[]>(
+    () => noteSections(blocks, false, t("changelog.historicalBalance")),
+    [blocks, t],
+  );
+  const { scrollRef, tocRef, activeSectionId, onNoteScroll, jumpTo } = useNoteContents(sections, selection, "client", Boolean(selected));
 
   useEffect(() => {
-    keepCurrentRowInView(listRef.current);
+    if (listedSelection.current !== selection) keepCurrentRowInView(listRef.current);
+    listedSelection.current = selection;
   }, [selection]);
 
   // Up and down walk the list and open what they land on, as in the game
@@ -228,6 +238,7 @@ export function ClientReleasesView() {
 
         <nav
           ref={listRef}
+          onScroll={onListScroll}
           className="changelog-releases"
           aria-label={t("changelog.client.releases")}
           onKeyDown={onListKeyDown}
@@ -338,9 +349,7 @@ export function ClientReleasesView() {
                 </StatusNotice>
               )}
 
-              {blocks.map((block, index) => (
-                <ChangelogBlockView key={index} block={block} anchorId={anchorFor(index)} />
-              ))}
+              <NoteBlocks blocks={blocks} />
             </div>
 
             <NoteContentsColumn

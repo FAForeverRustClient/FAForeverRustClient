@@ -18,7 +18,19 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use crate::protocol::changelog::{ChangelogEntry, ChangelogRelease};
+use crate::protocol::changelog::{ChangelogEntry, ChangelogRelease, ChangelogSearchMatch};
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangelogSearchState {
+    pub request_id: u32,
+    pub query: String,
+    pub status: ChangelogStatus,
+    pub scanned: u32,
+    pub total: u32,
+    pub failed: u32,
+    pub matches: Vec<ChangelogSearchMatch>,
+}
 
 /// Status of the index fetch. Mirrors the other list statuses in this crate.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -53,6 +65,8 @@ pub enum ChangelogEntryStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangelogState {
+    #[serde(default)]
+    pub search: ChangelogSearchState,
     pub releases: Vec<ChangelogRelease>,
     pub status: ChangelogStatus,
     /// Release id currently shown, empty before the first selection.
@@ -79,6 +93,9 @@ impl ChangelogState {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum ChangelogEvent {
+    SearchUpdated {
+        search: ChangelogSearchState,
+    },
     Loading,
     Loaded {
         releases: Vec<ChangelogRelease>,
@@ -101,6 +118,8 @@ pub enum ChangelogEvent {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum ChangelogCommand {
+    /// Search public patch text locally. An empty query cancels the current run.
+    Search { query: String },
     /// Fetch the release index. Sent on every visit to the tab, and answered
     /// with a fresh read: a release published while the client was open has to
     /// be able to appear.
@@ -112,6 +131,11 @@ pub enum ChangelogCommand {
 
 pub fn reduce(state: &mut ChangelogState, event: &ChangelogEvent) {
     match event {
+        ChangelogEvent::SearchUpdated { search } => {
+            if search.request_id >= state.search.request_id {
+                state.search = search.clone();
+            }
+        }
         ChangelogEvent::Loading => state.status = ChangelogStatus::Loading,
         ChangelogEvent::Loaded { releases } => {
             state.releases = releases.clone();
@@ -145,6 +169,39 @@ pub fn reduce(state: &mut ChangelogState, event: &ChangelogEvent) {
 mod tests {
     use super::*;
     use crate::protocol::changelog::ChangelogBlock;
+
+    #[test]
+    fn older_archive_search_events_do_not_replace_the_current_query_or_selection() {
+        let mut state = ChangelogState {
+            selected: "3822".into(),
+            ..Default::default()
+        };
+        reduce(
+            &mut state,
+            &ChangelogEvent::SearchUpdated {
+                search: ChangelogSearchState {
+                    request_id: 2,
+                    query: "Cooper".into(),
+                    status: ChangelogStatus::Loading,
+                    ..Default::default()
+                },
+            },
+        );
+        reduce(
+            &mut state,
+            &ChangelogEvent::SearchUpdated {
+                search: ChangelogSearchState {
+                    request_id: 1,
+                    query: "older query".into(),
+                    status: ChangelogStatus::Ready,
+                    ..Default::default()
+                },
+            },
+        );
+        assert_eq!(state.search.query, "Cooper");
+        assert_eq!(state.search.status, ChangelogStatus::Loading);
+        assert_eq!(state.selected, "3822");
+    }
 
     fn release(id: &str) -> ChangelogRelease {
         ChangelogRelease {
