@@ -9,3 +9,4 @@
 - The contents list in older patch notes now groups units under their tier and category.
 - Patch notes now use a slightly wider text column.
 - Changelog copy-confirmation icons now use readable colors in all themes.
+- Replays and cached catalogues now use a patched compression library.
