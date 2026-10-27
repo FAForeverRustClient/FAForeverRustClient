@@ -767,6 +767,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.toolbar.hideUnranked": "Ungewertete ausblenden",
   "lobby.toolbar.hideFoes": "Feinde ausblenden",
   "lobby.toolbar.applyFilters": "Filter anwenden",
+  "lobby.toolbar.quickFilters": "Schnellfilter",
   "lobby.toolbar.applyFiltersHint": "Blendet jedes Spiel aus, auf das eine Filterregel passt.",
   "lobby.toolbar.filters": "Filter",
   "lobby.toolbar.hostGame": "Partie hosten",

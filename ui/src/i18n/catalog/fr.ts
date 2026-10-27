@@ -2001,6 +2001,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.toolbar.hideUnranked": "Masquer les non classées",
   "lobby.toolbar.hideFoes": "Masquer les ennemis",
   "lobby.toolbar.applyFilters": "Appliquer les filtres",
+  "lobby.toolbar.quickFilters": "Filtres rapides",
   "lobby.toolbar.hostGame": "Héberger une partie",
 
   "lobby.filters.title": "Gérer les filtres de parties",

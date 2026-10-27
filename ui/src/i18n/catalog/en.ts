@@ -877,6 +877,7 @@ export const en = {
   "lobby.toolbar.hideUnranked": "Hide unranked",
   "lobby.toolbar.hideFoes": "Hide foes",
   "lobby.toolbar.applyFilters": "Apply filters",
+  "lobby.toolbar.quickFilters": "Quick filters",
   "lobby.toolbar.applyFiltersHint": "Hide every game matching a filter rule.",
   "lobby.toolbar.filters": "Filters",
   "lobby.toolbar.hostGame": "Host game",

@@ -2243,6 +2243,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.toolbar.hideUnranked": "Скрыть нерейтинговые",
   "lobby.toolbar.hideFoes": "Скрыть противников",
   "lobby.toolbar.applyFilters": "Применить фильтры",
+  "lobby.toolbar.quickFilters": "Быстрые фильтры",
   "lobby.toolbar.filters": "Фильтры",
   "lobby.toolbar.hostGame": "Создать игру",
 

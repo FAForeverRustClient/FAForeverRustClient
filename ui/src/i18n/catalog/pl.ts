@@ -2004,6 +2004,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.toolbar.hideUnranked": "Ukryj bez rankingu",
   "lobby.toolbar.hideFoes": "Ukryj wrogów",
   "lobby.toolbar.applyFilters": "Zastosuj filtry",
+  "lobby.toolbar.quickFilters": "Szybkie filtry",
   "lobby.toolbar.hostGame": "Utwórz grę",
   "lobby.filters.title": "Zarządzaj filtrami gier",
   "lobby.filters.subtitle": "Gry pasujące do dowolnej reguły są usuwane z listy gier własnych.",
