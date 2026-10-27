@@ -27,6 +27,31 @@ export function collapsedHandleForDrag(delta: number): "low" | "high" | null {
   return delta < 0 ? "low" : "high";
 }
 
+/**
+ * How far from a handle, in pixels along the track, a press still takes hold
+ * of it. The drawn handle is 14 px across, which is a small thing to hit with
+ * a mouse (issue 624); this is the hitbox, the drawing stays the size it is.
+ */
+export const GRAB_RADIUS_PX = 14;
+
+/**
+ * Which handle a press at `offsetX` (pixels from the track's left edge) takes
+ * hold of: the nearer one within `GRAB_RADIUS_PX`, or none. A press away from
+ * both handles does nothing, rather than jumping the nearer handle to where
+ * the press was: with two handles that read as moving one at random.
+ */
+export function handleWithinReach(
+  offsetX: number,
+  width: number,
+  lowPct: number,
+  highPct: number,
+): "low" | "high" | null {
+  const toLow = Math.abs(offsetX - (lowPct / 100) * width);
+  const toHigh = Math.abs(offsetX - (highPct / 100) * width);
+  if (Math.min(toLow, toHigh) > GRAB_RADIUS_PX) return null;
+  return toLow <= toHigh ? "low" : "high";
+}
+
 export function RangeSlider({
   label,
   min,
@@ -83,31 +108,32 @@ export function RangeSlider({
   const lowZIndex = activeHandle === "low" ? 3 : lowValue >= highValue ? 2 : 1;
   const highZIndex = activeHandle === "high" ? 3 : 1;
 
-  // Handle clicking directly on the track to move the nearest thumb
+  // A press on the track takes hold of a handle near it and nothing else: the
+  // value changes only as the pointer then moves. Pressing the track used to
+  // jump the nearer handle to the press, which on a two-handled slider read as
+  // moving one of them at random (issue 624).
   const handleTrackPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.target instanceof HTMLInputElement) {
-      if (lowValue !== highValue) return;
-      e.preventDefault();
-      // Native range dragging grabs whichever overlapping input is on top,
-      // so wait for a deliberate movement before selecting a boundary.
-      collapsedDrag.current = { pointerId: e.pointerId, startX: e.clientX, handle: null };
-      e.currentTarget.setPointerCapture(e.pointerId);
-      return;
+    // On a thumb itself the native drag does the work, unless both thumbs
+    // share one value (below).
+    const onThumb = e.target instanceof HTMLInputElement;
+    if (onThumb && lowValue !== highValue) return;
+    let reached: "low" | "high" | null = "low";
+    if (!onThumb) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      reached = handleWithinReach(e.clientX - rect.left, rect.width, pct(lowValue), pct(highValue));
     }
-    const rect = e.currentTarget.getBoundingClientRect();
-    if (rect.width <= 0) return;
-    const clickPct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const clickVal = min + clickPct * (max - min);
-
-    const distToLow = Math.abs(clickVal - lowValue);
-    const distToHigh = Math.abs(clickVal - highValue);
-
-    if (distToLow <= distToHigh) {
-      setActiveHandle("low");
-      setLow(clickVal);
-    } else {
-      setActiveHandle("high");
-      setHigh(clickVal);
+    if (reached === null) return;
+    e.preventDefault();
+    // Both handles on one value: native range dragging grabs whichever input
+    // is on top, so wait for a deliberate movement before choosing a side.
+    const handle = lowValue === highValue ? null : reached;
+    collapsedDrag.current = { pointerId: e.pointerId, startX: e.clientX, handle };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    if (handle !== null) {
+      setActiveHandle(handle);
+      if (handle === "low") lowInputRef.current?.focus();
+      else highInputRef.current?.focus();
     }
   };
 
