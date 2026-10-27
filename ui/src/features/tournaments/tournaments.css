@@ -2434,7 +2434,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: var(--space-2);
-  align-items: start;
+  align-items: stretch;
 }
 
 .tournament-map-row,
@@ -6815,12 +6815,24 @@ button.tournament-chat-author:hover {
 
 /* A map's row carries four buttons since secret maps. Below a comfortable
    width they wrap under the name rather than squeezing it to a word a line. */
+/* Each map of the database a card of its own (issue 609): in a grid of bare
+   rows nothing said where one map ended and the next began. The cards in a
+   line share its height (the list stretches them). */
 .tournament-map-row {
   flex-wrap: wrap;
+  align-content: flex-start;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
 }
 
+/* A generated map's name and seed are one unbroken word of fifty letters,
+   which ran out of the card and under the next one. Broken anywhere
+   instead, the way the website's card wraps it. */
 .tournament-map-row .tournament-map-names {
   min-width: 160px;
+  overflow-wrap: anywhere;
 }
 
 /* A multi-day event's days, as chips with a way to take one out. */
