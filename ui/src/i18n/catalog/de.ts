@@ -509,6 +509,10 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "contribution.repositories": "GitHub-Repositories",
 
   "units.frameTitle": "ETFreeman-Einheitendatenbank",
+  "units.views": "Einheitenseiten",
+  "units.tab.database": "Einheitendatenbank",
+  "units.tab.daily": "FAF Daily",
+  "units.dailyFrameTitle": "FAF Daily: errate die Einheit des Tages",
   "news.frameTitle": "FAF-Newshub",
   "embed.openExternal": "Im Browser öffnen",
   "embed.openExternalTitle": "Diese Seite im System-Browser öffnen",

@@ -596,6 +596,10 @@ export const en = {
 
   // Embedded web views.
   "units.frameTitle": "ETFreeman Unit Database",
+  "units.views": "Unit pages",
+  "units.tab.database": "Unit database",
+  "units.tab.daily": "FAF Daily",
+  "units.dailyFrameTitle": "FAF Daily: guess the unit of the day",
   "news.frameTitle": "FAF News Hub",
   "embed.openExternal": "Open in browser",
   "embed.openExternalTitle": "Open this page in your system browser",

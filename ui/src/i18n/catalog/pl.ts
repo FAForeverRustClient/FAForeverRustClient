@@ -323,6 +323,10 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "contribution.repo.githubHint": "Poznaj wszystkie otwartoźródłowe projekty FAF",
 
   "units.frameTitle": "Baza jednostek ETFreeman",
+  "units.views": "Strony jednostek",
+  "units.tab.database": "Baza jednostek",
+  "units.tab.daily": "FAF Daily",
+  "units.dailyFrameTitle": "FAF Daily: zgadnij jednostkę dnia",
   "news.frameTitle": "Aktualności FAF",
   "embed.openExternal": "Otwórz w przeglądarce",
   "embed.openExternalTitle": "Otwórz tę stronę w przeglądarce systemowej",

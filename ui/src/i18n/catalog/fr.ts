@@ -322,6 +322,10 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "contribution.repo.githubHint": "Découvrir tous les projets open source de FAF",
 
   "units.frameTitle": "Base de données d'unités ETFreeman",
+  "units.views": "Pages d'unités",
+  "units.tab.database": "Base de données d'unités",
+  "units.tab.daily": "FAF Daily",
+  "units.dailyFrameTitle": "FAF Daily : devinez l'unité du jour",
   "news.frameTitle": "Actualités FAF",
   "embed.openExternal": "Ouvrir dans le navigateur",
   "embed.openExternalTitle": "Ouvrir cette page dans le navigateur du système",
