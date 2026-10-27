@@ -29,7 +29,6 @@ import {
   resultRoundLabel,
   rewardSplit,
   roundMapNames,
-  settingRows,
   stopAtRemaining,
 } from "../overviewPresentation";
 import { RichLine } from "../RichLine";
@@ -92,7 +91,6 @@ export function OverviewPanel({
   // qualifier that never plays its final.
   const days = eventDaysLabel(event.eventDays);
   const stopLeft = stopAtRemaining(event);
-  const lobby = settingRows(event.lobbyOptions);
 
   // Anything the organiser uploaded but never placed in a body. Shown rather
   // than orphaned: on the website these are pasted screenshots, and one that
@@ -207,54 +205,32 @@ export function OverviewPanel({
           </dl>
         </Panel>
 
-        {/* The rules a game is played under, as a table: the organiser's
-            lobby options and mods, which the service keeps only as text.
-            Options written one setting per line, as organisers do, become a
-            row each; anything else is shown as the prose it is, in one row.
-            The rating limit is not a game setting but a condition of entry:
-            the hero's strip states it over every section, and the Players
-            section carries its details and the check. */}
+        {/* The rules a game is played under: the organiser's lobby options
+            and mods, side by side, each as the formatted text it was written
+            as. The website's `drawOverview` layout. The lobby options used to
+            be split at their colons into a table of settings, which broke on
+            the first name that held a colon itself ("Random Events:
+            Interval": 90 seconds) and scattered the mods into a row of
+            their own (issue 608). The rating limit is not a game setting but
+            a condition of entry: the hero's strip states it over every
+            section, and the Players section carries its details and the
+            check. */}
         {(event.lobbyOptions.trim() !== "" || event.mods.trim() !== "") && (
           <Panel title={t("tournaments.overview.gameSetup")}>
-            <dl className="tournament-rule-table">
-              {lobby !== null
-                ? [
-                    ...(lobby.before !== "" ? [{ key: "", value: lobby.before }] : []),
-                    ...lobby.rows,
-                    ...(lobby.after !== "" ? [{ key: "", value: lobby.after }] : []),
-                  ].map((row, index) =>
-                    // The organiser's own words over or under the list, across
-                    // the whole row.
-                    row.key === "" ? (
-                      <div key={`note-${index}`} className="is-note">
-                        <RichText source={row.value} assetBase={assetBase} />
-                      </div>
-                    ) : (
-                      <div key={`${index}-${row.key}`}>
-                        <dt>{row.key}</dt>
-                        <dd>
-                          <RichText source={row.value} assetBase={assetBase} />
-                        </dd>
-                      </div>
-                    ),
-                  )
-                : event.lobbyOptions.trim() !== "" && (
-                    <div>
-                      <dt>{t("tournaments.overview.lobbyOptions")}</dt>
-                      <dd>
-                        <RichText source={event.lobbyOptions} assetBase={assetBase} />
-                      </dd>
-                    </div>
-                  )}
-              {event.mods.trim() !== "" && (
-                <div>
-                  <dt>{t("tournaments.overview.mods")}</dt>
-                  <dd>
-                    <RichText source={event.mods} assetBase={assetBase} />
-                  </dd>
-                </div>
+            <div className="tournament-setup-cells">
+              {event.lobbyOptions.trim() !== "" && (
+                <section>
+                  <h4 className="tournament-cell-label">{t("tournaments.overview.lobbyOptions")}</h4>
+                  <RichText source={event.lobbyOptions} assetBase={assetBase} />
+                </section>
               )}
-            </dl>
+              {event.mods.trim() !== "" && (
+                <section>
+                  <h4 className="tournament-cell-label">{t("tournaments.overview.mods")}</h4>
+                  <RichText source={event.mods} assetBase={assetBase} />
+                </section>
+              )}
+            </div>
           </Panel>
         )}
 

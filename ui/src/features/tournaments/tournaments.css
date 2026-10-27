@@ -3798,6 +3798,25 @@
   }
 }
 
+/* The game setup's lobby options and mods, side by side as the website's
+   two info cells, one under the other where the column is narrow. */
+.tournament-setup-cells {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.tournament-setup-cells > section {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.tournament-setup-cells .tournament-cell-label {
+  margin: 0 0 var(--space-2);
+}
+
 /* The rules a game is played under: a name, then what it is, one row each
    under a hairline. The names are the organiser's own where they come from
    the lobby options, so the column is sized to them rather than fixed. */
