@@ -1,0 +1,14 @@
+- The Units tab loads the unit database again, from its new address unitdb.faforever.com.
+- The mod vault's creator box finds mods by who uploaded them, not only by the author they name, and the mod details show the author and the uploader on lines of their own.
+- Player names on replay cards no longer show a tooltip promising actions that a click does not open.
+- Quoted messages in chat grow with the chat text size.
+- The mod and map details beside the vault scroll with the mouse wheel, and their buttons can always be reached.
+- The "Game launched" notice for a matchmaker game no longer names your opponent.
+- A lobby whose host is observing shows 0 players instead of 1.
+- Range sliders move only when a handle is dragged; clicking the track no longer jumps a handle there, and the handles are easier to grab.
+- Uploading a mod or a map no longer reports a failure while FAF is still processing it; if no answer comes in time, the client says the upload may have gone through.
+- The status bar no longer shows the map and mod catalogues loading at every start.
+- A tournament's game setup shows the lobby options and the mods the way the website does.
+- The tournament map database shows each map as its own card, and long generated map names wrap.
+- In a small window the Play tab folds its quick filters behind one button, so the games get the space.
+- The taskbar button flashes when a notification arrives while the client is in the background.
