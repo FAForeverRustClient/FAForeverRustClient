@@ -133,11 +133,18 @@ export function observerTeam(team: string): boolean {
   return team === "-1" || team === "null";
 }
 
+/**
+ * The players in a lobby, observers left out: the server's `num_players`
+ * counts everybody in it, so a host sitting in the observer slot made an empty
+ * lobby read "1 / 8" (issue 619). The server's number stands in only where it
+ * sent no teams at all, not where the teams hold nobody but observers.
+ */
 export function playingCount(game: Game): number {
-  const count = Object.entries(game.teams)
+  const teams = Object.entries(game.teams);
+  if (teams.length === 0) return game.players;
+  return teams
     .filter(([team]) => !observerTeam(team))
     .reduce((total, [, players]) => total + players.length, 0);
-  return count || game.players;
 }
 
 export function formatAge(hostedAt: string | null, now: number): string {

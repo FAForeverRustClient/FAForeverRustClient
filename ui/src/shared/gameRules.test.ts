@@ -3,6 +3,7 @@ import type { Game, VaultMap, VaultMod } from "../ipc/bindings";
 import {
   isCoopGame,
   isCustomGameRanked,
+  playingCount,
   showsUnrankedTag,
   simModsKeepGameRanked,
 } from "./gameRules";
@@ -126,5 +127,19 @@ describe("whether a running game will rate anybody", () => {
     // fill it, which reads as a flicker rather than as a filter.
     const playing = game({ map: "scmp_009", teams: { "2": ["A", "B"], "3": ["C", "D"] } });
     expect(isCustomGameRanked(playing, [], [])).toBe(true);
+  });
+});
+
+describe("playingCount (#619)", () => {
+  it("counts nobody in a lobby held by an observing host", () => {
+    expect(playingCount(game({ players: 1, teams: { "-1": ["Dog"] } }))).toBe(0);
+  });
+
+  it("leaves observers out of a lobby with players", () => {
+    expect(playingCount(game({ players: 3, teams: { "1": ["A"], "2": ["B"], "-1": ["Obs"] } }))).toBe(2);
+  });
+
+  it("takes the server's number only where it sent no teams", () => {
+    expect(playingCount(game({ players: 2, teams: {} }))).toBe(2);
   });
 });
