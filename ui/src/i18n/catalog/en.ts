@@ -3462,6 +3462,8 @@ export const en = {
   "notifications.msg.matchCancelled.body": "The server cancelled the match after launch, so Forged Alliance was stopped.",
   "notifications.msg.gameLaunched.title": "Game launched",
   "notifications.msg.gameLaunched.body": "{name} started successfully.",
+  "notifications.msg.matchLaunched.title": "Game launched",
+  "notifications.msg.matchLaunched.body": "Your matchmaker game started successfully.",
   "notifications.msg.cannotInvite.title": "Cannot invite now",
   "notifications.msg.cannotInvite.body": "Stop the search before inviting somebody to the party.",
   "notifications.msg.cannotJoinParty.title": "Cannot join the party",

@@ -198,6 +198,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "notifications.msg.matchCancelled.body": "El servidor canceló la partida tras el inicio, así que Forged Alliance se cerró.",
   "notifications.msg.gameLaunched.title": "Partida iniciada",
   "notifications.msg.gameLaunched.body": "{name} se inició correctamente.",
+  "notifications.msg.matchLaunched.title": "Partida iniciada",
+  "notifications.msg.matchLaunched.body": "Tu partida de emparejamiento se inició correctamente.",
   "notifications.msg.cannotInvite.title": "No se puede invitar ahora",
   "notifications.msg.cannotInvite.body": "Detén la búsqueda antes de invitar a alguien al grupo.",
   "notifications.msg.cannotJoinParty.title": "No se puede unir al grupo",

@@ -3024,6 +3024,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "notifications.msg.matchCancelled.body": "Der Server hat das Match nach dem Start abgebrochen, deshalb wurde Forged Alliance beendet.",
   "notifications.msg.gameLaunched.title": "Spiel gestartet",
   "notifications.msg.gameLaunched.body": "{name} wurde erfolgreich gestartet.",
+  "notifications.msg.matchLaunched.title": "Spiel gestartet",
+  "notifications.msg.matchLaunched.body": "Dein Matchmaker-Spiel wurde erfolgreich gestartet.",
   "notifications.msg.cannotInvite.title": "Einladen gerade nicht möglich",
   "notifications.msg.cannotInvite.body": "Beende die Suche, bevor du jemanden in die Gruppe einlädst.",
   "notifications.msg.cannotJoinParty.title": "Beitritt zur Gruppe nicht möglich",

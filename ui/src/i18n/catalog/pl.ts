@@ -200,6 +200,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "notifications.msg.matchCancelled.body": "Serwer anulował mecz po starcie, więc Forged Alliance zostało zamknięte.",
   "notifications.msg.gameLaunched.title": "Gra uruchomiona",
   "notifications.msg.gameLaunched.body": "{name} uruchomiono pomyślnie.",
+  "notifications.msg.matchLaunched.title": "Gra uruchomiona",
+  "notifications.msg.matchLaunched.body": "Twoja gra z matchmakingu uruchomiła się pomyślnie.",
   "notifications.msg.cannotInvite.title": "Nie można teraz zaprosić",
   "notifications.msg.cannotInvite.body": "Zatrzymaj wyszukiwanie, zanim zaprosisz kogoś do drużyny.",
   "notifications.msg.cannotJoinParty.title": "Nie można dołączyć do drużyny",

@@ -206,6 +206,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "notifications.msg.matchCancelled.body": "Сервер отменил матч после запуска, поэтому Forged Alliance был остановлен.",
   "notifications.msg.gameLaunched.title": "Игра запущена",
   "notifications.msg.gameLaunched.body": "{name} успешно запущена.",
+  "notifications.msg.matchLaunched.title": "Игра запущена",
+  "notifications.msg.matchLaunched.body": "Ваша игра из подбора успешно запущена.",
   "notifications.msg.cannotInvite.title": "Сейчас нельзя пригласить",
   "notifications.msg.cannotInvite.body": "Остановите поиск, прежде чем приглашать кого-то в группу.",
   "notifications.msg.cannotJoinParty.title": "Не удалось вступить в группу",
