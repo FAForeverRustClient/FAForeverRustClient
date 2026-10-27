@@ -7,7 +7,7 @@
 // this is and how to get it on disk), and the sections in
 // `ReplayDetailHero` and `ReplayDetailSections`.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Modal } from "../../design-system/Modal";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { useOverlayLayer } from "../../design-system/useOverlayLayer";
@@ -15,7 +15,7 @@ import type { VaultReplay } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { plainError } from "../../shared/plainError";
 import { useGameRating } from "./useGameRating";
-import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
+import { withGameContext, type PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { ReplayInsights } from "./analysis/ReplayInsights";
 import { isObserverTeam, playerCount } from "./ReplayRoster";
 import { hasGameResult, localRatingNote, resultNote } from "./replayValidity";
@@ -77,6 +77,11 @@ export function ReplayDetailPanel({
 }) {
   const { t } = useTranslation();
   const isLocal = source === "local";
+  // A report opened from this lineup names this game.
+  const lineupPlayerMenu = useMemo(
+    () => (onPlayerMenu && replay.uid > 0 ? withGameContext(onPlayerMenu, replay.uid) : onPlayerMenu),
+    [onPlayerMenu, replay.uid],
+  );
   // The rail's button both asks for the file to be read and opens the panel
   // that shows what was in it, so its own open state is separate from whether
   // the details have arrived.
@@ -189,7 +194,7 @@ export function ReplayDetailPanel({
         rated={rated}
         notRated={notRated}
         teams={detailTeams}
-        onPlayerMenu={onPlayerMenu}
+        onPlayerMenu={lineupPlayerMenu}
       />
 
       <ReplayDetailToolbar

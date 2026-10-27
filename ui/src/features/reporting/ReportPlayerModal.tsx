@@ -1,6 +1,7 @@
 import { SectionTabs, sectionPanelProps } from "../../design-system/SectionTabs";
 import { useEffect, useId, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
+import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import type { ReportLogAttachment, ReportLogExcerpt } from "../../ipc/bindings";
@@ -9,6 +10,7 @@ import { useAppStore } from "../../store/store";
 import { LoadStatusNotice } from "../../shared/components/LoadNotices";
 import { formatDateTime } from "../../shared/format/dates";
 import { plainError } from "../../shared/plainError";
+import { takeReportGameId } from "../../shared/reportIntent";
 import "./reporting.css";
 import { formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -53,15 +55,22 @@ export function ReportPlayerModal() {
   const [incidentTime, setIncidentTime] = useState("");
   const [view, setView] = useState<"new" | "history">("new");
   const [excerptShown, setExcerptShown] = useState(false);
+  // Folded away to a bar over the status bar so the client behind it can be
+  // looked at, the replay found, the chat read (issue 614). The form stays
+  // mounted, so nothing typed is lost; closing the bar is what discards it.
+  const [minimized, setMinimized] = useState(false);
   const attachId = useId();
 
   useEffect(() => {
     if (!report.open) return;
+    const openedFor = takeReportGameId();
     setDescription("");
-    setGameId("");
+    // Opened from a replay's lineup, the report is about that game.
+    setGameId(openedFor === null ? "" : String(openedFor));
     setIncidentTime("");
     setView("new");
     setExcerptShown(false);
+    setMinimized(false);
   }, [report.login, report.open, report.playerId]);
 
   const parsedGameId = gameId.trim() ? Number(gameId) : null;
@@ -127,6 +136,25 @@ export function ReportPlayerModal() {
     });
   };
 
+  if (minimized) {
+    return (
+      <aside className="report-dock" aria-label={t("reporting.minimized", { name: report.login })}>
+        <span className="report-dock-title">{t("reporting.minimized", { name: report.login })}</span>
+        <Button variant="primary" onClick={() => setMinimized(false)}>{t("reporting.resume")}</Button>
+        <button
+          type="button"
+          className="report-dock-discard"
+          aria-label={t("reporting.discard")}
+          title={t("reporting.discard")}
+          disabled={submitting}
+          onClick={() => void close()}
+        >
+          <Icon name="close" size={14} />
+        </button>
+      </aside>
+    );
+  }
+
   return (
     <Modal
       onClose={() => { if (!submitting) void close(); }}
@@ -135,6 +163,16 @@ export function ReportPlayerModal() {
     >
       <form onSubmit={(event) => { event.preventDefault(); submit(); }}>
         <header className="report-player-head">
+          <button
+            type="button"
+            className="report-minimize"
+            aria-label={t("reporting.minimize")}
+            title={t("reporting.minimizeHint")}
+            disabled={submitting}
+            onClick={() => setMinimized(true)}
+          >
+            <Icon name="minus" size={16} />
+          </button>
           <span className="report-player-eyebrow">{t("reporting.title")}</span>
           <h2>{t("reporting.reportPlayer", { name: report.login })}</h2>
           <p className="muted">

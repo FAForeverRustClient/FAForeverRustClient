@@ -1,7 +1,7 @@
 // A replay as a card: the vault's and the local library's, the facts they
 // share, and the map art both lead with.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
 import type { ReplayTeam, VaultReplay } from "../../ipc/bindings";
@@ -10,7 +10,7 @@ import { formatDuration } from "../../shared/format/durations";
 import { effectiveReplayMapName, extractGeneratedMapSeed } from "../../shared/mapPresentation";
 import { useNamedMapGeneration } from "../../shared/hooks/useNamedMapGeneration";
 import { MapThumbnail } from "../../shared/components/MapThumbnail";
-import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
+import { withGameContext, type PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { replayMapKey, replayMapPresentation } from "./coopReplayMap";
 import { useAppStore } from "../../store/store";
 import { useGameRating } from "./useGameRating";
@@ -260,6 +260,11 @@ export function ReplayLibraryCard({
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
   const missions = useAppStore((state) => state.state.coop.missions);
+  // A report opened from this lineup names this game.
+  const playerMenu = useMemo(
+    () => (onPlayerMenu && replay.uid > 0 ? withGameContext(onPlayerMenu, replay.uid) : onPlayerMenu),
+    [onPlayerMenu, replay.uid],
+  );
   // What the replay file said, when it has been read. Empty until it has, and
   // empty for good if the file could not be read, which is why the fallbacks
   // inside these two stay.
@@ -344,7 +349,7 @@ export function ReplayLibraryCard({
             </div>
           )}
         </div>
-        <ReplayCardRoster teams={replay.teams} showResults={showResults} onPlayerMenu={onPlayerMenu} />
+        <ReplayCardRoster teams={replay.teams} showResults={showResults} onPlayerMenu={playerMenu} />
         {replay.footerNote && (
           <div className="replay-card-footer">
             <span className="muted">{replay.footerNote}</span>
