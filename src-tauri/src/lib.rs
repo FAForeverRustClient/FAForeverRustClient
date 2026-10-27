@@ -428,7 +428,7 @@ mod tests {
             // The Units tab's database. WebKitGTK asks about a frame's loads
             // as well as the window's, so with the root missing here the
             // frame's own page went to the browser (PR 463).
-            "https://faforever.github.io/etfreeman-db/#/",
+            "https://unitdb.faforever.com/#/",
             // A training video frame, for the same reason.
             "https://www.youtube-nocookie.com/embed/abc?rel=0",
         ] {
