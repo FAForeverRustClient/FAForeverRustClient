@@ -472,14 +472,15 @@
   top: 0;
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 120px);
+  /* The scrolling area's height, not the window's: see `.mod-detail-panel`
+     (issue 615), which this panel shares its shape and its fault with. */
+  max-height: calc(var(--content-height, 100vh) - var(--space-4));
   min-width: 0;
   /* No scrollbar gutter: the panel scrolls only in a window too short for
      it, and a strip kept for that narrowed the picture and the facts band in
      every other window. */
   overflow-y: auto;
   scrollbar-gutter: stable;
-  overscroll-behavior: contain;
 }
 
 /* The map square and whole across the panel's width, opening the enlarged
