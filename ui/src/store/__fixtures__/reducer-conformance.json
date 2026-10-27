@@ -2262,7 +2262,47 @@
                     }
                   ],
                   "playerId": 7,
+                  "queues": [
+                    {
+                      "draws": 0,
+                      "games": 3,
+                      "losses": 1,
+                      "queue": "global",
+                      "ratingDeltaHundredths": 1250,
+                      "wins": 2
+                    }
+                  ],
                   "rankedGames": 3,
+                  "report": {
+                    "averageMinutesTenths": 0,
+                    "bestDays": [],
+                    "bestMonths": [],
+                    "factions": [],
+                    "mapsGaining": [],
+                    "mapsLosing": [],
+                    "maxLossStreak": {
+                      "first": "",
+                      "last": "",
+                      "size": 0
+                    },
+                    "maxWinStreak": {
+                      "first": "",
+                      "last": "",
+                      "size": 0
+                    },
+                    "months": [],
+                    "opponents": [],
+                    "ratedGames": 3,
+                    "recentDecided": 3,
+                    "recentFrom": "",
+                    "recentTo": "",
+                    "recentWins": 2,
+                    "runbacks": [],
+                    "teammates": [],
+                    "worstDays": [],
+                    "worstLossStreak": 0,
+                    "worstMonths": []
+                  },
                   "totalGames": 3,
                   "truncated": false,
                   "unattributed": 0,
@@ -2313,7 +2353,47 @@
                 }
               ],
               "playerId": 7,
+              "queues": [
+                {
+                  "draws": 0,
+                  "games": 3,
+                  "losses": 1,
+                  "queue": "global",
+                  "ratingDeltaHundredths": 1250,
+                  "wins": 2
+                }
+              ],
               "rankedGames": 3,
+              "report": {
+                "averageMinutesTenths": 0,
+                "bestDays": [],
+                "bestMonths": [],
+                "factions": [],
+                "mapsGaining": [],
+                "mapsLosing": [],
+                "maxLossStreak": {
+                  "first": "",
+                  "last": "",
+                  "size": 0
+                },
+                "maxWinStreak": {
+                  "first": "",
+                  "last": "",
+                  "size": 0
+                },
+                "months": [],
+                "opponents": [],
+                "ratedGames": 3,
+                "recentDecided": 3,
+                "recentFrom": "",
+                "recentTo": "",
+                "recentWins": 2,
+                "runbacks": [],
+                "teammates": [],
+                "worstDays": [],
+                "worstLossStreak": 0,
+                "worstMonths": []
+              },
               "totalGames": 3,
               "truncated": false,
               "unattributed": 0,

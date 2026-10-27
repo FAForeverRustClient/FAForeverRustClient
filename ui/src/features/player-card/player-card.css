@@ -1082,6 +1082,186 @@ button.player-avatar-tile:disabled {
   gap: var(--space-3);
 }
 
+/* The Statistics tab (issue 606): faftracker's report, a column of cards,
+   tables and the improvement detector. */
+.player-statistics {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* The tracker's ten overview figures, five to a line. */
+.player-account-details.player-stats-cards {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 0;
+}
+
+.player-stats-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.player-stats-search {
+  width: min(200px, 50%);
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.player-stats-table-wrap {
+  min-width: 0;
+  margin-top: var(--space-2);
+  overflow-x: auto;
+  scrollbar-gutter: stable;
+}
+
+.player-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.player-stats-table th,
+.player-stats-table td {
+  padding: 6px 10px;
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.player-stats-table th {
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+/* Every heading sorts its column; the button fills the cell and keeps the
+   heading's alignment, the arrow beside the label. */
+.player-stats-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.player-stats-sort svg {
+  opacity: 0;
+}
+
+.player-stats-table th.is-sorted,
+.player-stats-sort:hover {
+  color: var(--color-text);
+}
+
+.player-stats-table th.is-sorted .player-stats-sort svg,
+.player-stats-sort:hover svg {
+  opacity: 1;
+}
+
+.player-stats-sort:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.player-stats-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The name leads and takes the slack, as in the map table. */
+.player-stats-table th:first-child,
+.player-stats-table td:first-child {
+  width: 100%;
+  padding-left: 0;
+  text-align: left;
+}
+
+.player-stats-faction {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.player-stats-name {
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.player-stats-name:hover {
+  text-decoration: underline;
+}
+
+.player-stats-name:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.player-stats-insights {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.player-stats-insight {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.player-stats-insight h4 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.player-stats-insight p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.player-stats-insight ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.player-stats-insight li {
+  display: grid;
+  gap: 2px;
+}
+
+.player-stats-insight .player-stats-insight-note {
+  line-height: 1.45;
+}
+
+/* "Show more" at its own width, not stretched across the card. */
+.player-stats-insight > button,
+.player-stats-chart > button {
+  justify-self: start;
+}
+
 .player-clan-members button:focus-visible,
 .player-rating-selection button:focus-visible {
   outline: 2px solid var(--color-accent);
@@ -1423,6 +1603,11 @@ button.player-avatar-tile:disabled {
 
 .player-stats-chart:last-child {
   grid-column: 1 / -1;
+}
+
+/* Teammates beside opponents: two halves, neither the odd one out. */
+.player-statistics-grid.is-pair > .player-stats-chart:last-child {
+  grid-column: auto;
 }
 
 .player-stats-chart > h3 {
@@ -1817,6 +2002,10 @@ button.player-avatar-tile:disabled {
 
   .player-statistics-grid {
     grid-template-columns: 1fr;
+  }
+
+  .player-account-details.player-stats-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .player-stats-chart:last-child {

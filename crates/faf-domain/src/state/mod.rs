@@ -24,6 +24,7 @@ pub mod mods;
 pub mod nav;
 pub mod notifications;
 pub mod player_card;
+pub mod player_report;
 pub mod replays;
 pub mod reporting;
 pub mod reviews;
@@ -124,8 +125,12 @@ pub use player_card::{
     PlayedGame, PlayerAchievement, PlayerAchievementState, PlayerAvatar, PlayerCardCommand,
     PlayerCardEvent, PlayerCardProfile, PlayerCardState, PlayerCardStatus, PlayerClan,
     PlayerEventCount, PlayerGameResult, PlayerLeaguePlacement, PlayerMapStat, PlayerMapStats,
-    PlayerNameRecord, PlayerRatingSummary, PlayerSummary, RatingHistoryPage, RatingHistoryPeriod,
-    RatingHistoryPoint, RatingHistoryQuery,
+    PlayerNameRecord, PlayerQueueStat, PlayerRatingSummary, PlayerSummary, RatingHistoryPage,
+    RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
+};
+pub use player_report::{
+    build_player_report, PlayerFactionStat, PlayerMapTrend, PlayerPeriodStat, PlayerRelation,
+    PlayerReport, PlayerRunback, PlayerStreak,
 };
 pub use replays::{
     live_replay_delay_remaining, normalize_replay_path, replay_read_key, sort_vault_replays,

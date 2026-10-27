@@ -4078,6 +4078,20 @@ fn cases() -> Vec<Case> {
                         }],
                         truncated: false,
                         player_id: 7,
+                        queues: vec![PlayerQueueStat {
+                            queue: "global".into(),
+                            games: 3,
+                            wins: 2,
+                            losses: 1,
+                            draws: 0,
+                            rating_delta_hundredths: 1250,
+                        }],
+                        report: PlayerReport {
+                            rated_games: 3,
+                            recent_wins: 2,
+                            recent_decided: 3,
+                            ..PlayerReport::default()
+                        },
                         games: vec![PlayerGameResult {
                             game_id: 27798371,
                             played_at: "2026-01-04T20:00:00Z".into(),
