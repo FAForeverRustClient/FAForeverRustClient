@@ -13683,6 +13683,19 @@ export type ValidationIssue =
  */
 { kind: "seedNotAnInteger"; payload: {
 	seed: string,
+} } |
+/**
+ *  A chosen style or symmetry the selected generator release does not
+ *  have. picocli refuses the whole run ("Invalid value for option
+ *  '--texture-style': expected one of ..."), and it was the commonest
+ *  failure in the generator's own log: a preset or a remembered choice
+ *  made with one release (SUNSET, FRACTAL_LAST) run with another.
+ */
+{ kind: "notInThisVersion"; payload: {
+	/**  The flag's name without dashes: `texture-style`, `terrain-symmetry`. */
+	option: string,
+	value: string,
+	version: string,
 } };
 
 /**

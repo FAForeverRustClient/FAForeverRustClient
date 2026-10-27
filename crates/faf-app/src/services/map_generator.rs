@@ -102,7 +102,7 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
         }
         MapGeneratorCommand::SetOptions { options } => {
             out.emit(MapGeneratorEvent::ValidationChanged {
-                issues: map_generator::validate_options(&options),
+                issues: validation(&options, out),
             });
             // A name resolved for the options as they were is not a name for
             // the options as they are. The dialog sends this on every settled
@@ -124,7 +124,7 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
         MapGeneratorCommand::Validate { options } => {
             // Pure arithmetic, so the dialog can call this on every keystroke.
             out.emit(MapGeneratorEvent::ValidationChanged {
-                issues: map_generator::validate_options(&options),
+                issues: validation(&options, out),
             });
         }
         MapGeneratorCommand::Preflight { options } => {
@@ -527,6 +527,26 @@ async fn refresh_installed_maps(ctx: &ServiceCtx, out: &EventSink) {
 }
 
 /// Fetch available versions and option lists the generator reports.
+/// Every rule the dialog checks before a run: the generator's own arithmetic,
+/// and whether the chosen styles exist in the release the run would use.
+fn validation(
+    options: &map_generator::GeneratorOptions,
+    out: &EventSink,
+) -> Vec<map_generator::ValidationIssue> {
+    let mut issues = map_generator::validate_options(options);
+    issues.extend(out.with_state(|state| {
+        let generator = &state.map_generator;
+        let version = options
+            .version
+            .clone()
+            .filter(|version| !version.is_empty())
+            .or_else(|| generator.selected_version.clone())
+            .unwrap_or_else(|| generator.latest_version.clone());
+        faf_domain::state::options_missing_from(&generator.option_lists, options, &version)
+    }));
+    issues
+}
+
 async fn load_options(explicit_version: Option<String>, ctx: &ServiceCtx, out: &EventSink) {
     match ctx.ports.map_generator.available_versions().await {
         Ok(versions) => out.emit(MapGeneratorEvent::VersionsLoaded { versions }),
@@ -595,6 +615,13 @@ async fn load_options(explicit_version: Option<String>, ctx: &ServiceCtx, out: &
             }
         }
     }
+    // The lists now answer for this release, so the remembered options are
+    // checked against them again: a style the previous release had and this
+    // one lacks is said in the dialog before Generate, not after.
+    let options = out.with_state(|state| state.map_generator.options.clone());
+    out.emit(MapGeneratorEvent::ValidationChanged {
+        issues: validation(&options, out),
+    });
     if let Some(reason) = failure {
         services::notifications::add_failure(
             out,

@@ -98,10 +98,10 @@ pub use lobby::{
     EXP_JAVA_ADAPTER_TITLE_TAG, GLOBAL_LEADERBOARD, GO_ADAPTER_TITLE_TAG,
 };
 pub use map_generator::{
-    is_valid_preset_name, preset_file_name, DecodedMapName, DecodedStyle, GenerationType,
-    GeneratorOptionLists, GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus,
-    GeneratorVersion, MapGeneratorCommand, MapGeneratorEvent, MapGeneratorState, StyleConstraints,
-    ValidationIssue, MAX_PRESET_NAME,
+    is_valid_preset_name, options_missing_from, preset_file_name, DecodedMapName, DecodedStyle,
+    GenerationType, GeneratorOptionLists, GeneratorOptionQuery, GeneratorOptions, GeneratorPreset,
+    GeneratorStatus, GeneratorVersion, MapGeneratorCommand, MapGeneratorEvent, MapGeneratorState,
+    StyleConstraints, ValidationIssue, MAX_PRESET_NAME,
 };
 pub use maps::{
     InstalledMap, LocalMapPreview, MapInstallStatus, MapListStatus, MapVisibilityStatus,
