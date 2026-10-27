@@ -300,7 +300,7 @@ export function ChatRoomView(props: ChatRoomViewProps) {
                   input.current?.focus();
                 }}
               >
-                <Icon name="arrowRight" size={13} />
+                <Icon name="reply" size={13} />
               </button>
             )}
             {/* Moderation sits on the post rather than in a list of its own,
