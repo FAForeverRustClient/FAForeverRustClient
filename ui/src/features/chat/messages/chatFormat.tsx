@@ -130,7 +130,9 @@ export function categoryOf(
 ): UserCategory {
   if (self && user.name === self) return "self";
   if (includesName(social.foes, user.name)) return "foes";
-  if (isModerator(user)) return "moderators";
+  // A channel operator, or one of FAF's moderators and admins as the API
+  // lists them: on FAF's IRC the moderators hold no operator mode (#607).
+  if (isModerator(user) || includesName(social.staff, user.name)) return "moderators";
   if (includesName(social.friends, user.name)) return "friends";
   const profile = findPlayer(social, user.name);
   if (ownClan && profile?.clan === ownClan) return "clan";

@@ -440,6 +440,23 @@ impl PlayerCardPort for PlayerCardClient {
         Ok(found)
     }
 
+    async fn staff_logins(&self) -> Result<Vec<String>, RequestError> {
+        let token = self.tokens.get().ok_or_else(|| {
+            RequestError::unauthorized("Sign in to FAF to look up the moderators.")
+        })?;
+        let mut url = self.url("userGroup").map_err(RequestError::unexpected)?;
+        url.query_pairs_mut()
+            .append_pair(
+                "filter",
+                &format!("technicalName=in=({})", STAFF_GROUPS.join(",")),
+            )
+            .append_pair("include", "members")
+            .append_pair("fields[userGroup]", "technicalName,members")
+            .append_pair("fields[player]", "login");
+        let doc = fetch_document_typed(&self.http, url, &token).await?;
+        Ok(staff_logins_in(&doc))
+    }
+
     async fn players_by_id(&self, ids: &[i32]) -> Result<Vec<PlayerSummary>, RequestError> {
         if ids.is_empty() {
             return Ok(Vec::new());
@@ -1527,6 +1544,37 @@ fn quote_prefix(value: &str) -> String {
     format!("\"{}*\"", escape(value))
 }
 
+/// The user groups whose members the chat lists as moderators and admins.
+///
+/// All four are `public` in FAF's database (`db` migration V78,
+/// `permission_roles_and_groups.sql`), and a public group's members are
+/// readable by anybody signed in (`UserGroupPublicCheck` in the API). The
+/// moderators proper, the moderation councillor, the administration
+/// councillor and the server administrators: the people a player would go
+/// to with a problem in chat. Not `faf_organisation`, the root every
+/// councillor hangs off, which would add the whole council.
+const STAFF_GROUPS: [&str; 4] = [
+    "faf_moderators_global",
+    "faf_councilor_moderation",
+    "faf_councilor_administration",
+    "faf_server_administrators",
+];
+
+/// Every member login a `userGroup` document includes, once each.
+fn staff_logins_in(doc: &JsonApiDoc) -> Vec<String> {
+    let mut logins: Vec<String> = doc
+        .included
+        .iter()
+        .filter(|resource| resource.kind == "player")
+        .filter_map(|resource| resource.attributes.get("login").and_then(Value::as_str))
+        .filter(|login| !login.trim().is_empty())
+        .map(str::to_string)
+        .collect();
+    logins.sort();
+    logins.dedup();
+    logins
+}
+
 /// Shorter than this, a prefix search is not worth sending.
 const MIN_SEARCH_LENGTH: usize = 3;
 
@@ -1917,6 +1965,27 @@ fn fake_events() -> Vec<PlayerEventCount> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn staff_are_the_members_the_groups_include_once_each() {
+        // A moderator in two of the groups is one entry; group resources and
+        // members without a login are not entries at all.
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [
+                { "type": "userGroup", "id": "5", "attributes": { "technicalName": "faf_moderators_global" } },
+                { "type": "userGroup", "id": "9", "attributes": { "technicalName": "faf_server_administrators" } }
+            ],
+            "included": [
+                { "type": "player", "id": "1", "attributes": { "login": "Morax" } },
+                { "type": "player", "id": "2", "attributes": { "login": "Brutus5000" } },
+                { "type": "player", "id": "1", "attributes": { "login": "Morax" } },
+                { "type": "player", "id": "3", "attributes": {} },
+                { "type": "userGroup", "id": "4", "attributes": { "technicalName": "faf_organisation" } }
+            ]
+        }))
+        .unwrap();
+        assert_eq!(staff_logins_in(&doc), vec!["Brutus5000", "Morax"]);
+    }
 
     /// The exact RSQL the API accepts for a prefix search.
     ///

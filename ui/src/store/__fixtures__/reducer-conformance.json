@@ -46212,7 +46212,8 @@
               "Bob"
             ],
             "loginLookups": [],
-            "players": []
+            "players": [],
+            "staff": []
           }
         },
         {
@@ -46255,7 +46256,8 @@
                 "login": "Bob",
                 "ratings": []
               }
-            ]
+            ],
+            "staff": []
           }
         },
         {
@@ -46278,7 +46280,8 @@
               "Bob"
             ],
             "loginLookups": [],
-            "players": []
+            "players": [],
+            "staff": []
           }
         }
       ]
@@ -81260,7 +81263,8 @@
               "Bob"
             ],
             "loginLookups": [],
-            "players": []
+            "players": [],
+            "staff": []
           }
         },
         {
@@ -81324,7 +81328,8 @@
                 "login": "Bob",
                 "ratings": []
               }
-            ]
+            ],
+            "staff": []
           }
         },
         {
@@ -81368,7 +81373,8 @@
                 "login": "Bob",
                 "ratings": []
               }
-            ]
+            ],
+            "staff": []
           }
         },
         {
@@ -81411,7 +81417,8 @@
                 "login": "Bob",
                 "ratings": []
               }
-            ]
+            ],
+            "staff": []
           }
         },
         {
@@ -81455,7 +81462,8 @@
                 "login": "Bob",
                 "ratings": []
               }
-            ]
+            ],
+            "staff": []
           }
         },
         {
@@ -81489,6 +81497,51 @@
                 "login": "Bob",
                 "ratings": []
               }
+            ],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "cleared"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "foes": [],
+            "friends": [],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "the staff list is sorted, and outlives a lobby disconnect",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "logins": [
+                  "Morax",
+                  "Brutus5000"
+                ]
+              },
+              "type": "staffLoaded"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "foes": [],
+            "friends": [],
+            "loginLookups": [],
+            "players": [],
+            "staff": [
+              "Brutus5000",
+              "Morax"
             ]
           }
         },
@@ -81503,7 +81556,11 @@
             "foes": [],
             "friends": [],
             "loginLookups": [],
-            "players": []
+            "players": [],
+            "staff": [
+              "Brutus5000",
+              "Morax"
+            ]
           }
         }
       ]
@@ -81531,7 +81588,8 @@
                 "login": "Ada"
               }
             ],
-            "players": []
+            "players": [],
+            "staff": []
           }
         },
         {
@@ -81558,7 +81616,8 @@
                 "login": "qai"
               }
             ],
-            "players": []
+            "players": [],
+            "staff": []
           }
         },
         {
@@ -81585,7 +81644,8 @@
                 "login": "ADA"
               }
             ],
-            "players": []
+            "players": [],
+            "staff": []
           }
         }
       ]
@@ -127179,7 +127239,8 @@
       "foes": [],
       "friends": [],
       "loginLookups": [],
-      "players": []
+      "players": [],
+      "staff": []
     },
     "streams": {
       "announced": [],

@@ -9006,6 +9006,16 @@ fn transition_cases() -> Vec<Case> {
             ],
         ),
         case(
+            "the staff list is sorted, and outlives a lobby disconnect",
+            vec![
+                SocialEvent::StaffLoaded {
+                    logins: vec!["Morax".into(), "Brutus5000".into()],
+                }
+                .into(),
+                SocialEvent::Cleared.into(),
+            ],
+        ),
+        case(
             "a login lookup keeps one answer per login, the newest last",
             vec![
                 SocialEvent::LoginLookedUp {

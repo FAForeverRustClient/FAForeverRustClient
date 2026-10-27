@@ -273,7 +273,7 @@ const INITIAL: AppState = {
       winePrefix: "",
     },
   },
-  social: { friends: [], foes: [], players: [], loginLookups: [] },
+  social: { friends: [], foes: [], players: [], loginLookups: [], staff: [] },
   streams: { live: [], status: { type: "idle" }, announced: [] },
   events: {
     catalogue: [],

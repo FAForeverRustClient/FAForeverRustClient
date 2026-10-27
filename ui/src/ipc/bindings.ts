@@ -10001,6 +10001,13 @@ export type SocialEvent =
 { type: "loginLookedUp"; payload: {
 	login: string,
 	id: number | null,
+} } |
+/**
+ *  The API listed FAF's moderators and administrators (see
+ *  [`SocialState::staff`]). Replaces the list.
+ */
+{ type: "staffLoaded"; payload: {
+	logins: string[],
 } };
 
 /**  The player's own annotations: notes on players and on replays. */
@@ -10018,6 +10025,14 @@ export type SocialState = {
 	players: PlayerProfile[],
 	/**  Accounts looked up by login for the user menu, oldest first. */
 	loginLookups: LoginLookup[],
+	/**
+	 *  Logins of FAF's moderators and administrators: the members of the
+	 *  public moderation and administration groups the API lists. Chat
+	 *  counts them as "Moderators & admins" beside the channel operators,
+	 *  because on FAF's IRC the moderators hold no operator mode, and that
+	 *  category showed nobody but the QAI bot (issue 607). Sorted.
+	 */
+	staff: string[],
 };
 
 /**
