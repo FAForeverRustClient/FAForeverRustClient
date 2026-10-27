@@ -5886,8 +5886,10 @@ export type ModVaultQuery = {
 	 */
 	searchDescriptions: boolean,
 	/**
-	 *  Matched against the mod's author, which on this endpoint is a plain
-	 *  string field rather than a related player (`MOD_PROPERTY_MAPPING`).
+	 *  Matched against the mod's author or its uploader's login: the box is
+	 *  labelled "creator or uploader". `author` is a plain string field here
+	 *  rather than a related player, `uploader.login` is the account that
+	 *  pushed it; both are in the Java client's `MOD_PROPERTY_MAPPING`.
 	 */
 	author: string,
 	/**
