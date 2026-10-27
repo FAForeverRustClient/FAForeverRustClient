@@ -3,7 +3,7 @@
 - Names in your matchmaker party open the player menu.
 - "Moderators & admins" in the chat roster lists FAF's moderators and admins, not only the chat bot.
 - The tournament list shows your drafts and other organisers' drafts as separate groups, each of which can be folded away.
-- The replay details list the mods a game was played with, online replays included, or say that it had none.
+- The replay details list the simulation mods a game was played with, online replays included.
 - FAF Daily, the guess-the-unit game, is in the Units tab.
 - The rating graph opens on the last month, with the whole history one click away, and a marked stretch can be zoomed into.
 - The Statistics tab of a profile shows faftracker.xyz's player report, counted from the game history: the overview, rating gain per queue, monthly performance, teammates and opponents, the improvement detector and the record per faction, every table sortable by any column. A profile's game history is kept, so it loads much faster the next time.
