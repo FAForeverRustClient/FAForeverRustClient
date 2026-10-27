@@ -7436,6 +7436,18 @@ fn cases() -> Vec<Case> {
                     ],
                 }
                 .into(),
+                // A game's mod list read out of its file's head (issue 638),
+                // and a game with none, which is an answer too.
+                ReplayEvent::SimModsResolved {
+                    uid: 42,
+                    mods: vec!["Random Events".into()],
+                }
+                .into(),
+                ReplayEvent::SimModsResolved {
+                    uid: 43,
+                    mods: Vec::new(),
+                }
+                .into(),
                 ReplayEvent::VaultDownloadStarted { uid: 42 }.into(),
                 ReplayEvent::VaultDownloadProgressed {
                     uid: 42,

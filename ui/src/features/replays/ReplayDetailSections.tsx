@@ -1,7 +1,7 @@
 // The replay detail panel's sections below the hero: the generator's
 // progress, the facts, the lineup, and the toolbar along the floor.
 
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useState, type ReactNode } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type { GeneratorStatus, VaultReplay } from "../../ipc/bindings";
@@ -14,6 +14,7 @@ import { GeneratorFailure } from "../../shared/components/GeneratorFailure";
 import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import type { mapSize } from "../../shared/mapPresentation";
 import { openReviews } from "../../shared/openReviews";
+import { requestModVaultFocus } from "../../shared/modVaultFocus";
 import { useAppStore } from "../../store/store";
 import { ReplayDetailRoster } from "./ReplayRoster";
 import { useHasReplayNote } from "./ReplayNotesEditor";
@@ -21,6 +22,9 @@ import type { GeneratorProgress } from "./replayDetailPresentation";
 import type { GameRating } from "./useGameRating";
 
 type ReplayTeams = Parameters<typeof ReplayDetailRoster>[0]["teams"];
+
+/** A replay's sim mods, or why there is no list yet: being read, or not readable. */
+export type ReplaySimMods = string[] | "reading" | "unknown";
 
 /** The generator's progress while it builds this map, and its failure if it fails. */
 export function ReplayGenerationNotice({
@@ -82,12 +86,14 @@ export const ReplayDetailFacts = memo(function ReplayDetailFacts({
   size,
   rating,
   cardTitle,
+  mods,
 }: {
   replay: VaultReplay;
   totalPlayers: number;
   size: ReturnType<typeof mapSize>;
   rating: GameRating;
   cardTitle: string;
+  mods: ReplaySimMods;
 }) {
   const { t } = useTranslation();
   const offline = useAppStore((state) => state.state.auth.mode === "offline");
@@ -165,6 +171,7 @@ export const ReplayDetailFacts = memo(function ReplayDetailFacts({
           )}
         </dd>
       </div>
+      <ReplayDetailModsFact mods={mods} />
     </dl>
   );
 });
@@ -240,6 +247,53 @@ export const ReplayDetailLineup = memo(function ReplayDetailLineup({
     </section>
   );
 });
+
+/**
+ * The simulation mods the game ran with, as the replay file names them
+ * (issue 638): the envelope's list where this client wrote one, otherwise the
+ * engine's own mod table in the body, read for an online replay from the head
+ * of its file without downloading the rest. The API's game record names only
+ * the featured mod. One fact of the strip, across its whole width: "None"
+ * only when the file says so, never for a file that could not be read. Each
+ * mod opens the vault on it, as in the insights and a lobby's mod list.
+ */
+function ReplayDetailModsFact({ mods }: { mods: ReplaySimMods }) {
+  const { t } = useTranslation();
+  let value: ReactNode;
+  if (mods === "reading") {
+    value = <span className="muted" role="status">{t("replays.detail.simModsReading")}</span>;
+  } else if (mods === "unknown") {
+    value = <span className="muted">{t("replays.detail.simModsUnknown")}</span>;
+  } else if (mods.length === 0) {
+    value = t("replays.detail.simModsNone");
+  } else {
+    value = (
+      <ul className="replay-sim-mod-list">
+        {mods.map((mod) => (
+          <li key={mod}>
+            <button
+              type="button"
+              className="surface-chip replay-sim-mod"
+              title={t("lobby.details.openModInVault", { mod })}
+              onClick={() => {
+                requestModVaultFocus(mod);
+                ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "mods" } } });
+              }}
+            >
+              {mod}
+            </button>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  return (
+    <div className="replay-detail-facts-wide">
+      <dt>{t("replays.detail.simMods")}</dt>
+      <dd className="replay-detail-mods">{value}</dd>
+    </div>
+  );
+}
 
 /**
  * Every other action on the replay, as one flat toolbar along the

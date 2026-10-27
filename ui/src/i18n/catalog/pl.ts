@@ -2237,6 +2237,9 @@ export const pl: Partial<Record<MessageKey, Message>> = {
 
   "maps.generate.enlargePreview": "Powiększ podgląd",
   "replays.detail.simMods": "Mody symulacji",
+  "replays.detail.simModsNone": "Brak",
+  "replays.detail.simModsReading": "Odczytywanie pliku powtórki...",
+  "replays.detail.simModsUnknown": "Nieznane",
   "replays.roster.ratingChange": "Zmiana rankingu po tej grze",
   "replays.vault.resultCountUnknown": "{shown} pokazanych · {pages} stron · przy tym filtrze suma nie jest znana",
   "nav.tab.events.label": "Wydarzenia",

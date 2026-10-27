@@ -7,12 +7,13 @@
 // this is and how to get it on disk), and the sections in
 // `ReplayDetailHero` and `ReplayDetailSections`.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Modal } from "../../design-system/Modal";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { useOverlayLayer } from "../../design-system/useOverlayLayer";
 import type { VaultReplay } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
+import { useAppStore } from "../../store/store";
 import { plainError } from "../../shared/plainError";
 import { useGameRating } from "./useGameRating";
 import { withGameContext, type PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
@@ -29,9 +30,13 @@ import {
   ReplayDetailLineup,
   ReplayDetailToolbar,
   ReplayGenerationNotice,
+  type ReplaySimMods,
 } from "./ReplayDetailSections";
 
 export { localReplayToVaultReplay } from "./replayDetailPresentation";
+
+/** How long the mod list of an online replay may take before it is given up on. */
+const SIM_MODS_READ_MS = 20_000;
 
 export function ReplayDetailPanel({
   replay,
@@ -91,6 +96,32 @@ export function ReplayDetailPanel({
     resources;
   const map = useReplayMapPreparation({ replay, localMatch });
   const { effectiveMap, presentation } = map;
+
+  // The mods the game ran with (issue 638). The file says, and the API does
+  // not: the details read for the insights, a local copy, or for an online
+  // replay nobody has downloaded, the first few kilobytes of the file, asked
+  // for once when the details open.
+  const resolvedSimMods = useAppStore((state) => state.state.replays.resolvedSimMods?.[replay.uid]);
+  const knownLocally = Boolean(details?.simMods?.length) || localMatch !== undefined;
+  // An empty list is the file's answer "none", which the facts say rather
+  // than hiding: nearly every FAF game has no mods, and a fact that only
+  // appeared for the few that do could not be found at all. "reading" while
+  // the online file's head is on its way, "unknown" where no file can say.
+  const [readTimedOut, setReadTimedOut] = useState(false);
+  const canRead = !isLocal && !knownLocally && replay.replayAvailable && replay.uid > 0;
+  const simMods: ReplaySimMods = details?.simMods?.length
+    ? details.simMods
+    : (localMatch?.simMods ?? resolvedSimMods ?? (canRead && !readTimedOut ? "reading" : "unknown"));
+  useEffect(() => {
+    setReadTimedOut(false);
+    if (!canRead) return;
+    if (useAppStore.getState().state.replays.resolvedSimMods?.[replay.uid] !== undefined) return;
+    ipc.send({ kind: "Replays", command: { type: "resolveSimMods", payload: { uid: replay.uid } } });
+    // A read that fails stores nothing, so the fact stops saying it is
+    // reading after a while instead of saying so for ever.
+    const timer = window.setTimeout(() => setReadTimedOut(true), SIM_MODS_READ_MS);
+    return () => window.clearTimeout(timer);
+  }, [canRead, replay.uid]);
 
   const [copiedMapName, setCopiedMapName] = useState(false);
   /// Whether the map preview has been opened out of the rail.
@@ -187,6 +218,7 @@ export function ReplayDetailPanel({
         size={map.size}
         rating={rating}
         cardTitle={cardTitle}
+        mods={simMods}
       />
 
       <ReplayDetailLineup

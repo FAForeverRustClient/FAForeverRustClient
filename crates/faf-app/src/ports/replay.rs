@@ -83,6 +83,10 @@ pub trait ReplayVaultPort: Send + Sync {
     ///
     /// `Ok(None)` means the file was read and named no map. The default is a
     /// no-op so a fake port does not have to care.
+    async fn replay_sim_mods(&self, _uid: i32) -> Result<Vec<String>, String> {
+        Ok(Vec::new())
+    }
+
     async fn replay_map_name(&self, _uid: i32) -> Result<Option<String>, String> {
         Ok(None)
     }

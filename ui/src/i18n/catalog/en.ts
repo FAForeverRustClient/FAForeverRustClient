@@ -4786,6 +4786,9 @@ export const en = {
 
   "maps.generate.enlargePreview": "Enlarge the preview",
   "replays.detail.simMods": "Simulation mods",
+  "replays.detail.simModsNone": "None",
+  "replays.detail.simModsReading": "Reading the replay file...",
+  "replays.detail.simModsUnknown": "Unknown",
   "replays.roster.ratingChange": "Rating change from this game",
 
   "replays.roster.unknownResult": "Unknown result",

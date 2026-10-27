@@ -8298,6 +8298,14 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 	uids: number[],
 } } |
 /**
+ *  Read the simulation mods one vault game ran with out of the head of its
+ *  replay file, for the replay details (issue 638). See
+ *  [`ReplayEvent::SimModsResolved`].
+ */
+{ type: "resolveSimMods"; payload: {
+	uid: number,
+} } |
+/**
  *  Ask the vault what it knows about one game id, without disturbing the
  *  browse/search results in [`ReplayState::vault`].
  *
@@ -8519,6 +8527,14 @@ export type ReplayEvent = { type: "connecting"; payload: {
  */
 { type: "mapsResolved"; payload: {
 	maps: ResolvedReplayMap[],
+} } |
+/**
+ *  What [`ReplayCommand::ResolveSimMods`] read. Not sent when the file
+ *  could not be read, so the view may ask again on its next visit.
+ */
+{ type: "simModsResolved"; payload: {
+	uid: number,
+	mods: string[],
 } } | { type: "onlineLookupFinished"; payload: {
 	uid: number,
 	replay: VaultReplay | null,
@@ -8962,6 +8978,15 @@ export type ReplayState = {
 	resolvedMaps?: { [key in number]: string },
 	/**  The keys of [`Self::resolved_maps`], oldest stored first. */
 	resolvedMapsOrder?: number[],
+	/**
+	 *  The simulation mods vault games ran with, read out of the head of their
+	 *  replay files (issue 638): the API's game record names none. Keyed by
+	 *  game id; an empty list is an answer, a game with no mods. At most
+	 *  [`RESOLVED_SIM_MODS_KEPT`], oldest dropped first.
+	 */
+	resolvedSimMods?: { [key in number]: string[] },
+	/**  The keys of [`Self::resolved_sim_mods`], oldest stored first. */
+	resolvedSimModsOrder?: number[],
 	/**
 	 *  The signed-in player's latest matchmaker games, newest first (#301).
 	 *

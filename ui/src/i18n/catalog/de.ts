@@ -4359,6 +4359,9 @@ export const de: Partial<Record<MessageKey, Message>> = {
 
   "maps.generate.enlargePreview": "Vorschau vergrößern",
   "replays.detail.simMods": "Simulations-Mods",
+  "replays.detail.simModsNone": "Keine",
+  "replays.detail.simModsReading": "Replay-Datei wird gelesen...",
+  "replays.detail.simModsUnknown": "Unbekannt",
   "replays.roster.ratingChange": "Rating-Änderung durch dieses Spiel",
 
   "replays.roster.unknownResult": "Ergebnis unbekannt",

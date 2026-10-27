@@ -76,6 +76,8 @@ const INITIAL: AppState = {
     onlineLookupsOrder: [],
     resolvedMaps: {},
     resolvedMapsOrder: [],
+    resolvedSimMods: {},
+    resolvedSimModsOrder: [],
     recentMatchmaker: [],
     recentMatchmakerStatus: { type: "idle" },
   },
