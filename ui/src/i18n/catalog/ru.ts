@@ -2620,9 +2620,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
 
   "maps.generate.enlargePreview": "Увеличить превью",
   "replays.detail.simMods": "SIM-моды",
-  "replays.detail.simModsNone": "Нет",
-  "replays.detail.simModsReading": "Чтение файла реплея...",
-  "replays.detail.simModsUnknown": "Неизвестно",
   "replays.roster.ratingChange": "Изменение рейтинга за эту игру",
   "replays.vault.resultCountUnknown": "Показано {shown} · страниц: {pages} · общее число с этим фильтром неизвестно",
   "maps.preview.resetZoom": "Сбросить",

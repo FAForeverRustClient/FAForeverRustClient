@@ -30,13 +30,12 @@ import {
   ReplayDetailLineup,
   ReplayDetailToolbar,
   ReplayGenerationNotice,
-  type ReplaySimMods,
 } from "./ReplayDetailSections";
 
 export { localReplayToVaultReplay } from "./replayDetailPresentation";
 
-/** How long the mod list of an online replay may take before it is given up on. */
-const SIM_MODS_READ_MS = 20_000;
+/** One empty list for every replay without mods, so the memoised facts keep it. */
+const NO_SIM_MODS: string[] = [];
 
 export function ReplayDetailPanel({
   replay,
@@ -103,24 +102,17 @@ export function ReplayDetailPanel({
   // for once when the details open.
   const resolvedSimMods = useAppStore((state) => state.state.replays.resolvedSimMods?.[replay.uid]);
   const knownLocally = Boolean(details?.simMods?.length) || localMatch !== undefined;
-  // An empty list is the file's answer "none", which the facts say rather
-  // than hiding: nearly every FAF game has no mods, and a fact that only
-  // appeared for the few that do could not be found at all. "reading" while
-  // the online file's head is on its way, "unknown" where no file can say.
-  const [readTimedOut, setReadTimedOut] = useState(false);
+  // Only a game that had mods shows the row: nearly every FAF game has none,
+  // and a row saying so, or saying the file is still being read, was noise on
+  // every one of them. A file that cannot be read shows nothing either.
   const canRead = !isLocal && !knownLocally && replay.replayAvailable && replay.uid > 0;
-  const simMods: ReplaySimMods = details?.simMods?.length
+  const simMods = details?.simMods?.length
     ? details.simMods
-    : (localMatch?.simMods ?? resolvedSimMods ?? (canRead && !readTimedOut ? "reading" : "unknown"));
+    : (localMatch?.simMods ?? resolvedSimMods ?? NO_SIM_MODS);
   useEffect(() => {
-    setReadTimedOut(false);
     if (!canRead) return;
     if (useAppStore.getState().state.replays.resolvedSimMods?.[replay.uid] !== undefined) return;
     ipc.send({ kind: "Replays", command: { type: "resolveSimMods", payload: { uid: replay.uid } } });
-    // A read that fails stores nothing, so the fact stops saying it is
-    // reading after a while instead of saying so for ever.
-    const timer = window.setTimeout(() => setReadTimedOut(true), SIM_MODS_READ_MS);
-    return () => window.clearTimeout(timer);
   }, [canRead, replay.uid]);
 
   const [copiedMapName, setCopiedMapName] = useState(false);

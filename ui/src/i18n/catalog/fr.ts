@@ -2258,9 +2258,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
 
   "maps.generate.enlargePreview": "Agrandir l'aperçu",
   "replays.detail.simMods": "Mods de simulation",
-  "replays.detail.simModsNone": "Aucun",
-  "replays.detail.simModsReading": "Lecture du fichier du replay...",
-  "replays.detail.simModsUnknown": "Inconnu",
   "replays.roster.ratingChange": "Variation de classement due à cette partie",
   "replays.vault.resultCountUnknown": "{shown} affichés · {pages} pages · le total est inconnu avec ce filtre",
   "nav.tab.events.label": "Événements",
