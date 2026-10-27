@@ -148,14 +148,17 @@ export function rankedEntrants(players: TourneyPlayer[]): TourneyPlayer[] {
  * top and no way to tell where it ends. `past` holds the finished and the
  * abandoned, and it is the one that folds away.
  */
-export type ListGroup = "proposals" | "drafts" | "upcoming" | "ongoing" | "past";
+export type ListGroup = "proposals" | "myDrafts" | "drafts" | "upcoming" | "ongoing" | "past";
 
 /** Which group a tournament belongs in. One group each, checked in order. */
 export function groupOf(event: Tourney): ListGroup {
   // Proposals this account may take over or decline (#569), apart from the
   // drafts, as the website's "Proposals waiting for a TD".
   if (!event.published && event.proposal?.state === "proposed" && event.proposal.canDecide) return "proposals";
-  if (!event.published) return "drafts";
+  // The website's two (issue 610): "My drafts", the ones this account
+  // organises or proposed, and "Drafts", everybody else's, which a director or
+  // a site admin sees without any right to them.
+  if (!event.published) return event.canManage || event.proposal?.mine ? "myDrafts" : "drafts";
   // Abandoned outranks the status: the event still says `signup` or `running`,
   // and it is neither. It is over, and it belongs with the things that are.
   if (event.abandoned || event.status === "finished") return "past";
@@ -175,6 +178,7 @@ export function groupOf(event: Tourney): ListGroup {
 export function groupedEvents(events: Tourney[]): Record<ListGroup, Tourney[]> {
   const groups: Record<ListGroup, Tourney[]> = {
     proposals: [],
+    myDrafts: [],
     drafts: [],
     upcoming: [],
     ongoing: [],

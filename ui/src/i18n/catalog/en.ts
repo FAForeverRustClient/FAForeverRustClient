@@ -3567,6 +3567,8 @@ export const en = {
   "tournaments.list.official": "Official",
   "tournaments.list.community": "Community",
   "tournaments.list.drafts": "Your drafts",
+  "tournaments.list.otherDrafts": "Drafts",
+  "tournaments.list.otherDraftsNote": "Other organisers' drafts. You see them as a tournament director or site admin; fold this away when you don't need it.",
   "tournaments.list.upcoming": "Upcoming",
   "tournaments.list.ongoing": "Ongoing",
   "tournaments.list.past": "Finished or called off",

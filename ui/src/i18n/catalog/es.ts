@@ -3021,6 +3021,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "tournaments.list.official": "Oficial",
   "tournaments.list.community": "Comunidad",
   "tournaments.list.drafts": "Tus borradores",
+  "tournaments.list.otherDrafts": "Borradores",
+  "tournaments.list.otherDraftsNote": "Borradores de otros organizadores. Los ves como director de torneos o administrador del sitio; pliégalos cuando no los necesites.",
   "tournaments.list.upcoming": "Próximos",
   "tournaments.list.ongoing": "En curso",
   "tournaments.list.past": "Terminados o cancelados",

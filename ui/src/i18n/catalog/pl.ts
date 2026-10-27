@@ -3053,6 +3053,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "tournaments.list.official": "Oficjalny",
   "tournaments.list.community": "Społecznościowy",
   "tournaments.list.drafts": "Twoje szkice",
+  "tournaments.list.otherDrafts": "Szkice",
+  "tournaments.list.otherDraftsNote": "Szkice innych organizatorów. Widzisz je jako dyrektor turniejów lub administrator strony; zwiń je, gdy ich nie potrzebujesz.",
   "tournaments.list.upcoming": "Nadchodzące",
   "tournaments.list.ongoing": "Trwające",
   "tournaments.list.past": "Zakończone lub odwołane",

@@ -3129,6 +3129,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "tournaments.list.official": "Offiziell",
   "tournaments.list.community": "Community",
   "tournaments.list.drafts": "Deine Entwürfe",
+  "tournaments.list.otherDrafts": "Entwürfe",
+  "tournaments.list.otherDraftsNote": "Entwürfe anderer Organisatoren. Du siehst sie als Turnierdirektor oder Seitenadmin; klappe sie ein, wenn du sie nicht brauchst.",
   "tournaments.list.upcoming": "Anstehend",
   "tournaments.list.ongoing": "Laufend",
   "tournaments.list.past": "Beendet oder abgesagt",

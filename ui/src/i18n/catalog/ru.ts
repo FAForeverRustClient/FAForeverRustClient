@@ -3448,6 +3448,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "tournaments.list.official": "Официальный",
   "tournaments.list.community": "От сообщества",
   "tournaments.list.drafts": "Ваши черновики",
+  "tournaments.list.otherDrafts": "Черновики",
+  "tournaments.list.otherDraftsNote": "Черновики других организаторов. Вы видите их как директор турниров или администратор сайта; сверните их, когда они не нужны.",
   "tournaments.list.upcoming": "Предстоящие",
   "tournaments.list.ongoing": "Идут сейчас",
   "tournaments.list.past": "Завершённые или отменённые",

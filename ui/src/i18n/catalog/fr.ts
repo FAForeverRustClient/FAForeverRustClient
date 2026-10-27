@@ -3021,6 +3021,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "tournaments.list.official": "Officiel",
   "tournaments.list.community": "Communauté",
   "tournaments.list.drafts": "Vos brouillons",
+  "tournaments.list.otherDrafts": "Brouillons",
+  "tournaments.list.otherDraftsNote": "Brouillons d'autres organisateurs. Vous les voyez en tant que directeur de tournoi ou administrateur du site ; repliez-les quand vous n'en avez pas besoin.",
   "tournaments.list.upcoming": "À venir",
   "tournaments.list.ongoing": "En cours",
   "tournaments.list.past": "Terminés ou annulés",
