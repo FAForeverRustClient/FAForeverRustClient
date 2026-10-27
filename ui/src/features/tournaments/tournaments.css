@@ -6538,7 +6538,8 @@ button.tournament-chat-author:hover {
   background: none;
   color: var(--color-muted);
   font: inherit;
-  font-size: 11px;
+  /* Follows the chat text size, as `.chat-quote` does. */
+  font-size: max(11px, calc(var(--chat-font-size, 13px) - 2px));
   text-align: left;
   cursor: pointer;
 }
