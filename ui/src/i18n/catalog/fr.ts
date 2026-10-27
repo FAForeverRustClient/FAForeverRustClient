@@ -921,7 +921,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "playerCard.history.inThisQueue": "dans cette file",
   "playerCard.history.deviation": "Écart",
   "playerCard.history.skillEstimate": "niveau estimé {mean}",
-  "playerCard.history.dragHint": "Faites glisser sur le graphique pour mesurer une série de parties.",
+  "playerCard.history.dragHint": "Faites glisser sur le graphique pour mesurer une série de parties, puis zoomez dessus si vous le souhaitez.",
   "playerCard.history.peakLine": "Ligne du record",
   "playerCard.history.loading": "Chargement de l'historique de classement…",
   "playerCard.history.loadingShort": "Chargement…",
@@ -1037,6 +1037,9 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "playerCard.chart.low": "Min.",
   "playerCard.chart.high": "Max.",
   "playerCard.chart.clear": "Effacer",
+  "playerCard.chart.zoomIn": "Zoomer",
+  "playerCard.chart.zoomed": "Affichage du {start} au {end}",
+  "playerCard.chart.zoomReset": "Afficher toute la période",
 
   "settings.title": "Paramètres",
   "settings.intro": "Les préférences du client sont enregistrées automatiquement et synchronisées via le backend.",

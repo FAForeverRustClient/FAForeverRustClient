@@ -1791,7 +1791,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "playerCard.history.inThisQueue": "in dieser Warteschlange",
   "playerCard.history.deviation": "Abweichung",
   "playerCard.history.skillEstimate": "Skill-Schätzung {mean}",
-  "playerCard.history.dragHint": "Ziehe über den Plot, um einen Abschnitt zu vermessen.",
+  "playerCard.history.dragHint": "Ziehe über den Plot, um einen Abschnitt zu vermessen, und vergrößere ihn bei Bedarf.",
   "playerCard.history.peakLine": "Höchstwertlinie",
   "playerCard.history.loading": "Ratingverlauf wird geladen…",
   "playerCard.history.loadingShort": "Wird geladen…",
@@ -1914,6 +1914,9 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "playerCard.chart.low": "Tief",
   "playerCard.chart.high": "Hoch",
   "playerCard.chart.clear": "Leeren",
+  "playerCard.chart.zoomIn": "Vergrößern",
+  "playerCard.chart.zoomed": "Zeigt {start} bis {end}",
+  "playerCard.chart.zoomReset": "Ganzen Zeitraum zeigen",
 
   "replays.search.player": "Spieler",
   "replays.search.anyPlayer": "z. B. Player1, Player2",

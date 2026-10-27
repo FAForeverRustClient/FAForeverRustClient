@@ -2139,7 +2139,7 @@ export const en = {
   "playerCard.history.inThisQueue": "in this queue",
   "playerCard.history.deviation": "Deviation",
   "playerCard.history.skillEstimate": "skill estimate {mean}",
-  "playerCard.history.dragHint": "Drag across the plot to measure a stretch of games.",
+  "playerCard.history.dragHint": "Drag across the plot to measure a stretch of games, then zoom into it if you like.",
   "playerCard.history.peakLine": "Peak line",
   "playerCard.history.loading": "Loading rating history…",
   "playerCard.history.loadingShort": "Loading…",
@@ -2276,6 +2276,9 @@ export const en = {
   "playerCard.chart.low": "Low",
   "playerCard.chart.high": "High",
   "playerCard.chart.clear": "Clear",
+  "playerCard.chart.zoomIn": "Zoom in",
+  "playerCard.chart.zoomed": "Showing {start} to {end}",
+  "playerCard.chart.zoomReset": "Show the whole period",
 
   // Replay search forms. The local library and the online vault share most of
   // their vocabulary, so the shared fields live under one prefix and only the

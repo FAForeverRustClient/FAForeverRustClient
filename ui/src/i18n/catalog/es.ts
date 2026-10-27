@@ -920,7 +920,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "playerCard.history.inThisQueue": "en esta cola",
   "playerCard.history.deviation": "Desviación",
   "playerCard.history.skillEstimate": "nivel estimado {mean}",
-  "playerCard.history.dragHint": "Arrastra por el gráfico para medir un tramo de partidas.",
+  "playerCard.history.dragHint": "Arrastra por el gráfico para medir un tramo de partidas y, si quieres, amplíalo.",
   "playerCard.history.peakLine": "Línea del récord",
   "playerCard.history.loading": "Cargando el historial de puntuación…",
   "playerCard.history.loadingShort": "Cargando…",
@@ -1036,6 +1036,9 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "playerCard.chart.low": "Mín.",
   "playerCard.chart.high": "Máx.",
   "playerCard.chart.clear": "Borrar",
+  "playerCard.chart.zoomIn": "Ampliar",
+  "playerCard.chart.zoomed": "Mostrando de {start} a {end}",
+  "playerCard.chart.zoomReset": "Mostrar todo el período",
 
   "settings.title": "Ajustes",
   "settings.intro": "Las preferencias del cliente se guardan automáticamente y se sincronizan a través del backend.",

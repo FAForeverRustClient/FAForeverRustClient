@@ -957,7 +957,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "playerCard.history.inThisQueue": "в этой очереди",
   "playerCard.history.deviation": "Отклонение",
   "playerCard.history.skillEstimate": "оценка навыка {mean}",
-  "playerCard.history.dragHint": "Проведите по графику, чтобы измерить отрезок игр.",
+  "playerCard.history.dragHint": "Проведите по графику, чтобы измерить отрезок игр, и при желании приблизьте его.",
   "playerCard.history.peakLine": "Линия рекорда",
   "playerCard.history.loading": "Загрузка истории рейтинга…",
   "playerCard.history.loadingShort": "Загрузка…",
@@ -1073,6 +1073,9 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "playerCard.chart.low": "Мин.",
   "playerCard.chart.high": "Макс.",
   "playerCard.chart.clear": "Очистить",
+  "playerCard.chart.zoomIn": "Приблизить",
+  "playerCard.chart.zoomed": "Показано с {start} по {end}",
+  "playerCard.chart.zoomReset": "Показать весь период",
 
   "settings.title": "Настройки",
   "settings.intro": "Автоматически сохранять и синхронизировать настройки клиента через бэкенд.",

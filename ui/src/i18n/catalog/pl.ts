@@ -937,7 +937,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "playerCard.history.inThisQueue": "w tej kolejce",
   "playerCard.history.deviation": "Odchylenie",
   "playerCard.history.skillEstimate": "szacowana siła {mean}",
-  "playerCard.history.dragHint": "Przeciągnij po wykresie, aby zmierzyć wybrany odcinek gier.",
+  "playerCard.history.dragHint": "Przeciągnij po wykresie, aby zmierzyć wybrany odcinek gier, a potem w razie potrzeby go powiększ.",
   "playerCard.history.peakLine": "Linia rekordu",
   "playerCard.history.loading": "Wczytywanie historii rankingu…",
   "playerCard.history.loadingShort": "Wczytywanie…",
@@ -1053,6 +1053,9 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "playerCard.chart.low": "Minimum",
   "playerCard.chart.high": "Maksimum",
   "playerCard.chart.clear": "Wyczyść",
+  "playerCard.chart.zoomIn": "Powiększ",
+  "playerCard.chart.zoomed": "Widok od {start} do {end}",
+  "playerCard.chart.zoomReset": "Pokaż cały okres",
 
   "settings.general.startPage.label": "Strona startowa",
   "settings.general.autoLogin.label": "Automatyczne logowanie",
