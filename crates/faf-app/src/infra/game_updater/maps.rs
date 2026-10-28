@@ -132,6 +132,14 @@ pub async fn ensure_live_map(
     if called_off.is_cancelled() {
         return Err(CALLED_OFF.to_string());
     }
+    // Answered before anything is looked for or announced. `stage_map` would
+    // return untouched as well, but only after the dialog had said
+    // "Downloading map scmp_009", and that line then stood there for as long
+    // as the server took to let the player in: it read as the client fetching
+    // a map that ships with the game (#649).
+    if !is_vault_map_folder(map_folder) && is_base_game_map(map_folder) {
+        return Ok(());
+    }
     // On the blocking pool, like `map_folder_in_any`: the look reads the
     // whole maps folder when the exact name is not there, which is a few
     // thousand entries on a well-used install, and finding the Documents
@@ -444,6 +452,24 @@ mod tests {
         )
         .await;
         assert!(result.is_ok(), "{result:?}");
+    }
+
+    #[tokio::test]
+    async fn a_base_game_map_is_never_announced_as_a_download() {
+        // The dialog showed "Downloading map scmp_009" until the game started
+        // (#649), although nothing was fetched.
+        let announced = std::sync::Mutex::new(Vec::new());
+        ensure_live_map(
+            &reqwest::Client::new(),
+            "http://127.0.0.1:1",
+            std::path::Path::new("definitely/not/here"),
+            "SCMP_009",
+            &|step| announced.lock().unwrap().push(step),
+            &tokio_util::sync::CancellationToken::new(),
+        )
+        .await
+        .expect("a base-game map needs nothing");
+        assert!(announced.lock().unwrap().is_empty());
     }
 
     /// Builds an in-memory zip shaped like a real vault map download,
@@ -904,17 +930,18 @@ mod tests {
         // A current-thread runtime: everything async in this test runs here.
         let runtime_thread = std::thread::current().id();
 
-        // A base-game map: looked for, and then never fetched.
+        // A vault map already installed: looked for, and then never fetched.
+        std::fs::create_dir_all(maps.join("adaptive_gadostb.v0002")).unwrap();
         ensure_live_map(
             &loopback(),
             "http://127.0.0.1:1",
             &maps,
-            "scmp_009",
+            "adaptive_gadostb.v0002",
             &|_| {},
             &tokio_util::sync::CancellationToken::new(),
         )
         .await
-        .expect("a base-game map needs nothing");
+        .expect("an installed map needs nothing");
 
         let threads = probe::looked_on(&maps);
         assert!(!threads.is_empty(), "the maps folder was never looked in");
