@@ -6,5 +6,5 @@
 - A profile's rating history can be plotted against games played instead of the date, over the last 100, 500 or 1000 games or all of them.
 - A profile's Results tab can be filtered to rated or unrated games and to any set of queues.
 - The FAF button in the status bar offers "Check connection", which runs the connectivity check and, during a game, shows how each player is connected.
-- A live replay that is not ready yet can be started from its notice with "Start when the game is ready", and then starts by itself once the delay is over.
+- A live replay that is not ready yet can be started from its notice with "Start when the replay is ready", and then starts by itself once the delay is over.
 - The tournament chat is laid out like the Chat tab: rooms as tabs across the top, the organisers in a column on the right.
