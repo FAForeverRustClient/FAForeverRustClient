@@ -19,7 +19,9 @@ use std::sync::Arc;
 use crate::ports::ReplayLibraryPort;
 
 use super::names::{guess_mod_from_filename, is_replay_file_name};
-use super::scfa_header::{local_body_player_stats_reader, playable_body, LocalBodyArmy};
+use super::scfa_header::{
+    local_body_player_stats_reader, playable_body, LocalBodyArmy, LocalBodyInfo,
+};
 
 /// The local replay library: one folder of replay files.
 ///
@@ -292,7 +294,17 @@ fn body_teams(armies: &[LocalBodyArmy], mission: bool) -> Vec<LocalReplayTeam> {
     teams
 }
 
-pub(super) fn local_sim_mods(header: &Value) -> Vec<String> {
+/// The simulation mods a replay was played with (issue 638).
+///
+/// The envelope's `sim_mods` when it has one: this client writes the lobby's
+/// list there. The replay server does not, and for its files a missing key is
+/// no answer at all, so the body's own mod table decides. `None` when neither
+/// says, which a caller must not show as a game without mods.
+pub(super) fn replay_sim_mods(header: &Value, body: Option<&LocalBodyInfo>) -> Option<Vec<String>> {
+    envelope_sim_mods(header).or_else(|| body.and_then(|body| body.sim_mods.clone()))
+}
+
+pub(super) fn envelope_sim_mods(header: &Value) -> Option<Vec<String>> {
     header
         .get("sim_mods")
         .and_then(Value::as_object)
@@ -306,7 +318,6 @@ pub(super) fn local_sim_mods(header: &Value) -> Vec<String> {
                 .map(String::from)
                 .collect()
         })
-        .unwrap_or_default()
 }
 
 const LOCAL_REPLAY_BODY_READ_BYTES: usize = 4 * 1024 * 1024;
@@ -405,6 +416,7 @@ fn read_local_metadata_blocking(
     let body_info =
         local_body_player_stats_reader(file.take(LOCAL_REPLAY_BODY_READ_BYTES as u64), compression);
     let playable = playable_body(body_info.as_ref());
+    let sim_mods = replay_sim_mods(&header, body_info.as_ref()).unwrap_or_default();
     let body_info = body_info.unwrap_or_default();
     // A co-op mission, where the armies with no client behind them belong to
     // the campaign rather than to anybody playing: see [`body_teams`].
@@ -528,7 +540,7 @@ fn read_local_metadata_blocking(
         },
         teams,
         average_rating,
-        sim_mods: local_sim_mods(&header),
+        sim_mods,
         // `complete` is the envelope's own claim about how the recording
         // ended, and it is only worth reading once the recording is known to
         // be there: a broken file is not an unfinished game, it is a game that

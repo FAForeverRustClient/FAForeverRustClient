@@ -63,14 +63,15 @@ export const PlayerName = memo(function PlayerName({
   name: string;
   className?: string;
   style?: CSSProperties;
-  title?: string;
+  /** The hover text; the name by default, `null` for none at all. */
+  title?: string | null;
   children?: ReactNode;
 }) {
   const colorStyle = usePlayerStyle(name);
   return (
     <span
       className={className}
-      title={title ?? name}
+      title={title === null ? undefined : (title ?? name)}
       style={colorStyle ? { ...colorStyle, ...style } : style}
     >
       {children ?? name}

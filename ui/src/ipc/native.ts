@@ -5,7 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, UserAttentionType } from "@tauri-apps/api/window";
 import {
   isPermissionGranted,
   requestPermission,
@@ -187,6 +187,16 @@ export const native = {
 
   isWindowFocused(): Promise<boolean> {
     return getCurrentWindow().isFocused();
+  },
+
+  /**
+   * Flash the taskbar button (issue 641), the way Windows marks a window that
+   * wants looking at. Informational rather than critical: on Windows it flashes
+   * the button until the window comes forward instead of the whole frame
+   * forever; on macOS it bounces the dock icon once.
+   */
+  requestAttention(): Promise<void> {
+    return getCurrentWindow().requestUserAttention(UserAttentionType.Informational);
   },
 
   async ensureNotificationPermission(): Promise<boolean> {

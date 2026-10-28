@@ -93,6 +93,14 @@ describe("modsMatchingQuery", () => {
     expect(uids(modsMatchingQuery(starred, { ...EMPTY_MOD_QUERY, ranked: false }))).toEqual(["blackops"]);
   });
 
+  it("matches the creator box against the uploader as well as the author", () => {
+    const uploaded = [
+      mod("own", { author: "Somebody", uploader: "Nuggets" }),
+      mod("other", { author: "Somebody", uploader: "Exotic" }),
+    ];
+    expect(uids(modsMatchingQuery(uploaded, { ...EMPTY_MOD_QUERY, author: "nugg" }))).toEqual(["own"]);
+  });
+
   it("drops unreviewed mods once a rating bound is set", () => {
     const query = { ...EMPTY_MOD_QUERY, minRatingTenths: 45 };
     expect(uids(modsMatchingQuery(starred, query))).toEqual(["reui"]);

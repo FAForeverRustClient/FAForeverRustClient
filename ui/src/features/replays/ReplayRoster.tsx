@@ -305,6 +305,17 @@ function playerActionTitle(
   return base;
 }
 
+/**
+ * A card name's hover text: the name only where the row cut it short, and the
+ * in-game name where the player played under another one. Empty otherwise,
+ * which is no tooltip at all.
+ */
+export function cardPlayerTitle(name: string, alias: string | undefined, nameElement: Element | null): string {
+  const truncated = nameElement !== null && nameElement.scrollWidth > nameElement.clientWidth;
+  const parts = [truncated ? name : "", alias ? t("replays.roster.playedAs", { name: alias }) : ""];
+  return parts.filter(Boolean).join(" ");
+}
+
 export function ReplayCardRoster({
   teams,
   interactive = false,
@@ -419,18 +430,23 @@ export function ReplayCardRoster({
                       /* Not a control: a card that is itself one big target
                          cannot hold buttons. The context menu is still reachable,
                          which is the gesture the channel roster answers on a name
-                         too, and the only one a span can offer. */
+                         too, and the only one a span can offer.
+
+                         No "Actions for" hover text here (issue 629): a left
+                         click opens the replay, so the line promised something
+                         the click does not do. Nor the name on its own, which
+                         repeats what the row already shows; it is offered only
+                         when the row has cut the name short. */
                       <span
                         className={onPlayerMenu ? "replay-player-identity replay-player-menuable" : "replay-player-identity"}
-                        title={
-                          isRenamed
-                            ? onPlayerMenu
-                              ? `${t("replays.roster.playerActions", { name: player.name })} (${t("replays.roster.playedAs", { name: alias! })})`
-                              : t("replays.roster.playedAs", { name: alias! })
-                            : onPlayerMenu
-                              ? t("replays.roster.playerActions", { name: player.name })
-                              : undefined
-                        }
+                        title={cardPlayerTitle(player.name, isRenamed ? alias : undefined, null) || undefined}
+                        onMouseEnter={(event) => {
+                          event.currentTarget.title = cardPlayerTitle(
+                            player.name,
+                            isRenamed ? alias : undefined,
+                            event.currentTarget.lastElementChild,
+                          );
+                        }}
                         onContextMenu={onPlayerMenu && ((event) => {
                           event.stopPropagation();
                           onPlayerMenu(player.name, event);
@@ -438,7 +454,7 @@ export function ReplayCardRoster({
                       >
                         <ReplayPlayerMarker player={player} observer={observer} size={17} />
                         <ReplayPlayerFlag player={player} />
-                        <PlayerName name={player.name} />
+                        <PlayerName name={player.name} title={null} />
                       </span>
                     )}
                     {/* The rating and, with the result shown, its change, as one

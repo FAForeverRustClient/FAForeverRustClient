@@ -1,6 +1,6 @@
 import type { PlayerProfile, SocialEvent, SocialState } from "../../ipc/bindings";
 
-const EMPTY_SOCIAL: SocialState = { friends: [], foes: [], players: [], loginLookups: [] };
+const EMPTY_SOCIAL: SocialState = { friends: [], foes: [], players: [], loginLookups: [], staff: [] };
 
 /** Twin of `MAX_LOGIN_LOOKUPS`. */
 const MAX_LOGIN_LOOKUPS = 200;
@@ -116,7 +116,10 @@ export function reduceSocial(state: SocialState, event: SocialEvent): SocialStat
       return { ...state, players: state.players.filter((player) => !removed.has(asciiLower(player.login))) };
     }
     case "cleared":
-      return EMPTY_SOCIAL;
+      // The staff list is the API's, so a lobby disconnect keeps it.
+      return { ...EMPTY_SOCIAL, staff: state.staff };
+    case "staffLoaded":
+      return { ...state, staff: sortedUnique(event.payload.logins) };
     case "loginLookedUp": {
       // The newest answer for a login replaces an older one and goes last,
       // so the cap drops the answers asked for longest ago.

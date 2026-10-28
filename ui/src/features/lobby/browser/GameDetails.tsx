@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { StatusNotice } from "../../../design-system/StatusNotice";
+import { playingCount } from "../../../shared/gameRules";
 import { PlayerName } from "../../../shared/components/nameColors";
 import { PlayerNoteMark } from "../../../shared/components/PlayerNoteMark";
 import { noteForPlayer } from "../../../shared/rules/playerNotes";
@@ -215,7 +216,7 @@ export function GameDetails({
               reading 10 km because that is the commonest size would be worse
               than no row: this is a number somebody is deciding on. */}
           {size && <div><dt>{t("lobby.details.mapSize")}</dt><dd>{size.full}</dd></div>}
-          <div><dt>{t("lobby.details.players")}</dt><dd>{game.players} / {game.maxPlayers}</dd></div>
+          <div><dt>{t("lobby.details.players")}</dt><dd>{playingCount(game)} / {game.maxPlayers}</dd></div>
           {/* Named where it is not the global board, because a row reading
               "583" is not checkable against anything until it says which
               ladder it is 583 on. */}

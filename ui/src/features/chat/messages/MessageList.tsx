@@ -604,7 +604,7 @@ const Line = memo(function Line({
                 title={t("chat.reply.hint")}
                 onClick={() => onReply(message)}
               >
-                <Icon name="arrowRight" size={13} />
+                <Icon name="reply" size={13} />
               </button>
             )}
           </div>

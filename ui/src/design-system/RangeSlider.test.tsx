@@ -3,7 +3,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { collapsedHandleForDrag, RangeSlider, rangeReadout } from "./RangeSlider";
+import { GRAB_RADIUS_PX, RangeSlider, collapsedHandleForDrag, handleWithinReach, rangeReadout } from "./RangeSlider";
 
 describe("RangeSlider", () => {
   it("announces formatted values instead of internal density bins", () => {
@@ -108,5 +108,18 @@ describe("RangeSlider", () => {
     it("says any when nothing is set", () => {
       expect(rangeReadout({ ...base, low: null, high: null, closedScale: true }, between)).toBe("any");
     });
+  });
+});
+
+describe("taking hold of a handle (#624)", () => {
+  // A 200 px track with the handles at 25% and 75%: 50 px and 150 px.
+  it("takes the nearer handle within reach", () => {
+    expect(handleWithinReach(50 + GRAB_RADIUS_PX, 200, 25, 75)).toBe("low");
+    expect(handleWithinReach(150 - GRAB_RADIUS_PX, 200, 25, 75)).toBe("high");
+  });
+
+  it("moves nothing for a press away from both handles", () => {
+    expect(handleWithinReach(100, 200, 25, 75)).toBeNull();
+    expect(handleWithinReach(50 + GRAB_RADIUS_PX + 1, 200, 25, 75)).toBeNull();
   });
 });

@@ -3,7 +3,71 @@
 }
 
 .report-player-head {
-  padding-right: 28px;
+  padding-right: 56px;
+}
+
+/* Beside the dialog's own close button, at its height and in its colours. */
+.report-minimize {
+  position: absolute;
+  top: var(--space-2);
+  right: calc(var(--space-2) + 30px);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.report-minimize:hover:not(:disabled) {
+  color: var(--color-text);
+}
+
+/* The minimized report, until it is resumed or discarded: above the views but
+   under any dialog, centred over the status bar because both bottom corners
+   belong to the notification toasts (which clear the bar by the same 46 px). */
+.report-dock {
+  position: fixed;
+  left: 50%;
+  bottom: 46px;
+  z-index: 90;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: min(420px, calc(100vw - 32px));
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-popover);
+}
+
+.report-dock-title {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-dock-discard {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.report-dock-discard:hover:not(:disabled) {
+  color: var(--color-text);
 }
 
 .report-player-head h2 {

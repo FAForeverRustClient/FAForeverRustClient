@@ -696,6 +696,10 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({
 }: Props) {
   const { t } = useTranslation();
   const [inviteOpen, setInviteOpen] = useState(false);
+  // The same menu a name opens everywhere else: profile, replays, message
+  // and the rest (issue 639). The seats were the one list of names in the
+  // client that did nothing when clicked.
+  const { openPlayerMenu, playerMenu, playerMenuTarget } = usePlayerMenu();
   const isParty = party.members.length > 1;
   const canManageParty = playerId !== null && (party.ownerId === null || playerId === party.ownerId);
   // The lobby's party message carries no names. `PartyMember.to_dict` on the
@@ -794,7 +798,15 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({
               <PartyLeague placements={placements[member.playerId]} />
               <span className="party-seat-text">
                 <span className="party-seat-name-row">
-                  <strong><PlayerName name={nameFor(member)} /></strong>
+                  <button
+                    type="button"
+                    className={`party-seat-name${playerMenuTarget === nameFor(member) ? " is-menu-target" : ""}`}
+                    title={t("replays.roster.playerActions", { name: nameFor(member) })}
+                    onClick={(event) => openPlayerMenu(nameFor(member), event)}
+                    onContextMenu={(event) => openPlayerMenu(nameFor(member), event)}
+                  >
+                    <PlayerName name={nameFor(member)} title={null} />
+                  </button>
                 </span>
                 <span className="party-seat-meta">
                   <PartyFactions factions={factions} />
@@ -841,6 +853,7 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({
       </div>
 
       {inviteOpen && <InvitePlayerModal social={social} selfId={playerId} partyMemberIds={memberIds} onClose={() => setInviteOpen(false)} />}
+      {playerMenu}
     </section>
   );
 });

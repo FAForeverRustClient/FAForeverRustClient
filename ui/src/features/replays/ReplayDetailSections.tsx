@@ -14,6 +14,7 @@ import { GeneratorFailure } from "../../shared/components/GeneratorFailure";
 import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import type { mapSize } from "../../shared/mapPresentation";
 import { openReviews } from "../../shared/openReviews";
+import { requestModVaultFocus } from "../../shared/modVaultFocus";
 import { useAppStore } from "../../store/store";
 import { ReplayDetailRoster } from "./ReplayRoster";
 import { useHasReplayNote } from "./ReplayNotesEditor";
@@ -82,12 +83,14 @@ export const ReplayDetailFacts = memo(function ReplayDetailFacts({
   size,
   rating,
   cardTitle,
+  mods,
 }: {
   replay: VaultReplay;
   totalPlayers: number;
   size: ReturnType<typeof mapSize>;
   rating: GameRating;
   cardTitle: string;
+  mods: string[];
 }) {
   const { t } = useTranslation();
   const offline = useAppStore((state) => state.state.auth.mode === "offline");
@@ -165,6 +168,7 @@ export const ReplayDetailFacts = memo(function ReplayDetailFacts({
           )}
         </dd>
       </div>
+      <ReplayDetailModsFact mods={mods} />
     </dl>
   );
 });
@@ -240,6 +244,44 @@ export const ReplayDetailLineup = memo(function ReplayDetailLineup({
     </section>
   );
 });
+
+/**
+ * The simulation mods the game ran with, as the replay file names them
+ * (issue 638): the envelope's list where this client wrote one, otherwise the
+ * engine's own mod table in the body, read for an online replay from the head
+ * of its file without downloading the rest. The API's game record names only
+ * the featured mod. One fact of the strip, across its whole width, and only
+ * for a game that had mods. Each mod opens the vault on it, as in the insights
+ * and a lobby's mod list.
+ */
+function ReplayDetailModsFact({ mods }: { mods: string[] }) {
+  const { t } = useTranslation();
+  if (mods.length === 0) return null;
+  return (
+    <div className="replay-detail-facts-wide">
+      <dt>{t("replays.detail.simMods")}</dt>
+      <dd className="replay-detail-mods">
+        <ul className="replay-sim-mod-list">
+          {mods.map((mod) => (
+            <li key={mod}>
+              <button
+                type="button"
+                className="surface-chip replay-sim-mod"
+                title={t("lobby.details.openModInVault", { mod })}
+                onClick={() => {
+                  requestModVaultFocus(mod);
+                  ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "mods" } } });
+                }}
+              >
+                {mod}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </dd>
+    </div>
+  );
+}
 
 /**
  * Every other action on the replay, as one flat toolbar along the

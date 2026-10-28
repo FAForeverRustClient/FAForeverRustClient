@@ -13,7 +13,7 @@ import {
 const EMPTY_SOCIAL: SocialState = {
   friends: [],
   foes: [],
-  loginLookups: [],
+  loginLookups: [], staff: [],
   players: [],
 };
 
@@ -89,7 +89,7 @@ describe("nameColors", () => {
     const social: SocialState = {
       friends: ["Alice"],
       foes: [],
-      loginLookups: [],
+      loginLookups: [], staff: [],
       players: [],
     };
     const prefs: ChatPreferences = {
@@ -109,7 +109,7 @@ describe("nameColors", () => {
     const social: SocialState = {
       friends: ["Alice"],
       foes: [],
-      loginLookups: [],
+      loginLookups: [], staff: [],
       players: [],
     };
     const prefs: ChatPreferences = {
@@ -128,7 +128,7 @@ describe("nameColors", () => {
     const social: SocialState = {
       friends: [],
       foes: ["Bob"],
-      loginLookups: [],
+      loginLookups: [], staff: [],
       players: [],
     };
     const prefs: ChatPreferences = {

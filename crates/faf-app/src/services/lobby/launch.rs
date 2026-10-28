@@ -39,6 +39,12 @@ pub(super) struct LaunchSlot {
     pub(super) called_off: bool,
     /// The launch order's game title, for the "Game launched" notice.
     name: String,
+    /// Whether the launch is a matchmaker game, whose title the server makes
+    /// out of the players' names (`ladder_service/game_name.py`: "A Vs B").
+    /// Its notice names no title, so it says nothing about the opponent: the
+    /// other clients keep the opponent hidden until the game shows them, so
+    /// that nobody backs out of a match over who it is against (issue 617).
+    matchmaker: bool,
 }
 
 /// How many relay messages are kept for an adapter that does not exist yet.
@@ -79,15 +85,31 @@ impl LaunchSlot {
         }
         self.session = Some(session);
         if out.with_state(|state| state.settings.notifications.game_launched) {
+            let (text, body) = launched_notice(&self.name, self.matchmaker);
             notifications::add_text(
                 out,
                 NotificationKind::GameLaunched,
-                notifications::Text::new("notifications.msg.gameLaunched").with("name", &self.name),
+                text,
                 "Game launched",
-                format!("{} started successfully.", self.name),
+                body,
                 None,
             );
         }
+    }
+}
+
+/// The "Game launched" notice's text and English fallback body.
+fn launched_notice(name: &str, matchmaker: bool) -> (notifications::Text, String) {
+    if matchmaker {
+        (
+            notifications::Text::new("notifications.msg.matchLaunched"),
+            "Your matchmaker game started successfully.".to_string(),
+        )
+    } else {
+        (
+            notifications::Text::new("notifications.msg.gameLaunched").with("name", name),
+            format!("{name} started successfully."),
+        )
     }
 }
 
@@ -149,6 +171,7 @@ pub(super) fn on_launch_order<'a>(
     launch.held.clear();
     launch.called_off = false;
     launch.name = launch_order.name.clone();
+    launch.matchmaker = launch_order.game_type == "matchmaker";
     // A launch order is new work, with an id of its own: whatever an
     // earlier join did, this one has not been cancelled, and a
     // `CancelJoin` pressed while it prepares reaches it. It runs
@@ -206,4 +229,26 @@ pub(super) fn terminate_game(ctx: &ServiceCtx, out: &EventSink) {
     ctx.lobby.operations.release_any_join();
     ctx.lobby.running_game.clear();
     out.emit(LobbyEvent::GameTerminated);
+}
+
+#[cfg(test)]
+mod launched_notice_tests {
+    use super::launched_notice;
+
+    #[test]
+    fn a_matchmaker_launch_names_nobody() {
+        // The server titles a matchmaker game after its players ("Nuggets Vs
+        // Foo"), so quoting the title would name the opponent (issue 617).
+        let (text, body) = launched_notice("Nuggets Vs Foo", true);
+        assert_eq!(text.key, "notifications.msg.matchLaunched");
+        assert!(text.params.is_empty());
+        assert!(!body.contains("Foo"), "{body}");
+    }
+
+    #[test]
+    fn a_custom_game_launch_keeps_its_title() {
+        let (text, body) = launched_notice("Friday 4v4", false);
+        assert_eq!(text.key, "notifications.msg.gameLaunched");
+        assert_eq!(body, "Friday 4v4 started successfully.");
+    }
 }

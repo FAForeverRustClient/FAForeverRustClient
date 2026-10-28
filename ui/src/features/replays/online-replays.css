@@ -1888,6 +1888,34 @@ input.replay-options-filter {
   margin-bottom: var(--space-3);
 }
 
+/* The sim mods, as the facts strip's last row across its whole width (issue
+   638). Its own width is left out of the column sizing, so a long mod list
+   wraps inside the strip instead of widening every column above it. */
+.replay-detail-facts > div.replay-detail-facts-wide {
+  grid-column: 1 / -1;
+  padding: 0;
+  border-left: 0;
+  contain: inline-size;
+}
+
+.replay-detail-facts dd.replay-detail-mods {
+  overflow: visible;
+}
+
+.replay-detail-mods .replay-sim-mod-list {
+  gap: var(--space-1) var(--space-2);
+}
+
+/* Square-cornered tags, as everywhere in the client: no capsules. */
+.replay-detail-mods .replay-sim-mod {
+  padding: 2px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-sm) - 2px);
+}
+
 .replay-sim-mod-list {
   display: flex;
   flex-wrap: wrap;

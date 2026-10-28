@@ -9,7 +9,6 @@ import {
   resultRoundLabel,
   rewardSplit,
   roundMapNames,
-  settingRows,
   stopAtRemaining,
 } from "./overviewPresentation";
 import { richParts } from "./richParts";
@@ -142,41 +141,6 @@ describe("formatCells", () => {
       ["tournaments.overview.format", "1v1"],
       ["tournaments.section.bracket", "tournaments.bracketKind.single"],
     ]);
-  });
-});
-
-describe("settingRows", () => {
-  it("reads one setting per line, with or without a bullet", () => {
-    expect(settingRows("- Game Type: FAF\nVictory Conditions: Assassination\n\n**Teams:** Locked")).toEqual({
-      rows: [
-        { key: "Game Type", value: "FAF" },
-        { key: "Victory Conditions", value: "Assassination" },
-        { key: "Teams", value: "Locked" },
-      ],
-      before: "",
-      after: "",
-    });
-  });
-
-  it("keeps the value's own colons and emphasis", () => {
-    expect(settingRows("Title: CC3 - Round X: Game X\nMods: *UI mods only*")?.rows).toEqual([
-      { key: "Title", value: "CC3 - Round X: Game X" },
-      { key: "Mods", value: "*UI mods only*" },
-    ]);
-  });
-
-  it("keeps the notes over and under the list, as the official events close theirs", () => {
-    const list = settingRows("Set these:\n- Game Type: FAF\n- Unrate: No\n*All other settings at default.*");
-    expect(list?.before).toBe("Set these:");
-    expect(list?.rows).toHaveLength(2);
-    expect(list?.after).toBe("*All other settings at default.*");
-  });
-
-  it("gives up on prose between settings, and on a list of one", () => {
-    expect(settingRows("Game Type: FAF\nPlease be on time.\nUnrate: No")).toBeNull();
-    expect(settingRows("Game Type: FAF")).toBeNull();
-    expect(settingRows("See https://example.com")).toBeNull();
-    expect(settingRows("")).toBeNull();
   });
 });
 

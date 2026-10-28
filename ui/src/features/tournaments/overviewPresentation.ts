@@ -63,64 +63,6 @@ export function formatCells(event: Tourney, t: Translate): FormatCell[] {
   return cells;
 }
 
-/** One line of an organiser's settings list, split at its colon. */
-export interface SettingRow {
-  key: string;
-  value: string;
-}
-
-/** `Key: value`, with or without a bullet in front; a key is a short name. */
-const SETTING_LINE = /^(?:[-*]\s+)?([^:]{1,40}):[*_]*\s+(\S.*)$/;
-
-/** An organiser's settings list, and whatever they wrote around it. */
-export interface SettingList {
-  rows: SettingRow[];
-  /** Lines over the list and under it, as written: an intro, a closing note. */
-  before: string;
-  after: string;
-}
-
-/** A line as a setting, or null where it is something else. */
-function settingOf(line: string): SettingRow | null {
-  const match = SETTING_LINE.exec(line);
-  if (match === null) return null;
-  const key = match[1].replace(/^[*_]+|[*_]+$/g, "").trim();
-  const value = match[2].trim();
-  return key === "" || value === "" ? null : { key, value };
-}
-
-/**
- * An organiser's lobby options as rows, where they were written as a list of
- * `Key: value` lines; null where they were not.
- *
- * The service keeps the lobby options as one block of the website's markdown,
- * so nothing says which setting is which. What the organisers write, on every
- * event that has the field, is one setting per line with its name before a
- * colon, and that convention is what is read here. Lines above the first
- * setting and below the last are kept as notes ("All other settings must be
- * left at default" closes the official events' list); anything else between
- * two settings, or a list of fewer than two, means the block is prose and is
- * shown as the prose it is. Emphasis wrapped round the whole name is dropped
- * with it: `**Teams:** Locked` names the setting Teams.
- */
-export function settingRows(source: string): SettingList | null {
-  const lines = source
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line !== "");
-  const settings = lines.map(settingOf);
-  const first = settings.findIndex((setting) => setting !== null);
-  const last = settings.length - 1 - [...settings].reverse().findIndex((setting) => setting !== null);
-  if (first === -1) return null;
-  const rows = settings.slice(first, last + 1);
-  if (rows.length < 2 || rows.some((setting) => setting === null)) return null;
-  return {
-    rows: rows as SettingRow[],
-    before: lines.slice(0, first).join("\n"),
-    after: lines.slice(last + 1).join("\n"),
-  };
-}
-
 /**
  * How many entrants are still in: the service's `aliveTeamCount`, which is
  * every team not marked eliminated. The detail does not carry the count, so it

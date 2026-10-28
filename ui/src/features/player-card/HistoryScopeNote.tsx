@@ -26,7 +26,9 @@ export function HistoryScopeNote({
   return (
     <p className="player-maps-note muted player-history-scope">
       {t("playerCard.history.recentOnly")}{" "}
-      <Button onClick={onLoadFull}>{t("playerCard.history.loadAll")}</Button>
+      {/* The main action of the line, drawn as one: as a ghost button inside
+          a muted sentence it read as more of the sentence. */}
+      <Button variant="primary" onClick={onLoadFull}>{t("playerCard.history.loadAll")}</Button>
     </p>
   );
 }
