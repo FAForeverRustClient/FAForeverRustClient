@@ -185,6 +185,7 @@ pub fn run() {
             commands::read_latest_log,
             commands::webview_engine,
             commands::system_date_pattern,
+            commands::map_generator_automatic_instances,
             commands::report_webview_stall,
             commands::report_event_cost,
             commands::exit_app,

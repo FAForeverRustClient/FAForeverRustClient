@@ -1326,6 +1326,10 @@ export const es: Partial<Record<MessageKey, Message>> = {
 
   "settings.game.additionalGameLaunch": "Argumentos de arranque adicionales",
   "settings.game.autoGenerateMaps": "Generar automáticamente los mapas que falten",
+  "settings.game.mapGeneratorInstances": "Generadores de mapas a la vez",
+  "settings.game.mapGeneratorInstancesHint": "Se usa cuando hay varios estilos, simetrías o densidades seleccionados y cada mapa necesita su propio generador. Un generador ocupa alrededor de núcleo y medio y necesita hasta unos 3 GB de memoria para un mapa de 20 km.",
+  "settings.game.mapGeneratorInstances.automatic": "Automático ({count} en este equipo)",
+  "settings.game.mapGeneratorInstances.automaticPending": "Automático",
   "settings.game.cacheLifetime": "Retención de la caché del juego",
   "settings.game.cacheLifetime.days": "{days} días",
   "settings.game.cacheLifetime.default": "30 días (predeterminado)",
