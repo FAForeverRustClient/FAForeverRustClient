@@ -233,7 +233,8 @@ pub use tutorials::{
     TutorialsEvent, TutorialsState, TutorialsStatus, TUTORIALS_FEATURED_MOD,
 };
 pub use unit_history::{
-    UnitHistoryCommand, UnitHistoryEvent, UnitHistoryState, UnitHistoryStatus, UnitListStatus,
+    normalized_selection, UnitHistoryCommand, UnitHistoryEvent, UnitHistoryState,
+    UnitHistoryStatus, UnitListStatus, MAX_SELECTED,
 };
 pub use uploads::{
     is_safe_folder_name, UploadKind, UploadRequest, UploadStatus, UploadsCommand, UploadsEvent,

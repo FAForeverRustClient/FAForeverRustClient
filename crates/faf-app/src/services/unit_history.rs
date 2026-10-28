@@ -19,7 +19,8 @@ use faf_domain::protocol::unit_history::{
     UnitSummary,
 };
 use faf_domain::state::{
-    ChangelogStatus, UnitHistoryCommand, UnitHistoryEvent, UnitHistoryStatus, UnitListStatus,
+    normalized_selection, ChangelogStatus, UnitHistoryCommand, UnitHistoryEvent, UnitHistoryStatus,
+    UnitListStatus,
 };
 use futures_util::{stream, StreamExt};
 use tokio::time::Instant;
@@ -59,19 +60,18 @@ impl Drop for Building<'_> {
 pub async fn handle(cmd: UnitHistoryCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         UnitHistoryCommand::LoadList => load_list(ctx, out).await,
-        UnitHistoryCommand::Select { id } => {
-            let id = id.trim().to_ascii_uppercase();
-            out.emit(UnitHistoryEvent::Selected { id: id.clone() });
-            build(id, ctx, out).await;
-        }
-        UnitHistoryCommand::Compare { id } => {
-            let id = id.map(|id| id.trim().to_ascii_uppercase());
-            out.emit(UnitHistoryEvent::Compared { id: id.clone() });
-            if let Some(id) = id {
-                build(id, ctx, out).await;
-            }
-        }
+        UnitHistoryCommand::Select { id } => set_selection(vec![id], ctx, out).await,
+        UnitHistoryCommand::SetSelection { ids } => set_selection(ids, ctx, out).await,
     }
+}
+
+/// Show these units and build every history that is not held yet, all at
+/// once: each is its own twelve downloads, and a unit already on disk is
+/// built in a moment.
+async fn set_selection(ids: Vec<String>, ctx: &ServiceCtx, out: &EventSink) {
+    let ids = normalized_selection(&ids);
+    out.emit(UnitHistoryEvent::SelectionChanged { ids: ids.clone() });
+    futures_util::future::join_all(ids.into_iter().map(|id| build(id, ctx, out))).await;
 }
 
 async fn load_list(ctx: &ServiceCtx, out: &EventSink) {

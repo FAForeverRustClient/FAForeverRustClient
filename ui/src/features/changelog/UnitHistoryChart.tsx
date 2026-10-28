@@ -1,7 +1,8 @@
-// One value of a unit over the game releases, as a step chart: a value holds
-// from the release that set it until the release that changed it, so the
-// line stays flat between changes and steps at them. A second unit can be
-// drawn into the same chart, on the same axis, for comparison.
+// Values over the game releases, as a step chart: a value holds from the
+// release that set it until the release that changed it, so a line stays flat
+// between changes and steps at them. Up to eight lines on one axis: one
+// unit's values as percentages of where they started, or several units' one
+// value.
 //
 // Releases sit at equal distances rather than by date. What a reader compares
 // is "which patch changed it", and by date the busy years would crowd into a
@@ -18,23 +19,35 @@ export interface ChartRelease {
 }
 
 export interface ChartSeries {
+  key: string;
   label: string;
-  /** Aligned with the chart's releases; `null` where unset or unknown. */
+  /** What is drawn, aligned with the chart's releases; `null` where unset. */
   values: (number | null)[];
-  /** The second unit, drawn dashed so it does not rely on colour alone. */
-  compared?: boolean;
+  /** 1 to 8: `--color-chart-<n>`, given out in order. */
+  color: number;
+  /** What the tooltip says for a release, when the drawn number is not it. */
+  describe?: (index: number) => string;
 }
 
 interface Props {
   releases: ChartRelease[];
   series: ChartSeries[];
-  format: (value: number | null) => string;
+  /** A tick on the value axis, and a drawn value without `describe`. */
+  format: (value: number) => string;
+  /**
+   * Where the value axis starts. Zero for absolute values, so 300 to 320
+   * does not look like a doubling; `null` lets it fit the values, which is
+   * right for percentages around 100.
+   */
+  floor: number | null;
+  /** A line at this value, such as 100% for "where it started". */
+  baseline?: number;
   /** Opens a release's patch note. */
   onOpenRelease: (id: string) => void;
 }
 
-const HEIGHT = 260;
-const LEFT = 56;
+const HEIGHT = 280;
+const LEFT = 60;
 const RIGHT = 16;
 const TOP = 16;
 const BOTTOM = 30;
@@ -77,25 +90,35 @@ export function stepPath(values: (number | null)[], x: (index: number) => number
 }
 
 /**
- * The value axis: from zero, so a change from 300 to 320 does not look like a
- * doubling, to a little above the largest value. `null` with nothing to draw.
+ * The value axis: from `floor` (or the smallest value) to a little above the
+ * largest, with the same room below when it fits the values. `null` with
+ * nothing to draw.
  */
-export function valueExtent(series: readonly ChartSeries[]): { min: number; max: number } | null {
-  let min = 0;
+export function valueExtent(
+  series: readonly Pick<ChartSeries, "values">[],
+  floor: number | null = 0,
+  baseline?: number,
+): { min: number; max: number } | null {
+  let min: number | null = floor;
   let max: number | null = null;
-  for (const one of series) {
-    for (const value of one.values) {
-      if (value === null) continue;
-      if (value < min) min = value;
-      if (max === null || value > max) max = value;
-    }
+  const take = (value: number) => {
+    if (min === null || value < min) min = value;
+    if (max === null || value > max) max = value;
+  };
+  for (const one of series) for (const value of one.values) if (value !== null) take(value);
+  if (max === null || min === null) return null;
+  if (baseline !== undefined) take(baseline);
+  let low: number = min;
+  let high: number = max;
+  if (high === low) {
+    high = low + Math.max(1, Math.abs(low) * 0.1);
+    if (floor === null) low -= Math.max(1, Math.abs(low) * 0.1);
   }
-  if (max === null) return null;
-  if (max === min) max = min + 1;
-  return { min, max: max + (max - min) * 0.06 };
+  const room = (high - low) * 0.06;
+  return { min: floor === null ? low - room : low, max: high + room };
 }
 
-export function UnitHistoryChart({ releases, series, format, onOpenRelease }: Props) {
+export function UnitHistoryChart({ releases, series, format, floor, baseline, onOpenRelease }: Props) {
   const { t } = useTranslation();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(FALLBACK_WIDTH);
@@ -111,7 +134,7 @@ export function UnitHistoryChart({ releases, series, format, onOpenRelease }: Pr
     return () => observer.disconnect();
   }, []);
 
-  const extent = valueExtent(series);
+  const extent = valueExtent(series, floor, baseline);
 
   if (releases.length === 0 || extent === null) {
     return <p className="unit-history-chart-empty">{t("changelog.units.chart.empty")}</p>;
@@ -132,21 +155,10 @@ export function UnitHistoryChart({ releases, series, format, onOpenRelease }: Pr
   };
 
   const hovered = hover !== null ? releases[hover] : undefined;
+  const onLeft = hover !== null && x(hover) > width / 2;
 
   return (
     <div className="unit-history-chart" ref={wrapRef}>
-      {series.length > 1 && (
-        <ul className="unit-history-legend" aria-label={t("changelog.units.chart.legend")}>
-          {series.map((one) => (
-            <li key={one.label} className={one.compared ? "is-compared" : undefined}>
-              <svg width="22" height="10" aria-hidden="true">
-                <line x1="1" x2="21" y1="5" y2="5" />
-              </svg>
-              {one.label}
-            </li>
-          ))}
-        </ul>
-      )}
       <svg
         className="unit-history-svg"
         width={width}
@@ -168,6 +180,9 @@ export function UnitHistoryChart({ releases, series, format, onOpenRelease }: Pr
             </text>
           </g>
         ))}
+        {baseline !== undefined && (
+          <line className="unit-history-baseline" x1={LEFT} x2={width - RIGHT} y1={y(baseline)} y2={y(baseline)} />
+        )}
         <line className="unit-history-axis" x1={LEFT} x2={width - RIGHT} y1={HEIGHT - BOTTOM} y2={HEIGHT - BOTTOM} />
         {releases.map((release, index) =>
           index % labelEvery === 0 ? (
@@ -181,12 +196,13 @@ export function UnitHistoryChart({ releases, series, format, onOpenRelease }: Pr
         )}
         {series.map((one) => (
           <path
-            key={one.label}
-            className={`unit-history-line${one.compared ? " is-compared" : ""}`}
+            key={one.key}
+            className="unit-history-line"
+            style={{ stroke: `var(--color-chart-${one.color})` }}
             d={stepPath(one.values, x, y)}
           />
         ))}
-        {/* A dot where the value changed, so a step is findable even when it
+        {/* A dot where a value changed, so a step is findable even when it
             is a small one. */}
         {series.map((one) =>
           one.values.map((value, index) => {
@@ -194,8 +210,9 @@ export function UnitHistoryChart({ releases, series, format, onOpenRelease }: Pr
             if (value === null || previous === undefined || previous === value) return null;
             return (
               <circle
-                key={`${one.label}-${index}`}
-                className={`unit-history-change${one.compared ? " is-compared" : ""}`}
+                key={`${one.key}-${index}`}
+                className="unit-history-change"
+                style={{ fill: `var(--color-chart-${one.color})` }}
                 cx={x(index)}
                 cy={y(value)}
                 r={4}
@@ -206,17 +223,23 @@ export function UnitHistoryChart({ releases, series, format, onOpenRelease }: Pr
       </svg>
       {hovered && hover !== null && (
         <div
-          className={`unit-history-tooltip surface-raised${x(hover) > width / 2 ? " is-left" : ""}`}
-          style={x(hover) > width / 2 ? { right: width - x(hover) + 8 } : { left: x(hover + 1) + 8 }}
+          className="unit-history-tooltip surface-raised"
+          style={onLeft ? { right: width - x(hover) + 8 } : { left: x(hover + 1) + 8 }}
         >
           <strong>{hovered.id}</strong>
-          {hovered.date && <span className="muted">{formatDate(hovered.date, "", { day: "numeric", month: "short", year: "numeric" })}</span>}
-          {series.map((one) => (
-            <span key={one.label} className="unit-history-tooltip-row">
-              {series.length > 1 && <span className="muted">{one.label}</span>}
-              <span>{format(one.values[hover] ?? null)}</span>
-            </span>
-          ))}
+          {hovered.date && (
+            <span className="muted">{formatDate(hovered.date, "", { day: "numeric", month: "short", year: "numeric" })}</span>
+          )}
+          {series.map((one) => {
+            const value = one.values[hover] ?? null;
+            return (
+              <span key={one.key} className="unit-history-tooltip-row">
+                <span className="unit-history-swatch" style={{ background: `var(--color-chart-${one.color})` }} />
+                <span className="unit-history-tooltip-label">{one.label}</span>
+                <span>{one.describe ? one.describe(hover) : value === null ? "–" : format(value)}</span>
+              </span>
+            );
+          })}
           <span className="muted">{t("changelog.units.chart.openNote")}</span>
         </div>
       )}

@@ -603,7 +603,7 @@ fn unit_history(command: &UnitHistoryCommand) -> CommandPolicy {
     match command {
         UnitHistoryCommand::LoadList
         | UnitHistoryCommand::Select { .. }
-        | UnitHistoryCommand::Compare { .. } => ORDINARY,
+        | UnitHistoryCommand::SetSelection { .. } => ORDINARY,
     }
 }
 

@@ -450,8 +450,7 @@ const INITIAL: AppState = {
   unitHistory: {
     listStatus: { type: "idle" },
     units: [],
-    selected: null,
-    compared: null,
+    selected: [],
     histories: {},
   },
   connectivity: {

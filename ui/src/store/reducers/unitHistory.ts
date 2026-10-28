@@ -1,15 +1,19 @@
 import type { UnitHistoryEvent, UnitHistoryState, UnitHistoryStatus } from "../../ipc/bindings";
 
-const isShown = (state: UnitHistoryState, id: string) => state.selected === id || state.compared === id;
+/** Twin of `faf_domain::state::unit_history::MAX_SELECTED`. */
+export const MAX_SELECTED_UNITS = 6;
 
-/** Only the unit on screen and the one it is compared with keep a history. */
-function keepOnlyShown(state: UnitHistoryState): UnitHistoryState {
-  const histories: Record<string, UnitHistoryStatus> = {};
-  for (const [id, status] of Object.entries(state.histories)) {
-    if (isShown(state, id)) histories[id] = status;
+/** Twin of `normalized_selection`: upper case, each unit once, capped. */
+export function normalizedSelection(ids: readonly string[]): string[] {
+  const selection: string[] = [];
+  for (const raw of ids) {
+    const id = raw.trim().toUpperCase();
+    if (id && !selection.includes(id) && selection.length < MAX_SELECTED_UNITS) selection.push(id);
   }
-  return { ...state, histories };
+  return selection;
 }
+
+const isSelected = (state: UnitHistoryState, id: string) => state.selected.includes(id);
 
 /** Twin of `faf_domain::state::unit_history::reduce`. */
 export function reduceUnitHistory(state: UnitHistoryState, event: UnitHistoryEvent): UnitHistoryState {
@@ -20,28 +24,28 @@ export function reduceUnitHistory(state: UnitHistoryState, event: UnitHistoryEve
       return { ...state, units: event.payload.units, listStatus: { type: "ready" } };
     case "listFailed":
       return { ...state, listStatus: { type: "failed", payload: { reason: event.payload.reason } } };
-    case "selected": {
-      const id = event.payload.id;
-      return keepOnlyShown({ ...state, selected: id, compared: state.compared === id ? null : state.compared });
-    }
-    case "compared": {
-      const id = event.payload.id;
-      return keepOnlyShown({ ...state, compared: id !== null && id !== state.selected ? id : null });
+    case "selectionChanged": {
+      const selected = normalizedSelection(event.payload.ids);
+      const histories: Record<string, UnitHistoryStatus> = {};
+      for (const [id, status] of Object.entries(state.histories)) {
+        if (selected.includes(id)) histories[id] = status;
+      }
+      return { ...state, selected, histories };
     }
     case "historyProgress": {
       const { id, fetched, total } = event.payload;
-      if (!isShown(state, id)) return state;
+      if (!isSelected(state, id)) return state;
       return { ...state, histories: { ...state.histories, [id]: { type: "loading", payload: { fetched, total } } } };
     }
     case "historyLoaded": {
-      // A history that arrives after the choice has moved on is not kept.
+      // A history that arrives after its unit was put away is not kept.
       const history = event.payload.history;
-      if (!isShown(state, history.unit.id)) return state;
+      if (!isSelected(state, history.unit.id)) return state;
       return { ...state, histories: { ...state.histories, [history.unit.id]: { type: "ready", payload: { history } } } };
     }
     case "historyFailed": {
       const { id, reason } = event.payload;
-      if (!isShown(state, id)) return state;
+      if (!isSelected(state, id)) return state;
       return { ...state, histories: { ...state.histories, [id]: { type: "failed", payload: { reason } } } };
     }
   }
