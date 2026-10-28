@@ -8,6 +8,7 @@
 // art and this client does not ship it.
 
 import { useMemo, useRef, useState } from "react";
+import { useFrameState } from "../../../shared/hooks/useFrameState";
 import type { ReplayAnalysis, ReplayOrder } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { ReplayChartFrame } from "./ReplayChartFrame";
@@ -32,7 +33,7 @@ const PAD_TOP = 8;
 export function ReplayActivityChart({ analysis }: { analysis: ReplayAnalysis }) {
   const { t } = useTranslation();
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const [hoverTick, setHoverTick] = useState<number | null>(null);
+  const [hoverTick, setHoverTick, clearHoverTick] = useFrameState<number | null>(null);
   const [hidden, setHidden] = useState<ReadonlySet<number>>(new Set());
   const [zoomed, setZoomed] = useState(false);
 
@@ -186,7 +187,7 @@ export function ReplayActivityChart({ analysis }: { analysis: ReplayAnalysis }) 
           role="img"
           aria-label={t("replays.insights.graphAria")}
           onMouseMove={(event) => trackTick(event.clientX)}
-          onMouseLeave={() => setHoverTick(null)}
+          onMouseLeave={() => clearHoverTick(null)}
         >
           {gridValues.map((value) => (
             <g key={value}>

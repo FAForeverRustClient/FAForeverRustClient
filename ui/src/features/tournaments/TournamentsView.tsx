@@ -17,7 +17,8 @@
 // selected event (`TournamentEventDetail`) are their own components, each
 // subscribing to the fields it reads.
 
-import { useEffect, useState } from "react";
+import { useForegroundInterval } from "../../shared/hooks/useForegroundInterval";
+import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { StatusNotice } from "../../design-system/StatusNotice";
@@ -85,10 +86,7 @@ export function TournamentsView() {
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   /** The tab row's slot the open event's display switches are drawn into. */
   const [eventTools, setEventTools] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), TICK_MS);
-    return () => window.clearInterval(timer);
-  }, []);
+  useForegroundInterval(() => setNow(Math.floor(Date.now() / 1000)), TICK_MS, true);
 
   const { page, setPage, jump, siteWrite, openPage, openEventPage } = useTourneySite();
   const fold = useEventListFold();

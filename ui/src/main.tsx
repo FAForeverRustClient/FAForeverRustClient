@@ -1,3 +1,4 @@
+import { initializeLocale } from "./i18n/store";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
@@ -29,7 +30,7 @@ window.addEventListener("scroll", () => {
 
 // Before the first render, so no date is drawn in one order and then redrawn
 // in the other. It is one synchronous call in the shell and never rejects.
-void loadSystemDatePattern().then(() => {
+void Promise.all([loadSystemDatePattern(), initializeLocale()]).then(() => {
   createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       <AppErrorBoundary>

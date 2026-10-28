@@ -868,6 +868,7 @@ mod tests {
             panic!("expected the features list, got {:?}", notes[0].blocks[1]);
         };
         assert!(items[0].spans.contains(&ChangelogSpan::Issue {
+            label: None,
             number: "12".into(),
             url: "https://github.com/Org/Repo/issues/12".into(),
         }));

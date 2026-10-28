@@ -488,6 +488,11 @@ impl RunningGame {
 pub struct LatestRequest(Arc<AtomicU64>);
 
 impl LatestRequest {
+    /// Observe the current request without invalidating work already in flight.
+    pub fn current(&self) -> u64 {
+        self.0.load(Ordering::Acquire)
+    }
+
     /// Invalidate earlier work and return this request's generation.
     pub fn begin(&self) -> u64 {
         self.0.fetch_add(1, Ordering::AcqRel).wrapping_add(1)

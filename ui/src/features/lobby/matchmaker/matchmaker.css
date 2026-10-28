@@ -620,10 +620,12 @@
   max-width: 420px;
 }
 
+/* Not clipped itself: the rating breakdown hangs outside the card (see
+   `.matchmaker-queue-breakdown`). The toggle inside it clips the card's own
+   content instead. */
 .matchmaker-queue-card {
   position: relative;
   min-width: 0;
-  overflow: hidden;
   background: var(--color-surface-raised);
 }
 
@@ -663,9 +665,11 @@
   flex-direction: column;
   gap: 16px;
   padding: 18px 16px 14px;
+  overflow: hidden;
   color: var(--color-text);
   background: transparent;
   border: 0;
+  border-radius: inherit;
   text-align: left;
   cursor: pointer;
 }
@@ -1723,15 +1727,15 @@
    `pointer-events: none` keeps it from eating the click that selects the
    queue.
 
-   Along the bottom edge, centred. It used to rise from the "n queued" line and
-   cover the card's own heading -- the queue's name, which is the one thing a
-   reader needs to still be able to see while deciding whether to wait in it.
-   Down here it covers the fact lines instead, one of which is the number it
-   breaks down. */
+   Above the card, outside it. Laid over the card, first on its heading and
+   then on its fact lines, it hid the very queue it describes: its name, its
+   numbers and its map pool button. Below the card it would cover the search
+   bar, which pins itself to the bottom of the column over the cards. Its
+   containing block is the card, so the toggle's clipping does not reach it. */
 .matchmaker-queue-breakdown {
   position: absolute;
   left: 50%;
-  bottom: 10px;
+  bottom: calc(100% + var(--space-2));
   transform: translateX(-50%);
   z-index: 20;
   box-sizing: border-box;
@@ -1753,13 +1757,20 @@
 /* Anywhere on the card, not only on the words "n queued". The breakdown is
    what the card is for -- it answers whether waiting in this queue is worth
    it -- and asking for it by finding six characters of text turned a fact
-   into a trick. It still hangs off the count, because that is the number it
-   breaks down. */
+   into a trick. It still sits in the count's markup, because that is the
+   number it breaks down. */
 .matchmaker-queue-card:hover .matchmaker-queue-breakdown {
   opacity: 1;
 }
 
-/* Thetitle over a hairline, so the chart reads as a figure with a heading
+/* No room above: the column has scrolled the card up to its top edge, which
+   would cut the breakdown off. See `placeBreakdown`. */
+.matchmaker-queue-card[data-breakdown="below"] .matchmaker-queue-breakdown {
+  top: calc(100% + var(--space-2));
+  bottom: auto;
+}
+
+/* The title over a hairline, so the chart reads as a figure with a heading
    rather than as one more line of the card. */
 .matchmaker-queue-breakdown-head {
   display: grid;

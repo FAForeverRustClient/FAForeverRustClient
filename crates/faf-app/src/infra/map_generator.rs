@@ -1041,7 +1041,6 @@ impl NeroxisMapGenerator {
     }
 
     async fn read_map_preview(&self, map_name: &str) -> Option<String> {
-        use base64::Engine as _;
         let normalized = map_name.to_lowercase();
         let folder = self.config.maps_dir().join(map_name);
         let folder_lower = self.config.maps_dir().join(&normalized);
@@ -1063,19 +1062,20 @@ impl NeroxisMapGenerator {
             folder_lower.join("preview.png"),
         ];
         for path in candidates {
-            if let Ok(bytes) = tokio::fs::read(&path).await {
-                if !bytes.is_empty() {
-                    return Some(format!(
-                        "data:image/png;base64,{}",
-                        base64::engine::general_purpose::STANDARD.encode(&bytes)
-                    ));
-                }
+            if let Some(preview) = super::maps::read_preview_data_url(&path).await {
+                return Some(preview);
             }
         }
 
-        let target_folder = if folder.is_dir() {
+        let target_folder = if tokio::fs::metadata(&folder)
+            .await
+            .is_ok_and(|metadata| metadata.is_dir())
+        {
             folder
-        } else if folder_lower.is_dir() {
+        } else if tokio::fs::metadata(&folder_lower)
+            .await
+            .is_ok_and(|metadata| metadata.is_dir())
+        {
             folder_lower
         } else {
             return None;
@@ -1085,18 +1085,8 @@ impl NeroxisMapGenerator {
             while let Ok(Some(entry)) = entries.next_entry().await {
                 let name = entry.file_name().to_string_lossy().to_lowercase();
                 if name.ends_with(".png") || name.ends_with(".jpg") || name.ends_with(".jpeg") {
-                    if let Ok(bytes) = tokio::fs::read(entry.path()).await {
-                        if !bytes.is_empty() {
-                            let mime = if name.ends_with(".png") {
-                                "image/png"
-                            } else {
-                                "image/jpeg"
-                            };
-                            return Some(format!(
-                                "data:{mime};base64,{}",
-                                base64::engine::general_purpose::STANDARD.encode(&bytes)
-                            ));
-                        }
+                    if let Some(preview) = super::maps::read_preview_data_url(&entry.path()).await {
+                        return Some(preview);
                     }
                 }
             }
@@ -1999,10 +1989,20 @@ impl MapGeneratorPort for NeroxisMapGenerator {
         map_names: &[String],
     ) -> std::collections::HashMap<String, String> {
         let mut map = std::collections::HashMap::new();
+        let mut bytes = 0;
         for name in map_names {
             if let Some(data_url) = self.read_map_preview(name).await {
-                map.insert(name.clone(), data_url.clone());
-                map.insert(name.to_lowercase(), data_url);
+                let lower = name.to_lowercase();
+                let copies = if lower == *name { 1 } else { 2 };
+                let cost = data_url.len() * copies;
+                if bytes + cost > faf_domain::state::map_generator::MAX_PREVIEW_BYTES {
+                    break;
+                }
+                bytes += cost;
+                if lower != *name {
+                    map.insert(name.clone(), data_url.clone());
+                }
+                map.insert(lower, data_url);
             }
         }
         map

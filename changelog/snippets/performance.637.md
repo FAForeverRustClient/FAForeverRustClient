@@ -1,0 +1,3 @@
+- Repeated searches across game patch notes reuse downloaded notes across client restarts.
+- Searching game patch notes no longer redraws the open patch.
+- Typing in the changelog's patch filter no longer lags on long patches.

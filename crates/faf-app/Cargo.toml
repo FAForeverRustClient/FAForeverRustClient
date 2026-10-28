@@ -38,7 +38,7 @@ rand = "0.8"
 # Decompresses `.fafreplay` bodies (see infra/replay.rs): "zstd" for
 # vault-downloaded replays, flate2 (zlib) for the legacy Qt `qCompress` format
 # locally-recorded replays still use (compression: null/absent).
-zstd = "0.13"
+zstd = "0.14.3"
 flate2 = "1"
 # MD5 file-integrity checks for the game version updater (see infra/game_updater.rs).
 md5 = "0.7"

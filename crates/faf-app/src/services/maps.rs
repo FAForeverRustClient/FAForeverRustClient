@@ -143,9 +143,10 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
             // result too, so a map whose folder holds no art is asked about
             // once and never again, which matters because the UI asks from
             // an image's error handler, and that fires on every render.
-            let wanted: Vec<String> = out.with_state(|state| {
+            let mut wanted: Vec<String> = out.with_state(|state| {
                 folder_names
                     .iter()
+                    .take(64)
                     .filter(|name| {
                         !state
                             .maps
@@ -158,9 +159,20 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
             if wanted.is_empty() {
                 return;
             }
-            let previews = ctx.ports.maps.local_previews(&wanted).await;
-            if !previews.is_empty() {
+            while !wanted.is_empty() {
+                let previews = ctx.ports.maps.local_previews(&wanted).await;
+                if previews.is_empty() {
+                    break;
+                }
+                let before = wanted.len();
+                wanted.retain(|name| {
+                    !previews.contains_key(&faf_domain::state::maps::base_folder_name(name))
+                });
                 out.emit(MapsEvent::LocalPreviewsLoaded { previews });
+                if wanted.len() == before {
+                    break;
+                }
+                tokio::task::yield_now().await;
             }
         }
         MapsCommand::LoadMatchmakerPools { queue_name } => {

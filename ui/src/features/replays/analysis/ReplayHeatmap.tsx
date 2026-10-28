@@ -9,7 +9,7 @@
 // blurred with a repeated box rather than with a Gaussian kernel: the two look
 // the same at this size and one of them does not need a numerics library.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type { ReplayAnalysis, ReplayPoint } from "../../../ipc/bindings";
@@ -78,12 +78,18 @@ export function ReplayHeatmap({
 }) {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const scratchRef = useRef<HTMLCanvasElement | null>(null);
   const players = useMemo(() => analysedPlayers(analysis), [analysis]);
   const [hiddenPlayers, setHiddenPlayers] = useState<ReadonlySet<number>>(new Set());
   const [command, setCommand] = useState(-1);
   const [from, setFrom] = useState(0);
   const [to, setTo] = useState(analysis.ticks);
   const [smoothing, setSmoothing] = useState(2);
+  // The sliders follow the pointer at once; the binning and blur behind them
+  // catch up as a deferred render, skipping positions already dragged past.
+  const binFrom = useDeferredValue(from);
+  const binTo = useDeferredValue(to);
+  const binSmoothing = useDeferredValue(smoothing);
   const [showMap, setShowMap] = useState(true);
   const [zoomed, setZoomed] = useState(false);
 
@@ -97,21 +103,21 @@ export function ReplayHeatmap({
 
   useEffect(() => setTo(analysis.ticks), [analysis.ticks]);
 
-  const bins = useMemo(() => {
+  const rawBins = useMemo(() => {
     const include = (point: ReplayPoint) =>
-      point.tick >= from
-      && point.tick <= to
+      point.tick >= binFrom
+      && point.tick <= binTo
       && !hiddenPlayers.has(point.source)
       && (command < 0 || point.command === command);
-    const raw = heatmapBins(
+    return heatmapBins(
       analysis.points,
       analysis.scenario.width,
       analysis.scenario.height,
       GRID,
       include,
     );
-    return blurBins(raw, smoothing);
-  }, [analysis.points, analysis.scenario.height, analysis.scenario.width, command, from, hiddenPlayers, smoothing, to]);
+  }, [analysis.points, analysis.scenario.height, analysis.scenario.width, binFrom, binTo, command, hiddenPlayers]);
+  const bins = useMemo(() => blurBins(rawBins, binSmoothing), [rawBins, binSmoothing]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -130,7 +136,7 @@ export function ReplayHeatmap({
     }
     // Painted at grid size and scaled up by the canvas itself, which is what
     // gives the cells their soft edges.
-    const scratch = document.createElement("canvas");
+    const scratch = scratchRef.current ??= document.createElement("canvas");
     scratch.width = GRID;
     scratch.height = GRID;
     scratch.getContext("2d")?.putImageData(image, 0, 0);

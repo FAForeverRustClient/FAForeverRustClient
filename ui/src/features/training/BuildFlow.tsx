@@ -15,6 +15,7 @@
 // route it drove over there, which is the whole reason the two panes sit side
 // by side.
 
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "../../i18n/useTranslation";
 import { CAT_COLOR, catColor, ellipsize, mmss, type Lane, type Stalls } from "./recording";
 
@@ -75,8 +76,8 @@ export function BuildFlow({ lanes, durationMs, hovered, onHover, stalls }: Props
   const width = labelW + plotW + PAD_R;
   const height = lanes.length * ROW_H + lanesTop + 6;
 
-  const x = (t: number) => labelW + (t / durationMs) * plotW;
-  const midOf = (row: number) => lanesTop + row * ROW_H + ROW_H / 2;
+  const x = useCallback((t: number) => labelW + (t / durationMs) * plotW, [labelW, durationMs, plotW]);
+  const midOf = useCallback((row: number) => lanesTop + row * ROW_H + ROW_H / 2, [lanesTop]);
 
   const ticks: number[] = [];
   for (let t = 0; t <= durationMs; t += 60_000) ticks.push(t);
@@ -85,8 +86,9 @@ export function BuildFlow({ lanes, durationMs, hovered, onHover, stalls }: Props
   // `childId` is the produced unit's entity id, which is also what its own lane
   // hovers on, so pointing at a node and pointing at its lane light the same
   // branch.
-  const rowOf = new Map(lanes.map((lane, i) => [lane.id, i]));
-  const branches = lanes.flatMap((lane, row) =>
+  const branches = useMemo(() => {
+    const rowOf = new Map(lanes.map((lane, i) => [lane.id, i]));
+    return lanes.flatMap((lane, row) =>
     lane.bars.flatMap((bar) => {
       const childRow = rowOf.get(bar.entityId);
       if (childRow === undefined) return [];
@@ -101,6 +103,70 @@ export function BuildFlow({ lanes, durationMs, hovered, onHover, stalls }: Props
       ];
     }),
   );
+  }, [lanes, x, midOf]);
+
+  const laneContents = useMemo(() => lanes.map((lane, row) => {
+    const mid = midOf(row);
+    return <g key={lane.id}>
+              {/* A row-wide transparent band, so the lane is hoverable
+                  everywhere rather than only on its marks. */}
+              <rect
+                x={0}
+                y={lanesTop + row * ROW_H}
+                width={width}
+                height={ROW_H}
+                fill="transparent"
+                style={{ cursor: "pointer" }}
+              />
+              <text
+                x={labelW - LABEL_GAP}
+                y={mid + 3}
+                className="training-flow-label"
+                textAnchor="end"
+              >
+                {ellipsize(lane.name, labelChars)}
+                <title>{lane.name}</title>
+              </text>
+              <line
+                x1={labelW}
+                y1={mid}
+                x2={width - PAD_R}
+                y2={mid}
+                className="training-flow-rail"
+              />
+
+              {lane.bars.map((bar) => {
+                const start = x(bar.start);
+                // A build still unfinished when the recording stopped runs to
+                // the end rather than vanishing: it happened, it just did not
+                // finish inside the run.
+                const end = x(bar.end ?? durationMs);
+                return (
+                  <g key={bar.key}>
+                    <rect
+                      x={start}
+                      y={mid - 3}
+                      width={Math.max(2, end - start)}
+                      height={6}
+                      rx={3}
+                      fill={catColor(bar.cat)}
+                      opacity={bar.end === null ? 0.45 : 0.75}
+                    />
+                    <circle cx={start} cy={mid} r={NODE_R} fill={catColor(bar.cat)} />
+                    <title>
+                      {bar.end === null
+                        ? `${bar.name} · ${mmss(bar.start)}`
+                        : t("training.build.barSpan", {
+                            name: bar.name,
+                            from: mmss(bar.start),
+                            to: mmss(bar.end),
+                          })}
+                    </title>
+                  </g>
+                );
+              })}
+    </g>;
+  }), [lanes, midOf, lanesTop, width, labelW, labelChars, x, durationMs, t]);
 
   return (
     <div className="training-flow">
@@ -169,9 +235,7 @@ export function BuildFlow({ lanes, durationMs, hovered, onHover, stalls }: Props
         })}
 
         {lanes.map((lane, row) => {
-          const mid = midOf(row);
-          const hot = hovered === lane.id;
-          const dimmed = hovered !== null && !hot;
+          const dimmed = hovered !== null && hovered !== lane.id;
           return (
             <g
               key={lane.id}
@@ -179,63 +243,7 @@ export function BuildFlow({ lanes, durationMs, hovered, onHover, stalls }: Props
               onMouseEnter={() => onHover(lane.id)}
               onMouseLeave={() => onHover(null)}
             >
-              {/* A row-wide transparent band, so the lane is hoverable
-                  everywhere rather than only on its marks. */}
-              <rect
-                x={0}
-                y={lanesTop + row * ROW_H}
-                width={width}
-                height={ROW_H}
-                fill="transparent"
-                style={{ cursor: "pointer" }}
-              />
-              <text
-                x={labelW - LABEL_GAP}
-                y={mid + 3}
-                className="training-flow-label"
-                textAnchor="end"
-              >
-                {ellipsize(lane.name, labelChars)}
-                <title>{lane.name}</title>
-              </text>
-              <line
-                x1={labelW}
-                y1={mid}
-                x2={width - PAD_R}
-                y2={mid}
-                className="training-flow-rail"
-              />
-
-              {lane.bars.map((bar) => {
-                const start = x(bar.start);
-                // A build still unfinished when the recording stopped runs to
-                // the end rather than vanishing: it happened, it just did not
-                // finish inside the run.
-                const end = x(bar.end ?? durationMs);
-                return (
-                  <g key={bar.key}>
-                    <rect
-                      x={start}
-                      y={mid - 3}
-                      width={Math.max(2, end - start)}
-                      height={6}
-                      rx={3}
-                      fill={catColor(bar.cat)}
-                      opacity={bar.end === null ? 0.45 : 0.75}
-                    />
-                    <circle cx={start} cy={mid} r={NODE_R} fill={catColor(bar.cat)} />
-                    <title>
-                      {bar.end === null
-                        ? `${bar.name} · ${mmss(bar.start)}`
-                        : t("training.build.barSpan", {
-                            name: bar.name,
-                            from: mmss(bar.start),
-                            to: mmss(bar.end),
-                          })}
-                    </title>
-                  </g>
-                );
-              })}
+              {laneContents[row]}
             </g>
           );
         })}

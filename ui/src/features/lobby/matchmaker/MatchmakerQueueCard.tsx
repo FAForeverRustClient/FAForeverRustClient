@@ -1,3 +1,4 @@
+import { useMemo, type PointerEvent } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type { MatchmakerQueue, PlayerLeaguePlacement, PlayerRatingSummary } from "../../../ipc/bindings";
@@ -102,6 +103,25 @@ function QueueRatingPlot({ graph }: { graph: QueueRatingGraph }) {
   );
 }
 
+/**
+ * The rating breakdown opens above the card. Whatever scrolls the tab clips
+ * what leaves it, so a card scrolled up to that box's top edge has no room
+ * there, and its breakdown opens below the card instead. Which box scrolls
+ * depends on the window's size (see `matchmaker.css`), so it is looked up
+ * rather than named. Decided as the pointer arrives, which is when the
+ * breakdown is about to show.
+ */
+function placeBreakdown(event: PointerEvent<HTMLElement>) {
+  const card = event.currentTarget;
+  const breakdown = card.querySelector<HTMLElement>(".matchmaker-queue-breakdown");
+  if (!breakdown) return;
+  let clip = card.parentElement;
+  while (clip && getComputedStyle(clip).overflowY === "visible") clip = clip.parentElement;
+  const top = clip ? clip.getBoundingClientRect().top : 0;
+  const room = card.getBoundingClientRect().top - top;
+  card.dataset.breakdown = room < breakdown.offsetHeight + 8 ? "below" : "above";
+}
+
 export type QueueDisplayState = "idle" | "searching" | "found" | "launching" | "cancelled";
 
 /**
@@ -167,7 +187,7 @@ export function MatchmakerQueueCard({
   // any of them is near you, and "in range: 0" says only that none is: the
   // question both leave open is whether the queue is empty around your rating
   // or empty everywhere, which decides whether waiting is worth it.
-  const graph = queueRatingGraph(queue, rating);
+  const graph = useMemo(() => queueRatingGraph(queue, rating), [queue, rating?.mean, rating?.deviation, rating?.gamesPlayed]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <article
       className={
@@ -175,6 +195,7 @@ export function MatchmakerQueueCard({
         + `${disabled || incompatible ? " incompatible" : ""}`
       }
       data-status={status}
+      onPointerEnter={graph ? placeBreakdown : undefined}
     >
       {/* The whole card toggles, not a checkbox-sized strip at the top of it.
           Everything below is either a fact about the queue or a separate

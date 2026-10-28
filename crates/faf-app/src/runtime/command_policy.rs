@@ -548,7 +548,7 @@ fn tutorials(command: &TutorialsCommand) -> CommandPolicy {
 fn changelog(command: &ChangelogCommand) -> CommandPolicy {
     match command {
         ChangelogCommand::Load => single_flight(Key::Changelog),
-        ChangelogCommand::Select { .. } => ORDINARY,
+        ChangelogCommand::Select { .. } | ChangelogCommand::Search { .. } => ORDINARY,
     }
 }
 

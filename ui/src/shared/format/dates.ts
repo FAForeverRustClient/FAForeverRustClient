@@ -1,3 +1,4 @@
+import { dateFormatter } from "../../i18n/formatters";
 import { getLocale, intlTag, t } from "../../i18n";
 import { hourCycleOptions, uses24HourClock } from "./clock";
 import { formatRelativeDuration } from "./durations";
@@ -33,7 +34,7 @@ export function clientIntlTag(): string {
  */
 function numericDate(date: Date): string {
   const tokens = systemDateTokens();
-  return tokens ? formatWithTokens(tokens, date) : date.toLocaleDateString(clientIntlTag());
+  return tokens ? formatWithTokens(tokens, date) : dateFormatter(clientIntlTag()).format(date);
 }
 
 export function formatDate(
@@ -44,7 +45,7 @@ export function formatDate(
   if (value === "" || (typeof value === "number" && value <= 0)) return fallback;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return fallback;
-  return options ? date.toLocaleDateString(clientIntlTag(), options) : numericDate(date);
+  return options ? dateFormatter(clientIntlTag(), options).format(date) : numericDate(date);
 }
 
 export function formatShortDate(value: string | number, fallback = t("common.unknown")): string {
@@ -67,10 +68,10 @@ export function formatTime(
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? fallback
-    : date.toLocaleTimeString(clientIntlTag(), {
+    : dateFormatter(clientIntlTag(), {
         timeStyle: "short",
         ...hourCycleOptions(use24HourTime),
-      });
+      }).format(date);
 }
 
 /**
@@ -86,20 +87,20 @@ export function formatShortDateTime(value: string | number, fallback = t("common
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return fallback;
   if (systemDateTokens()) {
-    return `${numericDate(date)} ${date.toLocaleTimeString(clientIntlTag(), {
+    return `${numericDate(date)} ${dateFormatter(clientIntlTag(), {
       hour: "2-digit",
       minute: "2-digit",
       ...hourCycleOptions(),
-    })}`;
+    }).format(date)}`;
   }
-  return date.toLocaleString(clientIntlTag(), {
+  return dateFormatter(clientIntlTag(), {
     year: "numeric",
     month: "numeric",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     ...hourCycleOptions(),
-  });
+  }).format(date);
 }
 
 export function formatDateTime(value: string | number, fallback = t("common.unknown")): string {
@@ -107,11 +108,11 @@ export function formatDateTime(value: string | number, fallback = t("common.unkn
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? fallback
-    : date.toLocaleString(clientIntlTag(), {
+    : dateFormatter(clientIntlTag(), {
         dateStyle: "medium",
         timeStyle: "short",
         ...hourCycleOptions(),
-      });
+      }).format(date);
 }
 
 /// A week. Past it, "how long ago" stops being the useful reading.

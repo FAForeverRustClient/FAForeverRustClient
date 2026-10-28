@@ -1,0 +1,7 @@
+- Long games no longer use more memory the longer they run while their replay is recorded and uploaded.
+- Map previews use at most a fixed amount of memory, however many maps you browse.
+- The local replay, map and mod lists open faster on repeat visits.
+- Large game logs open in Settings, Diagnostics without freezing the window.
+- The client starts faster, and only the language you selected is loaded.
+- Chat, training routes, replay graphs and the heatmap respond faster on long sessions.
+- Clocks and background refreshes pause while the window is minimized or a game is running.
