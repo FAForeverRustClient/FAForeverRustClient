@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Icon } from "../../design-system/Icon";
 import type { VaultMap } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
@@ -68,9 +68,12 @@ export function MapThumbnail({
     () => mapThumbnailCandidates(vault, mapName, large, missions, generatedPreview, ownUrl || undefined, preferCanonicalPreview),
     [generatedPreview, large, mapName, missions, ownUrl, preferCanonicalPreview, vault],
   );
-  const [candidateIndex, setCandidateIndex] = useState(() => firstLiveCandidate(candidates));
-
-  useEffect(() => setCandidateIndex(firstLiveCandidate(candidates)), [candidates]);
+  // Which candidate is shown, for the candidates it was worked out for. A new
+  // map starts its own walk in the same render (#642): the walk used to be
+  // reset in an effect after it, so stepping through a list drew the next
+  // map's name with the last one's index, and the picture lagged behind.
+  const [walk, setWalk] = useState(() => ({ candidates, index: firstLiveCandidate(candidates) }));
+  const candidateIndex = walk.candidates === candidates ? walk.index : firstLiveCandidate(candidates);
 
   const url = candidates[candidateIndex];
   // Only once every remote candidate has 404'd. Kept out of `candidates` on
@@ -122,6 +125,10 @@ export function MapThumbnail({
 
   return (
     <img
+      // One element per picture: with a changed `src` the browser keeps the
+      // previous map on screen until the next one has loaded, which is the
+      // preview showing one map under another's name (#642).
+      key={url}
       className={className}
       src={url}
       alt={t("common.mapPreview", { name: presentation.displayName })}
@@ -131,7 +138,7 @@ export function MapThumbnail({
         markThumbnailMissing(url);
         // Never the same index twice: `url` is the candidate at the current
         // index, so skipping every remembered miss lands strictly past it.
-        setCandidateIndex(firstLiveCandidate(candidates));
+        setWalk({ candidates, index: firstLiveCandidate(candidates) });
       }}
     />
   );
