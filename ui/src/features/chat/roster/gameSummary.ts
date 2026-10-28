@@ -1,6 +1,7 @@
 import type { Game, PlayerProfile, SocialState } from "../../../ipc/bindings";
 import { t } from "../../../i18n";
 import { displayedRating, gameLeaderboard } from "../../../shared/playerRatings";
+import { displayTeamName, observerTeam } from "../../../shared/gameRules";
 // One definition, imported rather than repeated. It was 300 here and
 // `5 * 60` there, which is the same number until somebody changes one of
 // them; the server enforces the rule and both of these only draw it.
@@ -119,10 +120,11 @@ function hostedAtSeconds(hostedAt: string | null): number | null {
   return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : null;
 }
 
-function teamLabel(id: string): string {
-  if (id === "-1" || id === "null") return t("chat.team.observers");
+// Numbered as the Play tab and the replays number the same teams. Read raw,
+// the server's ids put a 4v3 here as "Team 2" against "Team 3".
+function teamLabel(id: string, soleTeam: boolean): string {
   if (id === "0") return t("chat.team.none");
-  return t("chat.team.numbered", { id });
+  return displayTeamName(id, soleTeam);
 }
 
 function teamOrder([id]: [string, string[]]): number {
@@ -135,8 +137,9 @@ export function gameTeamSummaries(game: Game, social: SocialState): GameSummaryT
   // The leaderboard this game is played on, not always the global one. A 1v1
   // ladder game listing everybody's global rating was the report.
   const leaderboard = gameLeaderboard(game.ratingType);
-  return Object.entries(game.teams)
-    .filter(([, players]) => players.length > 0)
+  const occupied = Object.entries(game.teams).filter(([, players]) => players.length > 0);
+  const soleTeam = occupied.filter(([id]) => !observerTeam(id)).length === 1;
+  return occupied
     .sort((left, right) => teamOrder(left) - teamOrder(right))
     .map(([id, logins]) => {
       const players = logins.map((login) => {
@@ -151,7 +154,7 @@ export function gameTeamSummaries(game: Game, social: SocialState): GameSummaryT
       const knownRatings = players.flatMap((player) => player.rating === null ? [] : [player.rating]);
       return {
         id,
-        label: teamLabel(id),
+        label: teamLabel(id, soleTeam),
         rating: knownRatings.length > 0
           ? knownRatings.reduce((total, rating) => total + rating, 0)
           : null,

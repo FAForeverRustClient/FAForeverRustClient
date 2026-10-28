@@ -1476,18 +1476,20 @@ img.chat-game-map {
   color: var(--color-subtle);
 }
 
+/* As tall as the three lines beside it: the title, the map's name and the
+   facts. */
 .chat-game-card-map-wrap {
   position: relative;
-  flex: 0 0 56px;
-  width: 56px;
-  height: 56px;
+  flex: 0 0 64px;
+  width: 64px;
+  height: 64px;
   aspect-ratio: 1;
 }
 
 .chat-game-card-map {
-  flex: 0 0 56px;
-  width: 56px;
-  height: 56px;
+  flex: 0 0 64px;
+  width: 64px;
+  height: 64px;
   aspect-ratio: 1;
   object-fit: cover;
   border-radius: var(--radius-sm);
@@ -1584,11 +1586,11 @@ img.chat-game-map {
 .chat-game-popover {
   position: fixed;
   z-index: 100;
-  width: min(410px, calc(100vw - 16px));
+  width: min(460px, calc(100vw - 16px));
   max-height: calc(100vh - 16px);
   overflow: auto;
   /* No scrollbar gutter: a pop-up as wide as what opened it, where a reserved strip would narrow every entry for a scrollbar most lists never show. */
-  padding: 10px;
+  padding: var(--space-3);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
@@ -1596,15 +1598,14 @@ img.chat-game-map {
   box-shadow: var(--shadow-popover);
 }
 
-/* One team is not a matchup, and the hover card is 410 px wide because two of
-   them stand side by side in it. Holding one, most of that width was empty and
-   the row below spread itself across it to fill the gap. A co-op game, a
-   free-for-all and a lobby nobody has joined the second seat of all land here.
-   So does a game whose lineup the server has not sent, which is narrower still
-   but has no reason to be wider. */
+/* One team is not a matchup, and the hover card is 460 px wide because two of
+   them stand side by side in it. Holding one, most of that width was empty
+   between the names and their ratings. A co-op game, a free-for-all and a
+   lobby nobody has joined the second seat of all land here. So does a game
+   whose lineup the server has not sent, which has no reason to be wider. */
 .chat-game-popover:has(.chat-game-team:only-child),
 .chat-game-popover:has(.chat-game-no-teams) {
-  width: min(300px, calc(100vw - 16px));
+  width: min(340px, calc(100vw - 16px));
 }
 
 /* The card holds a button now, so the pointer has to be able to reach it. It
@@ -1612,32 +1613,50 @@ img.chat-game-map {
    is purely a label and the wrong one the moment it is not. `GameSummaryPopover`
    keeps it open while the pointer is over it.
 
-   The status and the action share the header's right edge, the status where it
-   always was and the button under it, level with the map (issue 351). */
-.chat-game-popover-side {
+   It ends the title's line, level with the top of the map (issue 351), and is
+   drawn as a button rather than as the chat head's bare text: it is the one
+   thing to do in the card. */
+.chat-game-popover-action {
   flex: none;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  color: var(--color-text);
+  /* Filled as well as outlined: on the light theme's raised surface the
+     outline alone all but disappeared. */
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
 }
 
-.chat-game-popover-action {
-  justify-content: center;
-  white-space: nowrap;
+.chat-game-popover-action:hover {
+  background: color-mix(in srgb, var(--color-text) 8%, var(--color-surface-hover));
+}
+
+.chat-game-popover-action:active {
+  background: var(--color-surface);
+}
+
+.chat-game-popover-action:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
 .chat-game-popover-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--color-border);
+  gap: var(--space-3);
 }
 
-.chat-game-popover-info,
-.chat-game-popover-head > div:not(.chat-game-card-map-wrap, .chat-game-popover-side) {
+.chat-game-popover-info {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -1645,27 +1664,41 @@ img.chat-game-map {
   gap: 2px;
 }
 
-.chat-game-popover-head strong,
-.chat-game-popover-head span {
+.chat-game-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.chat-game-title-row strong,
+.chat-game-popover-map {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.chat-game-popover-head strong {
-  font-size: 13px;
+.chat-game-title-row strong {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
 }
 
-.chat-game-popover-info > span,
-.chat-game-popover-head > div:not(.chat-game-card-map-wrap, .chat-game-popover-side) > span,
-.chat-game-meta,
-.chat-game-team li small {
+.chat-game-popover-map {
   color: var(--color-muted);
+  font-size: 12px;
 }
 
-.chat-game-popover-info > span,
-.chat-game-popover-head > div:not(.chat-game-card-map-wrap, .chat-game-popover-side) > span {
-  font-size: 12px;
+/* Read by a screen reader, not drawn: the labels the facts line leaves to the
+   status beside them and to the column of ratings below. */
+.chat-game-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
 }
 
 .chat-game-status {
@@ -1706,87 +1739,103 @@ img.chat-game-map {
   background: color-mix(in srgb, var(--color-muted) 12%, transparent);
 }
 
+/* Everything else known about the game, as one muted line in the replay
+   cards' order of business: what it is doing, for how long, then the mod, the
+   seats and the average. A dot between plain facts rather than an icon per
+   fact (issue 448's), which on a card this size read as a fifth row of
+   controls.
+
+   Every fact carries its dot in front of it, and the row is pulled 14 px left
+   into a clipped strip. A fact that starts a line, the first one or one a long
+   translation wrapped, has its dot in that strip and out of sight, so no line
+   ever opens with a stray dot. */
 .chat-game-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px 10px;
-  padding: 6px 0;
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--color-muted);
   font-size: 12px;
 }
 
-/* A fact and its icon, as the replay tab's cards pair them (issue 448). */
-.chat-game-meta > span {
+.chat-game-meta > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 2px;
+  margin-left: -14px;
+}
+
+.chat-game-meta > div > span {
+  position: relative;
+  margin-left: 14px;
+  white-space: nowrap;
+}
+
+.chat-game-meta > div > span::before {
+  content: "\00B7";
+  position: absolute;
+  left: -9px;
+  color: var(--color-subtle);
+}
+
+.chat-game-state {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-2);
 }
 
-.chat-game-meta > span > svg {
-  flex: none;
-  opacity: 0.75;
+.chat-game-elapsed {
+  color: var(--color-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
+/* The teams as the replay cards draw them: plain columns under a ruled team
+   line, no box around each. Boxed, the card was a box of boxes, and the 7 px of
+   padding and border on either side of each came out of the names. */
 .chat-game-teams {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 6px;
-}
-
-/* ...and the tile stops filling a width it has no content for. `fit-content`
-   sizes it to its own longest row, and what is left over is split either side
-   so it reads as padding rather than as a box somebody forgot to fill.
-
-   The row layout is deliberately left alone here. Every `li` is its own grid,
-   so the ratings line up in a column only while the name track is the `1fr`
-   one that ends every row at the same edge; give the name `max-content`
-   instead and each rating lands wherever its own name happens to stop. The
-   complaint that started this was that the column sat against the far side of
-   a card built for two teams. With the tile no wider than it needs to be, the
-   same `1fr` now puts it a few pixels past the longest name. */
-.chat-game-popover .chat-game-teams:has(> .chat-game-team:only-child) {
-  grid-template-columns: fit-content(100%);
-  justify-content: start;
-}
-
-/* Roomier than a team that shares its row. The 7 px below is what keeps two
-   tiles legible side by side in 192 px each; a lone tile is under no such
-   pressure, and at its own width the tighter padding reads as a box clamped
-   around the names rather than one holding them. */
-.chat-game-popover .chat-game-team:only-child {
-  padding: var(--space-2) var(--space-3);
-}
-
-/* The avatar box is reserved even when empty so one player who has one does not
-   indent the names of a team where nobody else does. Where nobody in the team
-   has one there is nothing left to stay aligned with, and 40 px of nothing is
-   then the widest thing in a tile that has just been asked to be no wider than
-   its contents. Scoped to the hover card: the conversation aside decides this
-   for itself, by width, in `rosterTier`. */
-.chat-game-popover .chat-game-team:only-child:not(:has(.chat-game-player-avatar img)) li {
-  grid-template-columns: 16px minmax(0, 1fr) auto;
-}
-
-.chat-game-popover .chat-game-team:only-child:not(:has(.chat-game-player-avatar img)) .chat-game-player-avatar {
-  display: none;
+  gap: var(--space-3) var(--space-4);
+  margin-top: var(--space-3);
 }
 
 .chat-game-team {
   min-width: 0;
-  padding: 7px;
 }
 
 .chat-game-team h4 {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
-  margin: 0 0 6px;
-  font-size: 12px;
+  margin: 0 0 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.chat-game-team h4 > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Right-aligned over the ratings it adds up, so it reads as their total
+   without the word. */
+.chat-game-team-rating {
+  flex: none;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .chat-game-team ul {
   display: flex;
   flex-direction: column;
-  gap: 3px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1794,14 +1843,25 @@ img.chat-game-map {
 
 .chat-game-team li {
   min-width: 0;
+  min-height: 24px;
   display: grid;
-  grid-template-columns: auto 16px minmax(0, 1fr) auto;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   font-size: 12px;
 }
 
-.chat-game-team li > span:nth-child(2),
+.chat-game-team.has-avatars li {
+  grid-template-columns: 40px 16px minmax(0, 1fr) auto;
+}
+
+.chat-game-team li small {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .chat-game-player,
 .chat-game-player-static {
   min-width: 0;
@@ -1835,7 +1895,7 @@ img.chat-game-map {
   border-radius: var(--radius-sm);
 }
 
-.chat-game-team img,
+.chat-game-team li > img,
 .chat-game-flag-placeholder {
   width: 16px;
   height: 16px;
@@ -2104,12 +2164,10 @@ img.chat-game-map {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
-/* Reserved even when empty, so one player with an avatar does not indent the
-   names of a team where nobody else has one. */
+/* 40 px of pixel art, unreadable at any other size. */
 .chat-game-player-avatar {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
   width: 40px;
   height: 20px;
 }
@@ -2123,11 +2181,6 @@ img.chat-game-map {
   image-rendering: pixelated;
 }
 
-.chat-game-elapsed b {
-  color: var(--color-text);
-  font-weight: 600;
-}
-
 .chat-aside-action {
   align-self: flex-start;
 }
@@ -2138,75 +2191,21 @@ img.chat-game-map {
    the same here as on the Live tab's card for it: the title at the card's
    size, the teams as the card's plain columns under a ruled, upper-case team
    line rather than as boxes, a name and its rating at the card's 13 px with
-   the rating at the row's end, and Watch as the primary button. */
-.chat-conversation-aside .chat-game-popover-head {
-  padding-bottom: var(--space-2);
-}
-
-.chat-conversation-aside .chat-game-popover-head strong {
+   the rating at the row's end, and Watch as the primary button. The hover
+   card has since taken the same team columns, so what is left here is only
+   where the panel's larger type differs from it. */
+.chat-conversation-aside .chat-game-title-row strong {
   font-size: 16px;
   font-weight: 650;
   letter-spacing: -.01em;
 }
 
 .chat-conversation-aside .chat-game-meta {
-  padding: var(--space-1) 0;
   font-size: 11px;
-}
-
-.chat-conversation-aside .chat-game-teams {
-  gap: var(--space-3);
-}
-
-.chat-conversation-aside .chat-game-team {
-  padding: 0;
-  background: transparent;
-  border: 0;
-}
-
-.chat-conversation-aside .chat-game-team h4 {
-  margin: 0 0 4px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--color-border);
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.chat-conversation-aside .chat-game-team h4 > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* The team's name is short and is what says which team this is, so it is
-   the count and the rating after it that give way in a narrow panel. */
-.chat-conversation-aside .chat-game-team h4 > span:first-child {
-  flex: none;
-}
-
-.chat-conversation-aside .chat-game-team ul {
-  gap: 0;
 }
 
 .chat-conversation-aside .chat-game-team li {
-  min-height: 22px;
   font-size: 13px;
-}
-
-/* A team where nobody has an avatar does not keep 40 px of nothing in front
-   of every name: the replay card's names start at the flag. The same rule
-   the hover card has for a lone team. The narrow step drops avatar and flag
-   anyway, see above. */
-.chat-conversation-aside:not([data-tier="narrow"]) .chat-game-team:not(:has(.chat-game-player-avatar img)) li {
-  grid-template-columns: 16px minmax(0, 1fr) auto;
-}
-
-.chat-conversation-aside:not([data-tier="narrow"]) .chat-game-team:not(:has(.chat-game-player-avatar img)) .chat-game-player-avatar {
-  display: none;
 }
 
 .chat-conversation-aside .chat-game-team li small {
