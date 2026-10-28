@@ -33,6 +33,7 @@ import { NotificationCenter } from "../notifications/NotificationCenter";
 import { ProfileMenu, type ProfileMenuTarget } from "./ProfileMenu";
 import { partyChatChannel } from "../../shared/partyChat";
 import { PlayerName } from "../../shared/components/nameColors";
+import { useLinkRequests } from "../../shared/deepLinks";
 import "./shell.css";
 
 // Mirrors `MIN_SIDEBAR_WIDTH` / `MAX_SIDEBAR_WIDTH` / `SIDEBAR_RAIL_BELOW` in
@@ -130,6 +131,11 @@ export function AppShell() {
     observer.observe(content);
     return () => observer.disconnect();
   }, []);
+
+  // A `faf://` link, from chat or from the operating system, opens here: the
+  // shell exists only once somebody is signed in, so a link that started the
+  // client waits through the sign-in.
+  useLinkRequests();
 
   // Changed in Settings rather than by dragging: the state below is seeded
   // once, so without this the segmented control in Appearance would write a

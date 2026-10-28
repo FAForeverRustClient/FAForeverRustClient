@@ -151,8 +151,9 @@ function VaultView({ busy }: { busy: boolean }) {
   useEffect(() => {
     const focused = takeModVaultFocus();
     if (!focused) return;
-    setSearch(focused);
-    setApplied((prev) => ({ ...prev, search: focused }));
+    setSearch(focused.search);
+    setSearchScope(focused.scope);
+    setApplied((prev) => ({ ...prev, search: focused.search, searchScope: focused.scope }));
     setPage(1);
     // A preset that narrows the list (recommended, favourites, my uploads,
     // UI mods) would hide the very mod that was asked for, so it gives way to
