@@ -7,8 +7,6 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
-import { MultiSelect } from "../../design-system/MultiSelect";
-import type { PlayerGameResult } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { formatDecimal, formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -24,6 +22,8 @@ import { requestReplaySearch } from "../../shared/replaySearchIntent";
 import { usePlayerHistory } from "./usePlayerHistory";
 import { HistoryFailure } from "./HistoryFailure";
 import { HistoryScopeNote } from "./HistoryScopeNote";
+import { ResultFiltersMenu } from "./ResultFiltersMenu";
+import { filterResults, NO_RESULT_FILTERS, type ResultFilters } from "./resultFilters";
 
 /** Rows added per press of "Show more". A long history is thousands. */
 const PAGE = 50;
@@ -58,32 +58,6 @@ function tally(games: readonly { outcome: string }[]) {
   return record;
 }
 
-/** Whether a game changed the rating, as the results list can tell (#646). */
-export type RatedFilter = "all" | "rated" | "unrated";
-
-export interface ResultFilters {
-  rated: RatedFilter;
-  /** Leaderboard technical names; empty is every queue. */
-  queues: string[];
-}
-
-export const NO_RESULT_FILTERS: ResultFilters = { rated: "all", queues: [] };
-
-/**
- * The games the filters keep (#646). Rated is a game a rating journal
- * carries a change for, which is what the Rating column shows; the queues
- * add up, so 3v3 and 4v4 together is two picks.
- */
-export function filterResults(games: readonly PlayerGameResult[], filters: ResultFilters): PlayerGameResult[] {
-  const queues = new Set(filters.queues);
-  return games.filter((game) => {
-    const rated = game.ratingChangeHundredths !== null;
-    if (filters.rated === "rated" && !rated) return false;
-    if (filters.rated === "unrated" && rated) return false;
-    return queues.size === 0 || queues.has(game.queue);
-  });
-}
-
 /**
  * Percent of the decided games won, draws left out: the Maps tab's rule, so
  * the two tabs give the same figure for the same games. Unrounded for the
@@ -99,7 +73,7 @@ export function PlayerResults({ playerId }: { playerId: number }) {
   const { stats, status, error, full, loadFull, retry } = usePlayerHistory(playerId);
   const vault = useAppStore((state) => state.state.maps.vault);
   const [shown, setShown] = useState(PAGE);
-  const { filters, setFilter } = useRememberedFilters<ResultFilters>("playerCard.results", NO_RESULT_FILTERS);
+  const { filters, setFilters } = useRememberedFilters<ResultFilters>("playerCard.results", NO_RESULT_FILTERS);
   const allGames = stats?.games;
   // The queues this player has games in, in the order they first appear.
   const queueOptions = useMemo(() => {
@@ -143,32 +117,12 @@ export function PlayerResults({ playerId }: { playerId: number }) {
           {t("playerCard.results.note", { hidden: formatNumber(Math.max(0, hidden)) })}
         </p>
         <HistoryScopeNote stats={stats} full={full} onLoadFull={loadFull} />
-        <div className="player-history-toolbar player-results-filters">
-          <label>
-            <span>{t("playerCard.results.filter.rated")}</span>
-            <select
-              value={filters.rated}
-              onChange={(event) => {
-                setFilter("rated", event.target.value as RatedFilter);
-                setShown(PAGE);
-              }}
-            >
-              <option value="all">{t("playerCard.results.filter.ratedAll")}</option>
-              <option value="rated">{t("playerCard.results.filter.ratedOnly")}</option>
-              <option value="unrated">{t("playerCard.results.filter.unratedOnly")}</option>
-            </select>
-          </label>
-          <MultiSelect
-            label={t("playerCard.results.queue")}
-            anyLabel={t("playerCard.results.filter.anyQueue")}
-            options={queueOptions}
-            selected={filters.queues.filter((queue) => queueOptions.some((option) => option.value === queue))}
-            onChange={(queues) => {
-              setFilter("queues", queues);
-              setShown(PAGE);
-            }}
-          />
-        </div>
+      </div>
+
+      {/* The record of what is listed, and the filters across from it at
+          the top right of the table, where the Chat tab keeps its roster's
+          (#646). */}
+      <div className="player-results-toolbar">
         {/* The rows on screen, not the whole history: the Maps tab already
             gives the record over everything, and this follows "Show more". */}
         <p className="player-results-summary" aria-live="polite">
@@ -184,6 +138,14 @@ export function PlayerResults({ playerId }: { playerId: number }) {
             </>
           )}
         </p>
+        <ResultFiltersMenu
+          filters={filters}
+          queues={queueOptions}
+          onChange={(next) => {
+            setFilters(next);
+            setShown(PAGE);
+          }}
+        />
       </div>
 
       {games.length === 0 && (

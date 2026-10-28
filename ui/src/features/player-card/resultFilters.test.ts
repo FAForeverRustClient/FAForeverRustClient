@@ -1,8 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { PlayerGameResult } from "../../ipc/bindings";
-import { filterResults, NO_RESULT_FILTERS } from "./PlayerResults";
-
-vi.mock("../../ipc/client");
+import { filterResults, NO_RESULT_FILTERS } from "./resultFilters";
 
 function game(gameId: number, queue: string, rated: boolean): PlayerGameResult {
   return {

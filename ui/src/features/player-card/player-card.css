@@ -2389,11 +2389,120 @@ button.player-avatar-tile:disabled {
   margin: 0;
 }
 
-/* The filters (issue 646) on a line of their own under the notes, styled as
-   the rating history's toolbar: the same selects, the same labels above. */
-.player-results-filters {
-  flex-basis: 100%;
-  align-items: flex-end;
+/* The record across from the Filters button, right above the table
+   (issue 646). */
+.player-results-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* The roster's filter button from the Chat tab, with its word: it says when
+   something is set by turning accent. */
+.player-results-filter-menu {
+  position: relative;
+  flex: none;
+}
+
+.player-results-filter-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 30px;
+  padding: 0 var(--space-3);
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 13px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.player-results-filter-button:hover,
+.player-results-filter-button.is-open {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.player-results-filter-button.is-active {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.player-results-filter-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* Opens under the button towards the left, since the button sits at the
+   card's right edge. */
+.player-results-filter-panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  right: 0;
+  display: grid;
+  gap: var(--space-3);
+  width: 300px;
+  max-width: 80vw;
+  padding: var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+.player-results-filter-row {
+  display: grid;
+  gap: 6px;
+}
+
+.player-results-filter-label {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.player-results-filter-row .settings-segmented {
+  display: flex;
+}
+
+.player-results-filter-row .settings-segmented button {
+  flex: 1;
+  min-height: 26px;
+  padding: 0 6px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.player-results-filter-queues {
+  display: grid;
+  gap: 2px;
+  max-height: 220px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  list-style: none;
+}
+
+/* Name left, count right, on one line. */
+.player-results-filter-queues .option-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.player-results-filter-queues .option-check .muted {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-results-filter-footer {
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* The record of the rows on screen, across from the note: the note says what
