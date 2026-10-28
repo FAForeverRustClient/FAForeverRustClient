@@ -252,7 +252,9 @@ fn nav(command: &NavCommand) -> CommandPolicy {
         | NavCommand::SelectReplaysSection { .. }
         | NavCommand::SelectSettingsSection { .. }
         | NavCommand::SelectChangelogSection { .. }
-        | NavCommand::SelectChangelogClientRelease { .. } => PRIORITY,
+        | NavCommand::SelectChangelogClientRelease { .. }
+        | NavCommand::OpenLink { .. }
+        | NavCommand::LinkShown { .. } => PRIORITY,
     }
 }
 

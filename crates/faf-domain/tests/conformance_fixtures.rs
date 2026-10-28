@@ -4582,6 +4582,34 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a link waits until the frontend has shown it, and only that one is cleared",
+            {
+                use faf_domain::protocol::deep_link::DeepLink;
+                vec![
+                    NavEvent::LinkRequested {
+                        request: LinkRequest {
+                            id: 1,
+                            link: DeepLink::Map {
+                                folder_name: "setons_clutch.v0004".into(),
+                            },
+                        },
+                    }
+                    .into(),
+                    NavEvent::LinkRequested {
+                        request: LinkRequest {
+                            id: 2,
+                            link: DeepLink::Unit {
+                                id: "UEL0201".into(),
+                            },
+                        },
+                    }
+                    .into(),
+                    NavEvent::LinkShown { id: 1 }.into(),
+                    NavEvent::LinkShown { id: 2 }.into(),
+                ]
+            },
+        ),
+        case(
             "install check flips both flags and reports where paths resolve",
             vec![InstallEvent::Checked {
                 game_ready: true,

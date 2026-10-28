@@ -118,8 +118,8 @@ pub use mods::{
     ModToggleStatus, ModType, ModVersionConflict, ModsCommand, ModsEvent, ModsState, VaultMod,
 };
 pub use nav::{
-    ChangelogSection, MapsSection, ModsSection, NavCommand, NavEvent, NavState, ReplaysSection,
-    SettingsSection, Tab,
+    ChangelogSection, LinkRequest, MapsSection, ModsSection, NavCommand, NavEvent, NavState,
+    ReplaysSection, SettingsSection, Tab,
 };
 pub use notifications::{
     ClientNotification, NotificationAction, NotificationCommand, NotificationEvent,
