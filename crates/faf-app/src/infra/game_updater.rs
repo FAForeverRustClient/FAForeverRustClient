@@ -52,6 +52,7 @@ pub use cache::{
     clean_expired_cache_files, clear_game_cache, inspect_game_cache, read_installed_build,
     CacheManifestEntry, CachedFileInfo,
 };
+pub(crate) use install::{find_retail_install, steam_install_dir};
 pub use install::{read_exe_version, require_game_libraries};
 pub use maps::{ensure_live_map, ensure_map_available};
 // For the map vault's install, which writes the same folders as the staging.

@@ -79,6 +79,7 @@ fn slice_sizes(state: &faf_domain::AppState) -> Option<(usize, String)> {
         tutorials => "tutorials",
         uploads => "uploads",
         galactic_war => "galacticWar",
+        linux_runtime => "linuxRuntime",
         guides => "guides",
         client_update => "clientUpdate",
         settings => "settings",

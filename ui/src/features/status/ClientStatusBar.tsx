@@ -15,6 +15,7 @@ import { isUploadBusy, isUploadCancellable } from "../../store/reducers/uploads"
 import { plainError } from "../../shared/plainError";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import { linuxRuntimePercent, linuxRuntimeStep } from "../../shared/linuxRuntimeText";
 import "./status.css";
 
 type ConnectionKind = "faf" | "chat";
@@ -282,6 +283,12 @@ export function useBackgroundActivities(): BackgroundActivity[] {
     const status = s.state.galacticWar.status;
     return status.type === "downloading" ? shareOf(status.payload.downloadedBytes, status.payload.totalBytes) : null;
   });
+  // The Wine environment the client installs on Linux by itself, the first
+  // time it starts there: half a gigabyte and more, so it is shown wherever
+  // the player is. The quick check before it is not.
+  const linuxRuntime = useAppStore((s) =>
+    s.state.linuxRuntime.status.type === "checking" ? null : linuxRuntimeStep(s.state.linuxRuntime.status, t));
+  const linuxRuntimeShare = useAppStore((s) => linuxRuntimePercent(s.state.linuxRuntime.status));
   // A tutorial's game is brought up to date before it starts, which on a
   // stale install is the same long patch a lobby join is.
   const tutorialStep = useAppStore((s) =>
@@ -384,6 +391,12 @@ export function useBackgroundActivities(): BackgroundActivity[] {
       label: t("status.activity.installingGalacticWar", { version: galacticWar }),
       progress: galacticWarPercent,
       cancel: send({ kind: "GalacticWar", command: { type: "cancelInstall" } }),
+    },
+    linuxRuntime !== null && {
+      id: "linux-runtime",
+      label: t("status.activity.settingUpLinux", { step: linuxRuntime }),
+      progress: linuxRuntimeShare,
+      cancel: send({ kind: "LinuxRuntime", command: { type: "cancel" } }),
     },
     tutorialStep !== null && {
       id: "tutorial",

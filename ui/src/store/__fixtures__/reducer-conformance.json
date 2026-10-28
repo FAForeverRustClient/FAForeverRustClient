@@ -62230,6 +62230,234 @@
       ]
     },
     {
+      "name": "the linux runtime is checked, found lacking, then installed",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "status": {
+                  "type": "checking"
+                }
+              },
+              "type": "statusChanged"
+            },
+            "kind": "LinuxRuntime"
+          },
+          "expected": {
+            "status": {
+              "type": "checking"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "status": {
+                  "payload": {
+                    "distribution": "debian",
+                    "prerequisites": [
+                      "userNamespaces",
+                      "vulkan32"
+                    ]
+                  },
+                  "type": "missing"
+                }
+              },
+              "type": "statusChanged"
+            },
+            "kind": "LinuxRuntime"
+          },
+          "expected": {
+            "status": {
+              "payload": {
+                "distribution": "debian",
+                "prerequisites": [
+                  "userNamespaces",
+                  "vulkan32"
+                ]
+              },
+              "type": "missing"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "status": {
+                  "payload": {
+                    "component": "proton",
+                    "downloadedBytes": 1048576,
+                    "totalBytes": 516611656
+                  },
+                  "type": "downloading"
+                }
+              },
+              "type": "statusChanged"
+            },
+            "kind": "LinuxRuntime"
+          },
+          "expected": {
+            "status": {
+              "payload": {
+                "component": "proton",
+                "downloadedBytes": 1048576,
+                "totalBytes": 516611656
+              },
+              "type": "downloading"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "status": {
+                  "payload": {
+                    "step": {
+                      "payload": {
+                        "component": "steamRuntime"
+                      },
+                      "type": "unpacking"
+                    }
+                  },
+                  "type": "installing"
+                }
+              },
+              "type": "statusChanged"
+            },
+            "kind": "LinuxRuntime"
+          },
+          "expected": {
+            "status": {
+              "payload": {
+                "step": {
+                  "payload": {
+                    "component": "steamRuntime"
+                  },
+                  "type": "unpacking"
+                }
+              },
+              "type": "installing"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "status": {
+                  "payload": {
+                    "step": {
+                      "type": "installingDirectX"
+                    }
+                  },
+                  "type": "installing"
+                }
+              },
+              "type": "statusChanged"
+            },
+            "kind": "LinuxRuntime"
+          },
+          "expected": {
+            "status": {
+              "payload": {
+                "step": {
+                  "type": "installingDirectX"
+                }
+              },
+              "type": "installing"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "status": {
+                  "type": "ready"
+                }
+              },
+              "type": "statusChanged"
+            },
+            "kind": "LinuxRuntime"
+          },
+          "expected": {
+            "status": {
+              "type": "ready"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a failed linux runtime install is retried",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "status": {
+                  "payload": {
+                    "reason": "GE-Proton10-34.tar.gz did not match its checksum"
+                  },
+                  "type": "failed"
+                }
+              },
+              "type": "statusChanged"
+            },
+            "kind": "LinuxRuntime"
+          },
+          "expected": {
+            "status": {
+              "payload": {
+                "reason": "GE-Proton10-34.tar.gz did not match its checksum"
+              },
+              "type": "failed"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "status": {
+                  "type": "checking"
+                }
+              },
+              "type": "statusChanged"
+            },
+            "kind": "LinuxRuntime"
+          },
+          "expected": {
+            "status": {
+              "type": "checking"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "status": {
+                  "type": "notNeeded"
+                }
+              },
+              "type": "statusChanged"
+            },
+            "kind": "LinuxRuntime"
+          },
+          "expected": {
+            "status": {
+              "type": "notNeeded"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "settings apply each group",
       "steps": [
         {
@@ -127163,6 +127391,11 @@
       "selectedLeagueId": null,
       "selectedSeasonId": null,
       "tiers": []
+    },
+    "linuxRuntime": {
+      "status": {
+        "type": "notNeeded"
+      }
     },
     "lobby": {
       "availableAvatars": [],

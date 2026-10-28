@@ -21,6 +21,7 @@ pub mod game_logs;
 pub mod guides;
 pub mod ice;
 pub mod leaderboard;
+pub mod linux_runtime;
 pub mod lobby;
 pub mod map_generator;
 pub mod maps;
@@ -60,6 +61,7 @@ pub use game_logs::GameLogsPort;
 pub use guides::{DeviceCode, GuidesPort};
 pub use ice::{ConnectivitySession, IceDebugWindows, IceParams, IcePort, RelayMsg};
 pub use leaderboard::LeaderboardPort;
+pub use linux_runtime::{LinuxRuntimePort, NoLinuxRuntime, RuntimeCheck, RuntimeProgress};
 pub use lobby::{LobbyPort, LobbyUpdate, ServerNoticeStyle};
 pub use map_generator::{GeneratorUpdate, MapGeneratorPort};
 pub use maps::{MapSearchPage, MapsPort, VaultInstallProgress, VaultInstallStep};
@@ -177,6 +179,9 @@ pub struct Ports {
     /// `process` and `updater`: Galactic War is not Forged Alliance and does
     /// not go through the lobby.
     pub galactic_war: Arc<dyn GalacticWarPort>,
+    /// The Wine environment Forged Alliance runs in on Linux: checking the
+    /// system, installing it, and switching game launches onto it.
+    pub linux_runtime: Arc<dyn LinuxRuntimePort>,
     /// The game-files cache the settings tab measures, expires and clears.
     /// A port so a test that loads settings cannot reach the real one.
     pub game_cache: Arc<dyn GameCachePort>,

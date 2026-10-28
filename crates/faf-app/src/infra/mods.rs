@@ -1190,6 +1190,11 @@ fn wine_prefix_root() -> Option<PathBuf> {
     if let Some(path) = crate::infra::paths::wine_prefix() {
         return Some(path);
     }
+    // The client's own runtime, while games start through it: the prefix
+    // they run in is the one whose `Game.prefs` they read.
+    if let Some(path) = crate::infra::linux_runtime::active_prefix() {
+        return Some(path);
+    }
     if let Some(path) = std::env::var_os("WINEPREFIX").filter(|value| !value.is_empty()) {
         return Some(PathBuf::from(path));
     }
@@ -1228,10 +1233,15 @@ fn wine_local_app_data(prefix: &Path) -> Option<PathBuf> {
         return Some(found);
     }
 
-    let named = std::env::var("USER")
-        .ok()
-        .filter(|name| !name.is_empty())
-        .unwrap_or_else(|| "steamuser".to_string());
+    // Proton's prefixes, the client's own runtime among them, hold only
+    // `steamuser`, whatever the login is called. Before the first game there
+    // is no `Game.prefs` to find it by, and guessing the login there named a
+    // user the game never sees.
+    let login = std::env::var("USER").ok().filter(|name| !name.is_empty());
+    let named = match login {
+        Some(login) if users.join(&login).is_dir() || !users.join("steamuser").is_dir() => login,
+        _ => "steamuser".to_string(),
+    };
     let guess = local_of(&users.join(named));
     // Only worth returning when the prefix is real. Handing back a path under
     // a prefix that does not exist would send the fallback to this machine's
@@ -1840,6 +1850,15 @@ mod tests {
         );
         assert!(found.ends_with("AppData/Local") || found.ends_with(r"AppData\Local"));
         let _ = only;
+    }
+
+    #[test]
+    fn a_fresh_proton_prefix_is_steamusers_whatever_the_login_is() {
+        let temp = tempfile::tempdir().unwrap();
+        let prefix = temp.path();
+        // What `wineboot` leaves in a Proton prefix: one user, no game yet.
+        let steamuser = wine_user(prefix, "steamuser", false);
+        assert_eq!(wine_local_app_data(prefix), Some(steamuser));
     }
 
     #[test]

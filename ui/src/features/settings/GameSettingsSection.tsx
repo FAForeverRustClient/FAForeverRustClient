@@ -7,6 +7,7 @@ import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 import { gameNeedsALaunchWrapper, runsOnWindows } from "../../shared/platform";
+import { LinuxRuntimeSettings } from "./LinuxRuntimeSettings";
 
 /// Mirrors `faf_domain::state::settings::MAX_MAP_GENERATOR_INSTANCES`, so the
 /// list never offers a count the backend would quietly clamp.
@@ -63,7 +64,17 @@ export function GameSettingsSection() {
   useEffect(() => setWrapperText(persistedWrapper), [persistedWrapper]);
   const commitWrapper = () => {
     if (wrapperText.trim() === persistedWrapper) return;
-    saveLaunch({ launchWrapper: wrapperText.trim() }, () => setWrapperText(persistedWrapper));
+    // Then the runtime is asked again: an emptied field means the client's own
+    // Wine environment is wanted now, and a filled one that it is not.
+    ipc.run(
+      ipc
+        .settle({ kind: "Settings", command: { type: "patchGame", payload: { patch: { launchWrapper: wrapperText.trim() } } } })
+        .then(() => ipc.send({ kind: "LinuxRuntime", command: { type: "prepare" } }))
+        .catch((error: unknown) => {
+          setWrapperText(persistedWrapper);
+          throw error;
+        }),
+    );
   };
 
   const setPipeLiveReplay = (pipeLiveReplay: boolean) => {
@@ -206,6 +217,8 @@ export function GameSettingsSection() {
           the game is not a native binary: on Windows there is nothing to wrap
           and an empty field labelled "launch command" invites somebody to
           fill it in. */}
+      {gameNeedsALaunchWrapper() && <LinuxRuntimeSettings />}
+
       {gameNeedsALaunchWrapper() && (
         <div className="setting-block">
           <span className="setting-label">{t("settings.game.launchWrapperLabel")}</span>
@@ -216,7 +229,6 @@ export function GameSettingsSection() {
             value={wrapperText}
             onChange={(event) => setWrapperText(event.target.value)}
             onBlur={commitWrapper}
-            placeholder="wine"
             aria-label={t("settings.game.launchWrapperLabel")}
           />
           <div className="settings-save-line">
