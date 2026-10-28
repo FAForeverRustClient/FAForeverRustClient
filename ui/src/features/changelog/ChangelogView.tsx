@@ -12,8 +12,10 @@
 // room for one, and as a row of jump links above it when it is not, so the
 // note never shares its width with an empty margin or a third panel.
 //
-// The tab has two sections, the game's patches and this client's own
-// releases, which share that layout (`noteReader`) so they read as one tab.
+// The tab has three sections: the game's patches and this client's own
+// releases, which share that layout (`noteReader`) so they read as one tab,
+// and one unit's values across the game's patches (`UnitHistoryView`), which
+// links back into the first.
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Button } from "../../design-system/Button";
@@ -33,6 +35,7 @@ import { FeaturedModIcon } from "../../shared/components/FeaturedModIcon";
 import type { ChangelogBlock, ChangelogRelease, ChangelogSearchMatch, ChangelogSection } from "../../ipc/bindings";
 import { ClientReleasesView } from "./ClientReleasesView";
 import { PatchSearch } from "./PatchSearch";
+import { UnitHistoryView } from "./UnitHistoryView";
 import { changelogViewMemory } from "./viewMemory";
 import {
   anchorFor,
@@ -55,6 +58,7 @@ type Translate = ReturnType<typeof useTranslation>["t"];
 const SECTIONS: Record<ChangelogSection, MessageKey> = {
   game: "changelog.section.game",
   client: "changelog.section.client",
+  units: "changelog.section.units",
 };
 
 /**
@@ -87,7 +91,18 @@ export function ChangelogView() {
         }} />
       </div>
       <div className="changelog-panel" {...sectionPanelProps("changelog-section", section)}>
-        {section === "client" ? <ClientReleasesView /> : <GameChangelogView jumpTarget={jumpTarget} onJumped={() => setJumpTarget(null)} />}
+        {section === "client" ? (
+          <ClientReleasesView />
+        ) : section === "units" ? (
+          <UnitHistoryView
+            onOpenRelease={(id) => {
+              selectSection("game");
+              ipc.send({ kind: "Changelog", command: { type: "select", payload: { id } } });
+            }}
+          />
+        ) : (
+          <GameChangelogView jumpTarget={jumpTarget} onJumped={() => setJumpTarget(null)} />
+        )}
       </div>
     </div>
   );

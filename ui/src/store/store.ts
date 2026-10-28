@@ -447,6 +447,13 @@ const INITIAL: AppState = {
     entries: {},
     entryStatus: { type: "idle" },
   },
+  unitHistory: {
+    listStatus: { type: "idle" },
+    units: [],
+    selected: null,
+    compared: null,
+    histories: {},
+  },
   connectivity: {
     check: { status: { type: "idle" }, steps: [], startedAt: "" },
     relay: { type: "idle" },
