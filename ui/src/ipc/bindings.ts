@@ -13669,25 +13669,26 @@ export type UnitHistoryCommand =
  */
 { type: "loadList" } |
 /**
- *  Show one unit's history, building it unless it is already held. The
- *  id is the blueprint id in any case.
+ *  Show this one unit and nothing else: what a link opens. The id is the
+ *  blueprint id in any case.
  */
 { type: "select"; payload: {
 	id: string,
 } } |
-/**  Draw a second unit into the graph, or stop comparing with `None`. */
-{ type: "compare"; payload: {
-	id: string | null,
+/**
+ *  Compare these units, in this order, building every history not held
+ *  yet. More than [`MAX_SELECTED`] are cut to the first ones.
+ */
+{ type: "setSelection"; payload: {
+	ids: string[],
 } };
 
 export type UnitHistoryEvent = { type: "listLoading" } | { type: "listLoaded"; payload: {
 	units: UnitSummary[],
 } } | { type: "listFailed"; payload: {
 	reason: string,
-} } | { type: "selected"; payload: {
-	id: string,
-} } | { type: "compared"; payload: {
-	id: string | null,
+} } | { type: "selectionChanged"; payload: {
+	ids: string[],
 } } | { type: "historyProgress"; payload: {
 	id: string,
 	fetched: number,
@@ -13703,11 +13704,13 @@ export type UnitHistoryState = {
 	listStatus: UnitListStatus,
 	/**  Every unit a player can build, from the installed game files. */
 	units: UnitSummary[],
-	/**  The unit on screen, by upper-case blueprint id. */
-	selected: string | null,
-	/**  A second unit drawn into the same graph. */
-	compared: string | null,
-	/**  By blueprint id; only `selected` and `compared` are kept. */
+	/**
+	 *  The units compared, by upper-case blueprint id, in the order they were
+	 *  picked. One shows all of its values; several are compared value by
+	 *  value.
+	 */
+	selected: string[],
+	/**  By blueprint id; only the selected units are kept. */
 	histories: { [key in string]: UnitHistoryStatus },
 };
 
@@ -13778,6 +13781,11 @@ export type UnitSummary = {
 	 *  `units/UEL0201/UEL0201_unit.bp`, kept for its exact spelling.
 	 */
 	path: string,
+	/**
+	 *  The unit's build icon, from the same site the patch notes take their
+	 *  unit icons from.
+	 */
+	iconUrl: string,
 	/**
 	 *  `General.UnitName` without its localisation tag, e.g. "MA12 Striker".
 	 *  Many structures have none.
