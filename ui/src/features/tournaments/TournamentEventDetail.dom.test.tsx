@@ -80,7 +80,7 @@ describe("TournamentEventDetail, mounted", () => {
         },
       },
     });
-    expect(screen.getByRole("button", { name: "Global" })).toBeDefined();
+    expect(screen.getByRole("tab", { name: "Global" })).toBeDefined();
 
     // Away and back: the rooms are here now, so nothing is asked for again.
     await user.click(within(sections).getByRole("button", { name: "Overview" }));
