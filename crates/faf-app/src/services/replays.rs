@@ -416,18 +416,24 @@ fn fail(out: &EventSink, reason: String) {
 /// status to `Failed` and closed the starting dialog of a replay that was
 /// still on its way. Checked under the launch lock, so a launch cannot begin
 /// or settle between the check and the event.
-fn refuse(ctx: &ServiceCtx, out: &EventSink, reason: String) {
+fn refuse(
+    ctx: &ServiceCtx,
+    out: &EventSink,
+    text: notifications::Text,
+    reason: String,
+    action: Option<NotificationAction>,
+) {
     let slot = ctx.replays.launch_slot();
-    if slot.cancellation.is_some() {
-        notifications::add_required_failure(
-            out,
-            notifications::Text::new("notifications.msg.replayFailed"),
-            "Replay failed",
-            reason,
-            None,
-        );
-    } else {
-        fail(out, reason);
+    notifications::add_required_text(
+        out,
+        NotificationKind::Error,
+        text,
+        "Replay failed",
+        reason.clone(),
+        action,
+    );
+    if slot.cancellation.is_none() {
+        out.emit(ReplayEvent::Failed { reason });
     }
 }
 
@@ -439,20 +445,15 @@ fn refuse_live_delay(ctx: &ServiceCtx, out: &EventSink, waiting: u32) {
          an ongoing game for an advantage. Try again in {}.",
         describe(waiting)
     );
-    let slot = ctx.replays.launch_slot();
-    notifications::add_required_text(
+    refuse(
+        ctx,
         out,
-        NotificationKind::Error,
         notifications::Text::new("notifications.msg.liveReplayDelayed")
             .with("minutes", waiting / 60)
             .with("seconds", waiting % 60),
-        "Replay failed",
-        reason.clone(),
+        reason,
         None,
     );
-    if slot.cancellation.is_none() {
-        out.emit(ReplayEvent::Failed { reason });
-    }
 }
 
 pub(crate) fn cancel_live_tracking(out: &EventSink) {
@@ -525,7 +526,10 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                 refuse(
                     ctx,
                     out,
+                    notifications::Text::new("notifications.msg.replayFailed")
+                        .with("reason", "That live game no longer has a known start time."),
                     "That live game no longer has a known start time.".into(),
+                    None,
                 );
                 return;
             };

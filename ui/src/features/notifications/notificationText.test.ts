@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { ClientNotification } from "../../ipc/bindings";
-import { t } from "../../i18n";
+import { CATALOGUES } from "../../i18n/catalog";
 import { de } from "../../i18n/catalog/de";
 import { en } from "../../i18n/catalog/en";
 import { resetLocaleForTests, setLocale } from "../../i18n/store";
@@ -34,10 +34,17 @@ describe("a notification's text (#458)", () => {
       },
     });
     setLocale("ru");
-    expect(notificationTitle(notice)).toBe(t("notifications.msg.liveReplayDelayed.title"));
+    expect(notificationTitle(notice)).toBe("\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u043e\u0432\u0442\u043e\u0440\u0430");
     expect(notificationBody(notice)).toBe(
-      t("notifications.msg.liveReplayDelayed.body", { minutes: 3, seconds: 17 }),
+      "\u041f\u0440\u043e\u0441\u043c\u043e\u0442\u0440 \u0442\u0440\u0430\u043d\u0441\u043b\u044f\u0446\u0438\u0438 \u0437\u0430\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044f \u043d\u0430 \u043f\u044f\u0442\u044c \u043c\u0438\u043d\u0443\u0442, \u0447\u0442\u043e\u0431\u044b \u043d\u0435\u043b\u044c\u0437\u044f \u0431\u044b\u043b\u043e \u0441\u043b\u0435\u0434\u0438\u0442\u044c \u0437\u0430 \u0442\u0435\u043a\u0443\u0449\u0435\u0439 \u0438\u0433\u0440\u043e\u0439 \u0438 \u043f\u043e\u043b\u0443\u0447\u0430\u0442\u044c \u043f\u0440\u0435\u0438\u043c\u0443\u0449\u0435\u0441\u0442\u0432\u043e. \u041f\u043e\u0432\u0442\u043e\u0440 \u043c\u043e\u0436\u043d\u043e \u0431\u0443\u0434\u0435\u0442 \u043f\u043e\u0441\u043c\u043e\u0442\u0440\u0435\u0442\u044c \u0447\u0435\u0440\u0435\u0437 3 \u043c\u0438\u043d 17 \u0441.",
     );
+  });
+
+  it("has a translated live replay delay message in every catalogue", () => {
+    for (const [locale, catalogue] of Object.entries(CATALOGUES)) {
+      expect(catalogue["notifications.msg.liveReplayDelayed.title"], locale).toBeDefined();
+      expect(catalogue["notifications.msg.liveReplayDelayed.body"], locale).toBeDefined();
+    }
   });
 
   it("is translated from the catalogue entry the backend attached", () => {

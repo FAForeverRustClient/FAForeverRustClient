@@ -110,11 +110,9 @@ describe("Generate Map over Host Game, mounted", () => {
     expect(within(generator).getByRole("button", { name: "CLI help" })).toBeDefined();
     expect(generator.querySelector("details")).toBeNull();
 
-    const densityPair = generator.querySelector(".generate-map-density-pair");
-    expect(densityPair).not.toBeNull();
     expect(
       Array.from(
-        densityPair!.querySelectorAll(".generate-map-row-label-text"),
+        generator.querySelectorAll(".generate-map-row-density .generate-map-row-label-text"),
         (label) => label.textContent,
       ),
     ).toEqual(["Resource density", "Reclaim density"]);

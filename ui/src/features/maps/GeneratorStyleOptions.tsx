@@ -97,39 +97,37 @@ export function GeneratorStyleOptions({ model }: {
         />
       </Row>
 
-      <div className="generate-map-density-pair">
-        <Row label={t("maps.generate.resourceDensity")} className="generate-map-row-density">
-          <RangeSlider
-            label={t("maps.generate.resourceDensity")}
-            min={0}
-            max={DENSITY_BINS}
-            low={form.resourceDensityMin ?? null}
-            high={form.resourceDensityMax ?? null}
-            format={(v) => `${densityPercent(v / DENSITY_BINS)}%`}
-            closedScale
-            onChange={(low, high) => {
-              set("resourceDensityMin", low);
-              set("resourceDensityMax", high);
-            }}
-          />
-        </Row>
+      <Row label={t("maps.generate.resourceDensity")} className="generate-map-row-density">
+        <RangeSlider
+          label={t("maps.generate.resourceDensity")}
+          min={0}
+          max={DENSITY_BINS}
+          low={form.resourceDensityMin ?? null}
+          high={form.resourceDensityMax ?? null}
+          format={(v) => `${densityPercent(v / DENSITY_BINS)}%`}
+          closedScale
+          onChange={(low, high) => {
+            set("resourceDensityMin", low);
+            set("resourceDensityMax", high);
+          }}
+        />
+      </Row>
 
-        <Row label={t("maps.generate.reclaimDensity")} className="generate-map-row-density">
-          <RangeSlider
-            label={t("maps.generate.reclaimDensity")}
-            min={0}
-            max={DENSITY_BINS}
-            low={form.reclaimDensityMin ?? null}
-            high={form.reclaimDensityMax ?? null}
-            format={(v) => `${densityPercent(v / DENSITY_BINS)}%`}
-            closedScale
-            onChange={(low, high) => {
-              set("reclaimDensityMin", low);
-              set("reclaimDensityMax", high);
-            }}
-          />
-        </Row>
-      </div>
+      <Row label={t("maps.generate.reclaimDensity")} className="generate-map-row-density">
+        <RangeSlider
+          label={t("maps.generate.reclaimDensity")}
+          min={0}
+          max={DENSITY_BINS}
+          low={form.reclaimDensityMin ?? null}
+          high={form.reclaimDensityMax ?? null}
+          format={(v) => `${densityPercent(v / DENSITY_BINS)}%`}
+          closedScale
+          onChange={(low, high) => {
+            set("reclaimDensityMin", low);
+            set("reclaimDensityMax", high);
+          }}
+        />
+      </Row>
     </div>
 
 
