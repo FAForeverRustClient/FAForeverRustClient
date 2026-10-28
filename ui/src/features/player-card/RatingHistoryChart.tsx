@@ -5,9 +5,18 @@ import { formatDate, formatDateTime } from "../../shared/format/dates";
 import { formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
+/**
+ * What runs along the bottom (#645): the date of each game, or how many games
+ * the player had played by then. By date, a month off reads as a flat line as
+ * long as a month of games; by game, every game is one step.
+ */
+export type HistoryAxis = "date" | "games";
+
 interface ChartPoint {
   timestamp: number;
   rating: number;
+  /** Where the point sits along the bottom: its time, or its game number. */
+  at: number;
   x: number;
   y: number;
 }
@@ -16,6 +25,9 @@ interface RatingHistoryChartProps {
   points: RatingHistoryPoint[];
   maximum: RatingHistoryPoint | null;
   showMaximum: boolean;
+  axis?: HistoryAxis;
+  /** The game number of the first point, when the axis counts games. */
+  firstGame?: number;
 }
 
 /// The SVG is rendered at its real pixel size rather than scaled from a fixed
@@ -31,13 +43,25 @@ const FALLBACK_WIDTH = 900;
 
 const MAX_RENDERED_POINTS = 1_800;
 
-/** The points inside a zoomed stretch of time, ends included; all without one. */
-export function pointsInZoom<T extends { timestamp: number }>(
+/** The points inside a zoomed stretch, ends included; all without one. */
+export function pointsInZoom<T extends { at: number }>(
   points: T[],
   zoom: { start: number; end: number } | null,
 ): T[] {
   if (zoom === null) return points;
-  return points.filter((point) => point.timestamp >= zoom.start && point.timestamp <= zoom.end);
+  return points.filter((point) => point.at >= zoom.start && point.at <= zoom.end);
+}
+
+/**
+ * Where each point sits along the bottom (#645): its time by date, or its
+ * game number counting from `firstGame` by game.
+ */
+export function placeAlongAxis<T extends { timestamp: number }>(
+  points: T[],
+  axis: HistoryAxis,
+  firstGame: number,
+): Array<T & { at: number }> {
+  return points.map((point, index) => ({ ...point, at: axis === "games" ? firstGame + index : point.timestamp }));
 }
 
 /** Round tick steps a reader can do arithmetic with. */
@@ -59,7 +83,7 @@ function extent(values: number[]): { min: number; max: number } {
   return { min, max };
 }
 
-function downsample(points: Array<{ timestamp: number; rating: number }>) {
+function downsample<T extends { timestamp: number; rating: number }>(points: T[]): T[] {
   if (points.length <= MAX_RENDERED_POINTS) return points;
   const bucketSize = Math.ceil(points.length / (MAX_RENDERED_POINTS / 2));
   const sampled = [points[0]];
@@ -111,7 +135,7 @@ function horizontalPadding(element: HTMLElement): number {
   return parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
 }
 
-export function RatingHistoryChart({ points, maximum, showMaximum }: RatingHistoryChartProps) {
+export function RatingHistoryChart({ points, maximum, showMaximum, axis = "date", firstGame = 1 }: RatingHistoryChartProps) {
   const { t } = useTranslation();
   const svgRef = useRef<SVGSVGElement>(null);
   const [wrapRef, width] = useMeasuredWidth();
@@ -121,28 +145,40 @@ export function RatingHistoryChart({ points, maximum, showMaximum }: RatingHisto
   // stretch only ever told its numbers, and the line inside it stayed as
   // cramped as the rest of a ten-year history.
   const [zoom, setZoom] = useState<{ start: number; end: number } | null>(null);
-  // Another period or queue is another history, and a zoom into the old one
-  // could show nothing of it.
+  // Another period, queue or axis is another history, and a zoom into the
+  // old one could show nothing of it.
   useEffect(() => {
     setZoom(null);
     setDrag(null);
-  }, [points]);
+  }, [points, axis, firstGame]);
 
-  const allParsed = useMemo(() => points
+  const allParsed = useMemo(() => placeAlongAxis(points
     .map((point) => ({
       timestamp: new Date(point.timestamp).valueOf(),
       rating: Number(point.rating),
     }))
-    .filter((point) => Number.isFinite(point.timestamp) && Number.isFinite(point.rating)), [points]);
+    .filter((point) => Number.isFinite(point.timestamp) && Number.isFinite(point.rating)), axis, firstGame), [points, axis, firstGame]);
   const parsed = useMemo(() => pointsInZoom(allParsed, zoom), [allParsed, zoom]);
+  /** A place along the bottom, as a reader says it. */
+  const label = (at: number) =>
+    axis === "games" ? t("playerCard.chart.gameNumber", { number: formatNumber(Math.round(at)) }) : formatDate(at);
+
+  // The peak's place along the bottom. By game it is the loaded game played
+  // at that moment, and nowhere when the peak is outside what was loaded.
+  const maximumAt = useMemo(() => {
+    const time = maximum ? new Date(maximum.timestamp).valueOf() : Number.NaN;
+    if (!Number.isFinite(time)) return Number.NaN;
+    if (axis === "date") return time;
+    return allParsed.find((point) => point.timestamp === time)?.at ?? Number.NaN;
+  }, [allParsed, axis, maximum]);
 
   const domain = useMemo(() => {
     if (parsed.length === 0) return null;
-    const times = extent(parsed.map((point) => point.timestamp));
+    const times = extent(parsed.map((point) => point.at));
     const ratings = extent(parsed.map((point) => point.rating));
     let { min: minRating, max: maxRating } = ratings;
 
-    const maximumTime = maximum ? new Date(maximum.timestamp).valueOf() : Number.NaN;
+    const maximumTime = maximumAt;
     const maximumRating = Number(maximum?.rating);
     if (Number.isFinite(maximumTime) && Number.isFinite(maximumRating)
       && maximumTime >= times.min && maximumTime <= times.max) {
@@ -163,7 +199,7 @@ export function RatingHistoryChart({ points, maximum, showMaximum }: RatingHisto
       maxRating: Math.ceil((maxRating + padding) / step) * step,
       step,
     };
-  }, [maximum, parsed]);
+  }, [maximum, maximumAt, parsed]);
 
   const project = useMemo(() => {
     if (!domain) return null;
@@ -181,7 +217,7 @@ export function RatingHistoryChart({ points, maximum, showMaximum }: RatingHisto
     if (!project) return [];
     return downsample(parsed).map((point) => ({
       ...point,
-      x: project.x(point.timestamp),
+      x: project.x(point.at),
       y: project.y(point.rating),
     }));
   }, [parsed, project]);
@@ -201,12 +237,12 @@ export function RatingHistoryChart({ points, maximum, showMaximum }: RatingHisto
       domain.minTime + ((x - LEFT) / plotWidth) * (domain.maxTime - domain.minTime);
     const lowTime = toTime(Math.min(drag.start, drag.end));
     const highTime = toTime(Math.max(drag.start, drag.end));
-    const chosen = parsed.filter((point) => point.timestamp >= lowTime && point.timestamp <= highTime);
+    const chosen = parsed.filter((point) => point.at >= lowTime && point.at <= highTime);
     if (chosen.length === 0) return null;
     const ratings = extent(chosen.map((point) => point.rating));
     return {
-      start: chosen[0].timestamp,
-      end: chosen[chosen.length - 1].timestamp,
+      start: chosen[0].at,
+      end: chosen[chosen.length - 1].at,
       min: ratings.min,
       max: ratings.max,
       change: chosen[chosen.length - 1].rating - chosen[0].rating,
@@ -215,12 +251,12 @@ export function RatingHistoryChart({ points, maximum, showMaximum }: RatingHisto
   }, [chart.length, domain, drag, parsed, project, width]);
 
   const maximumPoint = useMemo<ChartPoint | null>(() => {
-    const source = maximum && Number.isFinite(Number(maximum.rating)) && !Number.isNaN(new Date(maximum.timestamp).valueOf())
-      ? { timestamp: new Date(maximum.timestamp).valueOf(), rating: Number(maximum.rating) }
+    const source = maximum && Number.isFinite(Number(maximum.rating)) && Number.isFinite(maximumAt)
+      ? { timestamp: new Date(maximum.timestamp).valueOf(), rating: Number(maximum.rating), at: maximumAt }
       : parsed.reduce<(typeof parsed)[number] | null>((best, point) => best === null || point.rating > best.rating ? point : best, null);
     if (!source || !project) return null;
-    return { ...source, x: project.x(source.timestamp), y: project.y(source.rating) };
-  }, [maximum, parsed, project]);
+    return { ...source, x: project.x(source.at), y: project.y(source.rating) };
+  }, [maximum, maximumAt, parsed, project]);
 
   if (!domain || !project || chart.length === 0) {
     return <div className="player-card-chart-empty surface-panel muted">{t("playerCard.chart.empty")}</div>;
@@ -247,7 +283,7 @@ export function RatingHistoryChart({ points, maximum, showMaximum }: RatingHisto
       {selection && (
         <div className="player-rating-selection">
           <span className="player-rating-selection-range">
-            {t("playerCard.chart.range", { start: formatDate(selection.start), end: formatDate(selection.end) })}
+            {t("playerCard.chart.range", { start: label(selection.start), end: label(selection.end) })}
           </span>
           <span>{t("playerCard.chart.games", { count: formatNumber(selection.games) })}</span>
           <span>{t("playerCard.chart.low")} <strong>{selection.min.toFixed(0)}</strong></span>
@@ -275,7 +311,7 @@ export function RatingHistoryChart({ points, maximum, showMaximum }: RatingHisto
       {zoom && !selection && (
         <div className="player-rating-selection">
           <span className="player-rating-selection-range">
-            {t("playerCard.chart.zoomed", { start: formatDate(zoom.start), end: formatDate(zoom.end) })}
+            {t("playerCard.chart.zoomed", { start: label(zoom.start), end: label(zoom.end) })}
           </span>
           <button type="button" className="player-rating-selection-clear" onClick={() => setZoom(null)}>
             {t("playerCard.chart.zoomReset")}
@@ -310,13 +346,13 @@ export function RatingHistoryChart({ points, maximum, showMaximum }: RatingHisto
         {xTicks.map((tick, index) => {
           const x = LEFT + (index / (tickCount - 1)) * (width - LEFT - RIGHT);
           const anchor = index === 0 ? "chart-date-start" : index === tickCount - 1 ? "chart-date-end" : "chart-date-middle";
-          return <text key={tick} className={`chart-label ${anchor}`} x={x} y={HEIGHT - 10}>{formatDate(tick)}</text>;
+          return <text key={tick} className={`chart-label ${anchor}`} x={x} y={HEIGHT - 10}>{label(tick)}</text>;
         })}
 
         <polygon className="chart-rating-area" points={area} />
         <polyline className="chart-rating-line" points={line} />
 
-        {showMaximum && maximumPoint && maximumPoint.timestamp >= domain.minTime && maximumPoint.timestamp <= domain.maxTime && (
+        {showMaximum && maximumPoint && maximumPoint.at >= domain.minTime && maximumPoint.at <= domain.maxTime && (
           <g className="chart-peak">
             <line className="chart-max-line" x1={LEFT} x2={width - RIGHT} y1={maximumPoint.y} y2={maximumPoint.y} />
             <circle className="chart-peak-dot" cx={maximumPoint.x} cy={maximumPoint.y} r={3.5} />
@@ -352,6 +388,7 @@ export function RatingHistoryChart({ points, maximum, showMaximum }: RatingHisto
           style={{ left: hover.x, top: hover.y }}
         >
           <strong>{hover.rating.toFixed(0)}</strong>
+          {axis === "games" && <span>{label(hover.at)}</span>}
           <span>{formatDateTime(hover.timestamp)}</span>
         </div>
       )}
