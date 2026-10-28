@@ -1,0 +1,2 @@
+- Country flags no longer stretch beyond their slots in player lists.
+- Country flags no longer crop in lobby friend and foe lists.
