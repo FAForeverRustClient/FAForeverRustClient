@@ -66,8 +66,10 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+use tokio_util::sync::CancellationToken;
 
 use crate::infra::session::TokenStore;
 use crate::infra::{fetch_access_url, validated_ws_url};
@@ -89,6 +91,14 @@ const READY_TIMEOUT: Duration = Duration::from_secs(20);
 /// replay can run at a time either way (the playback lock).
 #[cfg(windows)]
 const LIVE_REPLAY_PIPE_PATH: &str = r"\\.\pipe\fafreplay";
+
+/// How often a pipe session checks whether the replay window is still open.
+#[cfg(windows)]
+const REPLAY_EXIT_POLL: Duration = Duration::from_millis(500);
+
+/// How long ending a session waits for the replay server to take the close.
+#[cfg(windows)]
+const WS_CLOSE_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// How a live replay stream reaches FA.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -162,6 +172,18 @@ pub(super) struct LiveStreamer {
     /// of the local TCP proxy: the "Live Replays Workaround" setting, pushed in
     /// by the settings service (`ReplayPlaybackPort::set_live_replay_pipe`).
     pipe_live_replay: std::sync::atomic::AtomicBool,
+    /// The pipe relay still running, if any. It owns the server end of
+    /// [`LIVE_REPLAY_PIPE_PATH`], so the next live replay cannot create the
+    /// pipe until this session has ended: see [`Self::end_session`].
+    session: std::sync::Mutex<Option<RelaySession>>,
+}
+
+/// A running relay, and the way to end it from outside.
+// Only the pipe transport registers one, and that exists on Windows only.
+#[cfg_attr(not(windows), allow(dead_code))]
+struct RelaySession {
+    stop: CancellationToken,
+    task: JoinHandle<()>,
 }
 
 impl LiveStreamer {
@@ -171,7 +193,24 @@ impl LiveStreamer {
             tokens,
             user_api_base: config.user_api_base.clone(),
             pipe_live_replay: std::sync::atomic::AtomicBool::new(false),
+            session: std::sync::Mutex::new(None),
         }
+    }
+
+    /// End the previous live replay's relay, and wait until it has let go of
+    /// the pipe.
+    ///
+    /// Stopping the game is not enough for that. FA is the pipe's *client*;
+    /// the server end belongs to the relay, which only noticed FA leaving when
+    /// a write failed. A broadcast that went quiet without closing therefore
+    /// kept the pipe open for as long as the client ran, and every live replay
+    /// after it failed with "All pipe instances are busy" (os error 231).
+    pub(super) async fn end_session(&self) {
+        let Some(session) = self.session.lock().unwrap().take() else {
+            return;
+        };
+        session.stop.cancel();
+        let _ = session.task.await;
     }
 
     pub(super) fn set_pipe(&self, enabled: bool) {
@@ -209,14 +248,16 @@ impl LiveStreamer {
     pub(super) async fn start(
         &self,
         preparation: &ReplayPreparation,
-        process: &dyn ProcessPort,
+        process: &Arc<dyn ProcessPort>,
         target: LiveReplayTarget,
         player: String,
     ) -> Result<Option<String>, String> {
         // Same reason as `play_file`, plus one of its own on Windows: the live
-        // transport's named pipe is created with `first_pipe_instance`, which
-        // the previous live replay is still holding.
+        // transport's named pipe is created with `first_pipe_instance`, and
+        // the previous live replay's relay may still hold it after its game
+        // has gone.
         process.stop_replay().await;
+        self.end_session().await;
         let token = self
             .tokens
             .get()
@@ -369,7 +410,10 @@ impl LiveStreamer {
                     .map_err(|_| "timed out waiting for the game to connect".to_string())?
                     .map_err(|e| format!("the game could not open the replay pipe: {e}"))?;
 
-                tokio::spawn(pipe_relay_session(pipe, write, read, first));
+                let stop = CancellationToken::new();
+                let ended = replay_ended(Arc::clone(process), stop.clone());
+                let task = tokio::spawn(pipe_relay_session(pipe, write, read, first, ended));
+                *self.session.lock().unwrap() = Some(RelaySession { stop, task });
             }
         }
         Ok(warning)
@@ -495,13 +539,22 @@ async fn relay_session(
 ///
 /// One leg fewer than the TCP version: the pipe is opened outbound-only, so
 /// there is nothing to read back from FA. The other difference is the ending,
-/// which the pipe does not deliver on its own (see [`PIPE_TERMINATOR`]).
+/// which the pipe does not deliver on its own (see [`PIPE_TERMINATOR`]), and
+/// noticing that FA has gone: with nothing to read from it, a write failing is
+/// the only sign the pipe gives, and a broadcast that falls silent never
+/// writes again. So the session also ends on `ended`, the replay window
+/// closing or [`LiveStreamer::end_session`] asking.
+///
+/// Both legs run inside this one task rather than each in its own, so the
+/// pipe is closed by the time the task has finished: which is what
+/// `end_session` waits for before the next live replay creates the pipe anew.
 #[cfg(windows)]
 async fn pipe_relay_session(
     mut pipe: tokio::net::windows::named_pipe::NamedPipeServer,
     mut ws_write: SplitSink<WsStream, Message>,
     mut ws_read: SplitStream<WsStream>,
     first: Vec<u8>,
+    ended: impl std::future::Future<Output = ()>,
 ) {
     let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
     let backlog = Backlog::default();
@@ -511,9 +564,10 @@ async fn pipe_relay_session(
 
     // WS -> queue, exactly as on the TCP path: reading the socket must never
     // wait on FA draining the pipe, or the server's keepalive pings go
-    // unanswered while the game is catching up.
+    // unanswered while the game is catching up. Polled side by side with the
+    // pipe leg below, a write FA is slow to take holds up neither.
     let queued = backlog.clone();
-    let mut ws_to_queue = tokio::spawn(async move {
+    let ws_to_queue = async move {
         while let Some(msg) = ws_read.next().await {
             match msg {
                 Ok(Message::Binary(data)) => {
@@ -525,9 +579,9 @@ async fn pipe_relay_session(
                 _ => {} // ping/pong/text: ignore
             }
         }
-    });
+    };
 
-    let mut queue_to_pipe = tokio::spawn(async move {
+    let queue_to_pipe = async move {
         while let Some(data) = rx.recv().await {
             if pipe.write_all(&data).await.is_err() {
                 return;
@@ -538,17 +592,54 @@ async fn pipe_relay_session(
         // sitting there waiting for more. Unblock it.
         let _ = pipe.write_all(&PIPE_TERMINATOR).await;
         let _ = pipe.shutdown().await;
-    });
+    };
 
+    tokio::pin!(ws_to_queue, queue_to_pipe, ended);
     tokio::select! {
-        // The broadcast is over; the queue leg is left to drain what is still
-        // queued and write the terminator, which is what ends the game's read.
-        _ = &mut ws_to_queue => {}
+        // The broadcast is over. The pipe leg still drains what is queued and
+        // writes the terminator, which is what ends the game's read, unless
+        // the game goes first.
+        _ = &mut ws_to_queue => {
+            close_ws(&mut ws_write).await;
+            tokio::select! {
+                _ = &mut queue_to_pipe => {}
+                _ = &mut ended => {}
+            }
+            return;
+        }
         // The pipe broke: nothing more read from the server can reach FA.
-        _ = &mut queue_to_pipe => ws_to_queue.abort(),
+        _ = &mut queue_to_pipe => {}
+        // The window was closed, or the next replay needs the pipe.
+        _ = &mut ended => {}
     }
+    close_ws(&mut ws_write).await;
+}
 
-    // Nothing reads from FA on this transport, but the socket still has to be
-    // closed rather than dropped mid-frame.
-    let _ = ws_write.close().await;
+/// Close the replay socket rather than drop it mid-frame. Nothing reads from
+/// FA on the pipe transport, but the server is still owed the close; bounded,
+/// because [`LiveStreamer::end_session`] waits on it.
+#[cfg(windows)]
+async fn close_ws(ws_write: &mut SplitSink<WsStream, Message>) {
+    let _ = tokio::time::timeout(WS_CLOSE_TIMEOUT, ws_write.close()).await;
+}
+
+/// Resolves once the replay window a pipe session feeds has closed, or the
+/// session is told to stop.
+///
+/// Asked of the process port rather than of the pipe: see
+/// [`pipe_relay_session`] for why the pipe cannot tell.
+#[cfg(windows)]
+async fn replay_ended(process: Arc<dyn ProcessPort>, stop: CancellationToken) {
+    let closed = async {
+        loop {
+            tokio::time::sleep(REPLAY_EXIT_POLL).await;
+            if !process.replay_running() {
+                return;
+            }
+        }
+    };
+    tokio::select! {
+        _ = closed => {}
+        _ = stop.cancelled() => {}
+    }
 }

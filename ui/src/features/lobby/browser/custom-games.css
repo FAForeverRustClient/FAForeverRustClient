@@ -336,10 +336,11 @@
   object-fit: cover;
 }
 
+/* Top left, where every private game's lock sits (issue 598). */
 .game-browser-thumb-lock {
   position: absolute;
-  bottom: 2px;
-  right: 2px;
+  top: 2px;
+  left: 2px;
   background: rgba(0, 0, 0, 0.75);
   color: var(--color-text-strong);
   border-radius: 3px;
@@ -612,7 +613,7 @@
 .private-badge {
   position: absolute;
   top: 10px;
-  right: 10px;
+  left: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -975,14 +976,15 @@
   background: var(--color-surface);
 }
 
-/* Top right, the picture's inner corner beside the title, where the vault
-   cards keep their Featured badge. Top left put a square into the tile's
-   rounded outer corner. A light plate, as the vault badge's: a solid block
-   with a strong border round a small lock was the heaviest thing on the tile. */
+/* Top left, the first thing the eye reaches on a tile, and the same corner
+   in the list, the details panel and the preview (issue 598). Six pixels in
+   clears the tile's rounded outer corner. A light plate, as the vault badge's:
+   a solid block with a strong border round a small lock was the heaviest
+   thing on the tile. */
 .game-tile-private {
   position: absolute;
   top: 6px;
-  right: 6px;
+  left: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1318,8 +1320,8 @@
 
 .game-friend-flag {
   width: 16px;
-  height: 12px;
-  object-fit: cover;
+  height: 16px;
+  object-fit: contain;
   border-radius: 1px;
   box-shadow: 0 0 1px rgba(0, 0, 0, 0.6);
   flex-shrink: 0;
@@ -1328,7 +1330,7 @@
 .game-friend-flag-placeholder {
   display: inline-block;
   width: 16px;
-  height: 12px;
+  height: 16px;
   border-radius: 1px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -1671,12 +1673,20 @@
   --preview-size-allowance: 320px;
 }
 
+/* The facts band's own bottom rule closes it off from the buttons, so the
+   footer's rule and the space above it would only draw a second line. */
+.game-preview-dialog .generator-facts-strip + .game-preview-dialog-actions {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
 /* The tile's and the details panel's plate (`.game-tile-private`), with the
    word beside the lock at this size. */
 .game-preview-dialog-private {
   position: absolute;
   top: var(--space-3);
-  right: var(--space-3);
+  left: var(--space-3);
   display: inline-flex;
   align-items: center;
   gap: 5px;

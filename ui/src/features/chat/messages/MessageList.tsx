@@ -16,7 +16,7 @@ import { MessageReactions } from "./MessageReactions";
 import { Icon } from "../../../design-system/Icon";
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { overlayStack } from "../../../design-system/overlayStack";
-import { formatTime, renderBody, resolvedNickStyle, showsTime } from "./chatFormat";
+import { formatTime, renderBody, resolvedNickStyle } from "./chatFormat";
 import type { ChatGameLink, PingIndex } from "./chatFormat";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { playersByNickname } from "../../../store/reducer";
@@ -166,11 +166,16 @@ export const MessageList = memo(function MessageList({
   // Shared with the roster rather than a second copy of the same few thousand
   // entries, and rebuilt only when the directory itself changes.
   const profilesByName = playersByNickname(social.players);
+  const relations = useMemo(() => ({ friends: social.friends, foes: social.foes }),
+    [social.friends, social.foes]);
 
   const isFiltered = searchOpen && search.trim().length > 0;
-  const displayedMessages = isFiltered
+  const displayedMessages = useMemo(() => isFiltered
     ? messages
-    : messages.slice(Math.max(0, messages.length - visibleLimit));
+    : messages.slice(Math.max(0, messages.length - visibleLimit)), [isFiltered, messages, visibleLimit]);
+  const timeLabels = useMemo(() => displayedMessages.map((message) =>
+    showTimestamps ? formatTime(message.timestamp, use24HourTime) : ""),
+    [displayedMessages, showTimestamps, use24HourTime]);
   const hasOlder = !isFiltered && displayedMessages.length < messages.length;
 
   // Set in the same update that prepends the older rows, so the log is already
@@ -360,15 +365,12 @@ export const MessageList = memo(function MessageList({
               key={message.id}
               message={message}
               self={self}
-              withTime={
-                showTimestamps
-                && showsTime(message.timestamp, displayedMessages[i - 1]?.timestamp, use24HourTime)
-              }
+              withTime={showTimestamps && (i === 0 || (timeLabels[i] !== "" && timeLabels[i] !== timeLabels[i - 1]))}
               use24HourTime={use24HourTime}
               continued={continuesPrevious(message, displayedMessages[i - 1])}
               user={usersByName.get(message.sender.toLowerCase())}
               profile={profilesByName.get(message.sender.toLowerCase())}
-              social={social}
+              social={relations}
               preferences={preferences}
               search={searchOpen ? search : ""}
               activeSearchMatch={message.id === activeMessageId}
@@ -438,7 +440,7 @@ const Line = memo(function Line({
   continued: boolean;
   user: ChatUser | undefined;
   profile: PlayerProfile | undefined;
-  social: SocialState;
+  social: Pick<SocialState, "friends" | "foes">;
   preferences: ChatPreferences;
   search: string;
   activeSearchMatch: boolean;
@@ -602,7 +604,7 @@ const Line = memo(function Line({
                 title={t("chat.reply.hint")}
                 onClick={() => onReply(message)}
               >
-                <Icon name="arrowRight" size={13} />
+                <Icon name="reply" size={13} />
               </button>
             )}
           </div>

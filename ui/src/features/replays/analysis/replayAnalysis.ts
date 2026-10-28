@@ -183,40 +183,92 @@ export function analysedPlayers(analysis: ReplayAnalysis): AnalysedPlayer[] {
 }
 
 /**
- * A rolling count of actions, one value per tick.
- *
- * At tick `t` the value is how many orders the player gave in the minute
- * starting there, which is the line the activity graph draws. Built by sliding
- * a window rather than by counting each tick's minute from scratch: a long game
- * is tens of thousands of ticks, and the quadratic version of this took longer
- * than reading the file did.
+ * The backend's duration cap remains a guard on the time axis. Allocations
+ * depend on drawing resolution and a shared budget, never on this duration.
+ */
+export const MAX_ACTIVITY_TICKS = 10 * 60 * 60 * 24;
+export const MAX_ACTIVITY_SAMPLES = 1000;
+export const MAX_ACTIVITY_TOTAL_SAMPLES = 32_000;
+const MAX_ACTIVITY_SOURCES = 256;
+const MAX_ACTIVITY_COMMANDS = 1_000_000;
+
+export interface ActivitySeries {
+  /** Sample i counts the forward minute beginning at i * step. */
+  step: number;
+  values: Uint32Array;
+}
+
+/**
+ * Count each order into the range of sampled windows that contain it, then
+ * take a prefix sum. Work is linear in orders plus samples, even for an empty
+ * day-long game. Counts stay exact at each sampled time, including duplicates
+ * on the same tick; no dense array over the game's ticks is needed.
  */
 export function rollingActions(
   commandTicks: readonly number[],
-  ticks: number,
+  claimedTicks: number,
   window = ACTIVITY_WINDOW_TICKS,
-): Uint16Array {
-  const series = new Uint16Array(Math.max(ticks, 1));
-  if (commandTicks.length === 0 || ticks <= 0) return series;
-
-  const perTick = new Uint16Array(ticks + window);
-  for (const tick of commandTicks) {
-    if (tick >= 0 && tick < perTick.length) perTick[tick] += 1;
+  sampleLimit = MAX_ACTIVITY_SAMPLES,
+): ActivitySeries {
+  const ticks = Number.isFinite(claimedTicks)
+    ? Math.min(Math.max(Math.floor(claimedTicks), 0), MAX_ACTIVITY_TICKS)
+    : 0;
+  const limit = Number.isFinite(sampleLimit)
+    ? Math.max(1, Math.min(Math.floor(sampleLimit), MAX_ACTIVITY_SAMPLES)) : MAX_ACTIVITY_SAMPLES;
+  const step = Math.max(1, Math.ceil(ticks / limit));
+  if (commandTicks.length === 0 || ticks === 0 || !Number.isSafeInteger(window) || window <= 0) {
+    return { step, values: new Uint32Array(0) };
   }
+  const count = Math.ceil(ticks / step);
+  const changes = new Int32Array(count + 1);
+  for (let i = 0; i < Math.min(commandTicks.length, MAX_ACTIVITY_COMMANDS); i += 1) {
+    const tick = commandTicks[i];
+    if (!Number.isSafeInteger(tick) || tick < 0 || tick > ticks) continue;
+    // i*step <= tick < i*step + window. The right edge is exclusive.
+    const first = Math.max(0, Math.floor((tick - window) / step) + 1);
+    const last = Math.min(count - 1, Math.floor(tick / step));
+    if (first > last) continue;
+    changes[first] += 1;
+    changes[last + 1] -= 1;
+  }
+  const values = new Uint32Array(count);
   let running = 0;
-  for (let tick = 0; tick < window && tick < perTick.length; tick += 1) running += perTick[tick];
-  series[0] = running;
-  for (let tick = 1; tick < ticks; tick += 1) {
-    running += perTick[tick + window - 1] - perTick[tick - 1];
-    series[tick] = running;
+  for (let i = 0; i < count; i += 1) {
+    running += changes[i];
+    values[i] = running;
   }
-  return series;
+  return { step, values };
+}
+
+/** At most 128 KiB of counts across every source, also bounding SVG output. */
+export function activitySeries(
+  activity: ReplayAnalysis["activity"],
+  ticks: number,
+): Map<number, ActivitySeries> {
+  const sources = new Map<number, ReplayAnalysis["activity"][number]>();
+  let commands = 0;
+  // Sources are bytes in the replay protocol. Bound iteration as well as the
+  // map, even if a caller supplies duplicates or impossible source ids.
+  for (let i = 0; i < Math.min(activity.length, MAX_ACTIVITY_SOURCES); i += 1) {
+    const entry = activity[i];
+    if (
+      !Number.isInteger(entry.source) || entry.source < 0 || entry.source >= MAX_ACTIVITY_SOURCES
+      || sources.has(entry.source) || commands + entry.commandTicks.length > MAX_ACTIVITY_COMMANDS
+    ) continue;
+    sources.set(entry.source, entry);
+    commands += entry.commandTicks.length;
+  }
+  const sampleLimit = Math.min(MAX_ACTIVITY_SAMPLES,
+    Math.floor(MAX_ACTIVITY_TOTAL_SAMPLES / Math.max(1, sources.size)));
+  return new Map([...sources.values()].map((entry) => [
+    entry.source, rollingActions(entry.commandTicks, ticks, ACTIVITY_WINDOW_TICKS, sampleLimit),
+  ]));
 }
 
 /** The tallest value across a set of series, for a shared y axis. */
-export function peakOf(series: Iterable<Uint16Array>): number {
+export function peakOf(series: Iterable<ActivitySeries>): number {
   let peak = 0;
-  for (const values of series) {
+  for (const { values } of series) {
     for (const value of values) if (value > peak) peak = value;
   }
   return peak;
@@ -238,19 +290,42 @@ export function peakOf(series: Iterable<Uint16Array>): number {
  * order sitting on the window's first tick is judged against the one before
  * it and not by where the pointer happens to be.
  */
-export function ordersInWindow(
-  orders: readonly ReplayOrder[],
-  from: number,
-  window = ACTIVITY_WINDOW_TICKS,
-): Map<number, ReplayOrder[]> {
-  const grouped = new Map<number, ReplayOrder[]>();
-  const previous = new Map<number, { tick: number; command: number }>();
+const ORDER_INDEX = new WeakMap<readonly ReplayOrder[], readonly ReplayOrder[]>();
+
+/** Deduplicate once per immutable recording, before applying window bounds. */
+export function indexOrders(orders: readonly ReplayOrder[]): readonly ReplayOrder[] {
+  const known = ORDER_INDEX.get(orders);
+  if (known) return known;
+  const previous = new Map<number, ReplayOrder>();
+  const indexed: ReplayOrder[] = [];
   for (const order of orders) {
     const last = previous.get(order.source);
-    const repeated = last?.tick === order.tick && last?.command === order.command;
-    previous.set(order.source, { tick: order.tick, command: order.command });
-    if (repeated) continue;
-    if (order.tick < from || order.tick >= from + window) continue;
+    previous.set(order.source, order);
+    if (last?.tick !== order.tick || last.command !== order.command) indexed.push(order);
+  }
+  indexed.sort((a, b) => a.tick - b.tick);
+  ORDER_INDEX.set(orders, indexed);
+  return indexed;
+}
+
+export function ordersInWindow(
+  orders: readonly ReplayOrder[], from: number, window = ACTIVITY_WINDOW_TICKS,
+): Map<number, ReplayOrder[]> {
+  const indexed = indexOrders(orders);
+  const lowerBound = (tick: number) => {
+    let low = 0;
+    let high = indexed.length;
+    while (low < high) {
+      const mid = (low + high) >>> 1;
+      if (indexed[mid].tick < tick) low = mid + 1;
+      else high = mid;
+    }
+    return low;
+  };
+  const grouped = new Map<number, ReplayOrder[]>();
+  const end = lowerBound(from + window);
+  for (let i = lowerBound(from); i < end; i++) {
+    const order = indexed[i];
     const own = grouped.get(order.source);
     if (own) own.push(order);
     else grouped.set(order.source, [order]);
@@ -317,38 +392,27 @@ export function heatmapBins(
 export function blurBins(bins: HeatmapBins, radius: number): HeatmapBins {
   if (radius <= 0) return bins;
   const { size } = bins;
-  let source: Float32Array<ArrayBuffer> = bins.cells;
+  radius = Math.min(size - 1, Math.floor(radius));
+  let source: Float32Array<ArrayBuffer> = new Float32Array(bins.cells);
   let target: Float32Array<ArrayBuffer> = new Float32Array(size * size);
   for (let pass = 0; pass < 3; pass += 1) {
-    // Horizontal, then vertical, reusing the two buffers.
-    for (let y = 0; y < size; y += 1) {
-      for (let x = 0; x < size; x += 1) {
+    // Sliding windows make each pass linear in the grid area, at any radius.
+    for (let axis = 0; axis < 2; axis++) {
+      for (let row = 0; row < size; row++) {
+        const at = (column: number) => axis === 0 ? row * size + column : column * size + row;
         let total = 0;
-        let count = 0;
-        for (let offset = -radius; offset <= radius; offset += 1) {
-          const sampled = x + offset;
-          if (sampled < 0 || sampled >= size) continue;
-          total += source[y * size + sampled];
-          count += 1;
+        for (let i = 0; i <= Math.min(radius, size - 1); i++) total += source[at(i)];
+        for (let column = 0; column < size; column++) {
+          const count = Math.min(size - 1, column + radius) - Math.max(0, column - radius) + 1;
+          target[at(column)] = Math.max(0, total / count);
+          const remove = column - radius;
+          const add = column + radius + 1;
+          if (remove >= 0) total -= source[at(remove)];
+          if (add < size) total += source[at(add)];
         }
-        target[y * size + x] = count > 0 ? total / count : 0;
       }
+      [source, target] = [target, source];
     }
-    [source, target] = [target, source];
-    for (let y = 0; y < size; y += 1) {
-      for (let x = 0; x < size; x += 1) {
-        let total = 0;
-        let count = 0;
-        for (let offset = -radius; offset <= radius; offset += 1) {
-          const sampled = y + offset;
-          if (sampled < 0 || sampled >= size) continue;
-          total += source[sampled * size + x];
-          count += 1;
-        }
-        target[y * size + x] = count > 0 ? total / count : 0;
-      }
-    }
-    [source, target] = [target, source];
   }
   let peak = 0;
   for (const value of source) if (value > peak) peak = value;

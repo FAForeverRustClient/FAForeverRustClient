@@ -53,6 +53,10 @@ use crate::state::{
 };
 use crate::state::{PickLogEntry, PickMade, PickPhase, Playoffs, StageTwoPlan, TeamRecord};
 use crate::state::{PickSettings, PlanLists, SwissExtras, TourneyPreset};
+use crate::state::{
+    ProposalArea, ProposalCard, ProposalDecision, ProposalQueue, ProposalState, ProposalStep,
+    TourneyProposal,
+};
 
 /// A string field, empty when absent or not a string.
 fn text(value: &Value, name: &str) -> String {
@@ -537,6 +541,11 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
             .get("published")
             .is_none_or(|value| flag(document, "published") || value.is_null()),
         publish_at: publish_moment(document, "publishAt"),
+        // The detail's `proposal`, or the list row's short `prop`.
+        proposal: document
+            .get("proposal")
+            .and_then(parse_proposal)
+            .or_else(|| document.get("prop").and_then(parse_proposal_row)),
         player_count: count(document, "players"),
         team_count: count(document, "teams"),
         players: array(document, "players")
@@ -1580,9 +1589,11 @@ pub fn parse_discord(document: &Value) -> String {
 pub fn create_body(draft: &TourneyDraft) -> Value {
     let mut body = json!({
         "name": draft.name.trim(),
-        "category": match draft.category {
-            TourneyCategory::Official => "official",
-            TourneyCategory::Community => "community",
+        // A proposal is community until the director who takes it over says
+        // otherwise; the service forces it anyway.
+        "category": match (draft.proposal, draft.category) {
+            (false, TourneyCategory::Official) => "official",
+            _ => "community",
         },
         "competition": match draft.competition {
             Competition::FreeForAll => "ffa",
@@ -1616,6 +1627,11 @@ pub fn create_body(draft: &TourneyDraft) -> Value {
         } else {
             "linear"
         });
+    }
+    // A proposal to the TD team rather than an event to host (#569). Absent
+    // rather than 0 otherwise, as before the service knew the key.
+    if draft.proposal {
+        body["proposal"] = json!(1);
     }
     // Unknown ids are ignored server-side, but an absent key is cleaner than a
     // blank one: the field is optional and most events are not in a series.
@@ -2413,6 +2429,48 @@ pub fn admin_request(change: &TourneyAdmin) -> (&'static str, Value) {
             },
         ),
         TourneyAdmin::SetVeto { config } => ("edit_info", json!({ "veto": veto_body(config) })),
+        TourneyAdmin::ProposalSubmit {
+            lock_maps,
+            lock_format,
+            keep,
+            note,
+        } => (
+            "proposal_submit",
+            json!({
+                "lockMaps": u8::from(*lock_maps),
+                "lockFormat": u8::from(*lock_format),
+                "keep": u8::from(*keep),
+                "note": note.trim(),
+            }),
+        ),
+        TourneyAdmin::ProposalWithdraw => ("proposal_withdraw", json!({})),
+        TourneyAdmin::ProposalTake { category, note } => (
+            "proposal_take",
+            json!({
+                "category": match category {
+                    TourneyCategory::Official => "official",
+                    TourneyCategory::Community => "community",
+                },
+                "note": note.trim(),
+            }),
+        ),
+        TourneyAdmin::ProposalDecline { reason } => {
+            ("proposal_decline", json!({ "reason": reason.trim() }))
+        }
+        TourneyAdmin::ProposalRelease { reason } => {
+            ("proposal_release", json!({ "reason": reason.trim() }))
+        }
+        TourneyAdmin::ProposalUnlock { area, reason } => (
+            "proposal_unlock",
+            json!({
+                "which": match area {
+                    ProposalArea::Maps => "maps",
+                    ProposalArea::Format => "format",
+                },
+                "reason": reason.trim(),
+            }),
+        ),
+        TourneyAdmin::ProposalDrop => ("proposal_drop", json!({})),
         TourneyAdmin::TeamCheckIn {
             team_id,
             checked_in,
@@ -2569,6 +2627,8 @@ pub fn parse_account(document: &Value) -> TourneyAccount {
     let Some(user) = document.get("user").filter(|held| held.is_object()) else {
         return TourneyAccount {
             oauth: flag(document, "enabled"),
+            proposals: flag(document, "proposals"),
+            proposal_days: int(document, "proposalDays").unwrap_or(0),
             ..TourneyAccount::default()
         };
     };
@@ -2585,6 +2645,8 @@ pub fn parse_account(document: &Value) -> TourneyAccount {
         site_admin_account: flag(user, "siteAdminAccount"),
         admin_stand_down: flag(user, "adminStandDown"),
         allowed: flag(user, "allowed"),
+        proposals: flag(document, "proposals"),
+        proposal_days: int(document, "proposalDays").unwrap_or(0),
     }
 }
 
@@ -2614,24 +2676,32 @@ pub fn parse_pending(document: &Value) -> PendingSummary {
             })
         })
         .collect();
-    let alert = document.get("alert").filter(|held| held.is_object());
-    let (requests, new_requests) = match alert {
+    // "N access request(s) waiting for review (M new)", and the same shape
+    // for proposals: "N tournament proposal(s) ... waiting for a tournament
+    // director (M new)".
+    let counts = |name: &str| match document.get(name).filter(|held| held.is_object()) {
         Some(held) => {
             let sentence = text(held, "text");
-            // "N access request(s) waiting for review (M new)".
             let new = sentence
                 .rfind('(')
                 .map(|at| &sentence[at..])
                 .filter(|tail| tail.contains("new"))
                 .and_then(first_number);
-            (first_number(&sentence).or(Some(1)), new)
+            let count = int(held, "n")
+                .or_else(|| first_number(&sentence))
+                .or(Some(1));
+            (count, new)
         }
         None => (None, None),
     };
+    let (requests, new_requests) = counts("alert");
+    let (proposals, new_proposals) = counts("proposals");
     PendingSummary {
         items,
         requests,
         new_requests,
+        proposals,
+        new_proposals,
     }
 }
 
@@ -2753,6 +2823,152 @@ pub fn parse_console(data: &Value) -> SiteAdminData {
         site_admins: list("siteAdmins"),
         me: int(data, "me"),
         bans: array(data, "bans").iter().filter_map(parse_ban).collect(),
+        proposals: data
+            .get("proposals")
+            .filter(|held| held.is_object())
+            .map(parse_proposal_queue),
+    }
+}
+
+/// A tournament's `proposal`, as its proposer, organisers and directors get
+/// it, or the public's `{ credit }` alone (#569).
+fn parse_proposal(value: &Value) -> Option<TourneyProposal> {
+    if !value.is_object() {
+        return None;
+    }
+    let state = proposal_state(&text(value, "state"));
+    let last = value
+        .get("last")
+        .filter(|held| held.is_object())
+        .map(|held| ProposalStep {
+            act: text(held, "act"),
+            by_name: text(held, "byName"),
+            at: moment(held, "at"),
+            reason: text(held, "reason"),
+        });
+    Some(TourneyProposal {
+        state,
+        by_name: text(value, "byName"),
+        proposed_at: moment(value, "proposedAt"),
+        until: moment(value, "until"),
+        days: int(value, "days").unwrap_or(0),
+        lock_maps: flag(value, "lockMaps"),
+        lock_format: flag(value, "lockFormat"),
+        keep: flag(value, "keep"),
+        note: text(value, "note"),
+        taken_by_name: text(value, "takenByName"),
+        taken_at: moment(value, "takenAt"),
+        take_note: text(value, "takeNote"),
+        last,
+        mine: flag(value, "mine"),
+        organizer: flag(value, "organizer"),
+        can_submit: flag(value, "canSubmit"),
+        can_withdraw: flag(value, "canWithdraw"),
+        can_decide: flag(value, "canDecide"),
+        can_drop: flag(value, "canDrop"),
+        can_release: flag(value, "canRelease"),
+        can_unlock: flag(value, "canUnlock"),
+        credit: text(value, "credit"),
+    })
+}
+
+/// The list row's short `prop`: `{ s, by, at, until, taken, last, mine, can }`.
+fn parse_proposal_row(value: &Value) -> Option<TourneyProposal> {
+    if !value.is_object() {
+        return None;
+    }
+    Some(TourneyProposal {
+        state: proposal_state(&text(value, "s")),
+        by_name: text(value, "by"),
+        proposed_at: moment(value, "at"),
+        until: moment(value, "until"),
+        taken_by_name: text(value, "taken"),
+        last: value
+            .get("last")
+            .filter(|held| held.is_object())
+            .map(|held| ProposalStep {
+                act: text(held, "act"),
+                at: moment(held, "at"),
+                ..ProposalStep::default()
+            }),
+        mine: flag(value, "mine"),
+        can_decide: flag(value, "can"),
+        ..TourneyProposal::default()
+    })
+}
+
+fn proposal_state(word: &str) -> Option<ProposalState> {
+    match word {
+        "draft" => Some(ProposalState::Draft),
+        "proposed" => Some(ProposalState::Proposed),
+        "taken" => Some(ProposalState::Taken),
+        _ => None,
+    }
+}
+
+/// The console's `proposals`: what waits, oldest first, and what was
+/// decided lately.
+fn parse_proposal_queue(value: &Value) -> ProposalQueue {
+    ProposalQueue {
+        pending: array(value, "pending")
+            .iter()
+            .filter_map(|held| {
+                Some(ProposalCard {
+                    tournament_id: id(held, "id")?,
+                    name: text(held, "name"),
+                    by_name: text(held, "by"),
+                    proposed_at: moment(held, "proposedAt"),
+                    until: moment(held, "until"),
+                    note: text(held, "note"),
+                    lock_maps: flag(held, "lockMaps"),
+                    lock_format: flag(held, "lockFormat"),
+                    keep: flag(held, "keep"),
+                    mine: flag(held, "mine"),
+                    competition: Competition::from_wire(&text(held, "competition")),
+                    team_size: int(held, "teamSize").unwrap_or(1),
+                    bracket_kind: BracketKind::from_wire(&text(held, "bracketType")),
+                    event_date: calendar_moment(held, "eventDate"),
+                    event_days: array(held, "eventDays").len() as i32,
+                    signup_mode: SignupMode::from_wire(&text(held, "signupMode")),
+                    max_teams: int(held, "maxTeams").unwrap_or(0),
+                    min_teams: int(held, "minTeams").unwrap_or(0),
+                    rating_kind: RatingKind::from_wire(&text(held, "ratingType")),
+                    min_rating: int(held, "minRating"),
+                    max_rating: int(held, "maxRating"),
+                    map_count: int(held, "maps").unwrap_or(0),
+                    pools: array(held, "pools")
+                        .iter()
+                        .map(|pool| {
+                            let maps = array(pool, "maps")
+                                .iter()
+                                .filter_map(Value::as_str)
+                                .collect::<Vec<_>>()
+                                .join(", ");
+                            format!("{}: {maps}", text(pool, "name"))
+                        })
+                        .collect(),
+                    prize: prize(held, "prize"),
+                    rewards: to_plain_text(&text(held, "rewards")),
+                    description: to_plain_text(&text(held, "description")),
+                })
+            })
+            .collect(),
+        recent: array(value, "recent")
+            .iter()
+            .filter_map(|held| {
+                Some(ProposalDecision {
+                    tournament_id: id(held, "id")?,
+                    name: text(held, "name"),
+                    act: text(held, "act"),
+                    by_name: text(held, "byName"),
+                    at: moment(held, "at"),
+                    reason: text(held, "reason"),
+                    proposer: text(held, "proposer"),
+                })
+            })
+            .collect(),
+        days: int(value, "days").unwrap_or(0),
+        days_default: int(value, "daysDefault").unwrap_or(0),
     }
 }
 
@@ -2773,6 +2989,13 @@ pub fn site_request(write: &SiteWrite) -> (String, Value) {
             json!({ "on": u8::from(*on) }),
         ),
         SiteWrite::DismissRequests => ("my/dismiss_requests".into(), json!({})),
+        SiteWrite::DismissProposals => {
+            ("my/dismiss_requests".into(), json!({ "kind": "proposals" }))
+        }
+        SiteWrite::ProposalDays { days } => (
+            path("proposal_days"),
+            json!({ "days": (*days).clamp(7, 90) }),
+        ),
         SiteWrite::RequestAccess { kind, message } => (
             match kind {
                 AccessKind::Host => "host_request",
@@ -5232,5 +5455,154 @@ See the [rules](https://x.invalid/r)."
         assert_eq!(entry.draw_replay_ids, vec!["21534010"]);
         let pending = entry.pending_report.expect("a pending report");
         assert_eq!(pending.draw_replay_ids, vec!["2"]);
+    }
+
+    #[test]
+    fn a_proposal_reads_as_its_proposer_and_the_public_see_it() {
+        // The service's own shape (faf-tournaments `proposalView`), times in
+        // milliseconds.
+        let event = parse_tourney(&json!({
+            "id": "e1",
+            "published": 0,
+            "proposal": {
+                "state": "proposed", "byName": "Nuggets", "at": 1_760_000_000_000_i64,
+                "proposedAt": 1_760_000_100_000_i64, "until": 1_762_419_300_000_i64, "days": 28,
+                "lockMaps": 1, "lockFormat": 0, "keep": 1, "note": "Any Saturday",
+                "takenByName": null, "takenAt": null, "takeNote": "",
+                "last": { "act": "declined", "byName": "Sheikah", "at": 1_759_000_000_000_i64, "reason": "no maps" },
+                "history": [], "mine": 1, "organizer": 1,
+                "canSubmit": 0, "canWithdraw": 1, "canDecide": 0, "canDrop": 0,
+                "canRelease": 0, "canUnlock": 0, "credit": "Nuggets"
+            }
+        }))
+        .unwrap();
+        let proposal = event.proposal.expect("a proposal");
+        assert_eq!(proposal.state, Some(ProposalState::Proposed));
+        assert_eq!(proposal.proposed_at, Some(1_760_000_100));
+        assert_eq!(proposal.until, Some(1_762_419_300));
+        assert!(proposal.lock_maps && !proposal.lock_format && proposal.keep);
+        assert!(proposal.mine && proposal.can_withdraw && !proposal.can_decide);
+        assert_eq!(proposal.last.expect("the last step").reason, "no maps");
+
+        // The public gets the credit alone, once it is out.
+        let public = parse_tourney(&json!({ "id": "e1", "proposal": { "credit": "Nuggets" } }))
+            .unwrap()
+            .proposal
+            .expect("the credit");
+        assert_eq!(public.state, None);
+        assert_eq!(public.credit, "Nuggets");
+        assert!(parse_tourney(&json!({ "id": "e2" }))
+            .unwrap()
+            .proposal
+            .is_none());
+    }
+
+    #[test]
+    fn a_list_row_reads_its_short_proposal() {
+        let row = parse_tourney(&json!({
+            "id": "e1", "published": 0,
+            "prop": { "s": "taken", "by": "Nuggets", "at": 1_760_000_000_000_i64, "until": null,
+                      "taken": "Sheikah", "last": null, "mine": 0, "can": 0 }
+        }))
+        .unwrap()
+        .proposal
+        .expect("a proposal");
+        assert_eq!(row.state, Some(ProposalState::Taken));
+        assert_eq!(row.by_name, "Nuggets");
+        assert_eq!(row.taken_by_name, "Sheikah");
+    }
+
+    #[test]
+    fn proposal_actions_go_to_the_service_as_its_page_sends_them() {
+        let request = |change: TourneyAdmin| admin_request(&change);
+        assert_eq!(
+            request(TourneyAdmin::ProposalSubmit {
+                lock_maps: false,
+                lock_format: true,
+                keep: false,
+                note: "  Any Saturday  ".into(),
+            }),
+            (
+                "proposal_submit",
+                json!({ "lockMaps": 0, "lockFormat": 1, "keep": 0, "note": "Any Saturday" })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::ProposalTake {
+                category: TourneyCategory::Official,
+                note: String::new(),
+            }),
+            (
+                "proposal_take",
+                json!({ "category": "official", "note": "" })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::ProposalUnlock {
+                area: ProposalArea::Format,
+                reason: "agreed".into(),
+            }),
+            (
+                "proposal_unlock",
+                json!({ "which": "format", "reason": "agreed" })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::ProposalDecline {
+                reason: "no maps".into()
+            }),
+            ("proposal_decline", json!({ "reason": "no maps" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::ProposalWithdraw),
+            ("proposal_withdraw", json!({}))
+        );
+        assert_eq!(
+            request(TourneyAdmin::ProposalDrop),
+            ("proposal_drop", json!({}))
+        );
+    }
+
+    #[test]
+    fn a_proposal_is_created_as_community_and_says_so() {
+        let draft = TourneyDraft {
+            name: "Cup".into(),
+            proposal: true,
+            category: TourneyCategory::Official,
+            ..TourneyDraft::default()
+        };
+        let body = create_body(&draft);
+        assert_eq!(body["proposal"], json!(1));
+        assert_eq!(body["category"], json!("community"));
+        let hosted = create_body(&TourneyDraft {
+            proposal: false,
+            ..draft
+        });
+        assert!(hosted.get("proposal").is_none());
+        assert_eq!(hosted["category"], json!("official"));
+    }
+
+    #[test]
+    fn the_site_says_whether_it_takes_proposals_and_who_waits_on_them() {
+        let account = parse_account(&json!({
+            "enabled": true, "proposals": 1, "proposalDays": 21, "user": null
+        }));
+        assert!(account.proposals);
+        assert_eq!(account.proposal_days, 21);
+        let pending = parse_pending(&json!({
+            "pending": [],
+            "proposals": { "dismissible": 1, "n": 3,
+                           "text": "3 tournament proposals are waiting for a tournament director (1 new)" }
+        }));
+        assert_eq!(pending.proposals, Some(3));
+        assert_eq!(pending.new_proposals, Some(1));
+        assert_eq!(
+            site_request(&SiteWrite::DismissProposals),
+            ("my/dismiss_requests".into(), json!({ "kind": "proposals" }))
+        );
+        assert_eq!(
+            site_request(&SiteWrite::ProposalDays { days: 200 }),
+            ("siteadmin/proposal_days".into(), json!({ "days": 90 }))
+        );
     }
 }

@@ -67,6 +67,13 @@ pub struct CustomGameBrowserPreferences {
     pub hide_foes: bool,
     pub apply_filters: bool,
     pub rules: Vec<CustomGameFilterRule>,
+    /// The other direction from `rules`: a game matching any of these stays
+    /// in the list whatever the hide switches and the rules say (#593). The
+    /// same builder, so "always show games with mod X" is one rule rather
+    /// than a list per field. Not a filter in `FilterMemory`'s sense, since
+    /// it narrows nothing, so `without_filters` leaves it as it is. Holds the
+    /// former always-shown hosts as `Host equals` rules.
+    pub allow_rules: Vec<CustomGameFilterRule>,
     /// Pixel widths of the list view's columns, left to right.
     ///
     /// Empty means "the stylesheet decides", which is both the default and
@@ -112,6 +119,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
             hide_foes: bool,
             apply_filters: bool,
             rules: Vec<CustomGameFilterRule>,
+            allow_rules: Vec<CustomGameFilterRule>,
             column_widths: Vec<u32>,
             column_order: Vec<u32>,
             detail_width: u32,
@@ -128,6 +136,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
             hide_foes: wire.hide_foes,
             apply_filters: wire.apply_filters,
             rules: wire.rules,
+            allow_rules: wire.allow_rules,
             column_widths: wire.column_widths,
             column_order: wire.column_order,
             detail_width: wire.detail_width,
@@ -138,24 +147,8 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
 
 impl CustomGameBrowserPreferences {
     pub(super) fn normalized(mut self) -> Self {
-        let mut rules = Vec::new();
-        for mut rule in self.rules {
-            rule.value = truncate_trimmed(rule.value, 128);
-            if rule.value.is_empty()
-                || rules.iter().any(|existing: &CustomGameFilterRule| {
-                    existing.field == rule.field
-                        && existing.constraint == rule.constraint
-                        && existing.value.eq_ignore_ascii_case(&rule.value)
-                })
-            {
-                continue;
-            }
-            rules.push(rule);
-            if rules.len() == 64 {
-                break;
-            }
-        }
-        self.rules = rules;
+        self.rules = normalize_rules(self.rules);
+        self.allow_rules = normalize_rules(self.allow_rules);
         // A settings file is a file, so every bound here is against a corrupt
         // or hand-edited one rather than against anything a drag can produce.
         // Count only. There is no bound left to put on a width: a column is
@@ -173,6 +166,29 @@ impl CustomGameBrowserPreferences {
         }
         self
     }
+}
+
+/// A rule list as stored: trimmed, empty values and repeats dropped, at most
+/// 64 rules.
+pub(super) fn normalize_rules(candidates: Vec<CustomGameFilterRule>) -> Vec<CustomGameFilterRule> {
+    let mut rules: Vec<CustomGameFilterRule> = Vec::new();
+    for mut rule in candidates {
+        rule.value = truncate_trimmed(rule.value, 128);
+        if rule.value.is_empty()
+            || rules.iter().any(|existing| {
+                existing.field == rule.field
+                    && existing.constraint == rule.constraint
+                    && existing.value.eq_ignore_ascii_case(&rule.value)
+            })
+        {
+            continue;
+        }
+        rules.push(rule);
+        if rules.len() == 64 {
+            break;
+        }
+    }
+    rules
 }
 
 /// The list view has six columns, and a saved width past these bounds is a
@@ -195,6 +211,7 @@ preference_patch! {
         hide_foes: bool,
         apply_filters: bool,
         rules: Vec<CustomGameFilterRule>,
+        allow_rules: Vec<CustomGameFilterRule>,
         column_widths: Vec<u32>,
         column_order: Vec<u32>,
         detail_width: u32,

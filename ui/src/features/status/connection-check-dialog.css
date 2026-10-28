@@ -1,0 +1,70 @@
+/* The status bar's connection check (issue 647): wide enough that a check
+   line's explanation reads as a sentence, with the check and the live
+   connections side by side. */
+.modal-panel.connection-check-modal {
+  width: min(920px, calc(100vw - 48px));
+  max-width: 920px;
+  padding: 24px;
+}
+
+.connection-check-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  /* Clear of the dialog's close button in the corner. */
+  padding-right: 24px;
+  margin-bottom: var(--space-4);
+}
+
+.connection-check-head h2 {
+  margin: 0 0 var(--space-1);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.connection-check-head p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.connection-check-head .btn,
+.connection-check-head button {
+  flex: none;
+}
+
+.connection-check-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.connection-check-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.connection-check-column h3 {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* The Settings page draws these as page blocks with a rule under each; in a
+   column of their own the rule and the page padding are noise. */
+.connection-check-column .setting-block {
+  padding: 0;
+  border-bottom: 0;
+}
+
+@media (max-width: 760px) {
+  .connection-check-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

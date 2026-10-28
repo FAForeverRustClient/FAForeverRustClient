@@ -27,11 +27,17 @@ import { requestPlayerCardTab } from "../../../shared/playerCardTabIntent";
 import { EMPTY_REPLAY_QUERY } from "../../../shared/replayQuery";
 import { requestReplaySearch } from "../../../shared/replaySearchIntent";
 import { useAppStore } from "../../../store/store";
-import { outcomeLabel, parseOutcome } from "../../../shared/gameOutcome";
+import { outcomeLabel, teamOutcome, type OutcomeKind } from "../../../shared/gameOutcome";
 
 /** One game from the point of view of the player it was loaded for. */
 export interface RecentGameSide {
   me: ReplayPlayer | null;
+  /**
+   * How the game ended for this player's team. The team's result, not the
+   * player's own army: the server stores a defeat for a player whose
+   * commander died in a game the team went on to win (#589).
+   */
+  outcome: OutcomeKind;
   /** `1v1`, `2v2`: players per team as they actually played. */
   mode: string;
   opponents: string[];
@@ -43,8 +49,10 @@ export function recentGameSide(replay: VaultReplay, playerName: string): RecentG
   const me = own?.players.find((player) => player.name.toLocaleLowerCase() === name) ?? null;
   const others = replay.teams.filter((team) => team !== own);
   const perTeam = own?.players.length ?? replay.teams[0]?.players.length ?? 0;
+  const outcome = own ? teamOutcome(own.players) : "unknown";
   return {
     me,
+    outcome: outcome === "unknown" ? "" : outcome,
     mode: perTeam > 0 ? `${perTeam}v${perTeam}` : "",
     opponents: others.flatMap((team) => team.players.map((player) => player.name)),
   };
@@ -103,6 +111,8 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
     defaults: DEFAULT_COLUMN_PX,
     flexible: FLEXIBLE_COLUMN,
     floors: COLUMN_FLOOR_PX,
+    // The thumbnail and the replay buttons keep their width on a wide window.
+    fixed: [0, REPLAY_COLUMN],
     headerRef,
   });
   const { order, moving, widths: columns } = list;
@@ -269,7 +279,7 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
           <tbody>
             {games.map((game) => {
               const side = recentGameSide(game, playerName);
-              const outcome = parseOutcome(side.me?.outcome ?? "");
+              const outcome = side.outcome;
               const change = side.me?.ratingChange ?? null;
               const mapName = mapPresentation(vault, game.map).displayName;
               // In designed order here, drawn in the stored one.
@@ -319,7 +329,7 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
                 </td>,
                 <td key={4} className="muted">{formatAgeOrDate(game.startTime)}</td>,
                 <td key={5} className={`matchmaker-recent-outcome${outcome ? ` is-${outcome}` : ""}`}>
-                  {outcomeLabel(side.me?.outcome ?? "") || t("lobby.matchmaker.recent.noResult")}
+                  {outcomeLabel(outcome) || t("lobby.matchmaker.recent.noResult")}
                 </td>,
                 <td key={6} className={`matchmaker-recent-change${change === null ? "" : change >= 0 ? " is-up" : " is-down"}`}>
                   {change === null ? "" : signed(change)}

@@ -575,7 +575,8 @@
 /* Square, so the icon is the button rather than a word's worth of padding
    around one. The same shape the Maps tab's uninstall has. */
 .mod-vault-card-action .mod-vault-uninstall.is-icon,
-.mod-vault-uninstall.is-icon {
+.mod-vault-uninstall.is-icon,
+.mod-vault-open-folder.is-icon {
   display: grid;
   place-items: center;
   width: 30px;
@@ -594,18 +595,25 @@
    picture, the name large, the facts strip, the description, and the
    actions one to a line with the main one last. It stays in view while the
    grid scrolls, and scrolls inside itself on a window too short for it. */
+/* Pinned beside the list, and never taller than the area that scrolls
+   (`--content-height`, measured by the shell): `100vh` was the window, so the
+   panel always reached past the status bar, and pinned it could not be
+   scrolled far enough to show its action row (issue 615; `vault.css` tells
+   the first round of the same story). What does not fit scrolls inside it,
+   and the wheel goes on to the list once it has reached either end: a
+   contained overscroll here swallowed the wheel whenever the panel itself had
+   nothing to scroll. */
 .mod-detail-panel {
   position: sticky;
   top: 0;
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 120px);
+  max-height: calc(var(--content-height, 100vh) - var(--space-4));
   min-width: 0;
   overflow-y: auto;
   /* No scrollbar gutter: the panel scrolls only on a window too short for it,
      and a reserved strip would stop the picture band short of the panel's
      right edge on every other one. */
-  overscroll-behavior: contain;
 }
 
 /* The panel's picture is the card's (`.mod-vault-cover`) at the panel's
@@ -649,6 +657,8 @@
 }
 
 .mod-detail-byline {
+  display: grid;
+  gap: 2px;
   margin: 0;
   color: var(--color-muted);
   font-size: 12px;

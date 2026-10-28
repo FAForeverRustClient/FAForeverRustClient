@@ -25,7 +25,12 @@ afterEach(() => {
 
 describe("groupOf", () => {
   it("puts an unpublished event in the drafts, whatever its status says", () => {
-    expect(groupOf(tourney({ published: false, status: "signup" }))).toBe("drafts");
+    expect(groupOf(tourney({ published: false, status: "signup" }))).toBe("myDrafts");
+  });
+
+  it("keeps other organisers' drafts apart from this account's own (#610)", () => {
+    expect(groupOf(tourney({ published: false, canManage: true }))).toBe("myDrafts");
+    expect(groupOf(tourney({ published: false, canManage: false }))).toBe("drafts");
   });
 
   it("counts an abandoned event as past even while it says signups are open", () => {
@@ -65,8 +70,9 @@ describe("groupedEvents", () => {
       tourney({ id: "4", published: false }),
     ];
     const grouped = groupedEvents(events);
-    const total =
-      grouped.drafts.length + grouped.upcoming.length + grouped.ongoing.length + grouped.past.length;
+    // Every group, whatever groups there are: a new one left out of a sum
+    // written by hand is how this once counted three of four events.
+    const total = Object.values(grouped).reduce((sum, group) => sum + group.length, 0);
     expect(total).toBe(events.length);
   });
 });

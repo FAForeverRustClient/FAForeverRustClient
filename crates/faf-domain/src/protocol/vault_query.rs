@@ -171,8 +171,10 @@ pub struct ModVaultQuery {
     /// Ignored while [`Self::exact_name`] is set, which is narrower than
     /// either.
     pub search_descriptions: bool,
-    /// Matched against the mod's author, which on this endpoint is a plain
-    /// string field rather than a related player (`MOD_PROPERTY_MAPPING`).
+    /// Matched against the mod's author or its uploader's login: the box is
+    /// labelled "creator or uploader". `author` is a plain string field here
+    /// rather than a related player, `uploader.login` is the account that
+    /// pushed it; both are in the Java client's `MOD_PROPERTY_MAPPING`.
     pub author: String,
     /// The uploader's player id, for the "my mods" category.
     ///
@@ -352,7 +354,13 @@ impl ModVaultQuery {
         }
         clauses.extend(self.search_clauses());
         if !self.author.is_empty() {
-            clauses.push(format!(r#"author=="{}""#, glob(&self.author)));
+            // Grouped for the same reason as the widened search: `;` binds
+            // tighter than `,`, so ungrouped the uploader half would escape
+            // every other clause.
+            let pattern = glob(&self.author);
+            clauses.push(format!(
+                r#"(author=="{pattern}",uploader.login=="{pattern}")"#
+            ));
         }
         if let Some(uploader_id) = self.uploader_id {
             clauses.push(format!(r#"uploader.id=="{uploader_id}""#));
@@ -564,6 +572,22 @@ mod tests {
         };
         let filter = query.build_filter().unwrap();
         assert!(filter.contains(r#"displayName=="*ab==c*""#), "{filter}");
+    }
+
+    #[test]
+    fn the_creator_box_matches_the_author_or_the_uploader() {
+        // Issue 635: the box says "any creator or uploader" and matched only
+        // the declared author, so a mod pushed by somebody under another
+        // author name could not be found by who uploaded it.
+        let query = ModVaultQuery {
+            author: "Nuggets".into(),
+            ..ModVaultQuery::default()
+        };
+        let filter = query.build_filter().unwrap();
+        assert!(
+            filter.ends_with(r#";(author=="*Nuggets*",uploader.login=="*Nuggets*")"#),
+            "{filter}"
+        );
     }
 
     #[test]

@@ -38,6 +38,28 @@
   background: var(--color-border);
 }
 
+/* A filter that adjusts the current search: a tick and its label, as the
+   Custom Games toolbar draws its own. The box is the client's one checkbox
+   (styles.css), focus ring included; the tick says which ones are on, and the
+   label stays muted like the toolbar's. As tall as the buttons beside it, so
+   the row's baseline holds. */
+.search-panel-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 var(--space-1);
+  color: var(--color-muted);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.search-panel-check input {
+  margin: 0;
+}
+
 .search-panel-secondary > .btn-ghost.active {
   color: var(--color-accent-contrast);
   background: var(--color-accent);

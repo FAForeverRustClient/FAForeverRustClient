@@ -12,6 +12,7 @@
 // PNGs for them; three shapes in SVG cost nothing, scale without blurring, and
 // keep this feature from adding binary assets to the client.
 
+import { routeGeometry } from "./routeGeometry";
 import { useMemo, useState } from "react";
 
 import type { MessageKey } from "../../i18n";
@@ -47,8 +48,13 @@ export function RunMap({ env, previewUrl, hovered, onHover }: Props) {
   const { sizeX, sizeZ, playable } = env.meta.map;
 
   // The ACU is dropped: it barely moves, and its route only clutters the view.
-  const paths = useMemo(() => markerPaths(env).filter((p) => p.cat !== "acu"), [env]);
-  const cats = useMemo(() => [...new Set(paths.map((p) => p.cat))].sort(), [paths]);
+  const paths = useMemo(() => markerPaths(env).filter((p) => p.cat !== "acu").map((p) => ({ ...p, ...routeGeometry(p.points) })), [env]);
+  const counts = useMemo(() => {
+    const byCat = new Map<string, number>();
+    for (const path of paths) byCat.set(path.cat, (byCat.get(path.cat) ?? 0) + 1);
+    return byCat;
+  }, [paths]);
+  const cats = useMemo(() => [...counts.keys()].sort(), [counts]);
   const [active, setActive] = useState<string[]>(() =>
     cats.filter((c) => DEFAULT_CATS.includes(c)),
   );
@@ -71,14 +77,16 @@ export function RunMap({ env, previewUrl, hovered, onHover }: Props) {
   // A category this client has no word for is shown as the recorder named it
   // rather than hidden.
   const catLabel = (cat: string) => {
-    const key: MessageKey | undefined = CAT_LABELS[cat];
+    const key: MessageKey | undefined = Object.prototype.hasOwnProperty.call(CAT_LABELS, cat)
+      ? CAT_LABELS[cat] : undefined;
     return key ? t(key) : cat;
   };
 
   const toggle = (cat: string) =>
     setActive((prev) => (prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]));
 
-  const shown = paths.filter((p) => active.includes(p.cat));
+  const activeCats = new Set(active);
+  const shown = paths.filter((p) => activeCats.has(p.cat));
   const mass = env.markers.filter((m) => m.type === "Mass");
   const hydro = env.markers.filter((m) => m.type === "Hydrocarbon");
   const spawns = env.markers.filter((m) => m.type === "Blank Marker" || m.type === "Spawn");
@@ -96,7 +104,7 @@ export function RunMap({ env, previewUrl, hovered, onHover }: Props) {
             <input type="checkbox" checked={active.includes(cat)} onChange={() => toggle(cat)} />
             <span className="training-run-swatch" style={{ background: catColor(cat) }} />
             {catLabel(cat)}
-            <span className="muted">{paths.filter((p) => p.cat === cat).length}</span>
+            <span className="muted">{counts.get(cat)}</span>
           </label>
         ))}
       </div>
@@ -171,7 +179,7 @@ export function RunMap({ env, previewUrl, hovered, onHover }: Props) {
         {shown.map((p) => {
           const hot = hovered === p.id;
           const dimmed = hovered !== null && !hot;
-          const points = p.points.map((q) => `${q.x},${q.z}`).join(" ");
+          const points = p.routePoints;
           return (
             <g key={p.id}>
               {/* A transparent fat stroke under the visible one: a hairline is
@@ -195,28 +203,12 @@ export function RunMap({ env, previewUrl, hovered, onHover }: Props) {
                 strokeLinecap="round"
                 style={{ pointerEvents: "none" }}
               />
-              {/* Segment by segment rather than one polyline, so the actual
-                  reclaiming can be painted while the rest keeps the unit's
-                  colour. Only a leg between two reclaim stops counts: the
-                  approach and the departure are travel. */}
-              {p.points.slice(1).map((q, i) => {
-                const prev = p.points[i];
-                const reclaiming = q.reclaim && prev.reclaim;
-                return (
-                  <line
-                    key={i}
-                    x1={prev.x}
-                    y1={prev.z}
-                    x2={q.x}
-                    y2={q.z}
-                    stroke={reclaiming ? RECLAIM_COLOR : catColor(p.cat)}
-                    strokeWidth={hot ? sizeX / 190 : stroke}
-                    strokeLinecap="round"
-                    opacity={dimmed ? 0.25 : 1}
-                    style={{ pointerEvents: "none" }}
-                  />
-                );
-              })}
+              {[{ kind: "travel", d: p.travel, color: catColor(p.cat) }, { kind: "reclaim", d: p.reclaim, color: RECLAIM_COLOR }]
+                .filter((part) => part.d).map((part) => (
+                  <path key={part.kind} d={part.d} fill="none" stroke={part.color}
+                    strokeWidth={hot ? sizeX / 190 : stroke} strokeLinecap="round" strokeLinejoin="round"
+                    opacity={dimmed ? 0.25 : 1} style={{ pointerEvents: "none" }} />
+                ))}
             </g>
           );
         })}

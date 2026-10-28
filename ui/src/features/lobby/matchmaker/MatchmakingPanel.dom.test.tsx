@@ -346,6 +346,16 @@ describe("MatchmakingPanel, mounted", () => {
     expect(answered.hasAttribute("aria-hidden")).toBe(false);
     expect(answered.className).toBe("");
     expect(answered.getAttribute("title")).toMatch(/could be matched with you/);
+    const plot = card.querySelector("svg.matchmaker-queue-plot");
+    expect(plot).not.toBeNull();
+    expect(plot?.querySelector(".matchmaker-queue-curve-line")?.getAttribute("d")).toMatch(/^M /);
+    expect(plot?.querySelector(".matchmaker-queue-marker-dot")).not.toBeNull();
+    expect(Array.from(plot?.querySelectorAll(".matchmaker-queue-tick") ?? []).map((node) => node.textContent)).toEqual([
+      formatNumber(0),
+      formatNumber(800),
+      formatNumber(1600),
+      formatNumber(2400),
+    ]);
     // The 1v1 card has no rating for that board and stays unanswered.
     expect(within(queueCard("1 vs 1").card).getByText("0 in your range").getAttribute("aria-hidden")).toBe("true");
   });

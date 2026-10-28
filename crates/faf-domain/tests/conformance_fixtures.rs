@@ -4078,6 +4078,20 @@ fn cases() -> Vec<Case> {
                         }],
                         truncated: false,
                         player_id: 7,
+                        queues: vec![PlayerQueueStat {
+                            queue: "global".into(),
+                            games: 3,
+                            wins: 2,
+                            losses: 1,
+                            draws: 0,
+                            rating_delta_hundredths: 1250,
+                        }],
+                        report: PlayerReport {
+                            rated_games: 3,
+                            recent_wins: 2,
+                            recent_decided: 3,
+                            ..PlayerReport::default()
+                        },
                         games: vec![PlayerGameResult {
                             game_id: 27798371,
                             played_at: "2026-01-04T20:00:00Z".into(),
@@ -4133,6 +4147,73 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
             ],
+        ),
+        case(
+            "archive progress preserves the selected note and ignores stale results after cancellation",
+            {
+                use faf_domain::protocol::changelog::{ChangelogEntry, ChangelogSearchMatch};
+                use faf_domain::state::changelog::ChangelogSearchState;
+
+                let loading = ChangelogSearchState {
+                    request_id: 2,
+                    query: "shield".into(),
+                    status: ChangelogStatus::Loading,
+                    total: 171,
+                    ..Default::default()
+                };
+                let progress = ChangelogSearchState {
+                    scanned: 8,
+                    matches: vec![ChangelogSearchMatch {
+                        release_id: "3837".into(),
+                        block_path: vec![3],
+                        excerpt: "Shield radius increased".into(),
+                        occurrences: 1,
+                    }],
+                    ..loading.clone()
+                };
+                let ready = ChangelogSearchState {
+                    scanned: 171,
+                    status: ChangelogStatus::Ready,
+                    ..progress.clone()
+                };
+                let stale = ChangelogSearchState {
+                    request_id: 1,
+                    query: "old query".into(),
+                    ..ready.clone()
+                };
+                let cancelled = ChangelogSearchState {
+                    request_id: 3,
+                    ..Default::default()
+                };
+                let failed = ChangelogSearchState {
+                    request_id: 4,
+                    query: "shield".into(),
+                    status: ChangelogStatus::Failed {
+                        reason: "patch sources are unavailable".into(),
+                    },
+                    scanned: 1,
+                    total: 171,
+                    failed: 1,
+                    ..Default::default()
+                };
+                let search = |search| ChangelogEvent::SearchUpdated { search }.into();
+                vec![
+                    ChangelogEvent::EntryLoaded {
+                        entry: ChangelogEntry {
+                            id: "3837".into(),
+                            title: "Current patch".into(),
+                            ..Default::default()
+                        },
+                    }.into(),
+                    search(loading),
+                    search(progress),
+                    search(stale),
+                    search(ready.clone()),
+                    search(cancelled),
+                    search(ready),
+                    search(failed),
+                ]
+            },
         ),
         // ── events ───────────────────────────────────────────────────────
         case(
@@ -4811,6 +4892,8 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
                 LobbyEvent::InGame.into(),
+                // A full disconnect mid-game keeps the game; its exit ends it.
+                LobbyEvent::Disconnected.into(),
                 LobbyEvent::GameTerminated.into(),
                 LobbyEvent::Disconnected.into(),
             ],
@@ -5345,6 +5428,7 @@ fn cases() -> Vec<Case> {
                     },
                 }
                 .into(),
+                ClientUpdateEvent::Overdue.into(),
                 ClientUpdateEvent::DownloadProgressed {
                     received_bytes: 2048,
                     total_bytes: 4096,
@@ -5363,13 +5447,27 @@ fn cases() -> Vec<Case> {
                 .into(),
                 // Too late: the installer is whole and stays ready.
                 ClientUpdateEvent::DownloadCancelled.into(),
+                // Asked for while the last game was finishing: held, then
+                // given up, then held again until the installer starts.
+                ClientUpdateEvent::InstallWaiting.into(),
+                ClientUpdateEvent::InstallWaitEnded.into(),
+                ClientUpdateEvent::InstallWaiting.into(),
                 ClientUpdateEvent::Installing.into(),
+                // Nothing ready to wait with.
+                ClientUpdateEvent::InstallWaiting.into(),
                 ClientUpdateEvent::Dismissed {
                     version: "0.3.0".into(),
                 }
                 .into(),
+                // Checking again takes the dismissal back.
+                ClientUpdateEvent::CheckStarted {
+                    current_version: "0.2.0".into(),
+                }
+                .into(),
                 // A later check finding nothing must clear the offer, not keep
                 // a dismissed release lying around under an up-to-date status.
+                ClientUpdateEvent::Available { release: ClientRelease { version: "0.4.0".into(), ..ClientRelease::default() } }.into(),
+                ClientUpdateEvent::Overdue.into(),
                 ClientUpdateEvent::UpToDate.into(),
                 ClientUpdateEvent::CheckCompleted {
                     at: "2026-02-01T09:05:00Z".into(),
@@ -5718,6 +5816,8 @@ fn cases() -> Vec<Case> {
                         }],
                         requests: Some(2),
                         new_requests: None,
+                        proposals: Some(1),
+                        new_proposals: None,
                     }),
                 }
                 .into(),
@@ -6530,6 +6630,7 @@ fn cases() -> Vec<Case> {
                         version: Some("1.0".into()),
                         description: None,
                         installed_at: None,
+                        map_type: None,
                     }],
                 }
                 .into(),
@@ -7349,6 +7450,18 @@ fn cases() -> Vec<Case> {
                     ],
                 }
                 .into(),
+                // A game's mod list read out of its file's head (issue 638),
+                // and a game with none, which is an answer too.
+                ReplayEvent::SimModsResolved {
+                    uid: 42,
+                    mods: vec!["Random Events".into()],
+                }
+                .into(),
+                ReplayEvent::SimModsResolved {
+                    uid: 43,
+                    mods: Vec::new(),
+                }
+                .into(),
                 ReplayEvent::VaultDownloadStarted { uid: 42 }.into(),
                 ReplayEvent::VaultDownloadProgressed {
                     uid: 42,
@@ -7600,6 +7713,71 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        // ── linux runtime ────────────────────────────────────────────────
+        case(
+            "the linux runtime is checked, found lacking, then installed",
+            vec![
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::Checking,
+                }
+                .into(),
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::Missing {
+                        prerequisites: vec![
+                            LinuxPrerequisite::UserNamespaces,
+                            LinuxPrerequisite::Vulkan32,
+                        ],
+                        distribution: LinuxDistribution::Debian,
+                    },
+                }
+                .into(),
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::Downloading {
+                        component: LinuxRuntimeComponent::Proton,
+                        downloaded_bytes: 1_048_576,
+                        total_bytes: 516_611_656,
+                    },
+                }
+                .into(),
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::Installing {
+                        step: LinuxRuntimeStep::Unpacking {
+                            component: LinuxRuntimeComponent::SteamRuntime,
+                        },
+                    },
+                }
+                .into(),
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::Installing {
+                        step: LinuxRuntimeStep::InstallingDirectX,
+                    },
+                }
+                .into(),
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::Ready,
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "a failed linux runtime install is retried",
+            vec![
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::Failed {
+                        reason: "GE-Proton10-34.tar.gz did not match its checksum".into(),
+                    },
+                }
+                .into(),
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::Checking,
+                }
+                .into(),
+                LinuxRuntimeEvent::StatusChanged {
+                    status: LinuxRuntimeStatus::NotNeeded,
+                }
+                .into(),
+            ],
+        ),
         // ── settings ─────────────────────────────────────────────────────
         case(
             "settings apply each group",
@@ -7821,6 +7999,7 @@ fn cases() -> Vec<Case> {
                                     value: "NOISY".into(),
                                 },
                             ],
+                            allow_rules: Vec::new(),
                             column_widths: vec![320, 180, 90, 110, 80],
                             column_order: Vec::new(),
                             detail_width: 360,
@@ -7885,6 +8064,23 @@ fn cases() -> Vec<Case> {
                         matchmaker_invite_order: Vec::new(),
                         mod_vault_preset: "recommended".into(),
                         mod_presets: Vec::new(),
+                        search_presets: vec![
+                            faf_domain::state::SearchPreset {
+                                list: "  replays.online  ".into(),
+                                name: "  Gap 1800+  ".into(),
+                                query: r#"  {"map":"Dual Gap"}  "#.into(),
+                            },
+                            faf_domain::state::SearchPreset {
+                                list: "REPLAYS.ONLINE".into(),
+                                name: "gap 1800+".into(),
+                                query: r#"{"map":"Duplicate"}"#.into(),
+                            },
+                            faf_domain::state::SearchPreset {
+                                list: "replays.local".into(),
+                                name: "Gap 1800+".into(),
+                                query: r#"{"map":"Local Gap"}"#.into(),
+                            },
+                        ],
                         leaderboard_rating_columns: vec!["games".into(), "updated".into()],
                         leaderboard_include_former_names: false,
                         replay_vault_player: String::new(),
@@ -8364,6 +8560,25 @@ fn transition_cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        case("map catalogue deltas replace versions, remove hidden maps and preserve folder lookups", vec![
+            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(1, 11, "first.v0001"), conformance_vault_map(2, 22, "second.v0001")] }.into(),
+            MapsEvent::VaultFoldersResolved { maps: vec![conformance_vault_map(9, 99, "resolved.v0001")] }.into(),
+            MapsEvent::VaultUpdated { maps: vec![conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(3, 33, "third.v0001"), VaultMap { hidden: true, ..conformance_vault_map(2, 22, "second.v0001") }] }.into(),
+            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(3, 33, "third.v0001")] }.into(),
+        ]),
+        case("a map catalogue delta keeps a looked-up older version of a changed map and lists each version once", vec![
+            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(1, 11, "first.v0001")] }.into(),
+            MapsEvent::VaultFoldersResolved { maps: vec![conformance_vault_map(1, 10, "first.v0000")] }.into(),
+            MapsEvent::VaultUpdated { maps: vec![conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(1, 10, "first.v0000")] }.into(),
+        ]),
+        case("a mod catalogue delta that lists a mod twice holds it once", vec![
+            ModsEvent::VaultLoaded { mods: vec![vault_mod(1, "old")] }.into(),
+            ModsEvent::VaultUpdated { mods: vec![vault_mod(3, "added"), vault_mod(1, "new"), vault_mod(3, "added")], removed_ids: vec![] }.into(),
+        ]),
+        case("mod catalogue deltas replace versions and remove withdrawn mods", vec![
+            ModsEvent::VaultLoaded { mods: vec![vault_mod(1, "old"), vault_mod(2, "removed")] }.into(),
+            ModsEvent::VaultUpdated { mods: vec![vault_mod(1, "new"), vault_mod(3, "added")], removed_ids: vec![2] }.into(),
+        ]),
         // ── mods ─────────────────────────────────────────────────────────
         case(
             "a mod catalogue reload called off keeps the catalogue it would have replaced",
@@ -8882,6 +9097,16 @@ fn transition_cases() -> Vec<Case> {
             ],
         ),
         case(
+            "the staff list is sorted, and outlives a lobby disconnect",
+            vec![
+                SocialEvent::StaffLoaded {
+                    logins: vec!["Morax".into(), "Brutus5000".into()],
+                }
+                .into(),
+                SocialEvent::Cleared.into(),
+            ],
+        ),
+        case(
             "a login lookup keeps one answer per login, the newest last",
             vec![
                 SocialEvent::LoginLookedUp {
@@ -9387,6 +9612,7 @@ fn installed_map(folder_name: &str) -> InstalledMap {
         version: None,
         description: None,
         installed_at: None,
+        map_type: None,
     }
 }
 
@@ -9569,6 +9795,7 @@ fn client_release_notes(version: &str) -> ClientReleaseNotes {
                 }],
             },
         ],
+        required: false,
     }
 }
 
@@ -10152,6 +10379,11 @@ const EVENT_ENUM_SOURCES: &[(&str, &str, &str)] = &[
         "GalacticWar",
         "GalacticWarEvent",
         include_str!("../src/state/galactic_war.rs"),
+    ),
+    (
+        "LinuxRuntime",
+        "LinuxRuntimeEvent",
+        include_str!("../src/state/linux_runtime.rs"),
     ),
     (
         "Guides",

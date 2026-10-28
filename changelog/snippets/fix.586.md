@@ -1,0 +1,2 @@
+- Losing the connection to the server during a game no longer makes the client forget the game is still running.
+- Turning several mods on or off at once no longer loses one of the changes.

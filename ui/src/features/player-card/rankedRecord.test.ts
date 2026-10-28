@@ -24,6 +24,7 @@ function stats(overrides: Partial<PlayerMapStats> = {}): PlayerMapStats {
     undecided: 28,
     unranked: 2243,
     unattributed: 0,
+    queues: [],
     maps: [],
     truncated: false,
     ...overrides,

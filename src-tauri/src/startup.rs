@@ -289,6 +289,31 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
         loop {
             match events.recv().await {
                 Ok(event) => {
+                    #[cfg(windows)]
+                    if matches!(
+                        event.event,
+                        AppEvent::ClientUpdate(faf_domain::state::ClientUpdateEvent::Installing)
+                    ) {
+                        // Explicit exit bypasses close-to-tray and the window's
+                        // recovery handler. Release the single-instance slot
+                        // before the installer replaces files and restarts us.
+                        handle.exit(0);
+                        return;
+                    }
+                    // An AppImage update has already put the new image where
+                    // the old one was, so restarting is what runs it. Tauri
+                    // starts `$APPIMAGE` only once the exit has released the
+                    // single-instance name, so the new process is not turned
+                    // away as a second copy of this one.
+                    #[cfg(target_os = "linux")]
+                    if matches!(
+                        event.event,
+                        AppEvent::ClientUpdate(faf_domain::state::ClientUpdateEvent::Installing)
+                    ) && faf_app::infra::client_update::running_appimage().is_some()
+                    {
+                        handle.request_restart();
+                        return;
+                    }
                     let _ = handle.emit(
                         EVENT_CHANNEL,
                         FrontendMessage::Event {
@@ -310,6 +335,23 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
                     let started = std::time::Instant::now();
                     let (replacement, snapshot) = event_core.subscribe_versioned_with_snapshot();
                     events = replacement;
+                    #[cfg(windows)]
+                    if matches!(
+                        snapshot.state.client_update.status,
+                        faf_domain::state::ClientUpdateStatus::Installing
+                    ) {
+                        handle.exit(0);
+                        return;
+                    }
+                    #[cfg(target_os = "linux")]
+                    if matches!(
+                        snapshot.state.client_update.status,
+                        faf_domain::state::ClientUpdateStatus::Installing
+                    ) && faf_app::infra::client_update::running_appimage().is_some()
+                    {
+                        handle.request_restart();
+                        return;
+                    }
                     let bytes = serde_json::to_vec(&snapshot.state).map_or(0, |json| json.len());
                     let _ = handle.emit(
                         EVENT_CHANNEL,
@@ -354,15 +396,29 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
         if !settings_read(settings_events, load).await {
             return;
         }
-        if cleanup_files {
+        let cleanup = if cleanup_files {
             let generator_output = startup_core.snapshot().settings.map_generator.output_path;
-            let _ = tauri::async_runtime::spawn_blocking(move || {
-                faf_app::infra::cleanup_interrupted_work(&generator_output);
+            tauri::async_runtime::spawn_blocking(move || {
+                faf_app::infra::recover_interrupted_work(&generator_output)
             })
-            .await;
-        }
+            .await
+            .ok()
+        } else {
+            None
+        };
         let _ = startup_core.try_dispatch(AppCommand::Auth(AuthCommand::Restore));
         let _ = startup_core.try_dispatch(AppCommand::Session(SessionCommand::Hello));
+        // After the settings, because a launch command of the player's own
+        // means the runtime is not wanted, and the original game's folder
+        // picked under Paths is where the check looks for the game.
+        if cfg!(target_os = "linux") {
+            let _ = startup_core.try_dispatch(AppCommand::LinuxRuntime(
+                faf_domain::state::LinuxRuntimeCommand::Prepare,
+            ));
+        }
+        if let Some(cleanup) = cleanup {
+            tauri::async_runtime::spawn_blocking(move || cleanup.finish());
+        }
     });
 
     core

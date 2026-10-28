@@ -8,17 +8,18 @@
 // art and this client does not ship it.
 
 import { useMemo, useRef, useState } from "react";
+import { useFrameState } from "../../../shared/hooks/useFrameState";
 import type { ReplayAnalysis, ReplayOrder } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { ReplayChartFrame } from "./ReplayChartFrame";
 import {
   ACTIVITY_WINDOW_TICKS,
+  activitySeries,
   analysedPlayers,
   commandName,
   formatGameTime,
   ordersInWindow,
   peakOf,
-  rollingActions,
 } from "./replayAnalysis";
 
 /** The drawing area, in the SVG's own units. The box scales to the panel. */
@@ -29,35 +30,26 @@ const PAD_LEFT = 44;
 const PAD_BOTTOM = 22;
 const PAD_TOP = 8;
 
-/**
- * How many ticks one drawn point covers.
- *
- * A long game is fifty thousand ticks and the chart is a thousand units wide,
- * so drawing every tick would put fifty of them on one pixel. The line is
- * sampled instead, at whatever step keeps it under a point per unit.
- */
-function sampleStep(ticks: number): number {
-  return Math.max(1, Math.ceil(ticks / CHART_WIDTH));
-}
-
 export function ReplayActivityChart({ analysis }: { analysis: ReplayAnalysis }) {
   const { t } = useTranslation();
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const [hoverTick, setHoverTick] = useState<number | null>(null);
+  const [hoverTick, setHoverTick, clearHoverTick] = useFrameState<number | null>(null);
   const [hidden, setHidden] = useState<ReadonlySet<number>>(new Set());
   const [zoomed, setZoomed] = useState(false);
 
-  const players = useMemo(() => analysedPlayers(analysis), [analysis]);
-  const series = useMemo(() => {
-    const byPlayer = new Map<number, Uint16Array>();
-    for (const entry of analysis.activity) {
-      byPlayer.set(entry.source, rollingActions(entry.commandTicks, analysis.ticks));
-    }
-    return byPlayer;
-  }, [analysis.activity, analysis.ticks]);
+  const players = useMemo(() => {
+    const seen = new Set<number>();
+    return analysedPlayers(analysis).filter((player) => {
+      if (player.source < 0) return true;
+      if (seen.has(player.source)) return false;
+      seen.add(player.source);
+      return true;
+    });
+  }, [analysis]);
+  const series = useMemo(() => activitySeries(analysis.activity, analysis.ticks),
+    [analysis.activity, analysis.ticks]);
   const peak = useMemo(() => peakOf(series.values()), [series]);
 
-  const step = sampleStep(analysis.ticks);
   const plotWidth = CHART_WIDTH - PAD_LEFT;
   const plotHeight = CHART_HEIGHT - PAD_BOTTOM - PAD_TOP;
   const xOf = (tick: number) => PAD_LEFT + (tick / Math.max(1, analysis.ticks)) * plotWidth;
@@ -66,17 +58,18 @@ export function ReplayActivityChart({ analysis }: { analysis: ReplayAnalysis }) 
   const paths = useMemo(() => {
     const built: Array<{ source: number; color: string; d: string }> = [];
     for (const player of players) {
-      const values = series.get(player.source);
-      if (!values || hidden.has(player.source)) continue;
+      const own = series.get(player.source);
+      if (!own || hidden.has(player.source)) continue;
+      const { values, step } = own;
       let d = "";
-      for (let tick = 0; tick < values.length; tick += step) {
-        d += `${d ? "L" : "M"}${xOf(tick).toFixed(1)} ${yOf(values[tick]).toFixed(1)}`;
+      for (let i = 0; i < values.length; i += 1) {
+        d += `${d ? "L" : "M"}${xOf(i * step).toFixed(1)} ${yOf(values[i]).toFixed(1)}`;
       }
       if (d) built.push({ source: player.source, color: player.color, d });
     }
     return built;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [players, series, hidden, step, peak, analysis.ticks]);
+  }, [players, series, hidden, peak, analysis.ticks]);
 
   const windowOrders = useMemo(
     () => (hoverTick === null
@@ -194,7 +187,7 @@ export function ReplayActivityChart({ analysis }: { analysis: ReplayAnalysis }) 
           role="img"
           aria-label={t("replays.insights.graphAria")}
           onMouseMove={(event) => trackTick(event.clientX)}
-          onMouseLeave={() => setHoverTick(null)}
+          onMouseLeave={() => clearHoverTick(null)}
         >
           {gridValues.map((value) => (
             <g key={value}>

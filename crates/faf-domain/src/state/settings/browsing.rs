@@ -23,6 +23,22 @@ pub enum ReplayChatTransfers {
     Only,
 }
 
+/// A named search preset saved by the user for one list (for example
+/// `"replays.online"` or `"replays.local"`).
+///
+/// Like [`BrowsingPreferences::remembered_filters`], `query` is a JSON document
+/// only that list reads and writes, so adding a field to a list's search form
+/// never invalidates presets saved by an older build. Unlike
+/// `remembered_filters`, a preset is saved deliberately under a name and is
+/// never cleared by [`BrowsingPreferences::without_filters`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchPreset {
+    pub list: String,
+    pub name: String,
+    pub query: String,
+}
+
 /// The widest table the client draws, plus room. Only a bound on a file.
 pub const MAX_TABLE_COLUMNS: usize = 16;
 
@@ -83,11 +99,10 @@ pub struct BrowsingPreferences {
     pub favorite_mods: Vec<String>,
     /// Hosts whose games the game browser always shows, by login (#492).
     ///
-    /// The exception to every hide switch and filter rule rather than one
-    /// more of them: somebody who hides modded and unranked games still wants
-    /// to see what a particular host has opened. Not a filter in
-    /// `FilterMemory`'s sense either, because it narrows nothing, so
-    /// [`BrowsingPreferences::without_filters`] leaves it as it is.
+    /// Read only to be moved: normalising turns each host into a `Host
+    /// equals` rule of `custom_games_browser.allow_rules` (#593) and leaves
+    /// this empty. Kept so a file written before that, and an older build's
+    /// `setListMember`, still arrive.
     pub whitelisted_hosts: Vec<String>,
     /// Active preset filter in the map vault ("recommended", "favorites", "rating", "newest", "played", "all").
     pub map_vault_preset: String,
@@ -143,6 +158,9 @@ pub struct BrowsingPreferences {
     /// Only the word is shared with `mod_vault_preset` above, which is a vault
     /// *filter*. These are the user's own saved selections.
     pub mod_presets: Vec<ModPreset>,
+    /// Named search presets saved by the user in search panels such as the
+    /// online and local replay tabs.
+    pub search_presets: Vec<SearchPreset>,
     /// Visible column keys in the rating leaderboard table.
     pub leaderboard_rating_columns: Vec<String>,
     /// Whether the rating leaderboard's player search also matches names a
@@ -232,6 +250,7 @@ impl Default for BrowsingPreferences {
             matchmaker_invite_columns: Vec::new(),
             matchmaker_invite_order: Vec::new(),
             mod_presets: Vec::new(),
+            search_presets: Vec::new(),
             leaderboard_rating_columns: DEFAULT_LEADERBOARD_RATING_COLUMNS
                 .iter()
                 .map(|col| (*col).to_owned())
@@ -291,6 +310,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             #[serde(default)]
             matchmaker_invite_order: Vec<u32>,
             mod_presets: Vec<ModPreset>,
+            #[serde(default)]
+            search_presets: Vec<SearchPreset>,
             leaderboard_rating_columns: Vec<String>,
             #[serde(default)]
             leaderboard_include_former_names: bool,
@@ -336,6 +357,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     matchmaker_invite_columns: defaults.matchmaker_invite_columns,
                     matchmaker_invite_order: defaults.matchmaker_invite_order,
                     mod_presets: defaults.mod_presets,
+                    search_presets: defaults.search_presets,
                     leaderboard_rating_columns: defaults.leaderboard_rating_columns,
                     leaderboard_include_former_names: defaults.leaderboard_include_former_names,
                     replay_vault_player: defaults.replay_vault_player,
@@ -377,6 +399,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             matchmaker_invite_columns: wire.matchmaker_invite_columns,
             matchmaker_invite_order: wire.matchmaker_invite_order,
             mod_presets: wire.mod_presets,
+            search_presets: wire.search_presets,
             leaderboard_rating_columns: wire.leaderboard_rating_columns,
             leaderboard_include_former_names: wire.leaderboard_include_former_names,
             replay_vault_player: wire.replay_vault_player,
@@ -395,6 +418,13 @@ const MATCHMAKER_FACTIONS: [&str; 4] = ["UEF", "Aeon", "Cybran", "Seraphim"];
 const MAX_MOD_PRESETS: usize = 64;
 const MAX_MOD_PRESET_NAME_CHARS: usize = 64;
 const MAX_MODS_PER_PRESET: usize = 512;
+
+/// Caps for saved search presets, bounded per list and across all lists.
+const MAX_SEARCH_PRESETS_PER_LIST: usize = 64;
+const MAX_SEARCH_PRESETS_TOTAL: usize = 256;
+const MAX_SEARCH_PRESET_LIST_CHARS: usize = 64;
+const MAX_SEARCH_PRESET_NAME_CHARS: usize = 64;
+const MAX_SEARCH_PRESET_QUERY_CHARS: usize = 8 * 1024;
 
 impl BrowsingPreferences {
     pub(super) fn normalized(mut self) -> Self {
@@ -450,7 +480,22 @@ impl BrowsingPreferences {
             .into_iter()
             .map(|uid| uid.to_ascii_lowercase())
             .collect();
-        self.whitelisted_hosts = normalize_logins(self.whitelisted_hosts, 256);
+        // The hosts always shown (#492) are rules of the always-show list now
+        // (#593): `Host equals`, which matches a host in any case as the list
+        // did. Moved on every normalisation, so a file written before, and a
+        // `setListMember` from an older build, both end up there.
+        let hosts = std::mem::take(&mut self.whitelisted_hosts);
+        if !hosts.is_empty() {
+            let mut allow = std::mem::take(&mut self.custom_games_browser.allow_rules);
+            allow.extend(normalize_logins(hosts, 256).into_iter().map(|host| {
+                CustomGameFilterRule {
+                    field: CustomGameFilterField::Host,
+                    constraint: CustomGameFilterConstraint::Equals,
+                    value: host,
+                }
+            }));
+            self.custom_games_browser.allow_rules = normalize_rules(allow);
+        }
         self.map_vault_preset = match self.map_vault_preset.trim().to_ascii_lowercase().as_str() {
             "favorites" => "favorites".into(),
             // Kept even when signed out: the preset outlives the session it was
@@ -477,6 +522,7 @@ impl BrowsingPreferences {
             _ => "recommended".into(),
         };
         self.mod_presets = normalize_mod_presets(std::mem::take(&mut self.mod_presets));
+        self.search_presets = normalize_search_presets(std::mem::take(&mut self.search_presets));
         let selected_columns: Vec<String> = VALID_LEADERBOARD_RATING_COLUMNS
             .iter()
             .filter(|canonical| {
@@ -520,28 +566,31 @@ impl BrowsingPreferences {
 
     /// The same preferences with every filter back at its default (#447).
     ///
-    /// What `FilterMemory` calls a filter: whatever narrows a list. The game
-    /// browser's switches and rules, the live replay filters, the vault
-    /// presets and the replay vault's player, and every list's entry in
-    /// `remembered_filters`. Sort orders, columns, views and favourites are
-    /// not filters and are left exactly as they were.
+    /// What `FilterMemory` calls a filter: whatever narrows a list. The live
+    /// replay filters, the vault presets and the replay vault's player, and
+    /// every list's entry in `remembered_filters`. Sort orders, columns, views
+    /// and favourites are not filters and are left exactly as they were.
+    ///
+    /// The play tab's game list is outside the setting (#648): its switches,
+    /// its rules and its entries in `remembered_filters` (the ones under
+    /// [`ALWAYS_KEPT_FILTER_PREFIX`]) are kept, so a player's game list looks
+    /// the same after every start.
     pub fn without_filters(mut self) -> Self {
         let defaults = Self::default();
-        let browser = &mut self.custom_games_browser;
-        browser.hide_private = defaults.custom_games_browser.hide_private;
-        browser.hide_modded = defaults.custom_games_browser.hide_modded;
-        browser.hide_unranked = defaults.custom_games_browser.hide_unranked;
-        browser.hide_foes = defaults.custom_games_browser.hide_foes;
-        browser.apply_filters = defaults.custom_games_browser.apply_filters;
-        browser.rules = defaults.custom_games_browser.rules;
         self.live_replay_filters = defaults.live_replay_filters;
         self.map_vault_preset = defaults.map_vault_preset;
         self.mod_vault_preset = defaults.mod_vault_preset;
         self.replay_vault_player = defaults.replay_vault_player;
-        self.remembered_filters = defaults.remembered_filters;
+        self.remembered_filters
+            .retain(|key, _| key.starts_with(ALWAYS_KEPT_FILTER_PREFIX));
         self
     }
 }
+
+/// The `remembered_filters` keys of the play tab's game list, which
+/// [`BrowsingPreferences::without_filters`] never clears (#648). Twin of
+/// `ALWAYS_KEPT_PREFIX` in the webview's `shared/filterMemory.ts`.
+const ALWAYS_KEPT_FILTER_PREFIX: &str = "play.";
 
 /// Bounds on the webview's stored filters, against a corrupt or hand-edited
 /// file. Far more lists than the client has, and far longer documents than
@@ -616,6 +665,7 @@ preference_patch! {
         matchmaker_invite_columns: Vec<u32>,
         matchmaker_invite_order: Vec<u32>,
         mod_presets: Vec<ModPreset>,
+        search_presets: Vec<SearchPreset>,
         leaderboard_rating_columns: Vec<String>,
         leaderboard_include_former_names: bool,
         replay_vault_player: String,
@@ -656,6 +706,46 @@ fn normalize_mod_presets(presets: Vec<ModPreset>) -> Vec<ModPreset> {
             uids: normalize_labels(preset.uids, MAX_MODS_PER_PRESET, 128),
         });
         if normalized.len() == MAX_MOD_PRESETS {
+            break;
+        }
+    }
+    normalized
+}
+
+/// Bound the user's saved search presets the way `normalize_mod_presets` and
+/// `normalize_remembered_filters` bound theirs.
+///
+/// Names are unique within each `list` (case-insensitively, first wins on
+/// repair); two different lists such as `"replays.online"` and
+/// `"replays.local"` may each have a preset of the same name. A preset whose
+/// `query` exceeds the bound or is empty is dropped whole rather than cut in
+/// half.
+fn normalize_search_presets(presets: Vec<SearchPreset>) -> Vec<SearchPreset> {
+    let mut normalized: Vec<SearchPreset> = Vec::new();
+    for preset in presets {
+        let list = truncate_trimmed(preset.list, MAX_SEARCH_PRESET_LIST_CHARS);
+        let name = truncate_trimmed(preset.name, MAX_SEARCH_PRESET_NAME_CHARS);
+        let query = preset.query.trim().to_owned();
+        if list.is_empty()
+            || name.is_empty()
+            || query.is_empty()
+            || query.chars().count() > MAX_SEARCH_PRESET_QUERY_CHARS
+            || normalized.iter().any(|existing| {
+                existing.list.eq_ignore_ascii_case(&list)
+                    && existing.name.eq_ignore_ascii_case(&name)
+            })
+        {
+            continue;
+        }
+        let in_list = normalized
+            .iter()
+            .filter(|existing| existing.list.eq_ignore_ascii_case(&list))
+            .count();
+        if in_list >= MAX_SEARCH_PRESETS_PER_LIST {
+            continue;
+        }
+        normalized.push(SearchPreset { list, name, query });
+        if normalized.len() == MAX_SEARCH_PRESETS_TOTAL {
             break;
         }
     }
@@ -719,6 +809,7 @@ mod tests {
                     ],
                     // Out of bounds in both directions, plus a seventh column
                     // the list does not have.
+                    allow_rules: Vec::new(),
                     column_widths: vec![10, 5_000, 200, 200, 200, 200, 200],
                     // A column twice and one missing: not an order.
                     column_order: vec![0, 0, 2, 3, 4, 5],
@@ -790,6 +881,7 @@ mod tests {
                 matchmaker_invite_order: Vec::new(),
                 mod_vault_preset: "  UI  ".into(),
                 mod_presets: Vec::new(),
+                search_presets: Vec::new(),
                 leaderboard_rating_columns: vec![
                     "deviation".into(),
                     "MEAN".into(),
@@ -956,16 +1048,23 @@ mod tests {
         browsing
             .remembered_filters
             .insert("installedMods".into(), r#"{"search":"ui"}"#.into());
+        browsing
+            .remembered_filters
+            .insert("play.search".into(), r#""seton""#.into());
 
         let cleared = browsing.without_filters();
 
-        assert!(!cleared.custom_games_browser.hide_private);
-        assert!(!cleared.custom_games_browser.apply_filters);
-        assert!(cleared.custom_games_browser.rules.is_empty());
         assert_eq!(cleared.live_replay_filters, LiveReplayFilters::default());
         assert_eq!(cleared.map_vault_preset, "recommended");
         assert!(cleared.replay_vault_player.is_empty());
-        assert!(cleared.remembered_filters.is_empty());
+        // The play tab's game list is outside the setting (#648).
+        assert!(cleared.custom_games_browser.hide_private);
+        assert!(cleared.custom_games_browser.apply_filters);
+        assert_eq!(cleared.custom_games_browser.rules.len(), 1);
+        assert_eq!(
+            cleared.remembered_filters.keys().collect::<Vec<_>>(),
+            vec!["play.search"]
+        );
         // How the lists are sorted and laid out is not a filter.
         assert!(cleared.custom_games_browser.sort_reversed);
         assert_eq!(cleared.custom_games_browser.column_widths, vec![200]);
@@ -973,6 +1072,53 @@ mod tests {
         // Nor are the hosts always shown: they narrow nothing.
         assert_eq!(cleared.whitelisted_hosts, ["Nuggets"]);
         assert_eq!(cleared.favorite_maps, vec!["setons_clutch".to_owned()]);
+    }
+
+    #[test]
+    fn hosts_always_shown_become_rules_of_the_always_show_list() {
+        let browsing = BrowsingPreferences {
+            whitelisted_hosts: vec![" Nuggets ".into(), "Aurora".into()],
+            custom_games_browser: CustomGameBrowserPreferences {
+                allow_rules: vec![CustomGameFilterRule {
+                    field: CustomGameFilterField::Host,
+                    constraint: CustomGameFilterConstraint::Equals,
+                    value: "nuggets".into(),
+                }],
+                ..CustomGameBrowserPreferences::default()
+            },
+            ..BrowsingPreferences::default()
+        };
+
+        let normalized = browsing.normalized();
+
+        assert!(normalized.whitelisted_hosts.is_empty());
+        let values: Vec<&str> = normalized
+            .custom_games_browser
+            .allow_rules
+            .iter()
+            .map(|rule| rule.value.as_str())
+            .collect();
+        // The rule already there and the same host from the list are one rule.
+        assert_eq!(values.len(), 2);
+        assert!(values
+            .iter()
+            .any(|value| value.eq_ignore_ascii_case("nuggets")));
+        assert!(values.contains(&"Aurora"));
+        assert!(normalized
+            .custom_games_browser
+            .allow_rules
+            .iter()
+            .all(|rule| rule.field == CustomGameFilterField::Host
+                && rule.constraint == CustomGameFilterConstraint::Equals));
+        // Not a filter: a restart without remembered filters keeps it.
+        assert_eq!(
+            normalized
+                .clone()
+                .without_filters()
+                .custom_games_browser
+                .allow_rules,
+            normalized.custom_games_browser.allow_rules
+        );
     }
 
     #[test]
@@ -1073,5 +1219,55 @@ mod tests {
                 ["UEF", "Aeon", "Cybran", "Seraphim"]
             );
         }
+    }
+
+    #[test]
+    fn saved_search_presets_are_deduplicated_per_list_and_survive_without_filters() {
+        let browsing = BrowsingPreferences {
+            search_presets: vec![
+                SearchPreset {
+                    list: "  replays.online  ".into(),
+                    name: "  Gap 1800+  ".into(),
+                    query: r#"  {"map":"Dual Gap"}  "#.into(),
+                },
+                SearchPreset {
+                    list: "REPLAYS.ONLINE".into(),
+                    name: "gap 1800+".into(),
+                    query: r#"{"map":"Duplicate"}"#.into(),
+                },
+                SearchPreset {
+                    list: "replays.local".into(),
+                    name: "Gap 1800+".into(),
+                    query: r#"{"map":"Dual Gap"}"#.into(),
+                },
+                SearchPreset {
+                    list: "replays.online".into(),
+                    name: String::new(),
+                    query: r#"{"map":"Unnamed"}"#.into(),
+                },
+                SearchPreset {
+                    list: "replays.online".into(),
+                    name: "Oversized".into(),
+                    query: "x".repeat(MAX_SEARCH_PRESET_QUERY_CHARS + 1),
+                },
+            ],
+            remembered_filters: BTreeMap::from([(
+                "replays.online".into(),
+                r#"{"player":"Ada"}"#.into(),
+            )]),
+            ..BrowsingPreferences::default()
+        }
+        .normalized();
+
+        assert_eq!(browsing.search_presets.len(), 2);
+        assert_eq!(browsing.search_presets[0].list, "replays.online");
+        assert_eq!(browsing.search_presets[0].name, "Gap 1800+");
+        assert_eq!(browsing.search_presets[0].query, r#"{"map":"Dual Gap"}"#);
+        assert_eq!(browsing.search_presets[1].list, "replays.local");
+        assert_eq!(browsing.search_presets[1].name, "Gap 1800+");
+
+        let cleared = browsing.without_filters();
+        assert!(cleared.remembered_filters.is_empty());
+        assert_eq!(cleared.search_presets.len(), 2);
     }
 }

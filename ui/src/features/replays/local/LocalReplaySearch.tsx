@@ -13,6 +13,15 @@ import {
   type LocalReplaySortField,
 } from "./localReplayQuery";
 import { activeLocalReplayPreset, SHORT_GAME_MINUTES } from "../replayPresets";
+import { ReplaySavedSearches, type SavedSearchEntry } from "../ReplaySavedSearches";
+import {
+  decodeLocalReplayPreset,
+  encodeLocalReplayPreset,
+  LOCAL_REPLAY_PRESET_LIST,
+  localPresetSignature,
+  presetsForList,
+  summarizeLocalReplayPreset,
+} from "../savedReplaySearches";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { DateInput } from "../../../design-system/DateInput";
@@ -65,6 +74,7 @@ export function LocalReplaySearch({
   const [advanced, setAdvanced] = useState(false);
 
   const replayNotes = useAppStore((state) => state.state.settings.social.replayNotes);
+  const searchPresets = useAppStore((state) => state.state.settings.browsing.searchPresets);
   const tagOptions = useMemo(() => allReplayTags(replayNotes), [replayNotes]);
   const set = <K extends keyof LocalReplayQuery>(key: K, value: LocalReplayQuery[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -109,6 +119,18 @@ export function LocalReplaySearch({
   // See `activeLocalReplayPreset`: which of the three scopes the archive is
   // currently under, so the button says so.
   const preset = activeLocalReplayPreset(form, self);
+  const savedEntries: SavedSearchEntry<LocalReplayQuery>[] = [];
+  for (const saved of presetsForList(searchPresets, LOCAL_REPLAY_PRESET_LIST)) {
+    const decoded = decodeLocalReplayPreset(saved.query);
+    if (!decoded) continue;
+    savedEntries.push({
+      name: saved.name,
+      saved: saved.query,
+      summary: summarizeLocalReplayPreset(decoded),
+      signature: localPresetSignature(decoded),
+      value: decoded,
+    });
+  }
 
   return (
     <form className="vault-search local-vault-search search-panel surface-panel" onSubmit={submit}>
@@ -245,22 +267,32 @@ export function LocalReplaySearch({
         >
           {t("replays.search.preset.myReplays")}
         </Button>
+        <ReplaySavedSearches
+          list={LOCAL_REPLAY_PRESET_LIST}
+          entries={savedEntries}
+          currentSignature={localPresetSignature(form)}
+          encodeCurrent={() => encodeLocalReplayPreset(form)}
+          onApply={apply}
+        />
+        <span className="search-panel-divider" aria-hidden="true" />
         {/* The online vault's button, answered from the files: each one says
             when its game started and ended. Applied at once, like the presets
             beside it. */}
-        <Button
-          type="button"
-          className={form.minDurationMinutes === SHORT_GAME_MINUTES ? "active" : ""}
-          aria-pressed={form.minDurationMinutes === SHORT_GAME_MINUTES}
+        <label
+          className="search-panel-check"
           title={t("replays.search.hideShortHint", { minutes: SHORT_GAME_MINUTES })}
-          onClick={() =>
-            apply({
-              ...form,
-              minDurationMinutes: form.minDurationMinutes === SHORT_GAME_MINUTES ? null : SHORT_GAME_MINUTES,
-            })}
         >
+          <input
+            type="checkbox"
+            checked={form.minDurationMinutes === SHORT_GAME_MINUTES}
+            onChange={(event) =>
+              apply({
+                ...form,
+                minDurationMinutes: event.target.checked ? SHORT_GAME_MINUTES : null,
+              })}
+          />
           {t("replays.search.hideShort")}
-        </Button>
+        </label>
         <span className="spacer" />
         <Button
           className="search-panel-toggle"

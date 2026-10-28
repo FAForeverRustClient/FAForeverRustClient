@@ -5,7 +5,7 @@
 // history scan as the map record, so the outcome of a game is decided by the
 // same rules in both places, and opening one tab after the other costs nothing.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { ipc } from "../../ipc/client";
 import { formatDecimal, formatNumber } from "../../i18n";
@@ -15,12 +15,15 @@ import { formatDateTime } from "../../shared/format/dates";
 import { GENERATED_MAP_PLACEHOLDER_URL } from "../../shared/mapPresentation";
 import { useAppStore } from "../../store/store";
 import { closePlayerCard } from "../../shared/playerCardActions";
+import { useRememberedFilters } from "../../shared/filterMemory";
 import { leaderboardLabel } from "../../shared/playerRatings";
 import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
 import { requestReplaySearch } from "../../shared/replaySearchIntent";
 import { usePlayerHistory } from "./usePlayerHistory";
 import { HistoryFailure } from "./HistoryFailure";
 import { HistoryScopeNote } from "./HistoryScopeNote";
+import { ResultFiltersMenu } from "./ResultFiltersMenu";
+import { filterResults, NO_RESULT_FILTERS, type ResultFilters } from "./resultFilters";
 
 /** Rows added per press of "Show more". A long history is thousands. */
 const PAGE = 50;
@@ -70,6 +73,19 @@ export function PlayerResults({ playerId }: { playerId: number }) {
   const { stats, status, error, full, loadFull, retry } = usePlayerHistory(playerId);
   const vault = useAppStore((state) => state.state.maps.vault);
   const [shown, setShown] = useState(PAGE);
+  const { filters, setFilters } = useRememberedFilters<ResultFilters>("playerCard.results", NO_RESULT_FILTERS);
+  const allGames = stats?.games;
+  // The queues this player has games in, in the order they first appear.
+  const queueOptions = useMemo(() => {
+    const seen = new Map<string, number>();
+    for (const game of allGames ?? []) seen.set(game.queue, (seen.get(game.queue) ?? 0) + 1);
+    return [...seen].map(([queue, count]) => ({
+      value: queue,
+      label: leaderboardLabel(queue),
+      detail: formatNumber(count),
+    }));
+  }, [allGames]);
+  const games = useMemo(() => filterResults(allGames ?? [], filters), [allGames, filters]);
 
   if (status === "loading") {
     // `player-card-tab-loading`: the list is nearly always longer than the
@@ -82,12 +98,11 @@ export function PlayerResults({ playerId }: { playerId: number }) {
     // that reopening the tab also retries is not something to have to know.
     return <HistoryFailure error={error} onRetry={retry} />;
   }
-  const games = stats?.games ?? [];
-  if (!stats || games.length === 0) {
+  if (!stats || !allGames || allGames.length === 0) {
     return <div className="player-card-empty muted">{t("playerCard.results.empty")}</div>;
   }
 
-  const hidden = stats.totalGames - games.length;
+  const hidden = stats.totalGames - allGames.length;
   const rows = games.slice(0, shown);
   const record = tally(rows);
   const rate = winRate(record.wins, record.losses);
@@ -102,6 +117,12 @@ export function PlayerResults({ playerId }: { playerId: number }) {
           {t("playerCard.results.note", { hidden: formatNumber(Math.max(0, hidden)) })}
         </p>
         <HistoryScopeNote stats={stats} full={full} onLoadFull={loadFull} />
+      </div>
+
+      {/* The record of what is listed, and the filters across from it at
+          the top right of the table, where the Chat tab keeps its roster's
+          (#646). */}
+      <div className="player-results-toolbar">
         {/* The rows on screen, not the whole history: the Maps tab already
             gives the record over everything, and this follows "Show more". */}
         <p className="player-results-summary" aria-live="polite">
@@ -117,12 +138,25 @@ export function PlayerResults({ playerId }: { playerId: number }) {
             </>
           )}
         </p>
+        <ResultFiltersMenu
+          filters={filters}
+          queues={queueOptions}
+          onChange={(next) => {
+            setFilters(next);
+            setShown(PAGE);
+          }}
+        />
       </div>
+
+      {games.length === 0 && (
+        <div className="player-card-empty muted">{t("playerCard.results.filter.empty")}</div>
+      )}
 
       {/* The map leads, picture first, as on the Maps tab: it is what tells
           one game from another, and the table gives its first column the
           room the others leave. With the date first, the date was the column
           that took it, and stood a long way from the rest of its row. */}
+      {games.length > 0 && (
       <table className="surface-panel player-maps-table player-results-table">
         <thead>
           <tr>
@@ -187,6 +221,7 @@ export function PlayerResults({ playerId }: { playerId: number }) {
           })}
         </tbody>
       </table>
+      )}
 
       {/* Below the table, not above it (issue 362): the reader reaches the end
           of the rows and the next page is where they already are, instead of

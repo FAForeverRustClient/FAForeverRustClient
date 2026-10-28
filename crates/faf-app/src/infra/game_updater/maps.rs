@@ -132,6 +132,14 @@ pub async fn ensure_live_map(
     if called_off.is_cancelled() {
         return Err(CALLED_OFF.to_string());
     }
+    // Answered before anything is looked for or announced. `stage_map` would
+    // return untouched as well, but only after the dialog had said
+    // "Downloading map scmp_009", and that line then stood there for as long
+    // as the server took to let the player in: it read as the client fetching
+    // a map that ships with the game (#649).
+    if !is_vault_map_folder(map_folder) && is_base_game_map(map_folder) {
+        return Ok(());
+    }
     // On the blocking pool, like `map_folder_in_any`: the look reads the
     // whole maps folder when the exact name is not there, which is a few
     // thousand entries on a well-used install, and finding the Documents
@@ -446,13 +454,31 @@ mod tests {
         assert!(result.is_ok(), "{result:?}");
     }
 
+    #[tokio::test]
+    async fn a_base_game_map_is_never_announced_as_a_download() {
+        // The dialog showed "Downloading map scmp_009" until the game started
+        // (#649), although nothing was fetched.
+        let announced = std::sync::Mutex::new(Vec::new());
+        ensure_live_map(
+            &reqwest::Client::new(),
+            "http://127.0.0.1:1",
+            std::path::Path::new("definitely/not/here"),
+            "SCMP_009",
+            &|step| announced.lock().unwrap().push(step),
+            &tokio_util::sync::CancellationToken::new(),
+        )
+        .await
+        .expect("a base-game map needs nothing");
+        assert!(announced.lock().unwrap().is_empty());
+    }
+
     /// Builds an in-memory zip shaped like a real vault map download,
     /// confirmed against `content.faforever.com/maps/adaptive_gadostb.v0002.zip`:
     /// a single top-level `{map_folder}/` directory containing the map's files.
     fn build_map_zip(map_folder: &str) -> Vec<u8> {
         let mut buf = std::io::Cursor::new(Vec::new());
         let mut writer = zip::ZipWriter::new(&mut buf);
-        let options: zip::write::FileOptions<'_, ()> = zip::write::FileOptions::default();
+        let options = zip::write::SimpleFileOptions::default();
         writer
             .start_file(format!("{map_folder}/{map_folder}.scmap"), options)
             .unwrap();
@@ -904,17 +930,21 @@ mod tests {
         // A current-thread runtime: everything async in this test runs here.
         let runtime_thread = std::thread::current().id();
 
-        // A base-game map: looked for, and then never fetched.
-        ensure_live_map(
+        // A vault map: looked for in the maps folder first. Whether it is then
+        // fetched depends on the machine's Documents folder, which is the
+        // other place a live map has to be, and the fetch to the dead address
+        // fails; only where the look ran matters here. A base-game map no
+        // longer reaches the look at all (#649).
+        std::fs::create_dir_all(maps.join("adaptive_gadostb.v0002")).unwrap();
+        let _ = ensure_live_map(
             &loopback(),
             "http://127.0.0.1:1",
             &maps,
-            "scmp_009",
+            "adaptive_gadostb.v0002",
             &|_| {},
             &tokio_util::sync::CancellationToken::new(),
         )
-        .await
-        .expect("a base-game map needs nothing");
+        .await;
 
         let threads = probe::looked_on(&maps);
         assert!(!threads.is_empty(), "the maps folder was never looked in");

@@ -43,6 +43,13 @@ pub trait PlayerCardPort: Send + Sync {
     /// Resolve a batch of account ids in one request.
     async fn players_by_id(&self, ids: &[i32]) -> Result<Vec<PlayerSummary>, RequestError>;
 
+    /// The logins of FAF's moderators and administrators: the members of the
+    /// public user groups that hold those roles. For the chat's "Moderators &
+    /// admins" category. Nobody, by default, for an adapter with no API.
+    async fn staff_logins(&self) -> Result<Vec<String>, RequestError> {
+        Ok(Vec::new())
+    }
+
     async fn load_profile(
         &self,
         player_id: Option<i32>,

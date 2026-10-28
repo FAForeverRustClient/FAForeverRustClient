@@ -46,6 +46,10 @@ describe("browsing preferences", () => {
           { field: "title", constraint: "contains", value: "NO RUSH" },
           { field: "map", constraint: "equals", value: "" },
         ],
+        allowRules: [
+          { field: "mod", constraint: "contains", value: " roguelike " },
+          { field: "mod", constraint: "contains", value: "ROGUELIKE" },
+        ],
       },
       matchmakerUnselectedQueues: [" ladder_1v1 ", "LADDER_1V1", ""],
       matchmakerFactions: ["cybran", "unknown"],
@@ -111,6 +115,13 @@ describe("browsing preferences", () => {
         { name: "REPLAY WATCHING", uids: ["z"] },
         { name: "   ", uids: ["c"] },
       ],
+      searchPresets: [
+        { list: "  replays.online  ", name: "  Gap 1800+  ", query: "  {\"map\":\"Dual Gap\"}  " },
+        { list: "REPLAYS.ONLINE", name: "gap 1800+", query: "{\"map\":\"Duplicate\"}" },
+        { list: "replays.local", name: "Gap 1800+", query: "{\"map\":\"Local Gap\"}" },
+        { list: "replays.online", name: "   ", query: "{}" },
+        { list: "replays.online", name: "Oversized", query: "x".repeat(8 * 1024 + 1) },
+      ],
       leaderboardRatingColumns: ["deviation", "MEAN", "invalid_column"],
       leaderboardIncludeFormerNames: true,
       replayVaultPlayer: "  VindexNoob  ",
@@ -130,6 +141,10 @@ describe("browsing preferences", () => {
       { name: "Replay watching", uids: ["a", "b"] },
       { name: "Vanilla", uids: [] },
     ]);
+    expect(normalized.searchPresets).toEqual([
+      { list: "replays.online", name: "Gap 1800+", query: "{\"map\":\"Dual Gap\"}" },
+      { list: "replays.local", name: "Gap 1800+", query: "{\"map\":\"Local Gap\"}" },
+    ]);
     expect(normalized.customGamesView).toBe("list");
     expect(normalized.replaysView).toBe("list");
     // Its own answer, not the vault's: the live tab is a different question.
@@ -147,6 +162,8 @@ describe("browsing preferences", () => {
       hideFoes: true,
       applyFilters: true,
       rules: [{ field: "title", constraint: "contains", value: "no rush" }],
+      // The always-show rules are bounded the same way (#593).
+      allowRules: [{ field: "mod", constraint: "contains", value: "roguelike" }],
     });
     expect([...normalized.liveReplayFilters.search]).toHaveLength(200);
     expect(normalized.liveReplayFilters.activePlayers).toBe("4");

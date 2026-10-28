@@ -7,6 +7,8 @@
 // should be is arithmetic, so it lives here and is tested here rather than
 // being reachable only by clicking.
 
+import type { Game, VaultMap } from "../../../ipc/bindings";
+import { mapPresentation } from "../../../shared/mapPresentation";
 import type { FilterConstraint, FilterField, GameFilterRule } from "./GameFiltersModal";
 
 /**
@@ -72,4 +74,65 @@ export function rulesWithPending(
   }
 
   return next;
+}
+
+/** Whether a game matches one rule, whichever list the rule is in. */
+export function matchesRule(game: Game, rule: GameFilterRule, vault: VaultMap[]) {
+  if (rule.field === "rating") {
+    const target = Number(rule.value);
+    if (!Number.isFinite(target)) return false;
+    if (rule.constraint === "above") return Number(game.averageRating) > target;
+    if (rule.constraint === "below") return Number(game.averageRating) < target;
+    if (rule.constraint === "notEquals") return Number(game.averageRating) !== target;
+    return Number(game.averageRating) === target;
+  }
+  const target = rule.value.replace(/^["']|["']$/g, "").trim().toLocaleLowerCase();
+  if (!target) return false;
+
+  const testString = (val: string) => {
+    const value = val.toLocaleLowerCase();
+    if (rule.constraint === "starts") return value.startsWith(target);
+    if (rule.constraint === "ends") return value.endsWith(target);
+    if (rule.constraint === "equals") return value === target;
+    if (rule.constraint === "notEquals") return value !== target;
+    return value.includes(target);
+  };
+
+  if (rule.field === "title") {
+    return testString(game.title);
+  }
+  if (rule.field === "host") {
+    return testString(game.host);
+  }
+  if (rule.field === "map") {
+    const mapDisplay = mapPresentation(vault, game.map).displayName;
+    return testString(game.map) || testString(mapDisplay);
+  }
+  if (rule.field === "titleOrMap") {
+    const mapDisplay = mapPresentation(vault, game.map).displayName;
+    return testString(game.title) || testString(game.map) || testString(mapDisplay);
+  }
+  if (rule.field === "mod") {
+    // The featured mod and every sim mod (#593): "with roguelike" means a
+    // sim mod far more often than a featured one. "Does not equal" holds
+    // only when none of them is the value.
+    const names = [game.modName, ...Object.values(game.simMods)];
+    return rule.constraint === "notEquals" ? names.every(testString) : names.some(testString);
+  }
+  return false;
+}
+
+/**
+ * Whether a game stays in the list: one an always-show rule matches does
+ * (#593, which took over the always-shown hosts of #492), any other only when
+ * it passes every hide switch and rule. The search box is not an exception:
+ * a search is what the player is looking for right now.
+ */
+export function shownDespiteFilters(
+  game: Game,
+  allowRules: readonly GameFilterRule[],
+  vault: VaultMap[],
+  passesFilters: () => boolean,
+): boolean {
+  return allowRules.some((rule) => matchesRule(game, rule, vault)) || passesFilters();
 }

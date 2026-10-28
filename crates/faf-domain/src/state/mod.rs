@@ -17,6 +17,7 @@ pub mod galactic_war;
 pub mod guides;
 pub mod install;
 pub mod leaderboard;
+pub mod linux_runtime;
 pub mod lobby;
 pub mod map_generator;
 pub mod maps;
@@ -24,6 +25,7 @@ pub mod mods;
 pub mod nav;
 pub mod notifications;
 pub mod player_card;
+pub mod player_report;
 pub mod replays;
 pub mod reporting;
 pub mod reviews;
@@ -88,6 +90,10 @@ pub use leaderboard::{
     LeaderboardState, LeaderboardStatus, LeaderboardTier, League, LeagueSeason, PlayerRatings,
     RatingLeaderboard, RatingPage, RatingQuery, SeasonLeaderboard,
 };
+pub use linux_runtime::{
+    LinuxDistribution, LinuxPrerequisite, LinuxRuntimeCommand, LinuxRuntimeComponent,
+    LinuxRuntimeEvent, LinuxRuntimeState, LinuxRuntimeStatus, LinuxRuntimeStep,
+};
 pub use lobby::{
     rating_for_game, rating_gate_blocks, reconcile_avatar, remember_avatar,
     title_marks_exp_java_adapter, title_marks_go_adapter, with_exp_java_adapter_tag,
@@ -97,10 +103,10 @@ pub use lobby::{
     EXP_JAVA_ADAPTER_TITLE_TAG, GLOBAL_LEADERBOARD, GO_ADAPTER_TITLE_TAG,
 };
 pub use map_generator::{
-    is_valid_preset_name, preset_file_name, DecodedMapName, DecodedStyle, GenerationType,
-    GeneratorOptionLists, GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus,
-    GeneratorVersion, MapGeneratorCommand, MapGeneratorEvent, MapGeneratorState, StyleConstraints,
-    ValidationIssue, MAX_PRESET_NAME,
+    is_valid_preset_name, options_missing_from, preset_file_name, DecodedMapName, DecodedStyle,
+    GenerationType, GeneratorOptionLists, GeneratorOptionQuery, GeneratorOptions, GeneratorPreset,
+    GeneratorStatus, GeneratorVersion, MapGeneratorCommand, MapGeneratorEvent, MapGeneratorState,
+    StyleConstraints, ValidationIssue, MAX_PRESET_NAME,
 };
 pub use maps::{
     InstalledMap, LocalMapPreview, MapInstallStatus, MapListStatus, MapVisibilityStatus,
@@ -124,8 +130,12 @@ pub use player_card::{
     PlayedGame, PlayerAchievement, PlayerAchievementState, PlayerAvatar, PlayerCardCommand,
     PlayerCardEvent, PlayerCardProfile, PlayerCardState, PlayerCardStatus, PlayerClan,
     PlayerEventCount, PlayerGameResult, PlayerLeaguePlacement, PlayerMapStat, PlayerMapStats,
-    PlayerNameRecord, PlayerRatingSummary, PlayerSummary, RatingHistoryPage, RatingHistoryPeriod,
-    RatingHistoryPoint, RatingHistoryQuery,
+    PlayerNameRecord, PlayerQueueStat, PlayerRatingSummary, PlayerSummary, RatingHistoryPage,
+    RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
+};
+pub use player_report::{
+    build_player_report, PlayerFactionStat, PlayerMapTrend, PlayerPeriodStat, PlayerRelation,
+    PlayerReport, PlayerRunback, PlayerStreak,
 };
 pub use replays::{
     live_replay_delay_remaining, normalize_replay_path, replay_read_key, sort_vault_replays,
@@ -154,9 +164,9 @@ pub use settings::{
     DiscordPreferences, EventReminder, EventsPreferences, FilterMemory, GameCacheInfo,
     GamePreferences, GeneralPreferences, HostGamePreferences, IceAdapter, LiveReplayFilters,
     NotificationPreferences, NotificationSound, NotificationSoundChoices, PathPreferences,
-    PlayerNote, ReplayChatTransfers, ReplayNote, SettingsCommand, SettingsEvent, SettingsState,
-    SocialPreferences, Theme, ToastPosition, UiDensity, UpdatePreferences, WeekStart,
-    MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_RAIL_BELOW,
+    PlayerNote, ReplayChatTransfers, ReplayNote, SearchPreset, SettingsCommand, SettingsEvent,
+    SettingsState, SocialPreferences, Theme, ToastPosition, UiDensity, UpdatePreferences,
+    WeekStart, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_RAIL_BELOW,
 };
 pub use social::{
     LoginLookup, PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent,
@@ -201,6 +211,10 @@ pub use tourney::{EarlyFinish, Rename, RenameCheck, Survivors, TourneyBan};
 pub use tourney::{ImportedGroup, ImportedPlacing, ImportedRow};
 pub use tourney::{PendingImage, PickSettings, PlanLists, SwissExtras, TourneyPreset};
 pub use tourney::{PickLogEntry, PickMade, PickPhase, Playoffs, StageTwoPlan, TeamRecord};
+pub use tourney::{
+    ProposalArea, ProposalCard, ProposalDecision, ProposalQueue, ProposalState, ProposalStep,
+    TourneyProposal,
+};
 pub use training::{
     compose_contribution, compose_review_request, compose_url, contribution_problem,
     filter_resources, game_mode_of, hosted_guide, hosted_recording, kind_label, leaderboard_word,
@@ -255,6 +269,7 @@ pub struct AppState {
     pub tutorials: TutorialsState,
     pub uploads: UploadsState,
     pub galactic_war: GalacticWarState,
+    pub linux_runtime: LinuxRuntimeState,
     pub guides: GuidesState,
     pub client_update: ClientUpdateState,
     pub settings: SettingsState,

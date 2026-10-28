@@ -38,6 +38,7 @@ function state(overrides: Partial<ClientUpdateState> = {}): ClientUpdateState {
     status: { type: "idle" },
     currentVersion: "0.2.0",
     release: null,
+    overdue: false,
     dismissedVersion: "",
     notes: [],
     notesStatus: { type: "idle" },
@@ -131,13 +132,16 @@ describe("isUpdateBusy: twin of ClientUpdateStatus::is_busy", () => {
 });
 
 describe("updateRequiredRelease: twin of ClientUpdateState::required_release", () => {
+  it("does not gate a fresh release", () => {
+    expect(updateRequiredRelease(state({ overdue: false, status: { type: "available" }, release: release("0.4.0") }))).toBeNull();
+  });
   it("gates on a stable release this platform can install", () => {
-    const current = state({ status: { type: "available" }, release: release("0.4.0") });
+    const current = state({ overdue: true, status: { type: "available" }, release: release("0.4.0") });
     expect(updateRequiredRelease(current)?.version).toBe("0.4.0");
   });
 
   it("is not the user's to dismiss, unlike the banner", () => {
-    const dismissed = state({
+    const dismissed = state({ overdue: true,
       status: { type: "available" },
       release: release("0.4.0"),
       dismissedVersion: "0.4.0",
@@ -150,7 +154,7 @@ describe("updateRequiredRelease: twin of ClientUpdateState::required_release", (
     // It used to not, on the reasoning that opting into prereleases is opting
     // into testing. Every release this project publishes is marked as a
     // prerelease, so that carve-out meant the gate could never appear at all.
-    const current = state({
+    const current = state({ overdue: true,
       status: { type: "available" },
       release: release("0.4.0-rc1", { preRelease: true }),
     });
@@ -159,7 +163,7 @@ describe("updateRequiredRelease: twin of ClientUpdateState::required_release", (
   });
 
   it("never gates on a release with no installer for this platform", () => {
-    const current = state({
+    const current = state({ overdue: true,
       status: { type: "available" },
       release: release("0.4.0", { downloadUrl: "" }),
     });
@@ -173,11 +177,11 @@ describe("updateRequiredRelease: twin of ClientUpdateState::required_release", (
       { type: "checking" } as const,
       { type: "upToDate" } as const,
     ]) {
-      expect(updateRequiredRelease(state({ status, release: release("0.4.0") })), status.type)
+      expect(updateRequiredRelease(state({ overdue: true, status, release: release("0.4.0") })), status.type)
         .toBeNull();
     }
     // And an update server having a bad day leaves no release at all.
-    const unreachable = state({ status: { type: "failed", payload: { reason: "down" } } });
+    const unreachable = state({ overdue: true, status: { type: "failed", payload: { reason: "down" } } });
     expect(updateRequiredRelease(unreachable)).toBeNull();
   });
 
@@ -189,7 +193,7 @@ describe("updateRequiredRelease: twin of ClientUpdateState::required_release", (
       // Failing the download is not a way past the update.
       { type: "failed", payload: { reason: "connection reset" } } as const,
     ]) {
-      const current = state({ status, release: release("0.4.0") });
+      const current = state({ overdue: true, status, release: release("0.4.0") });
       expect(updateRequiredRelease(current)?.version, status.type).toBe("0.4.0");
     }
   });

@@ -61,6 +61,8 @@ pub mod auth;
 pub mod backgrounds;
 pub mod borderless;
 pub(crate) mod browser;
+mod catalogue_cache;
+mod catalogue_query;
 pub mod changelog;
 pub mod chat_fake;
 pub mod clan;
@@ -70,6 +72,7 @@ pub mod coop;
 pub mod discord;
 pub mod events;
 pub(crate) mod faf_content;
+mod file_cache;
 pub mod galactic_war;
 pub mod game;
 pub mod game_cache;
@@ -77,6 +80,7 @@ pub mod game_logs;
 pub mod game_updater;
 pub(crate) mod gpgnet_proxy;
 pub mod guides;
+mod history_cache;
 pub(crate) mod http;
 pub mod ice_java;
 pub mod ice_pioneer;
@@ -89,6 +93,7 @@ pub(crate) mod jsonapi;
 pub mod jsonrpc;
 pub mod leaderboard;
 pub(crate) mod league_keys;
+pub mod linux_runtime;
 pub mod lobby_fake;
 pub mod lobby_ws;
 pub mod map_generator;
@@ -104,6 +109,7 @@ pub mod replay;
 pub(crate) mod replay_analysis;
 pub(crate) mod replay_recorder;
 pub(crate) mod replay_relay;
+mod replay_spool;
 pub mod reporting;
 pub(crate) mod review_totals;
 pub mod reviews;
@@ -120,7 +126,7 @@ pub mod tutorials;
 pub mod updater;
 pub mod uploads;
 pub(crate) mod vault_install;
-pub use interrupted_work::cleanup_interrupted_work;
+pub use interrupted_work::recover_interrupted_work;
 
 pub use auth::FakeAuth;
 pub use changelog::{ChangelogClient, ChangelogConfig, FakeChangelog};
@@ -466,6 +472,57 @@ pub fn client_folder(kind: &str) -> Result<std::path::PathBuf, String> {
     Ok(path)
 }
 
+/// One installed map's or mod's own folder, for "Open folder" (#643).
+///
+/// `kind` is `maps` or `mods`, and the folder is looked for where the client
+/// installs those, the directory the installed lists are read from.
+/// `folder_name` is the name an installed list carries, and only a plain
+/// folder name is accepted: no separator and nothing that climbs, so the
+/// answer is always a direct child of that directory, whatever the webview
+/// sends. Found in any letter case, the way the installed lists find a map.
+pub fn installed_content_folder(
+    kind: &str,
+    folder_name: &str,
+) -> Result<std::path::PathBuf, String> {
+    let root = match kind {
+        "maps" => maps::maps_dir(),
+        "mods" => mods::mods_dir(),
+        other => return Err(format!("unknown content folder '{other}'")),
+    };
+    installed_child_folder(&root, folder_name)
+}
+
+fn installed_child_folder(
+    root: &std::path::Path,
+    folder_name: &str,
+) -> Result<std::path::PathBuf, String> {
+    let plain = !folder_name.trim().is_empty()
+        && folder_name != "."
+        && folder_name != ".."
+        && !folder_name.contains(['/', '\\', ':'])
+        && !folder_name.chars().any(char::is_control);
+    if !plain {
+        return Err(format!("'{folder_name}' is not a folder name"));
+    }
+    let exact = root.join(folder_name);
+    if exact.is_dir() {
+        return Ok(exact);
+    }
+    std::fs::read_dir(root)
+        .ok()
+        .and_then(|entries| {
+            entries.flatten().find(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .eq_ignore_ascii_case(folder_name)
+                    && entry.path().is_dir()
+            })
+        })
+        .map(|entry| entry.path())
+        .ok_or_else(|| format!("{folder_name} is not installed"))
+}
+
 /// Move `from` to `to` only when `to` does not exist yet.
 ///
 /// Split out from [`migrate_legacy_directories`] so the "never overwrite live
@@ -637,6 +694,7 @@ pub fn fake_ports() -> Ports {
         uploads: Arc::new(FakeUploads),
         client_update: Arc::new(FakeClientUpdates),
         galactic_war: Arc::new(FakeGalacticWar),
+        linux_runtime: Arc::new(crate::ports::NoLinuxRuntime),
         game_cache: Arc::new(game_cache::NoGameCache),
         notification_sounds: Arc::new(notification_sounds::NoStoredSounds),
         game_logs: Arc::new(game_logs::NoGameLogs),
@@ -836,6 +894,7 @@ pub fn real_ports() -> Ports {
         uploads,
         client_update,
         galactic_war,
+        linux_runtime: Arc::new(linux_runtime::LinuxRuntimeGateway::new()),
         game_cache: Arc::new(game_cache::DiskGameCache),
         notification_sounds: Arc::new(notification_sounds::StoredSounds),
         game_logs: Arc::new(game_logs::DiskGameLogs),
@@ -962,5 +1021,37 @@ mod identity_tests {
         assert_eq!(sanitize_folder_name(".. ."), "____");
         assert_eq!(sanitize_folder_name("v1.2"), "v1.2");
         assert_eq!(sanitize_folder_name("a\nb"), "a_b");
+    }
+}
+
+#[cfg(test)]
+mod installed_folder_tests {
+    use super::installed_child_folder;
+
+    #[test]
+    fn an_installed_folder_is_found_in_any_letter_case() {
+        let temp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(temp.path().join("SCCA_Coop_A03.v0023")).unwrap();
+        let found = installed_child_folder(temp.path(), "scca_coop_a03.v0023").unwrap();
+        assert_eq!(found.parent(), Some(temp.path()));
+        assert!(found.is_dir());
+    }
+
+    #[test]
+    fn only_a_plain_folder_name_is_opened() {
+        // #643: the name comes from the webview, so nothing in it may reach
+        // outside the maps or mods folder.
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("maps");
+        std::fs::create_dir_all(&root).unwrap();
+        for name in ["", " ", ".", "..", "../maps", "a/b", r"a\b", "C:"] {
+            assert!(installed_child_folder(&root, name).is_err(), "{name:?}");
+        }
+    }
+
+    #[test]
+    fn a_folder_that_is_not_there_is_an_error() {
+        let temp = tempfile::tempdir().unwrap();
+        assert!(installed_child_folder(temp.path(), "setons_clutch.v0003").is_err());
     }
 }

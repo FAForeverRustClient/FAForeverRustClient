@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useForegroundInterval } from "../../../shared/hooks/useForegroundInterval";
+import { useRef, useState, type ReactNode } from "react";
 import { Button } from "../../../design-system/Button";
 import type { Game, LiveReplayTracking } from "../../../ipc/bindings";
 import type { MapPresentation } from "../../../shared/mapPresentation";
@@ -106,6 +107,8 @@ export function LiveReplayTable(props: Props) {
     defaults: DEFAULT_COLUMN_PX,
     flexible: FLEXIBLE_COLUMN,
     floors: COLUMN_FLOOR_PX,
+    // The Watch button keeps its width on a wide window.
+    fixed: [7],
     headerRef,
   });
   const { order, moving, widths: columns } = list;
@@ -113,16 +116,9 @@ export function LiveReplayTable(props: Props) {
   const [waitNow, setWaitNow] = useState(() => Date.now());
   const hasDelayedReplay = props.games.some(({ game }) => replayDelayRemaining(game, waitNow) > 0);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setAgeNow(Date.now()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
+  useForegroundInterval(() => setAgeNow(Date.now()), 60_000, true);
 
-  useEffect(() => {
-    if (!hasDelayedReplay) return;
-    const timer = window.setInterval(() => setWaitNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, [hasDelayedReplay]);
+  useForegroundInterval(() => setWaitNow(Date.now()), 1000, hasDelayedReplay);
 
   const columnLabels = [
     t("replays.live.column.map"),

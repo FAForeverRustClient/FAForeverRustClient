@@ -26,6 +26,11 @@ pub trait MapGeneratorPort: Send + Sync {
     /// see `DebugPreferences`.
     fn set_show_window(&self, _show: bool) {}
 
+    /// How many generators a run of several separately picked maps may keep
+    /// going at once, or `0` for the client's own estimate. See
+    /// `GamePreferences::map_generator_instances`.
+    fn set_parallel_instances(&self, _instances: u32) {}
+
     /// Reproduce a specific generated map. The version comes from the name, so
     /// this needs no prior version resolution: it is the path a lobby join
     /// takes and must work even for an old generator this client has never run.

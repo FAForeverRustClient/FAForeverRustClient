@@ -14,6 +14,7 @@
 import { ipc } from "../ipc/client";
 import { useAppStore } from "../store/store";
 import { missingSimMods, setPendingJoin } from "./joinConfirmation";
+import { activeSearchQueues, setSearchJoin, stopSearching } from "./joinWhileSearching";
 
 let lastRequest: { id: number; password: string | null } | null = null;
 
@@ -34,9 +35,38 @@ const send = (id: number, password: string | null, replaceMods: boolean) =>
  *
  * The state is read at call time, not at render time, so a lobby that gains a
  * mod between the list rendering and the click is judged on what it needs now.
+ *
+ * A join asked for during a matchmaker search stops for an answer before
+ * anything else (#650): see `joinWhileSearching.ts`.
  */
 export function joinGame(id: number, password: string | null = null) {
   lastRequest = { id, password };
+  const state = useAppStore.getState().state;
+  const queueNames = activeSearchQueues(state.lobby.matchmaking);
+  if (queueNames.length > 0) {
+    const title = state.lobby.games.find((candidate) => candidate.id === id)?.title ?? "";
+    setSearchJoin({ id, title, password, queueNames });
+    return Promise.resolve();
+  }
+  return joinOutsideSearch(id, password);
+}
+
+/**
+ * Leave the queues the search was running in, then go on with the join the
+ * question was holding, which may still stop for the mods it needs.
+ *
+ * The stop and the join go out over the one lobby connection in that order,
+ * so the server has taken the player out of the queue before it reads the
+ * join.
+ */
+export function stopSearchingAndJoin(id: number, password: string | null, queueNames: readonly string[]) {
+  setSearchJoin(null);
+  stopSearching(queueNames);
+  lastRequest = { id, password };
+  return joinOutsideSearch(id, password);
+}
+
+function joinOutsideSearch(id: number, password: string | null) {
   const state = useAppStore.getState().state;
   // Only when the client knows what is on disk.
   //

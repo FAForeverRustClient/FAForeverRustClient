@@ -12,7 +12,7 @@ import { useAppStore } from "../../store/store";
 import { renderFormattedText, stripHtmlTags } from "../chat/messages/chatFormat";
 import { playNotificationSound, soundForKind } from "./notificationSound";
 import { raisesOsNotification } from "./osNotifications";
-import { RepeatCooldown, happensInView } from "./notificationGate";
+import { RepeatCooldown, expiredNotifications, happensInView, nextExpiry } from "./notificationGate";
 import { notificationBody, notificationBodyDetail, notificationTitle } from "./notificationText";
 import "./notifications.css";
 import { t } from "../../i18n";
@@ -51,6 +51,7 @@ function actionLabel(action: NotificationAction | null): string | null {
   switch (action.type) {
     case "acceptPartyInvite": return t("notifications.action.acceptPartyInvite");
     case "watchLive": return t("notifications.action.watchLive");
+    case "watchLiveWhenReady": return t("notifications.action.watchLiveWhenReady");
     case "openStream": return t("notifications.action.openStream");
     case "openChat":
     case "openMatchmaking":
@@ -65,18 +66,22 @@ function actionLabel(action: NotificationAction | null): string | null {
  * The action line of a card: the label above, or for a stream the platform it
  * opens as an icon and its name (#155), which says where the click goes more
  * plainly than "Watch the stream" did.
+ *
+ * Drawn as the client's own button (`btn-ghost`), so it reads as something to
+ * press (#653): a word in capitals under the text read as a caption. The
+ * whole card is the button, so this is its look, not a second one inside it.
  */
 function actionContent(action: NotificationAction | null): ReactNode {
   if (action?.type === "openStream" && isTwitchUrl(action.payload.url)) {
     return (
-      <em className="notification-stream" aria-label={t("notifications.action.openStream")}>
+      <span className="btn-ghost notification-action notification-stream" aria-label={t("notifications.action.openStream")}>
         <Icon name="twitch" size={14} />
         Twitch
-      </em>
+      </span>
     );
   }
   const label = actionLabel(action);
-  return label ? <em>{label}</em> : null;
+  return label ? <span className="btn-ghost notification-action">{label}</span> : null;
 }
 
 function isTwitchUrl(url: string): boolean {
@@ -113,6 +118,16 @@ async function runAction(item: ClientNotification) {
       case "watchLive":
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
         await ipc.dispatch({ kind: "Replays", command: { type: "watchLive", payload: action.payload.target } });
+        break;
+      case "watchLiveWhenReady":
+        // The live replay tab's own "watch when ready": the backend waits out
+        // the delay and starts the replay itself (#653). Without leaving the
+        // tab the player is on: there is nothing to do on the replay tab
+        // while the delay runs, and the replay opens in its own window.
+        await ipc.dispatch({
+          kind: "Replays",
+          command: { type: "trackLive", payload: { target: action.payload.target, action: "watch" } },
+        });
         break;
       case "openEvent":
         // The calendar opens on the occurrence the reminder was set for, which
@@ -244,7 +259,10 @@ export function NotificationCenter() {
       return cooldown.current.admit(item.kind, now, preferences.repeatCooldownSeconds ?? 0);
     });
     if (fresh.length === 0) return;
-    setToastIds((current) => [...fresh.map((item) => item.id), ...current].slice(0, 3));
+    // "Sound only" (#644): heard, and kept in the history, with no card.
+    if (preferences.popup ?? true) {
+      setToastIds((current) => [...fresh.map((item) => item.id), ...current].slice(0, 3));
+    }
 
     fresh.forEach((item) => {
       // Per kind now, not one tone for everything with a louder variant for two
@@ -254,6 +272,13 @@ export function NotificationCenter() {
         playNotificationSound(soundForKind(item.kind, preferences.sounds), preferences.volume);
       }
     });
+    // A client in the background says so on its taskbar button (issue 641):
+    // the toast alone sits inside a window nobody is looking at, and the OS
+    // pop-up, when there is one, is gone a few seconds later.
+    void native
+      .isWindowFocused()
+      .then((focused) => (focused ? undefined : native.requestAttention()))
+      .catch(() => undefined);
     if (preferences.desktop) {
       // Not the whole batch. The client used to hand every notification it
       // raised to the operating system as well, so a friend coming online
@@ -293,6 +318,25 @@ export function NotificationCenter() {
     timers.current.forEach((timer) => window.clearTimeout(timer));
     timers.current.clear();
   }, []);
+
+  // A notification leaves the history by itself once it is older than the
+  // player's chosen time (#644); zero keeps every one. One timer, for the
+  // next one due, re-armed whenever the list changes or that one goes.
+  const historyLifetime = preferences.historyLifetimeSeconds ?? 0;
+  const [expiryCheck, setExpiryCheck] = useState(0);
+  useEffect(() => {
+    if (historyLifetime <= 0) return;
+    const expired = expiredNotifications(items, historyLifetime, Date.now());
+    expired.forEach((item) => {
+      hideToast(item.id);
+      dismiss(item.id);
+    });
+    const remaining = expired.length === 0 ? items : items.filter((item) => !expired.includes(item));
+    const due = nextExpiry(remaining, historyLifetime);
+    if (due === null) return;
+    const timer = window.setTimeout(() => setExpiryCheck((check) => check + 1), Math.max(0, due - Date.now()) + 50);
+    return () => window.clearTimeout(timer);
+  }, [items, historyLifetime, expiryCheck, hideToast]);
 
   return (
     <div className="notification-center" ref={panelRef}>

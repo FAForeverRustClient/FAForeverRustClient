@@ -1,14 +1,14 @@
-/* As tall as the tab it shows, up to a cap. The cap used to be 820px, which
-   is shorter than the panel's own content on every screen, so the scrollbar
-   in the report was there at 1080p and 1440p alike. 1120px fits the densest
-   profile, and the viewport still wins on a laptop, where the panel is as
-   tall as the window allows and scrolls inside. It was that tall always,
-   whatever the tab, which left a short overview standing over empty space. */
+/* One height for every tab: 1120px, which fits the densest profile, or as
+   tall as the window allows on a laptop, where a tab scrolls inside. As tall
+   as the tab it showed, the centred card grew and shrank with every tab, and
+   the tab strip moved with it, by 260px at 1080p between Statistics and
+   Former names: each next tab had to be chased (issue 578). A short tab now
+   leaves room under it, which is the price of the strip staying put. */
 .modal-panel.player-card-modal {
   display: flex;
   flex-direction: column;
   width: min(1180px, calc(100vw - 48px));
-  height: auto;
+  height: min(1120px, calc(100vh - 32px));
   max-width: none;
   max-height: min(1120px, calc(100vh - 32px));
   padding: 0;
@@ -704,6 +704,13 @@ button.player-avatar-tile:disabled {
   line-height: 1.45;
 }
 
+.player-avatar-error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-error-text);
+}
+
 @media (max-width: 760px) {
   .player-overview-cards {
     column-count: 1;
@@ -903,8 +910,10 @@ button.player-avatar-tile:disabled {
   padding: 0 var(--space-4);
 }
 
+/* The rest of the card's fixed height, so a short tab's scrollbar track is
+   the card's height too and the panel's ground runs to its foot. */
 .player-card-content {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-height: 0;
   padding: var(--space-4);
   /* The scrollbar's kept room counts as part of the right padding, so the
@@ -983,17 +992,10 @@ button.player-avatar-tile:disabled {
   text-align: center;
 }
 
-/* Results and Maps while the games are read. Both lists are nearly always
-   longer than the card, so the card takes its full height at once, the
-   height it will have, instead of a 180px strip that jumps to full height a
-   moment later. A player with few games shrinks it once, when they show. */
-.modal-panel.player-card-modal:has(.player-card-tab-loading) {
-  height: min(1120px, calc(100vh - 32px));
-}
-
+/* Results and Maps while the games are read: the loading note centred in
+   the card's height. */
 .player-card-content:has(> .player-card-tab-loading) {
   display: flex;
-  flex: 1 1 auto;
   flex-direction: column;
 }
 
@@ -1080,6 +1082,186 @@ button.player-avatar-tile:disabled {
   gap: var(--space-3);
 }
 
+/* The Statistics tab (issue 606): faftracker's report, a column of cards,
+   tables and the improvement detector. */
+.player-statistics {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* The tracker's ten overview figures, five to a line. */
+.player-account-details.player-stats-cards {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 0;
+}
+
+.player-stats-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.player-stats-search {
+  width: min(200px, 50%);
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.player-stats-table-wrap {
+  min-width: 0;
+  margin-top: var(--space-2);
+  overflow-x: auto;
+  scrollbar-gutter: stable;
+}
+
+.player-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.player-stats-table th,
+.player-stats-table td {
+  padding: 6px 10px;
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.player-stats-table th {
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+/* Every heading sorts its column; the button fills the cell and keeps the
+   heading's alignment, the arrow beside the label. */
+.player-stats-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.player-stats-sort svg {
+  opacity: 0;
+}
+
+.player-stats-table th.is-sorted,
+.player-stats-sort:hover {
+  color: var(--color-text);
+}
+
+.player-stats-table th.is-sorted .player-stats-sort svg,
+.player-stats-sort:hover svg {
+  opacity: 1;
+}
+
+.player-stats-sort:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.player-stats-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The name leads and takes the slack, as in the map table. */
+.player-stats-table th:first-child,
+.player-stats-table td:first-child {
+  width: 100%;
+  padding-left: 0;
+  text-align: left;
+}
+
+.player-stats-faction {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.player-stats-name {
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.player-stats-name:hover {
+  text-decoration: underline;
+}
+
+.player-stats-name:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.player-stats-insights {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.player-stats-insight {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.player-stats-insight h4 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.player-stats-insight p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.player-stats-insight ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.player-stats-insight li {
+  display: grid;
+  gap: 2px;
+}
+
+.player-stats-insight .player-stats-insight-note {
+  line-height: 1.45;
+}
+
+/* "Show more" at its own width, not stretched across the card. */
+.player-stats-insight > button,
+.player-stats-chart > button {
+  justify-self: start;
+}
+
 .player-clan-members button:focus-visible,
 .player-rating-selection button:focus-visible {
   outline: 2px solid var(--color-accent);
@@ -1103,6 +1285,12 @@ button.player-avatar-tile:disabled {
 .player-history-toolbar select {
   min-width: 150px;
   padding: 0 30px 0 var(--space-2);
+}
+
+/* "Plot against" sits at the right edge, apart from the queue and period
+   it changes the meaning of (issue 645). */
+.player-history-toolbar .player-history-axis {
+  margin-left: auto;
 }
 
 .player-card-toggle {
@@ -1421,6 +1609,11 @@ button.player-avatar-tile:disabled {
 
 .player-stats-chart:last-child {
   grid-column: 1 / -1;
+}
+
+/* Teammates beside opponents: two halves, neither the odd one out. */
+.player-statistics-grid.is-pair > .player-stats-chart:last-child {
+  grid-column: auto;
 }
 
 .player-stats-chart > h3 {
@@ -1817,6 +2010,10 @@ button.player-avatar-tile:disabled {
     grid-template-columns: 1fr;
   }
 
+  .player-account-details.player-stats-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .player-stats-chart:last-child {
     grid-column: auto;
   }
@@ -2196,6 +2393,122 @@ button.player-avatar-tile:disabled {
 
 .player-results-head .player-maps-note {
   margin: 0;
+}
+
+/* The record across from the Filters button, right above the table
+   (issue 646). */
+.player-results-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* The roster's filter button from the Chat tab, with its word: it says when
+   something is set by turning accent. */
+.player-results-filter-menu {
+  position: relative;
+  flex: none;
+}
+
+.player-results-filter-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 30px;
+  padding: 0 var(--space-3);
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 13px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.player-results-filter-button:hover,
+.player-results-filter-button.is-open {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.player-results-filter-button.is-active {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.player-results-filter-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* Opens under the button towards the left, since the button sits at the
+   card's right edge. */
+.player-results-filter-panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  right: 0;
+  display: grid;
+  gap: var(--space-3);
+  width: 300px;
+  max-width: 80vw;
+  padding: var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+.player-results-filter-row {
+  display: grid;
+  gap: 6px;
+}
+
+.player-results-filter-label {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.player-results-filter-row .settings-segmented {
+  display: flex;
+}
+
+.player-results-filter-row .settings-segmented button {
+  flex: 1;
+  min-height: 26px;
+  padding: 0 6px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.player-results-filter-queues {
+  display: grid;
+  gap: 2px;
+  max-height: 220px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  list-style: none;
+}
+
+/* Name left, count right, on one line. */
+.player-results-filter-queues .option-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.player-results-filter-queues .option-check .muted {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-results-filter-footer {
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* The record of the rows on screen, across from the note: the note says what

@@ -12,21 +12,32 @@
 
 import type { Message, MessageKey } from "./en";
 import { en } from "./en";
-import { de } from "./de";
-import { fr } from "./fr";
-import { ru } from "./ru";
-import { es } from "./es";
-import { pl } from "./pl";
+import type { Locale } from "../locales";
 
 export type Catalogue = Partial<Record<MessageKey, Message>>;
+export type CatalogueCode = Locale;
 
-export const CATALOGUES = {
-  en,
-  de,
-  fr,
-  ru,
-  es,
-  pl,
-} as const satisfies Record<string, Catalogue>;
+export const CATALOGUES: Record<Locale, Catalogue> = { en, de: {}, fr: {}, ru: {}, es: {}, pl: {} };
+const loaders = {
+  de: () => import("./de").then((module) => module.de),
+  fr: () => import("./fr").then((module) => module.fr),
+  ru: () => import("./ru").then((module) => module.ru),
+  es: () => import("./es").then((module) => module.es),
+  pl: () => import("./pl").then((module) => module.pl),
+};
+const loaded = new Set<Locale>(["en"]);
+const pending = new Map<Locale, Promise<void>>();
 
-export type CatalogueCode = keyof typeof CATALOGUES;
+export function catalogueLoaded(locale: Locale): boolean { return loaded.has(locale); }
+
+export function loadCatalogue(locale: Locale): Promise<void> {
+  if (locale === "en" || loaded.has(locale)) return Promise.resolve();
+  const known = pending.get(locale);
+  if (known) return known;
+  const request = loaders[locale]().then((catalogue) => {
+    CATALOGUES[locale] = catalogue;
+    loaded.add(locale);
+  }).finally(() => pending.delete(locale));
+  pending.set(locale, request);
+  return request;
+}

@@ -4,6 +4,7 @@ import type { MapGeneratorEvent, MapGeneratorState } from "../../ipc/bindings";
 
 /** Twin of `MAX_KEPT_PREVIEWS` in the Rust slice. */
 const MAX_KEPT_PREVIEWS = 64;
+const MAX_PREVIEW_BYTES = 16 * 1024 * 1024;
 
 export function reduceMapGenerator(
   state: MapGeneratorState,
@@ -56,7 +57,17 @@ export function reduceMapGenerator(
         Object.keys(held).length + Object.keys(event.payload.previews).length > MAX_KEPT_PREVIEWS
           ? {}
           : held;
-      return { ...state, previews: { ...kept, ...event.payload.previews } };
+      const previews = { ...kept, ...event.payload.previews };
+      let bytes = Object.values(previews).reduce((total, value) => total + value.length, 0);
+      const incoming = event.payload.previews;
+      const keys = Object.keys(previews).sort((a, b) =>
+        Number(Object.prototype.hasOwnProperty.call(incoming, a)) - Number(Object.prototype.hasOwnProperty.call(incoming, b)) || (a < b ? -1 : a > b ? 1 : 0));
+      for (const key of keys) {
+        if (bytes <= MAX_PREVIEW_BYTES && Object.keys(previews).length <= MAX_KEPT_PREVIEWS) break;
+        bytes -= previews[key].length;
+        delete previews[key];
+      }
+      return { ...state, previews };
     }
     case "validationChanged":
       return { ...state, validation: event.payload.issues };

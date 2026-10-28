@@ -64,6 +64,7 @@ pub struct ServiceCtx {
     pub clan: services::clan::ClanContext,
     pub tutorials: services::tutorials::TutorialsContext,
     pub galactic_war: services::galactic_war::GalacticWarContext,
+    pub linux_runtime: services::linux_runtime::LinuxRuntimeContext,
     pub map_generator: services::map_generator::MapGeneratorContext,
     pub client_update: services::client_update::ClientUpdateContext,
 }
@@ -491,6 +492,7 @@ impl App {
             clan: services::clan::ClanContext::default(),
             tutorials: services::tutorials::TutorialsContext::default(),
             galactic_war: services::galactic_war::GalacticWarContext::default(),
+            linux_runtime: services::linux_runtime::LinuxRuntimeContext::default(),
             map_generator: services::map_generator::MapGeneratorContext::default(),
             client_update: services::client_update::ClientUpdateContext::default(),
         };
@@ -1052,6 +1054,7 @@ async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
         AppCommand::Changelog(c) => services::changelog::handle(c, ctx, sink).await,
         AppCommand::Uploads(c) => services::uploads::handle(c, ctx, sink).await,
         AppCommand::GalacticWar(c) => services::galactic_war::handle(c, ctx, sink).await,
+        AppCommand::LinuxRuntime(c) => services::linux_runtime::handle(c, ctx, sink).await,
         AppCommand::ClientUpdate(c) => services::client_update::handle(c, ctx, sink).await,
         AppCommand::Social(c) => services::social::handle(c, ctx, sink).await,
         AppCommand::Streams(c) => services::streams::handle(c, ctx, sink).await,
@@ -1551,3 +1554,6 @@ mod tests {
         assert_eq!(app.snapshot().session.status, ConnectionStatus::Connected);
     }
 }
+
+#[cfg(test)]
+mod client_update_tests;

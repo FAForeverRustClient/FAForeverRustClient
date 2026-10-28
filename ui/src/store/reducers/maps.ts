@@ -5,6 +5,7 @@ import type { MapsEvent, MapsState } from "../../ipc/bindings";
  * the number is justified against measured preview sizes.
  */
 const MAX_LOCAL_PREVIEWS = 128;
+const MAX_LOCAL_PREVIEW_BYTES = 16 * 1024 * 1024;
 
 export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
   switch (event.type) {
@@ -17,8 +18,14 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
     // Merged with what folder lookups already added: see the Rust twin.
     case "vaultLoaded": {
       const loaded = new Set(event.payload.maps.map((map) => map.versionId));
-      const resolved = state.vault.filter((map) => !loaded.has(map.versionId));
-      return { ...state, vault: [...event.payload.maps, ...resolved], vaultStatus: { type: "ready" } };
+      const resolvedIds = new Set(state.resolvedVaultVersions ?? []);
+      const resolved = state.vault.filter((map) => resolvedIds.has(map.versionId) && !loaded.has(map.versionId));
+      return {
+        ...state,
+        vault: [...event.payload.maps, ...resolved],
+        vaultStatus: { type: "ready" },
+        vaultProgress: null,
+      };
     }
     case "vaultLoadFailed":
       return { ...state, vaultStatus: { type: "failed", payload: { reason: event.payload.reason } } };
@@ -31,10 +38,36 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
         known.add(map.versionId);
         return true;
       });
-      return added.length === 0 ? state : { ...state, vault: [...state.vault, ...added] };
+      return {
+        ...state,
+        vault: [...state.vault, ...added],
+        resolvedVaultVersions: [...new Set([
+          ...(state.resolvedVaultVersions ?? []),
+          ...event.payload.maps.map((map) => map.versionId),
+        ])],
+      };
     }
     // `browse` is one page of a server-side search and is separate from
     // `vault`, which stays the whole catalogue used as a folder-name index.
+    // Twin of the Rust arm: a changed map's entries go, except versions
+    // looked up by folder, and every version is held once.
+    case "vaultUpdated": {
+      const changed = new Set(event.payload.maps.map((map) => map.mapId));
+      const resolved = new Set(state.resolvedVaultVersions ?? []);
+      const vault = state.vault.filter((map) => !changed.has(map.mapId) || resolved.has(map.versionId));
+      for (const map of event.payload.maps) {
+        if (map.hidden) continue;
+        const at = vault.findIndex((known) => known.versionId === map.versionId);
+        if (at >= 0) vault[at] = map;
+        else vault.push(map);
+      }
+      return {
+        ...state,
+        vault,
+        vaultStatus: { type: "ready" },
+        vaultProgress: null,
+      };
+    }
     case "vaultSearching":
       return {
         ...state,
@@ -79,19 +112,27 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
       // one, which JavaScript hoists to the front.
       for (const folder of Object.keys(event.payload.previews).sort()) {
         const preview = event.payload.previews[folder];
-        const known = localPreviews[folder];
-        localPreviews[folder] = {
+        const known = Object.prototype.hasOwnProperty.call(localPreviews, folder) ? localPreviews[folder] : undefined;
+        Object.defineProperty(localPreviews, folder, { value: {
           small: preview.small ?? known?.small ?? null,
           large: preview.large ?? known?.large ?? null,
-        };
+        }, enumerable: true, configurable: true, writable: true });
         if (!known) localPreviewOrder.push(folder);
       }
       // Oldest first, so what the user is looking at now survives. See
       // `MAX_LOCAL_PREVIEWS`: this art is held as `data:` URLs and an
       // unbounded cache of it reached tens of megabytes on each side.
-      while (Object.keys(localPreviews).length > MAX_LOCAL_PREVIEWS && localPreviewOrder.length > 0) {
+      // Native previews are ASCII data URLs, so length equals encoded bytes.
+      const size = (preview: (typeof localPreviews)[string]) =>
+        (preview.small?.length ?? 0) + (preview.large?.length ?? 0);
+      let bytes = Object.values(localPreviews).reduce((total, preview) => total + size(preview), 0);
+      while ((Object.keys(localPreviews).length > MAX_LOCAL_PREVIEWS || bytes > MAX_LOCAL_PREVIEW_BYTES)
+        && localPreviewOrder.length > 0) {
         const evicted = localPreviewOrder.shift();
-        if (evicted !== undefined) delete localPreviews[evicted];
+        if (evicted !== undefined && Object.prototype.hasOwnProperty.call(localPreviews, evicted)) {
+          bytes -= size(localPreviews[evicted]);
+          delete localPreviews[evicted];
+        }
       }
       return { ...state, localPreviews, localPreviewOrder };
     }

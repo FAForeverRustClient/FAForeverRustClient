@@ -43,6 +43,9 @@ export const ONLINE_LOOKUPS_KEPT = 1000;
  */
 export const RESOLVED_MAPS_KEPT = 500;
 
+/** Twin of `RESOLVED_SIM_MODS_KEPT`. */
+export const RESOLVED_SIM_MODS_KEPT = 200;
+
 /** `order` with `uid` moved to its newest end. Twin of `stored_last`. */
 function storedLast(order: number[] | undefined, uid: number): number[] {
   return [...(order ?? []).filter((stored) => stored !== uid), uid];
@@ -83,6 +86,19 @@ function withResolvedMaps(state: ReplayState, maps: ResolvedReplayMap[]): Replay
     });
   }
   return { ...state, resolvedMaps, resolvedMapsOrder: order };
+}
+
+/**
+ * Store one game's mod list as the newest and drop the oldest past the cap.
+ * Twin of the `SimModsResolved` arm.
+ */
+function withResolvedSimMods(state: ReplayState, uid: number, mods: string[]): ReplayState {
+  const resolvedSimMods = { ...state.resolvedSimMods, [uid]: mods };
+  let order = storedLast(state.resolvedSimModsOrder ?? [], uid);
+  const overflow = Math.max(0, order.length - RESOLVED_SIM_MODS_KEPT);
+  for (const oldest of order.slice(0, overflow)) delete resolvedSimMods[oldest];
+  order = order.slice(overflow);
+  return { ...state, resolvedSimMods, resolvedSimModsOrder: order };
 }
 
 /** Whether `status` is the library download of `uid`, still running. */
@@ -276,6 +292,8 @@ export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplaySta
     // stops asking about that game.
     case "mapsResolved":
       return withResolvedMaps(state, event.payload.maps);
+    case "simModsResolved":
+      return withResolvedSimMods(state, event.payload.uid, event.payload.mods);
     case "onlineLookupStarted":
       return withLookup(state, event.payload.uid, { type: "loading" });
     case "onlineLookupFinished":

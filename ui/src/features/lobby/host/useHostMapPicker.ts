@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { ipc } from "../../../ipc/client";
-import { nextListboxIndex } from "../../../shared/listboxNavigation";
+import { nextListboxIndex, WheelStepper } from "../../../shared/listboxNavigation";
 import { isFilterRecord, rememberedFilter, useRememberFilter } from "../../../shared/filterMemory";
 import {
   activeFilterCount as countActiveFilters,
@@ -177,6 +177,30 @@ export function useHostMapPicker({ catalogueMaps, favoriteMaps, selectedMap, set
     },
     [visibleMaps, visibleMapIndexes, chosenFolderName, setSelectedMap],
   );
+
+  // Ctrl+wheel walks the selection, a row per notch, and the plain wheel
+  // still scrolls the column (#642). A listener of its own rather than
+  // React's `onWheel`, which is passive: only this one can keep Ctrl+wheel
+  // from zooming the whole window instead.
+  const wheel = useRef(new WheelStepper());
+  const stepByWheel = useRef<(event: WheelEvent) => void>(() => undefined);
+  stepByWheel.current = (event) => {
+    const current = chosenFolderName ? visibleMapIndexes.get(chosenFolderName) ?? -1 : -1;
+    const next = wheel.current.next(event, current, visibleMaps.length);
+    if (next === null) return;
+    event.preventDefault();
+    if (next === current) return;
+    const folderName = visibleMaps[next].folderName;
+    setSelectedMap(folderName);
+    mapOptionRefs.current.get(folderName)?.scrollIntoView?.({ block: "nearest" });
+  };
+  useEffect(() => {
+    const list = mapListRef.current;
+    if (!list) return;
+    const onWheel = (event: WheelEvent) => stepByWheel.current(event);
+    list.addEventListener("wheel", onWheel, { passive: false });
+    return () => list.removeEventListener("wheel", onWheel);
+  }, []);
 
   return useMemo(
     () => ({

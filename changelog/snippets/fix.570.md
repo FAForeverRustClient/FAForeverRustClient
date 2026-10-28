@@ -6,3 +6,4 @@
 - On Linux, training videos no longer open in the browser instead of playing in the client.
 - On Linux, opening a replay whose file name has unusual characters no longer crashes the client.
 - The close button no longer stops working during a game after the client showed its error screen.
+- Signing in no longer fails with "state mismatch" when another program touches the sign-in port first.

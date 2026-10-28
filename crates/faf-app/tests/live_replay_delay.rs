@@ -262,6 +262,19 @@ async fn a_match_that_just_started_cannot_be_watched() {
         h.watched.lock().unwrap().is_empty(),
         "the stream must never be opened: a disabled button is not enforcement"
     );
+    // The refusal offers to start the replay once the delay is over (#653).
+    for _ in 0..200 {
+        let snapshot = h.app.snapshot();
+        if let Some(notification) = snapshot.notifications.items.first() {
+            assert!(matches!(
+                notification.action,
+                Some(NotificationAction::WatchLiveWhenReady { ref target }) if target.uid == 42
+            ));
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    panic!("the refusal notice never arrived");
 }
 
 #[tokio::test]

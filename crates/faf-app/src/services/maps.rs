@@ -8,6 +8,8 @@ use faf_domain::state::{MapListStatus, MapsCommand, MapsEvent};
 
 use crate::runtime::{Cancellable, CancellationSlot, EventSink, LatestRequest, ServiceCtx};
 
+mod catalogue;
+
 /// The map vault's request generation and the install in flight. Owned by
 /// this service.
 #[derive(Default)]
@@ -25,67 +27,7 @@ pub struct MapsContext {
 pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         MapsCommand::CancelVaultLoad => ctx.maps.catalogue.cancel(),
-        MapsCommand::LoadVault => {
-            crate::runtime::expect_admitted(crate::runtime::Key::MapVault);
-            // Crawling the whole catalogue is the most expensive thing this
-            // client does, so it happens once. Seven of the nine callers
-            // checked `vaultStatus` themselves before sending this; the two on
-            // the Play tab did not, so opening Play, and the host dialog, threw
-            // a finished crawl away and started it again on every mount. The
-            // check belongs here, where a new caller cannot forget it.
-            //
-            // A previous failure is still retried: only "already loaded" and
-            // "already in flight" are reasons to do nothing. "In flight" is the
-            // command policy's single flight (`Key::MapVault`), taken before
-            // this runs, so two callers mounting together cannot both start a
-            // crawl.
-            if out.with_state(|state| matches!(state.maps.vault_status, MapListStatus::Ready)) {
-                return;
-            }
-            let cancel = ctx.maps.catalogue.begin();
-            out.emit(MapsEvent::VaultLoading);
-            // Logged both ways, with how long it took: the crawl is many pages,
-            // one failed page fails it, and every view that mounts afterwards
-            // starts it again. Without a line here a "Loading map vault" that
-            // keeps coming back left nothing to read afterwards.
-            let started = std::time::Instant::now();
-            tracing::info!("map vault: loading the catalogue");
-            let (progress_tx, mut progress_rx) = tokio::sync::mpsc::channel(32);
-            let request = ctx.ports.maps.list_vault_with_progress(Some(progress_tx));
-            tokio::pin!(request);
-            let result = loop {
-                tokio::select! {
-                    biased;
-                    () = cancel.cancelled() => {
-                        out.emit(MapsEvent::VaultCancelled);
-                        return;
-                    }
-                    result = &mut request => break result,
-                    Some(progress) = progress_rx.recv() => out.emit(MapsEvent::VaultProgress { progress }),
-                }
-            };
-            while let Ok(progress) = progress_rx.try_recv() {
-                out.emit(MapsEvent::VaultProgress { progress });
-            }
-            match result {
-                Ok(maps) => {
-                    tracing::info!(
-                        maps = maps.len(),
-                        seconds = started.elapsed().as_secs_f32(),
-                        "map vault: loaded"
-                    );
-                    out.emit(MapsEvent::VaultLoaded { maps })
-                }
-                Err(reason) => {
-                    tracing::warn!(
-                        %reason,
-                        seconds = started.elapsed().as_secs_f32(),
-                        "map vault: loading failed; the next view that needs it tries again"
-                    );
-                    out.emit(MapsEvent::VaultLoadFailed { reason })
-                }
-            }
-        }
+        MapsCommand::LoadVault => catalogue::load(ctx, out).await,
         MapsCommand::SearchVault { query } => {
             // No guard and no dedupe beyond the generation check: this is a
             // user-driven search, and asking again is exactly what the search
@@ -201,9 +143,10 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
             // result too, so a map whose folder holds no art is asked about
             // once and never again, which matters because the UI asks from
             // an image's error handler, and that fires on every render.
-            let wanted: Vec<String> = out.with_state(|state| {
+            let mut wanted: Vec<String> = out.with_state(|state| {
                 folder_names
                     .iter()
+                    .take(64)
                     .filter(|name| {
                         !state
                             .maps
@@ -216,9 +159,20 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
             if wanted.is_empty() {
                 return;
             }
-            let previews = ctx.ports.maps.local_previews(&wanted).await;
-            if !previews.is_empty() {
+            while !wanted.is_empty() {
+                let previews = ctx.ports.maps.local_previews(&wanted).await;
+                if previews.is_empty() {
+                    break;
+                }
+                let before = wanted.len();
+                wanted.retain(|name| {
+                    !previews.contains_key(&faf_domain::state::maps::base_folder_name(name))
+                });
                 out.emit(MapsEvent::LocalPreviewsLoaded { previews });
+                if wanted.len() == before {
+                    break;
+                }
+                tokio::task::yield_now().await;
             }
         }
         MapsCommand::LoadMatchmakerPools { queue_name } => {

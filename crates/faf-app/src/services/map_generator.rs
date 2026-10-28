@@ -55,14 +55,7 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             });
             if ctx.ports.map_generator.is_installed(&map_name) {
                 // Already reproduced: report success without spawning Java.
-                let previews = ctx
-                    .ports
-                    .map_generator
-                    .map_previews(std::slice::from_ref(&map_name))
-                    .await;
-                if !previews.is_empty() {
-                    out.emit(MapGeneratorEvent::PreviewsLoaded { previews });
-                }
+                emit_previews(std::slice::from_ref(&map_name), ctx, out).await;
                 if !ctx.map_generator.is_current(generation) {
                     return;
                 }
@@ -93,44 +86,12 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             out.emit(MapGeneratorEvent::OptionsChanged {
                 options: options.clone(),
             });
-            // Ask the generator to resolve the options before committing to a
-            // run. It costs one JVM start and turns "the map generator failed"
-            // after three minutes into the generator's own precise complaint
-            // before anything has begun. Raw arguments skip it: they are the
-            // documented escape hatch, and `--parse` would reject flags we
-            // deliberately do not understand.
-            if options.command_line_args.is_empty() {
-                let preflight = ctx.ports.map_generator.preflight(options.clone()).await;
-                // A run called off while it was being checked has no result to
-                // report either way: a refusal here would turn `Cancelled` into
-                // `Failed` and raise an error about options nobody is waiting on.
-                if cancelled_before_start(out) || !ctx.map_generator.is_current(generation) {
-                    return;
-                }
-                match preflight {
-                    Ok(map_name) => out.emit(MapGeneratorEvent::NamePredicted { map_name }),
-                    Err(reason) => {
-                        out.emit(MapGeneratorEvent::StatusChanged {
-                            status: GeneratorStatus::Failed {
-                                reason: reason.clone(),
-                            },
-                        });
-                        services::notifications::add_failure(
-                            out,
-                            services::notifications::Text::new(
-                                "notifications.msg.mapOptionsRejected",
-                            ),
-                            "Those options will not generate",
-                            reason,
-                        );
-                        return;
-                    }
-                }
-            }
-            // Cancellation during preflight prevents a JVM from being started.
-            if cancelled_before_start(out) || !ctx.map_generator.is_current(generation) {
-                return;
-            }
+            // Straight to the run, as the Java client does (#596). A `--parse`
+            // first cost a whole JVM start, about a second, on every
+            // Generate. The run itself refuses options it cannot use the
+            // moment it starts, with the generator's own complaint as the
+            // failure reason, so nothing waits three minutes to hear it; the
+            // dialog's own Preflight still works the name out on request.
             let updates = ctx.ports.map_generator.generate(options).await;
             // Dropping this receiver stops this run if cancellation landed
             // while the port was starting it.
@@ -141,7 +102,7 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
         }
         MapGeneratorCommand::SetOptions { options } => {
             out.emit(MapGeneratorEvent::ValidationChanged {
-                issues: map_generator::validate_options(&options),
+                issues: validation(&options, out),
             });
             // A name resolved for the options as they were is not a name for
             // the options as they are. The dialog sends this on every settled
@@ -163,7 +124,7 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
         MapGeneratorCommand::Validate { options } => {
             // Pure arithmetic, so the dialog can call this on every keystroke.
             out.emit(MapGeneratorEvent::ValidationChanged {
-                issues: map_generator::validate_options(&options),
+                issues: validation(&options, out),
             });
         }
         MapGeneratorCommand::Preflight { options } => {
@@ -224,10 +185,7 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             if wanted.is_empty() {
                 return;
             }
-            let previews = ctx.ports.map_generator.map_previews(&wanted).await;
-            if !previews.is_empty() {
-                out.emit(MapGeneratorEvent::PreviewsLoaded { previews });
-            }
+            emit_previews(&wanted, ctx, out).await;
         }
         MapGeneratorCommand::DecodeNames { map_names } => {
             // No IO at all: a generated map name carries its own parameters,
@@ -482,10 +440,7 @@ pub(crate) async fn record_generated_maps(maps: &[String], ctx: &ServiceCtx, out
         evict_generated_maps(&before, &after, ctx, out).await;
         services::settings::persist(ctx, out).await;
     }
-    let previews = ctx.ports.map_generator.map_previews(maps).await;
-    if !previews.is_empty() {
-        out.emit(MapGeneratorEvent::PreviewsLoaded { previews });
-    }
+    emit_previews(maps, ctx, out).await;
     refresh_installed_maps(ctx, out).await;
 }
 
@@ -572,6 +527,26 @@ async fn refresh_installed_maps(ctx: &ServiceCtx, out: &EventSink) {
 }
 
 /// Fetch available versions and option lists the generator reports.
+/// Every rule the dialog checks before a run: the generator's own arithmetic,
+/// and whether the chosen styles exist in the release the run would use.
+fn validation(
+    options: &map_generator::GeneratorOptions,
+    out: &EventSink,
+) -> Vec<map_generator::ValidationIssue> {
+    let mut issues = map_generator::validate_options(options);
+    issues.extend(out.with_state(|state| {
+        let generator = &state.map_generator;
+        let version = options
+            .version
+            .clone()
+            .filter(|version| !version.is_empty())
+            .or_else(|| generator.selected_version.clone())
+            .unwrap_or_else(|| generator.latest_version.clone());
+        faf_domain::state::options_missing_from(&generator.option_lists, options, &version)
+    }));
+    issues
+}
+
 async fn load_options(explicit_version: Option<String>, ctx: &ServiceCtx, out: &EventSink) {
     match ctx.ports.map_generator.available_versions().await {
         Ok(versions) => out.emit(MapGeneratorEvent::VersionsLoaded { versions }),
@@ -640,6 +615,13 @@ async fn load_options(explicit_version: Option<String>, ctx: &ServiceCtx, out: &
             }
         }
     }
+    // The lists now answer for this release, so the remembered options are
+    // checked against them again: a style the previous release had and this
+    // one lacks is said in the dialog before Generate, not after.
+    let options = out.with_state(|state| state.map_generator.options.clone());
+    out.emit(MapGeneratorEvent::ValidationChanged {
+        issues: validation(&options, out),
+    });
     if let Some(reason) = failure {
         services::notifications::add_failure(
             out,
@@ -647,5 +629,25 @@ async fn load_options(explicit_version: Option<String>, ctx: &ServiceCtx, out: &
             "Could not read the map generator options",
             reason,
         );
+    }
+}
+
+/// One IPC payload at a time, including runs whose combined art exceeds the cache budget.
+async fn emit_previews(names: &[String], ctx: &ServiceCtx, out: &EventSink) {
+    let mut pending: Vec<_> = names.iter().take(64).cloned().collect();
+    while !pending.is_empty() {
+        let previews = ctx.ports.map_generator.map_previews(&pending).await;
+        if previews.is_empty() {
+            break;
+        }
+        let before = pending.len();
+        pending.retain(|name| {
+            !previews.contains_key(name) && !previews.contains_key(&name.to_lowercase())
+        });
+        out.emit(MapGeneratorEvent::PreviewsLoaded { previews });
+        if pending.len() == before {
+            break;
+        }
+        tokio::task::yield_now().await;
     }
 }

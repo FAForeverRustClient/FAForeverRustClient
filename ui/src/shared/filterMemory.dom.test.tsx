@@ -107,6 +107,23 @@ describe("remembered filters", () => {
     expect(lastStoredWrite()).toEqual({});
   });
 
+  it("always keep the play tab's game list, whatever the setting says", () => {
+    // #648: the setting is for every other list.
+    withMemory("never", { "play.search": "\"seton\"", "test.search": "\"gap\"" });
+    expect(rememberedFilter("play.search", "")).toBe("seton");
+    expect(rememberedFilter("test.search", "")).toBe("");
+    const play = renderHook(() => useRememberedFilter("play.search", "seton"));
+    act(() => play.result.current[1]("dual gap"));
+    play.unmount();
+    expect(rememberedFilter("play.search", "")).toBe("dual gap");
+  });
+
+  it("keep the play tab's game list when the setting changes away from a restart", () => {
+    withMemory("restart", { "play.search": "\"seton\"", "test.search": "\"gap\"" });
+    filterMemoryChanged("never");
+    expect(lastStoredWrite()).toEqual({ "play.search": "\"seton\"" });
+  });
+
   it("clear a list's own preference on leaving the tab only when never remembered", () => {
     for (const memory of ["never", "session", "restart"] as const) {
       withMemory(memory);

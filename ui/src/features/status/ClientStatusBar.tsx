@@ -15,7 +15,9 @@ import { isUploadBusy, isUploadCancellable } from "../../store/reducers/uploads"
 import { plainError } from "../../shared/plainError";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import { linuxRuntimePercent, linuxRuntimeStep } from "../../shared/linuxRuntimeText";
 import "./status.css";
+import { ConnectionCheckDialog } from "./ConnectionCheckDialog";
 
 type ConnectionKind = "faf" | "chat";
 type ConnectionStatus = ChatStatus | LobbyStatus;
@@ -282,6 +284,12 @@ export function useBackgroundActivities(): BackgroundActivity[] {
     const status = s.state.galacticWar.status;
     return status.type === "downloading" ? shareOf(status.payload.downloadedBytes, status.payload.totalBytes) : null;
   });
+  // The Wine environment the client installs on Linux by itself, the first
+  // time it starts there: half a gigabyte and more, so it is shown wherever
+  // the player is. The quick check before it is not.
+  const linuxRuntime = useAppStore((s) =>
+    s.state.linuxRuntime.status.type === "checking" ? null : linuxRuntimeStep(s.state.linuxRuntime.status, t));
+  const linuxRuntimeShare = useAppStore((s) => linuxRuntimePercent(s.state.linuxRuntime.status));
   // A tutorial's game is brought up to date before it starts, which on a
   // stale install is the same long patch a lobby join is.
   const tutorialStep = useAppStore((s) =>
@@ -317,8 +325,6 @@ export function useBackgroundActivities(): BackgroundActivity[] {
   const replaySearch = useAppStore((s) => s.state.replays.vaultStatus.type === "loading");
   const mapScan = useAppStore((s) => s.state.maps.installedStatus.type === "loading");
   const modScan = useAppStore((s) => s.state.mods.installedStatus.type === "loading");
-  const mapVault = useAppStore((s) => s.state.maps.vaultStatus.type === "loading" ? s.state.maps.vaultProgress : undefined);
-  const modVault = useAppStore((s) => s.state.mods.vaultStatus.type === "loading" ? s.state.mods.vaultProgress : undefined);
   const leaderboards = useAppStore((s) =>
     s.state.leaderboard.catalogStatus.type === "loading"
     || s.state.leaderboard.ratingsStatus.type === "loading"
@@ -327,13 +333,6 @@ export function useBackgroundActivities(): BackgroundActivity[] {
   const tournaments = useAppStore((s) => s.state.tourney.status.type === "loading");
   const changelog = useAppStore((s) => s.state.changelog.status.type === "loading");
 
-  const catalogue = (id: string, label: string, progress: AppState["maps"]["vaultProgress"], cancel: AppCommand): BackgroundActivity => ({
-    id,
-    label: progress ? t(progress.totalPages === null ? "status.activity.cataloguePages" : "status.activity.cataloguePagesTotal", { label, pages: progress.pages, total: progress.totalPages ?? 0 }) : label,
-    name: label,
-    progress: progress?.totalPages ? Math.min(100, Math.round(100 * progress.pages / progress.totalPages)) : null,
-    cancel: send(cancel),
-  });
   const activities: (BackgroundActivity | false)[] = [
     replayStarting && {
       id: "replay-start",
@@ -394,6 +393,12 @@ export function useBackgroundActivities(): BackgroundActivity[] {
       progress: galacticWarPercent,
       cancel: send({ kind: "GalacticWar", command: { type: "cancelInstall" } }),
     },
+    linuxRuntime !== null && {
+      id: "linux-runtime",
+      label: t("status.activity.settingUpLinux", { step: linuxRuntime }),
+      progress: linuxRuntimeShare,
+      cancel: send({ kind: "LinuxRuntime", command: { type: "cancel" } }),
+    },
     tutorialStep !== null && {
       id: "tutorial",
       label: t("status.activity.preparingTutorial", { detail: tutorialStep }),
@@ -411,8 +416,12 @@ export function useBackgroundActivities(): BackgroundActivity[] {
     replaySearch && { id: "replay-search", label: t("replays.vault.searching"), progress: null },
     mapScan && { id: "map-scan", label: t("maps.view.scanning"), progress: null },
     modScan && { id: "mod-scan", label: t("mods.installed.scanning"), progress: null },
-    mapVault !== undefined && catalogue("map-vault", t("maps.view.loadingVault"), mapVault, { kind: "Maps", command: { type: "cancelVaultLoad" } }),
-    modVault !== undefined && catalogue("mod-vault", t("mods.view.loadingVault"), modVault, { kind: "Mods", command: { type: "cancelVaultLoad" } }),
+    // Not the map and mod catalogues (issue 603). They are read in the
+    // background on every start, for the names, sizes and pictures the
+    // other tabs look up, and nobody is waiting on them: "Loading map
+    // vault: 14 pages" ran across the bar at each launch saying so anyway.
+    // A search the user started is listed above; a catalogue that fails says
+    // so where it is used.
     leaderboards && { id: "leaderboards", label: t("leaderboard.view.loadingCatalog"), progress: null },
     events && { id: "events", label: t("events.loading"), progress: null },
     tournaments && { id: "tournaments", label: t("tournaments.loading"), progress: null },
@@ -532,6 +541,7 @@ export function ClientStatusBar() {
   const matchmaking = useAppStore((state) => state.state.lobby.matchmaking);
   const matchmakerQueues = useAppStore((state) => state.state.lobby.matchmakerQueues);
   const [openMenu, setOpenMenu] = useState<ConnectionKind | null>(null);
+  const [checking, setChecking] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
   const joinTaskVisible = joinState.type === "joining"
     || joinState.type === "launched"
@@ -621,6 +631,22 @@ export function ClientStatusBar() {
                 {actionLabel}
               </button>
             </div>
+            {/* The connectivity check, one click from the button that says
+                whether FAF is connected (#647), rather than only from
+                Settings. */}
+            {kind === "faf" && (
+              <button
+                type="button"
+                className="client-status-action client-status-check"
+                role="menuitem"
+                onClick={() => {
+                  setOpenMenu(null);
+                  setChecking(true);
+                }}
+              >
+                {t("status.connectionCheck.open")}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -629,7 +655,7 @@ export function ClientStatusBar() {
 
   return (
     <footer ref={rootRef} className="client-status-bar" aria-label={t("status.bar.aria")}>
-      <span className="client-status-version">v{session.backendVersion || "0.9.0"}</span>
+      <span className="client-status-version">v{session.backendVersion || "0.9.2"}</span>
       {joinState.type === "preparing"
         ? <GamePreparationStatus state={joinState} />
         : joinTaskVisible
@@ -643,6 +669,7 @@ export function ClientStatusBar() {
         {renderConnectionMenu("faf", lobbyStatus, "FAF")}
         {renderConnectionMenu("chat", chatStatus, t("status.service.chat"))}
       </div>
+      {checking && <ConnectionCheckDialog onClose={() => setChecking(false)} />}
     </footer>
   );
 }

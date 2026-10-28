@@ -131,6 +131,51 @@ impl MapsPort for MapsClient {
         &self,
         progress: Option<tokio::sync::mpsc::Sender<faf_domain::state::maps::CatalogueProgress>>,
     ) -> Result<Vec<VaultMap>, String> {
+        self.catalogue_full(progress)
+            .await
+            .map(|batch| batch.entries)
+    }
+
+    async fn load_catalogue_cache(
+        &self,
+    ) -> Option<crate::ports::catalogue::CachedCatalogue<VaultMap>> {
+        crate::infra::catalogue_cache::read("maps", &self.config.api_base).await
+    }
+
+    async fn save_catalogue_cache(
+        &self,
+        cache: crate::ports::catalogue::CachedCatalogue<VaultMap>,
+    ) -> Result<(), String> {
+        crate::infra::catalogue_cache::write("maps", &self.config.api_base, cache).await
+    }
+
+    async fn catalogue_delta(
+        &self,
+        since: &str,
+    ) -> Result<crate::ports::catalogue::CatalogueBatch<VaultMap>, String> {
+        let token = self
+            .tokens
+            .get()
+            .ok_or_else(|| "not logged in".to_string())?;
+        let docs = crate::infra::catalogue_query::delta(
+            &self.http,
+            &token,
+            &self.config.api_base,
+            "map",
+            MAP_VAULT_INCLUDE,
+            since,
+        )
+        .await?;
+        let entries = docs.iter().flat_map(parse_vault_maps).collect();
+        let mut batch = crate::infra::catalogue_query::batch(&docs, entries, since, true)?;
+        batch.removed_ids.clear(); // Hidden map records carry their own removal flag.
+        Ok(batch)
+    }
+
+    async fn catalogue_full(
+        &self,
+        progress: Option<tokio::sync::mpsc::Sender<faf_domain::state::maps::CatalogueProgress>>,
+    ) -> Result<crate::ports::catalogue::CatalogueBatch<VaultMap>, String> {
         let token = self
             .tokens
             .get()
@@ -177,7 +222,12 @@ impl MapsPort for MapsClient {
         for doc in &docs {
             all_maps.extend(parse_vault_maps(doc));
         }
-        Ok(all_maps)
+        crate::infra::catalogue_query::complete(&docs)?;
+        let mut batch = crate::infra::catalogue_query::batch(&docs, all_maps, "", false)?;
+        // Keep withdrawals out of the saved index even if the server ignores
+        // the visible-only filter. Delta watermarks still include their dates.
+        batch.entries.retain(|entry| !entry.hidden);
+        Ok(batch)
     }
 
     async fn search_vault(&self, query: MapVaultQuery) -> Result<MapSearchPage, String> {
@@ -586,7 +636,7 @@ async fn list_installed_dir(dir: &std::path::Path) -> Result<Vec<InstalledMap>, 
         Err(e) => return Err(format!("could not read {}: {e}", dir.display())),
     };
 
-    let mut installed = Vec::new();
+    let mut reads = Vec::new();
     while let Some(entry) = entries
         .next_entry()
         .await
@@ -606,45 +656,53 @@ async fn list_installed_dir(dir: &std::path::Path) -> Result<Vec<InstalledMap>, 
             continue;
         }
 
-        let scenario_info = find_and_parse_scenario_lua(&folder_path).await;
-        let display_name = scenario_info
-            .as_ref()
-            .and_then(|s| s.name.clone())
-            .filter(|n| !n.trim().is_empty())
-            .unwrap_or_else(|| display_name_from_folder(&folder_name));
+        reads.push(async move {
+            let scenario_info = find_and_parse_scenario_lua(&folder_path).await;
+            let display_name = scenario_info
+                .as_ref()
+                .and_then(|s| s.name.clone())
+                .filter(|n| !n.trim().is_empty())
+                .unwrap_or_else(|| display_name_from_folder(&folder_name));
 
-        let version = scenario_info
-            .as_ref()
-            .and_then(|s| s.version.clone())
-            .or_else(|| version_from_folder(&folder_name));
+            let version = scenario_info
+                .as_ref()
+                .and_then(|s| s.version.clone())
+                .or_else(|| version_from_folder(&folder_name));
 
-        let (max_players, width, height) = if let Some(ref s) = scenario_info {
-            (s.max_players, s.width, s.height)
-        } else {
-            (0, 0, 0)
-        };
+            let (max_players, width, height) = if let Some(ref s) = scenario_info {
+                (s.max_players, s.width, s.height)
+            } else {
+                (0, 0, 0)
+            };
 
-        let description = scenario_info.and_then(|s| s.description);
-        // The folder's own modification time: an install unpacks into a fresh
-        // folder, so this is when the map arrived (#453).
-        let installed_at = entry
-            .metadata()
-            .await
-            .and_then(|meta| meta.modified())
-            .ok()
-            .map(|modified| chrono::DateTime::<chrono::Utc>::from(modified).to_rfc3339());
+            let map_type = scenario_info.as_ref().and_then(|s| s.map_type.clone());
+            let description = scenario_info.and_then(|s| s.description);
+            // The folder's own modification time: an install unpacks into a fresh
+            // folder, so this is when the map arrived (#453).
+            let installed_at = entry
+                .metadata()
+                .await
+                .and_then(|meta| meta.modified())
+                .ok()
+                .map(|modified| chrono::DateTime::<chrono::Utc>::from(modified).to_rfc3339());
 
-        installed.push(InstalledMap {
-            folder_name,
-            display_name,
-            max_players,
-            width,
-            height,
-            version,
-            description,
-            installed_at,
+            InstalledMap {
+                folder_name,
+                display_name,
+                max_players,
+                width,
+                height,
+                version,
+                description,
+                installed_at,
+                map_type,
+            }
         });
     }
+    let mut installed: Vec<_> = futures_util::StreamExt::collect(
+        futures_util::StreamExt::buffered(futures_util::stream::iter(reads), 8),
+    )
+    .await;
     installed.sort_by(|a, b| a.display_name.cmp(&b.display_name));
     Ok(installed)
 }
@@ -741,32 +799,8 @@ async fn local_previews_in(
         return out;
     }
 
-    // Newest version per base name, in one pass over the maps folder.
-    let mut newest: std::collections::HashMap<String, (u32, PathBuf)> =
-        std::collections::HashMap::new();
-    let Ok(mut entries) = tokio::fs::read_dir(dir).await else {
-        // Still record the look, so the UI does not spin on a missing folder.
-        for name in folder_names.iter().take(MAX_PREVIEW_REQUEST) {
-            out.insert(base_folder_name(name), LocalMapPreview::default());
-        }
-        return out;
-    };
-    while let Ok(Some(entry)) = entries.next_entry().await {
-        if !entry.file_type().await.map(|t| t.is_dir()).unwrap_or(false) {
-            continue;
-        }
-        let name = entry.file_name().to_string_lossy().to_string();
-        let base = base_folder_name(&name);
-        let version = version_from_folder(&name.to_lowercase())
-            .and_then(|v| v.parse::<u32>().ok())
-            .unwrap_or(0);
-        match newest.get(&base) {
-            Some((known, _)) if *known >= version => {}
-            _ => {
-                newest.insert(base, (version, entry.path()));
-            }
-        }
-    }
+    let newest = newest_map_folders(dir).await;
+    let mut payload_bytes = 0;
 
     for requested in folder_names.iter().take(MAX_PREVIEW_REQUEST) {
         let base = base_folder_name(requested);
@@ -791,9 +825,65 @@ async fn local_previews_in(
                 preview.large = read_preview_data_url(&path).await;
             }
         }
+        let bytes = preview.small.as_ref().map_or(0, String::len)
+            + preview.large.as_ref().map_or(0, String::len);
+        if payload_bytes + bytes > faf_domain::state::maps::MAX_LOCAL_PREVIEW_BYTES {
+            break;
+        }
+        payload_bytes += bytes;
         out.insert(base, preview);
     }
     out
+}
+
+type MapFolderIndex = std::sync::Arc<std::collections::HashMap<String, (u32, PathBuf)>>;
+type CachedMapFolderIndex = (std::time::SystemTime, std::time::Instant, MapFolderIndex);
+
+async fn newest_map_folders(dir: &std::path::Path) -> MapFolderIndex {
+    static CACHE: std::sync::OnceLock<
+        tokio::sync::Mutex<std::collections::HashMap<PathBuf, CachedMapFolderIndex>>,
+    > = std::sync::OnceLock::new();
+    let mut cache = CACHE.get_or_init(Default::default).lock().await;
+    let stamp = tokio::fs::metadata(dir)
+        .await
+        .and_then(|metadata| metadata.modified())
+        .ok();
+    if let Some((modified, at, index)) = cache.get(dir) {
+        if Some(*modified) == stamp && at.elapsed() < std::time::Duration::from_secs(2) {
+            return index.clone();
+        }
+    }
+    let mut newest = std::collections::HashMap::new();
+    let Ok(mut entries) = tokio::fs::read_dir(dir).await else {
+        return std::sync::Arc::new(newest);
+    };
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        if !entry.file_type().await.map(|t| t.is_dir()).unwrap_or(false) {
+            continue;
+        }
+        let name = entry.file_name().to_string_lossy().to_string();
+        let base = base_folder_name(&name);
+        let version = version_from_folder(&name.to_lowercase())
+            .and_then(|v| v.parse::<u32>().ok())
+            .unwrap_or(0);
+        match newest.get(&base) {
+            Some((known, _)) if *known >= version => {}
+            _ => {
+                newest.insert(base, (version, entry.path()));
+            }
+        }
+    }
+    let index = std::sync::Arc::new(newest);
+    if let Some(stamp) = stamp {
+        if cache.len() >= 8 {
+            cache.clear();
+        }
+        cache.insert(
+            dir.to_owned(),
+            (stamp, std::time::Instant::now(), index.clone()),
+        );
+    }
+    index
 }
 
 /// The `.small.png` / `.large.png` a map folder carries, if any.
@@ -814,33 +904,57 @@ async fn preview_files_in(folder: &std::path::Path) -> (Option<PathBuf>, Option<
     (small, large)
 }
 
-async fn read_preview_data_url(path: &std::path::Path) -> Option<String> {
+pub(super) async fn read_preview_data_url(path: &std::path::Path) -> Option<String> {
     use base64::Engine as _;
+    use tokio::io::AsyncReadExt;
     let size = tokio::fs::metadata(path).await.ok()?.len();
     if size == 0 || size > MAX_PREVIEW_BYTES {
         return None;
     }
-    let bytes = tokio::fs::read(path).await.ok()?;
+    let file = tokio::fs::File::open(path).await.ok()?;
+    let mut bytes = Vec::new();
+    file.take(MAX_PREVIEW_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .await
+        .ok()?;
+    if bytes.is_empty() || bytes.len() as u64 > MAX_PREVIEW_BYTES {
+        return None;
+    }
+    let mime = if path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| matches!(ext.to_ascii_lowercase().as_str(), "jpg" | "jpeg"))
+    {
+        "image/jpeg"
+    } else {
+        "image/png"
+    };
     Some(format!(
-        "data:image/png;base64,{}",
+        "data:{mime};base64,{}",
         base64::engine::general_purpose::STANDARD.encode(&bytes)
     ))
 }
 
 async fn find_and_parse_scenario_lua(folder_path: &std::path::Path) -> Option<ScenarioInfo> {
+    static CACHE: std::sync::OnceLock<super::file_cache::FileCache<ScenarioInfo>> =
+        std::sync::OnceLock::new();
     let mut rd = tokio::fs::read_dir(folder_path).await.ok()?;
     while let Ok(Some(entry)) = rd.next_entry().await {
         let name = entry.file_name().to_string_lossy().to_lowercase();
         if name.ends_with("_scenario.lua") || name == "scenario.lua" {
-            if let Ok(contents) = tokio::fs::read_to_string(entry.path()).await {
-                return Some(parse_scenario_lua(&contents));
+            if let Some(info) = CACHE
+                .get_or_init(Default::default)
+                .text(&entry.path(), parse_scenario_lua)
+                .await
+            {
+                return Some(info);
             }
         }
     }
     None
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct ScenarioInfo {
     pub name: Option<String>,
     pub width: i32,
@@ -848,6 +962,9 @@ pub(crate) struct ScenarioInfo {
     pub max_players: i32,
     pub version: Option<String>,
     pub description: Option<String>,
+    /// `type = '...'`: `skirmish`, `campaign_coop` for a co-op mission,
+    /// `campaign` for a lesson.
+    pub map_type: Option<String>,
 }
 
 pub(crate) fn parse_scenario_lua(content: &str) -> ScenarioInfo {
@@ -860,6 +977,21 @@ pub(crate) fn parse_scenario_lua(content: &str) -> ScenarioInfo {
             if let Some(val) = extract_quoted_string(trimmed) {
                 if !val.is_empty() {
                     info.name = Some(val);
+                    break;
+                }
+            }
+        }
+    }
+
+    // 1b. Type: type = 'skirmish'. The scenario's own key, written before
+    // anything else in ScenarioInfo; `AIType` and friends do not start a
+    // trimmed line with `type`.
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("type =") || trimmed.starts_with("type=") {
+            if let Some(val) = extract_quoted_string(trimmed) {
+                if !val.is_empty() {
+                    info.map_type = Some(val);
                     break;
                 }
             }
@@ -1960,10 +2092,33 @@ ScenarioInfo = { size = {256, 512} }";
         assert_eq!(info.height, 512);
         assert_eq!(info.max_players, 4);
         assert_eq!(info.version.as_deref(), Some("1"));
+        assert_eq!(info.map_type.as_deref(), Some("skirmish"));
         assert_eq!(
             info.description.as_deref(),
             Some("A balanced battleground for 4 players.")
         );
+    }
+
+    #[test]
+    fn a_coop_mission_says_so_in_its_scenario_type() {
+        // The head of SCCA_Coop_R06's scenario file, as installed (#599),
+        // with its armies cut down. A file without the key has no type.
+        let content = r#"
+version = 3
+ScenarioInfo = {
+    name = "Cybran Mission 6 - Freedom, Remastered",
+    description = "",
+    preview = '',
+    map_version = 23,
+    type = 'campaign_coop',
+    starts = true,
+    size = {1024, 1024},
+    Configurations = { ['standard'] = { teams = { { name = 'FFA', armies = {'Player1','Player2'} } } } },
+}
+"#;
+        let info = parse_scenario_lua(content);
+        assert_eq!(info.map_type.as_deref(), Some("campaign_coop"));
+        assert_eq!(parse_scenario_lua("ScenarioInfo = {}").map_type, None);
     }
 
     #[test]

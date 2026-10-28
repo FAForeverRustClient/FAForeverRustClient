@@ -437,25 +437,6 @@ fn refuse(
     }
 }
 
-/// Report the anti-ghosting delay with a catalogue entry so the notification
-/// body can be shown in the user's language.
-fn refuse_live_delay(ctx: &ServiceCtx, out: &EventSink, waiting: u32) {
-    let reason = format!(
-        "Live replays are delayed by five minutes so nobody can watch \
-         an ongoing game for an advantage. Try again in {}.",
-        describe(waiting)
-    );
-    refuse(
-        ctx,
-        out,
-        notifications::Text::new("notifications.msg.liveReplayDelayed")
-            .with("minutes", waiting / 60)
-            .with("seconds", waiting % 60),
-        reason,
-        None,
-    );
-}
-
 pub(crate) fn cancel_live_tracking(out: &EventSink) {
     if out.with_state(|state| state.replays.live_tracking.is_some()) {
         out.emit(ReplayEvent::LiveTrackingCleared);
@@ -483,7 +464,20 @@ async fn watch_live(target: LiveReplayTarget, ctx: &ServiceCtx, out: &EventSink)
         (waiting, player)
     });
     if waiting > 0 {
-        refuse_live_delay(ctx, out, waiting);
+        let reason = format!(
+            "Live replays are delayed by five minutes so nobody can watch \
+             an ongoing game for an advantage. Try again in {}.",
+            describe(waiting)
+        );
+        refuse(
+            ctx,
+            out,
+            notifications::Text::new("notifications.msg.liveReplayDelayed")
+                .with("minutes", waiting / 60)
+                .with("seconds", waiting % 60),
+            reason,
+            Some(NotificationAction::WatchLiveWhenReady { target }),
+        );
         return;
     }
 
@@ -815,6 +809,14 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
             if !maps.is_empty() {
                 out.emit(ReplayEvent::MapsResolved { maps });
+            }
+        }
+        ReplayCommand::ResolveSimMods { uid } => {
+            // A few kilobytes of the file rather than the file. A failure
+            // emits nothing, so the details ask again the next time they open.
+            match ctx.ports.replay_vault.replay_sim_mods(uid).await {
+                Ok(mods) => out.emit(ReplayEvent::SimModsResolved { uid, mods }),
+                Err(error) => tracing::debug!(uid, %error, "could not read a replay's mod list"),
             }
         }
         ReplayCommand::LookUpOnline { uid } => {

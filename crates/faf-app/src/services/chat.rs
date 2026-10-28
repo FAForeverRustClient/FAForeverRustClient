@@ -19,7 +19,7 @@
 use faf_domain::protocol::chat_input::{self, ChatInput};
 use faf_domain::state::{
     auto_join_channels, mentions, read_marker_key, ChatCommand, ChatEvent, ChatMessage,
-    ChatMessageKind, ChatStatus, NotificationAction, NotificationKind, SettingsEvent,
+    ChatMessageKind, ChatStatus, NotificationAction, NotificationKind, SettingsEvent, SocialEvent,
 };
 
 use crate::ports::ChatUpdate;
@@ -73,7 +73,9 @@ pub async fn handle(cmd: ChatCommand, ctx: &ServiceCtx, out: &EventSink) {
             // Armed before the guard, so asking for a connection while one
             // is already in flight still re-arms the watchdog.
             ctx.chat.auto_reconnect.arm();
-            connect(username, ctx, out, false).await;
+            // Beside the connection rather than before it: the roster can
+            // show the channel while the moderators are still being asked for.
+            futures_util::join!(load_staff(ctx, out), connect(username, ctx, out, false));
         }
         ChatCommand::SendMessage {
             channel,
@@ -158,6 +160,22 @@ pub async fn handle(cmd: ChatCommand, ctx: &ServiceCtx, out: &EventSink) {
             ctx.ports.chat.disconnect();
             crate::services::settings::persist(ctx, out).await;
         }
+    }
+}
+
+/// FAF's moderators and administrators, for the roster's "Moderators &
+/// admins" (issue 607): on FAF's IRC they hold no channel operator mode, so
+/// the category the reference clients fill from that mode alone showed only
+/// the QAI bot. Asked once per run; a failure leaves the category to the
+/// operators, as it was, and the next connection asks again.
+async fn load_staff(ctx: &ServiceCtx, out: &EventSink) {
+    if out.with_state(|state| !state.social.staff.is_empty()) {
+        return;
+    }
+    match ctx.ports.player_card.staff_logins().await {
+        Ok(logins) if !logins.is_empty() => out.emit(SocialEvent::StaffLoaded { logins }),
+        Ok(_) => {}
+        Err(error) => tracing::warn!(%error, "could not load FAF's moderators for the chat roster"),
     }
 }
 

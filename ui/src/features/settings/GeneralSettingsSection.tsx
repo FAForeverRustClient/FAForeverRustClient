@@ -94,7 +94,7 @@ export function GeneralSettingsSection() {
       </SettingRow>
 
       {/* One answer for every list in the client (#447). */}
-      <SettingRow label={t("settings.general.filterMemory.label")}>
+      <SettingRow label={t("settings.general.filterMemory.label")} hint={t("settings.general.filterMemory.hint")}>
         <select
           className="settings-select"
           value={preferences.filterMemory ?? "session"}

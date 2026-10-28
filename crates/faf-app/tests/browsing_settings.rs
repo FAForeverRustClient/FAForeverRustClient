@@ -10,7 +10,8 @@ use faf_app::{App, Ports};
 use faf_domain::state::{
     BrowsingPreferences, CustomGameBrowserPreferences, CustomGameFilterConstraint,
     CustomGameFilterField, CustomGameFilterRule, CustomGameSort, CustomGameView, FilterMemory,
-    HostGamePreferences, LiveReplayFilters, ReplayChatTransfers, SettingsCommand, SettingsState,
+    HostGamePreferences, LiveReplayFilters, ReplayChatTransfers, SearchPreset, SettingsCommand,
+    SettingsState,
 };
 
 #[derive(Default)]
@@ -80,6 +81,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                             constraint: CustomGameFilterConstraint::Contains,
                             value: "  gap  ".into(),
                         }],
+                        allow_rules: Vec::new(),
                         column_widths: Vec::new(),
                         column_order: Vec::new(),
                         detail_width: 0,
@@ -113,6 +115,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                     matchmaker_invite_order: Vec::new(),
                     mod_vault_preset: "rating".into(),
                     mod_presets: Vec::new(),
+                    search_presets: Vec::new(),
                     leaderboard_rating_columns: vec![
                         "deviation".into(),
                         "GAMES".into(),
@@ -161,6 +164,39 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
     assert_eq!(state.replay_chat_transfers, ReplayChatTransfers::Only);
     assert!(state.legacy_storage_migrated);
     assert_eq!(saved.lock().unwrap().last().unwrap().browsing, state);
+
+    saved.lock().unwrap().clear();
+    app.dispatch_and_wait(
+        SettingsCommand::SaveSearchPreset {
+            preset: SearchPreset {
+                list: "  replays.online  ".into(),
+                name: "  Gap 1800+  ".into(),
+                query: r#"  {"map":"Dual Gap"}  "#.into(),
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        app.snapshot().settings.browsing.search_presets,
+        [SearchPreset {
+            list: "replays.online".into(),
+            name: "Gap 1800+".into(),
+            query: r#"{"map":"Dual Gap"}"#.into(),
+        }]
+    );
+
+    app.dispatch_and_wait(
+        SettingsCommand::DeleteSearchPreset {
+            list: "REPLAYS.ONLINE".into(),
+            name: "gap 1800+".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    assert!(app.snapshot().settings.browsing.search_presets.is_empty());
 }
 
 /// A settings file holding a filter in every kind of place one is kept, read
@@ -178,6 +214,11 @@ impl SettingsPort for FilteredSettings {
         browsing.live_replay_filters.search = "1500+".into();
         browsing.map_vault_preset = "favorites".into();
         browsing.map_vault_sort = "rating".into();
+        browsing.search_presets = vec![SearchPreset {
+            list: "replays.online".into(),
+            name: "Gap".into(),
+            query: r#"{"map":"Dual Gap"}"#.into(),
+        }];
         browsing
             .remembered_filters
             .insert("installedMods".into(), r#"{"search":"ui"}"#.into());
@@ -208,12 +249,15 @@ async fn browsing_after_startup(memory: FilterMemory) -> BrowsingPreferences {
 async fn filters_survive_a_restart_only_when_asked_to() {
     for memory in [FilterMemory::Never, FilterMemory::Session] {
         let browsing = browsing_after_startup(memory).await;
-        assert!(!browsing.custom_games_browser.hide_private, "{memory:?}");
+        // #648: the play tab's game list keeps its switches whatever the
+        // setting says; the setting is for every other list.
+        assert!(browsing.custom_games_browser.hide_private, "{memory:?}");
         assert!(browsing.live_replay_filters.search.is_empty(), "{memory:?}");
         assert_eq!(browsing.map_vault_preset, "recommended", "{memory:?}");
         assert!(browsing.remembered_filters.is_empty(), "{memory:?}");
-        // A sort order is not a filter.
+        // A sort order and deliberate saved presets are not filters.
         assert_eq!(browsing.map_vault_sort, "rating", "{memory:?}");
+        assert_eq!(browsing.search_presets.len(), 1, "{memory:?}");
     }
 
     let kept = browsing_after_startup(FilterMemory::Restart).await;
@@ -221,4 +265,5 @@ async fn filters_survive_a_restart_only_when_asked_to() {
     assert_eq!(kept.live_replay_filters.search, "1500+");
     assert_eq!(kept.map_vault_preset, "favorites");
     assert_eq!(kept.remembered_filters.len(), 1);
+    assert_eq!(kept.search_presets.len(), 1);
 }

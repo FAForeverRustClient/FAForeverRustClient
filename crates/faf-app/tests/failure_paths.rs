@@ -842,99 +842,29 @@ async fn cancelling_a_named_reproduction_mid_run_ends_cancelled() {
 /// exists. The dialog offers Cancel then (the status is already `Preparing`),
 /// and the preflight can take a JVM start and a first-time generator download.
 ///
-/// The port only stops a run in flight, and starting a run clears any earlier
-/// cancellation, so a service that went straight on to `generate` after the
-/// preflight lost this Cancel and generated the map anyway.
-#[tokio::test]
-async fn cancelling_during_the_preflight_stops_the_run_before_it_starts() {
-    let (app, gates, generator) = generator_harness(true).await;
-    // Open in advance, so a run that wrongly starts finishes instead of
-    // hanging the test.
-    gates.release("run");
-
-    let run = spawn_command(&app, generate());
-    gates.wait_entered("preflight").await;
-
-    run_promptly(&app, MapGeneratorCommand::Cancel.into(), "Cancel").await;
-    gates.release("preflight");
-    finished(run, "the cancelled Generate").await;
-
-    assert_eq!(
-        generator.runs.load(Ordering::SeqCst),
-        0,
-        "a run cancelled during its preflight must never start"
-    );
-    // The `run` permit released above is still there, so the follow-up run in
-    // here needs only the one it adds; take the spare back first.
-    gates
-        .gate("run")
-        .open
-        .try_acquire()
-        .expect("the spare run permit is unused")
-        .forget();
-    assert_cancelled_cleanly(&app, &gates, &generator).await;
-}
-
-/// The same Cancel, when the preflight then fails (the generator download or
-/// the Java start). The run was already called off, so the failure answers a
-/// question nobody is asking any more: it must not turn `Cancelled` into
-/// `Failed` or raise an error notification.
-#[tokio::test]
-async fn a_preflight_failing_after_a_cancel_stays_cancelled() {
-    let (app, gates, generator) = generator_harness(true).await;
-    generator.refuse_preflight.store(true, Ordering::SeqCst);
-
-    let run = spawn_command(&app, generate());
-    gates.wait_entered("preflight").await;
-
-    run_promptly(&app, MapGeneratorCommand::Cancel.into(), "Cancel").await;
-    gates.release("preflight");
-    finished(run, "the cancelled Generate").await;
-
-    assert_eq!(
-        app.snapshot().map_generator.status,
-        GeneratorStatus::Cancelled,
-        "a run called off during its preflight is cancelled, whatever the preflight said"
-    );
-    let titles = notification_titles(&app);
-    assert!(
-        !titles
-            .iter()
-            .any(|title| title == "Those options will not generate"),
-        "no error for a run the user already called off: {titles:?}"
-    );
-    assert_eq!(generator.runs.load(Ordering::SeqCst), 0);
-
-    // And the generator is free for the next run, which reports its own
-    // refusal as usual.
-    gates.release("preflight");
-    tokio::time::timeout(PROMPTLY, app.dispatch_and_wait(generate()))
-        .await
-        .expect("the next Generate finishes")
-        .unwrap();
-    assert!(matches!(
-        app.snapshot().map_generator.status,
-        GeneratorStatus::Failed { .. }
-    ));
-    assert!(notification_titles(&app)
-        .iter()
-        .any(|title| title == "Those options will not generate"));
-}
-
-/// A refused run's notification names its catalogue entry and hands over the
+/// Refused options' notification names its catalogue entry and hands over the
 /// generator's reason as that entry's `reason`. The parameter is what tells
 /// the notification view the body is the client's own failure reason, to be
 /// said plainly with the original on hover; without it the view showed the
-/// raw reason as the whole body, in English, under an English title.
+/// raw reason as the whole body, in English, under an English title. Asked
+/// through the dialog's Preflight: Generate no longer checks first (#596).
 #[tokio::test]
-async fn a_refused_run_hands_its_reason_to_the_notification_view() {
+async fn refused_options_hand_their_reason_to_the_notification_view() {
     let (app, _gates, generator) = generator_harness(false).await;
     generator.refuse_preflight.store(true, Ordering::SeqCst);
 
-    tokio::time::timeout(PROMPTLY, app.dispatch_and_wait(generate()))
-        .await
-        .expect("the refused Generate finishes")
-        .unwrap();
+    tokio::time::timeout(
+        PROMPTLY,
+        app.dispatch_and_wait(
+            MapGeneratorCommand::Preflight {
+                options: GeneratorOptions::default(),
+            }
+            .into(),
+        ),
+    )
+    .await
+    .expect("the refused Preflight finishes")
+    .unwrap();
 
     let refusal = app
         .snapshot()

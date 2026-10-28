@@ -114,13 +114,14 @@ fn displayed(mean: Option<f64>, deviation: Option<f64>) -> Option<f64> {
 }
 
 /// What one game was, once every rule has had its say.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Outcome {
     Win,
     Loss,
     Draw,
     /// Nothing in the game says who won, and no rating moved to imply it.
+    #[default]
     Unknown,
 }
 

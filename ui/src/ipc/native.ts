@@ -5,7 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, UserAttentionType } from "@tauri-apps/api/window";
 import {
   isPermissionGranted,
   requestPermission,
@@ -133,6 +133,14 @@ export const native = {
     return invoke<string>("client_folder_path", { kind });
   },
 
+  /**
+   * Open one installed map's or mod's own folder (#643). The backend accepts
+   * only a folder directly inside the client's maps or mods directory.
+   */
+  openInstalledFolder(kind: "maps" | "mods", folderName: string): Promise<void> {
+    return invoke("open_installed_folder", { kind, folderName });
+  },
+
   /** Reveal a specific cached game version folder. */
   openVersionFolder(name: string): Promise<void> {
     return invoke("open_version_folder", { name });
@@ -171,6 +179,15 @@ export const native = {
     return invoke<string | null>("system_date_pattern");
   },
 
+  /**
+   * How many map generators the client would run side by side for maps of
+   * this size when the count is left to it, from the computer's cores and
+   * the memory free right now.
+   */
+  mapGeneratorAutomaticInstances(mapSize: number | null): Promise<number> {
+    return invoke<number>("map_generator_automatic_instances", { mapSize });
+  },
+
   /** Which engine the interface is being rendered by. */
   webviewEngine(): Promise<WebviewEngine> {
     return invoke<WebviewEngine>("webview_engine");
@@ -178,6 +195,16 @@ export const native = {
 
   isWindowFocused(): Promise<boolean> {
     return getCurrentWindow().isFocused();
+  },
+
+  /**
+   * Flash the taskbar button (issue 641), the way Windows marks a window that
+   * wants looking at. Informational rather than critical: on Windows it flashes
+   * the button until the window comes forward instead of the whole frame
+   * forever; on macOS it bounces the dock icon once.
+   */
+  requestAttention(): Promise<void> {
+    return getCurrentWindow().requestUserAttention(UserAttentionType.Informational);
   },
 
   async ensureNotificationPermission(): Promise<boolean> {

@@ -22,6 +22,7 @@
 import { useState, type ClipboardEvent, type ReactNode } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
+import { Icon } from "../../../design-system/Icon";
 import type {
   DescImageAnswer,
   CopySource,
@@ -189,6 +190,8 @@ function EventDays({
 /** The draft an existing event would produce, for the edit case. */
 export function draftOf(event: Tourney): TourneyDraft {
   return {
+    // Only read on creation.
+    proposal: false,
     name: event.name,
     description: event.description,
     category: event.category,
@@ -242,6 +245,7 @@ export function draftOf(event: Tourney): TourneyDraft {
 }
 
 const BLANK: TourneyDraft = {
+  proposal: false,
   name: "",
   description: "",
   category: "community",
@@ -307,6 +311,12 @@ interface TournamentFormProps {
   onUploadImage?: (dataUrl: string, requestId: number) => void;
   /** The last stored picture's path, to insert where it was pasted. */
   pastedImage?: DescImageAnswer | null;
+  /**
+   * Proposals to the TD team (#569), on a new event: `choice` offers "Host it
+   * myself" or "Propose it", `only` is an account that may not host, which
+   * can only propose. Absent while the site takes no proposals.
+   */
+  proposing?: "choice" | "only";
 }
 
 /**
@@ -350,10 +360,14 @@ export function TournamentForm({
   onLoadTemplate,
   onUploadImage,
   pastedImage = null,
+  proposing,
 }: TournamentFormProps) {
   const { t } = useTranslation();
   const editing = event !== null;
-  const [draft, setDraft] = useState<TourneyDraft>(() => (event ? draftOf(event) : BLANK));
+  const [draft, setDraft] = useState<TourneyDraft>(() =>
+    event ? draftOf(event) : { ...BLANK, proposal: proposing === "only" },
+  );
+  const proposal = !editing && draft.proposal;
 
   const set = (patch: Partial<TourneyDraft>) => setDraft((held) => ({ ...held, ...patch }));
 
@@ -402,11 +416,39 @@ export function TournamentForm({
   const bound = (value: number | null) => (value === null ? "" : String(value));
   const asBound = (value: string) => (value.trim() === "" ? null : Number(value));
 
-  const title = t(editing ? "tournaments.form.editTitle" : "tournaments.form.createTitle");
+  const title = t(
+    editing ? "tournaments.form.editTitle" : proposal ? "tournaments.form.proposeTitle" : "tournaments.form.createTitle",
+  );
 
   return (
     <FormFrame inline={inline} title={title} onClose={onClose}>
       {!inline && <h3>{title}</h3>}
+
+      {/* Host it or propose it (#569), as the website's create form asks
+          an account that may host. One that may not can only propose, and is
+          not asked. */}
+      {!editing && proposing === "choice" && (
+        <div className="proposal-options" role="radiogroup" aria-label={t("tournaments.form.hostMode")}>
+          <label className={draft.proposal ? "proposal-option" : "proposal-option is-chosen"}>
+            <input type="radio" name="tournament-host-mode" checked={!draft.proposal} onChange={() => set({ proposal: false })} />
+            <span className="proposal-option-copy">
+              <strong>{t("tournaments.form.hostMyself")}</strong>
+            </span>
+          </label>
+          <label className={draft.proposal ? "proposal-option is-chosen" : "proposal-option"}>
+            <input type="radio" name="tournament-host-mode" checked={draft.proposal} onChange={() => set({ proposal: true })} />
+            <span className="proposal-option-copy">
+              <strong>{t("tournaments.form.proposeIt")}</strong>
+            </span>
+          </label>
+        </div>
+      )}
+      {proposal && (
+        <p className="proposal-note">
+          <Icon name="flag" size={15} />
+          <span>{t("tournaments.form.proposeIntro")}</span>
+        </p>
+      )}
 
       {!editing && onLoadTemplate !== undefined && (
         <CreateStarters
@@ -618,18 +660,22 @@ export function TournamentForm({
                 <option value="freeForAll">{t("tournaments.form.competitionFfa")}</option>
               </select>
             </label>
-            <label className="tournament-field">
-              <span>{t("tournaments.form.category")}</span>
-              <select
-                value={draft.category}
-                onChange={(changed) =>
-                  set({ category: changed.target.value as TourneyDraft["category"] })
-                }
-              >
-                <option value="community">{t("tournaments.form.categoryCommunity")}</option>
-                <option value="official">{t("tournaments.form.categoryOfficial")}</option>
-              </select>
-            </label>
+            {/* A proposal is community until the director who takes it over
+                says otherwise, so the choice is theirs, not the proposer's. */}
+            {!proposal && (
+              <label className="tournament-field">
+                <span>{t("tournaments.form.category")}</span>
+                <select
+                  value={draft.category}
+                  onChange={(changed) =>
+                    set({ category: changed.target.value as TourneyDraft["category"] })
+                  }
+                >
+                  <option value="community">{t("tournaments.form.categoryCommunity")}</option>
+                  <option value="official">{t("tournaments.form.categoryOfficial")}</option>
+                </select>
+              </label>
+            )}
             <label className="tournament-field">
               <span>{t("tournaments.form.teamSize")}</span>
               <select
@@ -1029,7 +1075,9 @@ export function TournamentForm({
               ? "tournaments.form.saving"
               : editing
                 ? "tournaments.form.save"
-                : "tournaments.form.create",
+                : proposal
+                  ? "tournaments.form.proposeCreate"
+                  : "tournaments.form.create",
           )}
         </Button>
       </div>

@@ -1,0 +1,6 @@
+- The matchmaker's recent results show Victory for a game your team won, even when your own commander died.
+- The Hall of Fame in the Tournaments tab shows every player's global rating instead of N/A.
+- Private lobbies show their lock in the top left corner of the map picture.
+- The host dialog of the Play tab no longer lists co-op missions and lessons among the maps.
+- Every avatar assigned to you can be worn from your player card, and a choice the server refuses now says so.
+- Players in a custom lobby no longer lose their flag and rating after they reconnect.

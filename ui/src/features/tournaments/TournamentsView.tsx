@@ -17,7 +17,8 @@
 // selected event (`TournamentEventDetail`) are their own components, each
 // subscribing to the fields it reads.
 
-import { useEffect, useState } from "react";
+import { useForegroundInterval } from "../../shared/hooks/useForegroundInterval";
+import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { StatusNotice } from "../../design-system/StatusNotice";
@@ -61,6 +62,9 @@ export function TournamentsView() {
   const assetBase = useAppStore((store) => store.state.tourney.assetBase);
   const actionError = useAppStore((store) => store.state.tourney.actionError);
   const account = useAppStore((store) => store.state.tourney.site.account);
+  // The site takes proposals with FAF login on (#569), from a signed-in
+  // account.
+  const canPropose = account.proposals && account.oauth && hosting.loggedIn;
   const editorAccess = useAppStore((store) => store.state.tourney.site.editorAccess);
   const importerAccess = useAppStore((store) => store.state.tourney.site.importerAccess);
   const sitePending = useAppStore((store) => store.state.tourney.site.pending);
@@ -71,7 +75,7 @@ export function TournamentsView() {
   const templateStatus = useAppStore((store) => store.state.tourney.templateStatus);
   const discord = useAppStore((store) => store.state.tourney.discord);
   const [reporting, setReporting] = useState<TourneyMatch | null>(null);
-  const [editing, setEditing] = useState<"create" | "edit" | null>(null);
+  const [editing, setEditing] = useState<"create" | "propose" | "edit" | null>(null);
   /** The event whose signup dialog is open, if any. */
   const [entering, setEntering] = useState<string | null>(null);
   // A countdown drawn once is wrong within the minute, and this tab is one
@@ -82,10 +86,7 @@ export function TournamentsView() {
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   /** The tab row's slot the open event's display switches are drawn into. */
   const [eventTools, setEventTools] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), TICK_MS);
-    return () => window.clearInterval(timer);
-  }, []);
+  useForegroundInterval(() => setNow(Math.floor(Date.now() / 1000)), TICK_MS, true);
 
   const { page, setPage, jump, siteWrite, openPage, openEventPage } = useTourneySite();
   const fold = useEventListFold();
@@ -148,6 +149,22 @@ export function TournamentsView() {
             <Icon name="plus" size={16} /> {t("tournaments.form.createTitle")}
           </Button>
         )}
+        {/* An account that may not host can still propose one (#569): it
+            builds the event, and a tournament director runs it. */}
+        {canPropose && !hosting.allowed && (
+          <Button
+            variant="primary"
+            onClick={() => {
+              act({ type: "loadSeries" });
+              act({ type: "loadPresets" });
+              act({ type: "loadCopySources" });
+              setEditing("propose");
+            }}
+            disabled={busy}
+          >
+            <Icon name="plus" size={16} /> {t("tournaments.form.proposeButton")}
+          </Button>
+        )}
         {/* The same deployment the tab reads from, opened in the browser.
             The tournament site is not going away: it works on a phone, which
             is where a good share of sign-ups happen, and it is where events
@@ -174,6 +191,7 @@ export function TournamentsView() {
         onGo={(tournamentId, section) => openEventPage(tournamentId, section)}
         onReview={() => openPage({ kind: "console" })}
         onDismiss={() => siteWrite({ type: "dismissRequests" })}
+        onDismissProposals={() => siteWrite({ type: "dismissProposals" })}
       />
 
       {status.type === "failed" && (
@@ -256,6 +274,7 @@ export function TournamentsView() {
           template={template}
           templateStatus={templateStatus}
           onLoadTemplate={(tournamentId) => act({ type: "loadTemplate", payload: { tournamentId } })}
+          proposing={editing === "propose" ? "only" : editing === "create" && canPropose ? "choice" : undefined}
         />
       )}
 

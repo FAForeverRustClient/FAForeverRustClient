@@ -35,6 +35,26 @@ const TOAST_POSITIONS: Record<ToastPosition, MessageKey> = {
   topRight: "settings.notifications.toastPosition.topRight",
 };
 
+/**
+ * How a new notification gets attention (#644), as one choice over the
+ * `sound` and `popup` switches. Both off is not one of them: that is turning
+ * notifications off, which is the switch at the top of the page.
+ */
+type AnnounceMode = "soundAndPopup" | "popupOnly" | "soundOnly";
+
+const ANNOUNCE_MODES: AnnounceMode[] = ["soundAndPopup", "popupOnly", "soundOnly"];
+
+const ANNOUNCE_PATCHES: Record<AnnounceMode, NotificationPreferencesPatch> = {
+  soundAndPopup: { sound: true, popup: true },
+  popupOnly: { sound: false, popup: true },
+  soundOnly: { sound: true, popup: false },
+};
+
+function announceMode(preferences: { sound: boolean; popup?: boolean }): AnnounceMode {
+  if (!(preferences.popup ?? true)) return "soundOnly";
+  return preferences.sound ? "soundAndPopup" : "popupOnly";
+}
+
 const save = (patch: NotificationPreferencesPatch) =>
   ipc.send({
     kind: "Settings",
@@ -248,13 +268,22 @@ export function NotificationsSettingsSection() {
           label={t("settings.notifications.desktopAllKinds")}
         />
       </SettingRow>
-      <SettingRow label={t("settings.notifications.sound")} hint={t("settings.notifications.soundHint")}>
-        <SettingsSwitch
-          checked={preferences.sound}
+      {/* One choice over two switches (#644): sound and pop-up, pop-up only,
+          or sound only. Turning both off is the switch at the top. */}
+      <SettingRow label={t("settings.notifications.announce")} hint={t("settings.notifications.announceHint")}>
+        <select
+          className="settings-select"
+          value={announceMode(preferences)}
           disabled={!preferences.enabled}
-          onChange={(sound) => update({ sound })}
-          label={t("settings.notifications.sound")}
-        />
+          onChange={(event) => update(ANNOUNCE_PATCHES[event.target.value as AnnounceMode])}
+          aria-label={t("settings.notifications.announce")}
+        >
+          {ANNOUNCE_MODES.map((mode) => (
+            <option key={mode} value={mode}>
+              {t(`settings.notifications.announce.${mode}`)}
+            </option>
+          ))}
+        </select>
       </SettingRow>
       {/* Why a picked file was not kept: the wrong format, or too large. The
           dropdown it was picked from is twelve rows down the page, so the
@@ -297,6 +326,21 @@ export function NotificationsSettingsSection() {
           aria-label={t("settings.notifications.repeatCooldown")}
           onChange={(seconds) =>
             update({ repeatCooldownSeconds: Math.min(600, Math.max(0, Math.round(seconds))) })}
+        />
+      </SettingRow>
+      <SettingRow
+        label={t("settings.notifications.historyLifetime")}
+        hint={t("settings.notifications.historyLifetimeHint")}
+      >
+        <NumberInput
+          className="number-input"
+          value={preferences.historyLifetimeSeconds ?? 0}
+          min={0}
+          max={86400}
+          disabled={!preferences.enabled}
+          aria-label={t("settings.notifications.historyLifetime")}
+          onChange={(seconds) =>
+            update({ historyLifetimeSeconds: Math.min(86400, Math.max(0, Math.round(seconds))) })}
         />
       </SettingRow>
       {/* The added files. Adding one is also a row in every dropdown, but

@@ -120,7 +120,7 @@ pub async fn start(
     let hosted = hosted_game.is_some();
     let started = std::time::Instant::now();
 
-    // 0. Reproduce a generated map before anything else.
+    // 0. Reproduce a generated map.
     //
     // Matchmaker pools contain maps that are never distributed as files: the
     // server names them and every client rebuilds identical terrain from the
@@ -128,21 +128,29 @@ pub async fn start(
     // drops the player into a game they cannot load, so this is a hard gate on
     // the launch rather than a warning. Both reference clients do the same
     // check at the same point (Java's `MapService.generateIfNotInstalled`).
+    //
+    // 1. Patch the featured mod and download the map.
+    //
+    // The server does not care whether this client is current: it will happily
+    // seat a player on an old build or a map they have never seen, and the game
+    // then fails to load or desyncs. Both reference clients update before every
+    // game rather than tracking whether an update is due (Java's
+    // `prepareAndLaunchGameWhenReady`, the Python client's `fa.check.check`);
+    // it is cheap when nothing changed, because files matching by MD5 are
+    // skipped and a present map is not re-fetched.
+    //
+    // The two side by side (#596). Generating is the processor rebuilding
+    // terrain, the update is the network and the disk, and the update never
+    // asks for a generated map, so neither has to wait for the other: one
+    // after the other, a match on a generated map waited for the sum of both.
+    // Both run to their end before either answer is read, so a failed
+    // generation never drops an update half-way through the game's files.
     if !already_prepared {
-        if let Err(reason) = ensure_generated_map(&launch.mapname, ctx, out).await {
-            return fail(ctx, out, reason);
-        }
-
-        // 1. Patch the featured mod and download the map.
-        //
-        // The server does not care whether this client is current: it will happily
-        // seat a player on an old build or a map they have never seen, and the game
-        // then fails to load or desyncs. Both reference clients update before every
-        // game rather than tracking whether an update is due (Java's
-        // `prepareAndLaunchGameWhenReady`, the Python client's `fa.check.check`);
-        // it is cheap when nothing changed, because files matching by MD5 are
-        // skipped and a present map is not re-fetched.
-        if let Err(reason) = prepare_install(launch, ctx, out).await {
+        let (generated, installed) = tokio::join!(
+            ensure_generated_map(&launch.mapname, ctx, out),
+            prepare_install(launch, ctx, out),
+        );
+        if let Err(reason) = generated.and(installed) {
             return fail(ctx, out, reason);
         }
 
@@ -419,6 +427,11 @@ async fn prepare_map_and_mod(
     use faf_domain::protocol::map_generator::is_generated_map;
 
     let cache_rolling_branches = out.with_state(|state| state.settings.game.cache_rolling_branches);
+    // One after the other here, unlike the launch (#596): a join or a host is
+    // something the player can still call off while its map is generated,
+    // and then the updater is not to start at all, rather than start and be
+    // stopped half-way through the game's files
+    // (`cancelling_join_closes_its_generator_and_does_not_start_the_updater`).
     ensure_generated_map(map, ctx, out).await?;
     // Called off while its map was being generated: the updater is not
     // started for a join nobody wants any more.

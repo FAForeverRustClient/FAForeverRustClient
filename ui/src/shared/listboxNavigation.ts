@@ -45,6 +45,35 @@ export function nextListboxIndex(key: string, current: number, count: number): n
   }
 }
 
+/** How much wheel travel is one row: a mouse notch is 100 or 120. */
+const WHEEL_STEP = 50;
+
+/**
+ * Turns Ctrl+wheel into whole rows (#642): the plain wheel scrolls a column,
+ * and with Ctrl held it walks the selection, a row per notch, the way the
+ * arrow keys do.
+ *
+ * Travel is gathered until it makes a row, because a touchpad sends a stream
+ * of small deltas where a mouse sends one large one; without that, a short
+ * swipe would race through dozens of maps.
+ */
+export class WheelStepper {
+  private travel = 0;
+
+  /** The row the wheel moves to, or `null` when it is left to scroll. */
+  next(event: { ctrlKey: boolean; deltaY: number }, current: number, count: number): number | null {
+    if (!event.ctrlKey) {
+      this.travel = 0;
+      return null;
+    }
+    this.travel += event.deltaY;
+    if (Math.abs(this.travel) < WHEEL_STEP) return current;
+    const key = this.travel > 0 ? "ArrowDown" : "ArrowUp";
+    this.travel = 0;
+    return nextListboxIndex(key, current, count);
+  }
+}
+
 /**
  * Move focus onto the row that was just selected.
  *

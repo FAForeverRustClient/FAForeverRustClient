@@ -83,6 +83,7 @@ export type IconName =
   | "settings"
   | "logout"
   | "arrowRight"
+  | "reply"
   | "flag"
   | "arrowLeft"
   | "chevronRight"
@@ -176,6 +177,8 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     logout: <><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></>,
     // Lucide `arrow-right`.
     arrowRight: <><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></>,
+    // Lucide `reply`: the curved, left-facing arrow every chat uses for it.
+    reply: <><path d="M20 18v-2a4 4 0 0 0-4-4H4" /><path d="m9 17-5-5 5-5" /></>,
     // Lucide `flag`.
     flag: <><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528" /></>,
     // Lucide `arrow-left`.

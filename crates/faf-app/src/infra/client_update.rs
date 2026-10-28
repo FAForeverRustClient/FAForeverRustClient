@@ -30,14 +30,17 @@
 //! [`ASSET_SUFFIXES`], so a hostile asset name cannot influence where the
 //! client writes or what it runs.
 
+mod installer;
+
 use async_trait::async_trait;
-use faf_domain::protocol::changelog::parse_release_notes;
+use faf_domain::protocol::changelog::{marks_required_update, parse_release_notes};
 use faf_domain::state::{
     compare_versions, is_release_version, strip_version_prefix, ClientRelease, ClientReleaseNotes,
     ReleaseChannel,
 };
 use serde_json::Value;
 use std::cmp::Ordering;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 use tokio::sync::mpsc;
@@ -247,12 +250,35 @@ impl GitHubUpdates {
         }
 
         let target = self.installer_path(release)?;
+        self.run_download_to(release, progress, called_off, &target)
+            .await
+    }
+
+    async fn run_download_to(
+        &self,
+        release: &ClientRelease,
+        progress: &mpsc::Sender<DownloadProgress>,
+        called_off: &CancellationToken,
+        target: &std::path::Path,
+    ) -> Result<String, String> {
         let directory = target
             .parent()
             .ok_or_else(|| "could not resolve the download directory".to_string())?;
         tokio::fs::create_dir_all(directory)
             .await
             .map_err(|e| format!("could not create the download directory: {e}"))?;
+        // A completed target only arrives through our atomic rename below.
+        // Reuse its advertised, non-zero size instead of fetching it again.
+        if release.size_bytes > 0
+            && tokio::fs::symlink_metadata(target)
+                .await
+                .is_ok_and(|metadata| {
+                    metadata.is_file() && metadata.len() == u64::from(release.size_bytes)
+                })
+        {
+            prune_installers(directory, target).await;
+            return Ok(target.to_string_lossy().into_owned());
+        }
         let partial = target.with_extension("partial");
         // Clean up a file left by a process kill before starting another
         // attempt; completed installers use a different path.
@@ -372,11 +398,46 @@ impl GitHubUpdates {
             return Err(error);
         }
 
-        if let Err(error) = tokio::fs::rename(&partial, &target).await {
+        if let Err(error) = tokio::fs::rename(&partial, target).await {
             let _ = tokio::fs::remove_file(&partial).await;
             return Err(format!("could not store the installer: {error}"));
         }
+        prune_installers(directory, target).await;
         Ok(target.to_string_lossy().into_owned())
+    }
+}
+
+/// Only our installer files are pruned; unrelated cache entries stay intact.
+async fn prune_installers(directory: &std::path::Path, keep: &std::path::Path) {
+    let mut entries = match tokio::fs::read_dir(directory).await {
+        Ok(entries) => entries,
+        Err(error) => {
+            tracing::warn!(kind = ?error.kind(), "could not read cached installers");
+            return;
+        }
+    };
+    loop {
+        let entry = match entries.next_entry().await {
+            Ok(Some(entry)) => entry,
+            Ok(None) => break,
+            Err(error) => {
+                tracing::warn!(kind = ?error.kind(), "could not read a cached installer entry");
+                break;
+            }
+        };
+        if entry.path() == keep
+            || !entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with("faf-client-")
+        {
+            continue;
+        }
+        if entry.file_type().await.is_ok_and(|kind| kind.is_file()) {
+            if let Err(error) = tokio::fs::remove_file(entry.path()).await {
+                tracing::warn!(file = ?entry.file_name(), kind = ?error.kind(), "could not remove an old installer");
+            }
+        }
     }
 }
 
@@ -545,6 +606,7 @@ fn release_notes_from(releases: &[Value], issue_base: &str) -> Vec<ClientRelease
                 notes_url: text("html_url").to_string(),
                 // `null` for a release published with no text at all.
                 blocks: parse_release_notes(text("body"), issue_base),
+                required: marks_required_update(text("body")),
             })
         })
         .collect();
@@ -591,13 +653,31 @@ fn pick_asset(assets: Option<&Value>) -> Option<Asset> {
     None
 }
 
-/// Launch the installer and return; it outlives this process.
+/// Install the update and return.
 ///
-/// An `.msi` is data, not a program, so it goes through `msiexec`. Everything
-/// else is executed directly, matching Java's `ProcessBuilder(command)`.
+/// A Linux AppImage replaces the image this process was launched from, and the
+/// shell then restarts into it. An `.msi` is data, not a program, so it goes
+/// through `msiexec`. Everything else is executed directly, matching Java's
+/// `ProcessBuilder(command)`.
 async fn start_installer(path: &Path) -> Result<(), String> {
     if !path.is_file() {
         return Err(format!("{} is no longer there", path.display()));
+    }
+
+    // An AppImage is the installed application, not an installer. Starting the
+    // downloaded copy from the update cache would run the new version once but
+    // leave the AppImage the user normally launches unchanged. Put the new
+    // image over that file instead; the running process keeps using the old
+    // inode until it exits. Copying some hundred megabytes is blocking work,
+    // so it stays off the async workers.
+    #[cfg(target_os = "linux")]
+    if path.extension().is_some_and(|ext| ext == "AppImage") {
+        if let Some(installed) = running_appimage() {
+            let downloaded = path.to_path_buf();
+            return tokio::task::spawn_blocking(move || replace_appimage(&downloaded, &installed))
+                .await
+                .map_err(|e| format!("could not replace the AppImage: {e}"))?;
+        }
     }
 
     #[cfg(unix)]
@@ -610,18 +690,79 @@ async fn start_installer(path: &Path) -> Result<(), String> {
             .map_err(|e| format!("could not make the installer executable: {e}"))?;
     }
 
-    let mut command = if path.extension().is_some_and(|ext| ext == "msi") {
-        let mut command = tokio::process::Command::new("msiexec");
-        command.arg("/i").arg(path);
-        command
-    } else {
-        tokio::process::Command::new(path)
-    };
+    let mut command = tokio::process::Command::from(installer::command(path, cfg!(windows)));
 
     command
         .spawn()
         .map(|_child| ())
         .map_err(|e| format!("could not start the installer: {e}"))
+}
+
+/// The AppImage file this process runs from, if it runs from one.
+///
+/// `APPIMAGE` alone is no proof. The AppImage runtime sets it for the program
+/// it starts and every child inherits it, so a client started from a terminal
+/// inside some other AppImage (an editor, say) sees that one's path, and an
+/// update would overwrite the editor with this client. The runtime mounts the
+/// image at `APPDIR` and runs this binary from inside the mount, so the two
+/// variables describe this process only when its executable is under `APPDIR`.
+#[cfg(target_os = "linux")]
+pub fn running_appimage() -> Option<PathBuf> {
+    appimage_of(
+        std::env::var_os("APPIMAGE").as_deref(),
+        std::env::var_os("APPDIR").as_deref(),
+        std::env::current_exe().ok().as_deref(),
+    )
+}
+
+/// [`running_appimage`]'s decision, apart from the process it reads.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn appimage_of(
+    appimage: Option<&OsStr>,
+    appdir: Option<&OsStr>,
+    executable: Option<&Path>,
+) -> Option<PathBuf> {
+    let appimage = PathBuf::from(appimage.filter(|value| !value.is_empty())?);
+    let appdir = Path::new(appdir?);
+    // `/` or an empty value would hold every executable on the machine.
+    appdir.parent()?;
+    executable?.starts_with(appdir).then_some(appimage)
+}
+
+/// Atomically replace a running AppImage without modifying the inode mounted
+/// by its current process. The temporary file lives beside the installed one,
+/// so the final rename cannot cross filesystems even when the download cache
+/// does.
+#[cfg(target_os = "linux")]
+fn replace_appimage(downloaded: &Path, installed: &Path) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    if !installed.is_file() {
+        return Err(format!(
+            "could not replace the AppImage: {} is no longer there",
+            installed.display()
+        ));
+    }
+    let directory = installed.parent().ok_or_else(|| {
+        format!(
+            "could not resolve the AppImage directory for {}",
+            installed.display()
+        )
+    })?;
+    let temporary = tempfile::NamedTempFile::new_in(directory)
+        .map_err(|e| format!("could not create the replacement AppImage: {e}"))?;
+    std::fs::copy(downloaded, temporary.path())
+        .map_err(|e| format!("could not copy the replacement AppImage: {e}"))?;
+    std::fs::set_permissions(temporary.path(), std::fs::Permissions::from_mode(0o755))
+        .map_err(|e| format!("could not make the replacement AppImage executable: {e}"))?;
+    temporary
+        .as_file()
+        .sync_all()
+        .map_err(|e| format!("could not finish writing the replacement AppImage: {e}"))?;
+    temporary
+        .persist(installed)
+        .map(|_| ())
+        .map_err(|e| format!("could not replace the AppImage: {}", e.error))
 }
 
 /// Reports that the client is current, without asking anyone.
@@ -813,11 +954,32 @@ mod tests {
             panic!("expected the features list, got {:?}", notes[0].blocks[1]);
         };
         assert!(items[0].spans.contains(&ChangelogSpan::Issue {
+            label: None,
             number: "12".into(),
             url: "https://github.com/Org/Repo/issues/12".into(),
         }));
         assert_eq!(notes[1].published_at, None);
         assert!(notes[1].blocks.is_empty());
+    }
+
+    #[test]
+    fn a_release_published_as_required_says_so_in_its_notes() {
+        use faf_domain::protocol::changelog::REQUIRED_UPDATE_LINE;
+        let mut required = release_json("v0.10.0", false, true);
+        required["body"] = Value::String(format!(
+            "{REQUIRED_UPDATE_LINE}
+
+### Bug fixes
+
+- Fixed it.
+"
+        ));
+        let notes = release_notes_from(
+            &[required, release_json("v0.9.0", false, true)],
+            "https://github.com/Org/Repo/issues",
+        );
+        assert!(notes[0].required);
+        assert!(!notes[1].required);
     }
 
     /// A local release list that answers every request with `body` and counts
@@ -980,6 +1142,54 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn update_notice_reuses_complete_installers_and_prunes_only_older_files() {
+        let directory =
+            std::env::temp_dir().join(format!("faf-update-reuse-{}", rand::random::<u64>()));
+        tokio::fs::create_dir(&directory).await.unwrap();
+        let target = directory.join("faf-client-1.0.0.exe");
+        let old = directory.join("faf-client-0.9.0.exe");
+        let unrelated = directory.join("keep.txt");
+        let subdirectory = directory.join("faf-client-folder");
+        tokio::fs::write(&target, b"whole").await.unwrap();
+        tokio::fs::write(&old, b"older").await.unwrap();
+        tokio::fs::write(&unrelated, b"keep").await.unwrap();
+        tokio::fs::create_dir(&subdirectory).await.unwrap();
+        let release = ClientRelease {
+            version: "1.0.0".into(),
+            size_bytes: 5,
+            download_url: "https://github.invalid/installer".into(),
+            ..Default::default()
+        };
+        let client = GitHubUpdates::new(config());
+        let (tx, _rx) = mpsc::channel(4);
+        let cancelled = CancellationToken::new();
+        cancelled.cancel();
+        // A cache hit succeeds even with the network path already cancelled.
+        let path = client
+            .run_download_to(&release, &tx, &cancelled, &target)
+            .await
+            .unwrap();
+        assert_eq!(std::path::Path::new(&path), target);
+        assert!(!old.exists());
+        assert!(unrelated.exists());
+        assert!(subdirectory.is_dir());
+        for size_bytes in [4, 0] {
+            let wrong_size = ClientRelease {
+                size_bytes,
+                ..release.clone()
+            };
+            assert_eq!(
+                client
+                    .run_download_to(&wrong_size, &tx, &cancelled, &target)
+                    .await
+                    .unwrap_err(),
+                DOWNLOAD_CALLED_OFF
+            );
+        }
+        tokio::fs::remove_dir_all(directory).await.unwrap();
+    }
+
+    #[tokio::test]
     async fn an_untrusted_download_url_never_reaches_the_network() {
         // If this reached `reqwest` it would resolve `evil.invalid` and fail
         // with a DNS error instead of the refusal.
@@ -1023,6 +1233,90 @@ mod tests {
             ..ClientRelease::default()
         };
         assert!(client.installer_path(&release).is_err());
+    }
+
+    #[test]
+    fn the_image_is_this_clients_when_it_runs_from_the_images_mount() {
+        let image = OsStr::new("/home/p/Apps/FAForever.AppImage");
+        let mount = OsStr::new("/tmp/.mount_FAForeY2");
+        let executable = Path::new("/tmp/.mount_FAForeY2/usr/bin/faf-client");
+        assert_eq!(
+            appimage_of(Some(image), Some(mount), Some(executable)),
+            Some(PathBuf::from("/home/p/Apps/FAForever.AppImage"))
+        );
+        assert_eq!(appimage_of(None, Some(mount), Some(executable)), None);
+        assert_eq!(appimage_of(Some(image), None, Some(executable)), None);
+        assert_eq!(
+            appimage_of(Some(OsStr::new("")), Some(mount), Some(executable)),
+            None
+        );
+        // A root or empty APPDIR would hold every executable there is.
+        assert_eq!(
+            appimage_of(Some(image), Some(OsStr::new("/")), Some(executable)),
+            None
+        );
+        assert_eq!(
+            appimage_of(Some(image), Some(OsStr::new("")), Some(executable)),
+            None
+        );
+    }
+
+    #[test]
+    fn an_inherited_appimage_variable_never_names_another_programs_image() {
+        // Started from a terminal inside an editor's AppImage: both variables
+        // are the editor's.
+        let editor = OsStr::new("/home/p/Apps/Editor.AppImage");
+        let editor_mount = OsStr::new("/tmp/.mount_EditorX1");
+        for executable in [
+            // This client as its own AppImage would have had both variables
+            // reset by its runtime, so this pairing means it is not one.
+            "/tmp/.mount_FAForeY2/usr/bin/faf-client",
+            // A .deb or .rpm install.
+            "/usr/bin/faf-client",
+        ] {
+            assert_eq!(
+                appimage_of(
+                    Some(editor),
+                    Some(editor_mount),
+                    Some(Path::new(executable))
+                ),
+                None,
+                "{executable}"
+            );
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn an_appimage_update_replaces_the_installed_file_atomically() {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        let download_dir = tempfile::tempdir().expect("download directory");
+        let install_dir = tempfile::tempdir().expect("install directory");
+        let downloaded = download_dir.path().join("faf-client-2.0.0.AppImage");
+        let installed = install_dir.path().join("FAForever.AppImage");
+        std::fs::write(&downloaded, b"new appimage").expect("downloaded image");
+        std::fs::write(&installed, b"old appimage").expect("installed image");
+
+        replace_appimage(&downloaded, &installed).expect("replace the image");
+
+        assert_eq!(std::fs::read(&installed).unwrap(), b"new appimage");
+        assert_eq!(
+            std::fs::metadata(&installed).unwrap().permissions().mode() & 0o777,
+            0o755
+        );
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_failed_appimage_copy_leaves_the_installed_file_untouched() {
+        let directory = tempfile::tempdir().expect("install directory");
+        let downloaded = directory.path().join("missing.AppImage");
+        let installed = directory.path().join("FAForever.AppImage");
+        std::fs::write(&installed, b"old appimage").expect("installed image");
+
+        assert!(replace_appimage(&downloaded, &installed).is_err());
+        assert_eq!(std::fs::read(&installed).unwrap(), b"old appimage");
     }
 
     #[tokio::test]

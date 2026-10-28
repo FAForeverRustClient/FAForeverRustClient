@@ -197,9 +197,38 @@ fn steam_retail_install_paths() -> Vec<PathBuf> {
     out
 }
 
+/// The original game, wherever [`retail_install_dir`] would look, or `None`
+/// when it is nowhere. Unlike that function it never falls back to the FAF
+/// install: the Linux runtime asks whether there is a game to run at all.
+pub(crate) fn find_retail_install() -> Option<PathBuf> {
+    if let Ok(dir) = std::env::var("FAF_GAME_INSTALL_DIR") {
+        if !dir.is_empty() {
+            return Some(PathBuf::from(dir));
+        }
+    }
+    crate::infra::paths::original_game_dir()
+        .into_iter()
+        .chain(crate::infra::game::reference_retail_install_paths())
+        .chain(typical_retail_install_paths())
+        .chain(steam_retail_install_paths())
+        .find(|dir| is_retail_install(dir))
+}
+
+/// Steam's own folder outside Windows: the first of [`steam_roots`] that
+/// holds a library list, which is how faf-linux's `setup.sh` picks it. The
+/// Linux runtime hands it to Proton and loads its overlay from it.
+pub(crate) fn steam_install_dir() -> Option<PathBuf> {
+    if cfg!(windows) {
+        return None;
+    }
+    steam_roots()
+        .into_iter()
+        .find(|root| root.join("steamapps").join("libraryfolders.vdf").is_file())
+}
+
 /// Where Steam itself is installed: under Program Files on Windows; outside
 /// it, `~/.steam/steam` (the Java client's guess), its usual target
-/// `~/.local/share/Steam`, and the Flatpak's.
+/// `~/.local/share/Steam`, the Flatpak's and the Snap's.
 fn steam_roots() -> Vec<PathBuf> {
     let mut roots: Vec<PathBuf> = program_files_dirs()
         .into_iter()
@@ -211,6 +240,7 @@ fn steam_roots() -> Vec<PathBuf> {
             roots.push(home.join(".steam").join("steam"));
             roots.push(home.join(".local").join("share").join("Steam"));
             roots.push(home.join(".var/app/com.valvesoftware.Steam/.local/share/Steam"));
+            roots.push(home.join("snap/steam/common/.local/share/Steam"));
         }
     }
     roots
@@ -537,8 +567,17 @@ pub(super) fn documents_vault_dir() -> Option<PathBuf> {
     Some(crate::infra::faf_content::vault_dir())
 }
 
+/// A path the way FA reads it from `fa_path.lua`: forward slashes, and a Linux
+/// path on the `Z:` drive Wine maps the filesystem root to.
+///
+/// The spelling is [`game_visible_path`]'s, so the command line and this file
+/// cannot drift apart. Unlike the command line it does not wait for a launch
+/// wrapper: outside Windows the only program that ever reads this file is FA
+/// running under Wine.
+///
+/// [`game_visible_path`]: crate::infra::game::game_visible_path
 fn slashed(path: &Path) -> String {
-    path.display().to_string().replace('\\', "/")
+    crate::infra::game::game_visible_path(path, !cfg!(windows)).replace('\\', "/")
 }
 
 /// Whether every one of the version offsets in `exe_path` already holds
@@ -910,6 +949,23 @@ mod tests {
         copy_retail_binaries(&temp.path().join("missing"), &faf).unwrap();
 
         assert_eq!(std::fs::read_dir(faf.join("bin")).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn fa_path_lua_names_a_linux_path_on_wines_z_drive() {
+        // Spelled out rather than built with `slashed`, so the test fails if
+        // the translation does.
+        let steam = Path::new(
+            "/home/player/.local/share/Steam/steamapps/common/Supreme Commander Forged Alliance",
+        );
+        let expected = if cfg!(windows) {
+            "/home/player/.local/share/Steam/steamapps/common/Supreme Commander Forged Alliance"
+        } else {
+            "Z:/home/player/.local/share/Steam/steamapps/common/Supreme Commander Forged Alliance"
+        };
+        assert_eq!(slashed(steam), expected);
+        // A Windows path keeps its drive and only turns its separators.
+        assert_eq!(slashed(Path::new(r"C:\Games\FA")), "C:/Games/FA");
     }
 
     #[test]

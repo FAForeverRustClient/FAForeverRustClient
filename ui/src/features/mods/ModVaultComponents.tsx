@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ReportDialog } from "../../shared/components/ReportDialog";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { native } from "../../ipc/native";
 import { ConfirmDialog } from "../../design-system/ConfirmDialog";
 import { FactsStrip } from "../../design-system/FactsStrip";
 import { VaultFeaturedBadge } from "../../design-system/VaultFeaturedBadge";
@@ -404,9 +405,12 @@ export function ModDetailPanel({
               <Icon name="flag" size={13} />
             </button>
           </div>
+          {/* A line each (issue 635): the author is what the mod's own
+              mod_info.lua declares, the uploader the account that published
+              it, and the creator search matches either. */}
           <p className="mod-detail-byline">
-            {mod.author ? t("mods.vault.authoredBy", { author: mod.author }) : t("mods.vault.unknownAuthor")}
-            {mod.uploader && mod.uploader !== mod.author ? ` · ${t("mods.vault.uploadedBy", { uploader: mod.uploader })}` : ""}
+            <span>{mod.author ? t("mods.vault.authoredBy", { author: mod.author }) : t("mods.vault.unknownAuthor")}</span>
+            {mod.uploader && <span>{t("mods.vault.uploadedBy", { uploader: mod.uploader })}</span>}
           </p>
           <div className="mod-detail-tags">
             <span className={`mod-vault-type ${mod.modType}`}>
@@ -493,6 +497,12 @@ export function ModDetailPanel({
               <Button variant="ghost" disabled={busy} onClick={onToggle}>
                 <Icon name={installed.enabled ? "close" : "check"} size={15} />
                 {toggleLabel}
+              </Button>
+            )}
+            {installed && (
+              <Button variant="ghost" onClick={() => void native.openInstalledFolder("mods", installed.folderName)}>
+                <Icon name="folder" size={15} />
+                {t("common.openFolder")}
               </Button>
             )}
             {installed && (

@@ -30,10 +30,10 @@ use std::sync::{Arc, Mutex, PoisonError};
 use faf_domain::state::{
     AuthCommand, ChangelogCommand, ChatCommand, ClanCommand, ClientUpdateCommand,
     ConnectivityCommand, CoopCommand, EventsCommand, GalacticWarCommand, GuidesCommand,
-    LeaderboardCommand, LobbyCommand, MapGeneratorCommand, MapsCommand, ModsCommand, NavCommand,
-    NotificationCommand, PlayerCardCommand, ReplayCommand, ReportingCommand, ReviewsCommand,
-    SessionCommand, SettingsCommand, SocialCommand, StreamsCommand, TourneyCommand, TourneyRead,
-    TrainingCommand, TutorialsCommand, UploadsCommand,
+    LeaderboardCommand, LinuxRuntimeCommand, LobbyCommand, MapGeneratorCommand, MapsCommand,
+    ModsCommand, NavCommand, NotificationCommand, PlayerCardCommand, ReplayCommand,
+    ReportingCommand, ReviewsCommand, SessionCommand, SettingsCommand, SocialCommand,
+    StreamsCommand, TourneyCommand, TourneyRead, TrainingCommand, TutorialsCommand, UploadsCommand,
 };
 use faf_domain::AppCommand;
 use tokio::sync::oneshot;
@@ -55,6 +55,11 @@ pub(crate) enum Key {
     MapVault,
     /// The whole mod catalogue crawl.
     ModVault,
+    /// "Check for updates" on installed mods: a read of the mod catalogue that
+    /// has to happen even while a background load is running. Its own key, so
+    /// that load cannot drop it; it then waits for that load inside the
+    /// service (`ModsContext::catalogue_writer`).
+    ModVaultCheck,
     /// The changelog index. A dropped load loses nothing: the one running ends
     /// by selecting the newest patch itself.
     Changelog,
@@ -75,6 +80,9 @@ pub(crate) enum Key {
     ClientReleaseNotes,
     /// Installing and launching Galactic War share a staging directory.
     GalacticWar,
+    /// Checking and installing the Linux runtime: one run owns its directory
+    /// and its record of what is installed.
+    LinuxRuntime,
     /// A GitHub device-flow sign-in: a second one would issue a second code
     /// and leave the one on screen dead.
     GuidesSignIn,
@@ -205,6 +213,7 @@ pub(crate) fn policy(command: &AppCommand) -> CommandPolicy {
         AppCommand::Events(command) => events(command),
         AppCommand::Uploads(command) => uploads(command),
         AppCommand::GalacticWar(command) => galactic_war(command),
+        AppCommand::LinuxRuntime(command) => linux_runtime(command),
         AppCommand::Guides(command) => guides(command),
         AppCommand::ClientUpdate(command) => client_update(command),
         AppCommand::Settings(command) => settings(command),
@@ -334,6 +343,7 @@ fn replays(command: &ReplayCommand) -> CommandPolicy {
         | ReplayCommand::LoadLocal { .. }
         | ReplayCommand::DeleteLocal { .. }
         | ReplayCommand::ResolveMaps { .. }
+        | ReplayCommand::ResolveSimMods { .. }
         | ReplayCommand::LookUpOnline { .. }
         | ReplayCommand::LookUpOnlineMany { .. } => ORDINARY,
         ReplayCommand::CancelLiveTracking
@@ -383,7 +393,12 @@ fn map_generator(command: &MapGeneratorCommand) -> CommandPolicy {
 fn mods(command: &ModsCommand) -> CommandPolicy {
     match command {
         ModsCommand::CancelVaultLoad => PRIORITY,
-        ModsCommand::LoadVault | ModsCommand::ReloadVault => single_flight(Key::ModVault),
+        // A second load while one runs is dropped: every tab that shows mods
+        // asks on mount, and queued they each ran a crawl of their own. A
+        // manual check has its own key, so a running load cannot drop it; it
+        // waits for that load in the service, then makes its own request.
+        ModsCommand::LoadVault => single_flight(Key::ModVault),
+        ModsCommand::ReloadVault => single_flight(Key::ModVaultCheck),
         ModsCommand::SearchVault { .. }
         | ModsCommand::LoadInstalled
         | ModsCommand::QueryDownloadSizes { .. } => ORDINARY,
@@ -538,7 +553,7 @@ fn tutorials(command: &TutorialsCommand) -> CommandPolicy {
 fn changelog(command: &ChangelogCommand) -> CommandPolicy {
     match command {
         ChangelogCommand::Load => single_flight(Key::Changelog),
-        ChangelogCommand::Select { .. } => ORDINARY,
+        ChangelogCommand::Select { .. } | ChangelogCommand::Search { .. } => ORDINARY,
     }
 }
 
@@ -569,6 +584,13 @@ fn galactic_war(command: &GalacticWarCommand) -> CommandPolicy {
         GalacticWarCommand::CancelInstall => PRIORITY,
         GalacticWarCommand::Refresh | GalacticWarCommand::RefreshStatistics => ORDINARY,
         GalacticWarCommand::Install | GalacticWarCommand::Play => single_flight(Key::GalacticWar),
+    }
+}
+
+fn linux_runtime(command: &LinuxRuntimeCommand) -> CommandPolicy {
+    match command {
+        LinuxRuntimeCommand::Prepare => single_flight(Key::LinuxRuntime),
+        LinuxRuntimeCommand::Cancel => PRIORITY,
     }
 }
 
@@ -625,6 +647,8 @@ fn settings(command: &SettingsCommand) -> CommandPolicy {
         | SettingsCommand::SetPlayerNameColor { .. }
         | SettingsCommand::SaveModPreset { .. }
         | SettingsCommand::DeleteModPreset { .. }
+        | SettingsCommand::SaveSearchPreset { .. }
+        | SettingsCommand::DeleteSearchPreset { .. }
         | SettingsCommand::CheckInstalls
         | SettingsCommand::RefreshGameCache
         | SettingsCommand::ClearGameCache => service_guarded(ServiceGuard::Settings),
@@ -861,8 +885,12 @@ mod tests {
             Admission::SingleFlight(Key::MapVault)
         );
         assert_eq!(
-            admission(ModsCommand::ReloadVault.into()),
+            admission(ModsCommand::LoadVault.into()),
             Admission::SingleFlight(Key::ModVault)
+        );
+        assert_eq!(
+            admission(ModsCommand::ReloadVault.into()),
+            Admission::SingleFlight(Key::ModVaultCheck)
         );
         assert_eq!(
             admission(

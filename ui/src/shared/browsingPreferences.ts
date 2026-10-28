@@ -6,6 +6,7 @@ import type {
   HostGamePreferences,
   LiveReplayFilters,
   ModPreset,
+  SearchPreset,
 } from "../ipc/bindings";
 
 export const LEGACY_CUSTOM_GAMES_VIEW_KEY = "faf-custom-games-view";
@@ -19,6 +20,11 @@ const MATCHMAKER_FACTIONS = ["UEF", "Aeon", "Cybran", "Seraphim"] as const;
 const MAX_MOD_PRESETS = 64;
 const MAX_MOD_PRESET_NAME_CHARS = 64;
 const MAX_MODS_PER_PRESET = 512;
+export const MAX_SEARCH_PRESETS_PER_LIST = 64;
+const MAX_SEARCH_PRESETS_TOTAL = 256;
+const MAX_SEARCH_PRESET_LIST_CHARS = 64;
+export const MAX_SEARCH_PRESET_NAME_CHARS = 64;
+const MAX_SEARCH_PRESET_QUERY_CHARS = 8 * 1024;
 const LEGACY_KEYS = [
   LEGACY_CUSTOM_GAMES_VIEW_KEY,
   LEGACY_MATCHMAKER_QUEUES_KEY,
@@ -156,6 +162,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
     hideFoes: false,
     applyFilters: false,
     rules: [],
+    allowRules: [],
     columnWidths: [],
     columnOrder: [],
     detailWidth: 0,
@@ -185,6 +192,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   matchmakerInviteColumns: [],
   matchmakerInviteOrder: [],
   modPresets: [],
+  searchPresets: [],
   leaderboardRatingColumns: [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
   leaderboardIncludeFormerNames: false,
   replayVaultPlayer: "",
@@ -258,6 +266,7 @@ export function normalizeBrowsingPreferences(
     matchmakerInviteColumns: normalizeColumnWidths(preferences.matchmakerInviteColumns),
     matchmakerInviteOrder: normalizeTableOrder(preferences.matchmakerInviteOrder),
     modPresets: normalizeModPresets(preferences.modPresets ?? []),
+    searchPresets: normalizeSearchPresets(preferences.searchPresets ?? []),
     leaderboardRatingColumns:
       selectedColumns.length > 0 ? [...selectedColumns] : [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
     replayVaultPlayer: truncateTrimmed(preferences.replayVaultPlayer ?? "", 64),
@@ -297,6 +306,42 @@ function normalizeModPresets(presets: ModPreset[]): ModPreset[] {
   return normalized;
 }
 
+/**
+ * Mirrors `normalize_search_presets` in faf-domain's settings slice: names are
+ * unique per list (case-insensitively, first wins), while separate lists may
+ * each hold a preset of the same name.
+ */
+function normalizeSearchPresets(presets: SearchPreset[]): SearchPreset[] {
+  const normalized: SearchPreset[] = [];
+  for (const preset of presets) {
+    const list = truncateTrimmed(preset.list ?? "", MAX_SEARCH_PRESET_LIST_CHARS);
+    const name = truncateTrimmed(preset.name ?? "", MAX_SEARCH_PRESET_NAME_CHARS);
+    const query = (preset.query ?? "").trim();
+    if (
+      !list ||
+      !name ||
+      !query ||
+      [...query].length > MAX_SEARCH_PRESET_QUERY_CHARS ||
+      normalized.some(
+        (existing) =>
+          asciiLower(existing.list) === asciiLower(list) &&
+          asciiLower(existing.name) === asciiLower(name),
+      )
+    ) {
+      continue;
+    }
+    const inList = normalized.filter(
+      (existing) => asciiLower(existing.list) === asciiLower(list),
+    ).length;
+    if (inList >= MAX_SEARCH_PRESETS_PER_LIST) {
+      continue;
+    }
+    normalized.push({ list, name, query });
+    if (normalized.length === MAX_SEARCH_PRESETS_TOTAL) break;
+  }
+  return normalized;
+}
+
 function normalizeMapVaultPreset(preset: string | undefined): string {
   const normalized = asciiLower((preset ?? "").trim());
   return (VALID_MAP_VAULT_PRESETS as readonly string[]).includes(normalized)
@@ -311,11 +356,10 @@ function normalizeModVaultPreset(preset: string | undefined): string {
     : "recommended";
 }
 
-function normalizeCustomGamesBrowser(
-  preferences: CustomGameBrowserPreferences,
-): CustomGameBrowserPreferences {
+/** Twin of `normalize_rules` in `game_browser.rs`. */
+function normalizeRules(candidates: readonly CustomGameFilterRule[]): CustomGameFilterRule[] {
   const rules: CustomGameFilterRule[] = [];
-  for (const candidate of preferences.rules) {
+  for (const candidate of candidates) {
     const rule = { ...candidate, value: truncateTrimmed(candidate.value, 128) };
     if (
       !rule.value ||
@@ -331,6 +375,12 @@ function normalizeCustomGamesBrowser(
     rules.push(rule);
     if (rules.length === 64) break;
   }
+  return rules;
+}
+
+function normalizeCustomGamesBrowser(
+  preferences: CustomGameBrowserPreferences,
+): CustomGameBrowserPreferences {
   return {
     ...preferences,
     sortReversed: Boolean(preferences.sortReversed),
@@ -339,7 +389,8 @@ function normalizeCustomGamesBrowser(
     hideUnranked: Boolean(preferences.hideUnranked),
     hideFoes: Boolean(preferences.hideFoes),
     applyFilters: Boolean(preferences.applyFilters),
-    rules,
+    rules: normalizeRules(preferences.rules),
+    allowRules: normalizeRules(preferences.allowRules ?? []),
     columnWidths: (preferences.columnWidths ?? [])
       .slice(0, MAX_BROWSER_COLUMNS)
       .map((width) =>

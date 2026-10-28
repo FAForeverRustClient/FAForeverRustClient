@@ -1,0 +1,8 @@
+- Replay activity graphs no longer exhaust memory on malformed replays with excessive durations or player counts.
+- Replays with excessive event data no longer exhaust memory during analysis.
+- Invalid training recordings no longer crash their analysis views.
+- Training recordings with excessively complex unit paths are rejected before drawing.
+- Galactic War downloads reject redirects to unencrypted connections.
+- Galactic War access tokens are restricted to valid local service addresses.
+- Incomplete ICE adapter messages no longer grow memory without a limit.
+- Silent local connections no longer block sign-in.

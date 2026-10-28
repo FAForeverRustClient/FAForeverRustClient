@@ -515,6 +515,43 @@ what a TD needs day to day. If the client is to replace the website entirely,
 these belong in scope; if the website stays for administration (Nuggets wants
 it kept for mobile use anyway), they do not.
 
+### 3.20 Tournament proposals (added 2026-10-17, issue 569)
+
+FAForever/faf-tournaments PR 7 (the site's decision 59): a player builds an
+event and proposes it to the TD team; a tournament director takes it over and
+runs it, or declines it with what is missing. Read from `public/app.propose.js`,
+`app.home.js` and `server.js` on `main` at `cb07135`.
+
+In the client since issue 569:
+
+- The account's `proposals` and `proposalDays`; the create form's "Host it
+  myself / Propose it to the TD team" choice for an account that may host, and
+  a "Propose a tournament" button that opens it in propose mode for one that
+  may not. In propose mode the category is not offered (sent as community).
+- The proposal box on the event, for every state and viewer the site has
+  (proposer/organiser while built, waiting and taken; director deciding), with
+  submit, withdraw, drop, take, decline, give back and unlock. The publish
+  banner is left out while the proposal is built or waits.
+- The public credit line on the Overview.
+- The list's "Proposals waiting for a TD" group and the proposal chips.
+- The pending bar: the directors' proposals alert (dismissable) and the
+  proposer's items.
+- The console's Proposals tab: the waiting cards, recent decisions and how
+  long a proposal waits; the audit log's proposal entries.
+
+Not replicated, on purpose or for later:
+
+- The site's inline reason textareas are the client's text dialog.
+- The "Kept as proposed" notices on the Maps tab and the Manage format panels,
+  and the start dialog that disables a locked format's lengths: the service
+  refuses a locked change with a message saying so, which the client shows.
+- The console card shows the event's facts in short (format, date, signups,
+  rating, maps and pools, rewards); the site's long plan summary is a click
+  away on the event itself.
+- Publishing a taken-over proposal needs a second director (the site's
+  approvals, decision 51), which the client has no request flow for; the
+  director who took it over is refused with the service's message.
+
 ---
 
 ## 4. Every per-tournament action

@@ -12,6 +12,7 @@
 // account login, and the small fallback below covers a tab mounted before that
 // event arrived.
 
+import { useForegroundInterval } from "../../shared/hooks/useForegroundInterval";
 import { sectionPanelProps } from "../../design-system/SectionTabs";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
@@ -220,11 +221,7 @@ export function ChatView() {
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const typists = active ? typistsAt(active, now, self) : [];
   const anyTyping = (active?.typing?.length ?? 0) > 0;
-  useEffect(() => {
-    if (!anyTyping) return;
-    const timer = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
-    return () => window.clearInterval(timer);
-  }, [anyTyping]);
+  useForegroundInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000, anyTyping);
 
   // The game time in a private conversation's panel advances on the reader's
   // clock, so the view supplies the tick. Half a minute, because the label is
@@ -233,12 +230,7 @@ export function ChatView() {
   // and only while somebody is actually typing.
   const [minuteNow, setMinuteNow] = useState(() => Math.floor(Date.now() / 1000));
   const inPrivateConversation = !!active && isPrivateChannel(active.name);
-  useEffect(() => {
-    if (!inPrivateConversation) return;
-    setMinuteNow(Math.floor(Date.now() / 1000));
-    const timer = window.setInterval(() => setMinuteNow(Math.floor(Date.now() / 1000)), 30_000);
-    return () => window.clearInterval(timer);
-  }, [inPrivateConversation]);
+  useForegroundInterval(() => setMinuteNow(Math.floor(Date.now() / 1000)), 30_000, inPrivateConversation);
 
   // Stable across renders, as the list's other handlers are: `MessageList`
   // and every line in it are memoised, and a fresh function each render

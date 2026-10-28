@@ -1,0 +1,17 @@
+- Older game changelogs now show their original unit pictures and section headings.
+- Summary-only game changelogs now include a separate section with the original balance notes.
+- Code blocks in changelogs keep their line breaks and have a button to copy their text.
+- The Cooper's stats in patch 3822 no longer run into the following artillery changes.
+- Older unit stat lines without bullets now display their old and new values.
+- Grouped balance changes in patch 3822 now show unit headings with pictures.
+- Numeric PR lists in changelogs now link entries with missing separators or hash markers.
+- Wrapped PR references no longer appear as headings in older game changelogs.
+- The contents list in older patch notes now groups units under their tier and category.
+- Patch notes now use a slightly wider text column.
+- Changelog copy-confirmation icons now use readable colors in all themes.
+- Replays and cached catalogues now use a patched compression library.
+- Experimental units in patch 3696 now have individual pictures and contents links.
+- ACU upgrades in patch 3696 now show the correct pictures and contents entries.
+- Copy buttons in changelog code blocks now keep their symbols at a readable size.
+- Nested balance entries in patches 3810 and 3813 now show unit pictures and contents links.
+- Changelogs now remember the open note and reading position when switching tabs.

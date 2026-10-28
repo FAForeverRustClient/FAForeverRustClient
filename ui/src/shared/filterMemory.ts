@@ -13,11 +13,16 @@
 // `browsing.rememberedFilters` for the next one.
 //
 // A few keep theirs in a browsing preference of its own, which predates this
-// setting (the game browser's switches, the live replay filters, the vault
-// presets, the replay vault's player). Those already outlive a tab switch, the
+// setting (the game browser's switches, the vault presets, the replay vault's
+// player). The live replay filters did too, until #590. Those already outlive a tab switch, the
 // backend clears them at startup unless the setting says otherwise, and
 // `useForgetFiltersOnLeave` clears them when the tab is left while the setting
 // is "never".
+//
+// One list is outside the setting: the play tab's game list (#648). Its
+// switches, rules and search are kept across a restart whatever the setting
+// says, because that list is set up once and opened every day, and finding it
+// unfiltered after every start read as the client forgetting its settings.
 
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { FilterMemory } from "../ipc/bindings";
@@ -38,6 +43,23 @@ let storedFilters: Record<string, string> | null = null;
 
 function currentMemory(): FilterMemory {
   return useAppStore.getState().state.settings.general.filterMemory ?? "session";
+}
+
+/**
+ * The keys of the play tab's game list, which is always remembered across a
+ * restart (#648). Twin of `ALWAYS_KEPT_FILTER_PREFIX` in the backend's
+ * `BrowsingPreferences::without_filters`, which keeps the same entries.
+ */
+export const ALWAYS_KEPT_PREFIX = "play.";
+
+/** How long the list behind `key` keeps its filters. */
+function memoryFor(key: string): FilterMemory {
+  return key.startsWith(ALWAYS_KEPT_PREFIX) ? "restart" : currentMemory();
+}
+
+/** Only the entries the setting never clears. */
+function alwaysKept(filters: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(filters).filter(([key]) => key.startsWith(ALWAYS_KEPT_PREFIX)));
 }
 
 /** The setting as it is now, for a value read once as a list mounts. */
@@ -79,7 +101,7 @@ function writeStoredFilters(next: Record<string, string>) {
  * different shape; a value it refuses is treated as never stored.
  */
 export function rememberedFilter<T>(key: string, fallback: T, accept?: (value: unknown) => boolean): T {
-  const memory = currentMemory();
+  const memory = memoryFor(key);
   if (memory === "never") return fallback;
   const candidates = memory === "restart"
     ? [sessionFilters.get(key), storedFilter(key)]
@@ -94,7 +116,7 @@ export function rememberedFilter<T>(key: string, fallback: T, accept?: (value: u
 
 /** Note a list's filters as they are now, for as long as the setting says. */
 export function rememberFilter(key: string, value: unknown) {
-  const memory = currentMemory();
+  const memory = memoryFor(key);
   if (memory === "never") return;
   sessionFilters.set(key, value);
   if (memory !== "restart") return;
@@ -121,7 +143,7 @@ export function useRememberFilter(key: string, value: unknown) {
       first.current = false;
       return;
     }
-    if (currentMemory() !== "never") sessionFilters.set(key, value);
+    if (memoryFor(key) !== "never") sessionFilters.set(key, value);
     pending.current = { key, value };
     const timer = window.setTimeout(() => {
       pending.current = null;
@@ -186,17 +208,21 @@ export function useForgetFiltersOnLeave(forget: () => void) {
  * would clear at startup anyway, but a file that still holds them is a
  * surprise for whoever reads it. Across a restart: what this session already
  * remembers is written down now, rather than only once each list changes
- * again.
+ * again. The play tab's game list keeps its filters through all three.
  */
 export function filterMemoryChanged(next: FilterMemory) {
-  if (next === "never") sessionFilters.clear();
+  if (next === "never") {
+    for (const key of [...sessionFilters.keys()]) {
+      if (!key.startsWith(ALWAYS_KEPT_PREFIX)) sessionFilters.delete(key);
+    }
+  }
+  const base = storedFilters ?? useAppStore.getState().state.settings.browsing.rememberedFilters ?? {};
   if (next === "restart") {
-    const base = storedFilters ?? useAppStore.getState().state.settings.browsing.rememberedFilters ?? {};
     const written: Record<string, string> = { ...base };
     for (const [key, value] of sessionFilters) written[key] = JSON.stringify(value);
     writeStoredFilters(written);
   } else {
-    writeStoredFilters({});
+    writeStoredFilters(alwaysKept(base));
   }
 }
 

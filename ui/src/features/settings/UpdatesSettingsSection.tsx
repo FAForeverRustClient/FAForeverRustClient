@@ -3,6 +3,7 @@ import { ipc } from "../../ipc/client";
 import { Button } from "../../design-system/Button";
 import { useAppStore } from "../../store/store";
 import { isUpdateBusy } from "../../store/reducers/clientUpdate";
+import { formatSize } from "../../shared/format/installerSize";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 import { hourCycleOptions } from "../../shared/format/clock";
 import { clientIntlTag } from "../../shared/format/dates";
@@ -32,6 +33,12 @@ export function UpdatesSettingsSection() {
           onChange={(automatic) => void save({ automatic })}
           label={t("settings.updates.checkUpdatesAt")}
         />
+      </SettingRow>
+      <SettingRow label={t("settings.updates.backgroundDownload")}
+        hint={[t("settings.updates.backgroundDownloadHint"), update.release && formatSize(update.release.sizeBytes) ? t("updates.installerSize", { size: formatSize(update.release.sizeBytes) }) : ""].filter(Boolean).join(" ")}>
+        <SettingsSwitch checked={preferences.backgroundDownload}
+          onChange={(backgroundDownload) => save({ backgroundDownload })}
+          label={t("settings.updates.backgroundDownload")} />
       </SettingRow>
       <SettingRow label={t("settings.updates.includePreReleases")}>
         <SettingsSwitch

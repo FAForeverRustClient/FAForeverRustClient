@@ -42,6 +42,10 @@ pub struct TourneyAccount {
     pub admin_stand_down: bool,
     /// May host: approved per account, a director, or on the site-admin list.
     pub allowed: bool,
+    /// Whether the site takes tournament proposals (#569): on with FAF login.
+    pub proposals: bool,
+    /// How many days a proposal waits for a director before it goes back.
+    pub proposal_days: i32,
 }
 
 /// Which access an account asks for, or an admin decides on.
@@ -87,6 +91,10 @@ pub struct PendingSummary {
     /// `None` without the alert.
     pub requests: Option<i32>,
     pub new_requests: Option<i32>,
+    /// Proposals waiting for a tournament director, and how many of them
+    /// are new since the last dismiss; `None` without that alert (#569).
+    pub proposals: Option<i32>,
+    pub new_proposals: Option<i32>,
 }
 
 /// One row of the Hall of Fame's players: championships and entries.
@@ -231,6 +239,9 @@ pub struct SiteAdminData {
     pub me: Option<i32>,
     /// The global bans, on official tournaments.
     pub bans: Vec<TourneyBan>,
+    /// The Proposals tab, for directors and site admins while the site takes
+    /// proposals (#569).
+    pub proposals: Option<ProposalQueue>,
 }
 
 /// What the site part of the client can read.
@@ -268,6 +279,11 @@ pub enum SiteWrite {
     StandDown { on: bool },
     /// Hide the access-request alert until a new request comes in.
     DismissRequests,
+    /// Hide the proposals alert until a new proposal comes in.
+    DismissProposals,
+    /// How many days a proposal waits for a director, 7 to 90.
+    #[serde(rename_all = "camelCase")]
+    ProposalDays { days: i32 },
     /// Ask for hosting, editor or importer access, with an optional note.
     #[serde(rename_all = "camelCase")]
     RequestAccess { kind: AccessKind, message: String },

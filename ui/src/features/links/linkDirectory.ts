@@ -38,15 +38,10 @@ export type LinkOrigin = "official" | "community";
 
 /**
  * The groups, in the order they are drawn.
- *
- * Purpose first, origin second: somebody looking for a rating history wants the
- * tools, and whether FAF or a player wrote the tool is the next question, not
- * the first. Splitting the page into "official" and "community" instead would
- * bury the things people come here for under a provenance question.
  */
-export type LinkSection = "play" | "tools" | "games" | "watch";
+export type LinkSection = "play" | "watch";
 
-export const LINK_SECTIONS: LinkSection[] = ["play", "tools", "games", "watch"];
+export const LINK_SECTIONS: LinkSection[] = ["play", "watch"];
 
 export interface DirectoryLink {
   /** Stable id, used as the React key and in tests. */
@@ -76,11 +71,10 @@ export interface DirectoryLink {
 /**
  * The directory.
  *
- * Sources: the community hub above, plus the DoodlePros sites it does not list
- * (FAFScribbl is missing from it, which the issue points out) and FAF's own
- * wiki. The order within a section is the maintainers' choice: FAF's site,
- * Discord, wiki and forum first; the tournaments ahead of the stats sites;
- * the daily unit ahead of the two games that take longer.
+ * Only destinations FAF runs itself (#651): the third-party sites and the
+ * platforms' game pages were taken out, so nothing here leaves FAF's hands.
+ * The order within a section is the maintainers' choice: FAF's site, Discord,
+ * wiki and forum first, then the tournaments and FAF Daily.
  */
 export const DIRECTORY: readonly DirectoryLink[] = [
   {
@@ -131,70 +125,18 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     hint: "links.entry.tournamentsHint",
     href: "https://tournaments.faforever.com/",
     origin: "official",
-    section: "tools",
+    section: "play",
   },
   {
-    id: "tracker",
-    icon: "leaderboard",
-    name: "links.entry.tracker",
-    hint: "links.entry.trackerHint",
-    href: "https://faftracker.xyz/",
-    origin: "community",
-    section: "tools",
-  },
-  {
-    id: "companion",
-    icon: "activity",
-    name: "links.entry.companion",
-    hint: "links.entry.companionHint",
-    href: "https://fa-companion.services.atlantishq.de/",
-    origin: "community",
-    section: "tools",
-  },
-  {
-    id: "mapgen",
-    icon: "maps",
-    name: "links.entry.mapgen",
-    hint: "links.entry.mapgenHint",
-    href: "https://mapgen.services.atlantishq.de/",
-    origin: "community",
-    section: "tools",
-  },
-  {
-    id: "tierlists",
-    icon: "list",
-    name: "links.entry.tierlists",
-    hint: "links.entry.tierlistsHint",
-    href: "https://fa-companion.services.atlantishq.de/tierlist-overview",
-    origin: "community",
-    section: "tools",
-  },
-  {
+    // Back since it moved to FAF's own host (#651); it left with the other
+    // third-party sites while it lived on doodlepros.com.
     id: "daily",
     icon: "calendar",
     name: "links.entry.daily",
     hint: "links.entry.dailyHint",
-    href: "https://daily.doodlepros.com/",
-    origin: "community",
-    section: "games",
-  },
-  {
-    id: "guessr",
-    icon: "eye",
-    name: "links.entry.guessr",
-    hint: "links.entry.guessrHint",
-    href: "https://fafguessr.doodlepros.com/",
-    origin: "community",
-    section: "games",
-  },
-  {
-    id: "scribbl",
-    icon: "edit",
-    name: "links.entry.scribbl",
-    hint: "links.entry.scribblHint",
-    href: "https://fafscribbl.doodlepros.com/",
-    origin: "community",
-    section: "games",
+    href: "https://daily.faforever.com/",
+    origin: "official",
+    section: "play",
   },
   {
     id: "twitch",
@@ -213,38 +155,6 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     hint: "links.entry.youtubeHint",
     href: "https://www.youtube.com/c/ForgedAllianceForever",
     origin: "official",
-    section: "watch",
-  },
-  // No individual streamers or channels past FAF's own (#329). Any short list
-  // of them reads as the client picking favourites, and every other caster
-  // would reasonably ask to be on it. The platforms' own pages for the game
-  // list everybody, in the order the platform ranks them, which is nobody here
-  // choosing. Kick has no YouTube-style game channel, so it is the category.
-  {
-    id: "twitchCategory",
-    icon: "twitch",
-    name: "links.entry.twitchCategory",
-    hint: "links.entry.twitchCategoryHint",
-    href: "https://www.twitch.tv/directory/category/supreme-commander-forged-alliance",
-    origin: "community",
-    section: "watch",
-  },
-  {
-    id: "youtubeCategory",
-    icon: "youtube",
-    name: "links.entry.youtubeCategory",
-    hint: "links.entry.youtubeCategoryHint",
-    href: "https://www.youtube.com/channel/UChiCO27pbaXDR0d0JfxlIpw",
-    origin: "community",
-    section: "watch",
-  },
-  {
-    id: "kickCategory",
-    icon: "kick",
-    name: "links.entry.kickCategory",
-    hint: "links.entry.kickCategoryHint",
-    href: "https://kick.com/category/supreme-commander-forged-alliance",
-    origin: "community",
     section: "watch",
   },
 ];

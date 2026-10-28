@@ -1,3 +1,4 @@
+import { useForegroundInterval } from "../../../shared/hooks/useForegroundInterval";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { MatchmakerRecentGames } from "./MatchmakerRecentGames";
 import { Button } from "../../../design-system/Button";
@@ -22,6 +23,7 @@ import "./matchmaker.css";
 import type { PlayModePanelProps } from "../PlayModeTabs";
 import { t } from "../../../i18n";
 import { useLocale } from "../../../i18n/useTranslation";
+import { activeSearchQueues } from "../../../shared/joinWhileSearching";
 
 function stateForQueue(state: MatchmakingState, queueName: string): QueueDisplayState {
   switch (state.type) {
@@ -34,10 +36,6 @@ function stateForQueue(state: MatchmakingState, queueName: string): QueueDisplay
     case "cancelled": return state.payload.queueName === null || state.payload.queueName === queueName ? "cancelled" : "idle";
     case "idle": return "idle";
   }
-}
-
-function searchingQueues(state: MatchmakingState) {
-  return state.type === "searching" || state.type === "preparing" ? state.payload.queueNames : [];
 }
 
 function MatchmakerSearchSummary({
@@ -96,7 +94,7 @@ export function MatchmakingPanel({
 
   const sortedQueues = useMemo(() => [...queues].sort((left, right) => left.teamSize - right.teamSize || left.queueName.localeCompare(right.queueName)), [queues]);
   const selectedQueues = sortedQueues.filter((queue) => !unselectedQueues.includes(queue.queueName));
-  const activeSearches = useMemo(() => searchingQueues(matchmaking), [matchmaking]);
+  const activeSearches = useMemo(() => activeSearchQueues(matchmaking), [matchmaking]);
   const isSearching = activeSearches.length > 0;
   const preparing = matchmaking.type === "preparing";
   const searchLocked = matchmaking.type === "matchFound" || matchmaking.type === "launching";
@@ -157,10 +155,8 @@ export function MatchmakingPanel({
     saveChatWidth(0);
   };
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setClock(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
+  // Every queue card counts down to its next pop, searching or not.
+  useForegroundInterval(() => setClock(Date.now()), 1000, sortedQueues.length > 0);
 
   useEffect(() => {
     setUnselectedQueues(browsing.matchmakerUnselectedQueues);
@@ -377,7 +373,6 @@ export function MatchmakingPanel({
                   // Your own search is in the server's numbers and is not
                   // somebody you could be matched against.
                   inRange={playersInRatingRange(queue, queueRating, searchingThisQueue ? 1 : 0)}
-                  ownSearches={searchingThisQueue ? 1 : 0}
                   placement={queuePlacement}
                   onToggle={() => toggleQueue(queue)}
                   onOpenMapPool={() => openMapPool(queue)}

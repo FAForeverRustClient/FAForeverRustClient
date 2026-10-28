@@ -27,15 +27,14 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
 use faf_domain::protocol::map_generator::{self, GeneratorVersion, VersionPolicy};
-use faf_domain::state::{
-    GeneratorOptionLists, GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus,
-};
+use faf_domain::state::{GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus};
+use futures_util::stream::{FuturesUnordered, StreamExt as _};
 use serde::Deserialize;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
@@ -52,16 +51,6 @@ use crate::ports::{GeneratorUpdate, MapGeneratorPort};
 /// virus scanner reading every entry, the JVM start alone can outlast a tight
 /// limit, and the cost is paid six times over before the dialog is usable.
 const OPTION_QUERY_TIMEOUT: Duration = Duration::from_secs(30);
-
-/// How long a fetched release list stays fresh.
-///
-/// GitHub allows sixty unauthenticated requests an hour per address, and the
-/// generate dialog spends four of them every time it opens or changes release:
-/// two to list the versions, two to resolve the newest. A few minutes of
-/// clicking through releases exhausts the budget, and then the version picker
-/// has nothing to offer and no way to say why. The list barely changes in a
-/// month, so ten minutes of reuse costs nothing.
-const RELEASE_LIST_TTL: Duration = Duration::from_secs(600);
 
 /// How long `--parse` may take. It resolves options and prints JSON without
 /// generating anything, so this is a JVM startup and little else.
@@ -317,9 +306,15 @@ fn user_maps_dir() -> PathBuf {
     crate::infra::maps::maps_dir()
 }
 
-/// The release list as it is held between fetches: when it arrived, and the
-/// tags themselves.
-type RememberedReleases = Arc<tokio::sync::Mutex<Option<(std::time::Instant, Vec<String>)>>>;
+/// The release list, once it has arrived in this session.
+///
+/// Fetched once and kept until the client closes, as the Java client does
+/// (its `getNewestGenerator` is `@Cacheable`, #596). Every fresh Generate
+/// asked GitHub again once ten minutes had passed, up to ten pages before the
+/// run could start, and the list barely changes in a month. GitHub allows
+/// sixty unauthenticated requests an hour per address, which the dialog's
+/// clicking through releases used to run out of too.
+type RememberedReleases = Arc<tokio::sync::Mutex<Option<Vec<String>>>>;
 
 pub struct NeroxisMapGenerator {
     config: MapGeneratorConfig,
@@ -349,6 +344,10 @@ pub struct NeroxisMapGenerator {
     /// asked for it in Settings; shared with the run task, which is why it is
     /// behind an `Arc` like the cancel signal.
     show_window: Arc<AtomicBool>,
+    /// How many generators a run of separately picked maps may keep going at
+    /// once, `0` for [`automatic_instances`]. Behind an `Arc` for the same
+    /// reason as the window switch.
+    parallel_instances: Arc<AtomicU32>,
 }
 
 impl NeroxisMapGenerator {
@@ -365,6 +364,7 @@ impl NeroxisMapGenerator {
             installing: Arc::new(tokio::sync::Mutex::new(())),
             releases: Arc::new(tokio::sync::Mutex::new(None)),
             show_window: Arc::new(AtomicBool::new(false)),
+            parallel_instances: Arc::new(AtomicU32::new(0)),
         }
     }
 
@@ -392,6 +392,7 @@ impl NeroxisMapGenerator {
             installing: Arc::clone(&self.installing),
             releases: Arc::clone(&self.releases),
             show_window: Arc::clone(&self.show_window),
+            parallel_instances: Arc::clone(&self.parallel_instances),
         }
     }
 
@@ -649,6 +650,7 @@ impl NeroxisMapGenerator {
 
         let mut command = Command::new(self.config.java_path());
         command
+            .args(jvm_options(jar))
             .arg("-jar")
             .arg(jar)
             .args(&args)
@@ -836,6 +838,7 @@ impl NeroxisMapGenerator {
     ) -> Result<String, String> {
         let mut command = Command::new(self.config.java_path());
         command
+            .args(jvm_options(jar))
             .arg("-jar")
             .arg(jar)
             .args(args)
@@ -896,10 +899,8 @@ impl NeroxisMapGenerator {
     /// nothing because page three timed out.
     async fn fetch_releases(&self) -> Result<Vec<GitHubRelease>, String> {
         let mut remembered = self.releases.lock().await;
-        if let Some((fetched_at, tags)) = remembered.as_ref() {
-            if fetched_at.elapsed() < RELEASE_LIST_TTL {
-                return Ok(releases_from_tags(tags));
-            }
+        if let Some(tags) = remembered.as_ref() {
+            return Ok(releases_from_tags(tags));
         }
 
         let mut all: Vec<GitHubRelease> = Vec::new();
@@ -969,7 +970,7 @@ impl NeroxisMapGenerator {
         if !all.is_empty() {
             let tags: Vec<String> = all.iter().map(|r| r.tag_name.clone()).collect();
             self.store_release_tags(&tags).await;
-            *remembered = Some((std::time::Instant::now(), tags));
+            *remembered = Some(tags);
         }
         Ok(all)
     }
@@ -1040,7 +1041,6 @@ impl NeroxisMapGenerator {
     }
 
     async fn read_map_preview(&self, map_name: &str) -> Option<String> {
-        use base64::Engine as _;
         let normalized = map_name.to_lowercase();
         let folder = self.config.maps_dir().join(map_name);
         let folder_lower = self.config.maps_dir().join(&normalized);
@@ -1062,19 +1062,20 @@ impl NeroxisMapGenerator {
             folder_lower.join("preview.png"),
         ];
         for path in candidates {
-            if let Ok(bytes) = tokio::fs::read(&path).await {
-                if !bytes.is_empty() {
-                    return Some(format!(
-                        "data:image/png;base64,{}",
-                        base64::engine::general_purpose::STANDARD.encode(&bytes)
-                    ));
-                }
+            if let Some(preview) = super::maps::read_preview_data_url(&path).await {
+                return Some(preview);
             }
         }
 
-        let target_folder = if folder.is_dir() {
+        let target_folder = if tokio::fs::metadata(&folder)
+            .await
+            .is_ok_and(|metadata| metadata.is_dir())
+        {
             folder
-        } else if folder_lower.is_dir() {
+        } else if tokio::fs::metadata(&folder_lower)
+            .await
+            .is_ok_and(|metadata| metadata.is_dir())
+        {
             folder_lower
         } else {
             return None;
@@ -1084,18 +1085,8 @@ impl NeroxisMapGenerator {
             while let Ok(Some(entry)) = entries.next_entry().await {
                 let name = entry.file_name().to_string_lossy().to_lowercase();
                 if name.ends_with(".png") || name.ends_with(".jpg") || name.ends_with(".jpeg") {
-                    if let Ok(bytes) = tokio::fs::read(entry.path()).await {
-                        if !bytes.is_empty() {
-                            let mime = if name.ends_with(".png") {
-                                "image/png"
-                            } else {
-                                "image/jpeg"
-                            };
-                            return Some(format!(
-                                "data:{mime};base64,{}",
-                                base64::engine::general_purpose::STANDARD.encode(&bytes)
-                            ));
-                        }
+                    if let Some(preview) = super::maps::read_preview_data_url(&entry.path()).await {
+                        return Some(preview);
                     }
                 }
             }
@@ -1147,6 +1138,16 @@ impl NeroxisMapGenerator {
         } else {
             self.config.maps_dir()
         };
+        // Waiting for the lock can be waiting for this very map: "Generate" in
+        // a lobby's details and then joining it queue the join's run behind
+        // the first, which then rebuilt the same terrain from scratch only to
+        // find the folder there at the end (#596).
+        if let Some(name) = map_name
+            .as_ref()
+            .filter(|name| destination.join(name).is_dir())
+        {
+            return RunOutcome::Generated(vec![name.clone()]);
+        }
         let staging = destination.join(format!(".faf-install-{:016x}", rand::random::<u64>()));
         if let Err(error) = tokio::fs::create_dir_all(&staging).await {
             return RunOutcome::Failed(format!("could not stage generated maps: {error}"));
@@ -1249,17 +1250,17 @@ impl NeroxisMapGenerator {
             options.preview_path = self.preview_dir().to_string_lossy().into_owned();
         }
 
+        // Every run of a batch shares the size, which is what bounds how many
+        // of them fit in memory at once.
+        let map_size = options.map_size;
         // A batch whose selections leave something to choose becomes one run
-        // per map, each with its own pick (#414), and a list left on "Random"
-        // is a choice among everything this release offers; otherwise this is
-        // the single run it always was. Reproducing by name never has a
+        // per map, each with its own pick (#414); otherwise, "Random"
+        // included, it is the single run the generator batches itself, which
+        // is three times as fast (#596). Reproducing by name never has a
         // choice to make.
         let batch = match map_name {
             Some(_) => vec![options],
-            None => {
-                let all = self.known_option_lists(&version.to_string()).await;
-                map_generator::plan_batch(&options, &all, rand::random::<u64>)
-            }
+            None => map_generator::plan_batch(&options, rand::random::<u64>),
         };
         // Every command line is built before anything is downloaded, so an
         // unusable option is refused without side effects, as it always was.
@@ -1284,26 +1285,59 @@ impl NeroxisMapGenerator {
             return self.run_generator(version, &jar, args, tx).await;
         }
 
-        // Sequential on purpose: each run is a CPU-bound JVM, and running
-        // them side by side would only make every one of them slower.
+        // Several at once, as many as the player allowed or the computer can
+        // carry. One generator keeps only about one and a half cores busy:
+        // on a four-core machine three 896 maps took 30.3 s one after the
+        // other and 22.2 s three at a time (with the parallel collector, see
+        // `jvm_options`). Four at once were slower again there, 40.8 s, and
+        // with 12 GB of memory they swapped and took 160 s, which is why the
+        // count is bounded by free memory as well as by cores: see
+        // `automatic_instances`.
+        let total = runs.len();
+        let limit = match self.parallel_instances.load(Ordering::Relaxed) {
+            0 => automatic_instances(map_size),
+            chosen => chosen,
+        }
+        .clamp(1, total as u32) as usize;
+        let mut runs = runs.into_iter();
+        let mut running = FuturesUnordered::new();
+        for args in runs.by_ref().take(limit) {
+            running.push(self.run_generator(version, &jar, args, tx));
+        }
         let mut maps = Vec::new();
-        for args in runs {
-            match self.run_generator(version, &jar, args, tx).await {
+        let mut failure = None;
+        let mut cancelled = false;
+        while let Some(outcome) = running.next().await {
+            match outcome {
                 RunOutcome::Generated(names) => maps.extend(names),
-                RunOutcome::Cancelled => return RunOutcome::Cancelled,
-                RunOutcome::Failed(reason) if maps.is_empty() => return RunOutcome::Failed(reason),
-                // Report how far the batch got. Staging is discarded when
-                // the batch fails, so no incomplete batch is installed.
+                RunOutcome::Cancelled => cancelled = true,
                 RunOutcome::Failed(reason) => {
-                    return RunOutcome::Failed(format!(
-                        "{reason} (after {} of {} maps were generated)",
-                        maps.len(),
-                        batch.len()
-                    ))
+                    failure.get_or_insert(reason);
+                }
+            }
+            // Nothing new starts once a run failed or was stopped, but the
+            // ones already going are waited for rather than dropped: a cancel
+            // reaches every one of them anyway, and a JVM dropped mid-run
+            // would still be writing into staging while it is removed.
+            if failure.is_none() && !cancelled {
+                if let Some(args) = runs.next() {
+                    running.push(self.run_generator(version, &jar, args, tx));
                 }
             }
         }
-        RunOutcome::Generated(maps)
+        if cancelled {
+            return RunOutcome::Cancelled;
+        }
+        match failure {
+            None => RunOutcome::Generated(maps),
+            Some(reason) if maps.is_empty() => RunOutcome::Failed(reason),
+            // Report how far the batch got. Staging is discarded when the
+            // batch fails, so no incomplete batch is installed.
+            Some(reason) => RunOutcome::Failed(format!(
+                "{reason} (after {} of {total} maps were generated)",
+                maps.len()
+            )),
+        }
     }
 
     /// Resolve options through the generator's own `--parse`, returning the map
@@ -1357,26 +1391,6 @@ impl NeroxisMapGenerator {
         let mut all: HashMap<String, HashMap<String, Vec<String>>> =
             serde_json::from_str(&raw).ok()?;
         all.remove(version)
-    }
-
-    /// The option lists already read for a version, from the cache the dialog
-    /// fills when it opens.
-    ///
-    /// Not queried here: that is six JVM starts in front of a run the user is
-    /// waiting on. A list that is missing stays empty, which leaves that choice
-    /// to the generator, as it was before "Random" was re-rolled per map.
-    async fn known_option_lists(&self, version: &str) -> GeneratorOptionLists {
-        let mut cached = self.cached_options(version).await.unwrap_or_default();
-        let mut take =
-            |query: GeneratorOptionQuery| cached.remove(query.flag()).unwrap_or_default();
-        GeneratorOptionLists {
-            symmetries: take(GeneratorOptionQuery::Symmetries),
-            styles: take(GeneratorOptionQuery::Styles),
-            terrain_styles: take(GeneratorOptionQuery::TerrainStyles),
-            texture_styles: take(GeneratorOptionQuery::TextureStyles),
-            resource_styles: take(GeneratorOptionQuery::ResourceStyles),
-            prop_styles: take(GeneratorOptionQuery::PropStyles),
-        }
     }
 
     async fn store_options(&self, version: &str, query: GeneratorOptionQuery, values: &[String]) {
@@ -1535,6 +1549,150 @@ fn strip_ansi_block(text: &str) -> String {
     text.lines().map(strip_ansi).collect::<Vec<_>>().join("\n")
 }
 
+/// The JVM's own options, in front of `-jar`, for every run of the generator
+/// and every query to it (#596).
+///
+/// Every run is a fresh JVM that loads and verifies the same few thousand
+/// classes of the same JAR before it does any work, and a Maps-tab run starts
+/// one for the `--parse` before the run itself. A dynamic class-data archive
+/// (AppCDS, JDK 19 and later) keeps that work in a file beside the JAR: the
+/// first run writes it, every later one maps it in. One archive per JAR, so a
+/// new generator release starts its own; a different Java finds the archive
+/// does not fit and writes it again, which is what the option is for.
+///
+/// `IgnoreUnrecognizedVMOptions` first, because the Java can be one the user
+/// chose: an older one that does not know an option would otherwise refuse to
+/// start at all, and generating would fail where it only had to be slower.
+/// The CDS log tags off, since unified logging writes to stdout, which is the
+/// generator's own progress stream.
+///
+/// The parallel collector instead of Java's default G1, because a generator
+/// is a batch job: throughput is all that counts, and G1's concurrent threads
+/// compete with the generator for the same cores. Alone it makes no
+/// difference, but three side by side on four cores made three 896 maps in
+/// 22.2 and 22.5 s against 29.2 and 31.8 s with G1, which was barely faster
+/// than the 31.5 s of running them one after the other.
+fn jvm_options(jar: &Path) -> Vec<std::ffi::OsString> {
+    let mut archive = std::ffi::OsString::from("-XX:SharedArchiveFile=");
+    archive.push(jar.with_extension("jsa"));
+    vec![
+        "-XX:+IgnoreUnrecognizedVMOptions".into(),
+        "-XX:+AutoCreateSharedArchive".into(),
+        archive,
+        "-Xlog:cds=off".into(),
+        "-Xlog:cds+dynamic=off".into(),
+        "-XX:+UseParallelGC".into(),
+    ]
+}
+
+/// How much memory one generator may take for a map of this size, in bytes.
+///
+/// Measured with release 1.22.2 on the bundled Java 25 and the parallel
+/// collector, which sizes its heap at a quarter of the machine's memory and
+/// grows into it, so the peak rises with the machine: on 12 GB the peak
+/// working set was 352 MB for a 256 map, 1.05 GB for 512 and 2.41 GB for
+/// 1024, on 24 GB 1.23 GB for 512 and up to 3.19 GB for 1024. Close to linear
+/// in the map's edge either way; 3.25 MB per unit of size covers all of them,
+/// and an unknown size is budgeted as a 20 km map.
+///
+/// Budgeted rather than capped with `-Xmx`: a 1024 map needs more than 1 GB
+/// of heap, and a generator that runs out of memory does not exit, it hangs
+/// until the timeout.
+fn generator_memory_budget(map_size: Option<u32>) -> u64 {
+    const PER_UNIT: u64 = 13 * 1024 * 1024 / 4;
+    const FLOOR: u64 = 512 * 1024 * 1024;
+    (u64::from(map_size.unwrap_or(1024)) * PER_UNIT).max(FLOOR)
+}
+
+/// How many generators this computer can run side by side for maps of this
+/// size, when the player left the choice to the client.
+///
+/// Two bounds, and the lower one wins. Cores: one generator keeps about one
+/// and a half of them busy, yet three on four cores still made maps faster
+/// than two and four made them slower, so three quarters of the cores. Memory: every generator gets its
+/// [`generator_memory_budget`] out of four fifths of what is free right now,
+/// the rest left for the game and the client. Where free memory cannot be
+/// read, two at most, which was a third faster than one on a four-core
+/// machine with 12 GB and is safe on less.
+pub fn automatic_instances(map_size: Option<u32>) -> u32 {
+    let cores = std::thread::available_parallelism().map_or(1, |n| n.get() as u64);
+    let by_cores = (cores * 3 / 4).max(1);
+    let by_memory = match available_memory() {
+        Some(free) => free / 5 * 4 / generator_memory_budget(map_size),
+        None => 2,
+    };
+    by_cores.min(by_memory).clamp(
+        1,
+        u64::from(faf_domain::state::settings::MAX_MAP_GENERATOR_INSTANCES),
+    ) as u32
+}
+
+/// Physical memory the system could hand out right now, in bytes.
+#[cfg(windows)]
+fn available_memory() -> Option<u64> {
+    /// `MEMORYSTATUSEX` from `sysinfoapi.h`.
+    #[repr(C)]
+    struct MemoryStatus {
+        length: u32,
+        memory_load: u32,
+        total_physical: u64,
+        available_physical: u64,
+        total_page_file: u64,
+        available_page_file: u64,
+        total_virtual: u64,
+        available_virtual: u64,
+        available_extended_virtual: u64,
+    }
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GlobalMemoryStatusEx(buffer: *mut MemoryStatus) -> i32;
+    }
+    let mut status = MemoryStatus {
+        length: std::mem::size_of::<MemoryStatus>() as u32,
+        memory_load: 0,
+        total_physical: 0,
+        available_physical: 0,
+        total_page_file: 0,
+        available_page_file: 0,
+        total_virtual: 0,
+        available_virtual: 0,
+        available_extended_virtual: 0,
+    };
+    // Sound: the buffer is a writable `MEMORYSTATUSEX` whose `dwLength` names
+    // its size, which is all the call requires, and it writes nothing else.
+    let ok = unsafe { GlobalMemoryStatusEx(&mut status) };
+    (ok != 0).then_some(status.available_physical)
+}
+
+/// Physical memory the system could hand out right now, in bytes: the
+/// kernel's own estimate, which counts reclaimable cache as available.
+#[cfg(target_os = "linux")]
+fn available_memory() -> Option<u64> {
+    let meminfo = std::fs::read_to_string("/proc/meminfo").ok()?;
+    meminfo_available(&meminfo)
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
+fn available_memory() -> Option<u64> {
+    None
+}
+
+/// `MemAvailable` out of `/proc/meminfo`, which states it in kibibytes.
+#[cfg_attr(not(any(target_os = "linux", test)), allow(dead_code))]
+fn meminfo_available(meminfo: &str) -> Option<u64> {
+    meminfo
+        .lines()
+        .find_map(|line| line.strip_prefix("MemAvailable:"))
+        .and_then(|rest| {
+            rest.trim()
+                .trim_end_matches("kB")
+                .trim()
+                .parse::<u64>()
+                .ok()
+        })
+        .map(|kib| kib * 1024)
+}
+
 /// Render an argument list for the log, quoting anything with spaces so a
 /// logged command line can be pasted back into a shell.
 fn shell_quote_all(args: &[String]) -> String {
@@ -1569,6 +1727,10 @@ fn releases_from_tags(tags: &[String]) -> Vec<GitHubRelease> {
 impl MapGeneratorPort for NeroxisMapGenerator {
     fn set_show_window(&self, show: bool) {
         self.show_window.store(show, Ordering::Relaxed);
+    }
+
+    fn set_parallel_instances(&self, instances: u32) {
+        self.parallel_instances.store(instances, Ordering::Relaxed);
     }
 
     async fn generate_named(&self, map_name: String) -> mpsc::Receiver<GeneratorUpdate> {
@@ -1827,10 +1989,20 @@ impl MapGeneratorPort for NeroxisMapGenerator {
         map_names: &[String],
     ) -> std::collections::HashMap<String, String> {
         let mut map = std::collections::HashMap::new();
+        let mut bytes = 0;
         for name in map_names {
             if let Some(data_url) = self.read_map_preview(name).await {
-                map.insert(name.clone(), data_url.clone());
-                map.insert(name.to_lowercase(), data_url);
+                let lower = name.to_lowercase();
+                let copies = if lower == *name { 1 } else { 2 };
+                let cost = data_url.len() * copies;
+                if bytes + cost > faf_domain::state::map_generator::MAX_PREVIEW_BYTES {
+                    break;
+                }
+                bytes += cost;
+                if lower != *name {
+                    map.insert(name.clone(), data_url.clone());
+                }
+                map.insert(lower, data_url);
             }
         }
         map
@@ -1944,6 +2116,27 @@ impl MapGeneratorPort for FakeMapGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_jvm_keeps_its_class_data_in_an_archive_beside_its_jar() {
+        let jar = Path::new("generator").join("NeroxisGen_1.22.1.jar");
+        let options: Vec<String> = jvm_options(&jar)
+            .into_iter()
+            .map(|option| option.to_string_lossy().into_owned())
+            .collect();
+        // Ignoring unknown options has to come first to cover the rest.
+        assert_eq!(options[0], "-XX:+IgnoreUnrecognizedVMOptions");
+        assert!(options.contains(&"-XX:+AutoCreateSharedArchive".to_string()));
+        let archive = format!(
+            "-XX:SharedArchiveFile={}",
+            Path::new("generator")
+                .join("NeroxisGen_1.22.1.jsa")
+                .display()
+        );
+        assert!(options.contains(&archive));
+        // A batch job's collector, see `jvm_options`.
+        assert!(options.contains(&"-XX:+UseParallelGC".to_string()));
+    }
 
     #[tokio::test]
     async fn non_utf8_console_output_does_not_hide_the_next_map_name() {
@@ -2620,5 +2813,40 @@ mod tests {
         assert!(
             matches!(status, GeneratorStatus::Failed { reason } if reason.contains("not a generated map")),
         );
+    }
+
+    #[test]
+    fn free_memory_is_read_from_the_kernels_mem_available_line() {
+        let meminfo = "MemTotal:       16303848 kB\nMemFree:          812344 kB\n\
+                       MemAvailable:    9437184 kB\nBuffers:          123456 kB\n";
+        assert_eq!(meminfo_available(meminfo), Some(9_437_184 * 1024));
+        // A kernel too old for the line says nothing rather than zero, which
+        // would have allowed no generator at all.
+        assert_eq!(meminfo_available("MemTotal: 1 kB\nMemFree: 1 kB\n"), None);
+    }
+
+    #[test]
+    fn a_generator_is_budgeted_by_the_size_of_its_map() {
+        const MB: u64 = 1024 * 1024;
+        // Above every measured peak: 352 MB, 1.23 GB and 3.19 GB.
+        assert!(generator_memory_budget(Some(256)) >= 352 * MB);
+        assert!(generator_memory_budget(Some(512)) >= 1260 * MB);
+        assert!(generator_memory_budget(Some(1024)) >= 3267 * MB);
+        // Nothing smaller than half a gigabyte, whatever the size says.
+        assert_eq!(generator_memory_budget(Some(1)), 512 * MB);
+        // An unknown size is treated as a 20 km map, not as a small one.
+        assert_eq!(
+            generator_memory_budget(None),
+            generator_memory_budget(Some(1024))
+        );
+    }
+
+    #[test]
+    fn the_automatic_count_is_at_least_one_and_never_past_the_cap() {
+        for size in [None, Some(256), Some(1024), Some(u32::MAX)] {
+            let instances = automatic_instances(size);
+            assert!(instances >= 1);
+            assert!(instances <= faf_domain::state::settings::MAX_MAP_GENERATOR_INSTANCES);
+        }
     }
 }

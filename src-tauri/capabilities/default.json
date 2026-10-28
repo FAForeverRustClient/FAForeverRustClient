@@ -1,12 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Core permissions for the main window: events, window controls, desktop notifications, and trusted external links. No dialog permission: file dialogs open in the shell (pick_path), so a path the page sends back can be checked against what the player picked. A main window built again after its web view crashed takes the next label, main-2 and on.",
+  "description": "Core permissions for the main window: events, window controls, desktop notifications, the taskbar flash that goes with them, and trusted external links. No dialog permission: file dialogs open in the shell (pick_path), so a path the page sends back can be checked against what the player picked. A main window built again after its web view crashed takes the next label, main-2 and on.",
   "windows": ["main", "main-*"],
   "permissions": [
     "core:default",
     "core:event:default",
     "core:window:default",
+    "core:window:allow-request-user-attention",
     "core:webview:allow-set-webview-zoom",
     "notification:default",
     {

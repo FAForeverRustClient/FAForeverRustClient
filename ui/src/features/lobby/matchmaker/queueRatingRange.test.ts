@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MatchmakerQueue, PlayerRatingSummary } from "../../../ipc/bindings";
-import { matchReach, playersInRatingRange, queueRatingBuckets } from "./queueRatingRange";
+import { matchReach, playersInRatingRange, queueRatingGraph, RATING_GRAPH_DOMAIN } from "./queueRatingRange";
 
 function queue(overrides: Partial<MatchmakerQueue> = {}): MatchmakerQueue {
   return {
@@ -86,94 +86,62 @@ describe("players in your rating range", () => {
   });
 });
 
-describe("the queue breakdown by rating", () => {
-  it("groups searches by the middle of their window", () => {
-    // Middles of 1000, 1300 and 1800: the 800 band, the 1200 band, the 1600.
-    expect(queueRatingBuckets(queue())).toEqual([
-      { min: 800, max: 1200, count: 1, inRange: 0, mine: false },
-      { min: 1200, max: 1600, count: 1, inRange: 0, mine: false },
-      { min: 1600, max: 2000, count: 1, inRange: 0, mine: false },
-    ]);
+describe("the queue rating density graph", () => {
+  it("samples a smooth curve across the 0 to 2400 rating domain", () => {
+    const graph = queueRatingGraph(queue());
+    expect(graph).not.toBeNull();
+    expect(graph?.points[0].rating).toBe(RATING_GRAPH_DOMAIN[0]);
+    expect(graph?.points[graph.points.length - 1].rating).toBe(RATING_GRAPH_DOMAIN[1]);
+    expect(graph?.points.every((point) => point.value > 0 && point.value <= 1)).toBe(true);
+    expect(graph?.marker).toBeNull();
   });
 
-  it("counts several searches into the same band", () => {
+  it("draws a single search as a gentle wave rather than a maxed-out peak", () => {
+    const single = queue({ boundary80s: [{ min: 1000, max: 1400 }] });
+    const graph = queueRatingGraph(single);
+    const maxPoint = Math.max(...(graph?.points.map((point) => point.value) ?? []));
+    expect(maxPoint).toBeCloseTo(0.4, 2);
+  });
+
+  it("reaches full height where several searches cluster together", () => {
     const crowded = queue({
       boundary80s: [
-        { min: 900, max: 1100 },
-        { min: 800, max: 1200 },
-        { min: 950, max: 1050 },
+        { min: 1000, max: 1400 },
+        { min: 1050, max: 1350 },
+        { min: 1020, max: 1380 },
       ],
     });
-    expect(queueRatingBuckets(crowded)).toEqual([
-      { min: 800, max: 1200, count: 3, inRange: 0, mine: false },
-    ]);
-  });
-
-  it("leaves out the bands nobody is waiting in", () => {
-    const sparse = queue({ boundary80s: [{ min: 1900, max: 2100 }] });
-    expect(queueRatingBuckets(sparse)).toEqual([
-      { min: 2000, max: 2400, count: 1, inRange: 0, mine: false },
-    ]);
+    const graph = queueRatingGraph(crowded);
+    const at1200 = graph?.points.find((point) => point.rating === 1200)?.value ?? 0;
+    const at200 = graph?.points.find((point) => point.rating === 200)?.value ?? 0;
+    expect(at1200).toBe(1);
+    expect(at200).toBeLessThan(0.1);
   });
 
   it("falls back to the wider windows when the narrow ones are absent", () => {
     const wide = queue({ boundary80s: [] });
-    expect(queueRatingBuckets(wide).map((bucket) => bucket.min)).toEqual([800, 1200, 1600]);
+    expect(queueRatingGraph(wide)?.points).toEqual(queueRatingGraph(queue())?.points);
   });
 
-  it("says nothing about an empty queue", () => {
-    expect(queueRatingBuckets(queue({ boundary80s: [], boundary75s: [] }))).toEqual([]);
+  it("returns null for an empty queue", () => {
+    expect(queueRatingGraph(queue({ boundary80s: [], boundary75s: [] }))).toBeNull();
   });
 
-  it("says which of a band would take you, and which band you are in", () => {
-    // The report: a band with somebody in it, a rating that looks like it
-    // belongs there, and 0 in range underneath.
-    const buckets = queueRatingBuckets(queue(), rating(1150, 60), 0);
-    expect(buckets).toEqual([
-      { min: 800, max: 1200, count: 1, inRange: 1, mine: true },
-      { min: 1200, max: 1600, count: 1, inRange: 1, mine: false },
-      { min: 1600, max: 2000, count: 1, inRange: 0, mine: false },
-    ]);
+  it("places your marker on the curve when your rating is certain enough", () => {
+    const graph = queueRatingGraph(queue(), rating(1150, 60));
+    expect(graph?.marker?.rating).toBe(1150);
+    expect(graph?.marker?.value).toBeGreaterThan(0.5);
   });
 
-  it("adds up to the number on the card", () => {
-    for (const [mean, deviation] of [
-      [1150, 60],
-      [1050, 150],
-      [2500, 60],
-    ]) {
-      const summary = rating(mean, deviation);
-      const total = queueRatingBuckets(queue(), summary, 1)
-        .map((bucket) => bucket.inRange)
-        .reduce((sum, value) => sum + value, 0);
-      expect(total).toBe(playersInRatingRange(queue(), summary, 1));
-    }
+  it("clamps a high-rated marker to the graph domain", () => {
+    const graph = queueRatingGraph(queue(), rating(2600, 60));
+    expect(graph?.marker?.rating).toBe(RATING_GRAPH_DOMAIN[1]);
   });
 
-  it("lists your own band even when nobody is waiting in it", () => {
-    // Middles of 1000 and 1300, and you at a mean of 2100: nobody in the 2000
-    // band, but it is still listed so the marker has a row to sit on.
-    const team = queue({
-      teamSize: 2,
-      boundary80s: [{ min: 800, max: 1200 }, { min: 1100, max: 1500 }],
-    });
-    expect(queueRatingBuckets(team, rating(2100, 60), 0)).toEqual([
-      { min: 800, max: 1200, count: 1, inRange: 0, mine: false },
-      { min: 1200, max: 1600, count: 1, inRange: 0, mine: false },
-      { min: 2000, max: 2400, count: 0, inRange: 0, mine: true },
-    ]);
-    // And not when the queue is empty, which has no breakdown at all.
-    expect(queueRatingBuckets(queue({ boundary80s: [], boundary75s: [] }), rating(2100, 60), 0)).toEqual([]);
-  });
-
-  it("claims nothing about a rating the server is unsure of", () => {
-    const buckets = queueRatingBuckets(queue(), rating(1150, 201), 0);
-    expect(buckets.every((bucket) => bucket.inRange === 0 && !bucket.mine)).toBe(true);
-    // And the same windows as with no rating at all, so the list itself holds
-    // still when the deviation crosses the line.
-    expect(buckets.map((bucket) => bucket.min)).toEqual(
-      queueRatingBuckets(queue()).map((bucket) => bucket.min),
-    );
+  it("omits the marker when the server is unsure of your rating", () => {
+    const graph = queueRatingGraph(queue(), rating(1150, 201));
+    expect(graph?.marker).toBeNull();
+    expect(graph?.points).toEqual(queueRatingGraph(queue())?.points);
   });
 });
 

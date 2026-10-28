@@ -1,0 +1,22 @@
+/* The Units tab: its two views as tabs over the page they show, which takes
+   the rest of the height. */
+.units-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.section-tabs.units-section-tabs {
+  flex: none;
+  padding: 0 10px;
+}
+
+.units-panel {
+  flex: 1;
+  min-height: 0;
+}
+
+.units-panel:focus-visible {
+  outline: none;
+}

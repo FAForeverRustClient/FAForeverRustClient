@@ -45,6 +45,13 @@ tag, grouped by category, into the text of the GitHub release, and the
 changelog bridge posts that text to Discord when the release is published. A
 release with no new snippets is refused.
 
+Ticking **Required update** when starting the workflow puts one line first in
+the notes: "**Required update.** Older versions of the client ask to install
+it right away." Clients behind that release then raise the update gate at once
+instead of after the usual three days. Keep it for security fixes and changes
+the server will not accept older clients for, and do not type the line by hand:
+the client looks for it word for word.
+
 Nothing has to be deleted to start the next release empty: only snippets added
 since the last tag count. Old ones can be cleared out whenever the folder gets
 long.
@@ -90,9 +97,9 @@ that matter most to players, written like any other snippet.
 - A short "What's new" after every update.
 ```
 
-They lead the release notes, ahead of Features, and they are what the client's
-What's new window shows after the update, with a count of the rest below them.
-The window finds them by their heading, so `Highlights` stays `Highlights`. A
-release without them still goes out, but the window then shows the first few
-lines of the notes, which are the oldest pull requests' features rather than
-the ones that matter most.
+They lead the release notes, ahead of Features, and they lead the client's
+What's new window after the update, which lists every change of the release
+below them, section by section. The window finds them by their heading, so
+`Highlights` stays `Highlights`. A release without them still goes out, but
+the window then opens on the oldest pull requests' features rather than on
+the changes that matter most.

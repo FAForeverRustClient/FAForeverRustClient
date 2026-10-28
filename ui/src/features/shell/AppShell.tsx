@@ -2,7 +2,7 @@
 // and the active tab's view. Routing is a pure lookup in the tab registry on nav
 // state: no router. Theme selection now lives in the Settings tab.
 
-import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import { ipc } from "../../ipc/client";
 import { ViewErrorBoundary } from "../../shared/components/ErrorBoundary";
@@ -14,13 +14,14 @@ import { openTabForMode, TABS } from "../nav/tabs";
 import { ClientStatusBar } from "../status/ClientStatusBar";
 import { InstallBanner } from "./InstallBanner";
 import { WebviewEngineBanner } from "./WebviewEngineBanner";
-import { UpdateBanner } from "../updates/UpdateBanner";
+import { UpdateNotice } from "../updates/UpdateNotice";
 import { UpdateGate } from "../updates/UpdateGate";
 import { WhatsNewDialog } from "../updates/WhatsNewDialog";
 import { BrandMark } from "../../design-system/BrandMark";
 import { PlayerCardModal } from "../player-card/PlayerCardModal";
 import { ReviewsPanel } from "../reviews/ReviewsPanel";
 import { JoinDownloadDialog } from "../lobby/join/JoinDownloadDialog";
+import { JoinWhileSearchingDialog } from "../lobby/join/JoinWhileSearchingDialog";
 import { JoinPreparationDialog } from "../lobby/join/JoinPreparationDialog";
 import { ReplayStartDialog } from "../replays/ReplayStartDialog";
 import { ModReplacementDialog } from "../lobby/join/ModReplacementDialog";
@@ -63,6 +64,7 @@ function persistSidebarWidth(width: number) {
 
 export function AppShell() {
   const { t } = useTranslation();
+  const [deferredUpdate, setDeferredUpdate] = useState<string | null>(null);
   const activeTab = useAppStore((s) => s.state.nav.activeTab);
   const auth = useAppStore((s) => s.state.auth);
   const chatStatus = useAppStore((s) => s.state.chat.status);
@@ -105,7 +107,6 @@ export function AppShell() {
   const contentRef = useRef<HTMLElement>(null);
 
   const openTab = openTabForMode(auth.mode, activeTab);
-  const ActiveView = TABS[openTab].Component;
 
   // The scroll container outlives the view inside it: only the class and the
   // children change on a tab switch, so the previous tab's scroll position was
@@ -115,6 +116,20 @@ export function AppShell() {
   useLayoutEffect(() => {
     contentRef.current?.scrollTo({ top: 0 });
   }, [openTab]);
+
+  // How tall the scrolling area actually is, for a panel pinned beside a list
+  // (`position: sticky`) to fit itself into. `100vh` is the window, which is
+  // the shell's header and status bar taller than this, so a panel sized from
+  // it always hung off the bottom with its action row (issue 615).
+  useLayoutEffect(() => {
+    const content = contentRef.current;
+    if (!content || typeof ResizeObserver === "undefined") return;
+    const publish = () => content.style.setProperty("--content-height", `${content.clientHeight}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, []);
 
   // Changed in Settings rather than by dragging: the state below is seeded
   // once, so without this the segmented control in Appearance would write a
@@ -224,6 +239,7 @@ export function AppShell() {
         <TabBar onPointerSelect={() => contentRef.current?.focus({ preventScroll: true })} />
 
         <div className="sidebar-footer">
+          <UpdateNotice deferredVersion={deferredUpdate} />
           <button
             type="button"
             className="sidebar-profile-button"
@@ -290,7 +306,6 @@ export function AppShell() {
             and would have overlapped the moment an update landed on a client
             with no game install configured. */}
         <div className="workspace-banners">
-          <UpdateBanner />
           <InstallBanner />
           <WebviewEngineBanner />
         </div>
@@ -303,11 +318,7 @@ export function AppShell() {
           tabIndex={-1}
         >
           <div className={`content-inner content-${openTab}`}>
-            <ViewErrorBoundary resetKey={openTab}>
-              <Suspense fallback={<div className="muted" role="status">{t("shell.loadingSection")}</div>}>
-                <ActiveView />
-              </Suspense>
-            </ViewErrorBoundary>
+            <ActiveTabView tab={openTab} />
           </div>
         </section>
 
@@ -315,13 +326,14 @@ export function AppShell() {
 
       {/* Last, and outside the banner row: this one is a dialog over the
           whole client rather than a strip inside it. */}
-      <UpdateGate />
+      <UpdateGate deferredVersion={deferredUpdate} onDefer={setDeferredUpdate} />
       {/* Beside the gate, and never over it: it waits while the gate or a
           game is up. Here, in the signed-in shell, so it is never shown over
           the login screen. */}
       <WhatsNewDialog />
       <ClientStatusBar />
       <ModReplacementDialog />
+      <JoinWhileSearchingDialog />
       <JoinDownloadDialog />
       <JoinPreparationDialog />
       <ReplayStartDialog />
@@ -332,3 +344,14 @@ export function AppShell() {
     </div>
   );
 }
+
+// Directory and shell updates must not redraw the active feature's entire tree.
+const ActiveTabView = memo(function ActiveTabView({ tab }: { tab: keyof typeof TABS }) {
+  const { t } = useTranslation();
+  const View = TABS[tab].Component;
+  return <ViewErrorBoundary resetKey={tab}>
+    <Suspense fallback={<div className="muted" role="status">{t("shell.loadingSection")}</div>}>
+      <View />
+    </Suspense>
+  </ViewErrorBoundary>;
+});

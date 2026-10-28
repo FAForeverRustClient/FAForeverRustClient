@@ -30,6 +30,12 @@ describe("specSizeOf", () => {
 });
 
 describe("tourneyMapSize", () => {
+  it("sizes a generated map from its decoded name", () => {
+    const name = "neroxis_map_generator_1.22.2_yzlqo3opnhdoi_ayfqeaa";
+    expect(tourneyMapSize(tourneyMap(name), vault, 512)).toBe("10x10");
+    expect(tourneyMapSize(tourneyMap(name), vault)).toBe("");
+  });
+
   it("keeps the organiser's size over anything the client knows", () => {
     const spec = { team1Spawns: [], team2Spawns: [], closedSpawns: [], closedMexSpawns: [], size: "20x20" };
     expect(tourneyMapSize(tourneyMap("Test Plateau", { spec }), vault)).toBe("20x20");

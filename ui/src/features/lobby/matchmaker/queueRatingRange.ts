@@ -157,95 +157,97 @@ export function playersInRatingRange(
 }
 
 /**
- * How wide a rating band each row of the queue breakdown covers.
+ * The rating axis and sampling resolution for the queue density curve.
  *
- * 400 is what the Java client uses, and the bands it produces -- 400 to 800,
- * 800 to 1200 -- are the ones players already talk in.
+ * Spanning 0 to 2400 with ticks every 800 points covers the active ladder
+ * without isolating outliers at the top or bottom into narrow rows. Each
+ * queued search contributes a Gaussian wave of width `TRUESKILL_BETA` (240)
+ * around the middle of its window, producing a smooth activity curve rather
+ * than exact per-bracket headcounts.
  */
-export const RATING_BUCKET = 400;
+export const RATING_GRAPH_DOMAIN: readonly [number, number] = [0, 2400];
+export const RATING_GRAPH_TICKS: readonly number[] = [0, 800, 1600, 2400];
+const RATING_GRAPH_STEPS = 48;
+/**
+ * Minimum peak density that reaches full plot height, so a single queued
+ * search draws a low wave rather than a maxed-out peak.
+ */
+const FULL_PEAK_DENSITY = 2.5;
 
-/** One band of the breakdown: how many people are queued around that rating. */
-export interface RatingBucket {
-  min: number;
-  max: number;
-  count: number;
-  /**
-   * How many of this band's searches would actually take you, your own search
-   * excluded. These sum to the number the card prints as "in your range".
-   *
-   * They are not the same question as `count`, and a report came from the two
-   * being read as though they were: a band of one, a rating apparently inside
-   * it, and "0 in your range" underneath. The bands are the matchmaker's mean,
-   * the rating on the card is the conservative number every client displays,
-   * and a search only takes you if its window contains your *mean*. Saying per
-   * band which of them do settles it without printing a second rating nobody
-   * recognises.
-   */
-  inRange: number;
-  /** The band your own rating sits in, on the same scale as the bands. */
-  mine: boolean;
+export interface RatingGraphPoint {
+  rating: number;
+  /** Normalized curve height from 0 to 1. */
+  value: number;
+}
+
+export interface RatingGraphMarker {
+  rating: number;
+  /** Normalized curve height from 0 to 1 at `rating`. */
+  value: number;
+}
+
+export interface QueueRatingGraph {
+  points: RatingGraphPoint[];
+  marker: RatingGraphMarker | null;
 }
 
 /**
- * The people waiting in a queue, grouped by roughly what they are rated.
+ * The people waiting in a queue, as a smooth rating density curve.
  *
- * The server publishes no ratings, only each search's acceptable *window*, so
- * the rating is taken as the middle of that window. That is exact at the
- * moment a search starts and drifts outwards as the window widens with time
- * spent waiting, which is the right direction to be wrong in: it spreads a
- * long-waiting player across neighbouring bands rather than inventing one.
- *
- * The narrow windows are preferred for that reason. Empty bands are left out
- * entirely, so the breakdown is as long as the queue is varied; the one
- * exception is your own band, which is kept so you can see where you stand.
+ * Returns `null` when the queue has no published search windows so an empty
+ * queue renders no popover.
  */
-export function queueRatingBuckets(
+export function queueRatingGraph(
   queue: MatchmakerQueue,
   rating: PlayerRatingSummary | null = null,
-  ownSearches = 0,
-): RatingBucket[] {
+): QueueRatingGraph | null {
   const windows = windowsFor(queue, rating);
-  // The same test `playersInRatingRange` makes, and only when it would make
-  // it: an uncertain or absent rating has no answer, and a band cannot claim
-  // one either.
-  const mean =
-    playersInRatingRange(queue, rating, 0) === null ? null : (rating?.mean ?? null);
-  const reaches = mean === null || !rating ? null : reachesYou(queue, rating);
-  const bandOf = (value: number) => Math.floor(Math.max(0, value) / RATING_BUCKET) * RATING_BUCKET;
+  const [from, to] = RATING_GRAPH_DOMAIN;
+  const clamp = (value: number) => Math.min(to, Math.max(from, value));
+  const centres: number[] = [];
 
-  const counts = new Map<number, { count: number; inRange: number }>();
   for (const window of windows) {
     const middle = (window.min + window.max) / 2;
-    if (!Number.isFinite(middle)) continue;
-    const band = bandOf(middle);
-    const tally = counts.get(band) ?? { count: 0, inRange: 0 };
-    tally.count += 1;
-    if (reaches?.(window)) tally.inRange += 1;
-    counts.set(band, tally);
+    if (Number.isFinite(middle)) centres.push(clamp(middle));
   }
 
-  // Your own search is in the server's numbers, it is centred on you, and it
-  // is therefore in your own band. Taking it off there is what keeps these
-  // adding up to the count on the card.
-  const myBand = mean === null ? null : bandOf(mean);
-  if (myBand !== null && ownSearches > 0) {
-    const tally = counts.get(myBand);
-    if (tally) tally.inRange = Math.max(0, tally.inRange - ownSearches);
-  }
-  // Your own band is listed even when nobody is waiting in it, as long as
-  // somebody is waiting anywhere: otherwise the marker for where you stand
-  // vanished exactly when it mattered, with everyone queued somewhere else.
-  if (myBand !== null && counts.size > 0 && !counts.has(myBand)) {
-    counts.set(myBand, { count: 0, inRange: 0 });
+  if (centres.length === 0) return null;
+
+  const rawDensity = (target: number) => {
+    let sum = 0;
+    for (const centre of centres) {
+      const distance = (target - centre) / TRUESKILL_BETA;
+      sum += Math.exp(-0.5 * distance * distance);
+    }
+    return sum;
+  };
+
+  const sampleRatings: number[] = [];
+  for (let step = 0; step <= RATING_GRAPH_STEPS; step++) {
+    sampleRatings.push(from + ((to - from) * step) / RATING_GRAPH_STEPS);
   }
 
-  return [...counts.entries()]
-    .sort(([left], [right]) => left - right)
-    .map(([min, tally]) => ({
-      min,
-      max: min + RATING_BUCKET,
-      count: tally.count,
-      inRange: tally.inRange,
-      mine: min === myBand,
-    }));
+  const rawSamples = sampleRatings.map(rawDensity);
+  // Normalize against the fixed plotting grid instead of every search centre.
+  // Work stays linear in queue size; the grid already covers the visible curve.
+  const peak = Math.max(...rawSamples, FULL_PEAK_DENSITY);
+  const points: RatingGraphPoint[] = sampleRatings.map((sampleRating, index) => ({
+    rating: sampleRating,
+    value: rawSamples[index] / peak,
+  }));
+
+  // The same certainty test `playersInRatingRange` makes: an uncertain or
+  // absent rating has no marker on the axis.
+  const mean =
+    playersInRatingRange(queue, rating, 0) === null ? null : (rating?.mean ?? null);
+  const markerRating = mean === null ? null : clamp(mean);
+  const marker: RatingGraphMarker | null =
+    markerRating === null
+      ? null
+      : {
+          rating: markerRating,
+          value: Math.min(1, rawDensity(markerRating) / peak),
+        };
+
+  return { points, marker };
 }

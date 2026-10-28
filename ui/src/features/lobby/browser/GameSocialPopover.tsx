@@ -75,7 +75,7 @@ export function GameSocialPopover({
                     alt={countryOf(profile.country)}
                     title={countryOf(profile.country)}
                     width={16}
-                    height={12}
+                    height={16}
                     decoding="async"
                     draggable={false}
                     className="game-friend-flag"

@@ -724,8 +724,18 @@ fn extract_entry(
     let allowed = declared.min(*remaining);
     let mut file = std::fs::File::create(output)
         .map_err(|error| format!("could not create {}: {error}", output.display()))?;
-    let written = std::io::copy(&mut entry.take(allowed.saturating_add(1)), &mut file)
-        .map_err(|error| format!("could not write {}: {error}", output.display()))?;
+    let written =
+        std::io::copy(&mut entry.take(allowed.saturating_add(1)), &mut file).map_err(|error| {
+            match error.kind() {
+                // The archive, not the disk: zip checks each entry against its
+                // declared size and checksum while it is read, and refuses an
+                // entry that outruns it before the check below can see it.
+                std::io::ErrorKind::InvalidData | std::io::ErrorKind::UnexpectedEof => {
+                    format!("{subject} is damaged: {error}")
+                }
+                _ => format!("could not write {}: {error}", output.display()),
+            }
+        })?;
     if written > allowed {
         return Err(format!(
             "{subject} contains an entry bigger than the size it declares"
@@ -852,8 +862,10 @@ mod tests {
 
         let outcome = install_archive(&bytes, &root, None, |_| Ok(()));
         let error = outcome.expect_err("an archive that lies about its size must not install");
+        // zip refuses the entry while reading it; our own check is the
+        // backstop for a reader that does not.
         assert!(
-            error.contains("bigger than the size it declares"),
+            error.contains("is damaged") && error.contains("declared"),
             "unexpected error: {error}"
         );
 

@@ -25,14 +25,29 @@ import { noteForPlayer } from "../rules/playerNotes";
 import { EMPTY_REPLAY_QUERY } from "../replayQuery";
 import { requestReplaySearch } from "../replaySearchIntent";
 import { openPlayerCard } from "../playerCardActions";
+import { openReport } from "../reportIntent";
 import { PlayerNoteModal } from "../components/PlayerNoteEditor";
 import { UserMenu, type UserMenuTarget } from "../components/UserMenu";
 // The menu's styling lives in the chat stylesheet, which a non-chat caller
 // would otherwise never load.
 import { joinGame as joinLobbyGame } from "../joinGame";
 
+/** What the place a menu was opened from knows about the name. */
+export interface PlayerMenuContext {
+  /** The game the name was shown in, which "Report" fills in for the user. */
+  gameId?: number;
+}
+
 /** Open the menu for `nickname`, beside the element it was opened from. */
-export type PlayerMenuOpener = (nickname: string, event: MouseEvent) => void;
+export type PlayerMenuOpener = (nickname: string, event: MouseEvent, context?: PlayerMenuContext) => void;
+
+/**
+ * `opener` with the game a lineup belongs to attached, so a report opened from
+ * a replay's names arrives with its game ID filled in (issue 614).
+ */
+export function withGameContext(opener: PlayerMenuOpener, gameId: number): PlayerMenuOpener {
+  return (nickname, event) => opener(nickname, event, { gameId });
+}
 
 const setRelation = (account: AccountRef, relation: "friend" | "foe", member: boolean) =>
   ipc.send({
@@ -93,13 +108,15 @@ export function usePlayerMenu(options: PlayerMenuOptions = {}): {
   const chatPreferences = useAppStore((s) => s.state.settings.chat);
   const playerNotes = useAppStore((s) => s.state.settings.social.playerNotes);
   const [menu, setMenu] = useState<UserMenuTarget | null>(null);
+  const [menuContext, setMenuContext] = useState<PlayerMenuContext>({});
   const [noteTarget, setNoteTarget] = useState<AccountRef | null>(null);
 
   const self = chatUsername || player?.name || "";
 
-  const openPlayerMenu = useCallback<PlayerMenuOpener>((nickname, event) => {
+  const openPlayerMenu = useCallback<PlayerMenuOpener>((nickname, event, context) => {
     // Replace the webview's own context menu, which offers "Reload"/"Inspect".
     event.preventDefault();
+    setMenuContext(context ?? {});
     const social = useAppStore.getState().state.social;
     const { left, right, top, bottom } = event.currentTarget.getBoundingClientRect();
     setMenu({
@@ -174,10 +191,7 @@ export function usePlayerMenu(options: PlayerMenuOptions = {}): {
             setNameColor: setPlayerNameColor,
             setMuted: setPlayerMuted,
             editNote: setNoteTarget,
-            reportPlayer: (account) => ipc.send({
-              kind: "Reporting",
-              command: { type: "open", payload: { playerId: account.id, login: account.login } },
-            }),
+            reportPlayer: (account) => openReport(account, menuContext.gameId),
           }}
           onClose={closeMenu}
         />

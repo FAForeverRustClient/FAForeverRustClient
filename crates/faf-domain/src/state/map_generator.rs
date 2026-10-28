@@ -118,6 +118,7 @@ pub struct GeneratorPreset {
 /// produce, so no run ever loses a thumbnail it is showing, and a bounded
 /// amount of what is, in the end, a picture cache.
 pub const MAX_KEPT_PREVIEWS: usize = 64;
+pub const MAX_PREVIEW_BYTES: usize = 16 * 1024 * 1024;
 
 /// Longest preset name accepted. Generous, but bounded: the name becomes a
 /// file name, and file systems have limits that a silent truncation would hit
@@ -197,6 +198,82 @@ impl Default for GeneratorOptionLists {
     fn default() -> Self {
         Self::fallback()
     }
+}
+
+/// The chosen styles and symmetries `lists` does not offer, for generator
+/// `version` (issue: map generation failing on some combinations).
+///
+/// `lists` are what that release answered when asked (`--styles` and the
+/// rest), so a value missing from one is a value the release would refuse
+/// before generating anything. A list that is empty is one the release did not
+/// answer, and nothing is said about it. Only the casual branch sends these
+/// options at all, and raw arguments are the user's own business.
+pub fn options_missing_from(
+    lists: &GeneratorOptionLists,
+    options: &GeneratorOptions,
+    version: &str,
+) -> Vec<ValidationIssue> {
+    if !options.command_line_args.is_empty() || options.generation_type != GenerationType::Casual {
+        return Vec::new();
+    }
+    let chosen = |single: &String, several: &Vec<String>| -> Vec<String> {
+        if single.is_empty() {
+            several.clone()
+        } else {
+            vec![single.clone()]
+        }
+    };
+    let checks: [(&str, Vec<String>, &Vec<String>); 6] = [
+        (
+            "terrain-symmetry",
+            chosen(&options.symmetry, &options.symmetries),
+            &lists.symmetries,
+        ),
+        (
+            "style",
+            chosen(&options.style, &options.styles),
+            &lists.styles,
+        ),
+        (
+            "terrain-style",
+            chosen(&options.terrain_style, &options.terrain_styles),
+            &lists.terrain_styles,
+        ),
+        (
+            "texture-style",
+            chosen(&options.texture_style, &options.texture_styles),
+            &lists.texture_styles,
+        ),
+        (
+            "resource-style",
+            chosen(&options.resource_style, &options.resource_styles),
+            &lists.resource_styles,
+        ),
+        (
+            "prop-style",
+            chosen(&options.prop_style, &options.prop_styles),
+            &lists.prop_styles,
+        ),
+    ];
+    let mut issues = Vec::new();
+    for (option, values, offered) in checks {
+        if offered.is_empty() {
+            continue;
+        }
+        for value in values {
+            if !offered
+                .iter()
+                .any(|known| known.eq_ignore_ascii_case(&value))
+            {
+                issues.push(ValidationIssue::NotInThisVersion {
+                    option: option.to_string(),
+                    value,
+                    version: version.to_string(),
+                });
+            }
+        }
+    }
+    issues
 }
 
 impl GeneratorOptionLists {
@@ -600,6 +677,18 @@ pub fn reduce(state: &mut MapGeneratorState, event: &MapGeneratorEvent) {
                 state.previews.clear();
             }
             state.previews.extend(previews.clone());
+            let mut bytes: usize = state.previews.values().map(String::len).sum();
+            let mut keys: Vec<_> = state.previews.keys().cloned().collect();
+            // Older batches go first; ties are stable across the two reducers.
+            keys.sort_by_key(|key| (previews.contains_key(key), key.clone()));
+            for key in keys {
+                if bytes <= MAX_PREVIEW_BYTES && state.previews.len() <= MAX_KEPT_PREVIEWS {
+                    break;
+                }
+                if let Some(value) = state.previews.remove(&key) {
+                    bytes -= value.len();
+                }
+            }
         }
         MapGeneratorEvent::ValidationChanged { issues } => state.validation = issues.clone(),
         MapGeneratorEvent::NamePredicted { map_name } => state.predicted_name = map_name.clone(),
@@ -618,6 +707,24 @@ pub fn reduce(state: &mut MapGeneratorState, event: &MapGeneratorEvent) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn performance_generated_preview_budget_prefers_the_new_batch() {
+        let mut state = MapGeneratorState::default();
+        for name in ["zzz_old", "aaa_new"] {
+            reduce(
+                &mut state,
+                &MapGeneratorEvent::PreviewsLoaded {
+                    previews: std::collections::HashMap::from([(
+                        name.into(),
+                        "A".repeat(MAX_PREVIEW_BYTES / 2 + 1),
+                    )]),
+                },
+            );
+        }
+        assert_eq!(state.previews.len(), 1);
+        assert!(state.previews.contains_key("aaa_new"));
+    }
 
     #[test]
     fn defaults_to_idle_with_nothing_loaded() {
@@ -849,5 +956,36 @@ mod tests {
             },
         );
         assert_eq!(s.latest_version, "1.7.7");
+    }
+}
+
+#[cfg(test)]
+mod version_option_tests {
+    use super::*;
+
+    #[test]
+    fn a_style_the_release_does_not_have_is_named_before_the_run() {
+        // The generator log's commonest failure: SUNSET picked with 1.18.
+        let lists = GeneratorOptionLists {
+            texture_styles: vec!["BRIMSTONE".into(), "DESERT".into()],
+            terrain_styles: vec!["BASIC".into()],
+            ..GeneratorOptionLists::empty()
+        };
+        let options = GeneratorOptions {
+            texture_style: "SUNSET".into(),
+            terrain_style: "basic".into(),
+            // No list answered: nothing is said about it.
+            prop_style: "ANYTHING".into(),
+            ..GeneratorOptions::default()
+        };
+        assert_eq!(
+            options_missing_from(&lists, &options, "1.18.1"),
+            vec![ValidationIssue::NotInThisVersion {
+                option: "texture-style".into(),
+                value: "SUNSET".into(),
+                version: "1.18.1".into(),
+            }]
+        );
+        assert!(options_missing_from(&lists, &options, "1.18.1")[0].is_fatal());
     }
 }

@@ -32,6 +32,11 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+mod historical;
+mod search;
+pub use historical::{historical_balance_source, parse_historical_balance};
+pub use search::{search_entry, ChangelogSearchDocument, ChangelogSearchMatch};
+
 /// Where a patch note's Markdown lives, and where its unit icons come from.
 const RAW_POSTS_BASE: &str = "https://raw.githubusercontent.com/FAForever/fa/master/docs/_posts";
 const PAGES_BASE: &str = "https://faforever.github.io/fa";
@@ -90,6 +95,9 @@ pub enum ChangelogSpan {
     Issue {
         number: String,
         url: String,
+        /// The source label when a numeric citation omitted its hash.
+        #[serde(default)]
+        label: Option<String>,
     },
 }
 
@@ -97,7 +105,9 @@ pub enum ChangelogSpan {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangelogUnit {
-    pub unit_id: String,
+    /// Historical illustrations can identify a unit without naming its blueprint.
+    #[serde(default)]
+    pub unit_id: Option<String>,
     pub icon_url: String,
 }
 
@@ -143,6 +153,17 @@ pub enum ChangelogBlock {
     },
     List {
         items: Vec<ChangelogListItem>,
+    },
+    CodeBlock {
+        text: String,
+    },
+    /// Original detail retained separately when the current post is a summary.
+    #[serde(rename_all = "camelCase")]
+    HistoricalBalance {
+        patch_id: String,
+        source_url: String,
+        blocks: Vec<ChangelogBlock>,
+        unavailable: bool,
     },
 }
 
@@ -297,11 +318,15 @@ pub fn parse_entry(id: &str, markdown: &str) -> ChangelogEntry {
     let (front_matter, body) = split_front_matter(markdown);
     let title = front_matter_value(front_matter, "title").unwrap_or_else(|| id.to_string());
 
-    ChangelogEntry {
+    let mut entry = ChangelogEntry {
         id: id.to_string(),
         title,
         blocks: parse_blocks(body),
-    }
+    };
+    balance_captions(&mut entry.blocks);
+    nested_balance_units(&mut entry.blocks);
+    historical::enrich(&mut entry);
+    entry
 }
 
 /// Split the leading `---` fenced YAML from the body. A post without front
@@ -333,6 +358,25 @@ fn front_matter_value(front_matter: &str, key: &str) -> Option<String> {
 /// see, so it is dropped rather than shown as the last line of every release.
 const INSTALLER_TRAILER: &str = "Download the installer for your platform from the assets below";
 
+/// The line the Release workflow puts first in a release that must be
+/// installed at once (its `required` input): a security fix, or a change the
+/// server will not talk to older clients without. A client behind such a
+/// release skips the grace period (`is_overdue` in the client-update slice).
+///
+/// Kept as a line people read, not a hidden comment: the notes are also the
+/// Discord post, where a comment would show as markup, and a player should see
+/// why the client asks. `.github/workflows/release.yml` writes it verbatim; a
+/// test below holds the two together.
+pub const REQUIRED_UPDATE_LINE: &str =
+    "**Required update.** Older versions of the client ask to install it right away.";
+
+/// Whether a release body carries [`REQUIRED_UPDATE_LINE`] on a line of its own.
+pub fn marks_required_update(markdown: &str) -> bool {
+    markdown
+        .lines()
+        .any(|line| line.trim() == REQUIRED_UPDATE_LINE)
+}
+
 /// Parse the body of one of this client's own GitHub releases into blocks.
 ///
 /// The same parser as a patch note, because the body is a simpler cousin of
@@ -355,9 +399,22 @@ const INSTALLER_TRAILER: &str = "Download the installer for your platform from t
 /// anything else this dialect does not know becomes a paragraph rather than
 /// vanishing. An empty body is no blocks.
 pub fn parse_release_notes(markdown: &str, issue_base: &str) -> Vec<ChangelogBlock> {
+    let mut fence: Option<CodeFence> = None;
     let body = markdown
         .lines()
-        .map(dash_bullet)
+        .map(|line| {
+            if let Some(open) = fence {
+                if open.closes(line.trim()) {
+                    fence = None;
+                }
+                line.into()
+            } else if let Some(open) = CodeFence::open(line.trim()) {
+                fence = Some(open);
+                line.into()
+            } else {
+                dash_bullet(line)
+            }
+        })
         .collect::<Vec<_>>()
         .join("\n");
     let mut blocks = parse_blocks(&body);
@@ -366,7 +423,10 @@ pub fn parse_release_notes(markdown: &str, issue_base: &str) -> Vec<ChangelogBlo
         match block {
             ChangelogBlock::Paragraph { spans } => relink_issues(spans, issue_base),
             ChangelogBlock::List { items } => as_release_items(items, issue_base),
-            ChangelogBlock::Heading { .. } | ChangelogBlock::Unit { .. } => {}
+            ChangelogBlock::Heading { .. }
+            | ChangelogBlock::Unit { .. }
+            | ChangelogBlock::CodeBlock { .. }
+            | ChangelogBlock::HistoricalBalance { .. } => {}
         }
     }
     blocks
@@ -402,7 +462,7 @@ fn is_installer_trailer(block: &ChangelogBlock) -> bool {
 
 fn relink_issues(spans: &mut [ChangelogSpan], issue_base: &str) {
     for span in spans {
-        if let ChangelogSpan::Issue { number, url } = span {
+        if let ChangelogSpan::Issue { number, url, .. } = span {
             *url = format!("{issue_base}/{number}");
         }
     }
@@ -434,6 +494,24 @@ fn parse_blocks(body: &str) -> Vec<ChangelogBlock> {
             continue;
         }
 
+        if let Some(fence) = CodeFence::open(trimmed) {
+            flush_paragraph(&mut paragraph, &mut blocks);
+            let indent = &line[..line.len() - line.trim_start().len()];
+            let mut code = Vec::new();
+            index += 1;
+            while index < lines.len() && !fence.closes(lines[index].trim()) {
+                code.push(lines[index].strip_prefix(indent).unwrap_or(lines[index]));
+                index += 1;
+            }
+            if index < lines.len() {
+                index += 1;
+            }
+            blocks.push(ChangelogBlock::CodeBlock {
+                text: code.join("\n"),
+            });
+            continue;
+        }
+
         if let Some(unit) = parse_unit_open(trimmed) {
             flush_paragraph(&mut paragraph, &mut blocks);
             let mut name = Vec::new();
@@ -446,7 +524,7 @@ fn parse_blocks(body: &str) -> Vec<ChangelogBlock> {
             blocks.push(ChangelogBlock::Unit {
                 units: vec![ChangelogUnit {
                     icon_url: unit_icon_url(&unit),
-                    unit_id: unit,
+                    unit_id: Some(unit),
                 }],
                 name: name.join(" ").trim().to_string(),
             });
@@ -465,10 +543,28 @@ fn parse_blocks(body: &str) -> Vec<ChangelogBlock> {
 
         if is_list_marker(line) {
             flush_paragraph(&mut paragraph, &mut blocks);
+            if let Some(unit) = list_unit_block(line) {
+                blocks.push(unit);
+                index += 1;
+                continue;
+            }
             let start = index;
-            while index < lines.len()
-                && (is_list_marker(lines[index]) || lines[index].trim().is_empty())
-            {
+            let base_indent = line.len() - line.trim_start().len();
+            let mut item_line = line;
+            while index < lines.len() && list_unit_block(lines[index]).is_none() {
+                if !lines[index].trim().is_empty()
+                    && lines[index].len() - lines[index].trim_start().len() < base_indent
+                {
+                    break;
+                }
+                if is_list_marker(lines[index]) {
+                    item_line = lines[index];
+                } else if !lines[index].trim().is_empty()
+                    && !continues_list_item(lines[index], item_line)
+                    && !unmarked_change(lines[index], item_line)
+                {
+                    break;
+                }
                 // A blank line only continues the list if a further item follows.
                 if lines[index].trim().is_empty()
                     && !lines[index + 1..]
@@ -495,6 +591,31 @@ fn parse_blocks(body: &str) -> Vec<ChangelogBlock> {
     blocks
 }
 
+#[derive(Clone, Copy)]
+struct CodeFence {
+    marker: u8,
+    width: usize,
+}
+
+impl CodeFence {
+    fn open(line: &str) -> Option<Self> {
+        let marker = *line.as_bytes().first()?;
+        if marker != b'`' && marker != b'~' {
+            return None;
+        }
+        let width = line.bytes().take_while(|byte| *byte == marker).count();
+        if width < 3 || (marker == b'`' && line[width..].contains('`')) {
+            return None;
+        }
+        Some(Self { marker, width })
+    }
+
+    fn closes(self, line: &str) -> bool {
+        let width = line.bytes().take_while(|byte| *byte == self.marker).count();
+        width >= self.width && line[width..].trim().is_empty()
+    }
+}
+
 fn flush_paragraph(paragraph: &mut Vec<String>, blocks: &mut Vec<ChangelogBlock>) {
     if paragraph.is_empty() {
         return;
@@ -504,17 +625,8 @@ fn flush_paragraph(paragraph: &mut Vec<String>, blocks: &mut Vec<ChangelogBlock>
 
     // Before the `{% unit %}` tag existed this bold line *was* the unit header,
     // so reading it gives the archive the same icons the newest patch has.
-    if let Some((name, ids)) = unit_header(&text) {
-        blocks.push(ChangelogBlock::Unit {
-            units: ids
-                .into_iter()
-                .map(|unit_id| ChangelogUnit {
-                    icon_url: unit_icon_url(&unit_id),
-                    unit_id,
-                })
-                .collect(),
-            name,
-        });
+    if let Some(unit) = prose_unit_block(&text) {
+        blocks.push(unit);
         return;
     }
 
@@ -524,8 +636,42 @@ fn flush_paragraph(paragraph: &mut Vec<String>, blocks: &mut Vec<ChangelogBlock>
 }
 
 fn heading_level(trimmed: &str) -> Option<u8> {
-    let hashes = trimmed.chars().take_while(|c| *c == '#').count();
-    (1..=6).contains(&hashes).then_some(hashes as u8)
+    let hashes = trimmed.bytes().take_while(|byte| *byte == b'#').count();
+    // Some old notes use `###Contributors`. Keep those labels, but a digit
+    // directly after the hashes is an issue number rather than a heading.
+    ((1..=6).contains(&hashes)
+        && trimmed
+            .as_bytes()
+            .get(hashes)
+            .is_none_or(|byte| matches!(byte, b' ' | b'\t') || byte.is_ascii_alphabetic()))
+    .then_some(hashes as u8)
+}
+
+/// Soft-wrapped list text belongs to the preceding bullet, including PR lists.
+/// Explicit blocks retain their existing headings, unit captions and code boxes.
+fn continues_list_item(line: &str, item_line: &str) -> bool {
+    let trimmed = line.trim();
+    let indent = item_line.len() - item_line.trim_start().len();
+    line.len() - line.trim_start().len() >= indent + 2
+        && parse_change(item_line.trim_start().trim_start_matches('-').trim()).is_none()
+        && parse_change(trimmed).is_none()
+        && !trimmed.is_empty()
+        && !is_list_marker(line)
+        && heading_level(trimmed).is_none()
+        && CodeFence::open(trimmed).is_none()
+        && parse_unit_open(trimmed).is_none()
+        && prose_unit_block(trimmed).is_none()
+}
+
+/// A stat line under a bullet written without its own marker, the way 3718
+/// lists the Mech Marine's and Selen's stats. It is a change of that bullet:
+/// read as prose, it ended the list, ran the stats together into one
+/// paragraph and restarted the rest of the list a level too high.
+fn unmarked_change(line: &str, item_line: &str) -> bool {
+    let indent = item_line.len() - item_line.trim_start().len();
+    line.len() - line.trim_start().len() >= indent + 2
+        && !is_list_marker(line)
+        && parse_change(line.trim()).is_some()
 }
 
 fn parse_unit_open(trimmed: &str) -> Option<String> {
@@ -539,6 +685,27 @@ fn is_list_marker(line: &str) -> bool {
     trimmed.starts_with("- ") || trimmed == "-"
 }
 
+/// Older balance notes nest unit headings under the change's description.
+/// They become normal unit sections, splitting the surrounding list without
+/// changing the order of descriptions, stat groups or repeated unit entries.
+fn list_unit_block(line: &str) -> Option<ChangelogBlock> {
+    prose_unit_block(line.trim_start().strip_prefix("- ")?)
+}
+
+fn prose_unit_block(text: &str) -> Option<ChangelogBlock> {
+    let (name, ids) = unit_header(text)?;
+    Some(ChangelogBlock::Unit {
+        units: ids
+            .into_iter()
+            .map(|unit_id| ChangelogUnit {
+                icon_url: unit_icon_url(&unit_id),
+                unit_id: Some(unit_id),
+            })
+            .collect(),
+        name,
+    })
+}
+
 /// Build the item tree from indentation. The template indents nested changes by
 /// two spaces per level, and the depth is what tells a category apart from the
 /// values under it.
@@ -547,13 +714,25 @@ fn parse_list(lines: &[&str]) -> Vec<ChangelogListItem> {
     // Indentation of each open level, so a deeper line attaches to the right parent.
     let mut open: Vec<usize> = Vec::new();
 
-    for line in lines {
+    let mut index = 0;
+    while index < lines.len() {
+        let line = lines[index];
+        index += 1;
         if !is_list_marker(line) {
             continue;
         }
         let indent = line.len() - line.trim_start().len();
-        let text = line.trim_start().trim_start_matches('-').trim();
-        let item = build_item(text);
+        let mut text = line.trim_start().trim_start_matches('-').trim().to_string();
+        while index < lines.len() && continues_list_item(lines[index], line) {
+            text.push(' ');
+            text.push_str(lines[index].trim());
+            index += 1;
+        }
+        let mut item = build_item(&text);
+        while index < lines.len() && unmarked_change(lines[index], line) {
+            item.children.push(build_item(lines[index].trim()));
+            index += 1;
+        }
 
         while open.last().is_some_and(|last| indent <= *last) {
             open.pop();
@@ -562,33 +741,31 @@ fn parse_list(lines: &[&str]) -> Vec<ChangelogListItem> {
         let depth = open.len();
         open.push(indent);
 
-        match append_at_depth(&mut roots, depth, item) {
-            true => {}
-            // A list that starts indented has no parent to attach to; keep the
-            // content rather than dropping it.
-            false => {
-                open.clear();
-                open.push(indent);
-                roots.push(build_item(text));
-            }
+        // A list that starts indented has no parent to attach to; keep the
+        // content rather than dropping it.
+        if let Some(item) = append_at_depth(&mut roots, depth, item) {
+            open.clear();
+            open.push(indent);
+            roots.push(item);
         }
     }
 
     roots
 }
 
+/// Attach `item` at `depth`, or hand it back when there is no parent there.
 fn append_at_depth(
     items: &mut Vec<ChangelogListItem>,
     depth: usize,
     item: ChangelogListItem,
-) -> bool {
+) -> Option<ChangelogListItem> {
     if depth == 0 {
         items.push(item);
-        return true;
+        return None;
     }
     match items.last_mut() {
         Some(parent) => append_at_depth(&mut parent.children, depth - 1, item),
-        None => false,
+        None => Some(item),
     }
 }
 
@@ -631,39 +808,315 @@ fn split_on_arrow(values: &str) -> Option<(&str, &str)> {
 /// Recognise the older prose form of a unit header, which predates the
 /// `{% unit %}` tag and is all the archive has to identify a unit by.
 ///
-/// Shape: a line that is entirely bold and ends in a parenthesised list of
-/// unit ids, e.g. `**Yathsou: T3 Submarine Hunter (XSS0304):**`. Every id
-/// must look like one, so a bold sentence that merely ends in a bracket stays
-/// a sentence.
+/// Shape: an entirely bold line ending in blueprint ids, such as
+/// `**Yathsou: T3 Submarine Hunter (XSS0304):**`. Families use commas, an
+/// ampersand or "and"; some headings give each unit its own parenthesised id.
+/// Parentheses describing the unit stay in its name. The trailing group must
+/// contain only valid blueprint ids, so ordinary bold prose stays prose.
 fn unit_header(text: &str) -> Option<(String, Vec<String>)> {
     let inner = text.trim().strip_prefix("**")?.strip_suffix("**")?.trim();
+    unit_caption(inner)
+}
+
+fn unit_caption(text: &str) -> Option<(String, Vec<String>)> {
+    let inner = text.trim();
     let inner = inner.strip_suffix(':').unwrap_or(inner).trim_end();
-    let open = inner.rfind('(')?;
-    let ids = inner[open + 1..].strip_suffix(')')?;
-
-    let ids: Vec<String> = ids.split(',').map(|id| id.trim().to_string()).collect();
-    if !ids.iter().all(|id| is_unit_id(id)) {
-        return None;
-    }
-
-    let name = inner[..open]
-        .trim()
-        .trim_end_matches(':')
-        .trim()
-        .to_string();
+    let (_, trailing_ids) = inner.rsplit_once('(')?;
+    unit_ids(trailing_ids.strip_suffix(')')?)?;
+    let (name, ids) = caption_units(inner)?;
     (!name.is_empty()).then_some((name, ids))
 }
 
-/// Blueprint ids are three letters then four digits (`XSS0304`, `UEB1303`).
+/// A caption's name without its bracketed blueprint ids, and those ids in
+/// order, wherever they stand: "Aeon ACU (UAL0001) Sensor System" names its
+/// unit mid-caption. `None` for an unclosed bracket.
+fn caption_units(caption: &str) -> Option<(String, Vec<String>)> {
+    let mut rest = caption;
+    let mut name = String::new();
+    let mut ids: Vec<String> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    while let Some(open) = rest.find('(') {
+        let close = open + rest[open..].find(')')?;
+        name.push_str(&rest[..open]);
+        if let Some(group) = unit_ids(&rest[open + 1..close]) {
+            for id in group {
+                if seen.insert(id.to_ascii_uppercase()) {
+                    ids.push(id);
+                }
+            }
+        } else {
+            name.push_str(&rest[open..=close]);
+        }
+        rest = &rest[close + 1..];
+    }
+    name.push_str(rest);
+    Some((
+        collapse_whitespace(name.trim().trim_end_matches(':').trim()),
+        ids,
+    ))
+}
+
+/// Bold captions that introduce a list of balance changes. 3822 groups its
+/// teleport, missile and defence changes under "**All ACUs, as well as Aeon
+/// and Seraphim SACUs**" and "**Tactical Missile Launchers (TMLs)**": they name
+/// what changes the way a unit header does, but end in no blueprint id, so
+/// they read as stray bold text. Only inside a balance section, and never a
+/// bare faction label: 3750 labels each faction's values with one inside a
+/// unit's section, and those stay labels.
+fn balance_captions(blocks: &mut [ChangelogBlock]) {
+    let mut balance = false;
+    for index in 0..blocks.len() {
+        let caption = match &blocks[index] {
+            ChangelogBlock::Heading { level, text } => {
+                if *level <= 2 {
+                    balance = text.to_lowercase().contains("balance");
+                }
+                continue;
+            }
+            ChangelogBlock::Paragraph { spans }
+                if balance
+                    && matches!(blocks.get(index + 1), Some(ChangelogBlock::List { .. })) =>
+            {
+                bold_caption(spans)
+            }
+            _ => continue,
+        };
+        let Some((name, mut ids)) = caption
+            .filter(|caption| !is_faction_label(caption))
+            .and_then(|caption| caption_units(&caption))
+            .filter(|(name, _)| !name.is_empty())
+        else {
+            continue;
+        };
+        if ids.is_empty() {
+            ids = class_units(&name);
+        }
+        blocks[index] = ChangelogBlock::Unit {
+            units: ids
+                .into_iter()
+                .map(|unit_id| ChangelogUnit {
+                    icon_url: unit_icon_url(&unit_id),
+                    unit_id: Some(unit_id),
+                })
+                .collect(),
+            name,
+        };
+    }
+}
+
+/// Older notes put unbolded unit captions and their stats inside a PR's
+/// list item (3810 and 3813). Promote only complete captions ending in
+/// verified-format blueprint IDs, retaining the introduction and stat order.
+fn nested_balance_units(blocks: &mut Vec<ChangelogBlock>) {
+    fn caption(item: &ChangelogListItem) -> Option<(String, Vec<String>)> {
+        if item.change.is_some() || item.children.is_empty() {
+            return None;
+        }
+        let mut text = String::new();
+        for span in &item.spans {
+            match span {
+                ChangelogSpan::Text(value) | ChangelogSpan::Strong(value) => text.push_str(value),
+                _ => return None,
+            }
+            if text.len() > 256 {
+                return None;
+            }
+        }
+        unit_caption(&text)
+    }
+    fn contains(items: &[ChangelogListItem], depth: u8) -> bool {
+        depth < 32
+            && items
+                .iter()
+                .any(|item| caption(item).is_some() || contains(&item.children, depth + 1))
+    }
+    fn flush(pending: &mut Vec<ChangelogListItem>, output: &mut Vec<ChangelogBlock>) {
+        if !pending.is_empty() {
+            output.push(ChangelogBlock::List {
+                items: std::mem::take(pending),
+            });
+        }
+    }
+    fn expand(items: Vec<ChangelogListItem>, depth: u8, output: &mut Vec<ChangelogBlock>) {
+        let mut pending = Vec::new();
+        for mut item in items {
+            if depth >= 32 {
+                pending.push(item);
+            } else if let Some((name, ids)) = caption(&item) {
+                flush(&mut pending, output);
+                output.push(ChangelogBlock::Unit {
+                    name,
+                    units: ids
+                        .into_iter()
+                        .map(|unit_id| ChangelogUnit {
+                            icon_url: unit_icon_url(&unit_id),
+                            unit_id: Some(unit_id),
+                        })
+                        .collect(),
+                });
+                expand(item.children, depth + 1, output);
+            } else if contains(&item.children, depth + 1) {
+                flush(&mut pending, output);
+                let children = std::mem::take(&mut item.children);
+                output.push(ChangelogBlock::List { items: vec![item] });
+                expand(children, depth + 1, output);
+            } else {
+                pending.push(item);
+            }
+        }
+        flush(&mut pending, output);
+    }
+    let mut balance = false;
+    for block in std::mem::take(blocks) {
+        if let ChangelogBlock::Heading { level, ref text } = block {
+            if level <= 2 {
+                balance = text.to_lowercase().contains("balance");
+            }
+        }
+        match block {
+            ChangelogBlock::List { items } if balance && contains(&items, 0) => {
+                expand(items, 0, blocks)
+            }
+            other => blocks.push(other),
+        }
+    }
+}
+
+/// The text of a paragraph that is bold from end to end, as a caption is.
+fn bold_caption(spans: &[ChangelogSpan]) -> Option<String> {
+    let mut caption = String::new();
+    for span in spans {
+        match span {
+            ChangelogSpan::Strong(text) => caption.push_str(text),
+            ChangelogSpan::Text(text) if text.trim_matches([' ', ':']).is_empty() => {}
+            _ => return None,
+        }
+    }
+    let caption = caption.trim().trim_end_matches(':').trim();
+    (!caption.is_empty() && caption.len() <= 256).then(|| caption.to_string())
+}
+
+fn is_faction_label(caption: &str) -> bool {
+    caption
+        .split([',', '&', '/'])
+        .flat_map(|part| part.split(" and "))
+        .all(|part| {
+            matches!(
+                part.trim().to_ascii_lowercase().as_str(),
+                "uef" | "aeon" | "cybran" | "seraphim" | "sera" | "nomads" | "all factions"
+            )
+        })
+}
+
+/// Words a caption uses for a whole class of units, with that class's
+/// blueprint ids in faction order (UEF, Aeon, Cybran, Seraphim). Only the
+/// classes the notes group changes by; a caption naming none keeps no icon.
+const UNIT_CLASSES: [(&[&str], [&str; 4]); 4] = [
+    (
+        &["sacu", "sacus"],
+        ["UEL0301", "UAL0301", "URL0301", "XSL0301"],
+    ),
+    (
+        &["acu", "acus"],
+        ["UEL0001", "UAL0001", "URL0001", "XSL0001"],
+    ),
+    (
+        &["tml", "tmls", "tacticalmissilelauncher"],
+        ["UEB2108", "UAB2108", "URB2108", "XSB2108"],
+    ),
+    (
+        &[
+            "tmd",
+            "tmds",
+            "tacticalmissiledefense",
+            "tacticalmissiledefence",
+        ],
+        ["UEB4201", "UAB4201", "URB4201", "XSB4201"],
+    ),
+];
+
+const FACTIONS: [&[&str]; 4] = [&["uef"], &["aeon"], &["cybran"], &["seraphim", "sera"]];
+
+/// The units a caption names by class. Each clause names a class and the
+/// factions in that clause narrow it: "All ACUs, as well as Aeon and Seraphim
+/// SACUs" is every ACU and two SACUs.
+fn class_units(name: &str) -> Vec<String> {
+    let mut ids: Vec<String> = Vec::new();
+    for clause in name.split([',', ';']) {
+        let words: Vec<String> = clause
+            .split(|character: char| !character.is_alphanumeric())
+            .filter(|word| !word.is_empty())
+            .map(str::to_lowercase)
+            .collect();
+        let joined = words.concat();
+        let factions: Vec<usize> = FACTIONS
+            .iter()
+            .enumerate()
+            .filter(|(_, names)| words.iter().any(|word| names.contains(&word.as_str())))
+            .map(|(faction, _)| faction)
+            .collect();
+        for (names, units) in UNIT_CLASSES {
+            // Whole words, or one of the long multi-word names run together:
+            // matched inside the joined words, a short one like "sacus" could
+            // turn up across two unrelated words.
+            let named = words.iter().any(|word| names.contains(&word.as_str()))
+                || names
+                    .iter()
+                    .any(|phrase| phrase.len() > 12 && joined.contains(phrase));
+            if !named {
+                continue;
+            }
+            for (faction, id) in units.iter().enumerate() {
+                if (factions.is_empty() || factions.contains(&faction))
+                    && !ids.iter().any(|known| known == id)
+                {
+                    ids.push((*id).to_string());
+                }
+            }
+        }
+    }
+    ids
+}
+
+fn unit_ids(text: &str) -> Option<Vec<String>> {
+    let mut ids = Vec::new();
+    for group in text.split([',', '&']) {
+        let mut words = group.split_whitespace();
+        let id = words.next()?;
+        if !is_unit_id(id) {
+            return None;
+        }
+        ids.push(id.to_string());
+        while let Some(separator) = words.next() {
+            if !separator.eq_ignore_ascii_case("and") {
+                return None;
+            }
+            let id = words.next()?;
+            if !is_unit_id(id) {
+                return None;
+            }
+            ids.push(id.to_string());
+        }
+    }
+    Some(ids)
+}
+
+/// Blueprint ids normally have three letters and four digits (`XSS0304`).
+/// Some FAF units use four letters and three digits instead (`DSLK004`).
 ///
 /// The digits matter: allowing letters there made `finally` a unit id, because
 /// it is also seven characters. A looser rule turns any bracketed word into a
 /// unit and asks the site for an icon that does not exist.
 fn is_unit_id(candidate: &str) -> bool {
     let bytes = candidate.as_bytes();
-    bytes.len() == 7
-        && bytes[..3].iter().all(u8::is_ascii_alphabetic)
-        && bytes[3..].iter().all(u8::is_ascii_digit)
+    if bytes.len() != 7 {
+        return false;
+    }
+    let letters = bytes
+        .iter()
+        .take_while(|byte| byte.is_ascii_alphabetic())
+        .count();
+    (3..=4).contains(&letters) && bytes[letters..].iter().all(u8::is_ascii_digit)
 }
 
 /// Inline parsing for the handful of constructs the patch notes actually use.
@@ -697,6 +1150,7 @@ pub fn parse_spans(text: &str) -> Vec<ChangelogSpan> {
         if let Some((number, consumed)) = issue_reference(&rest) {
             push_text(&mut plain, &mut spans);
             spans.push(ChangelogSpan::Issue {
+                label: None,
                 url: format!("{ISSUE_BASE}/{number}"),
                 number,
             });
@@ -713,9 +1167,96 @@ pub fn parse_spans(text: &str) -> Vec<ChangelogSpan> {
 }
 
 fn push_text(plain: &mut String, spans: &mut Vec<ChangelogSpan>) {
-    if !plain.is_empty() {
-        spans.push(ChangelogSpan::Text(std::mem::take(plain)));
+    let text = std::mem::take(plain);
+    let mut cursor = 0;
+    let mut pending = 0;
+    while let Some(offset) = text[cursor..].find("(#") {
+        let start = cursor + offset;
+        if let Some((references, consumed)) = grouped_references(&text[start..]) {
+            if pending < start {
+                spans.push(ChangelogSpan::Text(text[pending..start].into()));
+            }
+            spans.extend(references);
+            cursor = start + consumed;
+            pending = cursor;
+        } else {
+            cursor = start + 2;
+        }
     }
+    if pending < text.len() {
+        spans.push(ChangelogSpan::Text(text[pending..].into()));
+    }
+}
+
+/// Split numeric citations without accepting destinations from their text.
+/// The existing HTTPS issue route also resolves GitHub pull-request numbers.
+fn grouped_references(rest: &str) -> Option<(Vec<ChangelogSpan>, usize)> {
+    let inner = rest.strip_prefix('(')?;
+    if !inner.starts_with('#') {
+        return None;
+    }
+    let end = inner.bytes().take(1025).position(|byte| byte == b')')?;
+    let content = &inner[..end];
+    let bytes = content.as_bytes();
+    let mut references = Vec::new();
+    let mut cursor = 0;
+    while cursor < bytes.len() {
+        let start = cursor;
+        let marked = bytes[cursor] == b'#';
+        if marked {
+            cursor += 1;
+        }
+        let digits = cursor;
+        while cursor < bytes.len() && bytes[cursor].is_ascii_digit() {
+            cursor += 1;
+        }
+        if cursor == digits || cursor - digits > 20 || references.len() >= 128 {
+            return None;
+        }
+        references.push((start + 1, digits + 1, cursor + 1, marked));
+        if cursor == bytes.len() {
+            break;
+        }
+        // An explicit next hash also separates references in old typoed lists.
+        if bytes[cursor] == b'#' {
+            continue;
+        }
+        let separator = cursor;
+        while cursor < bytes.len() && bytes[cursor].is_ascii_whitespace() {
+            cursor += 1;
+        }
+        if cursor < bytes.len() && bytes[cursor] == b',' {
+            cursor += 1;
+            while cursor < bytes.len() && bytes[cursor].is_ascii_whitespace() {
+                cursor += 1;
+            }
+            if cursor == bytes.len() {
+                return None;
+            }
+        } else if cursor == separator {
+            return None;
+        }
+    }
+    if references.len() < 2 {
+        return None;
+    }
+    let source = &rest[..end + 2];
+    let mut spans = Vec::new();
+    let mut cursor = 0;
+    for (start, digits, end, marked) in references {
+        if start > cursor {
+            spans.push(ChangelogSpan::Text(source[cursor..start].into()));
+        }
+        let number = &source[digits..end];
+        spans.push(ChangelogSpan::Issue {
+            number: number.into(),
+            url: format!("{ISSUE_BASE}/{number}"),
+            label: (!marked).then(|| number.into()),
+        });
+        cursor = end;
+    }
+    spans.push(ChangelogSpan::Text(source[cursor..].into()));
+    Some((spans, end + 2))
 }
 
 fn delimited(rest: &str, open: &str, close: &str) -> Option<String> {
@@ -986,6 +1527,9 @@ fn parse_html_blocks(html: &str) -> Vec<ChangelogBlock> {
                     blocks.push(ChangelogBlock::Paragraph { spans });
                 }
             }
+            "pre" => blocks.push(ChangelogBlock::CodeBlock {
+                text: preformatted_html_text(element.inner),
+            }),
             "ul" | "ol" => {
                 let items = parse_html_items(element.inner);
                 if !items.is_empty() {
@@ -1009,6 +1553,27 @@ fn parse_html_blocks(html: &str) -> Vec<ChangelogBlock> {
     blocks
 }
 
+fn preformatted_html_text(html: &str) -> String {
+    let mut text = String::new();
+    let mut rest = html;
+    loop {
+        let Some(element) = next_element(rest) else {
+            text.push_str(&decode_entities(rest));
+            break;
+        };
+        text.push_str(&decode_entities(element.before));
+        if !matches!(element.name.as_str(), "button" | "script" | "style" | "svg") {
+            if element.name == "br" {
+                text.push('\n');
+            } else {
+                text.push_str(&preformatted_html_text(element.inner));
+            }
+        }
+        rest = element.after;
+    }
+    text
+}
+
 /// The `unit_block.rb` header: the icons, and the name beside them.
 fn parse_html_unit(html: &str) -> Option<ChangelogBlock> {
     let mut units = Vec::new();
@@ -1023,7 +1588,7 @@ fn parse_html_unit(html: &str) -> Option<ChangelogBlock> {
             if let Some(unit_id) = id {
                 units.push(ChangelogUnit {
                     icon_url: unit_icon_url(&unit_id),
-                    unit_id,
+                    unit_id: Some(unit_id),
                 });
             }
         } else if element.has_class("unit-name") {
@@ -1058,6 +1623,15 @@ fn parse_html_items(html: &str) -> Vec<ChangelogListItem> {
                 spans: parse_html_spans(&own),
                 children: nested_items(element.inner),
             });
+        } else if element.name == "ul" || element.name == "ol" {
+            // Older pages sometimes close the category's li before its list.
+            // Keep that following list under the preceding category.
+            let nested = parse_html_items(element.inner);
+            if let Some(previous) = items.last_mut() {
+                previous.children.extend(nested);
+            } else {
+                items.extend(nested);
+            }
         }
         rest = element.after;
     }
@@ -1113,6 +1687,10 @@ fn nested_items(html: &str) -> Vec<ChangelogListItem> {
 /// `<span class="change">Health: </span><span class="old">500</span>`, an
 /// arrow, `<span class="new">1340</span>`.
 fn parse_html_change(html: &str) -> Option<ChangelogChange> {
+    parse_styled_html_change(html).or_else(|| historical::strike_change(html))
+}
+
+fn parse_styled_html_change(html: &str) -> Option<ChangelogChange> {
     let label = span_with_class(html, "change")?;
     let old = span_with_class(html, "old")?;
     let new = span_with_class(html, "new")?;
@@ -1166,7 +1744,8 @@ fn collect_html_spans(html: &str) -> Vec<ChangelogSpan> {
 
         match element.name.as_str() {
             // Decoration, and the theme's own furniture.
-            "svg" | "img" | "button" | "use" | "path" => {}
+            "svg" | "img" | "button" | "use" | "path" | "script" | "style" | "iframe" => {}
+            "i" if element.has_class("fa-arrow-right") => plain.push_str(" → "),
             "a" if element.has_class("anchor-heading") => {}
             "strong" | "b" => {
                 push_text(&mut plain, &mut spans);
@@ -1206,6 +1785,7 @@ fn anchor_span(text: &str, url: String) -> Option<ChangelogSpan> {
     if let Some(number) = text.strip_prefix('#') {
         if !number.is_empty() && number.chars().all(|c| c.is_ascii_digit()) {
             return Some(ChangelogSpan::Issue {
+                label: None,
                 url: if url.is_empty() {
                     format!("{ISSUE_BASE}/{number}")
                 } else {
@@ -1299,6 +1879,242 @@ fn decode_entities(text: &str) -> String {
 mod tests {
     use super::*;
 
+    #[test]
+    fn markdown_headings_distinguish_issue_numbers_from_legacy_titles() {
+        for (source, level) in [
+            ("#", 1),
+            ("## Features", 2),
+            ("###\tContributors", 3),
+            ("###### Detail", 6),
+            ("###Contributors", 3),
+        ] {
+            assert_eq!(heading_level(source), Some(level), "{source}");
+        }
+        for source in ["#3522, #3512", "##3522", "####### Detail", "ordinary text"] {
+            assert_eq!(heading_level(source), None, "{source}");
+        }
+    }
+
+    #[test]
+    fn wrapped_list_text_stays_with_its_item_without_swallowing_following_blocks() {
+        let blocks = parse_blocks("- First contributor (#12,\n  #34 #56)\n- Second contributor\n  with a wrapped description.\n\n## Reviewers\n- Reviewer (#78)\n\n{% unit URL0303 %}\nLoyalist\n{% endunit %}\n\n```\n#123 remains code\n```");
+        let ChangelogBlock::List { items } = &blocks[0] else {
+            panic!("missing contributors");
+        };
+        assert_eq!(items.len(), 2);
+        assert_eq!(
+            items[0]
+                .spans
+                .iter()
+                .filter(|span| matches!(span, ChangelogSpan::Issue { .. }))
+                .count(),
+            3
+        );
+        assert_eq!(
+            items[1].spans,
+            vec![ChangelogSpan::Text(
+                "Second contributor with a wrapped description.".into()
+            )]
+        );
+        assert!(matches!(&blocks[1], ChangelogBlock::Heading { text, .. } if text == "Reviewers"));
+        assert!(matches!(&blocks[3], ChangelogBlock::Unit { name, .. } if name == "Loyalist"));
+        assert!(
+            matches!(&blocks[4], ChangelogBlock::CodeBlock { text } if text == "#123 remains code")
+        );
+        // Unmarked stat lines are not wrapped text: they stay out of the
+        // bullet's own text and become its changes.
+        let stats = parse_blocks("- Mech Marine\n  Mass Cost: 35 -> 30\n  Health: 75 -> 60");
+        assert_eq!(stats.len(), 1);
+        let ChangelogBlock::List { items } = &stats[0] else {
+            panic!("expected a list, got {stats:?}");
+        };
+        assert_eq!(
+            items[0].spans,
+            vec![ChangelogSpan::Text("Mech Marine".into())]
+        );
+        assert!(items[0].change.is_none());
+        assert!(items[0].children.iter().all(|child| child.change.is_some()));
+        assert_eq!(items[0].children.len(), 2);
+    }
+
+    #[test]
+    fn grouped_references_preserve_punctuation_and_use_only_numeric_repository_urls() {
+        let spans = parse_spans("Before (#6481, #6482) after");
+        assert_eq!(
+            spans,
+            vec![
+                ChangelogSpan::Text("Before ".into()),
+                ChangelogSpan::Text("(".into()),
+                ChangelogSpan::Issue {
+                    label: None,
+                    number: "6481".into(),
+                    url: format!("{ISSUE_BASE}/6481")
+                },
+                ChangelogSpan::Text(", ".into()),
+                ChangelogSpan::Issue {
+                    label: None,
+                    number: "6482".into(),
+                    url: format!("{ISSUE_BASE}/6482")
+                },
+                ChangelogSpan::Text(")".into()),
+                ChangelogSpan::Text(" after".into()),
+            ]
+        );
+        for source in [
+            "(#6481, javascript:alert(1))",
+            "(#6481, #42/../../other)",
+            "(#6481, #１２３)",
+            "(#6481, #)",
+            "(#6481, #123456789012345678901)",
+            "(#6481,, #6482)",
+            "(#6481, #6482,)",
+            "(#6481 #6482oops)",
+        ] {
+            assert!(
+                !parse_spans(source)
+                    .iter()
+                    .any(|span| matches!(span, ChangelogSpan::Issue { .. })),
+                "{source}"
+            );
+        }
+        let oversized = format!("({})", vec!["#1"; 129].join(", "));
+        assert!(!parse_spans(&oversized)
+            .iter()
+            .any(|span| matches!(span, ChangelogSpan::Issue { .. })));
+        assert!(matches!(
+            &parse_spans("`(#6481, #6482)`")[0],
+            ChangelogSpan::Code(_)
+        ));
+        assert!(matches!(
+            &parse_blocks("```\n(#6481, #6482)\n```")[0],
+            ChangelogBlock::CodeBlock { .. }
+        ));
+    }
+
+    #[test]
+    fn grouped_references_work_in_rendered_notes_and_keep_the_client_repository() {
+        let html = parse_html_spans("Change (#6481, #6482).");
+        assert_eq!(
+            html.iter()
+                .filter(|span| matches!(span, ChangelogSpan::Issue { .. }))
+                .count(),
+            2
+        );
+        let blocks = parse_release_notes("- Change (#12, #34).", CLIENT_ISSUES);
+        let ChangelogBlock::List { items } = &blocks[0] else {
+            panic!("missing release list");
+        };
+        assert!(items[0].spans.iter().any(
+            |span| matches!(span, ChangelogSpan::Issue { number, url, .. }
+            if number == "34" && url == &format!("{CLIENT_ISSUES}/34"))
+        ));
+        let blocks = parse_release_notes("- Change (#12#34, 56).", CLIENT_ISSUES);
+        let ChangelogBlock::List { items } = &blocks[0] else {
+            panic!("missing release list");
+        };
+        assert!(items[0].spans.iter().any(|span| matches!(span, ChangelogSpan::Issue { number, url, label }
+            if number == "56" && label.as_deref() == Some("56") && url == &format!("{CLIENT_ISSUES}/56"))));
+        assert!(parse_html_spans("Change (#12#34, 56).").iter().any(|span| matches!(span,
+            ChangelogSpan::Issue { number, label, .. } if number == "56" && label.as_deref() == Some("56"))));
+    }
+
+    #[test]
+    fn numeric_citation_labels_are_backward_compatible_and_reject_malformed_tokens() {
+        let legacy: ChangelogSpan = serde_json::from_str(r##"{"type":"issue","payload":{"number":"12","url":"https://github.com/FAForever/fa/issues/12"}}"##).unwrap();
+        assert!(matches!(&legacy, ChangelogSpan::Issue { label: None, .. }));
+        assert_eq!(
+            serde_json::from_str::<ChangelogSpan>(&serde_json::to_string(&legacy).unwrap())
+                .unwrap(),
+            legacy
+        );
+        for text in [
+            "(#12#34oops, 56)",
+            "(#12, 56/../../other)",
+            "(#12, javascript:56)",
+            "(#12, 56.7)",
+            "(#12, -56)",
+            "(#12, １２３)",
+            "(#12, 123456789012345678901)",
+        ] {
+            assert!(
+                !parse_spans(text)
+                    .iter()
+                    .any(|span| matches!(span, ChangelogSpan::Issue { .. })),
+                "{text}"
+            );
+        }
+        let source = "`(#12#34, 56)`";
+        assert_eq!(
+            parse_spans(source),
+            vec![ChangelogSpan::Code("(#12#34, 56)".into())]
+        );
+    }
+
+    #[test]
+    fn fenced_blocks_preserve_blank_lines_and_relative_indentation_as_literal_text() {
+        let blocks = parse_blocks("Before\n\n    ```lua\n    if enabled then\n      -- (#123) **literal**\n\n      speed = 2 -> 3\n    end\n    ```\n\n## After");
+        assert_eq!(
+            blocks[1],
+            ChangelogBlock::CodeBlock {
+                text: "if enabled then\n  -- (#123) **literal**\n\n  speed = 2 -> 3\nend".into()
+            }
+        );
+        assert!(matches!(&blocks[2], ChangelogBlock::Heading { text, .. } if text == "After"));
+        assert_eq!(
+            parse_blocks("````text\n```\ncontents\n````"),
+            vec![ChangelogBlock::CodeBlock {
+                text: "```\ncontents".into()
+            }]
+        );
+        assert_eq!(
+            parse_blocks("~~~text\n  indented\n~~~"),
+            vec![ChangelogBlock::CodeBlock {
+                text: "  indented".into()
+            }]
+        );
+        assert_eq!(
+            parse_blocks("```\nunclosed\n  still literal"),
+            vec![ChangelogBlock::CodeBlock {
+                text: "unclosed\n  still literal".into()
+            }]
+        );
+    }
+
+    #[test]
+    fn client_release_code_keeps_bullet_markers_and_issue_syntax_literal() {
+        let blocks = parse_release_notes(
+            "* An ordinary bullet\n\n```\n* literal star\n+ literal plus\n(#42)\n```",
+            CLIENT_ISSUES,
+        );
+        assert!(matches!(&blocks[0], ChangelogBlock::List { .. }));
+        assert_eq!(
+            blocks[1],
+            ChangelogBlock::CodeBlock {
+                text: "* literal star\n+ literal plus\n(#42)".into()
+            }
+        );
+    }
+
+    #[test]
+    fn rendered_code_preserves_whitespace_without_site_controls_or_executing_markup() {
+        assert_eq!(parse_html_blocks("<pre><button>Copy</button><code>if a &lt; b then\n  <span>print</span>(&quot;safe&quot;)\nend</code></pre>"),
+            vec![ChangelogBlock::CodeBlock { text: "if a < b then\n  print(\"safe\")\nend".into() }]);
+    }
+
+    #[test]
+    fn the_release_workflow_writes_the_required_update_line_the_client_reads() {
+        let workflow = include_str!("../../../../.github/workflows/release.yml");
+        assert!(workflow.contains(REQUIRED_UPDATE_LINE));
+        assert!(marks_required_update(&format!(
+            "{REQUIRED_UPDATE_LINE}\n\n### Bug fixes\n- Fixed it\n"
+        )));
+        assert!(!marks_required_update("### Bug fixes\n- Fixed it\n"));
+        // Mentioned inside a sentence is not the mark.
+        assert!(!marks_required_update(&format!(
+            "- Explains {REQUIRED_UPDATE_LINE}"
+        )));
+    }
+
     const INDEX: &str = r#"
       <h2 id="past-game-patches">Past game patches</h2>
       <ul>
@@ -1387,7 +2203,7 @@ mod tests {
             entry.blocks[0],
             ChangelogBlock::Unit {
                 units: vec![ChangelogUnit {
-                    unit_id: "URL0303".into(),
+                    unit_id: Some("URL0303".into()),
                     icon_url: "https://faforever.github.io/fa/assets/icons/URL0303_icon.png".into(),
                 }],
                 name: "Loyalist: T3 Siege Assault Bot".into(),
@@ -1428,6 +2244,236 @@ mod tests {
     }
 
     #[test]
+    fn unmarked_stat_lines_are_changes_of_their_bullet_and_keep_the_list_whole() {
+        // 3718's Mech Marine: the stats are written without their own markers.
+        let blocks = parse_blocks(
+            "- Land\n  - Mech Marine\n    Mass Cost: 35 → 30\n    Power Cost: 120 → 100\n  - Tech 2 Land\n    - Mongoose\n",
+        );
+        let [ChangelogBlock::List { items }] = blocks.as_slice() else {
+            panic!("expected one list, got {blocks:?}");
+        };
+        let land = &items[0].children;
+        assert_eq!(land.len(), 2, "Tech 2 Land stays beside the Mech Marine");
+        assert_eq!(land[0].children.len(), 2);
+        assert_eq!(
+            land[0].children[0].change.as_ref().unwrap().label,
+            "Mass Cost"
+        );
+        assert_eq!(land[0].children[1].change.as_ref().unwrap().new, "100");
+        assert_eq!(land[1].children.len(), 1);
+        // Prose continuing a bullet is still joined into it.
+        let ChangelogBlock::List { items } =
+            &parse_blocks("- Overcharge\n  now drains a fixed share")[0]
+        else {
+            panic!("expected a list");
+        };
+        assert!(items[0].children.is_empty());
+    }
+
+    #[test]
+    fn balance_captions_without_a_trailing_id_become_unit_headers() {
+        let entry = parse_entry("3822", include_str!("fixtures/changelog-3822.md"));
+        let unit = |wanted: &str| {
+            entry
+                .blocks
+                .iter()
+                .find_map(|block| match block {
+                    ChangelogBlock::Unit { name, units } if name == wanted => Some(
+                        units
+                            .iter()
+                            .filter_map(|unit| unit.unit_id.clone())
+                            .collect::<Vec<_>>(),
+                    ),
+                    _ => None,
+                })
+                .unwrap_or_else(|| panic!("{wanted} is not a unit header"))
+        };
+        assert_eq!(
+            unit("All ACUs, as well as Aeon and Seraphim SACUs"),
+            ["UEL0001", "UAL0001", "URL0001", "XSL0001", "UAL0301", "XSL0301"]
+        );
+        assert_eq!(
+            unit("Tactical Missile Launchers (TMLs)"),
+            ["UEB2108", "UAB2108", "URB2108", "XSB2108"]
+        );
+        assert_eq!(
+            unit("Tactical Missile Defenses (TMDs)"),
+            ["UEB4201", "UAB4201", "URB4201", "XSB4201"]
+        );
+        // Ids inside the caption, not only at its end.
+        assert_eq!(
+            unit("Cybran cruiser and carrier Missile Deflectors"),
+            ["URS0202", "URS0303"]
+        );
+        assert_eq!(unit("Aeon ACU Sensor System"), ["UAL0001"]);
+
+        // A faction label stays a label, and a caption outside a balance
+        // section stays bold text.
+        let blocks = |markdown: &str| parse_entry("x", markdown).blocks;
+        for markdown in [
+            "## Balance\n\n**Aeon, UEF**\n- HP: 550 -> 775\n",
+            "## Bug fixes\n\n**Ialla: T1 Anti-Air Defense**\n- Range: 40 -> 44\n",
+            "## Balance\n\n**A caption with nothing after it**\n",
+        ] {
+            assert!(
+                matches!(blocks(markdown)[1], ChangelogBlock::Paragraph { .. }),
+                "{markdown}"
+            );
+        }
+        // A caption naming no known class still becomes a header, without
+        // an icon rather than a guessed one.
+        let parsed = blocks("## Balance\n\n**Naval factories**\n- Build time: 1 -> 2\n");
+        let [_, ChangelogBlock::Unit { name, units }, _] = parsed.as_slice() else {
+            panic!("expected a unit header");
+        };
+        assert_eq!(name, "Naval factories");
+        assert!(units.is_empty());
+    }
+
+    #[test]
+    fn nested_balance_captions_restore_3810_and_3813_units_without_changing_stats_or_links() {
+        fn facts(blocks: &[ChangelogBlock]) -> (Vec<ChangelogChange>, Vec<String>) {
+            fn items(
+                list: &[ChangelogListItem],
+                changes: &mut Vec<ChangelogChange>,
+                links: &mut Vec<String>,
+            ) {
+                for item in list {
+                    if let Some(change) = &item.change {
+                        changes.push(change.clone());
+                    }
+                    for span in &item.spans {
+                        if let ChangelogSpan::Link { url, .. } | ChangelogSpan::Issue { url, .. } =
+                            span
+                        {
+                            links.push(url.clone());
+                        }
+                    }
+                    items(&item.children, changes, links);
+                }
+            }
+            let (mut changes, mut links) = (Vec::new(), Vec::new());
+            for block in blocks {
+                if let ChangelogBlock::List { items: list } = block {
+                    items(list, &mut changes, &mut links);
+                }
+            }
+            (changes, links)
+        }
+        for (id, markdown, expected) in [
+            (
+                "3810",
+                include_str!("fixtures/changelog-3810.md"),
+                vec![
+                    "XSS0304", "DELK002", "DALK003", "XSL0303", "UAL0104", "XSA0203", "DRL0204",
+                    "XSS0201", "URS0201", "XES0102", "UAS0401", "UES0401", "XRA0305",
+                ],
+            ),
+            (
+                "3813",
+                include_str!("fixtures/changelog-3813.md"),
+                vec!["URA0401", "SRL0310", "UAS0202", "XRL0302", "URL0001"],
+            ),
+        ] {
+            let original = parse_blocks(split_front_matter(markdown).1);
+            let entry = parse_entry(id, markdown);
+            assert_eq!(
+                facts(&original),
+                facts(&entry.blocks),
+                "{id}: stat and reference order must survive"
+            );
+            let units: Vec<_> = entry
+                .blocks
+                .iter()
+                .filter_map(|block| match block {
+                    ChangelogBlock::Unit { units, .. } => Some(units),
+                    _ => None,
+                })
+                .flatten()
+                .collect();
+            assert_eq!(
+                units
+                    .iter()
+                    .filter_map(|unit| unit.unit_id.as_deref())
+                    .collect::<Vec<_>>(),
+                expected
+            );
+            assert!(units
+                .iter()
+                .all(|unit| unit.icon_url == unit_icon_url(unit.unit_id.as_deref().unwrap())));
+            for (at, block) in entry.blocks.iter().enumerate() {
+                if let ChangelogBlock::Unit { .. } = block {
+                    assert!(
+                        matches!(entry.blocks.get(at + 1), Some(ChangelogBlock::List { items }) if !items.is_empty()),
+                        "{id}: unit stats must follow their caption"
+                    );
+                }
+            }
+        }
+        let entry = parse_entry("3813", include_str!("fixtures/changelog-3813.md"));
+        let soul_ripper = entry
+            .blocks
+            .iter()
+            .position(|block| {
+                matches!(block,
+            ChangelogBlock::Unit { name, .. } if name == "Soul Ripper: Experimental Gunship")
+            })
+            .unwrap();
+        let ChangelogBlock::List { items } = &entry.blocks[soul_ripper + 1] else {
+            panic!("missing weapons");
+        };
+        assert_eq!(items.len(), 1);
+        assert_eq!(
+            items[0].children.len(),
+            3,
+            "weapon stat nesting must survive"
+        );
+    }
+
+    #[test]
+    fn nested_unit_captions_leave_code_nonbalance_sections_and_ambiguous_prose_unchanged() {
+        for markdown in [
+            "## Bug fixes\n- Soul Ripper (URA0401):\n  - Health: 1 -> 2\n",
+            "## Balance\n- `Soul Ripper (URA0401):`\n  - Health: 1 -> 2\n",
+            "## Balance\n- Soul Ripper (not-an-id):\n  - Health: 1 -> 2\n",
+            "## Balance\n- Soul Ripper (URA0401):\n",
+            "## Balance\n```\n- Soul Ripper (URA0401):\n  - Health: 1 -> 2\n```\n",
+        ] {
+            assert_eq!(
+                parse_entry("x", markdown).blocks,
+                parse_blocks(markdown),
+                "{markdown}"
+            );
+        }
+        let mut item = ChangelogListItem {
+            spans: vec![ChangelogSpan::Text("Soul Ripper (URA0401)".into())],
+            change: None,
+            children: vec![ChangelogListItem {
+                spans: vec![ChangelogSpan::Text("Health: 1 -> 2".into())],
+                change: parse_change("Health: 1 -> 2"),
+                children: Vec::new(),
+            }],
+        };
+        for _ in 0..40 {
+            item = ChangelogListItem {
+                spans: vec![ChangelogSpan::Text("Group".into())],
+                change: None,
+                children: vec![item],
+            };
+        }
+        let mut blocks = vec![
+            ChangelogBlock::Heading {
+                level: 2,
+                text: "Balance".into(),
+            },
+            ChangelogBlock::List { items: vec![item] },
+        ];
+        let original = blocks.clone();
+        nested_balance_units(&mut blocks);
+        assert_eq!(blocks, original, "extreme nesting must remain literal");
+    }
+
+    #[test]
     fn prose_with_a_colon_but_no_arrow_stays_prose() {
         assert!(parse_change("Note: this is not a balance change").is_none());
         assert!(parse_change("Health: 500").is_none());
@@ -1449,6 +2495,7 @@ mod tests {
                 },
                 ChangelogSpan::Text(" ".into()),
                 ChangelogSpan::Issue {
+                    label: None,
                     number: "7121".into(),
                     url: "https://github.com/FAForever/fa/issues/7121".into()
                 },
@@ -1491,6 +2538,7 @@ mod tests {
         );
         // This repository's pull request, not FAForever/fa's.
         assert!(items[1].spans.contains(&ChangelogSpan::Issue {
+            label: None,
             number: "507".into(),
             url: "https://github.com/Org/Repo/issues/507".into(),
         }));
@@ -1549,9 +2597,12 @@ mod tests {
             panic!("expected the trailing line as prose, got {:?}", blocks[2]);
         };
         assert_eq!(spans[0], ChangelogSpan::Strong("Full Changelog".into()));
-        // The code fence is not understood, and is kept as text rather than
-        // dropped.
-        assert!(blocks.len() > 3);
+        assert_eq!(
+            blocks[3],
+            ChangelogBlock::CodeBlock {
+                text: "some code".into()
+            }
+        );
     }
 
     #[test]
@@ -1632,7 +2683,7 @@ mod tests {
             entry.blocks[0],
             ChangelogBlock::Unit {
                 units: vec![ChangelogUnit {
-                    unit_id: "XSS0304".into(),
+                    unit_id: Some("XSS0304".into()),
                     icon_url: "https://faforever.github.io/fa/assets/icons/XSS0304_icon.png".into(),
                 }],
                 name: "Yathsou: T3 Submarine Hunter".into(),
@@ -1662,6 +2713,62 @@ mod tests {
             "**Note (see below):**",
             "**Reworked the chat window (finally)**",
             "**Fixes (#7121)**",
+        ] {
+            assert!(unit_header(text).is_none(), "wrongly matched {text}");
+        }
+    }
+
+    #[test]
+    fn legacy_unit_header_variants_validate_ids_and_preserve_names() {
+        let cases: [(&str, &str, &[&str]); 6] = [
+            (
+                "**Aeon and Seraphim snipers (XAL0305 & XSL0305):**",
+                "Aeon and Seraphim snipers",
+                &["XAL0305", "XSL0305"],
+            ),
+            (
+                "**Snipers (XAL0305 and XSL0305):**",
+                "Snipers",
+                &["XAL0305", "XSL0305"],
+            ),
+            (
+                "**Barracuda (XRS0204) and Megalith (XRL0403):**",
+                "Barracuda and Megalith",
+                &["XRS0204", "XRL0403"],
+            ),
+            (
+                "**Engineers (all factions) (UEL0105, UAL0105, URL0105, XSL0105):**",
+                "Engineers (all factions)",
+                &["UEL0105", "UAL0105", "URL0105", "XSL0105"],
+            ),
+            (
+                "**UEF Engineers (uel0105, UEL0105):**",
+                "UEF Engineers",
+                &["uel0105"],
+            ),
+            (
+                "**Uyanah: T3 Lightning Tank (DSLK004):**",
+                "Uyanah: T3 Lightning Tank",
+                &["DSLK004"],
+            ),
+        ];
+        for (text, expected_name, expected_ids) in cases {
+            let (name, ids) = unit_header(text).unwrap_or_else(|| panic!("missed {text}"));
+            assert_eq!(name, expected_name);
+            assert_eq!(ids, expected_ids, "wrong unit icons for {text}");
+        }
+
+        for text in [
+            "**Snipers (XAL0305 & finally):**",
+            "**Snipers (XAL0305,):**",
+            "**Snipers (& XAL0305):**",
+            "**Snipers (XAL0305 and):**",
+            "**Snipers (XAL0305 and and XSL0305):**",
+            "**Snipers (XAL0305 XSL0305):**",
+            "**Snipers (XAL0305), changed:**",
+            "**Engineers (all factions):**",
+            "**Factory (UEB12345):**",
+            "**Factory (UE12345):**",
         ] {
             assert!(unit_header(text).is_none(), "wrongly matched {text}");
         }
@@ -1704,7 +2811,7 @@ mod tests {
             entry.blocks[1],
             ChangelogBlock::Unit {
                 units: vec![ChangelogUnit {
-                    unit_id: "UAB0304".into(),
+                    unit_id: Some("UAB0304".into()),
                     icon_url: unit_icon_url("UAB0304"),
                 }],
                 name: "Quantum Gateways".into(),
@@ -1771,6 +2878,7 @@ mod tests {
                 ChangelogSpan::Code("ACUUnit.lua".into()),
                 ChangelogSpan::Text(" (".into()),
                 ChangelogSpan::Issue {
+                    label: None,
                     number: "7215".into(),
                     url: "https://github.com/FAForever/fa/pull/7215".into(),
                 },
@@ -1812,8 +2920,263 @@ mod real_document_tests {
     use super::*;
 
     const INDEX_HTML: &str = include_str!("fixtures/changelog-index.html");
+    const POST_3818: &str = include_str!("fixtures/changelog-3818.md");
+    const POST_3728: &str = include_str!("fixtures/changelog-3728.md");
+    const POST_3822: &str = include_str!("fixtures/changelog-3822.md");
+    const POST_3745: &str = include_str!("fixtures/changelog-3745.md");
     const POST_3837: &str = include_str!("fixtures/changelog-3837.md");
     const POST_3836: &str = include_str!("fixtures/changelog-3836.md");
+
+    #[test]
+    fn published_3745_contributor_citations_recover_missing_separators_and_hashes() {
+        let entry = parse_entry("3745", POST_3745);
+        let contributors = entry
+            .blocks
+            .iter()
+            .position(|block| {
+                matches!(block,
+            ChangelogBlock::Heading { text, .. } if text == "Contributors")
+            })
+            .unwrap();
+        let ChangelogBlock::List { items } = &entry.blocks[contributors + 1] else {
+            panic!("missing contributors");
+        };
+        let jip = items.iter().find(|item| matches!(item.spans.first(), Some(ChangelogSpan::Text(text)) if text.starts_with("Jip "))).unwrap();
+        let references: Vec<_> = jip
+            .spans
+            .iter()
+            .filter_map(|span| match span {
+                ChangelogSpan::Issue { number, url, label } => {
+                    assert_eq!(url, &format!("{ISSUE_BASE}/{number}"));
+                    if label.is_some() {
+                        assert_eq!(label.as_deref(), Some("4230"));
+                    }
+                    Some(number.as_str())
+                }
+                _ => None,
+            })
+            .collect();
+        assert_eq!(references.len(), 48);
+        assert_eq!(&references[..3], ["4119", "4124", "4188"]);
+        assert_eq!(references.last(), Some(&"4230"));
+        let rendered: String = jip
+            .spans
+            .iter()
+            .map(|span| match span {
+                ChangelogSpan::Text(text) => text.clone(),
+                ChangelogSpan::Issue { number, label, .. } => {
+                    label.clone().unwrap_or_else(|| format!("#{number}"))
+                }
+                _ => panic!("unexpected contributor formatting"),
+            })
+            .collect();
+        let source = POST_3745
+            .split_once("- Jip ")
+            .unwrap()
+            .1
+            .split_once("\n- iczero")
+            .unwrap()
+            .0;
+        assert_eq!(
+            rendered,
+            format!(
+                "Jip {}",
+                source.split_whitespace().collect::<Vec<_>>().join(" ")
+            )
+        );
+        assert!(rendered.contains("#4124#4188"));
+        assert!(rendered.ends_with(", 4230)"));
+    }
+
+    #[test]
+    fn published_3728_wrapped_contributor_references_are_links_in_one_bullet() {
+        let entry = parse_entry("3728", POST_3728);
+        let headings: Vec<_> = entry
+            .blocks
+            .iter()
+            .filter_map(|block| match block {
+                ChangelogBlock::Heading { text, .. } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(headings.contains(&"Contributors"));
+        assert!(headings.contains(&"Reviewers"));
+        assert!(headings.contains(&"Translators"));
+        assert!(
+            headings
+                .iter()
+                .all(|text| !text.starts_with(|character: char| character.is_ascii_digit())),
+            "{headings:?}"
+        );
+        let contributors = entry.blocks.iter().position(|block| matches!(block, ChangelogBlock::Heading { text, .. } if text == "Contributors")).unwrap();
+        let ChangelogBlock::List { items } = &entry.blocks[contributors + 1] else {
+            panic!("missing contributors");
+        };
+        assert_eq!(items.len(), 13);
+        let jip = &items[4];
+        assert!(matches!(&jip.spans[0], ChangelogSpan::Text(text) if text == "Jip "));
+        let references: Vec<_> = jip
+            .spans
+            .iter()
+            .filter_map(|span| match span {
+                ChangelogSpan::Issue { number, url, .. } => {
+                    assert_eq!(url, &format!("{ISSUE_BASE}/{number}"));
+                    Some(number.as_str())
+                }
+                _ => None,
+            })
+            .collect();
+        assert_eq!(references.len(), 45);
+        assert_eq!(references.first(), Some(&"3443"));
+        assert_eq!(references.last(), Some(&"3617"));
+        let rendered: String = jip
+            .spans
+            .iter()
+            .map(|span| match span {
+                ChangelogSpan::Text(text) => text.clone(),
+                ChangelogSpan::Issue { number, .. } => format!("#{number}"),
+                _ => panic!("unexpected contributor formatting"),
+            })
+            .collect();
+        let source = POST_3728
+            .split_once("- Jip ")
+            .unwrap()
+            .1
+            .split_once("\n- KionX")
+            .unwrap()
+            .0;
+        assert_eq!(
+            rendered,
+            format!(
+                "Jip {}",
+                source.split_whitespace().collect::<Vec<_>>().join(" ")
+            )
+        );
+    }
+
+    #[test]
+    fn published_3836_stat_descriptions_do_not_extend_the_new_value() {
+        let entry = parse_entry("3836", POST_3836);
+        for (label, value, description) in [
+            (
+                "AA Damage Radius",
+                "1.5",
+                "The Cybran carrier has a bit more splash",
+            ),
+            (
+                "Torpedoes per volley",
+                "5",
+                "Damage per volley is kept the same (750).",
+            ),
+            (
+                "Torpedoes per volley",
+                "6x2",
+                "Damage per volley is kept the same (5000 --> 5004).",
+            ),
+        ] {
+            let index = entry.blocks.iter().position(|block| matches!(block,
+                ChangelogBlock::List { items } if items.iter().any(|item|
+                    item.change.as_ref().is_some_and(|change| change.label == label && change.new == value)))).unwrap();
+            assert!(
+                matches!(&entry.blocks[index + 1], ChangelogBlock::Paragraph { spans }
+                if spans.iter().any(|span| matches!(span, ChangelogSpan::Text(text) if text.starts_with(description))))
+            );
+        }
+    }
+
+    #[test]
+    fn published_3822_unit_rosters_keep_all_fifteen_units_on_separate_lines() {
+        let entry = parse_entry("3822", POST_3822);
+        let code: Vec<&str> = entry
+            .blocks
+            .iter()
+            .filter_map(|block| match block {
+                ChangelogBlock::CodeBlock { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(code.len(), 2);
+        assert_eq!(code[0].lines().count(), 6);
+        assert_eq!(code[1].lines().count(), 9);
+        assert!(code[0].starts_with("Jester: T1 Light Gunship (XRA0105)\nStinger:"));
+        assert!(code[0].ends_with("Dragon Fly: T2 Air Transport (URA0104)"));
+        assert!(code[1].contains("Cougar: T3 Mobile Rapid-fire AA Cannon (DELK002)\n"));
+        assert!(code[1].ends_with("Sinnatha: T2 Anti-Air Flak Artillery (XSB2204)"));
+        assert!(code.iter().all(|code| !code.contains("```")));
+        assert!(entry.blocks.iter().any(
+            |block| matches!(block, ChangelogBlock::Heading { text, .. } if text == "Features")
+        ));
+    }
+
+    #[test]
+    fn published_3822_artillery_intro_starts_after_the_cooper_stat_list() {
+        let entry = parse_entry("3822", POST_3822);
+        let cooper = entry
+            .blocks
+            .iter()
+            .position(|block| {
+                matches!(block,
+            ChangelogBlock::Unit { name, .. } if name.contains("Cooper"))
+            })
+            .unwrap();
+        let ChangelogBlock::List { items } = &entry.blocks[cooper + 1] else {
+            panic!("missing Cooper stats");
+        };
+        assert_eq!(
+            items.last().unwrap().change.as_ref().unwrap().label,
+            "SelectionSizeZ"
+        );
+        assert!(items
+            .iter()
+            .all(|item| !format!("{:?}", item.spans).contains("6481")));
+        let ChangelogBlock::List { items } = &entry.blocks[cooper + 2] else {
+            panic!("missing separate artillery introduction");
+        };
+        assert_eq!(items.len(), 1);
+        assert!(format!("{:?}", items[0].spans).contains("T3 static artillery"));
+        let references: Vec<_> = items[0]
+            .spans
+            .iter()
+            .filter_map(|span| match span {
+                ChangelogSpan::Issue { number, url, .. } => Some((number.as_str(), url.as_str())),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            references,
+            [
+                ("6481", "https://github.com/FAForever/fa/issues/6481"),
+                ("6482", "https://github.com/FAForever/fa/issues/6482"),
+            ]
+        );
+        assert!(matches!(
+            &entry.blocks[cooper + 3],
+            ChangelogBlock::Paragraph { .. }
+        ));
+    }
+
+    #[test]
+    fn published_3745_lua_example_keeps_its_comments_strings_and_blank_lines() {
+        let entry = parse_entry("3745", POST_3745);
+        let code: Vec<&str> = entry
+            .blocks
+            .iter()
+            .filter_map(|block| match block {
+                ChangelogBlock::CodeBlock { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(code.len(), 1);
+        let source = POST_3745.replace("\r\n", "\n");
+        let expected = source
+            .split_once("```lua\n")
+            .unwrap()
+            .1
+            .split_once("\n```")
+            .unwrap()
+            .0;
+        assert_eq!(code[0], expected);
+    }
     /// The built page for the rolling beta branch, which is where its notes
     /// exist: `docs/changelog/fafbeta.md` is the template alone.
     const PAGE_FAFBETA: &str = include_str!("fixtures/changelog-fafbeta.html");
@@ -2010,6 +3373,121 @@ mod real_document_tests {
             !change_values(&entry.blocks).any(|value| value.ends_with('-')),
             "an arrow was split in the wrong place"
         );
+    }
+
+    #[test]
+    fn legacy_nested_unit_headings_preserve_the_published_3818_changes() {
+        let entry = parse_entry("3818", POST_3818);
+        let units: Vec<(&str, &[ChangelogUnit])> = entry
+            .blocks
+            .iter()
+            .filter_map(|block| match block {
+                ChangelogBlock::Unit { name, units } => Some((name.as_str(), units.as_slice())),
+                _ => None,
+            })
+            .collect();
+
+        assert_eq!(
+            units.len(),
+            17,
+            "every published unit heading must be navigable"
+        );
+        let ids: Vec<Vec<&str>> = units
+            .iter()
+            .map(|(_, units)| {
+                units
+                    .iter()
+                    .map(|unit| unit.unit_id.as_deref().unwrap())
+                    .collect()
+            })
+            .collect();
+        assert_eq!(
+            ids,
+            vec![
+                vec!["UAA0310"],
+                vec!["XSA0203"],
+                vec!["XSS0304"],
+                vec!["XSS0201"],
+                vec!["UEB4301"],
+                vec!["UAB2301"],
+                vec!["XSB2301"],
+                vec!["UEA0001"],
+                vec!["XSA0203"],
+                vec!["XAL0305", "XSL0305"],
+                vec!["XSL0305"],
+                vec!["UAS0305"],
+                vec!["XSS0203"],
+                vec!["XSS0304"],
+                vec!["XRS0204", "XRL0403"],
+                vec!["XRL0305"],
+                vec!["XSS0201"],
+            ],
+            "unit order and repeated changes to the same unit must be retained"
+        );
+        assert_eq!(units[9].0, "Aeon and Seraphim snipers");
+        assert_eq!(units[14].0, "Barracuda and Megalith");
+        for (_, units) in &units {
+            for unit in *units {
+                assert_eq!(
+                    unit.icon_url,
+                    unit_icon_url(unit.unit_id.as_deref().unwrap())
+                );
+            }
+        }
+        assert_eq!(
+            count_changes(&entry.blocks),
+            51,
+            "no stat changes may disappear"
+        );
+
+        let czar = entry
+            .blocks
+            .iter()
+            .position(|block| {
+                matches!(block, ChangelogBlock::Unit { name, .. }
+                if name == "CZAR: Experimental Aircraft Carrier")
+            })
+            .unwrap();
+        let ChangelogBlock::List {
+            items: descriptions,
+        } = &entry.blocks[czar - 1]
+        else {
+            panic!("the Czar's description must remain before its heading");
+        };
+        assert!(descriptions
+            .last()
+            .unwrap()
+            .spans
+            .iter()
+            .any(|span| matches!(
+                span,
+                ChangelogSpan::Issue { number, .. } if number == "6551"
+            )));
+        let ChangelogBlock::List { items: categories } = &entry.blocks[czar + 1] else {
+            panic!("the Czar's stat groups must follow its heading");
+        };
+        assert_eq!(
+            categories[0].spans,
+            vec![ChangelogSpan::Text("Intel".into())]
+        );
+        assert_eq!(
+            categories[0].children[0].change,
+            Some(ChangelogChange {
+                label: "VisionRadius".into(),
+                old: "70".into(),
+                new: "100".into(),
+            })
+        );
+        assert!(entry.blocks.iter().any(|block| matches!(
+            block,
+            ChangelogBlock::Paragraph { spans } if spans.iter().any(|span| matches!(
+                span,
+                ChangelogSpan::Text(text) if text.contains("This fixes them consistently missing shots")
+            ))
+        )), "explanatory paragraphs between stat changes must survive");
+        assert!(entry.blocks.iter().any(|block| matches!(
+            block, ChangelogBlock::Heading { text, .. } if text == "Features"
+        )));
     }
 
     fn change_values(blocks: &[ChangelogBlock]) -> impl Iterator<Item = String> + '_ {

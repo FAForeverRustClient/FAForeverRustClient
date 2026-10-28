@@ -1075,7 +1075,7 @@ mod tests {
 /// Produced by the infrastructure from a `game` document and folded by
 /// [`aggregate_map_stats`]. A separate type so the folding is testable without
 /// a JSON:API document in the way.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct PlayedGame {
     /// The game's id, which is also its replay's.
     pub game_id: i32,
@@ -1108,6 +1108,20 @@ pub struct PlayedGame {
     /// This player's change in displayed rating, rounded to two decimals as
     /// the tracker rounds it, or `None` when no journal carries one.
     pub rating_delta: Option<f64>,
+    /// When the game started, ISO, or empty. What the tracker files a game's
+    /// day and month by, and orders streaks by.
+    pub started_at: String,
+    /// Start to end in whole minutes, at least one; zero when the API did not
+    /// state both ends, which the tracker's average counts as zero too.
+    pub duration_minutes: i32,
+    /// The faction this player played, as the game numbers it.
+    pub faction: Option<i32>,
+    /// The other players on this player's team, and on every other team: the
+    /// tracker's split, team number against team number. In a free-for-all
+    /// everybody shares team 1 and so counts as a teammate, as there; in an old
+    /// two-player game whose rows all carry one team, the other is an opponent.
+    pub teammates: Vec<String>,
+    pub opponents: Vec<String>,
 }
 
 /// One game of a player's results list (#344), newest first.
@@ -1218,9 +1232,39 @@ pub struct PlayerMapStats {
     /// when what they hold belongs to somebody else.
     #[serde(default)]
     pub player_id: i32,
+    /// The record per leaderboard, from this scan rather than the leaderboard's
+    /// own counters (issue 606): `faftracker`'s `ratingSummary`. Most games
+    /// first.
+    #[serde(default)]
+    pub queues: Vec<PlayerQueueStat>,
+    /// Everything else the Statistics tab shows, read off the same games.
+    /// See [`super::player_report`].
+    #[serde(default)]
+    pub report: super::player_report::PlayerReport,
     /// Every game with a known outcome, newest first. See [`PlayerGameResult`].
     #[serde(default)]
     pub games: Vec<PlayerGameResult>,
+}
+
+/// One leaderboard's record in a player's history: `faftracker`'s
+/// `ratingSummary` row.
+///
+/// Counted from the games that moved this player's rating on that board
+/// (`hasKnownRatingMovement` and a delta that is not zero), so it answers
+/// "how did the rated games go" rather than repeating the leaderboard's
+/// `wonGames`, whose win rate is wrong (the reason the rating tiles stopped
+/// showing one). The win rate leaves draws out, as the tracker does.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerQueueStat {
+    /// The leaderboard's technical name (`global`, `ladder_1v1`, ...).
+    pub queue: String,
+    pub games: i32,
+    pub wins: i32,
+    pub losses: i32,
+    pub draws: i32,
+    /// The rating these games moved in all, in hundredths of a point.
+    pub rating_delta_hundredths: i32,
 }
 
 /// Whether a map name came out of the Neroxis generator.
@@ -1244,6 +1288,7 @@ const GENERATED_BUCKET: &str = "\u{0}generated";
 /// look like the data changed.
 pub fn aggregate_map_stats(games: &[PlayedGame], truncated: bool) -> PlayerMapStats {
     let mut by_map: BTreeMap<String, PlayerMapStat> = BTreeMap::new();
+    let mut by_queue: BTreeMap<String, (PlayerQueueStat, f64)> = BTreeMap::new();
     let mut stats = PlayerMapStats {
         truncated,
         ..PlayerMapStats::default()
@@ -1321,7 +1366,43 @@ pub fn aggregate_map_stats(games: &[PlayedGame], truncated: bool) -> PlayerMapSt
         if game.played_at > entry.last_played {
             entry.last_played = game.played_at.clone();
         }
+
+        // The tracker's per-board record: a game that moved this player's
+        // rating on a board it can name, by a delta that is not zero.
+        let delta = game
+            .rating_delta
+            .filter(|delta| delta.is_finite() && *delta != 0.0);
+        if let (true, Some(delta), false) = (game.rating_moved, delta, game.queue.is_empty()) {
+            let (row, total) = by_queue.entry(game.queue.clone()).or_insert_with(|| {
+                (
+                    PlayerQueueStat {
+                        queue: game.queue.clone(),
+                        ..PlayerQueueStat::default()
+                    },
+                    0.0,
+                )
+            });
+            row.games += 1;
+            match game.outcome {
+                Outcome::Win => row.wins += 1,
+                Outcome::Loss => row.losses += 1,
+                Outcome::Draw => row.draws += 1,
+                Outcome::Unknown => {}
+            }
+            *total += delta;
+        }
     }
+
+    stats.queues = by_queue
+        .into_values()
+        .map(|(row, total)| PlayerQueueStat {
+            rating_delta_hundredths: (total * 100.0).round() as i32,
+            ..row
+        })
+        .collect();
+    stats
+        .queues
+        .sort_by(|a, b| b.games.cmp(&a.games).then_with(|| a.queue.cmp(&b.queue)));
 
     // The results list, in the order the scan delivered it: newest first.
     stats.games = games
@@ -1362,6 +1443,7 @@ pub fn aggregate_map_stats(games: &[PlayedGame], truncated: bool) -> PlayerMapSt
     stats
         .maps
         .sort_by(|a, b| b.games.cmp(&a.games).then_with(|| a.map.cmp(&b.map)));
+    stats.report = super::player_report::build_player_report(games);
     stats
 }
 
@@ -1380,7 +1462,52 @@ mod map_stats_tests {
             game_id: 0,
             queue: "global".into(),
             rating_delta: None,
+            ..PlayedGame::default()
         }
+    }
+
+    #[test]
+    fn the_queue_record_counts_the_games_that_moved_a_rating_on_that_board() {
+        // faftracker's `ratingSummary`: a game joins a board's record when it
+        // moved this player's rating there by something other than nothing.
+        let rated = |queue: &str, outcome, delta| PlayedGame {
+            queue: String::from(queue),
+            rating_delta: Some(delta),
+            ..game("Loki", outcome, "2026-09-10")
+        };
+        let games = [
+            rated("ladder_1v1", Outcome::Win, 12.5),
+            rated("ladder_1v1", Outcome::Loss, -10.25),
+            rated("global", Outcome::Draw, 1.0),
+            // Moved nothing: no record anywhere.
+            rated("global", Outcome::Win, 0.0),
+            PlayedGame {
+                rating_moved: false,
+                ..rated("global", Outcome::Win, 5.0)
+            },
+        ];
+        let queues = aggregate_map_stats(&games, false).queues;
+        assert_eq!(
+            queues,
+            vec![
+                PlayerQueueStat {
+                    queue: "ladder_1v1".into(),
+                    games: 2,
+                    wins: 1,
+                    losses: 1,
+                    draws: 0,
+                    rating_delta_hundredths: 225,
+                },
+                PlayerQueueStat {
+                    queue: "global".into(),
+                    games: 1,
+                    wins: 0,
+                    losses: 0,
+                    draws: 1,
+                    rating_delta_hundredths: 100,
+                },
+            ]
+        );
     }
 
     #[test]
@@ -1566,6 +1693,7 @@ mod map_stats_tests {
             game_id: 0,
             queue: "global".into(),
             rating_delta: None,
+            ..PlayedGame::default()
         };
         let custom = PlayedGame {
             ladder: false,
@@ -1677,6 +1805,7 @@ mod generated_map_tests {
             game_id: 0,
             queue: "global".into(),
             rating_delta: None,
+            ..PlayedGame::default()
         }
     }
 
@@ -1700,6 +1829,7 @@ mod generated_map_tests {
                     game_id: 0,
                     queue: "global".into(),
                     rating_delta: None,
+                    ..PlayedGame::default()
                 },
             ],
             false,

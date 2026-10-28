@@ -5,7 +5,7 @@ import { FactionIcon } from "../../shared/components/FactionIcon";
 import { openPlayerCard } from "../../shared/playerCardActions";
 import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { t } from "../../i18n";
-import { outcomeLabel, parseOutcome, type OutcomeKind } from "../../shared/gameOutcome";
+import { outcomeLabel, parseOutcome, teamOutcome, type OutcomeKind } from "../../shared/gameOutcome";
 import { ReplayPlayerFlag } from "./ReplayPlayerFlag";
 import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/components/nameColors";
@@ -40,24 +40,7 @@ function ReplayPlayerMarker({ player, observer, size }: { player: ReplayPlayer; 
 }
 
 // Moved to shared, because the matchmaker tab reads outcomes too.
-export { outcomeLabel, parseOutcome, type OutcomeKind };
-
-/**
- * One team's result, by the priority Java's `calculateTeamOutcome` uses:
- * a victory anywhere in the team wins, then a draw, then a defeat, and only a
- * team where nobody has a recorded outcome is unknown.
- *
- * Taking the first player who happens to have one, as this did, is not the
- * same thing: the roster is in server order, so a team-mate who resigned early
- * could put "Defeat" on the team that won.
- */
-export function teamOutcome(players: ReplayPlayer[]): OutcomeKind | "unknown" {
-  const kinds = players.map((player) => parseOutcome(player.outcome)).filter(Boolean);
-  if (kinds.includes("victory")) return "victory";
-  if (kinds.includes("draw")) return "draw";
-  if (kinds.includes("defeat")) return "defeat";
-  return "unknown";
-}
+export { outcomeLabel, parseOutcome, teamOutcome, type OutcomeKind };
 
 /**
  * Who won, in a few words for a list row (#454): the winning team's name, or
@@ -322,6 +305,17 @@ function playerActionTitle(
   return base;
 }
 
+/**
+ * A card name's hover text: the name only where the row cut it short, and the
+ * in-game name where the player played under another one. Empty otherwise,
+ * which is no tooltip at all.
+ */
+export function cardPlayerTitle(name: string, alias: string | undefined, nameElement: Element | null): string {
+  const truncated = nameElement !== null && nameElement.scrollWidth > nameElement.clientWidth;
+  const parts = [truncated ? name : "", alias ? t("replays.roster.playedAs", { name: alias }) : ""];
+  return parts.filter(Boolean).join(" ");
+}
+
 export function ReplayCardRoster({
   teams,
   interactive = false,
@@ -436,18 +430,23 @@ export function ReplayCardRoster({
                       /* Not a control: a card that is itself one big target
                          cannot hold buttons. The context menu is still reachable,
                          which is the gesture the channel roster answers on a name
-                         too, and the only one a span can offer. */
+                         too, and the only one a span can offer.
+
+                         No "Actions for" hover text here (issue 629): a left
+                         click opens the replay, so the line promised something
+                         the click does not do. Nor the name on its own, which
+                         repeats what the row already shows; it is offered only
+                         when the row has cut the name short. */
                       <span
                         className={onPlayerMenu ? "replay-player-identity replay-player-menuable" : "replay-player-identity"}
-                        title={
-                          isRenamed
-                            ? onPlayerMenu
-                              ? `${t("replays.roster.playerActions", { name: player.name })} (${t("replays.roster.playedAs", { name: alias! })})`
-                              : t("replays.roster.playedAs", { name: alias! })
-                            : onPlayerMenu
-                              ? t("replays.roster.playerActions", { name: player.name })
-                              : undefined
-                        }
+                        title={cardPlayerTitle(player.name, isRenamed ? alias : undefined, null) || undefined}
+                        onMouseEnter={(event) => {
+                          event.currentTarget.title = cardPlayerTitle(
+                            player.name,
+                            isRenamed ? alias : undefined,
+                            event.currentTarget.lastElementChild,
+                          );
+                        }}
                         onContextMenu={onPlayerMenu && ((event) => {
                           event.stopPropagation();
                           onPlayerMenu(player.name, event);
@@ -455,7 +454,7 @@ export function ReplayCardRoster({
                       >
                         <ReplayPlayerMarker player={player} observer={observer} size={17} />
                         <ReplayPlayerFlag player={player} />
-                        <PlayerName name={player.name} />
+                        <PlayerName name={player.name} title={null} />
                       </span>
                     )}
                     {/* The rating and, with the result shown, its change, as one

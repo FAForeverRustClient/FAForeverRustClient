@@ -77,7 +77,7 @@ pub(crate) fn is_app_origin(url: &tauri::Url) -> bool {
     }
 }
 
-/// The app's own pages plus the two site roots the client embeds. Anything else
+/// The app's own pages plus the site roots the client embeds. Anything else
 /// is a link the user followed out of an embed and belongs in their browser.
 pub(crate) fn is_internal_navigation(url: &tauri::Url) -> bool {
     let url_str = url.as_str();
@@ -86,7 +86,8 @@ pub(crate) fn is_internal_navigation(url: &tauri::Url) -> bool {
         || url_str == "https://faforever.com/newshub"
         || url_str.starts_with("https://www.faforever.com/dist/")
         || url_str.starts_with("https://faforever.github.io/spooky-db")
-        || url_str.starts_with("https://faforever.github.io/etfreeman-db")
+        || url_str.starts_with("https://unitdb.faforever.com/")
+        || url_str.starts_with("https://daily.faforever.com/")
         // The training videos' player (`trainingPresentation.ts`), the one
         // origin the CSP's frame-src allows that was missing here. WebKitGTK
         // asks about a frame's loads too, so on Linux every video frame went

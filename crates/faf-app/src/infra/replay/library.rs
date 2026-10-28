@@ -8,16 +8,20 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::infra::file_cache::FileCache;
 use async_trait::async_trait;
 use faf_domain::state::{LocalReplay, LocalReplayPlayer, LocalReplayStatus, LocalReplayTeam};
 use futures_util::StreamExt;
 use serde_json::Value;
-use tokio::io::AsyncReadExt;
+use std::io::{BufRead, Read};
+use std::sync::Arc;
 
 use crate::ports::ReplayLibraryPort;
 
 use super::names::{guess_mod_from_filename, is_replay_file_name};
-use super::scfa_header::{local_body_player_stats, playable_body, LocalBodyArmy};
+use super::scfa_header::{
+    local_body_player_stats_reader, playable_body, LocalBodyArmy, LocalBodyInfo,
+};
 
 /// The local replay library: one folder of replay files.
 ///
@@ -28,6 +32,7 @@ use super::scfa_header::{local_body_player_stats, playable_body, LocalBodyArmy};
 #[derive(Debug, Clone, Default)]
 pub struct ReplayLibrary {
     directory: Option<PathBuf>,
+    cache: Arc<FileCache<LocalReplay>>,
 }
 
 impl ReplayLibrary {
@@ -41,6 +46,7 @@ impl ReplayLibrary {
     pub fn at(directory: PathBuf) -> Self {
         Self {
             directory: Some(directory),
+            cache: Arc::default(),
         }
     }
 
@@ -53,7 +59,7 @@ impl ReplayLibrary {
 #[async_trait]
 impl ReplayLibraryPort for ReplayLibrary {
     async fn list_local(&self, limit: usize) -> Result<Vec<LocalReplay>, String> {
-        list_local_dir(&self.directory(), limit).await
+        list_local_dir_cached(&self.directory(), limit, &self.cache).await
     }
 
     async fn delete_local(&self, path: PathBuf) -> Result<(), String> {
@@ -65,9 +71,15 @@ impl ReplayLibraryPort for ReplayLibrary {
 /// [`ReplayLibrary::list_local`](ReplayLibraryPort::list_local), taking the
 /// directory as an argument so tests don't have to mutate the process-global
 /// `FAF_REPLAYS_DIR`/`ALLUSERSPROFILE` env vars.
-pub(super) async fn list_local_dir(
-    dir: &std::path::Path,
+#[cfg(test)]
+pub(super) async fn list_local_dir(dir: &Path, limit: usize) -> Result<Vec<LocalReplay>, String> {
+    list_local_dir_cached(dir, limit, &FileCache::default()).await
+}
+
+async fn list_local_dir_cached(
+    dir: &Path,
     limit: usize,
+    cache: &FileCache<LocalReplay>,
 ) -> Result<Vec<LocalReplay>, String> {
     let mut entries = match tokio::fs::read_dir(dir).await {
         Ok(rd) => rd,
@@ -106,7 +118,12 @@ pub(super) async fn list_local_dir(
     let detailed = files.len().min(limit);
     let mut replays: Vec<LocalReplay> = futures_util::stream::iter(files[..detailed].to_vec())
         .map(|(path, modified, file_size)| async move {
-            read_local_metadata(&path, modified, file_size).await
+            if let Some(known) = cache.get(&path, modified, file_size) {
+                return known;
+            }
+            let replay = read_local_metadata(&path, modified, file_size).await;
+            cache.insert(path, modified, file_size, replay.clone());
+            replay
         })
         .buffered(LOCAL_REPLAY_READ_CONCURRENCY)
         .collect()
@@ -125,11 +142,11 @@ pub const LOCAL_REPLAY_PAGE_LIMIT: usize = crate::ports::DEFAULT_LOCAL_REPLAY_LI
 
 /// How many local replay headers to read at once.
 ///
-/// Each is an `open` plus one bounded read, so the wall-clock cost of listing a
-/// folder is dominated by how many of those can be in flight rather than by how
-/// many files there are. Sixteen keeps a three-thousand-file archive responsive
-/// without flooding the runtime.
-const LOCAL_REPLAY_READ_CONCURRENCY: usize = 16;
+/// Each runs on a blocking worker and decompresses the body until its army
+/// table is complete, so this bounds CPU as well as open files. Unchanged files
+/// come from the metadata cache instead, which keeps a rescan cheap even with
+/// only four in flight.
+const LOCAL_REPLAY_READ_CONCURRENCY: usize = 4;
 
 /// The shared FAF replay folder every client writes to. Mirrors the Python
 /// client's `APPDATA_DIR` (`%ALLUSERSPROFILE%\FAForever` on Windows, falling
@@ -277,7 +294,17 @@ fn body_teams(armies: &[LocalBodyArmy], mission: bool) -> Vec<LocalReplayTeam> {
     teams
 }
 
-pub(super) fn local_sim_mods(header: &Value) -> Vec<String> {
+/// The simulation mods a replay was played with (issue 638).
+///
+/// The envelope's `sim_mods` when it has one: this client writes the lobby's
+/// list there. The replay server does not, and for its files a missing key is
+/// no answer at all, so the body's own mod table decides. `None` when neither
+/// says, which a caller must not show as a game without mods.
+pub(super) fn replay_sim_mods(header: &Value, body: Option<&LocalBodyInfo>) -> Option<Vec<String>> {
+    envelope_sim_mods(header).or_else(|| body.and_then(|body| body.sim_mods.clone()))
+}
+
+pub(super) fn envelope_sim_mods(header: &Value) -> Option<Vec<String>> {
     header
         .get("sim_mods")
         .and_then(Value::as_object)
@@ -291,7 +318,6 @@ pub(super) fn local_sim_mods(header: &Value) -> Vec<String> {
                 .map(String::from)
                 .collect()
         })
-        .unwrap_or_default()
 }
 
 const LOCAL_REPLAY_BODY_READ_BYTES: usize = 4 * 1024 * 1024;
@@ -343,6 +369,19 @@ async fn read_local_metadata(
     modified: std::time::SystemTime,
     file_size: u64,
 ) -> LocalReplay {
+    let owned = path.to_owned();
+    tokio::task::spawn_blocking(move || read_local_metadata_blocking(&owned, modified, file_size))
+        .await
+        .unwrap_or_else(|_| {
+            empty_local_replay(path, modified, file_size, LocalReplayStatus::Broken, false)
+        })
+}
+
+fn read_local_metadata_blocking(
+    path: &Path,
+    modified: std::time::SystemTime,
+    file_size: u64,
+) -> LocalReplay {
     let is_legacy = path
         .extension()
         .and_then(|extension| extension.to_str())
@@ -351,34 +390,33 @@ async fn read_local_metadata(
         return empty_local_replay(path, modified, file_size, LocalReplayStatus::Legacy, true);
     }
 
-    let mut file = match tokio::fs::File::open(path).await {
+    let file = match std::fs::File::open(path) {
         Ok(file) => file,
         Err(_) => {
             return empty_local_replay(path, modified, file_size, LocalReplayStatus::Broken, false)
         }
     };
-    let mut buf = vec![0u8; 64 * 1024];
-    let n: usize = file.read(&mut buf).await.unwrap_or_default();
-    buf.truncate(n);
-    let Some(nl) = buf.iter().position(|&byte| byte == b'\n') else {
+    let mut file = std::io::BufReader::with_capacity(16 * 1024, file);
+    let mut envelope = Vec::new();
+    if Read::by_ref(&mut file)
+        .take(64 * 1024)
+        .read_until(b'\n', &mut envelope)
+        .is_err()
+        || envelope.last() != Some(&b'\n')
+    {
         return empty_local_replay(path, modified, file_size, LocalReplayStatus::Broken, false);
-    };
-    let Ok(header) = serde_json::from_slice::<Value>(&buf[..nl]) else {
-        return empty_local_replay(path, modified, file_size, LocalReplayStatus::Broken, false);
-    };
-    let mut body = buf[nl + 1..].to_vec();
-    if body.len() < LOCAL_REPLAY_BODY_READ_BYTES {
-        let mut remainder = Vec::new();
-        let remaining = (LOCAL_REPLAY_BODY_READ_BYTES - body.len()) as u64;
-        let _ = file.take(remaining).read_to_end(&mut remainder).await;
-        body.extend_from_slice(&remainder);
     }
+    let Ok(header) = serde_json::from_slice::<Value>(&envelope) else {
+        return empty_local_replay(path, modified, file_size, LocalReplayStatus::Broken, false);
+    };
     let compression = header
         .get("compression")
         .and_then(Value::as_str)
         .unwrap_or("");
-    let body_info = local_body_player_stats(&body, compression);
+    let body_info =
+        local_body_player_stats_reader(file.take(LOCAL_REPLAY_BODY_READ_BYTES as u64), compression);
     let playable = playable_body(body_info.as_ref());
+    let sim_mods = replay_sim_mods(&header, body_info.as_ref()).unwrap_or_default();
     let body_info = body_info.unwrap_or_default();
     // A co-op mission, where the armies with no client behind them belong to
     // the campaign rather than to anybody playing: see [`body_teams`].
@@ -502,7 +540,7 @@ async fn read_local_metadata(
         },
         teams,
         average_rating,
-        sim_mods: local_sim_mods(&header),
+        sim_mods,
         // `complete` is the envelope's own claim about how the recording
         // ended, and it is only worth reading once the recording is known to
         // be there: a broken file is not an unfinished game, it is a game that

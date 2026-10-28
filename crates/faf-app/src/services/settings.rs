@@ -482,6 +482,18 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             });
             persist(ctx, out).await;
         }
+        SettingsCommand::SaveSearchPreset { preset } => {
+            merge(ctx, out, |settings| {
+                (domain::search_preset_saved(settings, preset), ())
+            });
+            persist(ctx, out).await;
+        }
+        SettingsCommand::DeleteSearchPreset { list, name } => {
+            merge(ctx, out, |settings| {
+                (domain::search_preset_deleted(settings, &list, &name), ())
+            });
+            persist(ctx, out).await;
+        }
         SettingsCommand::SetMapGenerator { preferences } => {
             out.emit(SettingsEvent::MapGeneratorChanged { preferences });
             persist(ctx, out).await;
@@ -502,6 +514,7 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             });
             persist(ctx, out).await;
             sync_launch_preferences(ctx, out);
+            sync_generator_instances(ctx, out);
             if old_lifetime != new_lifetime {
                 if let Some(days) = new_lifetime {
                     ctx.ports.game_cache.expire(days).await;
@@ -693,6 +706,16 @@ fn sync_runtime_preferences(ctx: &ServiceCtx, out: &EventSink) {
     sync_launch_preferences(ctx, out);
     sync_connectivity(ctx, out);
     sync_debug_windows(ctx, out);
+    sync_generator_instances(ctx, out);
+}
+
+/// Tell the map generator how many runs it may keep going at once.
+///
+/// Applied on load as well as on change, so the number chosen last session
+/// holds from the first generated map of this one.
+fn sync_generator_instances(ctx: &ServiceCtx, out: &EventSink) {
+    let instances = out.with_state(|state| state.settings.game.map_generator_instances);
+    ctx.ports.map_generator.set_parallel_instances(instances);
 }
 
 /// Tell the helper processes which diagnostic windows they may open.

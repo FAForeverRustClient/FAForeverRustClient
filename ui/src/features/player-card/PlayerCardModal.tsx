@@ -20,7 +20,7 @@ import { PlayerOverview } from "./PlayerOverview";
 import { PlayerResults } from "./PlayerResults";
 import { PlayerMapStatistics } from "./PlayerMapStatistics";
 import { PlayerStatistics } from "./PlayerStatistics";
-import { RatingHistoryChart } from "./RatingHistoryChart";
+import { RatingHistoryChart, type HistoryAxis } from "./RatingHistoryChart";
 import { closePlayerCard, openPlayerCard } from "../../shared/playerCardActions";
 import { takePlayerCardTab } from "../../shared/playerCardTabIntent";
 import { PlayerName } from "../../shared/components/nameColors";
@@ -59,6 +59,9 @@ const PERIODS: Array<{ value: RatingHistoryPeriod; label: MessageKey }> = [
   { value: "year", label: "playerCard.period.year" },
   { value: "all", label: "playerCard.period.all" },
 ];
+
+/** How many of the latest games the chart shows by game (#645); 0 is all. */
+const GAME_COUNTS = [100, 500, 1_000, 0];
 
 /** One entry in the profile search's list: an online player or an API match. */
 interface LookupSuggestion {
@@ -270,14 +273,23 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
 }) {
   const state = useAppStore((store) => store.state.playerCard);
   const { t } = useTranslation();
-  const [period, setPeriod] = useState<RatingHistoryPeriod>("all");
+  // The last month first, and the rest on request (issue 631): a player with
+  // years on FAF made the chart load every game they ever played, visibly,
+  // each time the tab opened.
+  const [period, setPeriod] = useState<RatingHistoryPeriod>("month");
   const [showMaximum, setShowMaximum] = useState(true);
+  // By date or by game (#645). By game the period dropdown becomes a count of
+  // the latest games, which needs the whole history to count back from: the
+  // API can be asked for a stretch of time, not for the last N games.
+  const [axis, setAxis] = useState<HistoryAxis>("date");
+  const [gameCount, setGameCount] = useState(100);
+  const loadedPeriod: RatingHistoryPeriod = axis === "games" ? "all" : period;
   const playerId = state.profile?.playerId ?? 0;
   const query = (page: number) => ({
     playerId,
     leaderboardId: rating.leaderboardId,
     leaderboard: rating.technicalName,
-    period,
+    period: loadedPeriod,
     page,
     pageSize: 10_000,
   });
@@ -298,14 +310,22 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
             playerId,
             leaderboardId: rating.leaderboardId,
             leaderboard: rating.technicalName,
-            period,
+            period: loadedPeriod,
             page: 1,
             pageSize: 10_000,
           },
         },
       },
     });
-  }, [period, playerId, rating.leaderboardId, rating.technicalName]);
+  }, [loadedPeriod, playerId, rating.leaderboardId, rating.technicalName]);
+
+  // By game, the latest `gameCount` of the whole history, numbered from the
+  // player's first game in this queue.
+  const shown = useMemo(
+    () => (axis === "games" && gameCount > 0 ? state.history.slice(-gameCount) : state.history),
+    [axis, gameCount, state.history],
+  );
+  const firstGame = state.history.length - shown.length + 1;
 
   const loadedMaximum = useMemo(() => state.history.reduce<number | null>((best, point) => {
     const value = Number(point.rating);
@@ -326,7 +346,15 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
           const next = ratings.find((candidate) => candidate.leaderboardId === Number(event.target.value));
           if (next) onRatingChange(next);
         }}>{ratings.map((candidate) => <option key={candidate.leaderboardId} value={candidate.leaderboardId}>{leaderboardLabel(candidate.technicalName)}</option>)}</select></label>
-        <label><span>{t("playerCard.history.period")}</span><select value={period} onChange={(event) => setPeriod(event.target.value as RatingHistoryPeriod)}>{PERIODS.map((item) => <option key={item.value} value={item.value}>{t(item.label)}</option>)}</select></label>
+        {axis === "date"
+          ? <label><span>{t("playerCard.history.period")}</span><select value={period} onChange={(event) => setPeriod(event.target.value as RatingHistoryPeriod)}>{PERIODS.map((item) => <option key={item.value} value={item.value}>{t(item.label)}</option>)}</select></label>
+          : <label><span>{t("playerCard.history.gameCount")}</span><select value={gameCount} onChange={(event) => setGameCount(Number(event.target.value))}>{GAME_COUNTS.map((count) => <option key={count} value={count}>{count > 0 ? t("playerCard.history.gameCount.last", { count: formatNumber(count) }) : t("playerCard.history.gameCount.all")}</option>)}</select></label>}
+        {/* At the right edge (#645): it changes what the chart and the
+            dropdown beside it mean, so it is set apart from them. */}
+        <label className="player-history-axis"><span>{t("playerCard.history.axis")}</span><select value={axis} onChange={(event) => setAxis(event.target.value as HistoryAxis)}>
+          <option value="date">{t("playerCard.history.axis.date")}</option>
+          <option value="games">{t("playerCard.history.axis.games")}</option>
+        </select></label>
       </div>
 
       {/* Four facts about the player. The old strip spent one of its four
@@ -384,7 +412,7 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
             so the card does not open short and grow when the points arrive. */}
         {busy && state.history.length === 0
           ? <div className="player-rating-chart-wrap surface-panel player-history-chart-loading muted" role="status">{t("playerCard.history.loading")}</div>
-          : <RatingHistoryChart points={state.history} maximum={state.historyMaximum} showMaximum={showMaximum} />}
+          : <RatingHistoryChart points={shown} maximum={state.historyMaximum} showMaximum={showMaximum} axis={axis} firstGame={firstGame} />}
       </div>
 
       {/* What was loaded, and nothing to press. The two paging buttons that
@@ -396,6 +424,13 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
           {busy && `${t("playerCard.history.loadingShort")} `}
           {t("playerCard.history.entriesLoaded", { count: formatNumber(state.history.length) })}
         </span>
+        {/* The same as choosing "All time" above, one click away under the
+            chart it extends. */}
+        {loadedPeriod !== "all" && (
+          <Button variant="primary" disabled={busy} onClick={() => setPeriod("all")}>
+            {t("playerCard.history.loadAll")}
+          </Button>
+        )}
       </div>
     </div>
   );

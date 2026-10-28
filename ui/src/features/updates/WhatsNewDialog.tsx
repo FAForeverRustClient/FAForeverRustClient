@@ -14,29 +14,27 @@
 //   the game and its own dialogs are what matter then. It waits, and comes up
 //   once the game is over.
 //
-// What it lists is `whatsNewChanges`'s choice: the release's highlights when
-// it has them, its first few lines when it does not. A release with no
-// changes to list (one published before the changelog snippets, or a body of
-// prose only) is dismissed without being shown: a popup with nothing in it is
-// worse than none.
+// It lists every change in the release, by section, the highlights first
+// (`whatsNewSections`); a long release scrolls between the title and Close.
+// A release with no changes to list (one published before the changelog
+// snippets, or a body of prose only) is dismissed without being shown: a
+// popup with nothing in it is worse than none.
 
 import { useEffect, useMemo, useRef } from "react";
 import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
-import type { ClientReleaseNotes, JoinState, MatchmakingState, ReplayStatus } from "../../ipc/bindings";
+import type { ChangelogListItem, ClientReleaseNotes, JoinState, MatchmakingState, ReplayStatus } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ChangelogSpans } from "../../shared/components/ChangelogBlocks";
-import { canOpenClientRelease, openClientRelease } from "../../shared/clientReleaseNotes";
-import { openHttpsUrl, optionalHttpsUrl } from "../../shared/externalLinks";
 import { updateRequiredRelease } from "../../store/reducers/clientUpdate";
 import { useAppStore } from "../../store/store";
-import { whatsNewChanges, type WhatsNewChanges } from "./whatsNewChanges";
+import { whatsNewSections, type WhatsNewSection } from "./whatsNewChanges";
 import "./updates.css";
 
 const dismiss = () => ipc.send({ kind: "ClientUpdate", command: { type: "dismissWhatsNew" } });
 
-const NOTHING: WhatsNewChanges = { shown: [], highlights: false, rest: 0 };
+const NOTHING: WhatsNewSection[] = [];
 
 /**
  * A game on its way or running: a join from its first step to the game
@@ -64,80 +62,69 @@ export function WhatsNewDialog() {
   const join = useAppStore((s) => s.state.lobby.join.type);
   const matchmaking = useAppStore((s) => s.state.lobby.matchmaking.type);
   const replay = useAppStore((s) => s.state.replays.status.type);
-  const authMode = useAppStore((s) => s.state.auth.mode);
 
   const release = version === null ? undefined : notes.find((note) => note.version === version);
-  const changes = useMemo(() => (release ? whatsNewChanges(release.blocks) : NOTHING), [release]);
-  const nothingToSay = version !== null && notesStatus === "ready" && changes.shown.length === 0;
+  const sections = useMemo(() => (release ? whatsNewSections(release.blocks) : NOTHING), [release]);
+  const nothingToSay = version !== null && notesStatus === "ready" && sections.length === 0;
 
   useEffect(() => {
     if (nothingToSay) dismiss();
   }, [nothingToSay]);
 
-  if (!release || notesStatus !== "ready" || changes.shown.length === 0) return null;
+  if (!release || notesStatus !== "ready" || sections.length === 0) return null;
   if (gateUp || gameActive(join, matchmaking, replay)) return null;
 
-  return (
-    <WhatsNewPopup
-      release={release}
-      changes={changes}
-      inClient={canOpenClientRelease(notes, authMode, release.version)}
-    />
-  );
+  return <WhatsNewPopup release={release} sections={sections} />;
 }
 
 interface PopupProps {
   release: ClientReleaseNotes;
-  /** What to list, and how many changes that leaves out. */
-  changes: WhatsNewChanges;
-  /** Whether "See all changes" can open the client's own changelog. */
-  inClient: boolean;
+  /** Every change in it, by section; at least one. */
+  sections: WhatsNewSection[];
+}
+
+/** A section's lines, a nested line under the one above it. */
+function ChangeList({ items }: { items: ChangelogListItem[] }) {
+  return (
+    <ul className="whats-new-changes">
+      {items.map((change, index) => (
+        <li key={index}>
+          <ChangelogSpans spans={change.spans} />
+          {change.children.length > 0 && <ChangeList items={change.children} />}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /** The popup itself, given what it shows. */
-export function WhatsNewPopup({ release, changes, inClient }: PopupProps) {
+export function WhatsNewPopup({ release, sections }: PopupProps) {
   const { t } = useTranslation();
   const actionsRef = useRef<HTMLDivElement>(null);
-  const { shown, highlights, rest } = changes;
   const title = t("updates.whatsNew.title", { version: release.version });
-  // A session that cannot open the Changelog tab reads the release page.
-  const pageUrl = inClient ? null : optionalHttpsUrl(release.notesUrl);
 
-  // The caret on "See all changes". Left to the dialog, it went to the first
-  // control inside, which is the first issue link in the list, and Enter
-  // opened a page on GitHub. This runs after the dialog's own placement.
+  // The caret on Close. Left to the dialog, it went to the first control
+  // inside, which is the first issue link in the list, and Enter opened a
+  // page on GitHub. This runs after the dialog's own placement.
   useEffect(() => {
     actionsRef.current?.querySelector<HTMLElement>(".btn-primary")?.focus();
   }, []);
 
-  const seeAll = () => {
-    dismiss();
-    if (inClient) openClientRelease(release.version);
-    else if (pageUrl) void openHttpsUrl(pageUrl);
-  };
-
   return (
     <Modal className="whats-new" onClose={dismiss} ariaLabel={title}>
       <h2 className="whats-new-title">{title}</h2>
-      <ul className="whats-new-changes">
-        {shown.map((change, index) => (
-          <li key={index}>
-            <ChangelogSpans spans={change.spans} />
-          </li>
+      {/* A release's categories as its notes name them, as the Changelog tab
+          shows them: the lines are the notes' own English either way. */}
+      <div className="whats-new-body">
+        {sections.map((section, index) => (
+          <section key={index} className="whats-new-section">
+            {section.heading && <h3 className="whats-new-heading">{section.heading}</h3>}
+            <ChangeList items={section.items} />
+          </section>
         ))}
-      </ul>
-      {rest > 0 && (
-        <p className="whats-new-more">
-          {t(highlights ? "updates.whatsNew.fullNotes" : "updates.whatsNew.more", { count: rest })}
-        </p>
-      )}
+      </div>
       <div className="whats-new-actions" ref={actionsRef}>
-        <Button onClick={dismiss}>{t("common.close")}</Button>
-        {(inClient || pageUrl) && (
-          <Button variant="primary" onClick={seeAll}>
-            {t("updates.whatsNew.seeAll")}
-          </Button>
-        )}
+        <Button variant="primary" onClick={dismiss}>{t("common.close")}</Button>
       </div>
     </Modal>
   );

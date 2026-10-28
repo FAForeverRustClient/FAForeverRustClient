@@ -48,19 +48,71 @@ pub enum LogIssue {
 /// Order is stable and matches declaration order, so the same log always
 /// produces the same list rather than one that shuffles between runs.
 pub fn analyze_game_log(contents: &str) -> Vec<LogIssue> {
-    let mut issues = Vec::new();
-    if contents.contains(MINIMIZED_TRACE) {
-        issues.push(LogIssue::GameMinimized);
+    let mut analyzer = GameLogAnalyzer::default();
+    for chunk in contents.as_bytes().chunks(64 * 1024) {
+        analyzer.push(chunk);
     }
-    if contents.contains(SOUND_WARNING_TRACE) && contents.contains(SOUND_XACT_TRACE) {
-        issues.push(LogIssue::SoundDriver);
+    analyzer.issues()
+}
+
+/// Incremental detection with a small overlap for markers split across reads.
+#[derive(Default)]
+pub struct GameLogAnalyzer {
+    tail: Vec<u8>,
+    minimized: bool,
+    sound_warning: bool,
+    sound_xact: bool,
+}
+
+impl GameLogAnalyzer {
+    pub fn push(&mut self, bytes: &[u8]) {
+        self.tail.extend_from_slice(bytes);
+        let text = String::from_utf8_lossy(&self.tail);
+        self.minimized |= text.contains(MINIMIZED_TRACE);
+        self.sound_warning |= text.contains(SOUND_WARNING_TRACE);
+        self.sound_xact |= text.contains(SOUND_XACT_TRACE);
+        // Enough of the previous read to complete the longest marker.
+        let keep = MINIMIZED_TRACE
+            .len()
+            .max(SOUND_WARNING_TRACE.len())
+            .max(SOUND_XACT_TRACE.len())
+            - 1;
+        if self.tail.len() > keep {
+            let start = self.tail.len() - keep;
+            self.tail.copy_within(start.., 0);
+            self.tail.truncate(keep);
+        }
     }
-    issues
+
+    pub fn issues(&self) -> Vec<LogIssue> {
+        let mut issues = Vec::new();
+        if self.minimized {
+            issues.push(LogIssue::GameMinimized);
+        }
+        if self.sound_warning && self.sound_xact {
+            issues.push(LogIssue::SoundDriver);
+        }
+        issues
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn performance_streamed_log_detection_handles_every_marker_boundary() {
+        let text = b"info: Minimized true\nwarning: SND failure\nXACT";
+        for split in 0..=text.len() {
+            let mut analyzer = GameLogAnalyzer::default();
+            analyzer.push(&text[..split]);
+            analyzer.push(&text[split..]);
+            assert_eq!(
+                analyzer.issues(),
+                vec![LogIssue::GameMinimized, LogIssue::SoundDriver]
+            );
+        }
+    }
 
     #[test]
     fn a_clean_log_reports_nothing() {

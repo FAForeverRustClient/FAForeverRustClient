@@ -10,9 +10,10 @@ use specta::Type;
 use crate::state::{
     AuthEvent, ChangelogEvent, ChatEvent, ClanEvent, ClientUpdateEvent, ConnectivityEvent,
     CoopEvent, EventsEvent, GalacticWarEvent, GuidesEvent, InstallEvent, LeaderboardEvent,
-    LobbyEvent, MapGeneratorEvent, MapsEvent, ModsEvent, NavEvent, NotificationEvent,
-    PlayerCardEvent, ReplayEvent, ReportingEvent, ReviewsEvent, SessionEvent, SettingsEvent,
-    SocialEvent, StreamsEvent, TourneyEvent, TrainingEvent, TutorialsEvent, UploadsEvent,
+    LinuxRuntimeEvent, LobbyEvent, MapGeneratorEvent, MapsEvent, ModsEvent, NavEvent,
+    NotificationEvent, PlayerCardEvent, ReplayEvent, ReportingEvent, ReviewsEvent, SessionEvent,
+    SettingsEvent, SocialEvent, StreamsEvent, TourneyEvent, TrainingEvent, TutorialsEvent,
+    UploadsEvent,
 };
 
 // No `Eq`: `ReplayEvent` carries an `f32` (vault replay review score).
@@ -45,6 +46,7 @@ pub enum AppEvent {
     Events(EventsEvent),
     Uploads(UploadsEvent),
     GalacticWar(GalacticWarEvent),
+    LinuxRuntime(LinuxRuntimeEvent),
     Guides(GuidesEvent),
     ClientUpdate(ClientUpdateEvent),
     Install(InstallEvent),
@@ -205,6 +207,12 @@ impl From<ReviewsEvent> for AppEvent {
 impl From<UploadsEvent> for AppEvent {
     fn from(e: UploadsEvent) -> Self {
         AppEvent::Uploads(e)
+    }
+}
+
+impl From<LinuxRuntimeEvent> for AppEvent {
+    fn from(e: LinuxRuntimeEvent) -> Self {
+        AppEvent::LinuxRuntime(e)
     }
 }
 

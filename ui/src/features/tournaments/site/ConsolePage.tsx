@@ -24,6 +24,7 @@ import type {
   SiteAdminData,
   SiteWrite,
   TourneyAccount,
+  TourneyAdmin,
   TourneyLoadStatus,
 } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
@@ -33,8 +34,9 @@ import { RichText } from "../detail/RichText";
 import { formatMoment, STATUS_LABELS } from "../tourneyPresentation";
 import { AccountAdder, BanList } from "./BanList";
 import { askConfirm } from "../tourneyDialogs";
+import { ProposalsTab } from "./ProposalsTab";
 
-type Tab = "requests" | "siteAdmins" | "directors" | "bans" | "logs" | "archived" | "articles";
+type Tab = "proposals" | "requests" | "siteAdmins" | "directors" | "bans" | "logs" | "archived" | "articles";
 
 type Tone = "ok" | "warn" | "error" | "muted";
 
@@ -48,23 +50,37 @@ const ACTION_LABELS: Record<string, { label: MessageKey; tone: Tone }> = {
   host_access_granted: { label: "tournaments.console.logGranted", tone: "ok" },
   host_access_denied: { label: "tournaments.console.logDenied", tone: "error" },
   host_access_revoked: { label: "tournaments.console.logRevoked", tone: "error" },
+  proposal_submitted: { label: "tournaments.console.logProposalSubmitted", tone: "warn" },
+  proposal_withdrawn: { label: "tournaments.console.logProposalWithdrawn", tone: "muted" },
+  proposal_taken: { label: "tournaments.console.logProposalTaken", tone: "ok" },
+  proposal_declined: { label: "tournaments.console.logProposalDeclined", tone: "error" },
+  proposal_timeout: { label: "tournaments.console.logProposalTimeout", tone: "muted" },
+  proposal_released: { label: "tournaments.console.logProposalReleased", tone: "warn" },
+  proposal_unlocked: { label: "tournaments.console.logProposalUnlocked", tone: "warn" },
+  proposal_dropped: { label: "tournaments.console.logProposalDropped", tone: "muted" },
+  proposal_days_changed: { label: "tournaments.console.logProposalDays", tone: "muted" },
 };
 
-/** The console's tabs for a role, in the website's order. */
-export function consoleTabs(role: SiteAdminData["role"]): Tab[] {
+/**
+ * The console's tabs for a role, in the website's order. Proposals while the
+ * site takes them (#569), for directors and site admins alike.
+ */
+export function consoleTabs(role: SiteAdminData["role"], proposals = false): Tab[] {
   if (role === "editor") return ["articles"];
   const all: Tab[] = ["requests", "siteAdmins", "directors", "bans", "logs", "archived", "articles"];
+  if (proposals) all.unshift("proposals");
   return role === "admin" ? all : all.filter((tab) => tab !== "siteAdmins");
 }
 
 /** The sections down the left, grouped; a group a role has nothing in is left out. */
 const GROUPS: { label: MessageKey; tabs: Tab[] }[] = [
-  { label: "tournaments.console.groupAccess", tabs: ["requests", "siteAdmins", "directors"] },
+  { label: "tournaments.console.groupAccess", tabs: ["proposals", "requests", "siteAdmins", "directors"] },
   { label: "tournaments.console.groupModeration", tabs: ["bans", "logs"] },
   { label: "tournaments.console.groupContent", tabs: ["archived", "articles"] },
 ];
 
 const TAB_ICONS: Record<Tab, IconName> = {
+  proposals: "flag",
   requests: "bell",
   siteAdmins: "shield",
   directors: "crown",
@@ -75,6 +91,7 @@ const TAB_ICONS: Record<Tab, IconName> = {
 };
 
 const TAB_LABELS: Record<Tab, MessageKey> = {
+  proposals: "tournaments.console.tabProposals",
   requests: "tournaments.console.tabRequests",
   siteAdmins: "tournaments.console.tabSiteAdmins",
   directors: "tournaments.console.tabDirectors",
@@ -102,6 +119,9 @@ interface ConsoleProps {
   onWrite: (write: SiteWrite) => void;
   /** Read the console again, after a read that failed. */
   onRetry: () => void;
+  /** Take a proposal over or decline it (#569). */
+  onAdminister: (tournamentId: string, change: TourneyAdmin) => void;
+  onOpenEvent: (tournamentId: string) => void;
 }
 
 export function ConsolePage(props: ConsoleProps) {
@@ -136,13 +156,14 @@ export function ConsolePage(props: ConsoleProps) {
     );
   }
   if (data === null) return <p className="muted">{t("tournaments.loading")}</p>;
-  const tabs = consoleTabs(data.role);
+  const tabs = consoleTabs(data.role, data.proposals !== null);
   const shown = tab !== null && tabs.includes(tab) ? tab : tabs[0];
   const pending =
     data.hostRequests.filter((held) => held.status === "pending").length +
     data.editorRequests.filter((held) => held.status === "pending").length +
     data.importerRequests.filter((held) => held.status === "pending").length;
   const counts: Partial<Record<Tab, number>> = {
+    proposals: data.proposals?.pending.length,
     requests: pending,
     siteAdmins: data.siteAdmins.length,
     directors: data.directors.length,
@@ -189,7 +210,7 @@ export function ConsolePage(props: ConsoleProps) {
                         {count !== undefined && (
                           <span
                             className={
-                              held === "requests" && count > 0
+                              (held === "requests" || held === "proposals") && count > 0
                                 ? "tournaments-group-count is-warn"
                                 : "tournaments-group-count"
                             }
@@ -207,6 +228,16 @@ export function ConsolePage(props: ConsoleProps) {
         )}
 
         <div className="tournament-console-main">
+          {shown === "proposals" && data.proposals !== null && (
+            <ProposalsTab
+              key={data.proposals.days}
+              queue={data.proposals}
+              busy={props.busy}
+              onWrite={props.onWrite}
+              onAdminister={props.onAdminister}
+              onOpenEvent={props.onOpenEvent}
+            />
+          )}
           {shown === "requests" && <RequestsTab data={data} {...props} />}
           {shown === "siteAdmins" && (
             <ListTab

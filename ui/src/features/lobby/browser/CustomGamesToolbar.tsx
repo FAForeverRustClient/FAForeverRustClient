@@ -1,3 +1,4 @@
+import { useId, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type { CustomGameSort } from "../../../ipc/bindings";
@@ -47,6 +48,19 @@ interface Props {
 
 export function CustomGamesToolbar(props: Props) {
   const { t } = useTranslation();
+  const checksId = useId();
+  // In a narrow window the switches fold behind one button (issue 604): five
+  // of them took two or three lines of a window that had room for a game or
+  // two below, and the list is what the tab is for. In a wide one the button
+  // is not drawn and the switches sit in the toolbar as they always did.
+  const [checksOpen, setChecksOpen] = useState(false);
+  const activeChecks = [
+    props.hidePrivate,
+    props.hideModded,
+    props.onHideUnranked ? props.hideUnranked : false,
+    props.onHideFoes ? props.hideFoes : false,
+    props.applyFilters,
+  ].filter(Boolean).length;
   return (
     <div className="play-toolbar">
       <Button variant="primary" disabled={!props.connected} onClick={props.onHost}>
@@ -61,6 +75,17 @@ export function CustomGamesToolbar(props: Props) {
           aria-label={t("lobby.toolbar.searchAria")}
         />
       </label>
+      <Button
+        className="play-toolbar-checks-toggle"
+        aria-expanded={checksOpen}
+        aria-controls={checksId}
+        onClick={() => setChecksOpen((open) => !open)}
+      >
+        <Icon name={checksOpen ? "chevronDown" : "chevronRight"} size={14} />
+        {t("lobby.toolbar.quickFilters")}
+        {activeChecks > 0 ? ` (${activeChecks})` : ""}
+      </Button>
+      <div id={checksId} className={checksOpen ? "play-toolbar-checks is-open" : "play-toolbar-checks"}>
       <label className="toolbar-check">
         <input
           type="checkbox"
@@ -107,6 +132,7 @@ export function CustomGamesToolbar(props: Props) {
         />
         {t("lobby.toolbar.applyFilters")}
       </label>
+      </div>
       <Button onClick={props.onOpenFilters}>
         <Icon name="filter" size={15} />
         {t("lobby.toolbar.filters")}

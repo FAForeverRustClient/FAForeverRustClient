@@ -35,22 +35,23 @@ describe("the link directory", () => {
   });
 
   it("keeps directory order inside a section", () => {
-    const order = DIRECTORY.filter((link) => link.section === "tools").map((link) => link.id);
-    expect(sectionLinks("tools").map((link) => link.id)).toEqual(order);
+    const order = DIRECTORY.filter((link) => link.section === "watch").map((link) => link.id);
+    expect(sectionLinks("watch").map((link) => link.id)).toEqual(order);
   });
 
-  it("still lists what the community hub leaves out", () => {
-    // The issue's one concrete complaint about the hub page this replaces.
-    expect(DIRECTORY.some((link) => link.id === "scribbl")).toBe(true);
-  });
-
-  it("opens with FAF's own four addresses, in the order the maintainers set", () => {
+  it("opens with FAF's own six addresses, in the order the maintainers set", () => {
     expect(sectionLinks("play").map((link) => link.id)).toEqual([
       "faforever",
       "discord",
       "wiki",
       "forum",
+      "tournaments",
+      "daily",
     ]);
+  });
+
+  it("links FAF Daily on FAF's own host", () => {
+    expect(DIRECTORY.find((link) => link.id === "daily")?.href).toBe("https://daily.faforever.com/");
   });
 
   it("does not link the hub it was built from, or a storefront", () => {
@@ -63,16 +64,9 @@ describe("the link directory", () => {
     expect(ids).not.toContain("gog");
   });
 
-  it("names no individual streamer, only FAF's own channels and the platforms' game pages", () => {
-    // A hand-picked list of casters reads as favouritism (#329).
-    const community = sectionLinks("watch")
-      .filter((link) => link.origin === "community")
-      .map((link) => link.href);
-    expect(community).toEqual([
-      "https://www.twitch.tv/directory/category/supreme-commander-forged-alliance",
-      "https://www.youtube.com/channel/UChiCO27pbaXDR0d0JfxlIpw",
-      "https://kick.com/category/supreme-commander-forged-alliance",
-    ]);
+  it("lists only sources FAF runs itself", () => {
+    // No third-party sites and no platform game pages (#651).
+    expect(DIRECTORY.filter((link) => link.origin !== "official")).toEqual([]);
   });
 
   it("keeps the wiki as the only reference entry, since the units are a tab", () => {

@@ -79,9 +79,9 @@ export type AdminArticle = {
 	updatedAt: number | null,
 };
 
-export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Streams"; command: StreamsCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand } | { kind: "Connectivity"; command: ConnectivityCommand };
+export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Streams"; command: StreamsCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "LinuxRuntime"; command: LinuxRuntimeCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand } | { kind: "Connectivity"; command: ConnectivityCommand };
 
-export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Streams"; event: StreamsEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent } | { kind: "Connectivity"; event: ConnectivityEvent };
+export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Streams"; event: StreamsEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "LinuxRuntime"; event: LinuxRuntimeEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent } | { kind: "Connectivity"; event: ConnectivityEvent };
 
 /**  The complete client state. One field per domain slice. */
 export type AppState = {
@@ -110,6 +110,7 @@ export type AppState = {
 	tutorials: TutorialsState,
 	uploads: UploadsState,
 	galacticWar: GalacticWarState,
+	linuxRuntime: LinuxRuntimeState,
 	guides: GuidesState,
 	clientUpdate: ClientUpdateState,
 	settings: SettingsState,
@@ -515,11 +516,10 @@ export type BrowsingPreferences = {
 	/**
 	 *  Hosts whose games the game browser always shows, by login (#492).
 	 *
-	 *  The exception to every hide switch and filter rule rather than one
-	 *  more of them: somebody who hides modded and unranked games still wants
-	 *  to see what a particular host has opened. Not a filter in
-	 *  `FilterMemory`'s sense either, because it narrows nothing, so
-	 *  [`BrowsingPreferences::without_filters`] leaves it as it is.
+	 *  Read only to be moved: normalising turns each host into a `Host
+	 *  equals` rule of `custom_games_browser.allow_rules` (#593) and leaves
+	 *  this empty. Kept so a file written before that, and an older build's
+	 *  `setListMember`, still arrive.
 	 */
 	whitelistedHosts: string[],
 	/**  Active preset filter in the map vault ("recommended", "favorites", "rating", "newest", "played", "all"). */
@@ -590,6 +590,11 @@ export type BrowsingPreferences = {
 	 *  *filter*. These are the user's own saved selections.
 	 */
 	modPresets: ModPreset[],
+	/**
+	 *  Named search presets saved by the user in search panels such as the
+	 *  online and local replay tabs.
+	 */
+	searchPresets: SearchPreset[],
 	/**  Visible column keys in the rating leaderboard table. */
 	leaderboardRatingColumns: string[],
 	/**
@@ -666,6 +671,7 @@ export type BrowsingPreferencesPatch = {
 	matchmakerInviteColumns?: number[],
 	matchmakerInviteOrder?: number[],
 	modPresets?: ModPreset[],
+	searchPresets?: SearchPreset[],
 	leaderboardRatingColumns?: string[],
 	leaderboardIncludeFormerNames?: boolean,
 	replayVaultPlayer?: string,
@@ -788,6 +794,15 @@ export type ChangelogBlock = { type: "heading"; payload: {
 	name: string,
 } } | { type: "list"; payload: {
 	items: ChangelogListItem[],
+} } | { type: "codeBlock"; payload: {
+	text: string,
+} } |
+/**  Original detail retained separately when the current post is a summary. */
+{ type: "historicalBalance"; payload: {
+	patchId: string,
+	sourceUrl: string,
+	blocks: ChangelogBlock[],
+	unavailable: boolean,
 } };
 
 /**
@@ -801,6 +816,10 @@ export type ChangelogChange = {
 };
 
 export type ChangelogCommand =
+/**  Search public patch text locally. An empty query cancels the current run. */
+{ type: "search"; payload: {
+	query: string,
+} } |
 /**
  *  Fetch the release index. Sent on every visit to the tab, and answered
  *  with a fresh read: a release published while the client was open has to
@@ -830,7 +849,9 @@ export type ChangelogEntryStatus = { type: "idle" } | { type: "loading"; payload
 	reason: string,
 } };
 
-export type ChangelogEvent = { type: "loading" } | { type: "loaded"; payload: {
+export type ChangelogEvent = { type: "searchUpdated"; payload: {
+	search: ChangelogSearchState,
+} } | { type: "loading" } | { type: "loaded"; payload: {
 	releases: ChangelogRelease[],
 } } | { type: "loadFailed"; payload: {
 	reason: string,
@@ -871,6 +892,23 @@ export type ChangelogRelease = {
 	webUrl: string,
 };
 
+export type ChangelogSearchMatch = {
+	releaseId: string,
+	blockPath: number[],
+	excerpt: string,
+	occurrences: number,
+};
+
+export type ChangelogSearchState = {
+	requestId: number,
+	query: string,
+	status: ChangelogStatus,
+	scanned: number,
+	total: number,
+	failed: number,
+	matches: ChangelogSearchMatch[],
+};
+
 /**
  *  The list open inside Changelog: FAForever's game patches, or this client's
  *  own releases. See [`MapsSection`].
@@ -889,9 +927,12 @@ export type ChangelogSpan = { type: "text"; payload: string } | { type: "strong"
 { type: "issue"; payload: {
 	number: string,
 	url: string,
+	/**  The source label when a numeric citation omitted its hash. */
+	label?: string | null,
 } };
 
 export type ChangelogState = {
+	search?: ChangelogSearchState,
 	releases: ChangelogRelease[],
 	status: ChangelogStatus,
 	/**  Release id currently shown, empty before the first selection. */
@@ -913,7 +954,8 @@ export type ChangelogStatus = { type: "idle" } | { type: "loading" } | { type: "
 
 /**  One unit named by a header, with the icon the site would show for it. */
 export type ChangelogUnit = {
-	unitId: string,
+	/**  Historical illustrations can identify a unit without naming its blueprint. */
+	unitId?: string | null,
 	iconUrl: string,
 };
 
@@ -1789,6 +1831,11 @@ export type ClientReleaseNotes = {
 	 *  snippets was.
 	 */
 	blocks: ChangelogBlock[],
+	/**
+	 *  Published to be installed at once: the body carries
+	 *  [`crate::protocol::changelog::REQUIRED_UPDATE_LINE`].
+	 */
+	required?: boolean,
 };
 
 /**  Status of the release-notes list. Mirrors `ChangelogStatus`. */
@@ -1799,7 +1846,7 @@ export type ClientReleaseNotesStatus = { type: "idle" } | { type: "loading" } | 
 export type ClientUpdateCommand =
 /**
  *  Ask the release source what the newest build is. Runs automatically at
- *  startup unless the user turned that off.
+ *  startup and every six hours.
  */
 { type: "check" } |
 /**  Fetch the installer for the release already in state. */
@@ -1848,6 +1895,8 @@ export type ClientUpdateEvent =
 } } | { type: "upToDate" } | { type: "available"; payload: {
 	release: ClientRelease,
 } } |
+/**  The held release has become required, independently of dismissal. */
+{ type: "overdue" } |
 /**
  *  A check settled, whichever way it went. Separate from the outcome
  *  because the outcome is often identical to the previous one, and "we
@@ -1866,7 +1915,17 @@ export type ClientUpdateEvent =
  */
 { type: "downloadCancelled" } | { type: "downloaded"; payload: {
 	path: string,
-} } | { type: "installing" } | { type: "failed"; payload: {
+} } |
+/**
+ *  Install waits for the last game to finish; see
+ *  [`ClientUpdateState::install_waiting`].
+ */
+{ type: "installWaiting" } |
+/**
+ *  The wait ended without installing: a new game, join or search began,
+ *  or the game took too long to finish. The installer stays ready.
+ */
+{ type: "installWaitEnded" } | { type: "installing" } | { type: "failed"; payload: {
 	reason: string,
 } } | { type: "dismissed"; payload: {
 	version: string,
@@ -1887,6 +1946,14 @@ export type ClientUpdateEvent =
 
 export type ClientUpdateState = {
 	status: ClientUpdateStatus,
+	/**  The offered release has passed the grace period or the release-count limit. */
+	overdue?: boolean,
+	/**
+	 *  Install was asked for while the last game was still finishing (FA
+	 *  closing, its replay or a lesson result being saved). The installer
+	 *  starts once that is done, so the click is not lost.
+	 */
+	installWaiting?: boolean,
 	/**  The running build's version, filled in by the first check. */
 	currentVersion: string,
 	release: ClientRelease | null,
@@ -2236,6 +2303,15 @@ export type CustomGameBrowserPreferences = {
 	applyFilters: boolean,
 	rules: CustomGameFilterRule[],
 	/**
+	 *  The other direction from `rules`: a game matching any of these stays
+	 *  in the list whatever the hide switches and the rules say (#593). The
+	 *  same builder, so "always show games with mod X" is one rule rather
+	 *  than a list per field. Not a filter in `FilterMemory`'s sense, since
+	 *  it narrows nothing, so `without_filters` leaves it as it is. Holds the
+	 *  former always-shown hosts as `Host equals` rules.
+	 */
+	allowRules: CustomGameFilterRule[],
+	/**
 	 *  Pixel widths of the list view's columns, left to right.
 	 *
 	 *  Empty means "the stylesheet decides", which is both the default and
@@ -2282,6 +2358,7 @@ export type CustomGameBrowserPreferencesPatch = {
 	hideFoes?: boolean,
 	applyFilters?: boolean,
 	rules?: CustomGameFilterRule[],
+	allowRules?: CustomGameFilterRule[],
 	columnWidths?: number[],
 	columnOrder?: number[],
 	detailWidth?: number,
@@ -3320,6 +3397,23 @@ export type GamePreferences = {
 	 */
 	keepGeneratedMapsLimit?: number,
 	/**
+	 *  How many map generators may run at the same time, or `0` to let the
+	 *  client decide from the computer's cores and free memory.
+	 *
+	 *  Only a run of several maps that each need their own generator uses
+	 *  this: one where several styles, symmetries or a density range were
+	 *  selected, so every map gets its own pick. A single map, and a batch the
+	 *  generator makes in one go, stay one process either way.
+	 *
+	 *  A setting rather than a fixed number because the right one is the
+	 *  computer's: one generator keeps about one and a half cores busy and
+	 *  needs up to about three gigabytes for a 20 km map, so three at once
+	 *  were a third faster on a four-core machine, four at once were slower
+	 *  again, and with 12 GB of memory four ran out of it and took four times
+	 *  as long.
+	 */
+	mapGeneratorInstances?: number,
+	/**
 	 *  Show Forged Alliance as being played on Steam while a game runs, and
 	 *  only then (issue 364).
 	 *
@@ -3359,6 +3453,7 @@ export type GamePreferencesPatch = {
 	pipeLiveReplay?: boolean,
 	keepGeneratedMaps?: boolean,
 	keepGeneratedMapsLimit?: number,
+	mapGeneratorInstances?: number,
 	steamPresence?: boolean,
 	borderlessWindow?: boolean,
 };
@@ -4045,6 +4140,12 @@ export type InstalledMap = {
 	 *  `None` when the file system would not say.
 	 */
 	installedAt?: string | null,
+	/**
+	 *  The scenario's `type`: `skirmish` for a map to play, `campaign_coop`
+	 *  for a co-op mission and `campaign` for a lesson, which the host
+	 *  dialog leaves out (#599). `None` when the file does not say.
+	 */
+	mapType?: string | null,
 };
 
 /**
@@ -4347,6 +4448,127 @@ export type LessonScore = {
 	maxStars: number,
 	seconds: number,
 };
+
+/**
+ *  Which family of package managers to phrase install commands for.
+ *
+ *  Read from `/etc/os-release`. The UI uses it only to show the right command;
+ *  `Other` gets the list of what to install instead.
+ */
+export type LinuxDistribution =
+/**  Debian, Ubuntu, Linux Mint, Pop!_OS: `apt`. */
+"debian" |
+/**  Fedora, Bazzite, Nobara: `dnf`. */
+"fedora" |
+/**  Arch, Manjaro, EndeavourOS, CachyOS: `pacman`. */
+"arch" | "other";
+
+/**
+ *  Something the system has to provide that the client cannot install itself:
+ *  each of these needs the distribution's package manager, or root.
+ */
+export type LinuxPrerequisite =
+/**
+ *  `bwrap` is not installed. The Steam Linux Runtime container is built on
+ *  it.
+ */
+"bubblewrap" |
+/**
+ *  `bwrap` is installed but may not create a sandbox: recent Ubuntu
+ *  releases forbid unprivileged user namespaces through AppArmor unless
+ *  the administrator allows them.
+ */
+"userNamespaces" |
+/**  The 64-bit Vulkan loader, `libvulkan.so.1`. DXVK draws through it. */
+"vulkan64" |
+/**
+ *  The 32-bit Vulkan loader. Forged Alliance is a 32-bit program, so it
+ *  needs this one as well as the 64-bit one.
+ */
+"vulkan32" |
+/**  `xz`, which `tar` needs to unpack the Steam Linux Runtime. */
+"xz" |
+/**
+ *  No Forged Alliance install was found: not in any Steam library, and not
+ *  at a path set under Settings, Paths.
+ */
+"forgedAlliance";
+
+export type LinuxRuntimeCommand =
+/**
+ *  Check the system and install whatever is missing or out of date. Sent
+ *  once at every start, and again by the retry action; a runtime that is
+ *  already complete makes it a quick check.
+ */
+{ type: "prepare" } |
+/**
+ *  Stop a download or installation in progress. What was finished stays;
+ *  the next `Prepare` picks up from there.
+ */
+{ type: "cancel" };
+
+/**  The pieces the client downloads. */
+export type LinuxRuntimeComponent =
+/**  GE-Proton, whose Wine runs the game. */
+"proton" |
+/**  Valve's Steam Linux Runtime 4 container. */
+"steamRuntime" |
+/**  DXVK, Direct3D 9 to 11 over Vulkan. */
+"dxvk" |
+/**
+ *  Microsoft's DirectX June 2010 redistributable: the D3DX9 and XACT
+ *  libraries Forged Alliance was built against.
+ */
+"directX";
+
+export type LinuxRuntimeEvent = { type: "statusChanged"; payload: {
+	status: LinuxRuntimeStatus,
+} };
+
+export type LinuxRuntimeState = {
+	status: LinuxRuntimeStatus,
+};
+
+/**  Where the Linux runtime stands. */
+export type LinuxRuntimeStatus =
+/**
+ *  Nothing to do: not Linux, or the player starts the game through a
+ *  launch command of their own.
+ */
+{ type: "notNeeded" } |
+/**  Looking at what the system has and what is already installed. */
+{ type: "checking" } |
+/**
+ *  The system lacks something the client cannot install. Nothing was
+ *  downloaded; the check runs again on the next start, or on retry.
+ */
+{ type: "missing"; payload: {
+	prerequisites: LinuxPrerequisite[],
+	distribution: LinuxDistribution,
+} } |
+/**
+ *  Byte counts are `u32` like everywhere else on this boundary: specta
+ *  rejects 64-bit integers, and the largest download is about 520 MB.
+ */
+{ type: "downloading"; payload: {
+	component: LinuxRuntimeComponent,
+	downloadedBytes: number,
+	/**  Zero when the server sent no `Content-Length`. */
+	totalBytes: number,
+} } | { type: "installing"; payload: {
+	step: LinuxRuntimeStep,
+} } |
+/**  Games start through the runtime. */
+{ type: "ready" } | { type: "failed"; payload: {
+	reason: string,
+} };
+
+/**  One stage of turning the downloads into a working prefix. */
+export type LinuxRuntimeStep = { type: "unpacking"; payload: {
+	component: LinuxRuntimeComponent,
+} } |
+/**  `wineboot`: Wine creating the prefix's Windows directory. */
+{ type: "creatingPrefix" } | { type: "installingDirectX" } | { type: "installingDxvk" };
 
 /**
  *  An account on one of the console's lists: allowed to host, an editor, an
@@ -5287,6 +5509,10 @@ export type MapsEvent = { type: "vaultLoading" } | { type: "vaultProgress"; payl
 	reason: string,
 } } | { type: "vaultLoaded"; payload: {
 	maps: VaultMap[],
+} } |
+/**  Apply a quiet catalogue delta without replacing unrelated folder lookups. */
+{ type: "vaultUpdated"; payload: {
+	maps: VaultMap[],
 } } | { type: "vaultLoadFailed"; payload: {
 	reason: string,
 } } |
@@ -5380,6 +5606,8 @@ export type MapsState = {
 	 *  deliberately not what the Maps tab browses; see `browse` below.
 	 */
 	vault: VaultMap[],
+	/**  Versions explicitly resolved for live folders, retained across full refreshes. */
+	resolvedVaultVersions?: number[],
 	vaultStatus: MapListStatus,
 	vaultProgress?: CatalogueProgress | null,
 	/**
@@ -5798,8 +6026,10 @@ export type ModVaultQuery = {
 	 */
 	searchDescriptions: boolean,
 	/**
-	 *  Matched against the mod's author, which on this endpoint is a plain
-	 *  string field rather than a related player (`MOD_PROPERTY_MAPPING`).
+	 *  Matched against the mod's author or its uploader's login: the box is
+	 *  labelled "creator or uploader". `author` is a plain string field here
+	 *  rather than a related player, `uploader.login` is the account that
+	 *  pushed it; both are in the Java client's `MOD_PROPERTY_MAPPING`.
 	 */
 	author: string,
 	/**
@@ -5985,6 +6215,11 @@ export type ModsEvent = { type: "vaultLoading" } | { type: "vaultProgress"; payl
 	reason: string,
 } } | { type: "vaultLoaded"; payload: {
 	mods: VaultMod[],
+} } |
+/**  Apply changed mod records and explicit withdrawals to the lookup index. */
+{ type: "vaultUpdated"; payload: {
+	mods: VaultMod[],
+	removedIds: number[],
 } } | { type: "vaultLoadFailed"; payload: {
 	reason: string,
 } } | { type: "installedLoading" } | { type: "installedLoaded"; payload: {
@@ -6166,6 +6401,13 @@ export type NotificationAction = { type: "openChat"; payload: {
 	playerId: number,
 } } | { type: "watchLive"; payload: {
 	target: LiveReplayTarget,
+} } |
+/**
+ *  Start a live replay as soon as the five-minute delay lets it (#653):
+ *  on the notice that refused it for being too early.
+ */
+{ type: "watchLiveWhenReady"; payload: {
+	target: LiveReplayTarget,
 } } | { type: "openSettings"; payload: {
 	section: string | null,
 } } |
@@ -6281,6 +6523,25 @@ export type NotificationPreferences = {
 	 */
 	desktopAllKinds: boolean,
 	sound: boolean,
+	/**
+	 *  Whether a new notification pops up in the corner as a toast (#644).
+	 *
+	 *  Together with [`Self::sound`] it is the one choice the settings offer
+	 *  as "sound and pop-up", "pop-up only" or "sound only": somebody who
+	 *  wants to hear that a friend started a game without a card sliding in,
+	 *  or the reverse. The history and the desktop notification are not
+	 *  affected.
+	 */
+	popup: boolean,
+	/**
+	 *  Seconds after which a notification leaves the history by itself
+	 *  (#644). Zero, the default, keeps every one until it is cleared.
+	 *
+	 *  Asked for by a player who wanted friends joining games announced but
+	 *  not collected: sixty-seven of them in the bell, burying the event
+	 *  reminders, each to be removed by hand.
+	 */
+	historyLifetimeSeconds: number,
 	/**  Which tone each kind plays, when [`Self::sound`] is on. */
 	sounds: NotificationSoundChoices,
 	/**
@@ -6369,6 +6630,8 @@ export type NotificationPreferencesPatch = {
 	desktop?: boolean,
 	desktopAllKinds?: boolean,
 	sound?: boolean,
+	popup?: boolean,
+	historyLifetimeSeconds?: number,
 	soundChoiceVersion?: number,
 	notifyWhenFocused?: boolean,
 	toastPosition?: ToastPosition,
@@ -6725,6 +6988,12 @@ export type PendingSummary = {
 	 */
 	requests: number | null,
 	newRequests: number | null,
+	/**
+	 *  Proposals waiting for a tournament director, and how many of them
+	 *  are new since the last dismiss; `None` without that alert (#569).
+	 */
+	proposals: number | null,
+	newProposals: number | null,
 };
 
 /**  One line of a pick phase's log. */
@@ -7066,6 +7335,16 @@ export type PlayerEventCount = {
 	count: number,
 };
 
+/**  One faction's ranked record. */
+export type PlayerFactionStat = {
+	/**  The game's faction id: 1 UEF, 2 Aeon, 3 Cybran, 4 Seraphim. */
+	faction: number,
+	games: number,
+	wins: number,
+	losses: number,
+	draws: number,
+};
+
 /**
  *  The signed-in player's faction, as the gateway knows it.
  *
@@ -7261,8 +7540,27 @@ export type PlayerMapStats = {
 	 *  when what they hold belongs to somebody else.
 	 */
 	playerId?: number,
+	/**
+	 *  The record per leaderboard, from this scan rather than the leaderboard's
+	 *  own counters (issue 606): `faftracker`'s `ratingSummary`. Most games
+	 *  first.
+	 */
+	queues?: PlayerQueueStat[],
+	/**
+	 *  Everything else the Statistics tab shows, read off the same games.
+	 *  See [`super::player_report`].
+	 */
+	report?: PlayerReport,
 	/**  Every game with a known outcome, newest first. See [`PlayerGameResult`]. */
 	games?: PlayerGameResult[],
+};
+
+/**  One map's rating movement in the recent games. */
+export type PlayerMapTrend = {
+	/**  Empty for a generated map, which the API names no map for. */
+	map: string,
+	games: number,
+	ratingDeltaHundredths: number,
 };
 
 export type PlayerNameRecord = {
@@ -7281,6 +7579,16 @@ export type PlayerNote = {
 	playerId: number,
 	login: string,
 	note: string,
+};
+
+/**  One month (`YYYY-MM`) or day (`YYYY-MM-DD`) of rated games. */
+export type PlayerPeriodStat = {
+	period: string,
+	games: number,
+	wins: number,
+	losses: number,
+	draws: number,
+	ratingDeltaHundredths: number,
 };
 
 /**
@@ -7319,6 +7627,27 @@ export type PlayerProfile = {
 	avatarTooltip: string,
 };
 
+/**
+ *  One leaderboard's record in a player's history: `faftracker`'s
+ *  `ratingSummary` row.
+ *
+ *  Counted from the games that moved this player's rating on that board
+ *  (`hasKnownRatingMovement` and a delta that is not zero), so it answers
+ *  "how did the rated games go" rather than repeating the leaderboard's
+ *  `wonGames`, whose win rate is wrong (the reason the rating tiles stopped
+ *  showing one). The win rate leaves draws out, as the tracker does.
+ */
+export type PlayerQueueStat = {
+	/**  The leaderboard's technical name (`global`, `ladder_1v1`, ...). */
+	queue: string,
+	games: number,
+	wins: number,
+	losses: number,
+	draws: number,
+	/**  The rating these games moved in all, in hundredths of a point. */
+	ratingDeltaHundredths: number,
+};
+
 export type PlayerRatingSummary = {
 	leaderboardId: number,
 	/**
@@ -7338,6 +7667,101 @@ export type PlayerRatingSummary = {
 export type PlayerRatings = {
 	playerId: number,
 	ratings: BoardRating[],
+};
+
+/**  A teammate or an opponent. */
+export type PlayerRelation = {
+	login: string,
+	games: number,
+	/**  The tracker's win rate here is wins out of games, draws included. */
+	wins: number,
+	/**  The rating moved in those games, net, and its gains and losses apart. */
+	netHundredths: number,
+	gainedHundredths: number,
+	lostHundredths: number,
+};
+
+/**
+ *  Everything the Statistics tab shows. Part of [`super::PlayerMapStats`], so
+ *  it comes with the scan the Maps and Results tabs already share.
+ */
+export type PlayerReport = {
+	/**
+	 *  Games whose result is known and that moved a rating: the tracker's
+	 *  `hasKnownRatingMovement`, the base of every rating figure below.
+	 */
+	ratedGames: number,
+	/**
+	 *  Of the last 25 rated games, the wins and the wins plus losses: the
+	 *  tracker's "Recent ranked 25".
+	 */
+	recentWins: number,
+	recentDecided: number,
+	/**
+	 *  The average game length in tenths of a minute, over every game the scan
+	 *  read. A game without both ends counts as zero minutes, as it does there.
+	 */
+	averageMinutesTenths: number,
+	/**  The longest unbroken runs of ranked wins and of ranked losses. */
+	maxWinStreak: PlayerStreak,
+	maxLossStreak: PlayerStreak,
+	/**
+	 *  The longest run of losses across every game, draws and unknown results
+	 *  passing over it rather than ending it: the improvement detector's own
+	 *  count, shown beside the worst month.
+	 */
+	worstLossStreak: number,
+	/**  The last twelve months with rated games, oldest first. */
+	months: PlayerPeriodStat[],
+	/**
+	 *  Of those months, the ones with at least five rated games, best and
+	 *  worst by rating gained, at most twelve each.
+	 */
+	bestMonths: PlayerPeriodStat[],
+	worstMonths: PlayerPeriodStat[],
+	/**
+	 *  Days with at least three rated games, best and worst by rating gained,
+	 *  at most twelve each.
+	 */
+	bestDays: PlayerPeriodStat[],
+	worstDays: PlayerPeriodStat[],
+	/**  The days the last sixty games span, `YYYY-MM-DD`; empty for none. */
+	recentFrom: string,
+	recentTo: string,
+	/**
+	 *  Maps of the last sixty games with at least three rated games there,
+	 *  gaining and losing rating, at most five each.
+	 */
+	mapsGaining: PlayerMapTrend[],
+	mapsLosing: PlayerMapTrend[],
+	/**
+	 *  Repeat 1v1 opponents beaten at least twenty points more often in the
+	 *  newer half of the history than in the older: the tracker's "1v1
+	 *  runbacks you started winning". At most five.
+	 */
+	runbacks: PlayerRunback[],
+	/**  Who the player played with and against, in rated games with a result. */
+	teammates: PlayerRelation[],
+	opponents: PlayerRelation[],
+	/**  Ranked games with a result, per faction played. */
+	factions: PlayerFactionStat[],
+};
+
+/**  A repeat 1v1 opponent, the older half of the history against the newer. */
+export type PlayerRunback = {
+	login: string,
+	earlyGames: number,
+	earlyWins: number,
+	lateGames: number,
+	lateWins: number,
+};
+
+/**  One run of results in a row. */
+export type PlayerStreak = {
+	size: number,
+	/**  The days its first and last games were played, `YYYY-MM-DD`. */
+	first: string,
+	last: string,
 };
 
 /**
@@ -7548,6 +7972,94 @@ export type ProbeFailure =
 { type: "network"; payload: {
 	reason: string,
 } };
+
+/**  How a director runs a proposal they take over. */
+export type ProposalArea =
+/**  The maps, map pools and vetoes. */
+"maps" |
+/**  The format and bracket. */
+"format";
+
+/**
+ *  One proposal waiting for a director, as the console lists it: enough of
+ *  the event to decide on, without opening it.
+ */
+export type ProposalCard = {
+	tournamentId: string,
+	name: string,
+	byName: string,
+	proposedAt: number | null,
+	until: number | null,
+	note: string,
+	lockMaps: boolean,
+	lockFormat: boolean,
+	keep: boolean,
+	/**  Proposed or organised by this account, so another director decides. */
+	mine: boolean,
+	competition: Competition,
+	teamSize: number,
+	bracketKind: BracketKind,
+	/**  The planned start, if the proposer set one. */
+	eventDate: number | null,
+	eventDays: number,
+	signupMode: SignupMode,
+	maxTeams: number,
+	minTeams: number,
+	ratingKind: RatingKind,
+	minRating: number | null,
+	maxRating: number | null,
+	mapCount: number,
+	/**  Each pool as "name: maps". */
+	pools: string[],
+	prize: Prize | null,
+	rewards: string,
+	description: string,
+};
+
+/**  One decision in the console's "Recent decisions". */
+export type ProposalDecision = {
+	tournamentId: string,
+	name: string,
+	/**  The same words as [`ProposalStep::act`]. */
+	act: string,
+	byName: string,
+	at: number | null,
+	reason: string,
+	proposer: string,
+};
+
+/**  The console's Proposals tab. */
+export type ProposalQueue = {
+	pending: ProposalCard[],
+	recent: ProposalDecision[],
+	/**  How many days a proposal waits, and the site's default for it. */
+	days: number,
+	daysDefault: number,
+};
+
+/**  Where a proposal stands. */
+export type ProposalState =
+/**  Being built, or back with its proposer. */
+"draft" |
+/**  Waiting for a tournament director; nothing in it can change. */
+"proposed" |
+/**  A director took it over and runs it. */
+"taken";
+
+/**
+ *  The last thing that happened to a proposal: who declined it, gave it back,
+ *  or let it come back by not deciding.
+ */
+export type ProposalStep = {
+	/**
+	 *  The service's word: `declined`, `timeout`, `withdrawn`, `released`,
+	 *  `taken`, `proposed`, `unlocked maps`, `unlocked format`.
+	 */
+	act: string,
+	byName: string,
+	at: number | null,
+	reason: string,
+};
 
 /**
  *  A tournament whose result feeds entrants into another one.
@@ -8109,6 +8621,14 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 	uids: number[],
 } } |
 /**
+ *  Read the simulation mods one vault game ran with out of the head of its
+ *  replay file, for the replay details (issue 638). See
+ *  [`ReplayEvent::SimModsResolved`].
+ */
+{ type: "resolveSimMods"; payload: {
+	uid: number,
+} } |
+/**
  *  Ask the vault what it knows about one game id, without disturbing the
  *  browse/search results in [`ReplayState::vault`].
  *
@@ -8330,6 +8850,14 @@ export type ReplayEvent = { type: "connecting"; payload: {
  */
 { type: "mapsResolved"; payload: {
 	maps: ResolvedReplayMap[],
+} } |
+/**
+ *  What [`ReplayCommand::ResolveSimMods`] read. Not sent when the file
+ *  could not be read, so the view may ask again on its next visit.
+ */
+{ type: "simModsResolved"; payload: {
+	uid: number,
+	mods: string[],
 } } | { type: "onlineLookupFinished"; payload: {
 	uid: number,
 	replay: VaultReplay | null,
@@ -8774,6 +9302,15 @@ export type ReplayState = {
 	/**  The keys of [`Self::resolved_maps`], oldest stored first. */
 	resolvedMapsOrder?: number[],
 	/**
+	 *  The simulation mods vault games ran with, read out of the head of their
+	 *  replay files (issue 638): the API's game record names none. Keyed by
+	 *  game id; an empty list is an answer, a game with no mods. At most
+	 *  [`RESOLVED_SIM_MODS_KEPT`], oldest dropped first.
+	 */
+	resolvedSimMods?: { [key in number]: string[] },
+	/**  The keys of [`Self::resolved_sim_mods`], oldest stored first. */
+	resolvedSimModsOrder?: number[],
+	/**
 	 *  The signed-in player's latest matchmaker games, newest first (#301).
 	 *
 	 *  Its own list rather than a vault search, so showing it on the
@@ -9166,6 +9703,22 @@ export type RoundMaps = {
 	mapIds: string[],
 };
 
+/**
+ *  A named search preset saved by the user for one list (for example
+ *  `"replays.online"` or `"replays.local"`).
+ *
+ *  Like [`BrowsingPreferences::remembered_filters`], `query` is a JSON document
+ *  only that list reads and writes, so adding a field to a list's search form
+ *  never invalidates presets saved by an older build. Unlike
+ *  `remembered_filters`, a preset is saved deliberately under a name and is
+ *  never cleared by [`BrowsingPreferences::without_filters`].
+ */
+export type SearchPreset = {
+	list: string,
+	name: string,
+	query: string,
+};
+
 export type SeasonLeaderboard = {
 	entries: LeaderboardEntry[],
 	tiers: LeaderboardTier[],
@@ -9398,6 +9951,18 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 /**  Delete the named mod set. */
 { type: "deleteModPreset"; payload: {
 	name: string,
+} } |
+/**
+ *  Save a named search preset for one list, replacing one of the same name
+ *  in place.
+ */
+{ type: "saveSearchPreset"; payload: {
+	preset: SearchPreset,
+} } |
+/**  Delete the named search preset from one list. */
+{ type: "deleteSearchPreset"; payload: {
+	list: string,
+	name: string,
 } } | { type: "checkInstalls" } | { type: "refreshGameCache" } | { type: "clearGameCache" };
 
 export type SettingsEvent = { type: "loaded"; payload: {
@@ -9588,6 +10153,11 @@ export type SiteAdminData = {
 	me: number | null,
 	/**  The global bans, on official tournaments. */
 	bans: TourneyBan[],
+	/**
+	 *  The Proposals tab, for directors and site admins while the site takes
+	 *  proposals (#569).
+	 */
+	proposals: ProposalQueue | null,
 };
 
 /**  A read's answer. */
@@ -9623,6 +10193,12 @@ export type SiteWrite =
 } } |
 /**  Hide the access-request alert until a new request comes in. */
 { type: "dismissRequests" } |
+/**  Hide the proposals alert until a new proposal comes in. */
+{ type: "dismissProposals" } |
+/**  How many days a proposal waits for a director, 7 to 90. */
+{ type: "proposalDays"; payload: {
+	days: number,
+} } |
 /**  Ask for hosting, editor or importer access, with an optional note. */
 { type: "requestAccess"; payload: {
 	kind: AccessKind,
@@ -9773,6 +10349,13 @@ export type SocialEvent =
 { type: "loginLookedUp"; payload: {
 	login: string,
 	id: number | null,
+} } |
+/**
+ *  The API listed FAF's moderators and administrators (see
+ *  [`SocialState::staff`]). Replaces the list.
+ */
+{ type: "staffLoaded"; payload: {
+	logins: string[],
 } };
 
 /**  The player's own annotations: notes on players and on replays. */
@@ -9790,6 +10373,14 @@ export type SocialState = {
 	players: PlayerProfile[],
 	/**  Accounts looked up by login for the user menu, oldest first. */
 	loginLookups: LoginLookup[],
+	/**
+	 *  Logins of FAF's moderators and administrators: the members of the
+	 *  public moderation and administration groups the API lists. Chat
+	 *  counts them as "Moderators & admins" beside the channel operators,
+	 *  because on FAF's IRC the moderators hold no operator mode, and that
+	 *  category showed nobody but the QAI bot (issue 607). Sorted.
+	 */
+	staff: string[],
 };
 
 /**
@@ -10205,6 +10796,12 @@ export type Tourney = {
 	 */
 	publishAt: number | null,
 	/**
+	 *  The proposal behind this event, where it is one (#569): proposed to
+	 *  the TD team by a player, for a tournament director to run. `None` for
+	 *  an event somebody hosts themselves, and for a reader not sent it.
+	 */
+	proposal: TourneyProposal | null,
+	/**
 	 *  How many have entered, and how many teams they formed.
 	 *
 	 *  Held separately because the list endpoint sends only these numbers while
@@ -10464,6 +11061,10 @@ export type TourneyAccount = {
 	adminStandDown: boolean,
 	/**  May host: approved per account, a director, or on the site-admin list. */
 	allowed: boolean,
+	/**  Whether the site takes tournament proposals (#569): on with FAF login. */
+	proposals: boolean,
+	/**  How many days a proposal waits for a director before it goes back. */
+	proposalDays: number,
 };
 
 /**
@@ -10861,7 +11462,49 @@ export type TourneyAdmin =
 { type: "mapSecret"; payload: {
 	mapId: string | null,
 	secret: boolean,
-} };
+} } |
+/**
+ *  Propose it to the TD team (`proposal_submit`, #569): whether the
+ *  director must keep the maps and the format as they are, whether the
+ *  proposer stays a co-organiser, and a note of up to 1000 characters.
+ */
+{ type: "proposalSubmit"; payload: {
+	lockMaps: boolean,
+	lockFormat: boolean,
+	keep: boolean,
+	note: string,
+} } |
+/**  Take it back from the TD team to change it (`proposal_withdraw`). */
+{ type: "proposalWithdraw" } |
+/**
+ *  Take it over and run it (`proposal_take`), as an official or a
+ *  community event, with a note to the proposer of up to 300 characters.
+ */
+{ type: "proposalTake"; payload: {
+	category: TourneyCategory,
+	note: string,
+} } |
+/**  Send it back with what is missing (`proposal_decline`). */
+{ type: "proposalDecline"; payload: {
+	reason: string,
+} } |
+/**  Give a taken-over proposal back to its proposer (`proposal_release`). */
+{ type: "proposalRelease"; payload: {
+	reason: string,
+} } |
+/**
+ *  Lift a lock the proposer asked for (`proposal_unlock`). A site admin
+ *  who is not the proposer says why.
+ */
+{ type: "proposalUnlock"; payload: {
+	area: ProposalArea,
+	reason: string,
+} } |
+/**
+ *  Make it the proposer's own draft again, to host themselves
+ *  (`proposal_drop`).
+ */
+{ type: "proposalDrop" };
 
 /**
  *  One account this event's organisers keep out of it (`ban_set`).
@@ -10974,6 +11617,11 @@ export type TourneyDraft = {
 	 *  captains draft, and sent only then.
 	 */
 	draftSnakes: boolean,
+	/**
+	 *  Create it as a proposal to the TD team rather than to host it (#569).
+	 *  Only read on creation; a proposal is always created as community.
+	 */
+	proposal: boolean,
 	category: TourneyCategory,
 	competition: Competition,
 	/**  1 to 6. A size of one makes the formation solo whatever is asked for. */
@@ -11420,6 +12068,58 @@ export type TourneyPreset = {
 	 *  exactly as it fills from an existing event; `None` where not allowed.
 	 */
 	apply: Tourney | null,
+};
+
+/**
+ *  A proposal as one viewer may see it.
+ *
+ *  The detail sends the whole record to its proposer, its organisers and the
+ *  directors, and only `credit` to anyone else once the event is out; the
+ *  list sends a short form of it (`prop`) on unpublished rows. One type for
+ *  the three, with what a reader was not sent left empty.
+ */
+export type TourneyProposal = {
+	/**  `None` for the public view, which is only the credit. */
+	state: ProposalState | null,
+	/**  Who proposed it. */
+	byName: string,
+	proposedAt: number | null,
+	/**  When it goes back to its proposer if no director decides. */
+	until: number | null,
+	/**  How many days a proposal waits, the site's setting. */
+	days: number,
+	/**  The director must keep the maps, pools and vetoes as proposed. */
+	lockMaps: boolean,
+	/**  The director must keep the format and bracket as proposed. */
+	lockFormat: boolean,
+	/**  The proposer stays a co-organiser once it is taken over. */
+	keep: boolean,
+	/**  The proposer's note to the TD team. */
+	note: string,
+	takenByName: string,
+	takenAt: number | null,
+	/**  The director's note to the proposer, on taking it over. */
+	takeNote: string,
+	last: ProposalStep | null,
+	/**  This account proposed it. */
+	mine: boolean,
+	/**  This account is one of its named organisers. */
+	organizer: boolean,
+	canSubmit: boolean,
+	canWithdraw: boolean,
+	/**
+	 *  Take it over or decline it: a director who neither proposed it nor
+	 *  organises it.
+	 */
+	canDecide: boolean,
+	/**  Turn it back into an ordinary draft that its proposer hosts. */
+	canDrop: boolean,
+	/**  Give it back to its proposer. */
+	canRelease: boolean,
+	/**  Lift a lock the proposer asked for. */
+	canUnlock: boolean,
+	/**  "Proposed by X and run by the TD team", on the published event. */
+	credit: string,
 };
 
 /**
@@ -12944,15 +13644,27 @@ export type UpdatePreferences = {
 	 *  request made before login.
 	 */
 	automatic: boolean,
+	/**  Fetch installers while idle; off by default for slow or metered connections. */
+	backgroundDownload: boolean,
 	/**
 	 *  Also offer prereleases. Java's `preReleaseCheckEnabled`, where it picks
 	 *  between two entirely separate check tasks.
 	 *
 	 *  On by default: every release of this client so far has been published
 	 *  as a prerelease, so a client on the stable channel was never offered
-	 *  one. A settings file that already stores the choice keeps it.
+	 *  one. A settings file that stores `false` from before
+	 *  [`UpdatePreferences::channel_choice_version`] is switched on once.
 	 */
 	preRelease: boolean,
+	/**
+	 *  Which channel default the stored [`Self::pre_release`] was written
+	 *  under. Same shape as `NotificationPreferences::sound_choice_version`:
+	 *  every save writes every field, so a `false` stored before prereleases
+	 *  became the default is the old default, not evidence of a choice, and
+	 *  it left those players on a channel that has never had a release.
+	 *  Version zero is a file written before this field existed.
+	 */
+	channelChoiceVersion: number,
 	/**
 	 *  Show what changed, once, on the first start after the client was
 	 *  updated. See `whats_new_on_startup` in the client-update slice.
@@ -12975,7 +13687,9 @@ export type UpdatePreferences = {
 /**  A change to [`UpdatePreferences`]. */
 export type UpdatePreferencesPatch = {
 	automatic?: boolean,
+	backgroundDownload?: boolean,
 	preRelease?: boolean,
+	channelChoiceVersion?: number,
 	showWhatsNew?: boolean,
 	lastSeenVersion?: string | null,
 };
@@ -13137,6 +13851,19 @@ export type ValidationIssue =
  */
 { kind: "seedNotAnInteger"; payload: {
 	seed: string,
+} } |
+/**
+ *  A chosen style or symmetry the selected generator release does not
+ *  have. picocli refuses the whole run ("Invalid value for option
+ *  '--texture-style': expected one of ..."), and it was the commonest
+ *  failure in the generator's own log: a preset or a remembered choice
+ *  made with one release (SUNSET, FRACTAL_LAST) run with another.
+ */
+{ kind: "notInThisVersion"; payload: {
+	/**  The flag's name without dashes: `texture-style`, `terrain-symmetry`. */
+	option: string,
+	value: string,
+	version: string,
 } };
 
 /**
@@ -13182,10 +13909,9 @@ export type VaultMap = {
 	/**
 	 *  Whether the author has withdrawn this version from the vault.
 	 *
-	 *  Always `false` in an ordinary search, which filters hidden versions out
-	 *  server side; only "my maps" asks for them, so only there is this ever
-	 *  `true` (mirrors `MapVersion.hidden`, which both reference clients read
-	 *  on the detail view).
+	 *  Ordinary searches exclude withdrawn versions. "My maps" and catalogue
+	 *  deltas include them; deltas remove them from the lookup index (mirrors
+	 *  `MapVersion.hidden`, which both reference clients read on the detail view).
 	 */
 	hidden: boolean,
 	recommended: boolean,

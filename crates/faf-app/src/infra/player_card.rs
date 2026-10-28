@@ -199,38 +199,47 @@ impl PlayerCardClient {
     /// row here at all, which is exactly why this cannot be one request.
     async fn fill_ratings(&self, players: &mut [PlayerSummary], token: &str) {
         let ids: Vec<String> = players.iter().map(|player| player.id.to_string()).collect();
-        if ids.is_empty() {
-            return;
-        }
-        let Ok(mut url) = self.url("leaderboardRating") else {
-            return;
-        };
-        url.query_pairs_mut()
-            .append_pair("filter", &format!("player.id=in=({})", ids.join(",")))
-            .append_pair("include", "leaderboard")
-            // Two boards per account at most matter here, but the API pages by
-            // rows: every board every account sits on is a row.
-            .append_pair("page[size]", &(ids.len() * 12).to_string());
-        let Ok(doc) = self.get(url, token).await else {
-            return;
-        };
-        let index = index(&doc);
-        for entry in &doc.data {
-            let Some(player_id) =
-                rel_one(entry, "player").and_then(|key| key.1.parse::<i32>().ok())
-            else {
+        // Only the two boards read below, and few enough accounts per request
+        // that both rows of every one fit on one page. The API pages by rows
+        // and quietly cuts any `page[size]` above 100 down to 100; asking for
+        // every board of a hundred accounts at once returned the first hundred
+        // rows of some twelve hundred, so most of a Hall of Fame came back with
+        // no global rating at all (#587).
+        for batch in ids.chunks(RATING_BATCH) {
+            let Ok(mut url) = self.url("leaderboardRating") else {
+                return;
+            };
+            url.query_pairs_mut()
+                .append_pair(
+                    "filter",
+                    &format!(
+                        "player.id=in=({});leaderboard.technicalName=in=({GLOBAL_BOARD},{LADDER_BOARD})",
+                        batch.join(",")
+                    ),
+                )
+                .append_pair("include", "leaderboard")
+                .append_pair("page[size]", &API_PAGE_LIMIT.to_string());
+            let Ok(doc) = self.get(url, token).await else {
                 continue;
             };
-            let Some(board) = related(entry, "leaderboard", &index) else {
-                continue;
-            };
-            let rating = displayed_rating(number(entry, "rating"));
-            let board = text(board, "technicalName");
-            for player in players.iter_mut().filter(|held| held.id == player_id) {
-                match board.as_str() {
-                    GLOBAL_BOARD => player.global_rating = Some(rating),
-                    LADDER_BOARD => player.ladder_rating = Some(rating),
-                    _ => {}
+            let index = index(&doc);
+            for entry in &doc.data {
+                let Some(player_id) =
+                    rel_one(entry, "player").and_then(|key| key.1.parse::<i32>().ok())
+                else {
+                    continue;
+                };
+                let Some(board) = related(entry, "leaderboard", &index) else {
+                    continue;
+                };
+                let rating = displayed_rating(number(entry, "rating"));
+                let board = text(board, "technicalName");
+                for player in players.iter_mut().filter(|held| held.id == player_id) {
+                    match board.as_str() {
+                        GLOBAL_BOARD => player.global_rating = Some(rating),
+                        LADDER_BOARD => player.ladder_rating = Some(rating),
+                        _ => {}
+                    }
                 }
             }
         }
@@ -422,21 +431,49 @@ impl PlayerCardPort for PlayerCardClient {
         if wanted.is_empty() {
             return Ok(Vec::new());
         }
-        let filter = format!("login=in=({})", wanted.join(","));
-        let limit = i32::try_from(wanted.len()).unwrap_or(i32::MAX);
-        self.summaries(&filter, limit).await
+        // In pages the API will answer whole: it cuts `page[size]` to 100.
+        let mut found = Vec::with_capacity(wanted.len());
+        for batch in wanted.chunks(API_PAGE_LIMIT) {
+            let filter = format!("login=in=({})", batch.join(","));
+            found.extend(self.summaries(&filter, page_size(batch.len())).await?);
+        }
+        Ok(found)
+    }
+
+    async fn staff_logins(&self) -> Result<Vec<String>, RequestError> {
+        let token = self.tokens.get().ok_or_else(|| {
+            RequestError::unauthorized("Sign in to FAF to look up the moderators.")
+        })?;
+        let mut url = self.url("userGroup").map_err(RequestError::unexpected)?;
+        url.query_pairs_mut()
+            .append_pair(
+                "filter",
+                &format!("technicalName=in=({})", STAFF_GROUPS.join(",")),
+            )
+            .append_pair("include", "members")
+            .append_pair("fields[userGroup]", "technicalName,members")
+            .append_pair("fields[player]", "login");
+        let doc = fetch_document_typed(&self.http, url, &token).await?;
+        Ok(staff_logins_in(&doc))
     }
 
     async fn players_by_id(&self, ids: &[i32]) -> Result<Vec<PlayerSummary>, RequestError> {
         if ids.is_empty() {
             return Ok(Vec::new());
         }
-        let filter = format!(
-            "id=in=({})",
-            ids.iter().map(i32::to_string).collect::<Vec<_>>().join(",")
-        );
-        let limit = i32::try_from(ids.len()).unwrap_or(i32::MAX);
-        self.summaries(&filter, limit).await
+        let mut found = Vec::with_capacity(ids.len());
+        for batch in ids.chunks(API_PAGE_LIMIT) {
+            let filter = format!(
+                "id=in=({})",
+                batch
+                    .iter()
+                    .map(i32::to_string)
+                    .collect::<Vec<_>>()
+                    .join(",")
+            );
+            found.extend(self.summaries(&filter, page_size(batch.len())).await?);
+        }
+        Ok(found)
     }
 
     async fn load_profile(
@@ -646,6 +683,20 @@ impl PlayerCardClient {
         let token = self.token()?;
         let mut games: Vec<PlayedGame> = Vec::new();
         let mut truncated = false;
+        // The whole history comes partly from the last scan's cache: read up
+        // to the first game already known, and take the rest from there. Not
+        // for a scan of the recent games only, which is a page or ten and
+        // whose limit the cache would have to second-guess.
+        let full = max_games >= MAX_HISTORY_GAMES;
+        let cached = if full {
+            let api_base = self.config.api_base.clone();
+            tokio::task::spawn_blocking(move || super::history_cache::load(&api_base, player_id))
+                .await
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+        let known = super::history_cache::ids(&cached);
         // The largest page the API has actually answered with. Asked-for and
         // given are different numbers here -- the server clamps `page[size]`
         // to its own limit and says so nowhere in the payload -- so "shorter
@@ -682,6 +733,11 @@ impl PlayerCardClient {
                 if rows.is_empty() || rows.len() < server_page_rows {
                     ended = true;
                 }
+                // A game the cache already holds: everything older is there
+                // too, since the cache keeps whole stretches of the history.
+                if rows.iter().any(|row| known.contains(&row.game_id)) {
+                    ended = true;
+                }
                 games.extend(rows);
                 if games.len() > max_games || (games.len() == max_games && !ended) {
                     games.truncate(max_games);
@@ -697,6 +753,23 @@ impl PlayerCardClient {
                 break;
             }
             page = last + 1;
+        }
+
+        if full {
+            games = super::history_cache::merge(games, cached);
+            if games.len() > max_games {
+                games.truncate(max_games);
+                truncated = true;
+            }
+            let api_base = self.config.api_base.clone();
+            let kept = games.clone();
+            let now = chrono::Utc::now();
+            // Off the runtime, and not waited for: thirty thousand games is a
+            // few megabytes of JSON and a disk flush, and the profile should
+            // not sit on "loading" for the sake of the next scan.
+            drop(tokio::task::spawn_blocking(move || {
+                super::history_cache::store(&api_base, player_id, &kept, now)
+            }));
         }
 
         Ok(PlayerMapStats {
@@ -738,7 +811,7 @@ impl PlayerCardClient {
             .append_pair("fields[featuredMod]", "technicalName,displayName")
             .append_pair(
                 "fields[gamePlayerStats]",
-                "result,score,team,scoreTime,player,ratingChanges",
+                "result,score,team,faction,scoreTime,player,ratingChanges",
             )
             .append_pair("fields[player]", "login")
             // The folder as well as the map: it is what the results list
@@ -830,6 +903,15 @@ fn parse_history_games(document: &JsonApiDoc, player_id: i32) -> Vec<PlayedGame>
                 .find(|change| !change.leaderboard.is_empty())
                 .and_then(|change| change.displayed_delta());
             let game_id = game.id.parse().unwrap_or_default();
+            let started_at = value_string(&game.attributes, "startTime");
+            let duration_minutes =
+                minutes_between(&started_at, &value_string(&game.attributes, "endTime"));
+            let own = stats
+                .iter()
+                .zip(&rows)
+                .find(|(_, row)| row.player_id == player_id);
+            let faction = own.and_then(|(stat, _)| value_i32(&stat.attributes, "faction"));
+            let (teammates, opponents) = sides(&stats, &rows, player_id, &included);
             let rows = GameRows {
                 rows,
                 validity: value_string(&game.attributes, "validity").to_ascii_uppercase(),
@@ -846,9 +928,64 @@ fn parse_history_games(document: &JsonApiDoc, player_id: i32) -> Vec<PlayedGame>
                 played_at,
                 queue,
                 rating_delta,
+                started_at,
+                duration_minutes,
+                faction,
+                teammates,
+                opponents,
             }
         })
         .collect()
+}
+
+/// Start to end in whole minutes, at least one; zero without both ends. The
+/// tracker's `durationMinutes`.
+fn minutes_between(start: &str, end: &str) -> i32 {
+    let parse = |value: &str| chrono::DateTime::parse_from_rfc3339(value).ok();
+    match (parse(start), parse(end)) {
+        (Some(start), Some(end)) => {
+            let minutes = (end - start).num_seconds() as f64 / 60.0;
+            (minutes.round() as i32).max(1)
+        }
+        _ => 0,
+    }
+}
+
+/// The other players of a game as teammates and opponents, by the tracker's
+/// rule (`official.js`): the same team number is a teammate, any other an
+/// opponent, and a two-player game whose rows all carry one team (old games
+/// recorded that way) is a 1v1, so the other player is an opponent.
+fn sides(
+    stats: &[&Resource],
+    rows: &[PlayerRow],
+    player_id: i32,
+    included: &Index<'_>,
+) -> (Vec<String>, Vec<String>) {
+    let Some(own) = rows.iter().find(|row| row.player_id == player_id) else {
+        return (Vec::new(), Vec::new());
+    };
+    let teams: std::collections::HashSet<i32> = rows.iter().filter_map(|row| row.team).collect();
+    let broken_one_vs_one = rows.len() == 2 && teams.len() <= 1;
+    let mut teammates = Vec::new();
+    let mut opponents = Vec::new();
+    for (stat, row) in stats.iter().zip(rows) {
+        if row.player_id == player_id {
+            continue;
+        }
+        let login = rel_one(stat, "player")
+            .and_then(|key| included.get(&key))
+            .map(|player| value_string(&player.attributes, "login"))
+            .unwrap_or_default();
+        if login.is_empty() {
+            continue;
+        }
+        if !broken_one_vs_one && row.team == own.team {
+            teammates.push(login);
+        } else {
+            opponents.push(login);
+        }
+    }
+    (teammates, opponents)
 }
 
 /// Which queue a game belongs to, the way `faftracker`'s `inferQueueCategory`
@@ -1507,12 +1644,53 @@ fn quote_prefix(value: &str) -> String {
     format!("\"{}*\"", escape(value))
 }
 
+/// The user groups whose members the chat lists as moderators and admins.
+///
+/// All four are `public` in FAF's database (`db` migration V78,
+/// `permission_roles_and_groups.sql`), and a public group's members are
+/// readable by anybody signed in (`UserGroupPublicCheck` in the API). The
+/// moderators proper, the moderation councillor, the administration
+/// councillor and the server administrators: the people a player would go
+/// to with a problem in chat. Not `faf_organisation`, the root every
+/// councillor hangs off, which would add the whole council.
+const STAFF_GROUPS: [&str; 4] = [
+    "faf_moderators_global",
+    "faf_councilor_moderation",
+    "faf_councilor_administration",
+    "faf_server_administrators",
+];
+
+/// Every member login a `userGroup` document includes, once each.
+fn staff_logins_in(doc: &JsonApiDoc) -> Vec<String> {
+    let mut logins: Vec<String> = doc
+        .included
+        .iter()
+        .filter(|resource| resource.kind == "player")
+        .filter_map(|resource| resource.attributes.get("login").and_then(Value::as_str))
+        .filter(|login| !login.trim().is_empty())
+        .map(str::to_string)
+        .collect();
+    logins.sort();
+    logins.dedup();
+    logins
+}
+
 /// Shorter than this, a prefix search is not worth sending.
 const MIN_SEARCH_LENGTH: usize = 3;
 
 /// Leaderboards whose rating a signup post means by "rating".
 const GLOBAL_BOARD: &str = "global";
 const LADDER_BOARD: &str = "ladder_1v1";
+/// The most rows the API returns for one request, whatever `page[size]` says.
+const API_PAGE_LIMIT: usize = 100;
+/// Accounts per rating request: two boards each, so every row fits one page.
+const RATING_BATCH: usize = API_PAGE_LIMIT / 2;
+// One row per board, two boards: a batch must never outgrow the page.
+const _: () = assert!(RATING_BATCH * 2 <= API_PAGE_LIMIT);
+
+fn page_size(rows: usize) -> i32 {
+    i32::try_from(rows.min(API_PAGE_LIMIT)).unwrap_or(1)
+}
 
 /// Read the picker-sized view of each account in a `player` document.
 fn parse_summaries(doc: &JsonApiDoc) -> Vec<PlayerSummary> {
@@ -1887,6 +2065,27 @@ fn fake_events() -> Vec<PlayerEventCount> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn staff_are_the_members_the_groups_include_once_each() {
+        // A moderator in two of the groups is one entry; group resources and
+        // members without a login are not entries at all.
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [
+                { "type": "userGroup", "id": "5", "attributes": { "technicalName": "faf_moderators_global" } },
+                { "type": "userGroup", "id": "9", "attributes": { "technicalName": "faf_server_administrators" } }
+            ],
+            "included": [
+                { "type": "player", "id": "1", "attributes": { "login": "Morax" } },
+                { "type": "player", "id": "2", "attributes": { "login": "Brutus5000" } },
+                { "type": "player", "id": "1", "attributes": { "login": "Morax" } },
+                { "type": "player", "id": "3", "attributes": {} },
+                { "type": "userGroup", "id": "4", "attributes": { "technicalName": "faf_organisation" } }
+            ]
+        }))
+        .unwrap();
+        assert_eq!(staff_logins_in(&doc), vec!["Brutus5000", "Morax"]);
+    }
 
     /// The exact RSQL the API accepts for a prefix search.
     ///

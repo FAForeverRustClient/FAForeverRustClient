@@ -1,0 +1,2 @@
+- On a wide window, the replay lists, live replays and the matchmaker's recent games give every column more room instead of only the title.
+- The live replay filters are remembered like the filters of every other list.

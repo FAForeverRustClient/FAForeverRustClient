@@ -39,6 +39,16 @@ import {
 import { AdvancedReplayFilters, ReplayGameTypeField, ReplaySearchSliders } from "./AdvancedReplayFilters";
 import { replayGameModes, selectedGameModes, withGameModes } from "./replayGameModes";
 import { activeReplayPreset, SHORT_GAME_MINUTES } from "../replayPresets";
+import { ReplaySavedSearches, type SavedSearchEntry } from "../ReplaySavedSearches";
+import {
+  decodeOnlineReplayPreset,
+  type DecodedOnlineReplayPreset,
+  encodeOnlineReplayPreset,
+  ONLINE_REPLAY_PRESET_LIST,
+  onlinePresetSignature,
+  presetsForList,
+  summarizeOnlineReplayPreset,
+} from "../savedReplaySearches";
 import { FriendReplayPicker } from "./FriendReplayPicker";
 import { MultiSelect } from "../../../design-system/MultiSelect";
 import { useAppStore } from "../../../store/store";
@@ -95,6 +105,7 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
   // only carries what they stand for: the ids of the games tagged with them.
   const [pickedTags, setPickedTags] = useState<string[]>([]);
   const replayNotes = useAppStore((state) => state.state.settings.social.replayNotes);
+  const searchPresets = useAppStore((state) => state.state.settings.browsing.searchPresets);
   // Only the tags on games: a tag that is only on files without a game id
   // stands for no game the vault could be asked for, and picking it would
   // search everything instead.
@@ -164,7 +175,9 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
   };
 
   const reset = () => {
+    setPickedTags([]);
     setForm(EMPTY_REPLAY_QUERY);
+    setRecentOnly(isRecentBound(EMPTY_REPLAY_QUERY.after));
     onSearch(EMPTY_REPLAY_QUERY);
   };
 
@@ -229,6 +242,18 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
   // arrived at by hand or handed over from a player card as well as one of
   // these three presses. See `activeReplayPreset`.
   const preset = activeReplayPreset(form, self);
+  const savedEntries: SavedSearchEntry<DecodedOnlineReplayPreset>[] = [];
+  for (const saved of presetsForList(searchPresets, ONLINE_REPLAY_PRESET_LIST)) {
+    const decoded = decodeOnlineReplayPreset(saved.query, replayNotes, form.pageSize);
+    if (!decoded) continue;
+    savedEntries.push({
+      name: saved.name,
+      saved: saved.query,
+      summary: summarizeOnlineReplayPreset(decoded, leaderboards),
+      signature: onlinePresetSignature(decoded.query, decoded.tags),
+      value: decoded,
+    });
+  }
 
   return (
     <form className="vault-search online-vault-search search-panel surface-panel" onSubmit={submit}>
@@ -428,47 +453,61 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
             onSearch(query);
           }}
         />
+        <ReplaySavedSearches
+          list={ONLINE_REPLAY_PRESET_LIST}
+          entries={savedEntries}
+          currentSignature={onlinePresetSignature(form, selectedTags)}
+          encodeCurrent={() => encodeOnlineReplayPreset(form, selectedTags)}
+          onApply={({ query, tags }) => {
+            setPickedTags(tags);
+            setForm(query);
+            setRecentOnly(isRecentBound(query.after));
+            onSearch(query);
+          }}
+        />
         {/* The divider is load-bearing: everything left of it replaces the
             search, everything right of it modifies the one you have. Without it
             the toggle reads as a fourth preset, and "All replays" next to
             "Recent only" looks like a contradiction rather than a scope and a
             bound. */}
         <span className="search-panel-divider" aria-hidden="true" />
-        <Button
-          type="button"
-          className={recentOnly ? "active" : ""}
-          aria-pressed={recentOnly}
-          title={t("replays.search.recentOnlyHint")}
-          onClick={() => {
-            const next = !recentOnly;
-            setRecentOnly(next);
-            const query = {
-              ...form,
-              after: next ? isoDaysAgo(365) : ALL_TIME_AFTER,
-              page: 1,
-            };
-            setForm(query);
-            onSearch(query);
-          }}
-        >
+        {/* Checkboxes, not buttons: drawn as buttons, "on" was the filled
+            primary look and read as an action, and the three were hard to
+            tell from the presets left of the divider. These only adjust the
+            search, which a tick says at a glance. */}
+        <label className="search-panel-check" title={t("replays.search.recentOnlyHint")}>
+          <input
+            type="checkbox"
+            checked={recentOnly}
+            onChange={(event) => {
+              const next = event.target.checked;
+              setRecentOnly(next);
+              const query = {
+                ...form,
+                after: next ? isoDaysAgo(365) : ALL_TIME_AFTER,
+                page: 1,
+              };
+              setForm(query);
+              onSearch(query);
+            }}
+          />
           {t("replays.search.recentOnly")}
-        </Button>
+        </label>
         {/* Next to "Recent only" rather than in the advanced panel: both narrow
             the search you already have, and an option nobody can find is the
             same as no option. On by default, so a name means that player. */}
-        <Button
-          type="button"
-          className={form.exactPlayer ? "active" : ""}
-          aria-pressed={form.exactPlayer}
-          title={t("replays.search.exactPlayerHint")}
-          onClick={() => {
-            const query = { ...form, exactPlayer: !form.exactPlayer, page: 1 };
-            setForm(query);
-            onSearch(query);
-          }}
-        >
+        <label className="search-panel-check" title={t("replays.search.exactPlayerHint")}>
+          <input
+            type="checkbox"
+            checked={form.exactPlayer}
+            onChange={(event) => {
+              const query = { ...form, exactPlayer: event.target.checked, page: 1 };
+              setForm(query);
+              onSearch(query);
+            }}
+          />
           {t("replays.search.exactPlayer")}
-        </Button>
+        </label>
         {/* A duration floor has always been in the advanced panel as half of a
             range. The ask was for the one value anybody sets it to: a search
             for a map comes back full of lobbies that were abandoned in the
@@ -477,24 +516,25 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
 
             Unticking clears the floor rather than restoring whatever was in
             the range before, which is the honest reading of a toggle. */}
-        <Button
-          type="button"
-          className={form.minDurationMinutes === SHORT_GAME_MINUTES ? "active" : ""}
-          aria-pressed={form.minDurationMinutes === SHORT_GAME_MINUTES}
+        <label
+          className="search-panel-check"
           title={t("replays.search.hideShortHint", { minutes: SHORT_GAME_MINUTES })}
-          onClick={() => {
-            const on = form.minDurationMinutes !== SHORT_GAME_MINUTES;
-            const query = {
-              ...form,
-              minDurationMinutes: on ? SHORT_GAME_MINUTES : null,
-              page: 1,
-            };
-            setForm(query);
-            onSearch(query);
-          }}
         >
+          <input
+            type="checkbox"
+            checked={form.minDurationMinutes === SHORT_GAME_MINUTES}
+            onChange={(event) => {
+              const query = {
+                ...form,
+                minDurationMinutes: event.target.checked ? SHORT_GAME_MINUTES : null,
+                page: 1,
+              };
+              setForm(query);
+              onSearch(query);
+            }}
+          />
           {t("replays.search.hideShort")}
-        </Button>
+        </label>
         <span className="spacer" />
         <Button
           className="search-panel-toggle"

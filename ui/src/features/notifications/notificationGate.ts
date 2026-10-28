@@ -44,3 +44,36 @@ export class RepeatCooldown {
     return true;
   }
 }
+
+/**
+ * When `item` is due to leave the history (#644), in epoch milliseconds, or
+ * `null` when it stays: a lifetime of zero keeps every notification, and so
+ * does a timestamp nothing can be read from.
+ */
+function expiresAt(item: ClientNotification, lifetimeSeconds: number): number | null {
+  if (lifetimeSeconds <= 0) return null;
+  const created = Date.parse(item.createdAt);
+  return Number.isFinite(created) ? created + lifetimeSeconds * 1000 : null;
+}
+
+/** The notifications whose time in the history is up at `now` (#644). */
+export function expiredNotifications(
+  items: readonly ClientNotification[],
+  lifetimeSeconds: number,
+  now: number,
+): ClientNotification[] {
+  return items.filter((item) => {
+    const due = expiresAt(item, lifetimeSeconds);
+    return due !== null && due <= now;
+  });
+}
+
+/** When the next notification is due to leave the history, or `null`. */
+export function nextExpiry(items: readonly ClientNotification[], lifetimeSeconds: number): number | null {
+  let next: number | null = null;
+  for (const item of items) {
+    const due = expiresAt(item, lifetimeSeconds);
+    if (due !== null && (next === null || due < next)) next = due;
+  }
+  return next;
+}
