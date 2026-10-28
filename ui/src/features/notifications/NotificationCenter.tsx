@@ -51,6 +51,7 @@ function actionLabel(action: NotificationAction | null): string | null {
   switch (action.type) {
     case "acceptPartyInvite": return t("notifications.action.acceptPartyInvite");
     case "watchLive": return t("notifications.action.watchLive");
+    case "watchLiveWhenReady": return t("notifications.action.watchLiveWhenReady");
     case "openStream": return t("notifications.action.openStream");
     case "openChat":
     case "openMatchmaking":
@@ -113,6 +114,15 @@ async function runAction(item: ClientNotification) {
       case "watchLive":
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
         await ipc.dispatch({ kind: "Replays", command: { type: "watchLive", payload: action.payload.target } });
+        break;
+      case "watchLiveWhenReady":
+        // The live replay tab's own "watch when ready": the backend waits out
+        // the delay and starts the replay itself (#653).
+        await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
+        await ipc.dispatch({
+          kind: "Replays",
+          command: { type: "trackLive", payload: { target: action.payload.target, action: "watch" } },
+        });
         break;
       case "openEvent":
         // The calendar opens on the occurrence the reminder was set for, which

@@ -3550,6 +3550,7 @@ export const en = {
   "notifications.action.openCustomGames": "Open games",
   "notifications.action.acceptPartyInvite": "Accept invite",
   "notifications.action.watchLive": "Watch replay",
+  "notifications.action.watchLiveWhenReady": "Start when the game is ready",
   "notifications.action.openEvent": "Open the calendar",
   "notifications.action.openStream": "Watch the stream",
   "notifications.action.openSettings": "Open Settings",

@@ -6401,6 +6401,13 @@ export type NotificationAction = { type: "openChat"; payload: {
 	playerId: number,
 } } | { type: "watchLive"; payload: {
 	target: LiveReplayTarget,
+} } |
+/**
+ *  Start a live replay as soon as the five-minute delay lets it (#653):
+ *  on the notice that refused it for being too early.
+ */
+{ type: "watchLiveWhenReady"; payload: {
+	target: LiveReplayTarget,
 } } | { type: "openSettings"; payload: {
 	section: string | null,
 } } |

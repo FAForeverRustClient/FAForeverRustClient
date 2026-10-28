@@ -3112,6 +3112,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "notifications.action.openCustomGames": "Partien öffnen",
   "notifications.action.acceptPartyInvite": "Einladung annehmen",
   "notifications.action.watchLive": "Replay ansehen",
+  "notifications.action.watchLiveWhenReady": "Starten, sobald das Spiel bereit ist",
   "notifications.action.openEvent": "Kalender öffnen",
   "notifications.action.openStream": "Stream ansehen",
   "notifications.action.openSettings": "Einstellungen öffnen",
