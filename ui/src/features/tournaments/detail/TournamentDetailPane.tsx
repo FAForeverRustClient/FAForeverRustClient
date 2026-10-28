@@ -862,6 +862,10 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
         <ChatRoomView
           event={event}
           roomId={matchRoomId(matchChat)}
+          roomName={
+            props.chatRooms.find((room) => room.id === matchRoomId(matchChat))?.name
+              ?? t("tournaments.chat.matchChat")
+          }
           posts={props.chatPosts}
           status={props.chatStatus}
           busy={busy}

@@ -572,6 +572,29 @@ html.is-resizing-chat-roster * {
   min-height: 0;
 }
 
+/* Addressed to everyone who can read the conversation (a tournament
+   organiser's @everyone): a wash of the warning colour over the line. */
+.chat-message.is-announcement {
+  background: color-mix(in srgb, var(--color-warn) 9%, transparent);
+}
+
+.chat-message.is-announcement:hover,
+.chat-message.is-announcement:has(:focus-visible) {
+  background: color-mix(in srgb, var(--color-warn) 14%, var(--color-surface-hover));
+}
+
+/* A toolbar button that removes something: an organiser's delete and
+   silence. */
+.chat-action-btn.is-danger:hover,
+.chat-action-btn.is-danger:focus-visible {
+  color: var(--color-error-text);
+}
+
+.chat-action-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
 .chat-message.is-search-active {
   background: var(--color-accent-glow);
   box-shadow: inset 2px 0 var(--color-accent);
