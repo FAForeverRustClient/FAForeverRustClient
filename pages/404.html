@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex" />
+    <title>Open in the FAF client</title>
+    <!--
+      For a static host that answers every unknown path with this file (GitHub
+      Pages does): /open/tourney/123 is not a file, so it lands here and goes on
+      to /open/#tourney/123, which the page in open/ reads. Anything else is a
+      plain "not found".
+    -->
+    <script>
+      (() => {
+        const match = location.pathname.match(/^(.*?\/open)\/(.+)$/);
+        if (match) location.replace(`${match[1]}/#${match[2]}`);
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Not found.</p>
+  </body>
+</html>
