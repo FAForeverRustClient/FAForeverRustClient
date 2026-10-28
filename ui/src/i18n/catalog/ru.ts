@@ -354,6 +354,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "common.now": "Сейчас",
   "common.any": "Любой",
   "common.contents": "Содержание",
+  "common.openFolder": "Открыть папку",
+  "common.openFolderNamed": "Открыть папку {name}",
   "common.pickDate": "Выбрать дату",
   "common.mapPreview": "Превью {name}",
   "common.mapPreviewUnavailable": "Превью {name} недоступно",

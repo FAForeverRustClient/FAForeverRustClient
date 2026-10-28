@@ -3398,6 +3398,8 @@ export const en = {
   "common.now": "Now",
   "common.any": "Any",
   "common.contents": "Contents",
+  "common.openFolder": "Open folder",
+  "common.openFolderNamed": "Open the folder of {name}",
   "common.pickDate": "Pick a date",
   "common.mapPreview": "{name} preview",
   "common.mapPreviewUnavailable": "{name} preview unavailable",

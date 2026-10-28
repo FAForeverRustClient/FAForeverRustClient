@@ -348,6 +348,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "common.now": "Teraz",
   "common.any": "Dowolne",
   "common.contents": "Spis treści",
+  "common.openFolder": "Otwórz folder",
+  "common.openFolderNamed": "Otwórz folder {name}",
   "common.pickDate": "Wybierz datę",
   "common.close": "Zamknij",
   "common.cancel": "Anuluj",

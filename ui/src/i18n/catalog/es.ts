@@ -346,6 +346,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "common.now": "Ahora",
   "common.any": "Cualquiera",
   "common.contents": "Contenido",
+  "common.openFolder": "Abrir la carpeta",
+  "common.openFolderNamed": "Abrir la carpeta de {name}",
   "common.pickDate": "Elegir una fecha",
   "common.close": "Cerrar",
   "common.cancel": "Cancelar",

@@ -575,7 +575,8 @@
 /* Square, so the icon is the button rather than a word's worth of padding
    around one. The same shape the Maps tab's uninstall has. */
 .mod-vault-card-action .mod-vault-uninstall.is-icon,
-.mod-vault-uninstall.is-icon {
+.mod-vault-uninstall.is-icon,
+.mod-vault-open-folder.is-icon {
   display: grid;
   place-items: center;
   width: 30px;

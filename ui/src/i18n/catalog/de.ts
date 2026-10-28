@@ -2975,6 +2975,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "common.now": "Jetzt",
   "common.any": "Beliebig",
   "common.contents": "Inhalt",
+  "common.openFolder": "Ordner öffnen",
+  "common.openFolderNamed": "Ordner von {name} öffnen",
   "common.pickDate": "Datum wählen",
   "common.mapPreview": "Vorschau von {name}",
   "common.mapPreviewUnavailable": "Keine Vorschau für {name}",

@@ -2,6 +2,7 @@
 
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { native } from "../../ipc/native";
 import { FactsStrip } from "../../design-system/FactsStrip";
 import type { InstalledMod, VaultMod } from "../../ipc/bindings";
 import { formatShortDate } from "../../shared/format/dates";
@@ -140,6 +141,10 @@ export function InstalledModDetail({
                   {t(toggling ? "mods.vault.toggling" : mod.enabled ? "mods.vault.disable" : "mods.vault.enable")}
                 </Button>
               )}
+              <Button variant="ghost" onClick={() => void native.openInstalledFolder("mods", mod.folderName)}>
+                <Icon name="folder" size={15} />
+                {t("common.openFolder")}
+              </Button>
               <Button variant="ghost" className="mod-detail-uninstall" disabled={busy} onClick={onUninstall}>
                 <Icon name="trash" size={15} />
                 {t("mods.vault.uninstall")}

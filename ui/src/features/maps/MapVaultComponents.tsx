@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { native } from "../../ipc/native";
 import { ConfirmDialog } from "../../design-system/ConfirmDialog";
 import { FactsStrip } from "../../design-system/FactsStrip";
 import { VaultFeaturedBadge } from "../../design-system/VaultFeaturedBadge";
@@ -350,6 +351,12 @@ export function MapDetailPanel({
                   {t(visibilityBusy ? "maps.vault.visibilityWorking" : "maps.vault.hide")}
                 </Button>
               )
+            )}
+            {removable && (
+              <Button variant="ghost" onClick={() => void native.openInstalledFolder("maps", map.folderName)}>
+                <Icon name="folder" size={15} />
+                {t("common.openFolder")}
+              </Button>
             )}
             {removable && (
               <Button variant="ghost" className="map-detail-danger" disabled={busy} onClick={onUninstall}>
