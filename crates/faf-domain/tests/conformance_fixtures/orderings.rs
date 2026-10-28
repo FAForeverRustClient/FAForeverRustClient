@@ -434,6 +434,7 @@ slice_table! {
     connectivity => "connectivity",
     settings => "settings",
     changelog => "changelog",
+    unit_history => "unitHistory",
 }
 
 #[test]

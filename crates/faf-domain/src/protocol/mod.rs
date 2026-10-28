@@ -5,6 +5,7 @@
 //! exhaustively unit-testable with zero setup; `infra` does the actual IO and
 //! calls into these.
 
+pub mod blueprint;
 pub mod changelog;
 pub mod chat_input;
 pub mod discord;
@@ -21,4 +22,5 @@ pub mod replay_query;
 pub mod report_log;
 pub mod stun;
 pub mod tourney;
+pub mod unit_history;
 pub mod vault_query;

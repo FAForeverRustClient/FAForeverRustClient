@@ -4114,6 +4114,136 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        // ── unit history ─────────────────────────────────────────────────
+        case(
+            "a unit history keeps only the units on screen and ignores late answers",
+            {
+                use faf_domain::protocol::unit_history::{
+                    UnitChange, UnitChangeRow, UnitHistory, UnitRelease, UnitSeries, UnitSource,
+                    UnitStat, UnitSummary, UnitValueKey, UnitWeapon, WeaponStat,
+                };
+                let summary = |id: &str| UnitSummary {
+                    id: id.into(),
+                    path: format!("units/{id}/{id}_unit.bp"),
+                    name: Some("MA12 Striker".into()),
+                    description: Some("Medium Tank".into()),
+                    faction: Some("UEF".into()),
+                    tech: Some(1),
+                };
+                let history = |id: &str| UnitHistory {
+                    unit: summary(id),
+                    releases: vec![
+                        UnitRelease {
+                            release: "3700".into(),
+                            date: "2021-01-01".into(),
+                            source: UnitSource::BaseGame,
+                        },
+                        UnitRelease {
+                            release: "3701".into(),
+                            date: "2021-02-01".into(),
+                            source: UnitSource::Unavailable {
+                                reason: "offline".into(),
+                            },
+                        },
+                        UnitRelease {
+                            release: "3738".into(),
+                            date: "2022-01-01".into(),
+                            source: UnitSource::Repository,
+                        },
+                    ],
+                    weapons: vec![UnitWeapon {
+                        key: "MainGun".into(),
+                        name: "Gauss Cannon".into(),
+                        category: Some("Direct Fire".into()),
+                    }],
+                    series: vec![
+                        UnitSeries {
+                            key: UnitValueKey::Unit {
+                                stat: UnitStat::MaxHealth,
+                            },
+                            values: vec![Some(270.0), None, Some(300.0)],
+                        },
+                        UnitSeries {
+                            key: UnitValueKey::Weapon {
+                                weapon: "MainGun".into(),
+                                stat: WeaponStat::Dps,
+                            },
+                            values: vec![Some(16.0), None, Some(17.5)],
+                        },
+                    ],
+                    changes: vec![UnitChangeRow {
+                        release: "3738".into(),
+                        date: "2022-01-01".into(),
+                        changes: vec![
+                            UnitChange::Value {
+                                key: UnitValueKey::Unit {
+                                    stat: UnitStat::MaxHealth,
+                                },
+                                before: Some(270.0),
+                                after: Some(300.0),
+                            },
+                            UnitChange::Categories {
+                                added: vec!["SNIPEMODE".into()],
+                                removed: vec![],
+                            },
+                        ],
+                    }],
+                };
+                vec![
+                    UnitHistoryEvent::ListLoading.into(),
+                    UnitHistoryEvent::ListLoaded {
+                        units: vec![summary("UEL0201"), summary("URL0107")],
+                    }
+                    .into(),
+                    UnitHistoryEvent::ListFailed {
+                        reason: "no game".into(),
+                    }
+                    .into(),
+                    UnitHistoryEvent::Selected {
+                        id: "UEL0201".into(),
+                    }
+                    .into(),
+                    UnitHistoryEvent::HistoryProgress {
+                        id: "UEL0201".into(),
+                        fetched: 12,
+                        total: 160,
+                    }
+                    .into(),
+                    UnitHistoryEvent::HistoryLoaded {
+                        history: history("UEL0201"),
+                    }
+                    .into(),
+                    UnitHistoryEvent::Compared {
+                        id: Some("UEL0201".into()),
+                    }
+                    .into(),
+                    UnitHistoryEvent::Compared {
+                        id: Some("URL0107".into()),
+                    }
+                    .into(),
+                    UnitHistoryEvent::HistoryFailed {
+                        id: "URL0107".into(),
+                        reason: "offline".into(),
+                    }
+                    .into(),
+                    UnitHistoryEvent::Selected {
+                        id: "URL0107".into(),
+                    }
+                    .into(),
+                    UnitHistoryEvent::HistoryLoaded {
+                        history: history("UEL0201"),
+                    }
+                    .into(),
+                    UnitHistoryEvent::HistoryProgress {
+                        id: "UAL0201".into(),
+                        fetched: 1,
+                        total: 2,
+                    }
+                    .into(),
+                    UnitHistoryEvent::Compared { id: None }.into(),
+                ]
+            },
+        ),
         // ── changelog ────────────────────────────────────────────────────
         case(
             "a patch note is selected before it arrives, and earlier ones are kept",
@@ -4426,6 +4556,10 @@ fn cases() -> Vec<Case> {
                 .into(),
                 NavEvent::ChangelogSectionSelected {
                     section: ChangelogSection::Client,
+                }
+                .into(),
+                NavEvent::ChangelogSectionSelected {
+                    section: ChangelogSection::Units,
                 }
                 .into(),
                 NavEvent::ChangelogSectionSelected {
