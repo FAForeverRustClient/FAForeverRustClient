@@ -215,6 +215,21 @@ pub struct NotificationPreferences {
     /// reasoning. On restores the old behaviour for anyone who wants it.
     pub desktop_all_kinds: bool,
     pub sound: bool,
+    /// Whether a new notification pops up in the corner as a toast (#644).
+    ///
+    /// Together with [`Self::sound`] it is the one choice the settings offer
+    /// as "sound and pop-up", "pop-up only" or "sound only": somebody who
+    /// wants to hear that a friend started a game without a card sliding in,
+    /// or the reverse. The history and the desktop notification are not
+    /// affected.
+    pub popup: bool,
+    /// Seconds after which a notification leaves the history by itself
+    /// (#644). Zero, the default, keeps every one until it is cleared.
+    ///
+    /// Asked for by a player who wanted friends joining games announced but
+    /// not collected: sixty-seven of them in the bell, burying the event
+    /// reminders, each to be removed by hand.
+    pub history_lifetime_seconds: u32,
     /// Which tone each kind plays, when [`Self::sound`] is on.
     pub sounds: NotificationSoundChoices,
     /// Version of the stored [`Self::sounds`], so a changed default can reach
@@ -288,6 +303,9 @@ pub struct NotificationPreferences {
 /// The longest repeat cooldown a settings file may ask for: ten minutes.
 pub const MAX_NOTIFICATION_REPEAT_COOLDOWN_SECONDS: u16 = 600;
 
+/// The longest history lifetime a settings file may ask for: one day.
+pub const MAX_NOTIFICATION_HISTORY_LIFETIME_SECONDS: u32 = 86_400;
+
 impl Default for NotificationPreferences {
     fn default() -> Self {
         Self {
@@ -295,6 +313,8 @@ impl Default for NotificationPreferences {
             desktop: true,
             desktop_all_kinds: false,
             sound: true,
+            popup: true,
+            history_lifetime_seconds: 0,
             sounds: NotificationSoundChoices::default(),
             sound_choice_version: NOTIFICATION_SOUND_CHOICE_VERSION,
             notify_when_focused: false,
@@ -337,6 +357,8 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             desktop: bool,
             desktop_all_kinds: bool,
             sound: bool,
+            popup: bool,
+            history_lifetime_seconds: u32,
             sounds: NotificationSoundChoices,
             sound_choice_version: u8,
             notify_when_focused: bool,
@@ -369,6 +391,8 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     desktop: defaults.desktop,
                     desktop_all_kinds: defaults.desktop_all_kinds,
                     sound: defaults.sound,
+                    popup: defaults.popup,
+                    history_lifetime_seconds: defaults.history_lifetime_seconds,
                     sounds: defaults.sounds,
                     // Zero, not the current version: this is what a file that
                     // does not mention the field reads as, and that is exactly
@@ -418,6 +442,8 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             desktop: wire.desktop,
             desktop_all_kinds: wire.desktop_all_kinds,
             sound: wire.sound,
+            popup: wire.popup,
+            history_lifetime_seconds: wire.history_lifetime_seconds,
             sounds,
             sound_choice_version: NOTIFICATION_SOUND_CHOICE_VERSION,
             notify_when_focused: wire.notify_when_focused,
@@ -450,6 +476,9 @@ impl NotificationPreferences {
         self.repeat_cooldown_seconds = self
             .repeat_cooldown_seconds
             .min(MAX_NOTIFICATION_REPEAT_COOLDOWN_SECONDS);
+        self.history_lifetime_seconds = self
+            .history_lifetime_seconds
+            .min(MAX_NOTIFICATION_HISTORY_LIFETIME_SECONDS);
         self
     }
 }
@@ -479,6 +508,8 @@ preference_patch! {
         desktop: bool,
         desktop_all_kinds: bool,
         sound: bool,
+        popup: bool,
+        history_lifetime_seconds: u32,
         sound_choice_version: u8,
         notify_when_focused: bool,
         toast_position: ToastPosition,
@@ -583,6 +614,28 @@ pub fn refuse_new_custom_sounds(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_file_from_before_644_pops_up_and_keeps_its_history() {
+        let settings: SettingsState =
+            serde_json::from_str(r#"{"notifications":{"sound":false}}"#).unwrap();
+        assert!(settings.notifications.popup);
+        assert!(!settings.notifications.sound);
+        assert_eq!(settings.notifications.history_lifetime_seconds, 0);
+    }
+
+    #[test]
+    fn a_history_lifetime_is_held_to_one_day() {
+        let preferences = NotificationPreferences {
+            history_lifetime_seconds: u32::MAX,
+            ..NotificationPreferences::default()
+        }
+        .normalized();
+        assert_eq!(
+            preferences.history_lifetime_seconds,
+            MAX_NOTIFICATION_HISTORY_LIFETIME_SECONDS
+        );
+    }
 
     #[test]
     fn a_chime_written_by_the_old_default_moves_to_the_faf_match_sound() {

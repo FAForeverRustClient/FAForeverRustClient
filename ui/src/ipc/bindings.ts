@@ -6516,6 +6516,25 @@ export type NotificationPreferences = {
 	 */
 	desktopAllKinds: boolean,
 	sound: boolean,
+	/**
+	 *  Whether a new notification pops up in the corner as a toast (#644).
+	 *
+	 *  Together with [`Self::sound`] it is the one choice the settings offer
+	 *  as "sound and pop-up", "pop-up only" or "sound only": somebody who
+	 *  wants to hear that a friend started a game without a card sliding in,
+	 *  or the reverse. The history and the desktop notification are not
+	 *  affected.
+	 */
+	popup: boolean,
+	/**
+	 *  Seconds after which a notification leaves the history by itself
+	 *  (#644). Zero, the default, keeps every one until it is cleared.
+	 *
+	 *  Asked for by a player who wanted friends joining games announced but
+	 *  not collected: sixty-seven of them in the bell, burying the event
+	 *  reminders, each to be removed by hand.
+	 */
+	historyLifetimeSeconds: number,
 	/**  Which tone each kind plays, when [`Self::sound`] is on. */
 	sounds: NotificationSoundChoices,
 	/**
@@ -6604,6 +6623,8 @@ export type NotificationPreferencesPatch = {
 	desktop?: boolean,
 	desktopAllKinds?: boolean,
 	sound?: boolean,
+	popup?: boolean,
+	historyLifetimeSeconds?: number,
 	soundChoiceVersion?: number,
 	notifyWhenFocused?: boolean,
 	toastPosition?: ToastPosition,

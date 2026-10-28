@@ -12,7 +12,7 @@ import { useAppStore } from "../../store/store";
 import { renderFormattedText, stripHtmlTags } from "../chat/messages/chatFormat";
 import { playNotificationSound, soundForKind } from "./notificationSound";
 import { raisesOsNotification } from "./osNotifications";
-import { RepeatCooldown, happensInView } from "./notificationGate";
+import { RepeatCooldown, expiredNotifications, happensInView, nextExpiry } from "./notificationGate";
 import { notificationBody, notificationBodyDetail, notificationTitle } from "./notificationText";
 import "./notifications.css";
 import { t } from "../../i18n";
@@ -244,7 +244,10 @@ export function NotificationCenter() {
       return cooldown.current.admit(item.kind, now, preferences.repeatCooldownSeconds ?? 0);
     });
     if (fresh.length === 0) return;
-    setToastIds((current) => [...fresh.map((item) => item.id), ...current].slice(0, 3));
+    // "Sound only" (#644): heard, and kept in the history, with no card.
+    if (preferences.popup ?? true) {
+      setToastIds((current) => [...fresh.map((item) => item.id), ...current].slice(0, 3));
+    }
 
     fresh.forEach((item) => {
       // Per kind now, not one tone for everything with a louder variant for two
@@ -300,6 +303,25 @@ export function NotificationCenter() {
     timers.current.forEach((timer) => window.clearTimeout(timer));
     timers.current.clear();
   }, []);
+
+  // A notification leaves the history by itself once it is older than the
+  // player's chosen time (#644); zero keeps every one. One timer, for the
+  // next one due, re-armed whenever the list changes or that one goes.
+  const historyLifetime = preferences.historyLifetimeSeconds ?? 0;
+  const [expiryCheck, setExpiryCheck] = useState(0);
+  useEffect(() => {
+    if (historyLifetime <= 0) return;
+    const expired = expiredNotifications(items, historyLifetime, Date.now());
+    expired.forEach((item) => {
+      hideToast(item.id);
+      dismiss(item.id);
+    });
+    const remaining = expired.length === 0 ? items : items.filter((item) => !expired.includes(item));
+    const due = nextExpiry(remaining, historyLifetime);
+    if (due === null) return;
+    const timer = window.setTimeout(() => setExpiryCheck((check) => check + 1), Math.max(0, due - Date.now()) + 50);
+    return () => window.clearTimeout(timer);
+  }, [items, historyLifetime, expiryCheck, hideToast]);
 
   return (
     <div className="notification-center" ref={panelRef}>
