@@ -228,7 +228,9 @@ export function queueRatingGraph(
   }
 
   const rawSamples = sampleRatings.map(rawDensity);
-  const peak = Math.max(...rawSamples, ...centres.map(rawDensity), FULL_PEAK_DENSITY);
+  // Normalize against the fixed plotting grid instead of every search centre.
+  // Work stays linear in queue size; the grid already covers the visible curve.
+  const peak = Math.max(...rawSamples, FULL_PEAK_DENSITY);
   const points: RatingGraphPoint[] = sampleRatings.map((sampleRating, index) => ({
     rating: sampleRating,
     value: rawSamples[index] / peak,

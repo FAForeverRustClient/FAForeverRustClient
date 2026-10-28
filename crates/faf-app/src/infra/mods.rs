@@ -856,6 +856,8 @@ pub(crate) fn safe_mod_target(root: &Path, folder_name: &str) -> Result<PathBuf,
 /// `mod_info.lua` and cross-referencing `game.prefs` for `enabled`. The
 /// testable body of [`ModsClient::list_installed`]/post-change rescans.
 pub(crate) async fn list_installed_dir(dir: &Path) -> Result<Vec<InstalledMod>, String> {
+    static CACHE: std::sync::OnceLock<super::file_cache::FileCache<Option<ModInfoFields>>> =
+        std::sync::OnceLock::new();
     let mut entries = match tokio::fs::read_dir(dir).await {
         Ok(rd) => rd,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
@@ -887,7 +889,10 @@ pub(crate) async fn list_installed_dir(dir: &Path) -> Result<Vec<InstalledMod>, 
         if entry.file_name().to_string_lossy().starts_with('.') {
             continue;
         }
-        if path.join("mod_info.lua").is_file() {
+        if tokio::fs::metadata(path.join("mod_info.lua"))
+            .await
+            .is_ok_and(|meta| meta.is_file())
+        {
             mod_dirs.push(path.clone());
             // Deliberately no `continue`. A folder that is a mod can still
             // contain one: the reported case is a simulation mod that ships
@@ -908,40 +913,51 @@ pub(crate) async fn list_installed_dir(dir: &Path) -> Result<Vec<InstalledMod>, 
         };
         while let Ok(Some(child)) = children.next_entry().await {
             let child_path = child.path();
-            if is_directory(&child_path).await && child_path.join("mod_info.lua").is_file() {
+            if is_directory(&child_path).await
+                && tokio::fs::metadata(child_path.join("mod_info.lua"))
+                    .await
+                    .is_ok_and(|meta| meta.is_file())
+            {
                 mod_dirs.push(child_path);
             }
         }
     }
 
-    let mut installed = Vec::new();
-    for path in mod_dirs {
-        let Ok(relative) = path.strip_prefix(dir) else {
-            continue;
-        };
-        let folder_name = relative.to_string_lossy().replace('\\', "/");
-        let Ok(contents) = tokio::fs::read_to_string(path.join("mod_info.lua")).await else {
-            continue;
-        };
-        let Some(info) = parse_mod_info(&contents) else {
-            continue;
-        };
-        let enabled = active_uids.contains(&info.uid);
-        installed.push(InstalledMod {
-            folder_name,
-            uid: info.uid,
-            display_name: info.name,
-            version: info.version,
-            author: info.author,
-            description: info.description,
-            mod_type: if info.ui_only {
-                ModType::Ui
-            } else {
-                ModType::Sim
-            },
-            enabled,
-        });
-    }
+    use futures_util::StreamExt;
+    let active_uids = &active_uids;
+    let mut installed: Vec<_> = futures_util::stream::iter(mod_dirs)
+        .map(|path| async move {
+            let Ok(relative) = path.strip_prefix(dir) else {
+                return None;
+            };
+            let folder_name = relative.to_string_lossy().replace('\\', "/");
+            let Some(Some(info)) = CACHE
+                .get_or_init(Default::default)
+                .text(&path.join("mod_info.lua"), parse_mod_info)
+                .await
+            else {
+                return None;
+            };
+            let enabled = active_uids.contains(&info.uid);
+            Some(InstalledMod {
+                folder_name,
+                uid: info.uid,
+                display_name: info.name,
+                version: info.version,
+                author: info.author,
+                description: info.description,
+                mod_type: if info.ui_only {
+                    ModType::Ui
+                } else {
+                    ModType::Sim
+                },
+                enabled,
+            })
+        })
+        .buffered(8)
+        .filter_map(|entry| async move { entry })
+        .collect()
+        .await;
     installed.sort_by(|a, b| a.display_name.cmp(&b.display_name));
     Ok(installed)
 }
@@ -972,6 +988,7 @@ async fn is_directory(path: &Path) -> bool {
 
 /// The subset of `mod_info.lua` fields this client needs (mirrors the
 /// Python client's `getModInfo`'s search dict: see the module docs).
+#[derive(Clone)]
 struct ModInfoFields {
     name: String,
     uid: String,

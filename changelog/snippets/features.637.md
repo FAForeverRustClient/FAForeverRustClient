@@ -1,0 +1,1 @@
+- Game patch notes can be searched by unit names, blueprint IDs and change descriptions.

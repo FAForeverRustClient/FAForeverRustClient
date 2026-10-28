@@ -4134,6 +4134,73 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        case(
+            "archive progress preserves the selected note and ignores stale results after cancellation",
+            {
+                use faf_domain::protocol::changelog::{ChangelogEntry, ChangelogSearchMatch};
+                use faf_domain::state::changelog::ChangelogSearchState;
+
+                let loading = ChangelogSearchState {
+                    request_id: 2,
+                    query: "shield".into(),
+                    status: ChangelogStatus::Loading,
+                    total: 171,
+                    ..Default::default()
+                };
+                let progress = ChangelogSearchState {
+                    scanned: 8,
+                    matches: vec![ChangelogSearchMatch {
+                        release_id: "3837".into(),
+                        block_path: vec![3],
+                        excerpt: "Shield radius increased".into(),
+                        occurrences: 1,
+                    }],
+                    ..loading.clone()
+                };
+                let ready = ChangelogSearchState {
+                    scanned: 171,
+                    status: ChangelogStatus::Ready,
+                    ..progress.clone()
+                };
+                let stale = ChangelogSearchState {
+                    request_id: 1,
+                    query: "old query".into(),
+                    ..ready.clone()
+                };
+                let cancelled = ChangelogSearchState {
+                    request_id: 3,
+                    ..Default::default()
+                };
+                let failed = ChangelogSearchState {
+                    request_id: 4,
+                    query: "shield".into(),
+                    status: ChangelogStatus::Failed {
+                        reason: "patch sources are unavailable".into(),
+                    },
+                    scanned: 1,
+                    total: 171,
+                    failed: 1,
+                    ..Default::default()
+                };
+                let search = |search| ChangelogEvent::SearchUpdated { search }.into();
+                vec![
+                    ChangelogEvent::EntryLoaded {
+                        entry: ChangelogEntry {
+                            id: "3837".into(),
+                            title: "Current patch".into(),
+                            ..Default::default()
+                        },
+                    }.into(),
+                    search(loading),
+                    search(progress),
+                    search(stale),
+                    search(ready.clone()),
+                    search(cancelled),
+                    search(ready),
+                    search(failed),
+                ]
+            },
+        ),
         // ── events ───────────────────────────────────────────────────────
         case(
             "a calendar is loaded, filtered, and keeps what it has when a reload fails",

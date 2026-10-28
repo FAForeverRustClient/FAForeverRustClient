@@ -29,8 +29,12 @@ pub(super) fn spawn(sink: EventSink) {
         let mut ticker = tokio::time::interval(CENSUS_INTERVAL);
         loop {
             ticker.tick().await;
-            let state = sink.with_state(Clone::clone);
-            let census = tokio::task::spawn_blocking(move || slice_sizes(&state)).await;
+            let reader = sink.clone();
+            let census = tokio::task::spawn_blocking(move || {
+                let state = reader.with_state(Clone::clone);
+                slice_sizes(&state)
+            })
+            .await;
             if let Ok(Some((total, slices))) = census {
                 tracing::info!(total_bytes = total, slices = %slices, "state census");
             }
@@ -41,17 +45,54 @@ pub(super) fn spawn(sink: EventSink) {
 /// The whole state's serialised size, and each top-level slice's, largest
 /// first, as "maps=3712345 lobby=81234 ...".
 fn slice_sizes(state: &faf_domain::AppState) -> Option<(usize, String)> {
-    let value = serde_json::to_value(state).ok()?;
-    let object = value.as_object()?;
-    let mut sizes: Vec<(&str, usize)> = object
-        .iter()
-        .map(|(name, slice)| {
-            let bytes = serde_json::to_vec(slice).map_or(0, |json| json.len());
-            (name.as_str(), bytes)
-        })
-        .collect();
+    // Destructure exhaustively so adding a slice requires updating the census.
+    // Count directly into a sink instead of cloning JSON values and buffers.
+    macro_rules! slices {
+        ($($field:ident => $name:literal),+ $(,)?) => {{
+            let faf_domain::AppState { $($field),+ } = state;
+            vec![$(($name, serialized_size($field)?)),+]
+        }};
+    }
+    let mut sizes = slices!(
+        session => "session",
+        install => "install",
+        auth => "auth",
+        nav => "nav",
+        notifications => "notifications",
+        chat => "chat",
+        clan => "clan",
+        coop => "coop",
+        events => "events",
+        lobby => "lobby",
+        replays => "replays",
+        maps => "maps",
+        map_generator => "mapGenerator",
+        mods => "mods",
+        leaderboard => "leaderboard",
+        player_card => "playerCard",
+        reporting => "reporting",
+        reviews => "reviews",
+        social => "social",
+        streams => "streams",
+        tourney => "tourney",
+        training => "training",
+        tutorials => "tutorials",
+        uploads => "uploads",
+        galactic_war => "galacticWar",
+        linux_runtime => "linuxRuntime",
+        guides => "guides",
+        client_update => "clientUpdate",
+        settings => "settings",
+        changelog => "changelog",
+        connectivity => "connectivity",
+    );
     sizes.sort_by_key(|(_, bytes)| std::cmp::Reverse(*bytes));
-    let total = serde_json::to_vec(&value).map_or(0, |json| json.len());
+    let total = 2
+        + sizes
+            .iter()
+            .map(|(name, bytes)| name.len() + 3 + bytes)
+            .sum::<usize>()
+        + sizes.len().saturating_sub(1);
     let slices = sizes
         .iter()
         .map(|(name, bytes)| format!("{name}={bytes}"))
@@ -60,13 +101,31 @@ fn slice_sizes(state: &faf_domain::AppState) -> Option<(usize, String)> {
     Some((total, slices))
 }
 
+fn serialized_size(value: &impl serde::Serialize) -> Option<usize> {
+    struct Counter(usize);
+    impl std::io::Write for Counter {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0 += bytes.len();
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut counter = Counter(0);
+    serde_json::to_writer(&mut counter, value).ok()?;
+    Some(counter.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn every_slice_is_listed_largest_first_and_adds_up_to_about_the_total() {
-        let (total, slices) = slice_sizes(&faf_domain::AppState::default()).expect("measured");
+        let state = faf_domain::AppState::default();
+        let (total, slices) = slice_sizes(&state).expect("measured");
+        assert_eq!(total, serde_json::to_vec(&state).unwrap().len());
         let sizes: Vec<usize> = slices
             .split(' ')
             .map(|entry| {

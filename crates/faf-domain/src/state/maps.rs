@@ -270,6 +270,7 @@ pub struct MapsState {
 /// for 64 folders, so this holds several pages' worth and still bounds the
 /// cache at a few tens of megabytes. An evicted folder is simply read again.
 pub const MAX_LOCAL_PREVIEWS: usize = 128;
+pub const MAX_LOCAL_PREVIEW_BYTES: usize = 16 * 1024 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
@@ -607,11 +608,19 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
                 }
             }
             // Oldest first, so what the user is looking at now survives.
-            while state.local_previews.len() > MAX_LOCAL_PREVIEWS
+            let preview_bytes = |preview: &LocalMapPreview| {
+                preview.small.as_ref().map_or(0, String::len)
+                    + preview.large.as_ref().map_or(0, String::len)
+            };
+            let mut bytes: usize = state.local_previews.values().map(preview_bytes).sum();
+            while (state.local_previews.len() > MAX_LOCAL_PREVIEWS
+                || bytes > MAX_LOCAL_PREVIEW_BYTES)
                 && !state.local_preview_order.is_empty()
             {
                 let evicted = state.local_preview_order.remove(0);
-                state.local_previews.remove(&evicted);
+                if let Some(preview) = state.local_previews.remove(&evicted) {
+                    bytes -= preview_bytes(&preview);
+                }
             }
         }
         MapsEvent::MatchmakerPoolsLoading => state.matchmaker_pools_status = MapListStatus::Loading,
@@ -1064,6 +1073,27 @@ mod tests {
         reduce(&mut s, &MapsEvent::Uninstalled { installed: vec![] });
         assert_eq!(s.install_status, MapInstallStatus::Idle);
         assert!(s.installed.is_empty());
+    }
+
+    #[test]
+    fn performance_preview_cache_evicts_by_bytes_before_the_entry_limit() {
+        let mut state = MapsState::default();
+        for folder in ["old", "new"] {
+            reduce(
+                &mut state,
+                &MapsEvent::LocalPreviewsLoaded {
+                    previews: BTreeMap::from([(
+                        folder.into(),
+                        LocalMapPreview {
+                            small: Some("A".repeat(MAX_LOCAL_PREVIEW_BYTES / 2 + 1)),
+                            large: None,
+                        },
+                    )]),
+                },
+            );
+        }
+        assert_eq!(state.local_previews.len(), 1);
+        assert!(state.local_previews.contains_key("new"));
     }
 
     fn preview_of(folder: &str) -> MapsEvent {

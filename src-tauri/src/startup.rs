@@ -373,13 +373,16 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
         if !settings_read(settings_events, load).await {
             return;
         }
-        if cleanup_files {
+        let cleanup = if cleanup_files {
             let generator_output = startup_core.snapshot().settings.map_generator.output_path;
-            let _ = tauri::async_runtime::spawn_blocking(move || {
-                faf_app::infra::cleanup_interrupted_work(&generator_output);
+            tauri::async_runtime::spawn_blocking(move || {
+                faf_app::infra::recover_interrupted_work(&generator_output)
             })
-            .await;
-        }
+            .await
+            .ok()
+        } else {
+            None
+        };
         let _ = startup_core.try_dispatch(AppCommand::Auth(AuthCommand::Restore));
         let _ = startup_core.try_dispatch(AppCommand::Session(SessionCommand::Hello));
         // After the settings, because a launch command of the player's own
@@ -389,6 +392,9 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
             let _ = startup_core.try_dispatch(AppCommand::LinuxRuntime(
                 faf_domain::state::LinuxRuntimeCommand::Prepare,
             ));
+        }
+        if let Some(cleanup) = cleanup {
+            tauri::async_runtime::spawn_blocking(move || cleanup.finish());
         }
     });
 

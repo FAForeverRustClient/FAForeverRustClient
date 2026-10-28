@@ -1,3 +1,4 @@
+import { useForegroundInterval } from "../../../shared/hooks/useForegroundInterval";
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { restoreFocus } from "../../../design-system/overlayStack";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -71,10 +72,7 @@ export function CustomGamesBrowser({
   const foeLogins = useAppStore((state) => state.state.social.foes);
   const foeSet = useMemo(() => friendKeys(foeLogins), [foeLogins]);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
+  useForegroundInterval(() => setNow(Date.now()), 60_000, true);
 
   useOverlayLayer(contextMenu !== null, () => {
     setContextMenu(null);

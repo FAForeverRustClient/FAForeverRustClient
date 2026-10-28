@@ -6,6 +6,7 @@
 // community catalogue this tab's slice fetches. `calendarFeed` does the merge
 // and `calendarGrid` the arithmetic; this file is the chrome around them.
 
+import { useForegroundInterval } from "../../shared/hooks/useForegroundInterval";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { StatusNotice } from "../../design-system/StatusNotice";
@@ -56,10 +57,7 @@ export function EventsView() {
   // an opinion about what minute the view was drawn in.
   const [now, setNow] = useState(() => new Date());
   const [submitting, setSubmitting] = useState(false);
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), CLOCK_TICK_MS);
-    return () => window.clearInterval(timer);
-  }, []);
+  useForegroundInterval(() => setNow(new Date()), CLOCK_TICK_MS, true);
 
   useEffect(() => {
     ipc.send({ kind: "Events", command: { type: "load" } });

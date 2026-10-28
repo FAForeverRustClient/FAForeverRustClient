@@ -1,3 +1,4 @@
+import { useForegroundInterval } from "../../../shared/hooks/useForegroundInterval";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { MatchmakerRecentGames } from "./MatchmakerRecentGames";
 import { Button } from "../../../design-system/Button";
@@ -157,10 +158,8 @@ export function MatchmakingPanel({
     saveChatWidth(0);
   };
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setClock(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
+  // Every queue card counts down to its next pop, searching or not.
+  useForegroundInterval(() => setClock(Date.now()), 1000, sortedQueues.length > 0);
 
   useEffect(() => {
     setUnselectedQueues(browsing.matchmakerUnselectedQueues);
