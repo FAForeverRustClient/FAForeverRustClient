@@ -1160,6 +1160,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.general.filterMemory.never": "Nunca",
   "settings.general.filterMemory.session": "Hasta cerrar el cliente",
   "settings.general.filterMemory.restart": "También tras reiniciar",
+  "settings.general.filterMemory.hint": "Para todas las listas excepto la lista de partidas de la pestaña Jugar, que siempre conserva sus filtros.",
   "settings.general.language.label": "Idioma",
 
   "settings.notifications.enabled": "Notificaciones",

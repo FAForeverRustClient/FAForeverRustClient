@@ -1113,6 +1113,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.general.filterMemory.never": "Nigdy",
   "settings.general.filterMemory.session": "Do zamknięcia klienta",
   "settings.general.filterMemory.restart": "Także po ponownym uruchomieniu",
+  "settings.general.filterMemory.hint": "Dla każdej listy oprócz listy gier w zakładce Graj, która zawsze zachowuje swoje filtry.",
   "settings.general.language.label": "Język",
   "settings.notifications.enabled": "Powiadomienia",
   "settings.notifications.desktop": "Powiadomienia systemowe",

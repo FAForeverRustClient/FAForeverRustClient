@@ -1161,6 +1161,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.general.filterMemory.never": "Jamais",
   "settings.general.filterMemory.session": "Jusqu'à la fermeture du client",
   "settings.general.filterMemory.restart": "Même après un redémarrage",
+  "settings.general.filterMemory.hint": "Pour toutes les listes sauf la liste des parties de l'onglet Jouer, qui garde toujours ses filtres.",
   "settings.general.language.label": "Langue",
 
   "settings.notifications.enabled": "Notifications",

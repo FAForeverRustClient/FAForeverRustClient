@@ -1224,6 +1224,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.general.filterMemory.never": "Никогда",
   "settings.general.filterMemory.session": "До закрытия клиента",
   "settings.general.filterMemory.restart": "И после перезапуска",
+  "settings.general.filterMemory.hint": "Для всех списков, кроме списка игр на вкладке «Игры», который всегда сохраняет свои фильтры.",
   "settings.general.language.label": "Язык",
 
   "settings.notifications.enabled": "Уведомления в клиенте",

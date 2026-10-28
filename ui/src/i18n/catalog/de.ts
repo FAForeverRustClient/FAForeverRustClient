@@ -528,6 +528,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.general.filterMemory.never": "Nie",
   "settings.general.filterMemory.session": "Bis der Client geschlossen wird",
   "settings.general.filterMemory.restart": "Auch nach einem Neustart",
+  "settings.general.filterMemory.hint": "Für jede Liste außer der Spieleliste im Tab Spielen, die ihre Filter immer behält.",
   "settings.general.language.label": "Sprache",
 
   "lobby.matchmaker.factions": "Fraktionen",

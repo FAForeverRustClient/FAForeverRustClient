@@ -616,6 +616,7 @@ export const en = {
   "settings.general.filterMemory.never": "Never",
   "settings.general.filterMemory.session": "Until the client closes",
   "settings.general.filterMemory.restart": "Also after a restart",
+  "settings.general.filterMemory.hint": "For every list except the game list on the Play tab, which always keeps its filters.",
   "settings.general.language.label": "Language",
 
   // Matchmaker.

@@ -566,28 +566,31 @@ impl BrowsingPreferences {
 
     /// The same preferences with every filter back at its default (#447).
     ///
-    /// What `FilterMemory` calls a filter: whatever narrows a list. The game
-    /// browser's switches and rules, the live replay filters, the vault
-    /// presets and the replay vault's player, and every list's entry in
-    /// `remembered_filters`. Sort orders, columns, views and favourites are
-    /// not filters and are left exactly as they were.
+    /// What `FilterMemory` calls a filter: whatever narrows a list. The live
+    /// replay filters, the vault presets and the replay vault's player, and
+    /// every list's entry in `remembered_filters`. Sort orders, columns, views
+    /// and favourites are not filters and are left exactly as they were.
+    ///
+    /// The play tab's game list is outside the setting (#648): its switches,
+    /// its rules and its entries in `remembered_filters` (the ones under
+    /// [`ALWAYS_KEPT_FILTER_PREFIX`]) are kept, so a player's game list looks
+    /// the same after every start.
     pub fn without_filters(mut self) -> Self {
         let defaults = Self::default();
-        let browser = &mut self.custom_games_browser;
-        browser.hide_private = defaults.custom_games_browser.hide_private;
-        browser.hide_modded = defaults.custom_games_browser.hide_modded;
-        browser.hide_unranked = defaults.custom_games_browser.hide_unranked;
-        browser.hide_foes = defaults.custom_games_browser.hide_foes;
-        browser.apply_filters = defaults.custom_games_browser.apply_filters;
-        browser.rules = defaults.custom_games_browser.rules;
         self.live_replay_filters = defaults.live_replay_filters;
         self.map_vault_preset = defaults.map_vault_preset;
         self.mod_vault_preset = defaults.mod_vault_preset;
         self.replay_vault_player = defaults.replay_vault_player;
-        self.remembered_filters = defaults.remembered_filters;
+        self.remembered_filters
+            .retain(|key, _| key.starts_with(ALWAYS_KEPT_FILTER_PREFIX));
         self
     }
 }
+
+/// The `remembered_filters` keys of the play tab's game list, which
+/// [`BrowsingPreferences::without_filters`] never clears (#648). Twin of
+/// `ALWAYS_KEPT_PREFIX` in the webview's `shared/filterMemory.ts`.
+const ALWAYS_KEPT_FILTER_PREFIX: &str = "play.";
 
 /// Bounds on the webview's stored filters, against a corrupt or hand-edited
 /// file. Far more lists than the client has, and far longer documents than
@@ -1045,16 +1048,23 @@ mod tests {
         browsing
             .remembered_filters
             .insert("installedMods".into(), r#"{"search":"ui"}"#.into());
+        browsing
+            .remembered_filters
+            .insert("play.search".into(), r#""seton""#.into());
 
         let cleared = browsing.without_filters();
 
-        assert!(!cleared.custom_games_browser.hide_private);
-        assert!(!cleared.custom_games_browser.apply_filters);
-        assert!(cleared.custom_games_browser.rules.is_empty());
         assert_eq!(cleared.live_replay_filters, LiveReplayFilters::default());
         assert_eq!(cleared.map_vault_preset, "recommended");
         assert!(cleared.replay_vault_player.is_empty());
-        assert!(cleared.remembered_filters.is_empty());
+        // The play tab's game list is outside the setting (#648).
+        assert!(cleared.custom_games_browser.hide_private);
+        assert!(cleared.custom_games_browser.apply_filters);
+        assert_eq!(cleared.custom_games_browser.rules.len(), 1);
+        assert_eq!(
+            cleared.remembered_filters.keys().collect::<Vec<_>>(),
+            vec!["play.search"]
+        );
         // How the lists are sorted and laid out is not a filter.
         assert!(cleared.custom_games_browser.sort_reversed);
         assert_eq!(cleared.custom_games_browser.column_widths, vec![200]);

@@ -27,8 +27,7 @@ import "./game-dialogs.css";
 import "./play.css";
 import { useLocale } from "../../i18n/useTranslation";
 import { joinGame } from "../../shared/joinGame";
-import { useForgetFiltersOnLeave, useRememberedFilter } from "../../shared/filterMemory";
-import { DEFAULT_BROWSING_PREFERENCES } from "../../shared/browsingPreferences";
+import { useRememberedFilter } from "../../shared/filterMemory";
 import { onlineCommanders } from "./galactic-war/galacticWarOnline";
 
 /// How often the Galactic War player count is re-asked while the Play tab is
@@ -158,19 +157,8 @@ export function LobbyView() {
     });
   };
 
-  // With filters never remembered (#447), the next visit starts unfiltered.
-  // The switches and rules only: the sort order is not a filter.
-  useForgetFiltersOnLeave(() => {
-    const defaults = DEFAULT_BROWSING_PREFERENCES.customGamesBrowser;
-    updateGameBrowser({
-      hidePrivate: defaults.hidePrivate,
-      hideModded: defaults.hideModded,
-      hideUnranked: defaults.hideUnranked,
-      hideFoes: defaults.hideFoes,
-      applyFilters: defaults.applyFilters,
-      rules: defaults.rules,
-    });
-  });
+  // The switches, rules and search are kept whatever "Remember filters" says
+  // (#648): that setting is for every other list. See `ALWAYS_KEPT_PREFIX`.
 
   // The details panel's width, fold and stepping aside; a click on a game
   // picks it through `selectGame`, which can hold the panel back first.
