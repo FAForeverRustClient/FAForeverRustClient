@@ -930,9 +930,13 @@ mod tests {
         // A current-thread runtime: everything async in this test runs here.
         let runtime_thread = std::thread::current().id();
 
-        // A vault map already installed: looked for, and then never fetched.
+        // A vault map: looked for in the maps folder first. Whether it is then
+        // fetched depends on the machine's Documents folder, which is the
+        // other place a live map has to be, and the fetch to the dead address
+        // fails; only where the look ran matters here. A base-game map no
+        // longer reaches the look at all (#649).
         std::fs::create_dir_all(maps.join("adaptive_gadostb.v0002")).unwrap();
-        ensure_live_map(
+        let _ = ensure_live_map(
             &loopback(),
             "http://127.0.0.1:1",
             &maps,
@@ -940,8 +944,7 @@ mod tests {
             &|_| {},
             &tokio_util::sync::CancellationToken::new(),
         )
-        .await
-        .expect("an installed map needs nothing");
+        .await;
 
         let threads = probe::looked_on(&maps);
         assert!(!threads.is_empty(), "the maps folder was never looked in");
