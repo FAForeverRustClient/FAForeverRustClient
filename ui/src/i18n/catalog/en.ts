@@ -487,7 +487,7 @@ export const en = {
   "links.origin.official": "Official",
   "links.origin.officialTitle": "Run by FAF",
   "links.origin.communityTitle": "Not hosted by FAF",
-  "links.section.play": "FAF itself",
+  "links.section.play": "Websites and community",
   "links.section.watch": "Streams and videos",
   "links.repos.client": "This client",
   "links.repos.faf": "FAF",

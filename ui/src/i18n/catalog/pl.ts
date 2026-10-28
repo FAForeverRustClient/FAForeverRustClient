@@ -2529,7 +2529,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "links.origin.official": "Oficjalne",
   "links.origin.officialTitle": "Prowadzone przez FAF",
   "links.origin.communityTitle": "Nie utrzymywane przez FAF",
-  "links.section.play": "Sam FAF",
+  "links.section.play": "Strony i społeczność",
   "links.section.watch": "Transmisje i filmy",
   "links.repos.client": "Ten klient",
   "links.repos.faf": "FAF",

@@ -3011,7 +3011,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "links.origin.official": "Официальный",
   "links.origin.officialTitle": "Поддерживается FAF",
   "links.origin.communityTitle": "Размещено не на FAF",
-  "links.section.play": "Сам FAF",
+  "links.section.play": "Сайты и сообщество",
   "links.section.watch": "Трансляции и видео",
   "links.repos.client": "Этот клиент",
   "links.repos.faf": "FAF",

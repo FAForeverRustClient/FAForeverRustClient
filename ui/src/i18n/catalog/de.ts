@@ -481,7 +481,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "links.origin.official": "Offiziell",
   "links.origin.officialTitle": "Wird von FAF betrieben",
   "links.origin.communityTitle": "Wird nicht von FAF betrieben",
-  "links.section.play": "FAF selbst",
+  "links.section.play": "Websites und Community",
   "links.section.watch": "Streams und Videos",
   "links.repos.client": "Dieser Client",
   "links.repos.faf": "FAF",

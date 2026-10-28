@@ -2495,7 +2495,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "links.origin.official": "Oficial",
   "links.origin.officialTitle": "Gestionado por FAF",
   "links.origin.communityTitle": "No alojado por FAF",
-  "links.section.play": "La propia FAF",
+  "links.section.play": "Sitios web y comunidad",
   "links.section.watch": "Directos y vídeos",
   "links.repos.client": "Este cliente",
   "links.repos.faf": "FAF",
