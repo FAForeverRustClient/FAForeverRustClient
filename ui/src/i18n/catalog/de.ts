@@ -3644,6 +3644,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "tournaments.submit.go": "Zur Bestätigung melden",
   "tournaments.chat.none": "Für dieses Turnier ist kein Chat sichtbar.",
   "tournaments.chat.pickRoom": "Wähle einen Raum.",
+  "tournaments.chat.roomsAria": "Chaträume",
   "tournaments.chat.loading": "Nachrichten werden geladen…",
   "tournaments.chat.empty": "Hier wurde noch nichts geschrieben.",
   "tournaments.chat.placeholder": "Nachricht schreiben…",

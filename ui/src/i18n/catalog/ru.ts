@@ -3962,6 +3962,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "tournaments.submit.go": "Отправить на подтверждение",
   "tournaments.chat.none": "У этого турнира нет чата, доступного вам.",
   "tournaments.chat.pickRoom": "Выберите комнату.",
+  "tournaments.chat.roomsAria": "Комнаты чата",
   "tournaments.chat.loading": "Загрузка сообщений…",
   "tournaments.chat.empty": "Здесь ещё ничего не написали.",
   "tournaments.chat.placeholder": "Написать сообщение…",

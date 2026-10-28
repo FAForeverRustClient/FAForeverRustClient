@@ -4082,6 +4082,7 @@ export const en = {
   "tournaments.submit.go": "Submit for confirmation",
   "tournaments.chat.none": "This tournament has no chat you can see.",
   "tournaments.chat.pickRoom": "Pick a room.",
+  "tournaments.chat.roomsAria": "Chat rooms",
   "tournaments.chat.loading": "Loading messages…",
   "tournaments.chat.empty": "Nothing has been said here yet.",
   "tournaments.chat.placeholder": "Write a message…",

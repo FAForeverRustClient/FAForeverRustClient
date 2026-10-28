@@ -3536,6 +3536,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "tournaments.submit.go": "Soumettre pour confirmation",
   "tournaments.chat.none": "Ce tournoi n'a aucun chat que vous puissiez voir.",
   "tournaments.chat.pickRoom": "Choisissez un salon.",
+  "tournaments.chat.roomsAria": "Salons de discussion",
   "tournaments.chat.loading": "Chargement des messages…",
   "tournaments.chat.empty": "Rien n'a encore été dit ici.",
   "tournaments.chat.placeholder": "Écrire un message…",
