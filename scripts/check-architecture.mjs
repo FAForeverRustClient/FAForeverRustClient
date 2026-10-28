@@ -233,6 +233,9 @@ const allowedFeatureEdges = new Map([
   ["notifications -> chat", "a chat notification renders with chat's message formatter"],
   // The start-tab setting lists the tabs, which only the registry knows.
   ["settings -> nav", "the start-tab setting reads the tab registry"],
+  // The status bar's "Check connection" (#647) is the Connectivity page's
+  // check and live peer table in a dialog, not a copy of them.
+  ["status -> settings", "the status bar's connection check embeds the connectivity check view"],
 ]);
 const featuresRoot = resolve(root, "ui/src/features");
 for (const path of await sourceFiles(featuresRoot, new Set([".ts", ".tsx"]))) {
