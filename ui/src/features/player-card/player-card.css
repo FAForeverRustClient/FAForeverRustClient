@@ -1287,6 +1287,12 @@ button.player-avatar-tile:disabled {
   padding: 0 30px 0 var(--space-2);
 }
 
+/* "Plot against" sits at the right edge, apart from the queue and period
+   it changes the meaning of (issue 645). */
+.player-history-toolbar .player-history-axis {
+  margin-left: auto;
+}
+
 .player-card-toggle {
   display: flex;
   align-items: center;

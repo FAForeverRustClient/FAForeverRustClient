@@ -346,13 +346,15 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
           const next = ratings.find((candidate) => candidate.leaderboardId === Number(event.target.value));
           if (next) onRatingChange(next);
         }}>{ratings.map((candidate) => <option key={candidate.leaderboardId} value={candidate.leaderboardId}>{leaderboardLabel(candidate.technicalName)}</option>)}</select></label>
-        <label><span>{t("playerCard.history.axis")}</span><select value={axis} onChange={(event) => setAxis(event.target.value as HistoryAxis)}>
-          <option value="date">{t("playerCard.history.axis.date")}</option>
-          <option value="games">{t("playerCard.history.axis.games")}</option>
-        </select></label>
         {axis === "date"
           ? <label><span>{t("playerCard.history.period")}</span><select value={period} onChange={(event) => setPeriod(event.target.value as RatingHistoryPeriod)}>{PERIODS.map((item) => <option key={item.value} value={item.value}>{t(item.label)}</option>)}</select></label>
           : <label><span>{t("playerCard.history.gameCount")}</span><select value={gameCount} onChange={(event) => setGameCount(Number(event.target.value))}>{GAME_COUNTS.map((count) => <option key={count} value={count}>{count > 0 ? t("playerCard.history.gameCount.last", { count: formatNumber(count) }) : t("playerCard.history.gameCount.all")}</option>)}</select></label>}
+        {/* At the right edge (#645): it changes what the chart and the
+            dropdown beside it mean, so it is set apart from them. */}
+        <label className="player-history-axis"><span>{t("playerCard.history.axis")}</span><select value={axis} onChange={(event) => setAxis(event.target.value as HistoryAxis)}>
+          <option value="date">{t("playerCard.history.axis.date")}</option>
+          <option value="games">{t("playerCard.history.axis.games")}</option>
+        </select></label>
       </div>
 
       {/* Four facts about the player. The old strip spent one of its four
