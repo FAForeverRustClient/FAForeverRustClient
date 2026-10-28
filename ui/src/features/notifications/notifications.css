@@ -195,25 +195,30 @@
   color: var(--color-text);
 }
 
-.notification-content em,
-.notification-toast em {
-  color: var(--color-muted);
+/* The card's action, drawn as the client's ghost button (issue 653) so it
+   reads as something to press. Smaller than a dialog's, at the start of its
+   line rather than stretched across the card. */
+.notification-action {
+  align-self: flex-start;
+  /* The raised pairing look of `.btn-ghost`: its plain outline at 8 % all but
+     disappears against a card. */
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+  min-height: 26px;
+  margin-top: 2px;
+  padding: 3px 10px;
   font-size: 12px;
-  font-style: normal;
   font-weight: 600;
-  text-transform: uppercase;
 }
 
-/* A stream's platform, as its icon and its name (issue 155). Not uppercase:
-   "TWITCH" in capitals reads as a label, "Twitch" with its glyph as the place
-   the click goes. */
-.notification-content em.notification-stream,
-.notification-toast em.notification-stream {
-  display: inline-flex;
-  align-items: center;
+.notification-content:hover .notification-action,
+.notification-toast:hover .notification-action {
+  background: var(--color-surface-hover);
+}
+
+/* A stream's platform, as its icon and its name (issue 155). */
+.notification-action.notification-stream {
   gap: 5px;
-  color: var(--color-text);
-  text-transform: none;
 }
 
 .notification-dismiss {

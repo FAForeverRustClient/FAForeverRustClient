@@ -66,18 +66,22 @@ function actionLabel(action: NotificationAction | null): string | null {
  * The action line of a card: the label above, or for a stream the platform it
  * opens as an icon and its name (#155), which says where the click goes more
  * plainly than "Watch the stream" did.
+ *
+ * Drawn as the client's own button (`btn-ghost`), so it reads as something to
+ * press (#653): a word in capitals under the text read as a caption. The
+ * whole card is the button, so this is its look, not a second one inside it.
  */
 function actionContent(action: NotificationAction | null): ReactNode {
   if (action?.type === "openStream" && isTwitchUrl(action.payload.url)) {
     return (
-      <em className="notification-stream" aria-label={t("notifications.action.openStream")}>
+      <span className="btn-ghost notification-action notification-stream" aria-label={t("notifications.action.openStream")}>
         <Icon name="twitch" size={14} />
         Twitch
-      </em>
+      </span>
     );
   }
   const label = actionLabel(action);
-  return label ? <em>{label}</em> : null;
+  return label ? <span className="btn-ghost notification-action">{label}</span> : null;
 }
 
 function isTwitchUrl(url: string): boolean {
@@ -117,8 +121,9 @@ async function runAction(item: ClientNotification) {
         break;
       case "watchLiveWhenReady":
         // The live replay tab's own "watch when ready": the backend waits out
-        // the delay and starts the replay itself (#653).
-        await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
+        // the delay and starts the replay itself (#653). Without leaving the
+        // tab the player is on: there is nothing to do on the replay tab
+        // while the delay runs, and the replay opens in its own window.
         await ipc.dispatch({
           kind: "Replays",
           command: { type: "trackLive", payload: { target: action.payload.target, action: "watch" } },
