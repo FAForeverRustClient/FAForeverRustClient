@@ -38,6 +38,7 @@ pub mod streams;
 pub mod tourney;
 pub mod training;
 pub mod tutorials;
+pub mod unit_history;
 pub mod updater;
 pub mod uploads;
 
@@ -86,6 +87,7 @@ pub use tourney::{
 };
 pub use training::TrainingPort;
 pub use tutorials::TutorialsPort;
+pub use unit_history::UnitHistoryPort;
 pub use updater::{
     GamePreparation, GameUpdaterPort, InstalledBuild, PreparationPhase, PreparationStep,
     UpdateProgress,
@@ -171,6 +173,9 @@ pub struct Ports {
     /// FAForever/fa's published patch notes. Public documents, never gated on
     /// login: the changelog is worth reading before signing in.
     pub changelog: Arc<dyn ChangelogPort>,
+    /// Unit blueprints as each game release had them, for the changelog's
+    /// unit history. Public files and the local game install, never gated.
+    pub unit_history: Arc<dyn UnitHistoryPort>,
     pub uploads: Arc<dyn UploadsPort>,
     /// Replaces the *client*, not the game. Distinct from `updater` above,
     /// which patches the Forged Alliance install.
