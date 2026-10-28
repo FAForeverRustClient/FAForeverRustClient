@@ -10,7 +10,7 @@
 //    bottom. Reading history is not interrupted by new traffic; a "jump to
 //    latest" affordance appears instead.
 
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { ChatMessage, ChatPreferences, ChatUser, PlayerProfile, Reaction, SocialState } from "../../../ipc/bindings";
 import { MessageReactions } from "./MessageReactions";
 import { Icon } from "../../../design-system/Icon";
@@ -19,6 +19,7 @@ import { overlayStack } from "../../../design-system/overlayStack";
 import { formatTime, renderBody, resolvedNickStyle } from "./chatFormat";
 import type { ChatGameLink, PingIndex } from "./chatFormat";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { formatDateTime } from "../../../shared/format/dates";
 import { playersByNickname } from "../../../store/reducer";
 import { continuesPrevious } from "./messageFilters";
 
@@ -48,6 +49,10 @@ interface Props {
    * over the lobby protocol, which carries no reactions at all.
    */
   reactions?: MessageReactionsMap;
+  /**
+   * Reacting to a line. Without it a line offers no reaction button: the
+   * tournament rooms have no reactions, and a button there did nothing.
+   */
   onReact?: (msgid: string, emoji: string) => void;
   onUnreact?: (msgid: string, emoji: string) => void;
   /** Start answering this message. Absent where replying is not offered. */
@@ -56,6 +61,22 @@ interface Props {
   findByMsgid?: (msgid: string) => ChatMessage | undefined;
   /** The conversation as a person reads it, for the log's accessible name. */
   conversationLabel?: string;
+  /**
+   * More buttons for a line's toolbar, after Reply: a tournament organiser's
+   * delete and silence. Keep it stable (`useCallback`), as every line is
+   * memoised on it.
+   */
+  lineActions?: (message: ChatMessage) => ReactNode;
+  /**
+   * Whether a line was addressed to everyone who can read the conversation (a
+   * tournament organiser's `@everyone`), which the line is tinted for.
+   */
+  isAnnouncement?: (message: ChatMessage) => boolean;
+  /**
+   * Whether Ctrl+F opens this log's find bar. Off for a second log on screen
+   * beside another, which would otherwise open its bar at the same time.
+   */
+  searchable?: boolean;
 }
 
 /** `msgid -> reactions`, so a row looks its own up without scanning a list. */
@@ -119,13 +140,17 @@ export const MessageList = memo(function MessageList({
   searchRequest = 0,
   onGameLink,
   reactions = EMPTY_REACTION_MAP,
-  onReact = noReact,
+  onReact,
   onUnreact = noReact,
   onReply,
   findByMsgid,
   conversationLabel,
+  lineActions,
+  isAnnouncement,
+  searchable = true,
 }: Props) {
   const { t } = useTranslation();
+  const reactable = onReact !== undefined;
   const scrollRef = useRef<HTMLDivElement>(null);
   // A ref, not state: the scroll effect must read the *current* value without
   // taking a dependency on it (re-running on pin changes would fight the user).
@@ -224,6 +249,7 @@ export const MessageList = memo(function MessageList({
   const activeMessageId = normalizedMatch >= 0 ? matchingIds[normalizedMatch] : null;
 
   useEffect(() => {
+    if (!searchable) return;
     const onFind = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey) || event.key.toLocaleLowerCase() !== "f") return;
       const dialog = overlayStack.topFocusTrap()?.element?.();
@@ -234,7 +260,7 @@ export const MessageList = memo(function MessageList({
     };
     window.addEventListener("keydown", onFind);
     return () => window.removeEventListener("keydown", onFind);
-  }, []);
+  }, [searchable]);
 
   // Only a request made while this conversation is shown opens its search.
   // The list is mounted afresh for every conversation, and the count it was
@@ -381,10 +407,13 @@ export const MessageList = memo(function MessageList({
               pings={pings}
               onGameLink={onGameLink}
               reactions={reactions[message.msgid ?? ""] ?? EMPTY_REACTIONS}
-              onReact={onReact}
+              reactable={reactable}
+              onReact={onReact ?? noReact}
               onUnreact={onUnreact}
               onReply={onReply}
               quoted={message.replyTo ? findByMsgid?.(message.replyTo) : undefined}
+              lineActions={lineActions}
+              announcement={isAnnouncement?.(message) ?? false}
             />
           ))
         )}
@@ -418,15 +447,20 @@ const Line = memo(function Line({
   pings,
   onGameLink,
   reactions,
+  reactable,
   onReact,
   onUnreact,
   onReply,
   quoted,
+  lineActions,
+  announcement,
 }: {
   message: ChatMessage;
   self: string;
   withTime: boolean;
   reactions: readonly Reaction[];
+  /** Whether this conversation has reactions at all. */
+  reactable: boolean;
   onReact: (msgid: string, emoji: string) => void;
   onUnreact: (msgid: string, emoji: string) => void;
   onReply?: (message: ChatMessage) => void;
@@ -447,6 +481,9 @@ const Line = memo(function Line({
   registerRow: (id: string, node: HTMLDivElement | null) => void;
   pings: PingIndex;
   onGameLink: ((link: ChatGameLink) => void) | undefined;
+  lineActions?: (message: ChatMessage) => ReactNode;
+  /** Addressed to everyone in the conversation: tinted. */
+  announcement: boolean;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const rowRef = useCallback(
@@ -458,6 +495,7 @@ const Line = memo(function Line({
   const fromSelf = !!self && message.sender === self;
   const body = renderBody(message.content, self, search, onGameLink, pings, fromSelf);
   const nameStyle = resolvedNickStyle(message.sender, user, social, preferences, self);
+  const extraActions = lineActions?.(message);
 
   // Right-clicking the line answers it. The button in the corner is a hover
   // target the width of the pane away from the message it acts on, which is a
@@ -500,6 +538,7 @@ const Line = memo(function Line({
       className={
         `chat-message is-${message.kind}${fromSelf ? " is-self" : ""}`
         + `${activeSearchMatch ? " is-search-active" : ""}${continued ? " is-continued" : ""}`
+        + `${announcement ? " is-announcement" : ""}`
       }
       onContextMenu={replyOnRightClick}
     >
@@ -570,44 +609,53 @@ const Line = memo(function Line({
           <span className="chat-message-body" style={nameStyle}>{body}</span>
         </>
       )}
-      <span className="chat-message-time">{time}</span>
+      {/* The day on hover: a log kept across days, as a tournament room's is,
+          prints only the clock. */}
+      <span className="chat-message-time" title={time ? formatDateTime(message.timestamp, "") : undefined}>
+        {time}
+      </span>
       {message.kind !== "info" && message.kind !== "error" ? (
         <>
           {/* Always in the tab order, right after the sender's name: the
               keyboard reaches a line's actions by tabbing into the line, and
-              the toolbar shows while focus is anywhere inside it (chat.css). */}
-          <div
-            className="chat-message-actions"
-            role="group"
-            aria-label={t("chat.message.actions", { name: message.sender })}
-          >
-            {message.msgid && (
-              <button
-                type="button"
-                className="chat-action-btn"
-                // Marks this as a toggle for the same picker, so the picker's
-                // close-on-outside-click leaves it alone and its own click can
-                // still close what it opened.
-                data-reaction-toggle=""
-                aria-label={t("chat.reaction.add")}
-                title={t("chat.reaction.add")}
-                onClick={() => setPickerOpen((open) => !open)}
-              >
-                <Icon name="smile" size={13} />
-              </button>
-            )}
-            {onReply && message.msgid && (
-              <button
-                type="button"
-                className="chat-action-btn"
-                aria-label={t("chat.reply.start")}
-                title={t("chat.reply.hint")}
-                onClick={() => onReply(message)}
-              >
-                <Icon name="reply" size={13} />
-              </button>
-            )}
-          </div>
+              the toolbar shows while focus is anywhere inside it (chat.css).
+              Left out where the line offers nothing, rather than drawn as an
+              empty box on hover. */}
+          {((reactable || onReply) && message.msgid) || extraActions ? (
+            <div
+              className="chat-message-actions"
+              role="group"
+              aria-label={t("chat.message.actions", { name: message.sender })}
+            >
+              {reactable && message.msgid && (
+                <button
+                  type="button"
+                  className="chat-action-btn"
+                  // Marks this as a toggle for the same picker, so the picker's
+                  // close-on-outside-click leaves it alone and its own click can
+                  // still close what it opened.
+                  data-reaction-toggle=""
+                  aria-label={t("chat.reaction.add")}
+                  title={t("chat.reaction.add")}
+                  onClick={() => setPickerOpen((open) => !open)}
+                >
+                  <Icon name="smile" size={13} />
+                </button>
+              )}
+              {onReply && message.msgid && (
+                <button
+                  type="button"
+                  className="chat-action-btn"
+                  aria-label={t("chat.reply.start")}
+                  title={t("chat.reply.hint")}
+                  onClick={() => onReply(message)}
+                >
+                  <Icon name="reply" size={13} />
+                </button>
+              )}
+              {extraActions}
+            </div>
+          ) : null}
           <MessageReactions
             msgid={message.msgid ?? ""}
             reactions={reactions}
