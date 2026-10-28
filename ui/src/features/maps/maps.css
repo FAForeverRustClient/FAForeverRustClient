@@ -731,7 +731,8 @@
 
 /* Square, so the icon is the button rather than a word's worth of padding
    around one. */
-.map-vault-uninstall.is-icon {
+.map-vault-uninstall.is-icon,
+.map-vault-open-folder.is-icon {
   display: grid;
   place-items: center;
   width: 28px;

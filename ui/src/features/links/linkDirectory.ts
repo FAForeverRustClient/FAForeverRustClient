@@ -71,11 +71,10 @@ export interface DirectoryLink {
 /**
  * The directory.
  *
- * Sources: the community hub above, plus the DoodlePros sites it does not list
- * (FAFScribbl is missing from it, which the issue points out) and FAF's own
- * wiki. The order within a section is the maintainers' choice: FAF's site,
- * Discord, wiki and forum first; the tournaments ahead of the stats sites;
- * the daily unit ahead of the two games that take longer.
+ * Only destinations FAF runs itself (#651): the third-party sites and the
+ * platforms' game pages were taken out, so nothing here leaves FAF's hands.
+ * The order within a section is the maintainers' choice: FAF's site, Discord,
+ * wiki and forum first, then the tournaments and FAF Daily.
  */
 export const DIRECTORY: readonly DirectoryLink[] = [
   {
@@ -129,6 +128,17 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     section: "play",
   },
   {
+    // Back since it moved to FAF's own host (#651); it left with the other
+    // third-party sites while it lived on doodlepros.com.
+    id: "daily",
+    icon: "calendar",
+    name: "links.entry.daily",
+    hint: "links.entry.dailyHint",
+    href: "https://daily.faforever.com/",
+    origin: "official",
+    section: "play",
+  },
+  {
     id: "twitch",
     icon: "twitch",
     name: "links.entry.twitch",
@@ -145,38 +155,6 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     hint: "links.entry.youtubeHint",
     href: "https://www.youtube.com/c/ForgedAllianceForever",
     origin: "official",
-    section: "watch",
-  },
-  // No individual streamers or channels past FAF's own (#329). Any short list
-  // of them reads as the client picking favourites, and every other caster
-  // would reasonably ask to be on it. The platforms' own pages for the game
-  // list everybody, in the order the platform ranks them, which is nobody here
-  // choosing. Kick has no YouTube-style game channel, so it is the category.
-  {
-    id: "twitchCategory",
-    icon: "twitch",
-    name: "links.entry.twitchCategory",
-    hint: "links.entry.twitchCategoryHint",
-    href: "https://www.twitch.tv/directory/category/supreme-commander-forged-alliance",
-    origin: "community",
-    section: "watch",
-  },
-  {
-    id: "youtubeCategory",
-    icon: "youtube",
-    name: "links.entry.youtubeCategory",
-    hint: "links.entry.youtubeCategoryHint",
-    href: "https://www.youtube.com/channel/UChiCO27pbaXDR0d0JfxlIpw",
-    origin: "community",
-    section: "watch",
-  },
-  {
-    id: "kickCategory",
-    icon: "kick",
-    name: "links.entry.kickCategory",
-    hint: "links.entry.kickCategoryHint",
-    href: "https://kick.com/category/supreme-commander-forged-alliance",
-    origin: "community",
     section: "watch",
   },
 ];

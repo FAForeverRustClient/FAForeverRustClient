@@ -146,6 +146,11 @@ pub enum NotificationAction {
     WatchLive {
         target: super::LiveReplayTarget,
     },
+    /// Start a live replay as soon as the five-minute delay lets it (#653):
+    /// on the notice that refused it for being too early.
+    WatchLiveWhenReady {
+        target: super::LiveReplayTarget,
+    },
     OpenSettings {
         section: Option<String>,
     },

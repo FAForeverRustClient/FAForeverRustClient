@@ -23,6 +23,7 @@ import "./matchmaker.css";
 import type { PlayModePanelProps } from "../PlayModeTabs";
 import { t } from "../../../i18n";
 import { useLocale } from "../../../i18n/useTranslation";
+import { activeSearchQueues } from "../../../shared/joinWhileSearching";
 
 function stateForQueue(state: MatchmakingState, queueName: string): QueueDisplayState {
   switch (state.type) {
@@ -35,10 +36,6 @@ function stateForQueue(state: MatchmakingState, queueName: string): QueueDisplay
     case "cancelled": return state.payload.queueName === null || state.payload.queueName === queueName ? "cancelled" : "idle";
     case "idle": return "idle";
   }
-}
-
-function searchingQueues(state: MatchmakingState) {
-  return state.type === "searching" || state.type === "preparing" ? state.payload.queueNames : [];
 }
 
 function MatchmakerSearchSummary({
@@ -97,7 +94,7 @@ export function MatchmakingPanel({
 
   const sortedQueues = useMemo(() => [...queues].sort((left, right) => left.teamSize - right.teamSize || left.queueName.localeCompare(right.queueName)), [queues]);
   const selectedQueues = sortedQueues.filter((queue) => !unselectedQueues.includes(queue.queueName));
-  const activeSearches = useMemo(() => searchingQueues(matchmaking), [matchmaking]);
+  const activeSearches = useMemo(() => activeSearchQueues(matchmaking), [matchmaking]);
   const isSearching = activeSearches.length > 0;
   const preparing = matchmaking.type === "preparing";
   const searchLocked = matchmaking.type === "matchFound" || matchmaking.type === "launching";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextListboxIndex } from "./listboxNavigation";
+import { nextListboxIndex, WheelStepper } from "./listboxNavigation";
 
 describe("listbox keyboard navigation", () => {
   it("steps one row at a time", () => {
@@ -38,5 +38,31 @@ describe("listbox keyboard navigation", () => {
 
   it("does nothing in an empty list", () => {
     expect(nextListboxIndex("ArrowDown", -1, 0)).toBeNull();
+  });
+});
+
+describe("Ctrl+wheel through a list (#642)", () => {
+  const wheel = (deltaY: number, ctrlKey = true) => ({ ctrlKey, deltaY });
+
+  it("leaves the plain wheel to scroll", () => {
+    expect(new WheelStepper().next(wheel(100, false), 3, 10)).toBeNull();
+  });
+
+  it("moves a row per mouse notch, down and up", () => {
+    const stepper = new WheelStepper();
+    expect(stepper.next(wheel(100), 3, 10)).toBe(4);
+    expect(stepper.next(wheel(-120), 4, 10)).toBe(3);
+  });
+
+  it("gathers a touchpad's small deltas into one row", () => {
+    const stepper = new WheelStepper();
+    expect(stepper.next(wheel(20), 3, 10)).toBe(3);
+    expect(stepper.next(wheel(20), 3, 10)).toBe(3);
+    expect(stepper.next(wheel(20), 3, 10)).toBe(4);
+  });
+
+  it("stops at the ends rather than wrapping", () => {
+    expect(new WheelStepper().next(wheel(100), 9, 10)).toBe(9);
+    expect(new WheelStepper().next(wheel(-100), 0, 10)).toBe(0);
   });
 });

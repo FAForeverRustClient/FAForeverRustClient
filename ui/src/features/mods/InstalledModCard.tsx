@@ -5,6 +5,7 @@
 
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { native } from "../../ipc/native";
 import type { InstalledMod, VaultMod } from "../../ipc/bindings";
 import { ModIcon, ModRating, ModToggleButton } from "./ModVaultComponents";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -99,6 +100,14 @@ export function InstalledModCard({
           {/* An icon rather than the word, the way the Maps tab does it.
               "Uninstall" in red was the loudest thing on a row whose subject
               is the mod. */}
+          <Button
+            className="mod-vault-open-folder is-icon"
+            aria-label={t("common.openFolderNamed", { name: mod.displayName })}
+            title={t("common.openFolder")}
+            onClick={() => void native.openInstalledFolder("mods", mod.folderName)}
+          >
+            <Icon name="folder" size={14} />
+          </Button>
           <Button
             className="mod-vault-uninstall is-icon"
             disabled={busy}

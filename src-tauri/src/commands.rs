@@ -211,6 +211,27 @@ pub(crate) fn open_version_folder(name: String, app: tauri::AppHandle) -> Result
         .map_err(|error| format!("could not open {}: {error}", target.display()))
 }
 
+/// Open one installed map's or mod's own folder in the file browser (#643).
+///
+/// `kind` is `maps` or `mods`. The folder is resolved, and the name checked,
+/// by `infra::installed_content_folder`, so only a folder directly inside the
+/// client's maps or mods directory is ever opened.
+#[tauri::command]
+pub(crate) async fn open_installed_folder(
+    kind: String,
+    folder_name: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let path = tauri::async_runtime::spawn_blocking(move || {
+        faf_app::infra::installed_content_folder(&kind, &folder_name)
+    })
+    .await
+    .map_err(|_| "file worker stopped".to_string())??;
+    app.opener()
+        .open_path(path.to_string_lossy().into_owned(), None::<String>)
+        .map_err(|error| format!("could not open {}: {error}", path.display()))
+}
+
 #[tauri::command]
 pub(crate) async fn reveal_replay(path: String, app: tauri::AppHandle) -> Result<(), String> {
     // Never looked at when it names another machine (`picked_paths`).

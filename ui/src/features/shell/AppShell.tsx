@@ -21,6 +21,7 @@ import { BrandMark } from "../../design-system/BrandMark";
 import { PlayerCardModal } from "../player-card/PlayerCardModal";
 import { ReviewsPanel } from "../reviews/ReviewsPanel";
 import { JoinDownloadDialog } from "../lobby/join/JoinDownloadDialog";
+import { JoinWhileSearchingDialog } from "../lobby/join/JoinWhileSearchingDialog";
 import { JoinPreparationDialog } from "../lobby/join/JoinPreparationDialog";
 import { ReplayStartDialog } from "../replays/ReplayStartDialog";
 import { ModReplacementDialog } from "../lobby/join/ModReplacementDialog";
@@ -332,6 +333,7 @@ export function AppShell() {
       <WhatsNewDialog />
       <ClientStatusBar />
       <ModReplacementDialog />
+      <JoinWhileSearchingDialog />
       <JoinDownloadDialog />
       <JoinPreparationDialog />
       <ReplayStartDialog />

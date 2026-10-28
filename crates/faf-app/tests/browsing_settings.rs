@@ -249,7 +249,9 @@ async fn browsing_after_startup(memory: FilterMemory) -> BrowsingPreferences {
 async fn filters_survive_a_restart_only_when_asked_to() {
     for memory in [FilterMemory::Never, FilterMemory::Session] {
         let browsing = browsing_after_startup(memory).await;
-        assert!(!browsing.custom_games_browser.hide_private, "{memory:?}");
+        // #648: the play tab's game list keeps its switches whatever the
+        // setting says; the setting is for every other list.
+        assert!(browsing.custom_games_browser.hide_private, "{memory:?}");
         assert!(browsing.live_replay_filters.search.is_empty(), "{memory:?}");
         assert_eq!(browsing.map_vault_preset, "recommended", "{memory:?}");
         assert!(browsing.remembered_filters.is_empty(), "{memory:?}");

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ReportDialog } from "../../shared/components/ReportDialog";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { native } from "../../ipc/native";
 import { ConfirmDialog } from "../../design-system/ConfirmDialog";
 import { FactsStrip } from "../../design-system/FactsStrip";
 import { VaultFeaturedBadge } from "../../design-system/VaultFeaturedBadge";
@@ -496,6 +497,12 @@ export function ModDetailPanel({
               <Button variant="ghost" disabled={busy} onClick={onToggle}>
                 <Icon name={installed.enabled ? "close" : "check"} size={15} />
                 {toggleLabel}
+              </Button>
+            )}
+            {installed && (
+              <Button variant="ghost" onClick={() => void native.openInstalledFolder("mods", installed.folderName)}>
+                <Icon name="folder" size={15} />
+                {t("common.openFolder")}
               </Button>
             )}
             {installed && (

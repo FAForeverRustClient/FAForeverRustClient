@@ -1,0 +1,3 @@
+- Joining a game on a map that ships with Forged Alliance, such as Seton's Clutch, no longer shows "Downloading map" while the client waits for the server.
+- The filters above the custom games on the Play tab are kept after every restart, whatever "Remember filters" is set to.
+- Stepping through the host dialog's map list with the arrow keys shows each map's picture right away, not the previous one.

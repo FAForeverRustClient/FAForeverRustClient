@@ -364,7 +364,7 @@ function CheckLine({ step }: { step: CheckStep }) {
   );
 }
 
-function CheckResults({ check }: { check: ConnectivityCheck }) {
+export function CheckResults({ check }: { check: ConnectivityCheck }) {
   const { t } = useTranslation();
   const verdict: CheckOutcome = check.status.type === "finished" ? check.status.payload.verdict : "running";
   return (
@@ -393,7 +393,7 @@ function peerRoute(peer: RelayPeer): MessageKey {
   return "settings.liveRelay.route.pending";
 }
 
-function LiveRelay({ relay }: { relay: RelayStatus }) {
+export function LiveRelay({ relay }: { relay: RelayStatus }) {
   const { t } = useTranslation();
   switch (relay.type) {
     case "idle":
@@ -447,6 +447,32 @@ function LiveRelay({ relay }: { relay: RelayStatus }) {
   }
 }
 
+/**
+ * Ask the ICE adapter for its peers every two seconds while `active`: in a
+ * game, and with something on screen to show them. Shared with the status
+ * bar's connection check (#647).
+ */
+export function useLiveRelayPolling(active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    const ask = () => ipc.send({ kind: "Connectivity", command: { type: "refreshRelayStatus" } });
+    ask();
+    const timer = window.setInterval(ask, RELAY_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [active]);
+}
+
+/** The run button's words for where the check is. */
+export function checkRunLabel(check: ConnectivityCheck, t: Translate): string {
+  if (check.status.type === "running") return t("settings.connectivityCheck.running");
+  if (check.status.type === "finished") return t("settings.connectivityCheck.runAgain");
+  return t("settings.connectivityCheck.run");
+}
+
+export function runConnectivityCheck() {
+  ipc.send({ kind: "Connectivity", command: { type: "runCheck" } });
+}
+
 export function ConnectivityDiagnosticsSection() {
   const { t } = useTranslation();
   const check = useAppStore((state) => state.state.connectivity.check);
@@ -455,26 +481,13 @@ export function ConnectivityDiagnosticsSection() {
   const pageOpen = useAppStore((state) => state.state.nav.settingsSection === "connectivity");
   const running = check.status.type === "running";
 
-  useEffect(() => {
-    if (!inGame || !pageOpen) return;
-    const ask = () => ipc.send({ kind: "Connectivity", command: { type: "refreshRelayStatus" } });
-    ask();
-    const timer = window.setInterval(ask, RELAY_POLL_MS);
-    return () => window.clearInterval(timer);
-  }, [inGame, pageOpen]);
-
-  let runLabel = t("settings.connectivityCheck.run");
-  if (running) runLabel = t("settings.connectivityCheck.running");
-  else if (check.status.type === "finished") runLabel = t("settings.connectivityCheck.runAgain");
+  useLiveRelayPolling(inGame && pageOpen);
 
   return (
     <>
       <SettingRow label={t("settings.connectivityCheck.label")}>
-        <Button
-          onClick={() => ipc.send({ kind: "Connectivity", command: { type: "runCheck" } })}
-          disabled={running}
-        >
-          {runLabel}
+        <Button onClick={runConnectivityCheck} disabled={running}>
+          {checkRunLabel(check, t)}
         </Button>
       </SettingRow>
       {check.status.type !== "idle" && <CheckResults check={check} />}

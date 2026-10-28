@@ -416,18 +416,20 @@ fn fail(out: &EventSink, reason: String) {
 /// status to `Failed` and closed the starting dialog of a replay that was
 /// still on its way. Checked under the launch lock, so a launch cannot begin
 /// or settle between the check and the event.
-fn refuse(ctx: &ServiceCtx, out: &EventSink, reason: String) {
+///
+/// `action` is what the notice offers instead, such as starting the replay
+/// once the delay is over (#653).
+fn refuse(ctx: &ServiceCtx, out: &EventSink, reason: String, action: Option<NotificationAction>) {
     let slot = ctx.replays.launch_slot();
-    if slot.cancellation.is_some() {
-        notifications::add_required_failure(
-            out,
-            notifications::Text::new("notifications.msg.replayFailed"),
-            "Replay failed",
-            reason,
-            None,
-        );
-    } else {
-        fail(out, reason);
+    notifications::add_required_failure(
+        out,
+        notifications::Text::new("notifications.msg.replayFailed"),
+        "Replay failed",
+        reason.clone(),
+        action,
+    );
+    if slot.cancellation.is_none() {
+        out.emit(ReplayEvent::Failed { reason });
     }
 }
 
@@ -466,6 +468,7 @@ async fn watch_live(target: LiveReplayTarget, ctx: &ServiceCtx, out: &EventSink)
                  an ongoing game for an advantage. Try again in {}.",
                 describe(waiting)
             ),
+            Some(NotificationAction::WatchLiveWhenReady { target }),
         );
         return;
     }
@@ -510,6 +513,7 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                     ctx,
                     out,
                     "That live game no longer has a known start time.".into(),
+                    None,
                 );
                 return;
             };

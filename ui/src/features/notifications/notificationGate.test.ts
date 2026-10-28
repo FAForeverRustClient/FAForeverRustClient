@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ClientNotification } from "../../ipc/bindings";
-import { RepeatCooldown, happensInView } from "./notificationGate";
+import { RepeatCooldown, expiredNotifications, happensInView, nextExpiry } from "./notificationGate";
 
 function message(kind: ClientNotification["kind"], channel: string): ClientNotification {
   return {
@@ -41,5 +41,25 @@ describe("the repeat cooldown (#382)", () => {
     const gate = new RepeatCooldown();
     expect(gate.admit("mention", 0, 0)).toBe(true);
     expect(gate.admit("mention", 0, 0)).toBe(true);
+  });
+});
+
+describe("a notification leaving the history by itself (#644)", () => {
+  const at = (id: string, createdAt: string): ClientNotification => ({ ...message("friendPlaying", ""), id, createdAt });
+  const items = [at("old", "2026-10-01T12:00:00Z"), at("new", "2026-10-01T12:04:00Z")];
+  const now = Date.parse("2026-10-01T12:05:00Z");
+
+  it("goes once it is older than the chosen time", () => {
+    expect(expiredNotifications(items, 300, now).map((item) => item.id)).toEqual(["old"]);
+    expect(nextExpiry(items, 300)).toBe(Date.parse("2026-10-01T12:05:00Z"));
+  });
+
+  it("never goes while the time is zero", () => {
+    expect(expiredNotifications(items, 0, now)).toEqual([]);
+    expect(nextExpiry(items, 0)).toBeNull();
+  });
+
+  it("stays when its timestamp cannot be read", () => {
+    expect(expiredNotifications([at("odd", "yesterday")], 1, now)).toEqual([]);
   });
 });

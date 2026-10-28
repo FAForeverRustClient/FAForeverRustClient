@@ -90,8 +90,6 @@ const ACKNOWLEDGMENTS = [
   { name: "Seraphim-Noob", note: null },
   { name: "Nory", note: null },
   { name: "Nuggets", note: "links.thanks.note.feedback" },
-  { name: "Vindex", note: "links.thanks.note.feedback" },
-  { name: "Sheppy", note: "links.thanks.note.communityHub" },
   { name: "Katsu- & DPG Clan", note: "links.thanks.note.ruLocalization" },
 ] as const satisfies readonly { name: string; note: MessageKey | null }[];
 

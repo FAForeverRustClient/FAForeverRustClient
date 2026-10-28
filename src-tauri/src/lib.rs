@@ -181,6 +181,7 @@ pub fn run() {
             commands::read_background_image,
             commands::read_marked_map_preview,
             commands::open_version_folder,
+            commands::open_installed_folder,
             commands::reveal_replay,
             commands::read_latest_log,
             commands::webview_engine,

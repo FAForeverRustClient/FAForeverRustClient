@@ -11,6 +11,7 @@ import { StatusNotice } from "../../design-system/StatusNotice";
 import { localPage, vaultPageOutcome } from "../../shared/vaultResults";
 import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
+import { native } from "../../ipc/native";
 import { EmptyState } from "../../design-system/EmptyState";
 import { SectionTabs, sectionPanelProps } from "../../design-system/SectionTabs";
 import { RangeSlider } from "../../design-system/RangeSlider";
@@ -1038,6 +1039,14 @@ function InstalledView({ busy }: { busy: boolean }) {
                         has reviewed. */}
                     <MapRating map={metadata} />
                     <span className="installed-map-actions">
+                      <Button
+                        className="map-vault-open-folder is-icon"
+                        aria-label={t("common.openFolderNamed", { name: metadata?.displayName || map.displayName })}
+                        title={t("common.openFolder")}
+                        onClick={() => void native.openInstalledFolder("maps", map.folderName)}
+                      >
+                        <Icon name="folder" size={14} />
+                      </Button>
                       {/* An icon rather than the word. "Uninstall" in red was
                           the loudest thing on a row whose subject is the map,
                           and it is the one action here that cannot be undone

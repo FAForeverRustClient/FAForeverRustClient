@@ -577,6 +577,8 @@ const INITIAL: AppState = {
       volume: 70,
       repeatCooldownSeconds: 2,
       mapPoolMutedQueues: [],
+      popup: true,
+      historyLifetimeSeconds: 0,
     },
     chat: {
       showJoinsParts: false,

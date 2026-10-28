@@ -17,6 +17,7 @@ import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { linuxRuntimePercent, linuxRuntimeStep } from "../../shared/linuxRuntimeText";
 import "./status.css";
+import { ConnectionCheckDialog } from "./ConnectionCheckDialog";
 
 type ConnectionKind = "faf" | "chat";
 type ConnectionStatus = ChatStatus | LobbyStatus;
@@ -540,6 +541,7 @@ export function ClientStatusBar() {
   const matchmaking = useAppStore((state) => state.state.lobby.matchmaking);
   const matchmakerQueues = useAppStore((state) => state.state.lobby.matchmakerQueues);
   const [openMenu, setOpenMenu] = useState<ConnectionKind | null>(null);
+  const [checking, setChecking] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
   const joinTaskVisible = joinState.type === "joining"
     || joinState.type === "launched"
@@ -629,6 +631,22 @@ export function ClientStatusBar() {
                 {actionLabel}
               </button>
             </div>
+            {/* The connectivity check, one click from the button that says
+                whether FAF is connected (#647), rather than only from
+                Settings. */}
+            {kind === "faf" && (
+              <button
+                type="button"
+                className="client-status-action client-status-check"
+                role="menuitem"
+                onClick={() => {
+                  setOpenMenu(null);
+                  setChecking(true);
+                }}
+              >
+                {t("status.connectionCheck.open")}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -651,6 +669,7 @@ export function ClientStatusBar() {
         {renderConnectionMenu("faf", lobbyStatus, "FAF")}
         {renderConnectionMenu("chat", chatStatus, t("status.service.chat"))}
       </div>
+      {checking && <ConnectionCheckDialog onClose={() => setChecking(false)} />}
     </footer>
   );
 }

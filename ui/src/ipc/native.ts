@@ -133,6 +133,14 @@ export const native = {
     return invoke<string>("client_folder_path", { kind });
   },
 
+  /**
+   * Open one installed map's or mod's own folder (#643). The backend accepts
+   * only a folder directly inside the client's maps or mods directory.
+   */
+  openInstalledFolder(kind: "maps" | "mods", folderName: string): Promise<void> {
+    return invoke("open_installed_folder", { kind, folderName });
+  },
+
   /** Reveal a specific cached game version folder. */
   openVersionFolder(name: string): Promise<void> {
     return invoke("open_version_folder", { name });
