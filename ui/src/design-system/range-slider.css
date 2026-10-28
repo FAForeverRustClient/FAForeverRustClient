@@ -28,13 +28,14 @@
   color: var(--color-subtle);
 }
 
+/* No pointer cursor on the track itself: a press there no longer moves
+   anything unless it lands within reach of a handle (`GRAB_RADIUS_PX`). */
 .range-slider-track {
   position: relative;
   height: 34px;
   display: flex;
   align-items: center;
   margin: 0 4px;
-  cursor: pointer;
   touch-action: none;
 }
 
@@ -102,9 +103,9 @@
   -webkit-appearance: none;
   appearance: none;
   pointer-events: auto;
-  width: 12px;
-  height: 12px;
-  margin-top: 11px;
+  width: 14px;
+  height: 14px;
+  margin-top: 10px;
   border-radius: 50%;
   background: var(--color-accent);
   border: 2px solid var(--color-surface);
@@ -114,9 +115,9 @@
 
 .range-slider-input::-moz-range-thumb {
   pointer-events: auto;
-  width: 12px;
-  height: 12px;
-  margin-top: 11px;
+  width: 14px;
+  height: 14px;
+  margin-top: 10px;
   border-radius: 50%;
   background: var(--color-accent);
   border: 2px solid var(--color-surface);
@@ -151,7 +152,3 @@
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
-
-
-
-

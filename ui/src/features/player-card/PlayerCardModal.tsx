@@ -270,7 +270,10 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
 }) {
   const state = useAppStore((store) => store.state.playerCard);
   const { t } = useTranslation();
-  const [period, setPeriod] = useState<RatingHistoryPeriod>("all");
+  // The last month first, and the rest on request (issue 631): a player with
+  // years on FAF made the chart load every game they ever played, visibly,
+  // each time the tab opened.
+  const [period, setPeriod] = useState<RatingHistoryPeriod>("month");
   const [showMaximum, setShowMaximum] = useState(true);
   const playerId = state.profile?.playerId ?? 0;
   const query = (page: number) => ({
@@ -396,6 +399,13 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
           {busy && `${t("playerCard.history.loadingShort")} `}
           {t("playerCard.history.entriesLoaded", { count: formatNumber(state.history.length) })}
         </span>
+        {/* The same as choosing "All time" above, one click away under the
+            chart it extends. */}
+        {period !== "all" && (
+          <Button variant="primary" disabled={busy} onClick={() => setPeriod("all")}>
+            {t("playerCard.history.loadAll")}
+          </Button>
+        )}
       </div>
     </div>
   );

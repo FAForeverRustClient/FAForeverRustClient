@@ -2434,7 +2434,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: var(--space-2);
-  align-items: start;
+  align-items: stretch;
 }
 
 .tournament-map-row,
@@ -3796,6 +3796,25 @@
     padding-right: 0;
     border-right: 0;
   }
+}
+
+/* The game setup's lobby options and mods, side by side as the website's
+   two info cells, one under the other where the column is narrow. */
+.tournament-setup-cells {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.tournament-setup-cells > section {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.tournament-setup-cells .tournament-cell-label {
+  margin: 0 0 var(--space-2);
 }
 
 /* The rules a game is played under: a name, then what it is, one row each
@@ -6538,7 +6557,8 @@ button.tournament-chat-author:hover {
   background: none;
   color: var(--color-muted);
   font: inherit;
-  font-size: 11px;
+  /* Follows the chat text size, as `.chat-quote` does. */
+  font-size: max(11px, calc(var(--chat-font-size, 13px) - 2px));
   text-align: left;
   cursor: pointer;
 }
@@ -6795,12 +6815,24 @@ button.tournament-chat-author:hover {
 
 /* A map's row carries four buttons since secret maps. Below a comfortable
    width they wrap under the name rather than squeezing it to a word a line. */
+/* Each map of the database a card of its own (issue 609): in a grid of bare
+   rows nothing said where one map ended and the next began. The cards in a
+   line share its height (the list stretches them). */
 .tournament-map-row {
   flex-wrap: wrap;
+  align-content: flex-start;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
 }
 
+/* A generated map's name and seed are one unbroken word of fifty letters,
+   which ran out of the card and under the next one. Broken anywhere
+   instead, the way the website's card wraps it. */
 .tournament-map-row .tournament-map-names {
   min-width: 160px;
+  overflow-wrap: anywhere;
 }
 
 /* A multi-day event's days, as chips with a way to take one out. */

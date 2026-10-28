@@ -1227,6 +1227,18 @@ pub enum ValidationIssue {
     /// type-conversion failure before generation starts.
     #[serde(rename_all = "camelCase")]
     SeedNotAnInteger { seed: String },
+    /// A chosen style or symmetry the selected generator release does not
+    /// have. picocli refuses the whole run ("Invalid value for option
+    /// '--texture-style': expected one of ..."), and it was the commonest
+    /// failure in the generator's own log: a preset or a remembered choice
+    /// made with one release (SUNSET, FRACTAL_LAST) run with another.
+    #[serde(rename_all = "camelCase")]
+    NotInThisVersion {
+        /// The flag's name without dashes: `texture-style`, `terrain-symmetry`.
+        option: String,
+        value: String,
+        version: String,
+    },
 }
 
 impl ValidationIssue {
@@ -1281,6 +1293,11 @@ impl std::fmt::Display for ValidationIssue {
             ValidationIssue::SeedNotAnInteger { seed } => {
                 write!(f, "the seed {seed} is not a whole number")
             }
+            ValidationIssue::NotInThisVersion {
+                option,
+                value,
+                version,
+            } => write!(f, "generator {version} has no {option} {value}"),
         }
     }
 }

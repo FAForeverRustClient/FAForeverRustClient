@@ -984,6 +984,15 @@ pub struct ReplayState {
     /// The keys of [`Self::resolved_maps`], oldest stored first.
     #[serde(default)]
     pub resolved_maps_order: Vec<i32>,
+    /// The simulation mods vault games ran with, read out of the head of their
+    /// replay files (issue 638): the API's game record names none. Keyed by
+    /// game id; an empty list is an answer, a game with no mods. At most
+    /// [`RESOLVED_SIM_MODS_KEPT`], oldest dropped first.
+    #[serde(default)]
+    pub resolved_sim_mods: std::collections::HashMap<i32, Vec<String>>,
+    /// The keys of [`Self::resolved_sim_mods`], oldest stored first.
+    #[serde(default)]
+    pub resolved_sim_mods_order: Vec<i32>,
     /// The signed-in player's latest matchmaker games, newest first (#301).
     ///
     /// Its own list rather than a vault search, so showing it on the
@@ -1133,6 +1142,12 @@ pub enum ReplayEvent {
     MapsResolved {
         maps: Vec<ResolvedReplayMap>,
     },
+    /// What [`ReplayCommand::ResolveSimMods`] read. Not sent when the file
+    /// could not be read, so the view may ask again on its next visit.
+    SimModsResolved {
+        uid: i32,
+        mods: Vec<String>,
+    },
     OnlineLookupFinished {
         uid: i32,
         replay: Option<Box<VaultReplay>>,
@@ -1261,6 +1276,12 @@ pub enum ReplayCommand {
     /// [`ReplayEvent::MapsResolved`].
     ResolveMaps {
         uids: Vec<i32>,
+    },
+    /// Read the simulation mods one vault game ran with out of the head of its
+    /// replay file, for the replay details (issue 638). See
+    /// [`ReplayEvent::SimModsResolved`].
+    ResolveSimMods {
+        uid: i32,
     },
     /// Ask the vault what it knows about one game id, without disturbing the
     /// browse/search results in [`ReplayState::vault`].
@@ -1485,6 +1506,17 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
             store_online_lookup(state, *uid, OnlineLookup::Loading);
         }
         ReplayEvent::MapsResolved { maps } => store_resolved_maps(state, maps),
+        ReplayEvent::SimModsResolved { uid, mods } => {
+            state.resolved_sim_mods.insert(*uid, mods.clone());
+            stored_last(&mut state.resolved_sim_mods_order, *uid);
+            let overflow = state
+                .resolved_sim_mods_order
+                .len()
+                .saturating_sub(RESOLVED_SIM_MODS_KEPT);
+            for oldest in state.resolved_sim_mods_order.drain(..overflow) {
+                state.resolved_sim_mods.remove(&oldest);
+            }
+        }
         ReplayEvent::OnlineLookupFinished { uid, replay } => {
             let outcome = match replay {
                 Some(replay) => OnlineLookup::Found(replay.clone()),
@@ -1555,6 +1587,10 @@ pub const ONLINE_LOOKUPS_KEPT: usize = 1000;
 /// of the page on screen are never the ones that go, so a full map cannot
 /// make the page ask again in a loop.
 pub const RESOLVED_MAPS_KEPT: usize = 500;
+
+/// How many games' mod lists [`ReplayState::resolved_sim_mods`] keeps. One is
+/// read per replay detail opened, so this is a long browsing session.
+pub const RESOLVED_SIM_MODS_KEPT: usize = 200;
 
 /// Move `uid` to the newest end of `order`, adding it if it is not there.
 fn stored_last(order: &mut Vec<i32>, uid: i32) {

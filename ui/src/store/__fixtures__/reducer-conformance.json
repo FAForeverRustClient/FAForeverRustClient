@@ -2262,7 +2262,47 @@
                     }
                   ],
                   "playerId": 7,
+                  "queues": [
+                    {
+                      "draws": 0,
+                      "games": 3,
+                      "losses": 1,
+                      "queue": "global",
+                      "ratingDeltaHundredths": 1250,
+                      "wins": 2
+                    }
+                  ],
                   "rankedGames": 3,
+                  "report": {
+                    "averageMinutesTenths": 0,
+                    "bestDays": [],
+                    "bestMonths": [],
+                    "factions": [],
+                    "mapsGaining": [],
+                    "mapsLosing": [],
+                    "maxLossStreak": {
+                      "first": "",
+                      "last": "",
+                      "size": 0
+                    },
+                    "maxWinStreak": {
+                      "first": "",
+                      "last": "",
+                      "size": 0
+                    },
+                    "months": [],
+                    "opponents": [],
+                    "ratedGames": 3,
+                    "recentDecided": 3,
+                    "recentFrom": "",
+                    "recentTo": "",
+                    "recentWins": 2,
+                    "runbacks": [],
+                    "teammates": [],
+                    "worstDays": [],
+                    "worstLossStreak": 0,
+                    "worstMonths": []
+                  },
                   "totalGames": 3,
                   "truncated": false,
                   "unattributed": 0,
@@ -2313,7 +2353,47 @@
                 }
               ],
               "playerId": 7,
+              "queues": [
+                {
+                  "draws": 0,
+                  "games": 3,
+                  "losses": 1,
+                  "queue": "global",
+                  "ratingDeltaHundredths": 1250,
+                  "wins": 2
+                }
+              ],
               "rankedGames": 3,
+              "report": {
+                "averageMinutesTenths": 0,
+                "bestDays": [],
+                "bestMonths": [],
+                "factions": [],
+                "mapsGaining": [],
+                "mapsLosing": [],
+                "maxLossStreak": {
+                  "first": "",
+                  "last": "",
+                  "size": 0
+                },
+                "maxWinStreak": {
+                  "first": "",
+                  "last": "",
+                  "size": 0
+                },
+                "months": [],
+                "opponents": [],
+                "ratedGames": 3,
+                "recentDecided": 3,
+                "recentFrom": "",
+                "recentTo": "",
+                "recentWins": 2,
+                "runbacks": [],
+                "teammates": [],
+                "worstDays": [],
+                "worstLossStreak": 0,
+                "worstMonths": []
+              },
               "totalGames": 3,
               "truncated": false,
               "unattributed": 0,
@@ -3767,6 +3847,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -46212,7 +46293,8 @@
               "Bob"
             ],
             "loginLookups": [],
-            "players": []
+            "players": [],
+            "staff": []
           }
         },
         {
@@ -46255,7 +46337,8 @@
                 "login": "Bob",
                 "ratings": []
               }
-            ]
+            ],
+            "staff": []
           }
         },
         {
@@ -46278,7 +46361,8 @@
               "Bob"
             ],
             "loginLookups": [],
-            "players": []
+            "players": [],
+            "staff": []
           }
         }
       ]
@@ -52138,6 +52222,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -52281,6 +52367,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -52364,6 +52452,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -52451,6 +52541,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -52539,6 +52631,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -52622,6 +52716,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -52705,6 +52801,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -52788,6 +52886,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -52876,6 +52976,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -52959,6 +53061,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -53042,6 +53146,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -53126,6 +53232,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -53209,6 +53317,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -53332,6 +53442,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -53435,6 +53547,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -53523,6 +53637,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -53606,6 +53722,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -53709,6 +53827,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -53832,6 +53952,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -53955,6 +54077,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -54059,6 +54183,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -54142,6 +54268,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -54229,6 +54357,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -54317,6 +54447,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -54400,6 +54532,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -54502,6 +54636,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -54636,6 +54772,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -54750,6 +54888,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -54844,6 +54984,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -54958,6 +55100,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -55053,6 +55197,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -55148,6 +55294,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -55259,6 +55407,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -55366,6 +55516,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -56561,6 +56713,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -56647,6 +56801,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -56727,6 +56883,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -56892,6 +57050,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -56983,6 +57143,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -57071,6 +57233,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "payload": {
                 "launch": {
@@ -57168,6 +57332,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "payload": {
                 "launch": {
@@ -57260,6 +57426,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "payload": {
                 "uid": 5
@@ -57360,6 +57528,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "payload": {
                 "launch": {
@@ -57455,6 +57625,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "payload": {
                 "reason": "delayed by five minutes"
@@ -57538,6 +57710,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -57639,6 +57813,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -57719,6 +57895,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -57799,6 +57977,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -57919,6 +58099,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -58017,6 +58199,208 @@
               42,
               43
             ],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": true,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 2,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "vaultTotalPages": 9,
+            "vaultTotalRecords": 412
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "mods": [
+                  "Random Events"
+                ],
+                "uid": 42
+              },
+              "type": "simModsResolved"
+            },
+            "kind": "Replays"
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "onlineLookupsOrder": [],
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "replayDetailsOrder": [],
+            "resolvedMaps": {
+              "42": "SCCA_Coop_A03.v0023",
+              "43": ""
+            },
+            "resolvedMapsOrder": [
+              42,
+              43
+            ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ]
+            },
+            "resolvedSimModsOrder": [
+              42
+            ],
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": true,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 2,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "vaultTotalPages": 9,
+            "vaultTotalRecords": 412
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "mods": [],
+                "uid": 43
+              },
+              "type": "simModsResolved"
+            },
+            "kind": "Replays"
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "onlineLookupsOrder": [],
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "replayDetailsOrder": [],
+            "resolvedMaps": {
+              "42": "SCCA_Coop_A03.v0023",
+              "43": ""
+            },
+            "resolvedMapsOrder": [
+              42,
+              43
+            ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ],
+              "43": []
+            },
+            "resolvedSimModsOrder": [
+              42,
+              43
+            ],
             "status": {
               "type": "idle"
             },
@@ -58107,6 +58491,16 @@
               "43": ""
             },
             "resolvedMapsOrder": [
+              42,
+              43
+            ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ],
+              "43": []
+            },
+            "resolvedSimModsOrder": [
               42,
               43
             ],
@@ -58201,6 +58595,16 @@
               "43": ""
             },
             "resolvedMapsOrder": [
+              42,
+              43
+            ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ],
+              "43": []
+            },
+            "resolvedSimModsOrder": [
               42,
               43
             ],
@@ -58295,6 +58699,16 @@
               "43": ""
             },
             "resolvedMapsOrder": [
+              42,
+              43
+            ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ],
+              "43": []
+            },
+            "resolvedSimModsOrder": [
               42,
               43
             ],
@@ -58432,6 +58846,16 @@
               42,
               43
             ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ],
+              "43": []
+            },
+            "resolvedSimModsOrder": [
+              42,
+              43
+            ],
             "status": {
               "type": "idle"
             },
@@ -58543,6 +58967,16 @@
               "43": ""
             },
             "resolvedMapsOrder": [
+              42,
+              43
+            ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ],
+              "43": []
+            },
+            "resolvedSimModsOrder": [
               42,
               43
             ],
@@ -58661,6 +59095,16 @@
               42,
               43
             ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ],
+              "43": []
+            },
+            "resolvedSimModsOrder": [
+              42,
+              43
+            ],
             "status": {
               "type": "idle"
             },
@@ -58772,6 +59216,16 @@
               "43": ""
             },
             "resolvedMapsOrder": [
+              42,
+              43
+            ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ],
+              "43": []
+            },
+            "resolvedSimModsOrder": [
               42,
               43
             ],
@@ -58891,6 +59345,16 @@
               "43": ""
             },
             "resolvedMapsOrder": [
+              42,
+              43
+            ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ],
+              "43": []
+            },
+            "resolvedSimModsOrder": [
               42,
               43
             ],
@@ -59017,6 +59481,16 @@
               42,
               43
             ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ],
+              "43": []
+            },
+            "resolvedSimModsOrder": [
+              42,
+              43
+            ],
             "status": {
               "payload": {
                 "uid": 7
@@ -59139,6 +59613,16 @@
               42,
               43
             ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ],
+              "43": []
+            },
+            "resolvedSimModsOrder": [
+              42,
+              43
+            ],
             "status": {
               "payload": {
                 "launch": {
@@ -59261,6 +59745,16 @@
               42,
               43
             ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ],
+              "43": []
+            },
+            "resolvedSimModsOrder": [
+              42,
+              43
+            ],
             "status": {
               "payload": {
                 "reason": "could not update game to version 3701"
@@ -59383,6 +59877,16 @@
               42,
               43
             ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ],
+              "43": []
+            },
+            "resolvedSimModsOrder": [
+              42,
+              43
+            ],
             "status": {
               "payload": {
                 "launch": {
@@ -59502,6 +60006,16 @@
               42,
               43
             ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ],
+              "43": []
+            },
+            "resolvedSimModsOrder": [
+              42,
+              43
+            ],
             "status": {
               "type": "idle"
             },
@@ -59616,6 +60130,16 @@
               42,
               43
             ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ],
+              "43": []
+            },
+            "resolvedSimModsOrder": [
+              42,
+              43
+            ],
             "status": {
               "type": "idle"
             },
@@ -59726,6 +60250,16 @@
               42,
               43
             ],
+            "resolvedSimMods": {
+              "42": [
+                "Random Events"
+              ],
+              "43": []
+            },
+            "resolvedSimModsOrder": [
+              42,
+              43
+            ],
             "status": {
               "type": "idle"
             },
@@ -59820,6 +60354,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -59949,6 +60485,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -60062,6 +60600,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -60176,6 +60716,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -60293,6 +60835,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -60414,6 +60958,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -60508,6 +61054,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -60601,6 +61149,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -60695,6 +61245,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -60803,6 +61355,8 @@
               71,
               72
             ],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -60907,6 +61461,8 @@
               72,
               71
             ],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -62081,6 +62637,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -62374,6 +62931,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -62677,6 +63235,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -62974,6 +63533,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -63271,6 +63831,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -63578,6 +64139,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -63891,6 +64453,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -64201,6 +64764,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -64519,6 +65083,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -64920,6 +65485,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -65283,6 +65849,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -65648,6 +66215,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -66179,6 +66747,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -76730,6 +77299,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -76895,6 +77466,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -77023,6 +77596,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -77171,6 +77746,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -77279,6 +77856,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -77384,6 +77963,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -77495,6 +78076,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -77582,6 +78165,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -77670,6 +78255,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -77753,6 +78340,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -77855,6 +78444,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -77953,6 +78544,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -78047,6 +78640,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -78142,6 +78737,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -78253,6 +78850,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -78356,6 +78955,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -78463,6 +79064,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -78577,6 +79180,8 @@
             ],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -78671,6 +79276,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -78754,6 +79361,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -78898,6 +79507,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -79002,6 +79613,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -79109,6 +79722,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -79220,6 +79835,8 @@
             "replayDetailsOrder": [],
             "resolvedMaps": {},
             "resolvedMapsOrder": [],
+            "resolvedSimMods": {},
+            "resolvedSimModsOrder": [],
             "status": {
               "type": "idle"
             },
@@ -81488,7 +82105,8 @@
               "Bob"
             ],
             "loginLookups": [],
-            "players": []
+            "players": [],
+            "staff": []
           }
         },
         {
@@ -81552,7 +82170,8 @@
                 "login": "Bob",
                 "ratings": []
               }
-            ]
+            ],
+            "staff": []
           }
         },
         {
@@ -81596,7 +82215,8 @@
                 "login": "Bob",
                 "ratings": []
               }
-            ]
+            ],
+            "staff": []
           }
         },
         {
@@ -81639,7 +82259,8 @@
                 "login": "Bob",
                 "ratings": []
               }
-            ]
+            ],
+            "staff": []
           }
         },
         {
@@ -81683,7 +82304,8 @@
                 "login": "Bob",
                 "ratings": []
               }
-            ]
+            ],
+            "staff": []
           }
         },
         {
@@ -81717,6 +82339,51 @@
                 "login": "Bob",
                 "ratings": []
               }
+            ],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "cleared"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "foes": [],
+            "friends": [],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "the staff list is sorted, and outlives a lobby disconnect",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "logins": [
+                  "Morax",
+                  "Brutus5000"
+                ]
+              },
+              "type": "staffLoaded"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "foes": [],
+            "friends": [],
+            "loginLookups": [],
+            "players": [],
+            "staff": [
+              "Brutus5000",
+              "Morax"
             ]
           }
         },
@@ -81731,7 +82398,11 @@
             "foes": [],
             "friends": [],
             "loginLookups": [],
-            "players": []
+            "players": [],
+            "staff": [
+              "Brutus5000",
+              "Morax"
+            ]
           }
         }
       ]
@@ -81759,7 +82430,8 @@
                 "login": "Ada"
               }
             ],
-            "players": []
+            "players": [],
+            "staff": []
           }
         },
         {
@@ -81786,7 +82458,8 @@
                 "login": "qai"
               }
             ],
-            "players": []
+            "players": [],
+            "staff": []
           }
         },
         {
@@ -81813,7 +82486,8 @@
                 "login": "ADA"
               }
             ],
-            "players": []
+            "players": [],
+            "staff": []
           }
         }
       ]
@@ -82010,6 +82684,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -82314,6 +82989,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -82647,6 +83323,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -82966,6 +83643,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -83097,6 +83775,7 @@
                   "keepGeneratedMaps": false,
                   "keepGeneratedMapsLimit": 0,
                   "launchWrapper": "gamemoderun",
+                  "mapGeneratorInstances": 0,
                   "pipeLiveReplay": false,
                   "showJoinProgress": true,
                   "showReplayProgress": true,
@@ -83274,6 +83953,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -83571,6 +84251,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -83871,6 +84552,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -84195,6 +84877,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -84488,6 +85171,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -84801,6 +85485,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -85104,6 +85789,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "gamemoderun",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -85393,6 +86079,7 @@
                     "keepGeneratedMaps": false,
                     "keepGeneratedMapsLimit": 0,
                     "launchWrapper": "",
+                    "mapGeneratorInstances": 0,
                     "pipeLiveReplay": false,
                     "showJoinProgress": true,
                     "showReplayProgress": true,
@@ -85680,6 +86367,7 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
+              "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
               "showJoinProgress": true,
               "showReplayProgress": true,
@@ -127040,6 +127728,8 @@
       "replayDetailsOrder": [],
       "resolvedMaps": {},
       "resolvedMapsOrder": [],
+      "resolvedSimMods": {},
+      "resolvedSimModsOrder": [],
       "status": {
         "type": "idle"
       },
@@ -127293,6 +127983,7 @@
         "keepGeneratedMaps": false,
         "keepGeneratedMapsLimit": 0,
         "launchWrapper": "",
+        "mapGeneratorInstances": 0,
         "pipeLiveReplay": false,
         "showJoinProgress": true,
         "showReplayProgress": true,
@@ -127412,7 +128103,8 @@
       "foes": [],
       "friends": [],
       "loginLookups": [],
-      "players": []
+      "players": [],
+      "staff": []
     },
     "streams": {
       "announced": [],

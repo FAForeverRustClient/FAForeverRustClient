@@ -12,6 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AppCommand, ModerationReportSummary, ReportLogExcerpt } from "../../ipc/bindings";
 import { failOnConsoleError } from "../../testing/consoleGuard";
 import { applyEvent, clearSentCommands, seedStore, sentCommands } from "../../testing/mounted";
+import { openReport } from "../../shared/reportIntent";
 import { ReportPlayerModal } from "./ReportPlayerModal";
 
 vi.mock("../../ipc/client");
@@ -73,7 +74,7 @@ const submitButton = () =>
 async function fillReport(user: ReturnType<typeof userEvent.setup>, gameId: string) {
   await user.type(screen.getByRole("textbox", { name: /What happened/ }), WORDS);
   await user.type(screen.getByRole("textbox", { name: /Approximate in-game time/ }), "18:30");
-  if (gameId) await user.type(screen.getByRole("spinbutton", { name: /Game ID/ }), gameId);
+  if (gameId) await user.type(screen.getByRole("spinbutton", { name: /Replay ID/ }), gameId);
 }
 
 describe("attaching a game log to a report", () => {
@@ -185,7 +186,7 @@ describe("attaching a game log to a report", () => {
     expect(submitButton().disabled).toBe(false);
     clearSentCommands();
 
-    await user.type(screen.getByRole("spinbutton", { name: /Game ID/ }), "77");
+    await user.type(screen.getByRole("spinbutton", { name: /Replay ID/ }), "77");
 
     // After the field rests, and once, for the whole ID rather than per digit.
     await waitFor(() =>
@@ -266,5 +267,35 @@ describe("report tabs keyboard", () => {
     for (const tab of tabs) expect(document.getElementById(tab.getAttribute("aria-controls")!)).not.toBeNull();
     await user.keyboard("{Home}");
     expect(screen.getByRole("tabpanel").getAttribute("aria-labelledby")).toBe(tabs[0].id);
+  });
+});
+
+describe("putting a report aside (#614)", () => {
+  it("minimizes to a bar and comes back with everything typed", async () => {
+    const user = userEvent.setup();
+    mountDialog();
+    await fillReport(user, "4242");
+
+    await user.click(screen.getByRole("button", { name: "Minimize" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByText("Report for Aurora")).toBeTruthy();
+    // Minimizing is not closing: the backend still has the report open.
+    expect(reportingCommands()).toEqual([]);
+
+    await user.click(screen.getByRole("button", { name: "Resume" }));
+    expect(screen.getByRole<HTMLTextAreaElement>("textbox", { name: /What happened/ }).value).toBe(WORDS);
+    expect(screen.getByRole<HTMLInputElement>("spinbutton", { name: /Replay ID/ }).value).toBe("4242");
+  });
+
+  it("fills in the game a report was opened for from a replay", () => {
+    openReport({ id: 7, login: "Aurora" }, 5198589);
+    mountDialog();
+    expect(screen.getByRole<HTMLInputElement>("spinbutton", { name: /Replay ID/ }).value).toBe("5198589");
+  });
+
+  it("leaves the game empty for a report opened anywhere else", () => {
+    openReport({ id: 7, login: "Aurora" });
+    mountDialog();
+    expect(screen.getByRole<HTMLInputElement>("spinbutton", { name: /Replay ID/ }).value).toBe("");
   });
 });

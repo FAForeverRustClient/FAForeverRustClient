@@ -3397,6 +3397,23 @@ export type GamePreferences = {
 	 */
 	keepGeneratedMapsLimit?: number,
 	/**
+	 *  How many map generators may run at the same time, or `0` to let the
+	 *  client decide from the computer's cores and free memory.
+	 *
+	 *  Only a run of several maps that each need their own generator uses
+	 *  this: one where several styles, symmetries or a density range were
+	 *  selected, so every map gets its own pick. A single map, and a batch the
+	 *  generator makes in one go, stay one process either way.
+	 *
+	 *  A setting rather than a fixed number because the right one is the
+	 *  computer's: one generator keeps about one and a half cores busy and
+	 *  needs up to about three gigabytes for a 20 km map, so three at once
+	 *  were a third faster on a four-core machine, four at once were slower
+	 *  again, and with 12 GB of memory four ran out of it and took four times
+	 *  as long.
+	 */
+	mapGeneratorInstances?: number,
+	/**
 	 *  Show Forged Alliance as being played on Steam while a game runs, and
 	 *  only then (issue 364).
 	 *
@@ -3436,6 +3453,7 @@ export type GamePreferencesPatch = {
 	pipeLiveReplay?: boolean,
 	keepGeneratedMaps?: boolean,
 	keepGeneratedMapsLimit?: number,
+	mapGeneratorInstances?: number,
 	steamPresence?: boolean,
 	borderlessWindow?: boolean,
 };
@@ -6008,8 +6026,10 @@ export type ModVaultQuery = {
 	 */
 	searchDescriptions: boolean,
 	/**
-	 *  Matched against the mod's author, which on this endpoint is a plain
-	 *  string field rather than a related player (`MOD_PROPERTY_MAPPING`).
+	 *  Matched against the mod's author or its uploader's login: the box is
+	 *  labelled "creator or uploader". `author` is a plain string field here
+	 *  rather than a related player, `uploader.login` is the account that
+	 *  pushed it; both are in the Java client's `MOD_PROPERTY_MAPPING`.
 	 */
 	author: string,
 	/**
@@ -7287,6 +7307,16 @@ export type PlayerEventCount = {
 	count: number,
 };
 
+/**  One faction's ranked record. */
+export type PlayerFactionStat = {
+	/**  The game's faction id: 1 UEF, 2 Aeon, 3 Cybran, 4 Seraphim. */
+	faction: number,
+	games: number,
+	wins: number,
+	losses: number,
+	draws: number,
+};
+
 /**
  *  The signed-in player's faction, as the gateway knows it.
  *
@@ -7482,8 +7512,27 @@ export type PlayerMapStats = {
 	 *  when what they hold belongs to somebody else.
 	 */
 	playerId?: number,
+	/**
+	 *  The record per leaderboard, from this scan rather than the leaderboard's
+	 *  own counters (issue 606): `faftracker`'s `ratingSummary`. Most games
+	 *  first.
+	 */
+	queues?: PlayerQueueStat[],
+	/**
+	 *  Everything else the Statistics tab shows, read off the same games.
+	 *  See [`super::player_report`].
+	 */
+	report?: PlayerReport,
 	/**  Every game with a known outcome, newest first. See [`PlayerGameResult`]. */
 	games?: PlayerGameResult[],
+};
+
+/**  One map's rating movement in the recent games. */
+export type PlayerMapTrend = {
+	/**  Empty for a generated map, which the API names no map for. */
+	map: string,
+	games: number,
+	ratingDeltaHundredths: number,
 };
 
 export type PlayerNameRecord = {
@@ -7502,6 +7551,16 @@ export type PlayerNote = {
 	playerId: number,
 	login: string,
 	note: string,
+};
+
+/**  One month (`YYYY-MM`) or day (`YYYY-MM-DD`) of rated games. */
+export type PlayerPeriodStat = {
+	period: string,
+	games: number,
+	wins: number,
+	losses: number,
+	draws: number,
+	ratingDeltaHundredths: number,
 };
 
 /**
@@ -7540,6 +7599,27 @@ export type PlayerProfile = {
 	avatarTooltip: string,
 };
 
+/**
+ *  One leaderboard's record in a player's history: `faftracker`'s
+ *  `ratingSummary` row.
+ *
+ *  Counted from the games that moved this player's rating on that board
+ *  (`hasKnownRatingMovement` and a delta that is not zero), so it answers
+ *  "how did the rated games go" rather than repeating the leaderboard's
+ *  `wonGames`, whose win rate is wrong (the reason the rating tiles stopped
+ *  showing one). The win rate leaves draws out, as the tracker does.
+ */
+export type PlayerQueueStat = {
+	/**  The leaderboard's technical name (`global`, `ladder_1v1`, ...). */
+	queue: string,
+	games: number,
+	wins: number,
+	losses: number,
+	draws: number,
+	/**  The rating these games moved in all, in hundredths of a point. */
+	ratingDeltaHundredths: number,
+};
+
 export type PlayerRatingSummary = {
 	leaderboardId: number,
 	/**
@@ -7559,6 +7639,101 @@ export type PlayerRatingSummary = {
 export type PlayerRatings = {
 	playerId: number,
 	ratings: BoardRating[],
+};
+
+/**  A teammate or an opponent. */
+export type PlayerRelation = {
+	login: string,
+	games: number,
+	/**  The tracker's win rate here is wins out of games, draws included. */
+	wins: number,
+	/**  The rating moved in those games, net, and its gains and losses apart. */
+	netHundredths: number,
+	gainedHundredths: number,
+	lostHundredths: number,
+};
+
+/**
+ *  Everything the Statistics tab shows. Part of [`super::PlayerMapStats`], so
+ *  it comes with the scan the Maps and Results tabs already share.
+ */
+export type PlayerReport = {
+	/**
+	 *  Games whose result is known and that moved a rating: the tracker's
+	 *  `hasKnownRatingMovement`, the base of every rating figure below.
+	 */
+	ratedGames: number,
+	/**
+	 *  Of the last 25 rated games, the wins and the wins plus losses: the
+	 *  tracker's "Recent ranked 25".
+	 */
+	recentWins: number,
+	recentDecided: number,
+	/**
+	 *  The average game length in tenths of a minute, over every game the scan
+	 *  read. A game without both ends counts as zero minutes, as it does there.
+	 */
+	averageMinutesTenths: number,
+	/**  The longest unbroken runs of ranked wins and of ranked losses. */
+	maxWinStreak: PlayerStreak,
+	maxLossStreak: PlayerStreak,
+	/**
+	 *  The longest run of losses across every game, draws and unknown results
+	 *  passing over it rather than ending it: the improvement detector's own
+	 *  count, shown beside the worst month.
+	 */
+	worstLossStreak: number,
+	/**  The last twelve months with rated games, oldest first. */
+	months: PlayerPeriodStat[],
+	/**
+	 *  Of those months, the ones with at least five rated games, best and
+	 *  worst by rating gained, at most twelve each.
+	 */
+	bestMonths: PlayerPeriodStat[],
+	worstMonths: PlayerPeriodStat[],
+	/**
+	 *  Days with at least three rated games, best and worst by rating gained,
+	 *  at most twelve each.
+	 */
+	bestDays: PlayerPeriodStat[],
+	worstDays: PlayerPeriodStat[],
+	/**  The days the last sixty games span, `YYYY-MM-DD`; empty for none. */
+	recentFrom: string,
+	recentTo: string,
+	/**
+	 *  Maps of the last sixty games with at least three rated games there,
+	 *  gaining and losing rating, at most five each.
+	 */
+	mapsGaining: PlayerMapTrend[],
+	mapsLosing: PlayerMapTrend[],
+	/**
+	 *  Repeat 1v1 opponents beaten at least twenty points more often in the
+	 *  newer half of the history than in the older: the tracker's "1v1
+	 *  runbacks you started winning". At most five.
+	 */
+	runbacks: PlayerRunback[],
+	/**  Who the player played with and against, in rated games with a result. */
+	teammates: PlayerRelation[],
+	opponents: PlayerRelation[],
+	/**  Ranked games with a result, per faction played. */
+	factions: PlayerFactionStat[],
+};
+
+/**  A repeat 1v1 opponent, the older half of the history against the newer. */
+export type PlayerRunback = {
+	login: string,
+	earlyGames: number,
+	earlyWins: number,
+	lateGames: number,
+	lateWins: number,
+};
+
+/**  One run of results in a row. */
+export type PlayerStreak = {
+	size: number,
+	/**  The days its first and last games were played, `YYYY-MM-DD`. */
+	first: string,
+	last: string,
 };
 
 /**
@@ -8418,6 +8593,14 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 	uids: number[],
 } } |
 /**
+ *  Read the simulation mods one vault game ran with out of the head of its
+ *  replay file, for the replay details (issue 638). See
+ *  [`ReplayEvent::SimModsResolved`].
+ */
+{ type: "resolveSimMods"; payload: {
+	uid: number,
+} } |
+/**
  *  Ask the vault what it knows about one game id, without disturbing the
  *  browse/search results in [`ReplayState::vault`].
  *
@@ -8639,6 +8822,14 @@ export type ReplayEvent = { type: "connecting"; payload: {
  */
 { type: "mapsResolved"; payload: {
 	maps: ResolvedReplayMap[],
+} } |
+/**
+ *  What [`ReplayCommand::ResolveSimMods`] read. Not sent when the file
+ *  could not be read, so the view may ask again on its next visit.
+ */
+{ type: "simModsResolved"; payload: {
+	uid: number,
+	mods: string[],
 } } | { type: "onlineLookupFinished"; payload: {
 	uid: number,
 	replay: VaultReplay | null,
@@ -9082,6 +9273,15 @@ export type ReplayState = {
 	resolvedMaps?: { [key in number]: string },
 	/**  The keys of [`Self::resolved_maps`], oldest stored first. */
 	resolvedMapsOrder?: number[],
+	/**
+	 *  The simulation mods vault games ran with, read out of the head of their
+	 *  replay files (issue 638): the API's game record names none. Keyed by
+	 *  game id; an empty list is an answer, a game with no mods. At most
+	 *  [`RESOLVED_SIM_MODS_KEPT`], oldest dropped first.
+	 */
+	resolvedSimMods?: { [key in number]: string[] },
+	/**  The keys of [`Self::resolved_sim_mods`], oldest stored first. */
+	resolvedSimModsOrder?: number[],
 	/**
 	 *  The signed-in player's latest matchmaker games, newest first (#301).
 	 *
@@ -10121,6 +10321,13 @@ export type SocialEvent =
 { type: "loginLookedUp"; payload: {
 	login: string,
 	id: number | null,
+} } |
+/**
+ *  The API listed FAF's moderators and administrators (see
+ *  [`SocialState::staff`]). Replaces the list.
+ */
+{ type: "staffLoaded"; payload: {
+	logins: string[],
 } };
 
 /**  The player's own annotations: notes on players and on replays. */
@@ -10138,6 +10345,14 @@ export type SocialState = {
 	players: PlayerProfile[],
 	/**  Accounts looked up by login for the user menu, oldest first. */
 	loginLookups: LoginLookup[],
+	/**
+	 *  Logins of FAF's moderators and administrators: the members of the
+	 *  public moderation and administration groups the API lists. Chat
+	 *  counts them as "Moderators & admins" beside the channel operators,
+	 *  because on FAF's IRC the moderators hold no operator mode, and that
+	 *  category showed nobody but the QAI bot (issue 607). Sorted.
+	 */
+	staff: string[],
 };
 
 /**
@@ -13608,6 +13823,19 @@ export type ValidationIssue =
  */
 { kind: "seedNotAnInteger"; payload: {
 	seed: string,
+} } |
+/**
+ *  A chosen style or symmetry the selected generator release does not
+ *  have. picocli refuses the whole run ("Invalid value for option
+ *  '--texture-style': expected one of ..."), and it was the commonest
+ *  failure in the generator's own log: a preset or a remembered choice
+ *  made with one release (SUNSET, FRACTAL_LAST) run with another.
+ */
+{ kind: "notInThisVersion"; payload: {
+	/**  The flag's name without dashes: `texture-style`, `terrain-symmetry`. */
+	option: string,
+	value: string,
+	version: string,
 } };
 
 /**

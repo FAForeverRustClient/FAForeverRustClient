@@ -37,6 +37,10 @@ pub(super) struct LocalBodyInfo {
     pub(super) armies: Vec<LocalBodyArmy>,
     pub(super) map_name: Option<String>,
     pub(super) game_version: Option<i32>,
+    /// The simulation mods the engine ran the game with, by name: the body's
+    /// own mod table, see [`body_sim_mods`]. Empty when the game had none,
+    /// `None` when the file ended before the table did.
+    pub(super) sim_mods: Option<Vec<String>>,
 }
 
 /// What the army table says about one player, by name.
@@ -166,6 +170,21 @@ pub(super) fn map_name_from_replay_head(head: &[u8]) -> Option<String> {
     local_body_player_stats(&head[split + 1..], compression)?.map_name
 }
 
+/// The simulation mods a replay was played with, from the head of the file
+/// alone (issue 638): the envelope's list, or the body's own mod table when
+/// the envelope has none, which is every file the replay server writes. `None`
+/// when neither answers, which is not the same as a game without mods.
+pub(super) fn sim_mods_from_replay_head(head: &[u8]) -> Option<Vec<String>> {
+    let split = head.iter().position(|byte| *byte == b'\n')?;
+    let header: Value = serde_json::from_slice(&head[..split]).ok()?;
+    let compression = header
+        .get("compression")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let body = local_body_player_stats(&head[split + 1..], compression);
+    super::library::replay_sim_mods(&header, body.as_ref())
+}
+
 /// Is there still a game inside this file?
 ///
 /// The JSON envelope is written before the match and says nothing about what
@@ -250,7 +269,7 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
             ..Default::default()
         };
     };
-    let _sim_mods = parse_replay_lua(&mut cursor, 0);
+    let sim_mods = parse_replay_lua(&mut cursor, 0).map(|table| body_sim_mods(&table));
     let Some(_) = replay_u32(&mut cursor) else {
         return LocalBodyInfo {
             game_version,
@@ -258,6 +277,7 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
                 .as_deref()
                 .map(extract_map_folder)
                 .filter(|m| !m.is_empty()),
+            sim_mods,
             ..Default::default()
         };
     };
@@ -280,6 +300,7 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
         return LocalBodyInfo {
             map_name,
             game_version,
+            sim_mods,
             ..Default::default()
         };
     };
@@ -289,6 +310,7 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
             return LocalBodyInfo {
                 map_name,
                 game_version,
+                sim_mods,
                 ..Default::default()
             };
         };
@@ -296,6 +318,7 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
             return LocalBodyInfo {
                 map_name,
                 game_version,
+                sim_mods,
                 ..Default::default()
             };
         };
@@ -305,6 +328,7 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
         return LocalBodyInfo {
             map_name,
             game_version,
+            sim_mods,
             ..Default::default()
         };
     }
@@ -312,6 +336,7 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
         return LocalBodyInfo {
             map_name,
             game_version,
+            sim_mods,
             ..Default::default()
         };
     };
@@ -379,7 +404,31 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
         header_complete: armies_complete,
         map_name,
         game_version,
+        sim_mods,
     }
+}
+
+/// The names in the body's mod table.
+///
+/// The engine writes the mods it loaded in front of the game options, one
+/// table per mod with the fields of its `mod_info.lua` (`name`, `uid`,
+/// `version`, `ui_only`, ...), and an empty table for a game without any.
+/// This is the list to trust: the `.fafreplay` envelope the replay server
+/// writes carries no `sim_mods` at all, so a missing key there says nothing
+/// about the game (issue 638). Checked against the vault replays from
+/// 27457000 on, where twenty of forty files name mods here and none does in
+/// the envelope.
+pub(super) fn body_sim_mods(table: &Value) -> Vec<String> {
+    let Some(mods) = table.as_object() else {
+        return Vec::new();
+    };
+    mods.values()
+        .filter(|entry| entry.get("ui_only").and_then(Value::as_bool) != Some(true))
+        .filter_map(|entry| entry.get("name").and_then(Value::as_str))
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(String::from)
+        .collect()
 }
 
 /// The next record of the command stream: its type, with its payload read
@@ -513,7 +562,80 @@ fn replay_displayed_rating(data: &serde_json::Map<String, Value>) -> Option<i32>
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn the_envelope_names_the_mods_when_it_has_a_list() {
+        // Issue 638: the head of a vault replay, as a range request returns
+        // it: the envelope line and then compressed bytes cut off anywhere.
+        let mut head =
+            br#"{"uid":27457062,"sim_mods":{"a1b2":"Random Events","c3d4":{"name":"No Rush"}}}"#
+                .to_vec();
+        head.push(b'\n');
+        head.extend_from_slice(&[0x28, 0xb5, 0x2f, 0xfd, 0x60]);
+        let mut mods = super::sim_mods_from_replay_head(&head).unwrap();
+        mods.sort();
+        assert_eq!(mods, ["No Rush", "Random Events"]);
+        // The replay server's envelope has no list at all and no body to
+        // fall back on here: no answer, not an empty one.
+        assert_eq!(super::sim_mods_from_replay_head(b"{\"uid\":1}\n"), None);
+        // An envelope cut off before its end is not readable yet.
+        assert_eq!(
+            super::sim_mods_from_replay_head(b"{\"uid\":1,\"sim_mods\":{"),
+            None
+        );
+    }
+
     use super::*;
+
+    /// A vault replay's head: the replay server's envelope, which names no
+    /// mods, over a body that opens with the given mod table.
+    fn vault_head_with_mod_table(table: &[u8]) -> Vec<u8> {
+        let mut body = Vec::new();
+        body.extend_from_slice(b"Supreme Commander v1.50.3817\0\r\n\0");
+        body.extend_from_slice(b"Replay v1.9\r\n/maps/SCMP_009/SCMP_009.scmap\0\r\n\x1a\0");
+        body.extend_from_slice(&(table.len() as u32).to_le_bytes());
+        body.extend_from_slice(table);
+        let mut head = br#"{"uid":27457006,"compression":"zstd"}"#.to_vec();
+        head.push(b'\n');
+        head.extend(zstd::encode_all(body.as_slice(), 0).unwrap());
+        head
+    }
+
+    fn lua_string(out: &mut Vec<u8>, text: &str) {
+        out.push(1);
+        out.extend_from_slice(text.as_bytes());
+        out.push(0);
+    }
+
+    fn lua_mod(out: &mut Vec<u8>, index: f32, name: &str, ui_only: bool) {
+        out.push(0);
+        out.extend_from_slice(&index.to_le_bytes());
+        out.push(4);
+        lua_string(out, "name");
+        lua_string(out, name);
+        lua_string(out, "ui_only");
+        out.extend_from_slice(&[3, u8::from(ui_only)]);
+        out.push(5);
+    }
+
+    #[test]
+    fn the_body_names_the_mods_the_envelope_leaves_out() {
+        // Issue 638: the replay server writes no `sim_mods` into the
+        // envelope, so every vault replay read as a game without mods. The
+        // engine's own table in the body is what it ran with.
+        let mut table = vec![4];
+        lua_mod(&mut table, 1.0, "Reclaim Turret", false);
+        lua_mod(&mut table, 2.0, "M28AI", false);
+        lua_mod(&mut table, 3.0, "Notify", true);
+        table.push(5);
+        let mut mods = sim_mods_from_replay_head(&vault_head_with_mod_table(&table)).unwrap();
+        mods.sort();
+        assert_eq!(mods, ["M28AI", "Reclaim Turret"]);
+        // An empty table is the body saying the game had none.
+        assert_eq!(
+            sim_mods_from_replay_head(&vault_head_with_mod_table(&[4, 5])),
+            Some(Vec::new())
+        );
+    }
 
     #[test]
     fn performance_metadata_decoding_stops_before_the_command_stream() {

@@ -4078,6 +4078,20 @@ fn cases() -> Vec<Case> {
                         }],
                         truncated: false,
                         player_id: 7,
+                        queues: vec![PlayerQueueStat {
+                            queue: "global".into(),
+                            games: 3,
+                            wins: 2,
+                            losses: 1,
+                            draws: 0,
+                            rating_delta_hundredths: 1250,
+                        }],
+                        report: PlayerReport {
+                            rated_games: 3,
+                            recent_wins: 2,
+                            recent_decided: 3,
+                            ..PlayerReport::default()
+                        },
                         games: vec![PlayerGameResult {
                             game_id: 27798371,
                             played_at: "2026-01-04T20:00:00Z".into(),
@@ -7436,6 +7450,18 @@ fn cases() -> Vec<Case> {
                     ],
                 }
                 .into(),
+                // A game's mod list read out of its file's head (issue 638),
+                // and a game with none, which is an answer too.
+                ReplayEvent::SimModsResolved {
+                    uid: 42,
+                    mods: vec!["Random Events".into()],
+                }
+                .into(),
+                ReplayEvent::SimModsResolved {
+                    uid: 43,
+                    mods: Vec::new(),
+                }
+                .into(),
                 ReplayEvent::VaultDownloadStarted { uid: 42 }.into(),
                 ReplayEvent::VaultDownloadProgressed {
                     uid: 42,
@@ -9065,6 +9091,16 @@ fn transition_cases() -> Vec<Case> {
                 // The server's offline notice need not match the login's case.
                 SocialEvent::PlayersRemoved {
                     logins: vec!["ada".into()],
+                }
+                .into(),
+                SocialEvent::Cleared.into(),
+            ],
+        ),
+        case(
+            "the staff list is sorted, and outlives a lobby disconnect",
+            vec![
+                SocialEvent::StaffLoaded {
+                    logins: vec!["Morax".into(), "Brutus5000".into()],
                 }
                 .into(),
                 SocialEvent::Cleared.into(),

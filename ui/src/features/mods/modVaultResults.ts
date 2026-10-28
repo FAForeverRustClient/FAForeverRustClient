@@ -45,7 +45,10 @@ export function modsMatchingQuery(source: readonly VaultMod[], query: ModVaultQu
   const matches = source.filter((mod) => {
     if (query.recommended && !mod.recommended) return false;
     if (!matchesSearch(mod, query, words)) return false;
-    if (query.author.trim() && !matchesVaultGlob(mod.author, author)) return false;
+    // Author or uploader, as `ModVaultQuery::build_filter` asks the API.
+    if (query.author.trim() && !matchesVaultGlob(mod.author, author) && !matchesVaultGlob(mod.uploader, author)) {
+      return false;
+    }
     if (query.uploaderId !== null && mod.uploaderId !== query.uploaderId) return false;
     if (query.modType && mod.modType !== query.modType) return false;
     if (query.ranked !== null && mod.ranked !== query.ranked) return false;

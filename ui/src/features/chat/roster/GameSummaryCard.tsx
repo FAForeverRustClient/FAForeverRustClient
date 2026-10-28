@@ -12,6 +12,7 @@ import { Icon } from "../../../design-system/Icon";
 import { MapThumbnail } from "../../../shared/components/MapThumbnail";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
 import { openPlayerCard } from "../../../shared/playerCardActions";
+import { playingCount } from "../../../shared/gameRules";
 import { GLOBAL_LEADERBOARD, gameLeaderboard, leaderboardLabel } from "../../../shared/playerRatings";
 import { useNamedMapGeneration } from "../../../shared/hooks/useNamedMapGeneration";
 import { displayName } from "../messages/chatFormat";
@@ -226,7 +227,7 @@ export function GameSummaryCard({
         <span><Icon name="mods" size={13} />{presence.game.modName.toUpperCase()}</span>
         <span>
           <Icon name="users" size={13} />
-          {t("chat.game.players", { count: presence.game.players, max: presence.game.maxPlayers })}
+          {t("chat.game.players", { count: playingCount(presence.game), max: presence.game.maxPlayers })}
         </span>
         {/* Named where it is not the global board, and so is every rating in
             the lineup below it. */}
@@ -352,7 +353,7 @@ export function GameMapPreviewDialog({
       meta={[
         size?.full,
         t("chat.game.players", {
-          count: presence.game.players,
+          count: playingCount(presence.game),
           max: presence.game.maxPlayers,
         }),
       ].filter(Boolean).join(" · ")}

@@ -51,7 +51,7 @@ function renderAside({ players = [], lobbyStatus = "connected", channels = [] }:
   const social: SocialState = {
     friends: [],
     foes: [],
-    loginLookups: [],
+    loginLookups: [], staff: [],
     players: players.map(profile),
   };
   render(

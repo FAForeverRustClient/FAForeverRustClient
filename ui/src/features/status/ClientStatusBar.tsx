@@ -324,8 +324,6 @@ export function useBackgroundActivities(): BackgroundActivity[] {
   const replaySearch = useAppStore((s) => s.state.replays.vaultStatus.type === "loading");
   const mapScan = useAppStore((s) => s.state.maps.installedStatus.type === "loading");
   const modScan = useAppStore((s) => s.state.mods.installedStatus.type === "loading");
-  const mapVault = useAppStore((s) => s.state.maps.vaultStatus.type === "loading" ? s.state.maps.vaultProgress : undefined);
-  const modVault = useAppStore((s) => s.state.mods.vaultStatus.type === "loading" ? s.state.mods.vaultProgress : undefined);
   const leaderboards = useAppStore((s) =>
     s.state.leaderboard.catalogStatus.type === "loading"
     || s.state.leaderboard.ratingsStatus.type === "loading"
@@ -334,13 +332,6 @@ export function useBackgroundActivities(): BackgroundActivity[] {
   const tournaments = useAppStore((s) => s.state.tourney.status.type === "loading");
   const changelog = useAppStore((s) => s.state.changelog.status.type === "loading");
 
-  const catalogue = (id: string, label: string, progress: AppState["maps"]["vaultProgress"], cancel: AppCommand): BackgroundActivity => ({
-    id,
-    label: progress ? t(progress.totalPages === null ? "status.activity.cataloguePages" : "status.activity.cataloguePagesTotal", { label, pages: progress.pages, total: progress.totalPages ?? 0 }) : label,
-    name: label,
-    progress: progress?.totalPages ? Math.min(100, Math.round(100 * progress.pages / progress.totalPages)) : null,
-    cancel: send(cancel),
-  });
   const activities: (BackgroundActivity | false)[] = [
     replayStarting && {
       id: "replay-start",
@@ -424,8 +415,12 @@ export function useBackgroundActivities(): BackgroundActivity[] {
     replaySearch && { id: "replay-search", label: t("replays.vault.searching"), progress: null },
     mapScan && { id: "map-scan", label: t("maps.view.scanning"), progress: null },
     modScan && { id: "mod-scan", label: t("mods.installed.scanning"), progress: null },
-    mapVault !== undefined && catalogue("map-vault", t("maps.view.loadingVault"), mapVault, { kind: "Maps", command: { type: "cancelVaultLoad" } }),
-    modVault !== undefined && catalogue("mod-vault", t("mods.view.loadingVault"), modVault, { kind: "Mods", command: { type: "cancelVaultLoad" } }),
+    // Not the map and mod catalogues (issue 603). They are read in the
+    // background on every start, for the names, sizes and pictures the
+    // other tabs look up, and nobody is waiting on them: "Loading map
+    // vault: 14 pages" ran across the bar at each launch saying so anyway.
+    // A search the user started is listed above; a catalogue that fails says
+    // so where it is used.
     leaderboards && { id: "leaderboards", label: t("leaderboard.view.loadingCatalog"), progress: null },
     events && { id: "events", label: t("events.loading"), progress: null },
     tournaments && { id: "tournaments", label: t("tournaments.loading"), progress: null },

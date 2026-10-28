@@ -51,6 +51,7 @@ function mount(games: PlayerGameResult[] = history()) {
     undecided: 3,
     unranked: 0,
     unattributed: 0,
+    queues: [],
     maps: [],
     truncated: false,
     playerId: PLAYER,

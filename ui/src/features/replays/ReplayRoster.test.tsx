@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { mergeReplayTeamsWithLocal, parseOutcome, outcomeLabel, ReplayCardRoster, ReplayDetailRoster, replayWinner } from "./ReplayRoster";
+import { cardPlayerTitle, mergeReplayTeamsWithLocal, parseOutcome, outcomeLabel, ReplayCardRoster, ReplayDetailRoster, replayWinner } from "./ReplayRoster";
 import type { LocalReplayTeam, ReplayTeam } from "../../ipc/bindings";
 
 describe("ReplayRoster outcomes", () => {
@@ -359,6 +359,24 @@ describe("ReplayRoster outcomes", () => {
 
     const nonInteractiveMarkup = renderToStaticMarkup(<ReplayCardRoster teams={teams} interactive={false} />);
     expect(nonInteractiveMarkup).toContain('title="played as TheWeakie"');
+  });
+
+  it("promises no actions on a card, where a left click opens the replay (#629)", () => {
+    const teams = [
+      { team: 2, players: [{ name: "Vmcsnekke", faction: 1, rating: 1504, outcome: "", score: null }] },
+    ] as ReplayTeam[];
+    const markup = renderToStaticMarkup(<ReplayCardRoster teams={teams} onPlayerMenu={() => {}} />);
+    expect(markup).not.toContain("Actions for");
+    // Nor the bare name, which only repeats what the row shows.
+    expect(markup).not.toContain('title="Vmcsnekke"');
+  });
+
+  it("names a player on hover only where the row cut the name short (#629)", () => {
+    const fits = { scrollWidth: 80, clientWidth: 80 } as Element;
+    const cut = { scrollWidth: 120, clientWidth: 80 } as Element;
+    expect(cardPlayerTitle("Vmcsnekke", undefined, fits)).toBe("");
+    expect(cardPlayerTitle("Vmcsnekke", undefined, cut)).toBe("Vmcsnekke");
+    expect(cardPlayerTitle("KnownSniper", "TheWeakie", fits)).toBe("played as TheWeakie");
   });
 });
 

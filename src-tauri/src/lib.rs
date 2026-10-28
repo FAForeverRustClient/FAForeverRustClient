@@ -185,6 +185,7 @@ pub fn run() {
             commands::read_latest_log,
             commands::webview_engine,
             commands::system_date_pattern,
+            commands::map_generator_automatic_instances,
             commands::report_webview_stall,
             commands::report_event_cost,
             commands::exit_app,
@@ -428,7 +429,9 @@ mod tests {
             // The Units tab's database. WebKitGTK asks about a frame's loads
             // as well as the window's, so with the root missing here the
             // frame's own page went to the browser (PR 463).
-            "https://faforever.github.io/etfreeman-db/#/",
+            "https://unitdb.faforever.com/#/",
+            // FAF Daily, the Units tab's second view.
+            "https://daily.faforever.com/",
             // A training video frame, for the same reason.
             "https://www.youtube-nocookie.com/embed/abc?rel=0",
         ] {

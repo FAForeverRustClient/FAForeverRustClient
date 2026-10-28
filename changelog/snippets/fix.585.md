@@ -1,0 +1,1 @@
+- On Linux, games find the Forged Alliance install and the map and mod vault without fa_path.lua having to be edited by hand.
