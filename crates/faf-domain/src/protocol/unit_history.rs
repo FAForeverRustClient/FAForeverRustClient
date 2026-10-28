@@ -506,9 +506,7 @@ pub fn snapshot(blueprint: &LuaTable, fragments: &dyn Fn(&str) -> bool) -> UnitS
             }
         };
         let number = |name: &str| weapon.number(&[name]);
-        let fragmenting = weapon
-            .string(&["ProjectileId"])
-            .is_some_and(|projectile| fragments(projectile));
+        let fragmenting = weapon.string(&["ProjectileId"]).is_some_and(fragments);
         stat(
             WeaponStat::Dps,
             (!fragmenting)
