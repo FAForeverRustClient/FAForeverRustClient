@@ -100,6 +100,12 @@ pub struct SocialState {
     pub players: Vec<PlayerProfile>,
     /// Accounts looked up by login for the user menu, oldest first.
     pub login_lookups: Vec<LoginLookup>,
+    /// Logins of FAF's moderators and administrators: the members of the
+    /// public moderation and administration groups the API lists. Chat
+    /// counts them as "Moderators & admins" beside the channel operators,
+    /// because on FAF's IRC the moderators hold no operator mode, and that
+    /// category showed nobody but the QAI bot (issue 607). Sorted.
+    pub staff: Vec<String>,
 }
 
 impl SocialState {
@@ -109,6 +115,10 @@ impl SocialState {
 
     pub fn is_foe(&self, login: &str) -> bool {
         self.foes.iter().any(|f| f.eq_ignore_ascii_case(login))
+    }
+
+    pub fn is_staff(&self, login: &str) -> bool {
+        self.staff.iter().any(|s| s.eq_ignore_ascii_case(login))
     }
 
     /// The profile for a nickname, or `None` if it isn't a known FAF account.
@@ -158,6 +168,9 @@ pub enum SocialEvent {
     /// The API answered an account lookup by login: the id, or `None` for a
     /// login with no account behind it.
     LoginLookedUp { login: String, id: Option<i32> },
+    /// The API listed FAF's moderators and administrators (see
+    /// [`SocialState::staff`]). Replaces the list.
+    StaffLoaded { logins: Vec<String> },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -227,7 +240,15 @@ pub fn reduce(state: &mut SocialState, event: &SocialEvent) {
                     .any(|login| login.eq_ignore_ascii_case(&profile.login))
             });
         }
-        SocialEvent::Cleared => *state = SocialState::default(),
+        // The staff list is the API's, not the lobby's, so a lobby disconnect
+        // does not make it any less true.
+        SocialEvent::Cleared => {
+            *state = SocialState {
+                staff: std::mem::take(&mut state.staff),
+                ..SocialState::default()
+            }
+        }
+        SocialEvent::StaffLoaded { logins } => state.staff = sorted(logins.clone()),
         SocialEvent::LoginLookedUp { login, id } => {
             // The newest answer replaces an older one for the same login and
             // moves to the end, so the cap drops the answers asked for longest
@@ -405,6 +426,7 @@ mod tests {
             foes: Vec::new(),
             players: vec![profile(1, "Aurora"), profile(2, "Zed")],
             login_lookups: Vec::new(),
+            staff: Vec::new(),
         };
         reduce(
             &mut s,
@@ -419,7 +441,7 @@ mod tests {
     }
 
     #[test]
-    fn cleared_resets_everything() {
+    fn cleared_resets_everything_the_lobby_told_us() {
         let mut s = SocialState {
             friends: names(&["Aurora"]),
             foes: names(&["Griefer"]),
@@ -428,9 +450,31 @@ mod tests {
                 login: "Zed".into(),
                 id: Some(2),
             }],
+            staff: names(&["Morax"]),
         };
         reduce(&mut s, &SocialEvent::Cleared);
-        assert_eq!(s, SocialState::default());
+        // The staff list came from the API, and stays (issue 607).
+        assert_eq!(
+            s,
+            SocialState {
+                staff: names(&["Morax"]),
+                ..SocialState::default()
+            }
+        );
+    }
+
+    #[test]
+    fn staff_matches_any_spelling() {
+        let mut s = SocialState::default();
+        reduce(
+            &mut s,
+            &SocialEvent::StaffLoaded {
+                logins: names(&["Morax", "Brutus5000"]),
+            },
+        );
+        assert_eq!(s.staff, names(&["Brutus5000", "Morax"]));
+        assert!(s.is_staff("morax"));
+        assert!(!s.is_staff("Aurora"));
     }
 
     #[test]

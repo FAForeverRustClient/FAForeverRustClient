@@ -35,7 +35,7 @@ use tokio::io::AsyncReadExt as _;
 use tokio::sync::mpsc;
 
 use crate::infra::http::{
-    describe_transport_error, UploadWatch, REQUEST_DEADLINE, TRANSFER_STALL_TIMEOUT,
+    describe_transport_error, UploadStalled, UploadWatch, REQUEST_DEADLINE, TRANSFER_STALL_TIMEOUT,
     UPLOAD_RESPONSE_DEADLINE,
 };
 use crate::infra::jsonapi::api_error_detail;
@@ -995,12 +995,23 @@ async fn upload_map(
             .send()
             .await
             .map_err(|error| format!("upload failed: {}", describe_transport_error(&error)))?;
+        // The vault unpacks and checks the map before it answers, and the
+        // gateway in front of it stops waiting long before it is done.
+        if gateway_gave_up(response.status()) {
+            return Err(MAY_BE_PUBLISHED.to_string());
+        }
         check_upload(response, "the map upload", total_bytes).await
     };
+    // Every byte sent and no answer in time is the same case (issue 613): the
+    // map may be in the vault already, and "failed" would have the user upload
+    // it a second time.
     watch
         .guard(TRANSFER_STALL_TIMEOUT, UPLOAD_RESPONSE_DEADLINE, upload)
         .await
-        .map_err(|stalled| stalled.to_string())?
+        .map_err(|stalled| match stalled {
+            UploadStalled::Answering => MAY_BE_PUBLISHED.to_string(),
+            UploadStalled::Sending => stalled.to_string(),
+        })?
 }
 
 async fn upload_mod(
@@ -1096,16 +1107,46 @@ async fn upload_mod(
             "licenseId": Value::Null,
             "repositoryUrl": Value::Null,
         }))
-        .timeout(REQUEST_DEADLINE)
+        // Not `REQUEST_DEADLINE`: this is where the API does the work. Its
+        // `completeUpload` fetches the archive back out of storage, unpacks
+        // and validates it and writes the vault entry before it answers, so a
+        // mod of any size took longer than thirty seconds and was reported as
+        // failed while the server went on to publish it (issue 613).
+        .timeout(UPLOAD_RESPONSE_DEADLINE)
         .send()
         .await
-        .map_err(|error| {
-            format!(
-                "could not complete the upload: {}",
-                describe_transport_error(&error)
-            )
-        })?;
+        .map_err(|error| completion_failure(&error))?;
+    if gateway_gave_up(completed.status()) {
+        return Err(MAY_BE_PUBLISHED.to_string());
+    }
     check(completed, "completing the mod upload").await
+}
+
+/// What the dialog says when the vault took the upload but no answer came
+/// back in time: it may well have gone through, and a plain "failed" had the
+/// user upload it a second time (issue 613).
+const MAY_BE_PUBLISHED: &str = "FAF took too long to confirm the upload. It may still have been \
+                                published: look for it in the vault before uploading it again.";
+
+/// Whether the gateway in front of the API stopped waiting for it: a bad or
+/// timed-out gateway, or Cloudflare's own 524, which it sends once the vault
+/// has taken longer than about a hundred seconds to answer. The vault goes on
+/// working behind it either way.
+fn gateway_gave_up(status: reqwest::StatusCode) -> bool {
+    matches!(status.as_u16(), 502 | 504 | 524)
+}
+
+/// Why telling FAF about the stored archive failed. A request that timed out
+/// was received and may well have gone through, so that one says so instead
+/// of reading as a failed upload the user should simply repeat.
+fn completion_failure(error: &reqwest::Error) -> String {
+    if error.is_timeout() {
+        return MAY_BE_PUBLISHED.to_string();
+    }
+    format!(
+        "could not complete the upload: {}",
+        describe_transport_error(error)
+    )
 }
 
 async fn check(response: reqwest::Response, what: &str) -> Result<(), String> {
@@ -1971,5 +2012,28 @@ version = 3
         assert!(last <= total as u32);
 
         let _ = std::fs::remove_dir_all(&root);
+    }
+}
+
+#[cfg(test)]
+mod gateway_tests {
+    use super::gateway_gave_up;
+    use reqwest::StatusCode;
+
+    #[test]
+    fn a_gateway_that_stopped_waiting_is_not_a_failed_upload() {
+        // Cloudflare's 524 is what a slow vault answer turns into (issue 613).
+        for status in [502, 504, 524] {
+            assert!(
+                gateway_gave_up(StatusCode::from_u16(status).unwrap()),
+                "{status}"
+            );
+        }
+        for status in [400, 413, 500, 503] {
+            assert!(
+                !gateway_gave_up(StatusCode::from_u16(status).unwrap()),
+                "{status}"
+            );
+        }
     }
 }

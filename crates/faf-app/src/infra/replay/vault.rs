@@ -26,7 +26,7 @@ use crate::ports::replay::VaultSearchResult;
 use crate::ports::ReplayVaultPort;
 
 use super::library::{local_metadata_for_path, ReplayLibrary};
-use super::scfa_header::{map_name_from_replay_head, REPLAY_HEAD_BYTES};
+use super::scfa_header::{map_name_from_replay_head, sim_mods_from_replay_head, REPLAY_HEAD_BYTES};
 use super::vault_rows::{parse_featured_mods, parse_vault_replays};
 use super::ReplayConfig;
 
@@ -145,7 +145,27 @@ impl ReplayVaultPort for ReplayVault {
             .await?;
         Ok(map_name_from_replay_head(&head))
     }
+
+    async fn replay_sim_mods(&self, uid: i32) -> Result<Vec<String>, String> {
+        // The list is the body's mod table, right behind the envelope line and
+        // the scenario path, and the first few kilobytes decompress well past
+        // it for an ordinary game. The larger head is for a long mod list,
+        // whose table carries every mod's `mod_info.lua` fields.
+        for bytes in [SIM_MODS_HEAD_BYTES, REPLAY_HEAD_BYTES] {
+            let head = self
+                .fetch_vault_replay_bytes(uid, Some(bytes), &|_, _| {})
+                .await?;
+            if let Some(mods) = sim_mods_from_replay_head(&head) {
+                return Ok(mods);
+            }
+        }
+        Err(format!("replay {uid} has no readable header"))
+    }
 }
+
+/// How much of a vault replay is read for its mod list first: enough for the
+/// body's mod table of all but the most heavily modded games.
+const SIM_MODS_HEAD_BYTES: u64 = 8 * 1024;
 
 const MAX_REPLAY_DOWNLOAD_REDIRECTS: usize = 5;
 

@@ -767,7 +767,10 @@ html.is-resizing-chat-roster * {
   padding-left: var(--space-2);
   border-left: 2px solid var(--color-border-strong);
   color: var(--color-subtle);
-  font-size: 11px;
+  /* Two pixels under the message it belongs to, so it follows the chat text
+     size setting instead of staying at 11 px while the answer grows (issue
+     620). Never under the 11 px floor, which the default 13 already sits on. */
+  font-size: max(11px, calc(var(--chat-font-size, 13px) - 2px));
 }
 
 .chat-quote-sender {

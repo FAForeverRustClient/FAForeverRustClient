@@ -24,7 +24,7 @@
   max-width: none;
 }
 
-.play-toolbar > .toolbar-check,
+.play-toolbar .toolbar-check,
 .play-toolbar > .play-sort,
 .play-toolbar > .btn-primary,
 .play-toolbar > .btn-ghost {
@@ -61,6 +61,30 @@
 @media (max-width: 900px) {
   .play-view {
     height: auto;
+  }
+}
+
+/* The toolbar's switches: part of the toolbar's own row while it is wide,
+   folded behind `.play-toolbar-checks-toggle` once it is not (issue 604). */
+.play-toolbar-checks {
+  display: contents;
+}
+
+.play-toolbar > .play-toolbar-checks-toggle {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .play-toolbar > .search-field { order: 1; flex-basis: 100%; }
+  .play-toolbar > .play-toolbar-checks-toggle { display: inline-flex; }
+  .play-toolbar-checks { display: none; }
+
+  .play-toolbar-checks.is-open {
+    display: flex;
+    flex-wrap: wrap;
+    flex-basis: 100%;
+    order: 2;
+    gap: 4px 12px;
   }
 }
 

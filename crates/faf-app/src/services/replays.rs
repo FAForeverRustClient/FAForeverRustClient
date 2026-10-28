@@ -797,6 +797,14 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                 out.emit(ReplayEvent::MapsResolved { maps });
             }
         }
+        ReplayCommand::ResolveSimMods { uid } => {
+            // A few kilobytes of the file rather than the file. A failure
+            // emits nothing, so the details ask again the next time they open.
+            match ctx.ports.replay_vault.replay_sim_mods(uid).await {
+                Ok(mods) => out.emit(ReplayEvent::SimModsResolved { uid, mods }),
+                Err(error) => tracing::debug!(uid, %error, "could not read a replay's mod list"),
+            }
+        }
         ReplayCommand::LookUpOnline { uid } => {
             // A single-id search rather than a port method of its own: the
             // vault query already has a `replay_id` field, and this way the

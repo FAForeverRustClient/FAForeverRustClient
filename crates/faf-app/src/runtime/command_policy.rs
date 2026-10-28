@@ -339,6 +339,7 @@ fn replays(command: &ReplayCommand) -> CommandPolicy {
         | ReplayCommand::LoadLocal { .. }
         | ReplayCommand::DeleteLocal { .. }
         | ReplayCommand::ResolveMaps { .. }
+        | ReplayCommand::ResolveSimMods { .. }
         | ReplayCommand::LookUpOnline { .. }
         | ReplayCommand::LookUpOnlineMany { .. } => ORDINARY,
         ReplayCommand::CancelLiveTracking

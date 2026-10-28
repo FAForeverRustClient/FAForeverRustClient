@@ -78,7 +78,7 @@ describe("tournament proposals (#569)", () => {
     const sooner = waiting("sooner", 1_000);
     const own = tourney({ id: "own", published: false, proposal: proposal({ state: "proposed", mine: true }) });
     expect(groupOf(sooner)).toBe("proposals");
-    expect(groupOf(own)).toBe("drafts");
+    expect(groupOf(own)).toBe("myDrafts");
     expect(groupedEvents([later, own, sooner]).proposals.map((event) => event.id)).toEqual(["sooner", "later"]);
   });
 

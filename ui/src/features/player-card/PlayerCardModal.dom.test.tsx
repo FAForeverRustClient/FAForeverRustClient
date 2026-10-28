@@ -59,6 +59,7 @@ function mapStats(playerId: number, map: string): PlayerMapStats {
     undecided: 0,
     unranked: 0,
     unattributed: 0,
+    queues: [],
     maps: [{ map, generated: false, games: 3, wins: 2, losses: 1, draws: 0, lastPlayed: "2026-01-01T00:00:00Z" }],
     truncated: false,
     playerId,

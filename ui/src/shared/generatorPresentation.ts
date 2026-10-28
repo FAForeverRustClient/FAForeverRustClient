@@ -11,6 +11,7 @@ import type {
 } from "../ipc/bindings";
 import type { MessageKey } from "../i18n/catalog/en";
 import type { Translation } from "../i18n/useTranslation";
+import { isMessageKey } from "../i18n";
 import { kilometres, kilometresLabel } from "./mapPresentation";
 
 /** Generator units per kilometre, the generator's own `MultipleMapSizeConverter`. */
@@ -116,6 +117,14 @@ export function describeIssue(issue: ValidationIssue, t: Translation["t"]): stri
       });
     case "seedNotAnInteger":
       return t("maps.generate.issue.seedNotInteger", { seed: issue.payload.seed });
+    case "notInThisVersion": {
+      const label = `maps.generate.option.${issue.payload.option}`;
+      return t("maps.generate.issue.notInThisVersion", {
+        version: issue.payload.version,
+        option: isMessageKey(label) ? t(label) : issue.payload.option.replace(/-/g, " "),
+        value: issue.payload.value,
+      });
+    }
   }
 }
 

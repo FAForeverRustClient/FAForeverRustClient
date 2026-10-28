@@ -116,6 +116,20 @@ export function AppShell() {
     contentRef.current?.scrollTo({ top: 0 });
   }, [openTab]);
 
+  // How tall the scrolling area actually is, for a panel pinned beside a list
+  // (`position: sticky`) to fit itself into. `100vh` is the window, which is
+  // the shell's header and status bar taller than this, so a panel sized from
+  // it always hung off the bottom with its action row (issue 615).
+  useLayoutEffect(() => {
+    const content = contentRef.current;
+    if (!content || typeof ResizeObserver === "undefined") return;
+    const publish = () => content.style.setProperty("--content-height", `${content.clientHeight}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, []);
+
   // Changed in Settings rather than by dragging: the state below is seeded
   // once, so without this the segmented control in Appearance would write a
   // width the shell never read back.

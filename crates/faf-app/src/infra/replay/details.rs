@@ -12,10 +12,10 @@ use faf_domain::state::{ReplayChatMessage, ReplayCommandStats, ReplayDetails, Re
 use serde_json::Value;
 
 use super::codec::{open_replay_stream, read_head};
-use super::library::local_sim_mods;
+use super::library::envelope_sim_mods;
 use super::scfa_header::{
-    game_version_from_string, next_command_record, parse_replay_lua, replay_string, replay_u32,
-    replay_u8, skip_replay_bytes,
+    body_sim_mods, game_version_from_string, next_command_record, parse_replay_lua, replay_string,
+    replay_u32, replay_u8, skip_replay_bytes,
 };
 
 pub(super) async fn read_detailed_info(path: &Path) -> Result<ReplayDetails, String> {
@@ -23,7 +23,11 @@ pub(super) async fn read_detailed_info(path: &Path) -> Result<ReplayDetails, Str
     tokio::task::spawn_blocking(move || {
         let (header, stream) = open_replay_stream(&path)?;
         let mut details = parse_detailed_info(stream)?;
-        details.sim_mods = header.as_ref().map(local_sim_mods).unwrap_or_default();
+        // The envelope's list when it has one, as for the listing; the body's
+        // own table otherwise, which is every file the replay server wrote.
+        if let Some(mods) = header.as_ref().and_then(envelope_sim_mods) {
+            details.sim_mods = mods;
+        }
         Ok(details)
     })
     .await
@@ -53,7 +57,7 @@ fn parse_detailed_info(mut stream: impl Read) -> Result<ReplayDetails, String> {
             chat_messages: Vec::new(),
             command_stats: Vec::new(),
             sim_seconds: 0,
-            sim_mods: Vec::new(),
+            sim_mods: head.sim_mods.unwrap_or_default(),
             game_version: head.game_version,
         });
     };
@@ -66,9 +70,9 @@ fn parse_detailed_info(mut stream: impl Read) -> Result<ReplayDetails, String> {
         chat_messages: stream.chat_messages,
         command_stats: stream.command_stats,
         sim_seconds: stream.ticks / TICKS_PER_SECOND,
-        // Filled in by the caller, which is the only place that has seen the
-        // `.fafreplay` header this body was unwrapped from.
-        sim_mods: Vec::new(),
+        // The body's own table. The caller puts the envelope's list over it
+        // when the `.fafreplay` header this body was unwrapped from has one.
+        sim_mods: head.sim_mods.unwrap_or_default(),
         game_version: head.game_version,
     })
 }
@@ -77,6 +81,9 @@ fn parse_detailed_info(mut stream: impl Read) -> Result<ReplayDetails, String> {
 struct DetailsHead {
     game_version: Option<i32>,
     game_options_lua: Option<Value>,
+    /// The mods the body's own table names; `None` when the head ended
+    /// before it.
+    sim_mods: Option<Vec<String>>,
     /// The command sources the stream switches between. `None` when the head
     /// ended before their table, and then there is no stream to walk either.
     sources: Option<Vec<String>>,
@@ -91,6 +98,7 @@ fn read_details_head(cursor: &mut Cursor<&[u8]>) -> DetailsHead {
     let mut head = DetailsHead {
         game_version: game_version_from_string(version.as_deref()),
         game_options_lua: None,
+        sim_mods: None,
         sources: None,
         whole: false,
     };
@@ -98,11 +106,14 @@ fn read_details_head(cursor: &mut Cursor<&[u8]>) -> DetailsHead {
         return head;
     }
     let raw_map = replay_string(cursor);
-    if !skip_replay_bytes(cursor, 4)
-        || replay_u32(cursor).is_none()
-        || parse_replay_lua(cursor, 0).is_none()
-        || replay_u32(cursor).is_none()
-    {
+    if !skip_replay_bytes(cursor, 4) || replay_u32(cursor).is_none() {
+        return head;
+    }
+    let Some(mods) = parse_replay_lua(cursor, 0) else {
+        return head;
+    };
+    head.sim_mods = Some(body_sim_mods(&mods));
+    if replay_u32(cursor).is_none() {
         return head;
     }
     head.game_options_lua = parse_replay_lua(cursor, 0);

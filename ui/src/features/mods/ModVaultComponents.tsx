@@ -404,9 +404,12 @@ export function ModDetailPanel({
               <Icon name="flag" size={13} />
             </button>
           </div>
+          {/* A line each (issue 635): the author is what the mod's own
+              mod_info.lua declares, the uploader the account that published
+              it, and the creator search matches either. */}
           <p className="mod-detail-byline">
-            {mod.author ? t("mods.vault.authoredBy", { author: mod.author }) : t("mods.vault.unknownAuthor")}
-            {mod.uploader && mod.uploader !== mod.author ? ` · ${t("mods.vault.uploadedBy", { uploader: mod.uploader })}` : ""}
+            <span>{mod.author ? t("mods.vault.authoredBy", { author: mod.author }) : t("mods.vault.unknownAuthor")}</span>
+            {mod.uploader && <span>{t("mods.vault.uploadedBy", { uploader: mod.uploader })}</span>}
           </p>
           <div className="mod-detail-tags">
             <span className={`mod-vault-type ${mod.modType}`}>

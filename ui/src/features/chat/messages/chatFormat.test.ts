@@ -175,7 +175,7 @@ describe("which roster group a nickname lands in", () => {
   const social: SocialState = {
     friends: ["Nexus-"],
     foes: ["Grump"],
-    loginLookups: [],
+    loginLookups: [], staff: [],
     players: [
       profile("Dog", "SNF"),
       profile("Rhiza", "SNF"),
@@ -200,6 +200,13 @@ describe("which roster group a nickname lands in", () => {
     // Nobody wants one name in two groups, and the friend list is the more
     // specific of the two statements.
     expect(groupOf("Nexus-")).toBe("friends");
+  });
+
+  it("counts FAF's moderators as moderators without a channel mode (#607)", () => {
+    const withStaff: SocialState = { ...social, staff: ["ableeuw"] };
+    expect(categoryOf({ name: "ABLEEUW", elevation: "" }, "Dog", withStaff, true, ownClanTag(withStaff, "Dog")))
+      .toBe("moderators");
+    expect(groupOf("ableeuw")).toBe("players");
   });
 
   it("keeps a foe at the bottom whatever else they are", () => {

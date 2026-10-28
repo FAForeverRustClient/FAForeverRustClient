@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import type { RatingHistoryPoint } from "../../ipc/bindings";
 import { formatDate, formatDateTime } from "../../shared/format/dates";
@@ -30,6 +30,15 @@ const BOTTOM = 32;
 const FALLBACK_WIDTH = 900;
 
 const MAX_RENDERED_POINTS = 1_800;
+
+/** The points inside a zoomed stretch of time, ends included; all without one. */
+export function pointsInZoom<T extends { timestamp: number }>(
+  points: T[],
+  zoom: { start: number; end: number } | null,
+): T[] {
+  if (zoom === null) return points;
+  return points.filter((point) => point.timestamp >= zoom.start && point.timestamp <= zoom.end);
+}
 
 /** Round tick steps a reader can do arithmetic with. */
 const NICE_STEPS = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1_000];
@@ -108,13 +117,24 @@ export function RatingHistoryChart({ points, maximum, showMaximum }: RatingHisto
   const [wrapRef, width] = useMeasuredWidth();
   const [hover, setHover] = useState<ChartPoint | null>(null);
   const [drag, setDrag] = useState<{ start: number; end: number } | null>(null);
+  // A measured stretch, opened out to the whole plot (issue 631): marking a
+  // stretch only ever told its numbers, and the line inside it stayed as
+  // cramped as the rest of a ten-year history.
+  const [zoom, setZoom] = useState<{ start: number; end: number } | null>(null);
+  // Another period or queue is another history, and a zoom into the old one
+  // could show nothing of it.
+  useEffect(() => {
+    setZoom(null);
+    setDrag(null);
+  }, [points]);
 
-  const parsed = useMemo(() => points
+  const allParsed = useMemo(() => points
     .map((point) => ({
       timestamp: new Date(point.timestamp).valueOf(),
       rating: Number(point.rating),
     }))
     .filter((point) => Number.isFinite(point.timestamp) && Number.isFinite(point.rating)), [points]);
+  const parsed = useMemo(() => pointsInZoom(allParsed, zoom), [allParsed, zoom]);
 
   const domain = useMemo(() => {
     if (parsed.length === 0) return null;
@@ -235,8 +255,30 @@ export function RatingHistoryChart({ points, maximum, showMaximum }: RatingHisto
           <span className={selection.change >= 0 ? "is-gain" : "is-loss"}>
             {selection.change >= 0 ? "+" : ""}{selection.change.toFixed(0)}
           </span>
+          {selection.games > 1 && (
+            <button
+              type="button"
+              className="player-rating-selection-clear"
+              onClick={() => {
+                setZoom({ start: selection.start, end: selection.end });
+                setDrag(null);
+              }}
+            >
+              {t("playerCard.chart.zoomIn")}
+            </button>
+          )}
           <button type="button" className="player-rating-selection-clear" onClick={() => setDrag(null)}>
             {t("playerCard.chart.clear")}
+          </button>
+        </div>
+      )}
+      {zoom && !selection && (
+        <div className="player-rating-selection">
+          <span className="player-rating-selection-range">
+            {t("playerCard.chart.zoomed", { start: formatDate(zoom.start), end: formatDate(zoom.end) })}
+          </span>
+          <button type="button" className="player-rating-selection-clear" onClick={() => setZoom(null)}>
+            {t("playerCard.chart.zoomReset")}
           </button>
         </div>
       )}

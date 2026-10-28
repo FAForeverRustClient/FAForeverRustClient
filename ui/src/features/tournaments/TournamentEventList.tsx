@@ -31,21 +31,22 @@ import { daysLeftText, proposalChip } from "./proposals";
 import type { EventListFold } from "./useEventListFold";
 
 /**
- * The three groups that are always open, in the order they are read.
+ * The groups above the archive, in the order they are read.
  *
- * The website's order: your drafts, then what is being played right now, then
- * what is coming. Ongoing sat below Upcoming until issue 367, which put the
- * event people are following under a list of events that have not started.
+ * The website's order: proposals to decide, your drafts, other organisers'
+ * drafts, then what is being played right now, then what is coming. Ongoing
+ * sat below Upcoming until issue 367, which put the event people are following
+ * under a list of events that have not started.
  *
- * The fourth, the finished and abandoned, folds away behind a disclosure and is
- * rendered on its own below.
- *
- * The drafts carry no heading: every one of them says "Draft" on its own card,
- * and without a heading the first card starts level with the detail pane.
+ * The two kinds of draft fold away on request, as the website's sections do
+ * (issue 610): "My drafts" for whoever wants their own out of sight for a
+ * while, "Drafts" for the director who sees everybody else's. The finished and
+ * abandoned fold away behind a disclosure of their own, rendered below.
  */
-const LIVE_GROUPS: [Exclude<ListGroup, "past">, MessageKey | null][] = [
+const LIVE_GROUPS: [Exclude<ListGroup, "past">, MessageKey][] = [
   ["proposals", "tournaments.proposal.listTitle"],
-  ["drafts", null],
+  ["myDrafts", "tournaments.list.drafts"],
+  ["drafts", "tournaments.list.otherDrafts"],
   ["ongoing", "tournaments.list.ongoing"],
   ["upcoming", "tournaments.list.upcoming"],
 ];
@@ -83,7 +84,7 @@ export function TournamentEventList({ now, fold }: Props) {
   const { t } = useTranslation();
   const events = useAppStore((store) => store.state.tourney.events);
   const selectedId = useAppStore((store) => store.state.tourney.selectedId);
-  const { showPast, setShowPast, pastShown, setPastShown } = fold;
+  const { showPast, setShowPast, pastShown, setPastShown, folded, toggleFolded } = fold;
 
   const groups = groupedEvents(events);
 
@@ -222,20 +223,39 @@ export function TournamentEventList({ now, fold }: Props) {
       {events.length === 0 && (
         <div className="surface tournaments-state muted">{t("tournaments.loading")}</div>
       )}
-      {LIVE_GROUPS.map(([group, heading]) =>
-        groups[group].length === 0 ? null : (
+      {LIVE_GROUPS.map(([group, heading]) => {
+        if (groups[group].length === 0) return null;
+        const foldable = group === "myDrafts" || group === "drafts";
+        const open = !foldable || !folded.has(group);
+        return (
           <section className="tournaments-group" key={group}>
-            {heading !== null && (
+            {foldable ? (
+              <button
+                type="button"
+                className="tournaments-archive-toggle"
+                aria-expanded={open}
+                onClick={() => toggleFolded(group)}
+              >
+                <Icon name={open ? "chevronDown" : "chevronRight"} size={14} />
+                <span>{t(heading)}</span>
+                <span className="tournaments-group-count">{groups[group].length}</span>
+              </button>
+            ) : (
               <h3>
                 <span>{t(heading)}</span>
                 <span className="tournaments-group-count">{groups[group].length}</span>
               </h3>
             )}
-            {group === "proposals" && <p className="muted tournaments-group-note">{t("tournaments.proposal.listNote")}</p>}
-            <ul>{groups[group].map(row)}</ul>
+            {open && group === "proposals" && (
+              <p className="muted tournaments-group-note">{t("tournaments.proposal.listNote")}</p>
+            )}
+            {open && group === "drafts" && (
+              <p className="muted tournaments-group-note">{t("tournaments.list.otherDraftsNote")}</p>
+            )}
+            {open && <ul>{groups[group].map(row)}</ul>}
           </section>
-        ),
-      )}
+        );
+      })}
 
       {/* The archive, folded. Every event FAF has ever run is in this
           list, and the finished ones outnumber the live ones by an order

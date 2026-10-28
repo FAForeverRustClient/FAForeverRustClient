@@ -254,6 +254,13 @@ export function NotificationCenter() {
         playNotificationSound(soundForKind(item.kind, preferences.sounds), preferences.volume);
       }
     });
+    // A client in the background says so on its taskbar button (issue 641):
+    // the toast alone sits inside a window nobody is looking at, and the OS
+    // pop-up, when there is one, is gone a few seconds later.
+    void native
+      .isWindowFocused()
+      .then((focused) => (focused ? undefined : native.requestAttention()))
+      .catch(() => undefined);
     if (preferences.desktop) {
       // Not the whole batch. The client used to hand every notification it
       // raised to the operating system as well, so a friend coming online

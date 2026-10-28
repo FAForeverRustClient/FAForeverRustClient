@@ -7,15 +7,16 @@
 // this is and how to get it on disk), and the sections in
 // `ReplayDetailHero` and `ReplayDetailSections`.
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Modal } from "../../design-system/Modal";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { useOverlayLayer } from "../../design-system/useOverlayLayer";
 import type { VaultReplay } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
+import { useAppStore } from "../../store/store";
 import { plainError } from "../../shared/plainError";
 import { useGameRating } from "./useGameRating";
-import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
+import { withGameContext, type PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { ReplayInsights } from "./analysis/ReplayInsights";
 import { isObserverTeam, playerCount } from "./ReplayRoster";
 import { hasGameResult, localRatingNote, resultNote } from "./replayValidity";
@@ -32,6 +33,9 @@ import {
 } from "./ReplayDetailSections";
 
 export { localReplayToVaultReplay } from "./replayDetailPresentation";
+
+/** One empty list for every replay without mods, so the memoised facts keep it. */
+const NO_SIM_MODS: string[] = [];
 
 export function ReplayDetailPanel({
   replay,
@@ -77,6 +81,11 @@ export function ReplayDetailPanel({
 }) {
   const { t } = useTranslation();
   const isLocal = source === "local";
+  // A report opened from this lineup names this game.
+  const lineupPlayerMenu = useMemo(
+    () => (onPlayerMenu && replay.uid > 0 ? withGameContext(onPlayerMenu, replay.uid) : onPlayerMenu),
+    [onPlayerMenu, replay.uid],
+  );
   // The rail's button both asks for the file to be read and opens the panel
   // that shows what was in it, so its own open state is separate from whether
   // the details have arrived.
@@ -86,6 +95,25 @@ export function ReplayDetailPanel({
     resources;
   const map = useReplayMapPreparation({ replay, localMatch });
   const { effectiveMap, presentation } = map;
+
+  // The mods the game ran with (issue 638). The file says, and the API does
+  // not: the details read for the insights, a local copy, or for an online
+  // replay nobody has downloaded, the first few kilobytes of the file, asked
+  // for once when the details open.
+  const resolvedSimMods = useAppStore((state) => state.state.replays.resolvedSimMods?.[replay.uid]);
+  const knownLocally = Boolean(details?.simMods?.length) || localMatch !== undefined;
+  // Only a game that had mods shows the row: nearly every FAF game has none,
+  // and a row saying so, or saying the file is still being read, was noise on
+  // every one of them. A file that cannot be read shows nothing either.
+  const canRead = !isLocal && !knownLocally && replay.replayAvailable && replay.uid > 0;
+  const simMods = details?.simMods?.length
+    ? details.simMods
+    : (localMatch?.simMods ?? resolvedSimMods ?? NO_SIM_MODS);
+  useEffect(() => {
+    if (!canRead) return;
+    if (useAppStore.getState().state.replays.resolvedSimMods?.[replay.uid] !== undefined) return;
+    ipc.send({ kind: "Replays", command: { type: "resolveSimMods", payload: { uid: replay.uid } } });
+  }, [canRead, replay.uid]);
 
   const [copiedMapName, setCopiedMapName] = useState(false);
   /// Whether the map preview has been opened out of the rail.
@@ -182,6 +210,7 @@ export function ReplayDetailPanel({
         size={map.size}
         rating={rating}
         cardTitle={cardTitle}
+        mods={simMods}
       />
 
       <ReplayDetailLineup
@@ -189,7 +218,7 @@ export function ReplayDetailPanel({
         rated={rated}
         notRated={notRated}
         teams={detailTeams}
-        onPlayerMenu={onPlayerMenu}
+        onPlayerMenu={lineupPlayerMenu}
       />
 
       <ReplayDetailToolbar
