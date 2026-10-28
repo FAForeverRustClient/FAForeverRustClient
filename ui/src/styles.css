@@ -33,14 +33,17 @@ body {
   overscroll-behavior: none;
 }
 
-/* Country flags, everywhere, once. Every flag is a 16 px image from
-   `ui/public/flags/` (`flagSrc`), drawn at 16 px, so a screen scaled to 150 %
-   or 200 % stretches it over 24 or 32 device pixels. Smoothing that stretch is
-   what blurred the flags on a 4K monitor while they were sharp at 100 %;
-   nearest-neighbour keeps them as sharp as there, the way the avatars beside
-   them are drawn. One rule on the address rather than a class at each of the
-   dozen places a flag is shown, so a new one cannot miss it. */
+/* Country assets have square canvases, including their transparent padding.
+   Keep the whole image in a fixed slot: larger assets or a crowded player row
+   must not enlarge, crop or squeeze a flag. Nearest-neighbour keeps the small
+   bitmaps sharp on scaled screens. Apply this at every flagSrc call site. */
 img[src^="/flags/"] {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  max-width: 16px;
+  max-height: 16px;
+  object-fit: contain;
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
   image-rendering: pixelated;

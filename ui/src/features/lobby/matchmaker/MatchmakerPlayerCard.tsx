@@ -110,8 +110,8 @@ export const MatchmakerPlayerCard = memo(function MatchmakerPlayerCard({
                 src={flagSrc(flagCode)}
                 alt={countryOf(flagCode)}
                 title={countryOf(flagCode)}
-                width={20}
-                height={14}
+                width={16}
+                height={16}
               />
             )}
             <span>{placementLabel(placement) ?? t(status === "loading" ? "lobby.playerCard.loadingPlacement" : "lobby.matchmaker.unplaced")}</span>
