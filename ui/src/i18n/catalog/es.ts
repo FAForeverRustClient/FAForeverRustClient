@@ -181,7 +181,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "notifications.action.openCustomGames": "Abrir las partidas",
   "notifications.action.acceptPartyInvite": "Aceptar la invitación",
   "notifications.action.watchLive": "Ver la repetición",
-  "notifications.action.watchLiveWhenReady": "Iniciar cuando la partida esté lista",
+  "notifications.action.watchLiveWhenReady": "Iniciar cuando la repetición esté lista",
   "notifications.action.openSettings": "Abrir ajustes",
 
   "notifications.dismiss": "Descartar {title}",
