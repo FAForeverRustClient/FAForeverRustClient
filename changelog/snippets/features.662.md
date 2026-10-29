@@ -1,0 +1,1 @@
+- Replays have a Build order tab comparing two players' openings, and a desynced replay says when it desynced.
