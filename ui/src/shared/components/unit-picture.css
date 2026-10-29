@@ -1,0 +1,10 @@
+.unit-picture {
+  object-fit: contain;
+  user-select: none;
+}
+
+.unit-picture-id {
+  color: var(--color-muted);
+  font-size: 11px;
+  word-break: break-all;
+}

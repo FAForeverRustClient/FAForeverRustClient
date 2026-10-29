@@ -23,7 +23,7 @@ import { Icon } from "../../design-system/Icon";
 import { Select } from "../../design-system/Select";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { ipc } from "../../ipc/client";
-import { native, type UnitIcons } from "../../ipc/native";
+import type { UnitIcons } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
 import { MAX_SELECTED_UNITS } from "../../store/reducers/unitHistory";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -53,6 +53,7 @@ import {
   valueKeyId,
   valueLabel,
 } from "./unitHistory";
+import { UnitPicture, useUnitIcons } from "../../shared/components/UnitPicture";
 import "../../shared/components/changelog-blocks.css";
 
 type Translate = ReturnType<typeof useTranslation>["t"];
@@ -65,24 +66,6 @@ const selectionColor = (index: number) => (index % CHART_COLORS) + 1;
 
 /** The dashes that tell several values of one unit apart, in order. */
 const DASHES = ["", "7 4", "2 3", "10 3 2 3"];
-
-/** The game's pictures, asked for once per session and shared by every tile. */
-let iconsRequest: Promise<UnitIcons | null> | null = null;
-
-function useUnitIcons(): UnitIcons | null {
-  const [icons, setIcons] = useState<UnitIcons | null>(null);
-  useEffect(() => {
-    let current = true;
-    iconsRequest ??= native.readUnitIcons().catch(() => null);
-    void iconsRequest.then((loaded) => {
-      if (current) setIcons(loaded);
-    });
-    return () => {
-      current = false;
-    };
-  }, []);
-  return icons;
-}
 
 export function UnitHistoryView({ onOpenRelease }: { onOpenRelease: (id: string) => void }) {
   const { t } = useTranslation();
@@ -280,29 +263,6 @@ export function UnitHistoryView({ onOpenRelease }: { onOpenRelease: (id: string)
         </div>
       </article>
     </div>
-  );
-}
-
-/**
- * A unit's build icon: from the installed game, else from the patch notes'
- * icon set, else its id.
- */
-function UnitPicture({ unit, icons, size }: { unit: UnitSummary; icons: UnitIcons | null; size: number }) {
-  const local = icons?.units[unit.id];
-  const [failed, setFailed] = useState(false);
-  const source = local ?? (failed ? null : unit.iconUrl);
-  if (!source) return <span className="unit-history-icon-id">{unit.id}</span>;
-  return (
-    <img
-      className="unit-history-picture"
-      src={source}
-      alt=""
-      width={size}
-      height={size}
-      loading="lazy"
-      draggable={false}
-      onError={() => setFailed(true)}
-    />
   );
 }
 
