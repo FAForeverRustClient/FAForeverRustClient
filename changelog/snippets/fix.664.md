@@ -1,0 +1,6 @@
+- Map and mod downloads no longer follow a redirect away from FAF's content server.
+- The download sizes shown for mods no longer follow a redirect away from FAF's content server.
+- Tournament map previews no longer follow a redirect away from FAF's content server.
+- Maps and mods with an oversized scenario or mod info file are refused instead of being read into memory.
+- Very long map and mod names and descriptions are shortened in the installed lists.
+- A mod folder with more than 32 mods inside it lists only the first 32.

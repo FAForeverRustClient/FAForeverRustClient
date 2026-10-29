@@ -116,8 +116,9 @@ impl GameUpdaterClient {
         // so launching without it just trades a clear message for a hang on a
         // blank loading screen.
         if let Some(folder) = &request.map_folder {
+            // Not `self.http`: that client follows redirects without asking.
             game_updater::ensure_live_map(
-                &self.http,
+                &crate::infra::http::no_redirect_http_client(),
                 &self.config.content_base,
                 &maps::maps_dir(),
                 folder,
@@ -196,6 +197,8 @@ impl GameUpdaterPort for GameUpdaterClient {
     ) -> Vec<(String, String)> {
         let mut failures = Vec::new();
         let maps_dir = maps::maps_dir();
+        // Not `self.http`: that client follows redirects without asking.
+        let download_http = crate::infra::http::no_redirect_http_client();
         for folder in folders {
             // Between two maps: each is staged whole or not at all, so the
             // ones already in place stay and the rest wait for the next search.
@@ -204,7 +207,7 @@ impl GameUpdaterPort for GameUpdaterClient {
             }
             // Already on disk is the common case, and costs a directory read.
             if let Err(reason) = game_updater::ensure_live_map(
-                &self.http,
+                &download_http,
                 &self.config.content_base,
                 &maps_dir,
                 folder,

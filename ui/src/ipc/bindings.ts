@@ -10442,7 +10442,12 @@ export type StreamsCommand =
  */
 { type: "check" };
 
-export type StreamsEvent = { type: "checking" } | { type: "loaded"; payload: {
+export type StreamsEvent =
+/**
+ *  This client can check: raised once at startup, and never by a build
+ *  without credentials.
+ */
+{ type: "available" } | { type: "checking" } | { type: "loaded"; payload: {
 	streams: LiveStream[],
 } } | { type: "loadFailed"; payload: {
 	reason: string,
@@ -10464,6 +10469,13 @@ export type StreamsState = {
 	 *  remembering forever which broadcasts a machine has been told about.
 	 */
 	announced: string[],
+	/**
+	 *  Whether this client can check at all, which takes Twitch credentials
+	 *  in the environment it runs in. Releases have none, so nothing about
+	 *  FAF Live is shown there: a switch for announcements that can never
+	 *  come would be a switch that does nothing.
+	 */
+	available: boolean,
 };
 
 /**

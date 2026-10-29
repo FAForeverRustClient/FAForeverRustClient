@@ -99,6 +99,7 @@ pub mod lobby_ws;
 pub mod map_generator;
 pub mod map_markers;
 pub mod maps;
+mod metadata_file;
 pub mod mods;
 pub mod notification_sounds;
 pub mod oauth;
