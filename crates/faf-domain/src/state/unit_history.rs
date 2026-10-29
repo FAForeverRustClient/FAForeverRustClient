@@ -4,9 +4,8 @@
 //! Two loads. The unit list is read from the installed game once per visit;
 //! a unit's history is built when it is chosen, from blueprints that are
 //! downloaded once and kept on disk for good (a release tag never changes).
-//! Two histories at most are held: the unit on screen and the one it is
-//! compared with. Any other is dropped when the choice moves on, and comes
-//! back from the disk cache when it is chosen again.
+//! Only the selected units' histories are held. One that is put away is
+//! dropped, and comes back from the disk cache when it is picked again.
 //!
 //! The rules that turn blueprints into a history are in
 //! [`crate::protocol::unit_history`]; this slice holds what has been loaded.
@@ -49,17 +48,22 @@ pub enum UnitHistoryStatus {
     },
 }
 
+/// The most units compared at once: one line each, and the chart's palette
+/// keeps lines apart for every kind of colour vision only up to about this
+/// many on screen together.
+pub const MAX_SELECTED: usize = 6;
+
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UnitHistoryState {
     pub list_status: UnitListStatus,
     /// Every unit a player can build, from the installed game files.
     pub units: Vec<UnitSummary>,
-    /// The unit on screen, by upper-case blueprint id.
-    pub selected: Option<String>,
-    /// A second unit drawn into the same graph.
-    pub compared: Option<String>,
-    /// By blueprint id; only `selected` and `compared` are kept.
+    /// The units compared, by upper-case blueprint id, in the order they were
+    /// picked. One shows all of its values; several are compared value by
+    /// value.
+    pub selected: Vec<String>,
+    /// By blueprint id; only the selected units are kept.
     pub histories: BTreeMap<String, UnitHistoryStatus>,
 }
 
@@ -68,11 +72,8 @@ impl UnitHistoryState {
         self.units.iter().find(|unit| unit.id == id)
     }
 
-    fn keep_only_shown(&mut self) {
-        let (selected, compared) = (self.selected.clone(), self.compared.clone());
-        self.histories.retain(|id, _| {
-            selected.as_deref() == Some(id.as_str()) || compared.as_deref() == Some(id.as_str())
-        });
+    fn is_selected(&self, id: &str) -> bool {
+        self.selected.iter().any(|selected| selected == id)
     }
 }
 
@@ -86,11 +87,8 @@ pub enum UnitHistoryEvent {
     ListFailed {
         reason: String,
     },
-    Selected {
-        id: String,
-    },
-    Compared {
-        id: Option<String>,
+    SelectionChanged {
+        ids: Vec<String>,
     },
     #[serde(rename_all = "camelCase")]
     HistoryProgress {
@@ -113,11 +111,25 @@ pub enum UnitHistoryCommand {
     /// Read the unit list from the installed game. Sent on every visit to the
     /// section, so a game update shows its new units.
     LoadList,
-    /// Show one unit's history, building it unless it is already held. The
-    /// id is the blueprint id in any case.
+    /// Show this one unit and nothing else: what a link opens. The id is the
+    /// blueprint id in any case.
     Select { id: String },
-    /// Draw a second unit into the graph, or stop comparing with `None`.
-    Compare { id: Option<String> },
+    /// Compare these units, in this order, building every history not held
+    /// yet. More than [`MAX_SELECTED`] are cut to the first ones.
+    SetSelection { ids: Vec<String> },
+}
+
+/// A selection as the slice keeps it: upper case, each unit once, at most
+/// [`MAX_SELECTED`].
+pub fn normalized_selection(ids: &[String]) -> Vec<String> {
+    let mut selection: Vec<String> = Vec::new();
+    for id in ids {
+        let id = id.trim().to_ascii_uppercase();
+        if !id.is_empty() && !selection.contains(&id) && selection.len() < MAX_SELECTED {
+            selection.push(id);
+        }
+    }
+    selection
 }
 
 pub fn reduce(state: &mut UnitHistoryState, event: &UnitHistoryEvent) {
@@ -132,21 +144,15 @@ pub fn reduce(state: &mut UnitHistoryState, event: &UnitHistoryEvent) {
                 reason: reason.clone(),
             }
         }
-        UnitHistoryEvent::Selected { id } => {
-            state.selected = Some(id.clone());
-            if state.compared.as_deref() == Some(id.as_str()) {
-                state.compared = None;
-            }
-            state.keep_only_shown();
-        }
-        UnitHistoryEvent::Compared { id } => {
-            state.compared = id
-                .clone()
-                .filter(|id| state.selected.as_deref() != Some(id));
-            state.keep_only_shown();
+        UnitHistoryEvent::SelectionChanged { ids } => {
+            state.selected = normalized_selection(ids);
+            let selected = state.selected.clone();
+            state
+                .histories
+                .retain(|id, _| selected.iter().any(|kept| kept == id));
         }
         UnitHistoryEvent::HistoryProgress { id, fetched, total } => {
-            if is_shown(state, id) {
+            if state.is_selected(id) {
                 state.histories.insert(
                     id.clone(),
                     UnitHistoryStatus::Loading {
@@ -157,9 +163,9 @@ pub fn reduce(state: &mut UnitHistoryState, event: &UnitHistoryEvent) {
             }
         }
         UnitHistoryEvent::HistoryLoaded { history } => {
-            // A history that arrives after the choice has moved on is not
-            // kept: it would only be dropped at the next choice.
-            if is_shown(state, &history.unit.id) {
+            // A history that arrives after its unit was put away is not kept:
+            // it would only be dropped at the next change.
+            if state.is_selected(&history.unit.id) {
                 state.histories.insert(
                     history.unit.id.clone(),
                     UnitHistoryStatus::Ready {
@@ -169,7 +175,7 @@ pub fn reduce(state: &mut UnitHistoryState, event: &UnitHistoryEvent) {
             }
         }
         UnitHistoryEvent::HistoryFailed { id, reason } => {
-            if is_shown(state, id) {
+            if state.is_selected(id) {
                 state.histories.insert(
                     id.clone(),
                     UnitHistoryStatus::Failed {
@@ -181,10 +187,6 @@ pub fn reduce(state: &mut UnitHistoryState, event: &UnitHistoryEvent) {
     }
 }
 
-fn is_shown(state: &UnitHistoryState, id: &str) -> bool {
-    state.selected.as_deref() == Some(id) || state.compared.as_deref() == Some(id)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -193,6 +195,7 @@ mod tests {
         UnitSummary {
             id: id.into(),
             path: format!("units/{id}/{id}_unit.bp"),
+            icon_url: String::new(),
             name: None,
             description: None,
             faction: Some("UEF".into()),
@@ -210,25 +213,20 @@ mod tests {
         }
     }
 
+    fn select(ids: &[&str]) -> UnitHistoryEvent {
+        UnitHistoryEvent::SelectionChanged {
+            ids: ids.iter().map(|id| id.to_string()).collect(),
+        }
+    }
+
     #[test]
-    fn only_the_shown_units_keep_their_history() {
+    fn only_the_selected_units_keep_their_history() {
         let mut state = UnitHistoryState::default();
-        reduce(
-            &mut state,
-            &UnitHistoryEvent::Selected {
-                id: "UEL0201".into(),
-            },
-        );
+        reduce(&mut state, &select(&["UEL0201", "URL0107"]));
         reduce(
             &mut state,
             &UnitHistoryEvent::HistoryLoaded {
                 history: history("UEL0201"),
-            },
-        );
-        reduce(
-            &mut state,
-            &UnitHistoryEvent::Compared {
-                id: Some("URL0107".into()),
             },
         );
         reduce(
@@ -239,16 +237,11 @@ mod tests {
         );
         assert_eq!(state.histories.len(), 2);
 
-        reduce(
-            &mut state,
-            &UnitHistoryEvent::Selected {
-                id: "UAL0201".into(),
-            },
-        );
+        reduce(&mut state, &select(&["URL0107", "UAL0201"]));
         assert_eq!(
             state.histories.keys().collect::<Vec<_>>(),
             ["URL0107"],
-            "the compared unit stays, the one left is dropped"
+            "the unit put away is dropped, the one kept stays"
         );
         reduce(
             &mut state,
@@ -258,55 +251,36 @@ mod tests {
         );
         assert!(
             !state.histories.contains_key("UEL0201"),
-            "a late answer for a unit no longer shown is not kept"
+            "a late answer for a unit no longer selected is not kept"
         );
     }
 
     #[test]
-    fn a_unit_is_not_compared_with_itself() {
-        let mut state = UnitHistoryState::default();
-        reduce(
-            &mut state,
-            &UnitHistoryEvent::Selected {
-                id: "UEL0201".into(),
-            },
-        );
-        reduce(
-            &mut state,
-            &UnitHistoryEvent::Compared {
-                id: Some("UEL0201".into()),
-            },
-        );
-        assert_eq!(state.compared, None);
-
-        reduce(
-            &mut state,
-            &UnitHistoryEvent::Compared {
-                id: Some("URL0107".into()),
-            },
-        );
-        reduce(
-            &mut state,
-            &UnitHistoryEvent::Selected {
-                id: "URL0107".into(),
-            },
-        );
-        assert_eq!(state.selected.as_deref(), Some("URL0107"));
-        assert_eq!(
-            state.compared, None,
-            "choosing the compared unit ends the comparison"
-        );
+    fn a_selection_is_upper_case_unique_and_capped() {
+        let ids: Vec<String> = [
+            "uel0201",
+            "UEL0201",
+            " url0107 ",
+            "",
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+        ]
+        .iter()
+        .map(|id| id.to_string())
+        .collect();
+        let selection = normalized_selection(&ids);
+        assert_eq!(selection.len(), MAX_SELECTED);
+        assert_eq!(selection[..3], ["UEL0201", "URL0107", "A"]);
     }
 
     #[test]
-    fn progress_and_failure_land_on_the_shown_unit() {
+    fn progress_and_failure_land_on_a_selected_unit() {
         let mut state = UnitHistoryState::default();
-        reduce(
-            &mut state,
-            &UnitHistoryEvent::Selected {
-                id: "UEL0201".into(),
-            },
-        );
+        reduce(&mut state, &select(&["UEL0201"]));
         reduce(
             &mut state,
             &UnitHistoryEvent::HistoryProgress {
@@ -333,6 +307,15 @@ mod tests {
             state.histories.get("UEL0201"),
             Some(UnitHistoryStatus::Failed { .. })
         ));
+        reduce(
+            &mut state,
+            &UnitHistoryEvent::HistoryProgress {
+                id: "URL0107".into(),
+                fetched: 1,
+                total: 2,
+            },
+        );
+        assert!(!state.histories.contains_key("URL0107"));
     }
 
     #[test]

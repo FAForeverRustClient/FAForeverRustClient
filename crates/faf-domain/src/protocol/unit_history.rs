@@ -93,6 +93,9 @@ pub struct UnitSummary {
     /// The blueprint's path inside the installed archive, e.g.
     /// `units/UEL0201/UEL0201_unit.bp`, kept for its exact spelling.
     pub path: String,
+    /// The unit's build icon, from the same site the patch notes take their
+    /// unit icons from.
+    pub icon_url: String,
     /// `General.UnitName` without its localisation tag, e.g. "MA12 Striker".
     /// Many structures have none.
     pub name: Option<String>,
@@ -131,6 +134,7 @@ pub fn summarize(path: &str, blueprint: &LuaTable) -> Option<UnitSummary> {
         return None;
     }
     Some(UnitSummary {
+        icon_url: super::changelog::unit_icon_url(&id),
         id,
         path: path.trim_start_matches('/').to_owned(),
         name: without_localization(blueprint.string(&["General", "UnitName"])),
@@ -998,6 +1002,7 @@ mod tests {
             UnitSummary {
                 id: "UEL0201".into(),
                 path: "units/UEL0201/UEL0201_unit.bp".into(),
+                icon_url: "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png".into(),
                 name: Some("MA12 Striker".into()),
                 description: Some("Medium Tank".into()),
                 faction: Some("UEF".into()),

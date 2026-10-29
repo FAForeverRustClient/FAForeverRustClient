@@ -4116,7 +4116,7 @@ fn cases() -> Vec<Case> {
         ),
         // ── unit history ─────────────────────────────────────────────────
         case(
-            "a unit history keeps only the units on screen and ignores late answers",
+            "a unit history keeps only the selected units, capped, and ignores late answers",
             {
                 use faf_domain::protocol::unit_history::{
                     UnitChange, UnitChangeRow, UnitHistory, UnitRelease, UnitSeries, UnitSource,
@@ -4125,6 +4125,7 @@ fn cases() -> Vec<Case> {
                 let summary = |id: &str| UnitSummary {
                     id: id.into(),
                     path: format!("units/{id}/{id}_unit.bp"),
+                    icon_url: format!("https://faforever.github.io/fa/assets/icons/{id}_icon.png"),
                     name: Some("MA12 Striker".into()),
                     description: Some("Medium Tank".into()),
                     faction: Some("UEF".into()),
@@ -4199,8 +4200,8 @@ fn cases() -> Vec<Case> {
                         reason: "no game".into(),
                     }
                     .into(),
-                    UnitHistoryEvent::Selected {
-                        id: "UEL0201".into(),
+                    UnitHistoryEvent::SelectionChanged {
+                        ids: vec!["uel0201".into()],
                     }
                     .into(),
                     UnitHistoryEvent::HistoryProgress {
@@ -4213,12 +4214,8 @@ fn cases() -> Vec<Case> {
                         history: history("UEL0201"),
                     }
                     .into(),
-                    UnitHistoryEvent::Compared {
-                        id: Some("UEL0201".into()),
-                    }
-                    .into(),
-                    UnitHistoryEvent::Compared {
-                        id: Some("URL0107".into()),
+                    UnitHistoryEvent::SelectionChanged {
+                        ids: vec!["UEL0201".into(), "URL0107".into(), "UEL0201".into()],
                     }
                     .into(),
                     UnitHistoryEvent::HistoryFailed {
@@ -4226,8 +4223,8 @@ fn cases() -> Vec<Case> {
                         reason: "offline".into(),
                     }
                     .into(),
-                    UnitHistoryEvent::Selected {
-                        id: "URL0107".into(),
+                    UnitHistoryEvent::SelectionChanged {
+                        ids: vec!["URL0107".into()],
                     }
                     .into(),
                     UnitHistoryEvent::HistoryLoaded {
@@ -4240,7 +4237,13 @@ fn cases() -> Vec<Case> {
                         total: 2,
                     }
                     .into(),
-                    UnitHistoryEvent::Compared { id: None }.into(),
+                    UnitHistoryEvent::SelectionChanged {
+                        ids: ["A", "B", "C", "D", "E", "F", "G"]
+                            .iter()
+                            .map(|id| id.to_string())
+                            .collect(),
+                    }
+                    .into(),
                 ]
             },
         ),

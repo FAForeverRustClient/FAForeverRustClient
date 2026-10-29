@@ -817,6 +817,11 @@
 
 /* ── Unit history ──────────────────────────────────────────────────────── */
 
+/* A unit database's grid wants more room than a list of patch numbers. */
+.changelog-view.unit-history-view {
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+}
+
 .unit-history-filters {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -824,63 +829,151 @@
   margin-right: var(--space-3);
 }
 
-.unit-history-units {
+.unit-history-faction + .unit-history-faction {
+  margin-top: var(--space-3);
+}
+
+.unit-history-faction h3 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 6px var(--space-1);
+  font-size: 12px;
+  font-weight: 650;
+  background: var(--color-surface);
+}
+
+.unit-history-tier {
+  display: grid;
+  grid-template-columns: 2.6rem minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2);
+  padding: 2px 0;
+}
+
+.unit-history-tier-label {
+  padding-top: 12px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.unit-history-icons {
   display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* An icon is a toggle: picked, it carries its line's colour as a ring. */
+.unit-history-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  cursor: pointer;
+}
+
+.unit-history-icon:hover {
+  background: var(--color-surface-hover);
+}
+
+.unit-history-icon:focus-visible {
+  outline-color: var(--color-accent);
+}
+
+.unit-history-icon.is-selected {
+  background: var(--color-surface-raised);
+}
+
+.unit-history-icon:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.unit-history-icon img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  user-select: none;
+}
+
+.unit-history-icon-id {
+  color: var(--color-muted);
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.unit-history-head {
   flex-direction: column;
-  gap: 1px;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.unit-history-pick {
+  margin: 0;
+}
+
+.unit-history-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.unit-history-unit {
+.unit-history-chip {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
-  width: 100%;
-  padding: 5px var(--space-2);
-  font: inherit;
-  color: var(--color-text);
-  text-align: left;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.unit-history-chip img {
+  object-fit: contain;
+}
+
+.unit-history-chip-remove {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: var(--color-muted);
   background: transparent;
   border: 0;
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
-.unit-history-unit:hover {
+.unit-history-chip-remove:hover {
+  color: var(--color-text);
   background: var(--color-surface-hover);
 }
 
-.unit-history-unit:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: -2px;
-}
-
-.unit-history-unit[aria-current="page"] {
-  background: var(--color-surface-raised);
-  box-shadow: inset 0 0 0 1px var(--color-border-strong);
-}
-
-.unit-history-unit-name {
-  font-size: 13px;
-}
-
-.unit-history-unit-meta {
-  overflow: hidden;
-  color: var(--color-subtle);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.unit-history-pick,
-.unit-history-progress {
-  margin: var(--space-4) 24px;
+.unit-history-full {
+  margin: 0;
+  font-size: 12px;
 }
 
 .unit-history-progress progress {
   width: min(420px, 100%);
+}
+
+.unit-history-progress p {
+  margin: 0 0 4px;
 }
 
 .unit-history-body {
@@ -894,7 +987,61 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 320px));
   gap: var(--space-3);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.unit-history-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.unit-history-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+button.unit-history-legend-item {
+  cursor: pointer;
+}
+
+button.unit-history-legend-item:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+button.unit-history-legend-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.unit-history-legend-item.is-active {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.unit-history-swatch {
+  flex: none;
+  width: 14px;
+  height: 3px;
+  background: var(--color-border-strong);
+  border-radius: 1px;
+}
+
+.unit-history-axis-caption {
+  margin: 0 0 var(--space-1);
+  font-size: 12px;
 }
 
 .unit-history-chart {
@@ -917,6 +1064,12 @@
   stroke-width: 1;
 }
 
+.unit-history-baseline {
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
 .unit-history-axis {
   stroke: var(--color-border-strong);
   stroke-width: 1;
@@ -934,60 +1087,20 @@
   opacity: 0.6;
 }
 
-/* The unit chosen in the established chart colour, the one compared with in
-   a second hue and dashed, so the two never depend on colour alone. */
 .unit-history-line {
   fill: none;
-  stroke: var(--color-rating);
   stroke-width: 2;
   stroke-linejoin: round;
 }
 
-.unit-history-line.is-compared {
-  stroke: var(--color-unit-air);
-  stroke-dasharray: 6 4;
-}
-
 .unit-history-change {
-  fill: var(--color-rating);
   stroke: var(--color-surface);
   stroke-width: 2;
 }
 
-.unit-history-change.is-compared {
-  fill: var(--color-unit-air);
-}
-
-.unit-history-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  margin: 0 0 var(--space-2);
-  padding: 0;
-  color: var(--color-text);
-  font-size: 12px;
-  list-style: none;
-}
-
-.unit-history-legend li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.unit-history-legend line {
-  stroke: var(--color-rating);
-  stroke-width: 2;
-}
-
-.unit-history-legend .is-compared line {
-  stroke: var(--color-unit-air);
-  stroke-dasharray: 6 4;
-}
-
 .unit-history-tooltip {
   position: absolute;
-  top: 40px;
+  top: 16px;
   z-index: 1;
   display: flex;
   flex-direction: column;
@@ -1005,10 +1118,15 @@
 }
 
 .unit-history-tooltip-row {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
+  display: grid;
+  grid-template-columns: 14px minmax(0, auto) auto;
+  align-items: center;
+  gap: 6px;
   font-variant-numeric: tabular-nums;
+}
+
+.unit-history-tooltip-label {
+  color: var(--color-muted);
 }
 
 .unit-history-changes h2 {
@@ -1017,32 +1135,23 @@
   font-weight: 650;
 }
 
-.unit-history-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
+.unit-history-change-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.unit-history-table th,
-.unit-history-table td {
-  padding: var(--space-2);
-  text-align: left;
-  vertical-align: top;
-  border-bottom: 1px solid var(--color-border);
+/* A release on the left, what it changed on the right, the way the patch
+   notes list a unit's changes under its heading. */
+.unit-history-change-row {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
 }
 
-.unit-history-table thead th {
-  color: var(--color-muted);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.unit-history-table tbody th {
-  width: 9rem;
-  font-weight: 400;
-}
-
-.unit-history-table time {
+.unit-history-change-release time {
   display: block;
   color: var(--color-subtle);
   font-size: 12px;
@@ -1063,37 +1172,42 @@
   text-decoration: underline;
 }
 
+.unit-history-change-units {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.unit-history-change-unit .changelog-list {
+  margin: 0;
+}
+
+/* The patch notes' unit heading, smaller: here it labels a few lines. */
+.changelog-unit.unit-history-change-unit-head {
+  margin: 0 0 2px;
+  padding: 0;
+  border: 0;
+  gap: 8px;
+}
+
+.unit-history-change-unit-head .changelog-unit-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.unit-history-change-unit-head .changelog-unit-name {
+  font-size: 13px;
+}
+
 .unit-history-source {
   display: inline-block;
-  margin-top: 2px;
+  margin-bottom: 2px;
   padding: 0 4px;
   color: var(--color-muted);
   font-size: 11px;
   border: 1px solid var(--color-border-strong);
   border-radius: 2px;
-}
-
-.unit-history-change-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-variant-numeric: tabular-nums;
-}
-
-.unit-history-change-list code {
-  margin-right: 6px;
-  font-size: 12px;
-}
-
-.unit-history-old {
-  color: var(--color-muted);
-}
-
-.unit-history-new {
-  font-weight: 650;
 }
 
 .unit-history-limits {

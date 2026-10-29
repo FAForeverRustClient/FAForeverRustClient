@@ -2489,7 +2489,7 @@
       ]
     },
     {
-      "name": "a unit history keeps only the units on screen and ignores late answers",
+      "name": "a unit history keeps only the selected units, capped, and ignores late answers",
       "steps": [
         {
           "event": {
@@ -2499,12 +2499,11 @@
             "kind": "UnitHistory"
           },
           "expected": {
-            "compared": null,
             "histories": {},
             "listStatus": {
               "type": "loading"
             },
-            "selected": null,
+            "selected": [],
             "units": []
           }
         },
@@ -2516,6 +2515,7 @@
                   {
                     "description": "Medium Tank",
                     "faction": "UEF",
+                    "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                     "id": "UEL0201",
                     "name": "MA12 Striker",
                     "path": "units/UEL0201/UEL0201_unit.bp",
@@ -2524,6 +2524,7 @@
                   {
                     "description": "Medium Tank",
                     "faction": "UEF",
+                    "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                     "id": "URL0107",
                     "name": "MA12 Striker",
                     "path": "units/URL0107/URL0107_unit.bp",
@@ -2536,16 +2537,16 @@
             "kind": "UnitHistory"
           },
           "expected": {
-            "compared": null,
             "histories": {},
             "listStatus": {
               "type": "ready"
             },
-            "selected": null,
+            "selected": [],
             "units": [
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
@@ -2554,6 +2555,7 @@
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
@@ -2573,7 +2575,6 @@
             "kind": "UnitHistory"
           },
           "expected": {
-            "compared": null,
             "histories": {},
             "listStatus": {
               "payload": {
@@ -2581,11 +2582,12 @@
               },
               "type": "failed"
             },
-            "selected": null,
+            "selected": [],
             "units": [
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
@@ -2594,6 +2596,7 @@
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
@@ -2606,14 +2609,15 @@
           "event": {
             "event": {
               "payload": {
-                "id": "UEL0201"
+                "ids": [
+                  "uel0201"
+                ]
               },
-              "type": "selected"
+              "type": "selectionChanged"
             },
             "kind": "UnitHistory"
           },
           "expected": {
-            "compared": null,
             "histories": {},
             "listStatus": {
               "payload": {
@@ -2621,11 +2625,14 @@
               },
               "type": "failed"
             },
-            "selected": "UEL0201",
+            "selected": [
+              "UEL0201"
+            ],
             "units": [
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
@@ -2634,6 +2641,7 @@
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
@@ -2655,7 +2663,6 @@
             "kind": "UnitHistory"
           },
           "expected": {
-            "compared": null,
             "histories": {
               "UEL0201": {
                 "payload": {
@@ -2671,11 +2678,14 @@
               },
               "type": "failed"
             },
-            "selected": "UEL0201",
+            "selected": [
+              "UEL0201"
+            ],
             "units": [
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
@@ -2684,6 +2694,7 @@
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
@@ -2785,6 +2796,7 @@
                   "unit": {
                     "description": "Medium Tank",
                     "faction": "UEF",
+                    "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                     "id": "UEL0201",
                     "name": "MA12 Striker",
                     "path": "units/UEL0201/UEL0201_unit.bp",
@@ -2804,7 +2816,6 @@
             "kind": "UnitHistory"
           },
           "expected": {
-            "compared": null,
             "histories": {
               "UEL0201": {
                 "payload": {
@@ -2897,6 +2908,7 @@
                     "unit": {
                       "description": "Medium Tank",
                       "faction": "UEF",
+                      "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                       "id": "UEL0201",
                       "name": "MA12 Striker",
                       "path": "units/UEL0201/UEL0201_unit.bp",
@@ -2920,11 +2932,14 @@
               },
               "type": "failed"
             },
-            "selected": "UEL0201",
+            "selected": [
+              "UEL0201"
+            ],
             "units": [
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
@@ -2933,6 +2948,7 @@
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
@@ -2945,14 +2961,17 @@
           "event": {
             "event": {
               "payload": {
-                "id": "UEL0201"
+                "ids": [
+                  "UEL0201",
+                  "URL0107",
+                  "UEL0201"
+                ]
               },
-              "type": "compared"
+              "type": "selectionChanged"
             },
             "kind": "UnitHistory"
           },
           "expected": {
-            "compared": null,
             "histories": {
               "UEL0201": {
                 "payload": {
@@ -3045,6 +3064,7 @@
                     "unit": {
                       "description": "Medium Tank",
                       "faction": "UEF",
+                      "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                       "id": "UEL0201",
                       "name": "MA12 Striker",
                       "path": "units/UEL0201/UEL0201_unit.bp",
@@ -3068,11 +3088,15 @@
               },
               "type": "failed"
             },
-            "selected": "UEL0201",
+            "selected": [
+              "UEL0201",
+              "URL0107"
+            ],
             "units": [
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
@@ -3081,154 +3105,7 @@
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
-                "id": "URL0107",
-                "name": "MA12 Striker",
-                "path": "units/URL0107/URL0107_unit.bp",
-                "tech": 1
-              }
-            ]
-          }
-        },
-        {
-          "event": {
-            "event": {
-              "payload": {
-                "id": "URL0107"
-              },
-              "type": "compared"
-            },
-            "kind": "UnitHistory"
-          },
-          "expected": {
-            "compared": "URL0107",
-            "histories": {
-              "UEL0201": {
-                "payload": {
-                  "history": {
-                    "changes": [
-                      {
-                        "changes": [
-                          {
-                            "payload": {
-                              "after": 300.0,
-                              "before": 270.0,
-                              "key": {
-                                "payload": {
-                                  "stat": "maxHealth"
-                                },
-                                "type": "unit"
-                              }
-                            },
-                            "type": "value"
-                          },
-                          {
-                            "payload": {
-                              "added": [
-                                "SNIPEMODE"
-                              ],
-                              "removed": []
-                            },
-                            "type": "categories"
-                          }
-                        ],
-                        "date": "2022-01-01",
-                        "release": "3738"
-                      }
-                    ],
-                    "releases": [
-                      {
-                        "date": "2021-01-01",
-                        "release": "3700",
-                        "source": {
-                          "type": "baseGame"
-                        }
-                      },
-                      {
-                        "date": "2021-02-01",
-                        "release": "3701",
-                        "source": {
-                          "payload": {
-                            "reason": "offline"
-                          },
-                          "type": "unavailable"
-                        }
-                      },
-                      {
-                        "date": "2022-01-01",
-                        "release": "3738",
-                        "source": {
-                          "type": "repository"
-                        }
-                      }
-                    ],
-                    "series": [
-                      {
-                        "key": {
-                          "payload": {
-                            "stat": "maxHealth"
-                          },
-                          "type": "unit"
-                        },
-                        "values": [
-                          270.0,
-                          null,
-                          300.0
-                        ]
-                      },
-                      {
-                        "key": {
-                          "payload": {
-                            "stat": "dps",
-                            "weapon": "MainGun"
-                          },
-                          "type": "weapon"
-                        },
-                        "values": [
-                          16.0,
-                          null,
-                          17.5
-                        ]
-                      }
-                    ],
-                    "unit": {
-                      "description": "Medium Tank",
-                      "faction": "UEF",
-                      "id": "UEL0201",
-                      "name": "MA12 Striker",
-                      "path": "units/UEL0201/UEL0201_unit.bp",
-                      "tech": 1
-                    },
-                    "weapons": [
-                      {
-                        "category": "Direct Fire",
-                        "key": "MainGun",
-                        "name": "Gauss Cannon"
-                      }
-                    ]
-                  }
-                },
-                "type": "ready"
-              }
-            },
-            "listStatus": {
-              "payload": {
-                "reason": "no game"
-              },
-              "type": "failed"
-            },
-            "selected": "UEL0201",
-            "units": [
-              {
-                "description": "Medium Tank",
-                "faction": "UEF",
-                "id": "UEL0201",
-                "name": "MA12 Striker",
-                "path": "units/UEL0201/UEL0201_unit.bp",
-                "tech": 1
-              },
-              {
-                "description": "Medium Tank",
-                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
@@ -3249,7 +3126,6 @@
             "kind": "UnitHistory"
           },
           "expected": {
-            "compared": "URL0107",
             "histories": {
               "UEL0201": {
                 "payload": {
@@ -3342,6 +3218,7 @@
                     "unit": {
                       "description": "Medium Tank",
                       "faction": "UEF",
+                      "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                       "id": "UEL0201",
                       "name": "MA12 Striker",
                       "path": "units/UEL0201/UEL0201_unit.bp",
@@ -3371,11 +3248,15 @@
               },
               "type": "failed"
             },
-            "selected": "UEL0201",
+            "selected": [
+              "UEL0201",
+              "URL0107"
+            ],
             "units": [
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
@@ -3384,6 +3265,7 @@
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
@@ -3396,14 +3278,15 @@
           "event": {
             "event": {
               "payload": {
-                "id": "URL0107"
+                "ids": [
+                  "URL0107"
+                ]
               },
-              "type": "selected"
+              "type": "selectionChanged"
             },
             "kind": "UnitHistory"
           },
           "expected": {
-            "compared": null,
             "histories": {
               "URL0107": {
                 "payload": {
@@ -3418,11 +3301,14 @@
               },
               "type": "failed"
             },
-            "selected": "URL0107",
+            "selected": [
+              "URL0107"
+            ],
             "units": [
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
@@ -3431,6 +3317,7 @@
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
@@ -3532,6 +3419,7 @@
                   "unit": {
                     "description": "Medium Tank",
                     "faction": "UEF",
+                    "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                     "id": "UEL0201",
                     "name": "MA12 Striker",
                     "path": "units/UEL0201/UEL0201_unit.bp",
@@ -3551,7 +3439,6 @@
             "kind": "UnitHistory"
           },
           "expected": {
-            "compared": null,
             "histories": {
               "URL0107": {
                 "payload": {
@@ -3566,11 +3453,14 @@
               },
               "type": "failed"
             },
-            "selected": "URL0107",
+            "selected": [
+              "URL0107"
+            ],
             "units": [
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
@@ -3579,6 +3469,7 @@
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
@@ -3600,7 +3491,6 @@
             "kind": "UnitHistory"
           },
           "expected": {
-            "compared": null,
             "histories": {
               "URL0107": {
                 "payload": {
@@ -3615,11 +3505,14 @@
               },
               "type": "failed"
             },
-            "selected": "URL0107",
+            "selected": [
+              "URL0107"
+            ],
             "units": [
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
@@ -3628,6 +3521,7 @@
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
@@ -3640,33 +3534,41 @@
           "event": {
             "event": {
               "payload": {
-                "id": null
+                "ids": [
+                  "A",
+                  "B",
+                  "C",
+                  "D",
+                  "E",
+                  "F",
+                  "G"
+                ]
               },
-              "type": "compared"
+              "type": "selectionChanged"
             },
             "kind": "UnitHistory"
           },
           "expected": {
-            "compared": null,
-            "histories": {
-              "URL0107": {
-                "payload": {
-                  "reason": "offline"
-                },
-                "type": "failed"
-              }
-            },
+            "histories": {},
             "listStatus": {
               "payload": {
                 "reason": "no game"
               },
               "type": "failed"
             },
-            "selected": "URL0107",
+            "selected": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "E",
+              "F"
+            ],
             "units": [
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
@@ -3675,6 +3577,7 @@
               {
                 "description": "Medium Tank",
                 "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
@@ -129715,12 +129618,11 @@
       "tutorials": []
     },
     "unitHistory": {
-      "compared": null,
       "histories": {},
       "listStatus": {
         "type": "idle"
       },
-      "selected": null,
+      "selected": [],
       "units": []
     },
     "uploads": {
