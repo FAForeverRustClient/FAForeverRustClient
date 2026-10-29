@@ -1,4 +1,4 @@
-//! Changelog: two plain GETs against FAForever/fa's published documents.
+//! Changelog: current published documents and source-verified embedded history.
 //!
 //! No authentication and no API. The index is the rendered page on GitHub
 //! Pages; a dated note is its Markdown source on `raw.githubusercontent.com`
@@ -6,11 +6,13 @@
 //! codec's header gives. All three are CDN-served static files, which is what
 //! keeps this off GitHub's rate-limited API. All parsing is in
 //! [`faf_domain::protocol::changelog`].
+//! Early wiki/announcement notes are read from the embedded archive; opening or
+//! searching them does not contact Wayback or the original wiki.
 
 use async_trait::async_trait;
 use faf_domain::protocol::changelog::{
-    historical_balance_source, parse_entry, parse_historical_balance, parse_index,
-    parse_rendered_entry, ChangelogEntry, ChangelogRelease,
+    early_entry, historical_balance_source, parse_entry, parse_historical_balance, parse_index,
+    parse_rendered_entry, with_early_releases, ChangelogEntry, ChangelogRelease,
 };
 
 use crate::infra::env_or;
@@ -120,10 +122,13 @@ impl ChangelogPort for ChangelogClient {
             // more, which is a different thing to investigate.
             return Err("the changelog index listed no releases".into());
         }
-        Ok(releases)
+        Ok(with_early_releases(releases))
     }
 
     async fn load_entry(&self, release: ChangelogRelease) -> Result<ChangelogEntry, String> {
+        if let Some(entry) = early_entry(&release) {
+            return Ok(entry);
+        }
         if release.source_url.is_empty() {
             return Err(format!("release {} has no published source", release.id));
         }
@@ -207,6 +212,29 @@ mod tests {
         Arc,
     };
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    #[tokio::test]
+    async fn early_notes_load_without_archive_network_access() {
+        let mut client = ChangelogClient::new(ChangelogConfig {
+            index_url: "http://127.0.0.1:1/unavailable".into(),
+            cache_dir: None,
+        });
+        // Any network read would fail through this unused local proxy.
+        client.http = reqwest::Client::builder()
+            .proxy(reqwest::Proxy::all("http://127.0.0.1:1").unwrap())
+            .timeout(std::time::Duration::from_millis(100))
+            .build()
+            .unwrap();
+        for release in with_early_releases(vec![])
+            .into_iter()
+            .filter(|release| matches!(release.id.as_str(), "3616" | "legacy-3605"))
+        {
+            let id = release.id.clone();
+            let entry = client.load_entry(release).await.unwrap();
+            assert_eq!(entry.id, id);
+            assert!(!entry.blocks.is_empty());
+        }
+    }
 
     #[tokio::test]
     async fn dated_notes_survive_client_restarts_while_rolling_notes_refresh() {

@@ -28,12 +28,17 @@
 //! the repository's two Liquid plugins produce, so this parses that dialect and
 //! nothing more: headings, paragraphs, nested dashed lists, `{% unit %}` blocks,
 //! and the `old -> new` lines that `balance_change.rb` styles.
+//!
+//! Early wiki and announcement notes are embedded separately in `early` with
+//! pinned provenance. Unknown historical dates are not deployment branches.
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+mod early;
 mod historical;
 mod search;
+pub use early::{early_entry, is_early_release, with_early_releases};
 pub use historical::{historical_balance_source, parse_historical_balance};
 pub use search::{search_entry, ChangelogSearchDocument, ChangelogSearchMatch};
 
@@ -47,25 +52,28 @@ const ISSUE_BASE: &str = "https://github.com/FAForever/fa/issues";
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangelogRelease {
-    /// Game version, e.g. `"3837"`. Also the id the UI selects by, which is why
-    /// the two rolling branches get the ids `"fafbeta"` and `"fafdevelop"`.
+    /// Game version, e.g. `"3837"`, or `"legacy-3605"` for unverified legacy
+    /// material. Deployment branches use `"fafbeta"` and `"fafdevelop"`.
     pub id: String,
-    /// `"Game Patch"`, `"Hotfix"`, or the branch name for a rolling entry.
+    /// `"Game Patch"`, `"Hotfix"`, a historical status, or a deployment branch name.
     pub kind: String,
-    /// ISO `YYYY-MM-DD`, or empty for the rolling branches, which have no date.
+    /// ISO `YYYY-MM-DD`, or empty when a historical release date is unverified
+    /// or the entry is a rolling branch. Capture/edit times are never dates.
     pub date: String,
-    /// Calendar year as printed on the index, for grouping. Empty for rolling.
+    /// Calendar year supported by the source, for grouping. Empty for rolling
+    /// branches and historical notes whose release date remains unverified.
     pub year: String,
     /// Absolute URL of the document this release's note is read from: the
-    /// Markdown post for a dated release, the rendered page for a rolling one.
+    /// Markdown post for a dated release, the rendered page for a rolling one,
+    /// or the provenance URL identifying an embedded historical note.
     pub source_url: String,
     /// The page a "view on the website" link should open.
     pub web_url: String,
 }
 
 impl ChangelogRelease {
-    /// Whether this is one of the two rolling branch pages rather than a dated
-    /// post.
+    /// Whether this is one of the two explicitly identified deployment branches.
+    /// An unknown historical date does not make a note a rolling branch.
     ///
     /// Worth a name because the answer decides three separate things: which
     /// codec reads the note, whether the note may be cached at all, and whether
@@ -73,7 +81,7 @@ impl ChangelogRelease {
     /// is finished the day it is published; a branch page is rewritten every
     /// time something is deployed to that branch.
     pub fn is_rolling(&self) -> bool {
-        self.date.is_empty()
+        matches!(self.id.as_str(), "fafbeta" | "fafdevelop")
     }
 }
 

@@ -38,6 +38,27 @@ function mountChangelog() {
 }
 
 describe("Changelog failures, mounted", () => {
+  it("keeps undated and unverified legacy notes separate from rolling branches", async () => {
+    const user = userEvent.setup();
+    mountChangelog();
+    const undated = { ...patch, id: "3616", kind: "Historical FAF patch", date: "", year: "" };
+    const legacy = { ...patch, id: "legacy-3605", kind: "Legacy notes", date: "", year: "" };
+    const beta = { ...patch, id: "fafbeta", kind: "FAF Beta", date: "", year: "" };
+    changelogEvent({ type: "loaded", payload: { releases: [beta, patch, undated, legacy] } });
+    await user.click(screen.getByRole("button", { name: /Undated FAF notes/ }));
+    await user.click(screen.getByRole("button", { name: /Legacy notes/ }));
+    expect(document.querySelector('[data-release-id="3616"]')?.closest("section")?.id).not.toBe("branches");
+    expect(document.querySelector('[data-release-id="3616"]')?.closest("ul")?.id).toBe("changelog-group-undated");
+    expect(document.querySelector('[data-release-id="legacy-3605"]')?.textContent).toContain("3605");
+    expect(document.querySelector('[data-release-id="legacy-3605"]')?.textContent).not.toContain("legacy-");
+    expect(document.querySelector('[data-release-id="fafbeta"]')?.closest("ul")?.id).toBe("changelog-group-branches");
+    changelogEvent({ type: "entryLoaded", payload: { entry: { id: undated.id, title: "Patch 3616", blocks: [] } } });
+    const article = screen.getByRole("article");
+    expect(within(article).getByText("Release date unverified")).toBeTruthy();
+    expect(article.querySelector("time")).toBeNull();
+    expect(within(article).getByRole("button", { name: "Next note" })).toBeTruthy();
+  });
+
   it("says a release list that did not load plainly, with the reason on hover, and loads it again", async () => {
     const user = userEvent.setup();
     mountChangelog();

@@ -1,5 +1,50 @@
 # Historical changelog illustrations
 
+## Early wiki and announcement notes
+
+The source ledger in [early-changelog-sources.md](early-changelog-sources.md)
+covers the 33 patch links in the archived January 2015 wiki index. The client
+adds 28 notes, retains five existing notes without duplication and corrects
+3639/3640 to January 5/6, 2015 from explicit official changelog headings.
+Source URLs remain unchanged when their displayed dates are corrected.
+
+Sixteen added notes have documented dates. Twelve remain undated, including
+two cumulative legacy notes whose full lineage is unverified. They have
+separate sidebar groups; an unknown date never identifies a rolling branch.
+The 3629 release candidate, 3633/3634 betas and 3635 withdrawal are identified
+explicitly. No official/pre-FAF release is invented from the cumulative ranges.
+Date-only labels use UTC so a local timezone cannot change the calendar day.
+
+The archive is reproduced with permission and retains attribution and source
+links. `scripts/data/early-changelog-sources.json` pins the original URLs,
+actual capture timestamps, source hashes, date evidence and inclusion decisions.
+Nine unavailable archived announcement routes use hash-pinned bodies from the
+original publisher API. Capture and wiki edit times are not release dates.
+
+Regenerate from pinned public sources, or check an existing local source cache:
+
+```sh
+node scripts/import-early-changelog.mjs --fetch
+node scripts/import-early-changelog.mjs --check
+pnpm exec vitest run scripts/import-early-changelog.test.mjs --maxWorkers=1
+```
+
+The default cache is `target/early-changelog-source`; `--cache <directory>`
+selects another existing cache. A changed/unavailable source fails rather than
+silently changing the historical data. Source fetching is sequential, bounded
+to 4 MiB per document and 20 seconds, and limited to fixed public hosts.
+
+The importer parses inert HTML, excludes archive/wiki furniture and active
+content, and emits allowlisted markup. It preserves heading depth, nested
+lists, inline spacing and multiline stat tables. Original illustrations become
+source links; no unit IDs or pictures are guessed. The native parser reads the
+embedded archive without contacting Wayback. The normal live index still
+refreshes from the current FAF site. Existing find, contents navigation,
+archive search and reading-position memory also apply to these notes.
+Old numeric citations remain literal, rather than becoming unrelated GitHub PRs.
+
+## Original balance illustrations
+
 Older Markdown posts sometimes omit the unit pictures and heading structure
 that their original balance pages contained. The client enriches those posts
 using generated heading/image metadata from the public

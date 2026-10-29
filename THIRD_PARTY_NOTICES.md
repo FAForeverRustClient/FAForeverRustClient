@@ -3,6 +3,18 @@
 This distribution includes or downloads components from other FAForever
 projects. Their original licenses remain in force.
 
+## Historical FAF patchnotes
+
+The early notes in `crates/faf-domain/src/protocol/data/early_changelog.json`
+are reproduced with permission from the archived FAF wiki and original FAF
+release announcements. Attribution: FAForever contributors. Original rights
+are retained; this import does not assert a new licence for the source text.
+
+The exact source URLs, capture timestamps, content hashes and date evidence
+are recorded in `scripts/data/early-changelog-sources.json` and
+`docs/development/early-changelog-sources.md`. Each displayed note links to its
+original source. Archive timestamps are not release dates.
+
 ## Official FAF Client flag assets
 
 The country flag images in `ui/public/flags/` come from the official

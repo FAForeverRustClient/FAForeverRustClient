@@ -7,6 +7,7 @@ import type { ChangelogSearchMatch, ChangelogSearchState } from "../../ipc/bindi
 import { ipc } from "../../ipc/client";
 import { useTranslation } from "../../i18n/useTranslation";
 import { useAppStore } from "../../store/store";
+import { historicalKindKey, releaseLabel } from "./releasePresentation";
 
 const EMPTY_SEARCH: ChangelogSearchState = { requestId: 0, query: "", status: { type: "idle" }, scanned: 0, total: 0, failed: 0, matches: [] };
 
@@ -61,8 +62,10 @@ export function PatchSearch({ onChoose }: { onChoose: (match: ChangelogSearchMat
       <div className="changelog-archive-results">
         {archive.matches.map(match => {
           const release = releasesById.get(match.releaseId);
+          const historical = release && historicalKindKey(release.kind);
           return <button key={match.releaseId} type="button" className="changelog-archive-result" onClick={() => { close(); onChoose(match); }}>
-            <span className="changelog-archive-result-head"><strong>{match.releaseId}</strong>
+            <span className="changelog-archive-result-head"><strong>{releaseLabel(match.releaseId)}</strong>
+              {historical && <span>{t(historical)}</span>}
               {release?.date && <time dateTime={release.date}>{release.date}</time>}
               <span>{t("changelog.archive.occurrences", { count: match.occurrences })}</span>
             </span>

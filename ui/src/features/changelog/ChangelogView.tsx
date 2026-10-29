@@ -33,6 +33,7 @@ import { FeaturedModIcon } from "../../shared/components/FeaturedModIcon";
 import type { ChangelogBlock, ChangelogRelease, ChangelogSearchMatch, ChangelogSection } from "../../ipc/bindings";
 import { ClientReleasesView } from "./ClientReleasesView";
 import { PatchSearch } from "./PatchSearch";
+import { historicalKindKey, isRollingRelease, LEGACY_GROUP, releaseGroup, releaseLabel, UNDATED_GROUP } from "./releasePresentation";
 import { changelogViewMemory } from "./viewMemory";
 import {
   anchorFor,
@@ -100,6 +101,8 @@ const isPatch = (kind: string) => kind.toLowerCase() === "game patch";
 const isHotfix = (kind: string) => kind.toLowerCase() === "hotfix";
 
 function kindLabel(kind: string, t: Translate): string {
+  const historical = historicalKindKey(kind);
+  if (historical) return t(historical);
   if (isPatch(kind)) return t("changelog.kind.patch");
   if (isHotfix(kind)) return t("changelog.kind.hotfix");
   return kind;
@@ -107,7 +110,7 @@ function kindLabel(kind: string, t: Translate): string {
 
 /** Day and month only: the list already groups by year. */
 function listDate(date: string): string {
-  return formatDate(date, "", { day: "numeric", month: "short" });
+  return formatDate(date, "", { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
 /**
@@ -162,7 +165,7 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
   const groups = useMemo(() => {
     const byYear = new Map<string, ChangelogRelease[]>();
     for (const release of filtered) {
-      const key = release.year || BRANCH_GROUP;
+      const key = releaseGroup(release);
       const bucket = byYear.get(key);
       if (bucket) bucket.push(release);
       else byYear.set(key, [release]);
@@ -178,6 +181,7 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
   // group read as no match at all.
   const cutoffYear = new Date().getFullYear() - 2;
   const foldedByDefault = (groupKey: string) => {
+    if (groupKey === UNDATED_GROUP || groupKey === LEGACY_GROUP) return true;
     const year = Number.parseInt(groupKey, 10);
     return Number.isFinite(year) && year <= cutoffYear;
   };
@@ -277,7 +281,7 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
   }
 
   const longDate = selected?.date
-    ? formatDate(selected.date, "", { day: "numeric", month: "long", year: "numeric" })
+    ? formatDate(selected.date, "", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
     : "";
 
   return (
@@ -324,7 +328,8 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
                   onClick={() => toggleGroup(groupKey)}
                 >
                   <Icon name={collapsed ? "chevronRight" : "chevronDown"} size={13} />
-                  <span>{year || t("changelog.branches")}</span>
+                  <span>{groupKey === UNDATED_GROUP ? t("changelog.historical.undated")
+                    : groupKey === LEGACY_GROUP ? t("changelog.historical.legacy") : year || t("changelog.branches")}</span>
                   <span className="changelog-year-count">{releases.length}</span>
                 </button>
                 <ul id={groupId} className="changelog-year-releases" hidden={collapsed}>
@@ -362,8 +367,8 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
                             </>
                           ) : (
                             <>
-                              <span className="changelog-release-id">{release.id}</span>
-                              <span className="changelog-release-kind">{kindLabel(release.kind, t)}</span>
+                              <span className="changelog-release-id">{releaseLabel(release.id)}</span>
+                              <span className="changelog-release-kind" title={kindLabel(release.kind, t)}>{kindLabel(release.kind, t)}</span>
                               <span className="changelog-release-date">{listDate(release.date)}</span>
                             </>
                           )}
@@ -384,12 +389,13 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
             <div className="changelog-note-heading">
               <h1>{entry ? heading.title : selected.id}</h1>
               <p className="changelog-note-meta">
-                {selected.year && (
+                {!isRollingRelease(selected) && (
                   <span className={`changelog-kind-tag${isPatch(selected.kind) ? " is-patch" : ""}`}>
                     {kindLabel(selected.kind, t)}
                   </span>
                 )}
                 {longDate && <time dateTime={selected.date}>{longDate}</time>}
+                {!selected.date && !isRollingRelease(selected) && <span>{t("changelog.historical.dateUnknown")}</span>}
               </p>
             </div>
             <div className="changelog-note-actions">
@@ -399,8 +405,8 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
                   className="changelog-step-btn"
                   disabled={!newer}
                   onClick={() => newer && select(newer.id)}
-                  title={newer ? `${t("changelog.newer")}: ${newer.id}` : t("changelog.newer")}
-                  aria-label={t("changelog.newer")}
+                  title={newer ? `${t(selected.date && newer.date ? "changelog.newer" : "changelog.historical.previous")}: ${releaseLabel(newer.id)}` : t("changelog.newer")}
+                  aria-label={t(selected.date && newer?.date ? "changelog.newer" : "changelog.historical.previous")}
                 >
                   <Icon name="chevronUp" size={15} />
                 </button>
@@ -409,8 +415,8 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
                   className="changelog-step-btn"
                   disabled={!older}
                   onClick={() => older && select(older.id)}
-                  title={older ? `${t("changelog.older")}: ${older.id}` : t("changelog.older")}
-                  aria-label={t("changelog.older")}
+                  title={older ? `${t(selected.date && older.date ? "changelog.older" : "changelog.historical.next")}: ${releaseLabel(older.id)}` : t("changelog.older")}
+                  aria-label={t(selected.date && older?.date ? "changelog.older" : "changelog.historical.next")}
                 >
                   <Icon name="chevronDown" size={15} />
                 </button>
