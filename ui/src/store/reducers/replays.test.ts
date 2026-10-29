@@ -67,6 +67,8 @@ function analysis(key: string): ReplayAnalysis {
     scenario: { name: "", description: "", mapFolder: "", width: 0, height: 0, options: [] },
     activity: [],
     orders: [],
+    queueChanges: [],
+    desyncTick: null,
     points: [],
     notices: [],
     stats: [],

@@ -29,6 +29,7 @@ function unit(id: string, overrides: Partial<UnitSummary> = {}): UnitSummary {
     tech: 1,
     kind: "land",
     strategicIcon: null,
+    role: null,
     ...overrides,
   };
 }

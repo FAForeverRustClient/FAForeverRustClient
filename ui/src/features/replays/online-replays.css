@@ -1728,6 +1728,121 @@ button.vault-input {
   max-height: none;
 }
 
+/* A desync, above whichever tab is open. */
+.replay-insights-desync {
+  margin-bottom: var(--space-3);
+}
+
+/* The build order: two players picked at the top, then the opening, the
+   units per minute and the two ledgers side by side. */
+.replay-build-order {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.replay-build-order-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.replay-build-order-player {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 220px;
+}
+
+.replay-build-order-heading {
+  margin: var(--space-2) 0 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.replay-build-order-label {
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+/* The earlier of the two players to a milestone. */
+.replay-build-order-milestones td.is-first {
+  color: var(--color-ok-text);
+  font-weight: 600;
+}
+
+.replay-build-order-units {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.replay-build-order-units li {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-build-order-ledgers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-3);
+}
+
+.replay-build-order-ledger h4 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+}
+
+.replay-build-order-ledger ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--color-border);
+}
+
+.replay-build-order-ledger li {
+  display: grid;
+  grid-template-columns: 44px 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 12px;
+}
+
+.replay-build-order-ledger li:last-child {
+  border-bottom: none;
+}
+
+.replay-build-order-ledger li.is-queue-change {
+  color: var(--color-muted);
+}
+
+.replay-build-order-time,
+.replay-build-order-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted);
+}
+
+.replay-build-order-picture {
+  display: inline-flex;
+  justify-content: center;
+}
+
+.replay-build-order-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* A span inside the cell, never the cell itself: `display: flex` on a `td`
    takes the element out of the table's own box tree, which breaks the
    collapsed row border at that column and leaves the glyphs unmeasured on top

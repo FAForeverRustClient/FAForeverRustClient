@@ -4132,6 +4132,7 @@ fn cases() -> Vec<Case> {
                     tech: Some(1),
                     kind: UnitKind::Land,
                     strategic_icon: Some("icon_land1_directfire".into()),
+                    role: None,
                 };
                 let history = |id: &str| UnitHistory {
                     unit: summary(id),

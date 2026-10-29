@@ -33,8 +33,8 @@ use std::io::{BufReader, Cursor, Read};
 
 use faf_domain::state::{
     ReplayActivity, ReplayAnalysis, ReplayArmy, ReplayGameOption, ReplayNotice, ReplayOrder,
-    ReplayPlayerStats, ReplayPoint, ReplayResourceStat, ReplayScenario, ReplayTotals,
-    ReplayUnitStat,
+    ReplayPlayerStats, ReplayPoint, ReplayQueueChange, ReplayResourceStat, ReplayScenario,
+    ReplayTotals, ReplayUnitStat,
 };
 use serde_json::Value;
 
@@ -46,8 +46,11 @@ use crate::infra::replay::{
 const ADVANCE: u8 = 0;
 const SET_COMMAND_SOURCE: u8 = 1;
 const COMMAND_SOURCE_TERMINATED: u8 = 2;
+const VERIFY_CHECKSUM: u8 = 3;
 const ISSUE_COMMAND: u8 = 12;
 const ISSUE_FACTORY_COMMAND: u8 = 13;
+const INCREASE_COMMAND_COUNT: u8 = 14;
+const DECREASE_COMMAND_COUNT: u8 = 15;
 const SET_COMMAND_TARGET: u8 = 16;
 const LUA_SIM_CALLBACK: u8 = 22;
 
@@ -67,6 +70,11 @@ const MOVE_PREVIOUS_COMMAND: i32 = 40;
 /// would be holding tens of megabytes, so the walk stops recording and the
 /// counts, which are what the rates come from, carry on.
 const MAX_RECORDED_ORDERS: usize = 200_000;
+/// The orders a later queue change can name, and the checksums waiting for
+/// their counterpart. A real game holds a few thousand of each; the ceiling
+/// only keeps a forged stream from growing them without end.
+const MAX_REMEMBERED_ORDERS: usize = 200_000;
+const MAX_REMEMBERED_CHECKSUMS: usize = 100_000;
 const MAX_RECORDED_POINTS: usize = 200_000;
 
 /// The same ceiling for the notify channel and the per-player command times
@@ -153,6 +161,8 @@ fn analyse_replay_body_checked(
     };
     analysis.ticks = walked.ticks;
     analysis.orders = walked.orders;
+    analysis.queue_changes = walked.queue_changes;
+    analysis.desync_tick = walked.desync_tick;
     analysis.points = walked.points;
     analysis.notices = walked.notices;
     analysis.stats = walked.stats;
@@ -340,6 +350,8 @@ fn lua_scalar(value: &Value) -> String {
 struct Walked {
     ticks: u32,
     orders: Vec<ReplayOrder>,
+    queue_changes: Vec<ReplayQueueChange>,
+    desync_tick: Option<u32>,
     points: Vec<ReplayPoint>,
     notices: Vec<ReplayNotice>,
     stats: Vec<ReplayPlayerStats>,
@@ -368,6 +380,12 @@ fn walk(
     // tick had just given the same kind, which took real orders off the count
     // and left the graph's axis below the read-out under it.
     let mut previous: HashMap<i32, (u32, i32)> = HashMap::new();
+    // What each order builds, by the id a queue change names it with.
+    let mut built_by_order: HashMap<u32, String> = HashMap::new();
+    let mut queue_changes = Vec::new();
+    // The first checksum written for each beat, to hold the others against.
+    let mut checksums: HashMap<u32, [u8; 16]> = HashMap::new();
+    let mut desync_tick = None;
     let mut buffer = Vec::new();
 
     loop {
@@ -393,6 +411,39 @@ fn walk(
             }
             COMMAND_SOURCE_TERMINATED => {
                 last_tick.insert(source, ticks);
+            }
+            VERIFY_CHECKSUM => {
+                // The Python client stops comparing once the game has sent its
+                // statistics: what the clients do after the end is not the game.
+                if desync_tick.is_none() && stats.is_empty() {
+                    if let Some((digest, beat)) = read_checksum(payload) {
+                        match checksums.get(&beat) {
+                            Some(first) if *first != digest => desync_tick = Some(beat),
+                            Some(_) => {}
+                            None if checksums.len() < MAX_REMEMBERED_CHECKSUMS => {
+                                checksums.insert(beat, digest);
+                            }
+                            None => {}
+                        }
+                    }
+                }
+            }
+            INCREASE_COMMAND_COUNT | DECREASE_COMMAND_COUNT => {
+                if let Some((id, delta)) = read_count_change(payload) {
+                    let delta = if op == DECREASE_COMMAND_COUNT {
+                        delta.saturating_neg()
+                    } else {
+                        delta
+                    };
+                    if queue_changes.len() < MAX_RECORDED_ORDERS {
+                        queue_changes.push(ReplayQueueChange {
+                            source,
+                            tick: ticks,
+                            blueprint: built_by_order.get(&id).cloned().unwrap_or_default(),
+                            delta,
+                        });
+                    }
+                }
             }
             SET_COMMAND_TARGET => {
                 if let Some((x, y)) = retarget_position(payload) {
@@ -429,13 +480,17 @@ fn walk(
                         command_ticks.entry(source).or_default().push(ticks);
                         recorded_command_ticks += 1;
                     }
+                    if !order.blueprint.is_empty() && built_by_order.len() < MAX_REMEMBERED_ORDERS {
+                        built_by_order.insert(order.id, order.blueprint.clone());
+                    }
                     if orders.len() < MAX_RECORDED_ORDERS {
                         orders.push(ReplayOrder {
                             source,
                             tick: ticks,
                             command: order.command,
                             blueprint: order.blueprint,
-                            detail: order.detail,
+                            enhancement: order.enhancement,
+                            units: order.units,
                         });
                     }
                 }
@@ -478,6 +533,8 @@ fn walk(
     Some(Walked {
         ticks,
         orders,
+        queue_changes,
+        desync_tick,
         points,
         notices,
         stats,
@@ -503,9 +560,13 @@ fn retarget_position(payload: &[u8]) -> Option<(i32, i32)> {
 
 /// One order, as far as this client cares about it.
 struct Order {
+    /// The id later records name the order by.
+    id: u32,
     command: i32,
+    /// How many units, or factories, the order was given to.
+    units: u32,
     blueprint: String,
-    detail: String,
+    enhancement: String,
     target: Option<(i32, i32)>,
 }
 
@@ -521,8 +582,11 @@ struct Order {
 fn parse_order(payload: &[u8]) -> Option<Order> {
     let mut cursor = Cursor::new(payload);
     let unit_count = replay_u32(&mut cursor)?;
-    // The units the order was given to, then the command id and its tag.
-    skip(&mut cursor, 4 * (u64::from(unit_count) + 2))?;
+    // The units the order was given to, then the command id and the id of the
+    // order it coordinates with.
+    skip(&mut cursor, 4 * u64::from(unit_count))?;
+    let id = replay_u32(&mut cursor)?;
+    skip(&mut cursor, 4)?;
     let command = i32::from(replay_u8(&mut cursor)?);
     skip(&mut cursor, 4)?;
     let target = match replay_u8(&mut cursor)? {
@@ -545,11 +609,10 @@ fn parse_order(payload: &[u8]) -> Option<Order> {
     skip(&mut cursor, 12)?;
     let upgrades = parse_replay_lua(&mut cursor, 0);
     // A script order carries what it is doing in this table: an ACU
-    // enhancement, or the name of the task for everything else.
-    let detail = match &upgrades {
+    // enhancement, or the name of some other task.
+    let enhancement = match &upgrades {
         Some(Value::Object(fields)) => fields
             .get("Enhancement")
-            .or_else(|| fields.get("TaskName"))
             .and_then(Value::as_str)
             .unwrap_or_default()
             .to_string(),
@@ -557,11 +620,30 @@ fn parse_order(payload: &[u8]) -> Option<Order> {
     };
 
     Some(Order {
+        id,
         command,
+        units: unit_count,
         blueprint,
-        detail,
+        enhancement,
         target,
     })
+}
+
+/// A `VerifyChecksum` record: the sixteen bytes of an MD5 digest of the
+/// simulation, then the beat it was taken at.
+fn read_checksum(payload: &[u8]) -> Option<([u8; 16], u32)> {
+    let digest: [u8; 16] = payload.get(..16)?.try_into().ok()?;
+    let mut cursor = Cursor::new(payload.get(16..)?);
+    Some((digest, replay_u32(&mut cursor)?))
+}
+
+/// An `IncreaseCommandCount` or `DecreaseCommandCount` record: the order's id,
+/// then by how many.
+fn read_count_change(payload: &[u8]) -> Option<(u32, i32)> {
+    let mut cursor = Cursor::new(payload);
+    let id = replay_u32(&mut cursor)?;
+    let delta = replay_u32(&mut cursor)? as i32;
+    Some((id, delta))
 }
 
 /// A world position: three floats, of which the middle one is the height.
@@ -796,8 +878,33 @@ mod tests {
 
     /// An `IssueCommand` record, laid out the way the engine writes one.
     fn order(command: u8, blueprint: &str, target: Option<(f32, f32)>) -> Vec<u8> {
-        let mut payload = 1u32.to_le_bytes().to_vec(); // one unit
-        payload.extend_from_slice(&[0; 4 * 3]); // the unit, then two words
+        given(
+            ISSUE_COMMAND,
+            command,
+            blueprint,
+            target,
+            1,
+            0,
+            &lua_table(&[]),
+        )
+    }
+
+    /// The same record with everything a build order reads set: the record
+    /// kind (`IssueFactoryCommand` for a factory), how many units it went
+    /// to, the order's id, and its Lua table.
+    fn given(
+        kind: u8,
+        command: u8,
+        blueprint: &str,
+        target: Option<(f32, f32)>,
+        units: u32,
+        id: u32,
+        table: &[u8],
+    ) -> Vec<u8> {
+        let mut payload = units.to_le_bytes().to_vec();
+        payload.extend_from_slice(&vec![0; 4 * units as usize]); // the units
+        payload.extend_from_slice(&id.to_le_bytes());
+        payload.extend_from_slice(&[0; 4]); // the order it coordinates with
         payload.push(command);
         payload.extend_from_slice(&[0; 4]);
         match target {
@@ -814,8 +921,20 @@ mod tests {
         payload.extend_from_slice(blueprint.as_bytes());
         payload.push(0);
         payload.extend_from_slice(&[0; 12]);
-        payload.extend_from_slice(&lua_table(&[]));
-        record(ISSUE_COMMAND, payload)
+        payload.extend_from_slice(table);
+        record(kind, payload)
+    }
+
+    fn count_change(kind: u8, id: u32, delta: i32) -> Vec<u8> {
+        let mut payload = id.to_le_bytes().to_vec();
+        payload.extend_from_slice(&delta.to_le_bytes());
+        record(kind, payload)
+    }
+
+    fn checksum(digest: u8, beat: u32) -> Vec<u8> {
+        let mut payload = vec![digest; 16];
+        payload.extend_from_slice(&beat.to_le_bytes());
+        record(VERIFY_CHECKSUM, payload)
     }
 
     fn callback(function: &str, args: Vec<u8>) -> Vec<u8> {
@@ -873,6 +992,98 @@ mod tests {
         assert!(result.is_none());
         assert!(cursor.position() < stream.len() as u64);
         assert_eq!(checkpoints.get(), 32);
+    }
+
+    #[test]
+    fn a_factory_order_counts_its_factories_and_a_queue_change_names_its_unit() {
+        let mut stream = source(0);
+        stream.extend_from_slice(&advance(30));
+        stream.extend_from_slice(&given(
+            ISSUE_FACTORY_COMMAND,
+            7,
+            "uel0105",
+            None,
+            3,
+            41,
+            &lua_table(&[]),
+        ));
+        stream.extend_from_slice(&advance(10));
+        stream.extend_from_slice(&count_change(INCREASE_COMMAND_COUNT, 41, 4));
+        stream.extend_from_slice(&count_change(DECREASE_COMMAND_COUNT, 41, 1));
+        stream.extend_from_slice(&count_change(INCREASE_COMMAND_COUNT, 99, 2));
+
+        let out = walked(&stream, &[0]);
+        assert_eq!(out.orders.len(), 1);
+        assert_eq!((out.orders[0].command, out.orders[0].units), (7, 3));
+        let changes: Vec<_> = out
+            .queue_changes
+            .iter()
+            .map(|change| (change.tick, change.blueprint.as_str(), change.delta))
+            .collect();
+        // The last one names an order the stream never gave: the change is
+        // kept, without a unit.
+        assert_eq!(
+            changes,
+            [(40, "uel0105", 4), (40, "uel0105", -1), (40, "", 2)]
+        );
+    }
+
+    #[test]
+    fn a_script_order_keeps_its_enhancement_and_nothing_else() {
+        let mut stream = source(0);
+        stream.extend_from_slice(&given(
+            ISSUE_COMMAND,
+            28,
+            "",
+            None,
+            1,
+            1,
+            &lua_table(&[("Enhancement", lua_string("AdvancedEngineering"))]),
+        ));
+        stream.extend_from_slice(&given(
+            ISSUE_COMMAND,
+            28,
+            "",
+            None,
+            1,
+            2,
+            &lua_table(&[("TaskName", lua_string("AttackMove"))]),
+        ));
+
+        let out = walked(&stream, &[0]);
+        let enhancements: Vec<_> = out.orders.iter().map(|o| o.enhancement.as_str()).collect();
+        assert_eq!(enhancements, ["AdvancedEngineering", ""]);
+    }
+
+    #[test]
+    fn the_first_beat_whose_checksums_differ_is_the_desync() {
+        let mut agreed = checksum(1, 50);
+        agreed.extend_from_slice(&checksum(1, 50));
+        agreed.extend_from_slice(&checksum(2, 100));
+        agreed.extend_from_slice(&checksum(2, 100));
+        assert_eq!(walked(&agreed, &[0]).desync_tick, None);
+
+        let mut split = agreed.clone();
+        split.extend_from_slice(&checksum(3, 150));
+        split.extend_from_slice(&checksum(4, 150));
+        split.extend_from_slice(&checksum(5, 200));
+        split.extend_from_slice(&checksum(6, 200));
+        assert_eq!(walked(&split, &[0]).desync_tick, Some(150));
+    }
+
+    #[test]
+    fn checksums_after_the_game_sent_its_statistics_are_not_compared() {
+        let message = "GpgNetSend with command 'JsonStats' and data '".to_string()
+            + r#"{"stats":[{"name":"Vindex","faction":2,"type":"Human","general":{"score":1}}]},'"#;
+        let mut stream = callback(
+            "ModeratorEvent",
+            lua_table(&[("Message", lua_string(&message))]),
+        );
+        stream.extend_from_slice(&checksum(3, 150));
+        stream.extend_from_slice(&checksum(4, 150));
+        let out = walked(&stream, &[0]);
+        assert_eq!(out.stats.len(), 1, "the statistics must have been read");
+        assert_eq!(out.desync_tick, None);
     }
 
     #[test]

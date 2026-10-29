@@ -26,6 +26,8 @@ import type {
   ReplayTeam,
 } from "../../../ipc/bindings";
 import { ReplayActivityChart } from "./ReplayActivityChart";
+import { ReplayBuildOrderPane } from "./ReplayBuildOrderPane";
+import { formatGameTime } from "./replayAnalysis";
 import { ReplayEventsPanel, ReplayPlayersPanel } from "./ReplayAnalysisPanels";
 import { ReplayGameStats } from "./ReplayGameStats";
 import { gameOptionLabel } from "./gameOptionLabels";
@@ -48,6 +50,7 @@ type InsightTab =
   | "options"
   | "chat"
   | "players"
+  | "buildOrder"
   | "events"
   | "graph"
   | "heatmap"
@@ -56,6 +59,7 @@ type InsightTab =
 
 /** The tabs that need the whole command stream rather than the cheap read. */
 const ANALYSIS_TABS: ReadonlySet<InsightTab> = new Set<InsightTab>([
+  "buildOrder",
   "events",
   "graph",
   "heatmap",
@@ -147,6 +151,7 @@ export function ReplayInsights({
     { id: "options" as const, label: t("replays.detail.gameOptions"), count: count(gameOptions.length) },
     { id: "chat" as const, label: t("replays.detail.chat"), count: count(chatMessages.length) },
     { id: "players" as const, label: t("replays.insights.activity"), count: count(rows.length) },
+    { id: "buildOrder" as const, label: t("replays.buildOrder.tab") },
     { id: "events" as const, label: t("replays.insights.events"), count: analysis?.notices.length },
     { id: "graph" as const, label: t("replays.insights.graph") },
     { id: "heatmap" as const, label: t("replays.insights.heatmap") },
@@ -229,6 +234,16 @@ export function ReplayInsights({
 
           {analysisNotice}
 
+          {/* On every tab: a desynced replay shows one client's game from
+              that moment on, which is worth knowing before reading anything
+              after it. */}
+          {analysis?.desyncTick != null && (
+            <StatusNotice tone="info" className="replay-insights-desync">
+              {t("replays.insights.desynced", { time: formatGameTime(analysis.desyncTick) })}
+            </StatusNotice>
+          )}
+
+          {analysis && tab === "buildOrder" && <ReplayBuildOrderPane analysis={analysis} />}
           {analysis && tab === "events" && <ReplayEventsPanel analysis={analysis} />}
           {analysis && tab === "graph" && <ReplayActivityChart analysis={analysis} />}
           {analysis && tab === "heatmap" && (
