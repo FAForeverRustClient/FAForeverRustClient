@@ -45,6 +45,7 @@ import {
 import { MapThumbnail } from "../../shared/components/MapThumbnail";
 import { MapCard, MapDetailPanel, MapHideDialog, MapRating, MapUninstallDialog } from "./MapVaultComponents";
 import { MapPreviewDialog } from "../../shared/components/MapPreviewZoom";
+import { MapAnalysisDialog } from "./MapAnalysisDialog";
 import { hasMapVaultFocus, takeMapVaultFocus } from "../../shared/mapVaultFocus";
 import { GeneratorProgress, stillRunning } from "./GeneratorProgress";
 import { commandOfCurrentRun, startRun } from "./generatorCommands";
@@ -175,6 +176,7 @@ function VaultView({ busy }: { busy: boolean }) {
   const [pendingUninstall, setPendingUninstall] = useState<VaultMap | null>(null);
   const [pendingHide, setPendingHide] = useState<VaultMap | null>(null);
   const [previewMap, setPreviewMap] = useState<VaultMap | null>(null);
+  const [analysedMap, setAnalysedMap] = useState<VaultMap | null>(null);
 
   // With filters never remembered (#447), the next visit starts from the
   // default preset. The sort the preset brought is not a filter and stays.
@@ -624,12 +626,20 @@ function VaultView({ busy }: { busy: boolean }) {
                 onUnhide={() => setMapVersionHidden(selected.versionId, false)}
                 onPreview={() => setPreviewMap(selected)}
                 onToggleFavorite={() => toggleFavorite(selected.folderName, selected.downloadUrl)}
+                onAnalyse={() => setAnalysedMap(selected)}
               />
             )}
           </div>
         </>
       )}
 
+      {analysedMap && (
+        <MapAnalysisDialog
+          folderName={analysedMap.folderName}
+          title={analysedMap.displayName}
+          onClose={() => setAnalysedMap(null)}
+        />
+      )}
       {pendingUninstall && <MapUninstallDialog mapName={pendingUninstall.displayName} onCancel={() => setPendingUninstall(null)} onConfirm={() => { uninstallMap(pendingUninstall.folderName); setPendingUninstall(null); }} />}
       {pendingHide && <MapHideDialog mapName={pendingHide.displayName} onCancel={() => setPendingHide(null)} onConfirm={() => { setMapVersionHidden(pendingHide.versionId, true); setPendingHide(null); }} />}
       {previewMap && (
@@ -688,6 +698,7 @@ function InstalledView({ busy }: { busy: boolean }) {
   // looks at were stuck at thumbnail size, which is the complaint the Vault's
   // zoom answers.
   const [previewMap, setPreviewMap] = useState<InstalledMap | VaultMap | null>(null);
+  const [analysedMap, setAnalysedMap] = useState<{ folderName: string; title: string } | null>(null);
   // The filters as the setting keeps them (#447). The sort is not one.
   const [remembered] = useState(() =>
     rememberedFilter<InstalledMapFilters | null>(INSTALLED_MAP_FILTERS, null, isFilterRecord));
@@ -1041,6 +1052,14 @@ function InstalledView({ busy }: { busy: boolean }) {
                     <span className="installed-map-actions">
                       <Button
                         className="map-vault-open-folder is-icon"
+                        aria-label={t("maps.analysis.openNamed", { name: metadata?.displayName || map.displayName })}
+                        title={t("maps.analysis.open")}
+                        onClick={() => setAnalysedMap({ folderName: map.folderName, title: metadata?.displayName || map.displayName })}
+                      >
+                        <Icon name="grid" size={14} />
+                      </Button>
+                      <Button
+                        className="map-vault-open-folder is-icon"
                         aria-label={t("common.openFolderNamed", { name: metadata?.displayName || map.displayName })}
                         title={t("common.openFolder")}
                         onClick={() => void native.openInstalledFolder("maps", map.folderName)}
@@ -1077,6 +1096,13 @@ function InstalledView({ busy }: { busy: boolean }) {
             </div>
           )}
         </section>
+      )}
+      {analysedMap && (
+        <MapAnalysisDialog
+          folderName={analysedMap.folderName}
+          title={analysedMap.title}
+          onClose={() => setAnalysedMap(null)}
+        />
       )}
       {previewMap && (
         <MapPreviewDialog

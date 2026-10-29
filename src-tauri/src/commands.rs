@@ -400,6 +400,24 @@ pub(crate) async fn unit_icons(
     .map_err(|_| "file worker stopped".to_string())
 }
 
+/// An installed map's pathing regions and reclaim, drawn over its preview
+/// (see `faf_app::infra::map_analysis`). A command of its own like the unit
+/// icons: the pictures are megabytes the page wants only while the dialog is
+/// open, and reading an 81 km map takes a moment, so it runs off the async
+/// threads.
+#[tauri::command]
+pub(crate) async fn map_analysis(
+    core: tauri::State<'_, Core>,
+    folder_name: String,
+) -> Result<faf_app::infra::map_analysis::MapAnalysis, String> {
+    let game_path = core.0.with_state(|state| state.settings.game_path.clone());
+    tauri::async_runtime::spawn_blocking(move || {
+        faf_app::infra::map_analysis::map_analysis(&folder_name, &game_path)
+    })
+    .await
+    .map_err(|_| "file worker stopped".to_string())?
+}
+
 /// Terminate the application process cleanly.
 #[tauri::command]
 pub(crate) fn exit_app(app: tauri::AppHandle) {

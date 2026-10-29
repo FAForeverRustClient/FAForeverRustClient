@@ -97,7 +97,7 @@ pub fn unit_icons(game_path: &str) -> Arc<UnitIcons> {
 }
 
 /// `…/FAForever/bin/ForgedAlliance.exe` → `…/FAForever`.
-fn install_dir_of(game_path: &str) -> Option<PathBuf> {
+pub(super) fn install_dir_of(game_path: &str) -> Option<PathBuf> {
     let path = Path::new(game_path);
     path.parent()?
         .parent()
