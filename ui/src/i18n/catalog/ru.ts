@@ -867,6 +867,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "maps.vault.replaysOnMap": "Реплеи на этой карте",
   "maps.analysis.open": "Проходимость и переработка",
   "maps.analysis.openNamed": "Проходимость и переработка: {name}",
+  "maps.analysis.needsInstall": "Установите карту, чтобы увидеть проходимость и переработку.",
   "maps.analysis.kicker": "Куда может пройти каждый тип юнитов и что можно переработать",
   "maps.analysis.reading": "Читаем рельеф, воду и объекты карты.",
   "maps.analysis.viewsAria": "Что показать поверх карты",

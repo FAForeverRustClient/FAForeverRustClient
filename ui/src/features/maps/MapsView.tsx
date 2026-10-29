@@ -658,9 +658,30 @@ function VaultView({ busy }: { busy: boolean }) {
               </>
             )}
           </>}
+          footer={mapInstalled(previewMap, installedFolders) ? (
+            <AnalyseMapButton
+              onClick={() => {
+                setAnalysedMap(previewMap);
+                setPreviewMap(null);
+              }}
+            />
+          ) : undefined}
         />
       )}
     </>
+  );
+}
+
+/** Under an installed map's big preview: its pathing and reclaim. */
+function AnalyseMapButton({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <div className="map-analysis-entry">
+      <Button variant="ghost" onClick={onClick}>
+        <Icon name="grid" size={15} />
+        {t("maps.analysis.open")}
+      </Button>
+    </div>
   );
 }
 
@@ -1110,6 +1131,14 @@ function InstalledView({ busy }: { busy: boolean }) {
           map={previewMap}
           onClose={() => setPreviewMap(null)}
           meta={<>{sizeLabel(previewMap)} · {t("maps.view.playerCount", { count: previewMap.maxPlayers ?? 2 })}</>}
+          footer={
+            <AnalyseMapButton
+              onClick={() => {
+                setAnalysedMap({ folderName: previewMap.folderName, title: previewMap.displayName });
+                setPreviewMap(null);
+              }}
+            />
+          }
         />
       )}
       {pendingUninstall && (

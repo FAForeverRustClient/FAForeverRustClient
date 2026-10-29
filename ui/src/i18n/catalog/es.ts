@@ -830,6 +830,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "maps.vault.replaysOnMap": "Repeticiones en este mapa",
   "maps.analysis.open": "Rutas y reciclaje",
   "maps.analysis.openNamed": "Rutas y reciclaje de {name}",
+  "maps.analysis.needsInstall": "Instala el mapa para ver sus rutas y su reciclaje.",
   "maps.analysis.kicker": "Adónde puede ir cada tipo de unidad y qué hay para reciclar",
   "maps.analysis.reading": "Leyendo el terreno, el agua y los objetos del mapa.",
   "maps.analysis.viewsAria": "Qué mostrar sobre el mapa",

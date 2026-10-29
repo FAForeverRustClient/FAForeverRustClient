@@ -345,13 +345,17 @@ export function MapDetailPanel({
               <Icon name="replays" size={15} />
               {t("maps.vault.replaysOnMap")}
             </Button>
-            {/* Read from the map's own files, so only once it is here. */}
-            {installed && (
-              <Button variant="ghost" onClick={onAnalyse}>
-                <Icon name="grid" size={15} />
-                {t("maps.analysis.open")}
-              </Button>
-            )}
+            {/* Read from the map's own files, so only once it is here; shown
+                either way, so it can be found before the map is installed. */}
+            <Button
+              variant="ghost"
+              disabled={!installed}
+              title={installed ? undefined : t("maps.analysis.needsInstall")}
+              onClick={onAnalyse}
+            >
+              <Icon name="grid" size={15} />
+              {t("maps.analysis.open")}
+            </Button>
             {mine && (
               map.hidden ? (
                 <Button

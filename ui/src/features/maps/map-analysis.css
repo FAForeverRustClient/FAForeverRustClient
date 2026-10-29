@@ -29,6 +29,13 @@
   image-rendering: auto;
 }
 
+/* The way in from a map's big preview. */
+.map-analysis-entry {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--space-2);
+}
+
 .map-analysis-views {
   align-self: flex-start;
   margin-bottom: var(--space-2);

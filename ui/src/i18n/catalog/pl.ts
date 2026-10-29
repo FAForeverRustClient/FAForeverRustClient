@@ -847,6 +847,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "maps.vault.replaysOnMap": "Powtórki na tej mapie",
   "maps.analysis.open": "Przejezdność i surowce do odzysku",
   "maps.analysis.openNamed": "Przejezdność i surowce do odzysku: {name}",
+  "maps.analysis.needsInstall": "Zainstaluj mapę, aby zobaczyć przejezdność i surowce do odzysku.",
   "maps.analysis.kicker": "Dokąd może dotrzeć każdy rodzaj jednostek i co można odzyskać",
   "maps.analysis.reading": "Odczytywanie terenu, wody i obiektów mapy.",
   "maps.analysis.viewsAria": "Co pokazać na mapie",

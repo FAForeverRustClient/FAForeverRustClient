@@ -3102,6 +3102,7 @@ export const en = {
   "maps.vault.replaysOnMap": "Replays on this map",
   "maps.analysis.open": "Pathing and reclaim",
   "maps.analysis.openNamed": "Pathing and reclaim of {name}",
+  "maps.analysis.needsInstall": "Install the map to see its pathing and reclaim.",
   "maps.analysis.kicker": "Where each kind of unit can go, and what there is to reclaim",
   "maps.analysis.reading": "Reading the map's terrain, water and props.",
   "maps.analysis.viewsAria": "What to show over the map",

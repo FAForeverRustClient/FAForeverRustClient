@@ -831,6 +831,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "maps.vault.replaysOnMap": "Replays sur cette carte",
   "maps.analysis.open": "Déplacements et récupération",
   "maps.analysis.openNamed": "Déplacements et récupération de {name}",
+  "maps.analysis.needsInstall": "Installez la carte pour voir ses déplacements et sa récupération.",
   "maps.analysis.kicker": "Où chaque type d'unité peut aller, et ce qu'il y a à récupérer",
   "maps.analysis.reading": "Lecture du terrain, de l'eau et des objets de la carte.",
   "maps.analysis.viewsAria": "Ce qu'il faut afficher sur la carte",

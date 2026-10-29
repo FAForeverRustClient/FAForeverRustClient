@@ -2714,6 +2714,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "maps.vault.replaysOnMap": "Replays auf dieser Karte",
   "maps.analysis.open": "Pathing und Reclaim",
   "maps.analysis.openNamed": "Pathing und Reclaim von {name}",
+  "maps.analysis.needsInstall": "Installiere die Karte, um Pathing und Reclaim zu sehen.",
   "maps.analysis.kicker": "Wohin jede Art von Einheit kommt, und was es zu recyceln gibt",
   "maps.analysis.reading": "Gelände, Wasser und Props der Karte werden gelesen.",
   "maps.analysis.viewsAria": "Was über der Karte gezeigt wird",
