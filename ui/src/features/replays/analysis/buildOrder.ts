@@ -88,8 +88,11 @@ const MILESTONE_TESTS: ReadonlyArray<[MilestoneId, (entry: BuildEntry, unit: Uni
 
 export const MILESTONES: readonly MilestoneId[] = MILESTONE_TESTS.map(([id]) => id);
 
+/** The blueprint's id of taking an upgrade off again: `T3EngineeringRemove`. */
+const REMOVAL = /.Remove$/;
+
 function isRemoval(enhancement: string): boolean {
-  return enhancement.endsWith("Remove") && enhancement.length > "Remove".length;
+  return REMOVAL.test(enhancement);
 }
 
 /**
@@ -215,7 +218,7 @@ export function unitsPerMinute(entries: readonly BuildEntry[], units: Catalogue,
  */
 export function enhancementWords(id: string): string {
   let name = id.startsWith("FAF_") ? id.slice(4) : id;
-  if (isRemoval(name)) name = name.slice(0, -"Remove".length);
+  if (isRemoval(name)) name = name.replace(/Remove$/, "");
   return name
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
