@@ -13819,6 +13819,12 @@ export type UnitSummary = {
 	 *  on the map when zoomed out (`icon_land1_directfire`).
 	 */
 	strategicIcon: string | null,
+	/**
+	 *  `BuildIconSortPriority`: where the unit sits in its tech level's row
+	 *  of a factory's or an engineer's build menu, lowest first. `None` for
+	 *  a unit no build menu offers (commanders, concrete, helpers).
+	 */
+	sortPriority: number | null,
 };
 
 /**  Which value a series or a change is about. */
