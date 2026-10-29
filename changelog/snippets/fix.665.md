@@ -1,0 +1,2 @@
+- Patches 3639 and 3640 now show their January 2015 release dates.
+- Game patch dates no longer shift by a day in timezones west of UTC.
