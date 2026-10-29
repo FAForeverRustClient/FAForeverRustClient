@@ -33,6 +33,49 @@ function safeLink(value, base, snapshot) {
   } catch { return null; }
 }
 
+// The old wiki used leading-space <pre> blocks for balance notes, not just
+// program code. Render their original lines as prose/stat lists; never infer
+// headings, unit identities, or replacement descriptions from those lines.
+function wikiTextBlocks(text) {
+  const blocks = [];
+  let prose = [];
+  let items = [];
+  const flushProse = () => {
+    // The native inline reader strips <br> tags; retain a word separator as
+    // well so a source line ending in "5" cannot fuse with "Aeon" next.
+    if (prose.length) blocks.push(`<p>${prose.map(escape).join("<br> ")}</p>`);
+    prose = [];
+  };
+  const flushItems = () => {
+    if (items.length) blocks.push(`<ul>${items.map(line => `<li>${escape(line)}</li>`).join("")}</ul>`);
+    items = [];
+  };
+  for (const raw of text.trim().split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) { flushProse(); flushItems(); continue; }
+    const marker = /^[*+-]\s+/.test(line);
+    const caption = line.endsWith(":");
+    // Only the published assignment notation makes an unmarked line a stat.
+    // In particular, prose containing numbers stays prose rather than gaining
+    // a made-up table, heading, or before/after interpretation.
+    const assignment = /^[\w][\w /.-]{0,63}\s*[:=]\s*\S/u.test(line);
+    if (!caption && (marker || assignment)) {
+      flushProse();
+      items.push(line.replace(/^[*+-]\s+/, ""));
+    } else {
+      flushItems();
+      prose.push(line.replace(/^[*+-]\s+/, ""));
+    }
+  }
+  flushProse();
+  flushItems();
+  return blocks.join("");
+}
+
+function wikiSourceCode(node) {
+  return node.querySelector("code") || /(?:^|\n)\s*(?:local\s+\w|function\s|if\s+[^\n]+\bthen\b|for\s+[^\n]+\bdo\b|return\b|end\s*$)/m.test(node.textContent);
+}
+
 /** Inert parsing, allowlisted output and no fetching of referenced resources. */
 export function extractNote(html, format, base, snapshot = "") {
   if (Buffer.byteLength(html) > 4 * 1024 * 1024) throw new Error("Oversized archive source");
@@ -78,10 +121,15 @@ export function extractNote(html, format, base, snapshot = "") {
         const level = Math.min(6, Number(tag[1]) + headingOffset);
         return `<h${level}>${inner}</h${level}>`;
       }
-      // MediaWiki often represents separate bullet lines as separate paragraphs.
-      // Keep multiline stat tables legible instead of collapsing them into prose.
-      if (format === "wiki" && tag === "P" && node.textContent.trim().split("\n").filter(line => line.trim()).length > 1 && !node.querySelector("a,strong,b,em,i")) {
-        return `<pre>${escape(node.textContent.trim())}</pre>`;
+      if (format === "wiki" && tag === "PRE" && !wikiSourceCode(node)) {
+        // Preserve any explicit links/emphasis as inline markup, without
+        // leaving ordinary notes inside a code panel merely for indentation.
+        return node.querySelector("a,strong,b,em,i")
+          ? `<p>${inner.trim().replaceAll("\n", "<br> ")}</p>`
+          : wikiTextBlocks(node.textContent);
+      }
+      if (format === "wiki" && tag === "P" && !node.querySelector("a,strong,b,em,i,code")) {
+        return wikiTextBlocks(node.textContent);
       }
       return `<${tag.toLowerCase()}>${inner}</${tag.toLowerCase()}>`;
     };
@@ -100,6 +148,11 @@ export async function regenerate(root, cache, check = false) {
     if (sourceHash(raw, source.format) !== source.sha256) throw new Error(`Source changed: ${source.id}`);
     const document = source.format === "blog-json" ? `<div class="entry-content">${blogDocument(raw).body}</div>` : raw;
     const html = extractNote(document, source.format, source.originalUrl, source.capture ?? "");
+    // gitEvidence dates are source milestones, not deployment timestamps:
+    // 3616's 84010a7 commit opens TESTING on 2012-07-15; the 3609 tag was
+    // created on 2011-12-09, after its 2011-12-08 release announcement.
+    // Preserve this evidence in the source ledger without filling an unknown
+    // release date from a tag, content commit, merge, or archive capture.
     notes.push({ id: source.kind === "Legacy notes" ? `legacy-${source.id}` : source.id, patch: source.id,
       kind: source.kind, date: source.date, year: source.date.slice(0, 4),
       sourceUrl: source.sourceUrl, html, evidence: source.evidence });

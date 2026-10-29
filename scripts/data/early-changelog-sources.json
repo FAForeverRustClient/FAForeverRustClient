@@ -69,7 +69,17 @@
       "sha256": "98fec61402490dc104c47bdddb7cb26cc671bce785db28245732c7eacd8f2c43",
       "context": "Historical FAF notes. A contemporary announcement confirms that 3608 was already in use on 20 October 2011, but does not establish its release date.",
       "evidence": "https://direct.faforever.com/2011/10/fa-update-lobby-update/",
-      "decision": "Import without inventing a release date."
+      "decision": "Import without inventing a release date.",
+      "gitEvidence": [
+        {
+          "date": "2011-10-20",
+          "event": "tag recorded",
+          "commit": "568bd2b0a64b958b25fa18e0b48f95e67d1db050",
+          "message": "Added tag 3608, +, 3603, support for changeset 9a0158568f11",
+          "url": "https://github.com/FAForever/fa/commit/568bd2b0a64b958b25fa18e0b48f95e67d1db050",
+          "releaseDateVerified": false
+        }
+      ]
     },
     {
       "id": "3609",
@@ -152,8 +162,18 @@
       "file": "3613.html",
       "sha256": "bba61e800299a3ed6bd60a63ca4caabbe087bc4a5905afe90b4ba97ede2c9628",
       "context": "Historical FAF patchnotes. The release date has not been verified; archive capture and wiki modification times are not release dates.",
-      "evidence": "",
-      "decision": "Import without inventing a release date."
+      "evidence": "https://github.com/FAForever/fa/commit/00acd66c6e6c6513662082c273cbb4c086f9e3bb",
+      "decision": "Import without inventing a release date.",
+      "gitEvidence": [
+        {
+          "date": "2012-04-08",
+          "event": "tag recorded",
+          "commit": "00acd66c6e6c6513662082c273cbb4c086f9e3bb",
+          "message": "Added tag 3613 for changeset ea20c873c25e",
+          "url": "https://github.com/FAForever/fa/commit/00acd66c6e6c6513662082c273cbb4c086f9e3bb",
+          "releaseDateVerified": false
+        }
+      ]
     },
     {
       "id": "3614",
@@ -173,8 +193,18 @@
       "file": "3614.html",
       "sha256": "d1bec2b9887f0bf01596e924693074e7b0cd5387e84a0e0026d4a5b1e766b757",
       "context": "Historical FAF patchnotes. The release date has not been verified; archive capture and wiki modification times are not release dates.",
-      "evidence": "",
-      "decision": "Import without inventing a release date."
+      "evidence": "https://github.com/FAForever/fa/commit/641211ab6e90e08217e71ed196b8fd1304073c80",
+      "decision": "Import without inventing a release date.",
+      "gitEvidence": [
+        {
+          "date": "2012-04-28",
+          "event": "tag recorded",
+          "commit": "641211ab6e90e08217e71ed196b8fd1304073c80",
+          "message": "Added tag 3614 for changeset 13988bd312eb",
+          "url": "https://github.com/FAForever/fa/commit/641211ab6e90e08217e71ed196b8fd1304073c80",
+          "releaseDateVerified": false
+        }
+      ]
     },
     {
       "id": "3615",
@@ -194,8 +224,18 @@
       "file": "3615.html",
       "sha256": "a51983c1af0c1c9baa8e62ee61c3bb9972d79e8e22ab1e782b24c5ede1ed3a65",
       "context": "Historical FAF patchnotes. The release date has not been verified; archive capture and wiki modification times are not release dates.",
-      "evidence": "",
-      "decision": "Import without inventing a release date."
+      "evidence": "https://github.com/FAForever/fa/commit/d8dd920b6d74f950fc9be0321fe69c7c72a5fa15",
+      "decision": "Import without inventing a release date.",
+      "gitEvidence": [
+        {
+          "date": "2012-07-03",
+          "event": "tag recorded on testing branch",
+          "commit": "d8dd920b6d74f950fc9be0321fe69c7c72a5fa15",
+          "message": "Added tag 3615 for changeset c34a1ce31b78",
+          "url": "https://github.com/FAForever/fa/commit/d8dd920b6d74f950fc9be0321fe69c7c72a5fa15",
+          "releaseDateVerified": false
+        }
+      ]
     },
     {
       "id": "3616",
@@ -215,8 +255,26 @@
       "file": "3616.html",
       "sha256": "2f8e86f01759b26b7bb3942da962e9ea0f5064a9144557445e61ae5b1c4b6750",
       "context": "Historical FAF patchnotes. The release date has not been verified; archive capture and wiki modification times are not release dates.",
-      "evidence": "",
-      "decision": "Import without inventing a release date."
+      "evidence": "https://github.com/FAForever/fa/commit/84010a7dca7de1ba2a02808650bb05c5617eda73",
+      "decision": "Import without inventing a release date.",
+      "gitEvidence": [
+        {
+          "date": "2012-07-15",
+          "event": "testing opened",
+          "commit": "84010a7dca7de1ba2a02808650bb05c5617eda73",
+          "message": "Opening testing 3616",
+          "url": "https://github.com/FAForever/fa/commit/84010a7dca7de1ba2a02808650bb05c5617eda73",
+          "releaseDateVerified": false
+        },
+        {
+          "date": "2012-07-22",
+          "event": "published-note change committed",
+          "commit": "ccf6e6967b3ced6fe63ce9c7d06a581a1871de01",
+          "message": "Changing ACU veterancy values to Level 1 = 20, Level 2 = 50, Level 3 = 90, Level 4 = 140, Level 5 = 200",
+          "url": "https://github.com/FAForever/fa/commit/ccf6e6967b3ced6fe63ce9c7d06a581a1871de01",
+          "releaseDateVerified": false
+        }
+      ]
     },
     {
       "id": "3617",
@@ -278,8 +336,18 @@
       "file": "3619.html",
       "sha256": "4eb8672fc2859dc326a3f29d43818d73dfd8a0c1a0bdb6e99fdaed7cbc47141b",
       "context": "Historical FAF patchnotes. The release date has not been verified; archive capture and wiki modification times are not release dates.",
-      "evidence": "",
-      "decision": "Import without inventing a release date."
+      "evidence": "https://github.com/FAForever/fa/commit/797b7adb533a8aae0799570b2d9e4cd4f4858bd5",
+      "decision": "Import without inventing a release date.",
+      "gitEvidence": [
+        {
+          "date": "2012-09-19",
+          "event": "branch merged",
+          "commit": "797b7adb533a8aae0799570b2d9e4cd4f4858bd5",
+          "message": "Merge with 3619",
+          "url": "https://github.com/FAForever/fa/commit/797b7adb533a8aae0799570b2d9e4cd4f4858bd5",
+          "releaseDateVerified": false
+        }
+      ]
     },
     {
       "id": "3620",
@@ -299,8 +367,18 @@
       "file": "3620.html",
       "sha256": "d3ad81fcc63d719242e7afa99bf04dbb5c924547106e7a846fa5e44f50d9f251",
       "context": "Historical FAF patchnotes. The release date has not been verified; archive capture and wiki modification times are not release dates.",
-      "evidence": "",
-      "decision": "Import without inventing a release date."
+      "evidence": "https://github.com/FAForever/fa/commit/df01ad7db7bfefff76243b0ec12ef051031c801e",
+      "decision": "Import without inventing a release date.",
+      "gitEvidence": [
+        {
+          "date": "2012-12-15",
+          "event": "version closed before 3621 development",
+          "commit": "df01ad7db7bfefff76243b0ec12ef051031c801e",
+          "message": "Closing 3620 version.",
+          "url": "https://github.com/FAForever/fa/commit/df01ad7db7bfefff76243b0ec12ef051031c801e",
+          "releaseDateVerified": false
+        }
+      ]
     },
     {
       "id": "3621",

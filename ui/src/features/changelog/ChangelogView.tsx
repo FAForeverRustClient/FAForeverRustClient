@@ -46,6 +46,7 @@ import {
   useNoteListPosition,
   type Section,
 } from "./noteReader";
+import { historicalChangelogIllustrations } from "../../shared/historicalChangelogIcons";
 import "./changelog.css";
 
 /** Rolling branches have no date and belong above the dated years. */
@@ -205,9 +206,12 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
     [entry, selected],
   );
 
+  const illustrations = useMemo(
+    () => historicalChangelogIllustrations(entry?.id ?? "", entry?.blocks ?? []), [entry],
+  );
   const sections = useMemo<Section[]>(
-    () => (entry ? noteSections(entry.blocks, heading.skipFirst, t("changelog.historicalBalance")) : []),
-    [entry, heading.skipFirst, t],
+    () => (entry ? noteSections(entry.blocks, heading.skipFirst, t("changelog.historicalBalance"), 0, illustrations) : []),
+    [entry, heading.skipFirst, t, illustrations],
   );
   const { scrollRef, tocRef, activeSectionId, onNoteScroll, jumpTo } = useNoteContents(sections, changelog.selected, "game", Boolean(entry));
 
@@ -465,7 +469,7 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
                 <p className="changelog-list-note">{t("changelog.pick")}</p>
               )}
 
-              {entry && <NoteBlocks blocks={entry.blocks} skipFirst={heading.skipFirst} />}
+              {entry && <NoteBlocks blocks={entry.blocks} skipFirst={heading.skipFirst} illustrations={illustrations} />}
             </div>
 
             <NoteContentsColumn

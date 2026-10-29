@@ -22,6 +22,23 @@ describe("archived wiki patchnotes", () => {
     expect(bundle.notes.find(note => note.id === "3633").kind).toBe("Beta patch");
     expect(bundle.notes.find(note => note.id === "3634").kind).toBe("Beta patch");
   });
+
+  it("records Git milestones without promoting tag or testing dates to release dates", () => {
+    const manifest = JSON.parse(readFileSync(new URL("./data/early-changelog-sources.json", import.meta.url), "utf8"));
+    const bundle = JSON.parse(readFileSync(new URL("../crates/faf-domain/src/protocol/data/early_changelog.json", import.meta.url), "utf8"));
+    const researched = manifest.sources.filter(source => source.gitEvidence?.length);
+    expect(researched.map(source => source.id)).toEqual(["3608", "3613", "3614", "3615", "3616", "3619", "3620"]);
+    for (const source of researched) {
+      expect(source.date).toBe("");
+      expect(source.datePrecision).toBe("unknown");
+      expect(bundle.notes.find(note => note.id === source.id).date).toBe("");
+      for (const evidence of source.gitEvidence) {
+        expect(evidence.releaseDateVerified).toBe(false);
+        expect(evidence.url).toBe(`https://github.com/FAForever/fa/commit/${evidence.commit}`);
+      }
+    }
+    expect(researched.find(source => source.id === "3616").gitEvidence[0]).toMatchObject({ date: "2012-07-15", event: "testing opened" });
+  });
   it("keeps nested facts and source links while excluding active content and wiki furniture", () => {
     const html = `<nav>Not a note</nav><div id="mw-content-text"><div id="toc">Duplicate contents</div>
       <h2><span>Balance</span><span class="mw-editsection">edit</span></h2>
@@ -39,10 +56,27 @@ describe("archived wiki patchnotes", () => {
     expect(globalThis.archiveScriptExecuted).toBeUndefined();
   });
 
-  it("retains multiline stat tables without inventing modern values or dates", () => {
+  it("renders multiline wiki stats as ordinary lists without inventing values or dates", () => {
     const output = extractNote('<div id="mw-content-text"><p>T1 = 1\nT2 = 3\nT3 = 6</p></div>', "wiki", "https://example.invalid");
-    expect(output).toBe("<pre>T1 = 1\nT2 = 3\nT3 = 6</pre>");
+    expect(output).toBe("<ul><li>T1 = 1</li><li>T2 = 3</li><li>T3 = 6</li></ul>");
     expect(output).not.toContain("2015");
+  });
+
+  it("separates the original veterancy caption, stats and trailing explanation", () => {
+    const output = extractNote('<div id="mw-content-text"><p>Experimentals veterancy levels :\n+ Level2 = 150,\n+ Level3 = 225,\nfor ML and ythotha, Megalith same as GC.</p></div>', "wiki", "https://example.invalid");
+    expect(output).toBe("<p>Experimentals veterancy levels :</p><ul><li>Level2 = 150,</li><li>Level3 = 225,</li></ul><p>for ML and ythotha, Megalith same as GC.</p>");
+  });
+
+  it("unwraps wiki indentation blocks used for balance prose and preserves explicit links", () => {
+    const output = extractNote('<div id="mw-content-text"><pre>Health reduced from 1200 to 800.\nMass reduced by 25%.</pre><pre>Level1 = 75\nLevel2 = 125</pre><pre>See <a href="https://example.invalid/source">original discussion</a>.</pre></div>', "wiki", "https://example.invalid");
+    expect(output).toBe('<p>Health reduced from 1200 to 800.<br> Mass reduced by 25%.</p><ul><li>Level1 = 75</li><li>Level2 = 125</li></ul><p>See <a href="https://example.invalid/source">original discussion</a>.</p>');
+  });
+
+  it("preserves genuine source code and blog preformatted blocks", () => {
+    const code = '<pre>local value = 150\nreturn value</pre><pre><code>T1 = 1\nT2 = 3</code></pre>';
+    expect(extractNote(`<div id="mw-content-text">${code}</div>`, "wiki", "https://example.invalid")).toBe(code);
+    const blog = '<pre>Level1 = 75\nLevel2 = 125</pre>';
+    expect(extractNote(`<div class="entry-content">${blog}</div>`, "blog", "https://example.invalid")).toBe(blog);
   });
 
   it("separates illustration links from the original surrounding prose", () => {

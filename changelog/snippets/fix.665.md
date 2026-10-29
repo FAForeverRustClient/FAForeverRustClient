@@ -1,2 +1,5 @@
 - Patches 3639 and 3640 now show their January 2015 release dates.
 - Game patch dates no longer shift by a day in timezones west of UTC.
+- Early patch notes no longer display ordinary balance changes as code blocks.
+- Historical patch contents now group faction and unit sections under the correct headings.
+- Contributor names in early patch notes no longer appear as oversized headings.

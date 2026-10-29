@@ -5,7 +5,8 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 import type { ChangelogBlock } from "../../ipc/bindings";
-import { anchorFor, noteSections, NoteContentsColumn } from "./noteReader";
+import { anchorFor, noteSections, NoteBlocks, NoteContentsColumn } from "./noteReader";
+import { historicalChangelogIllustrations } from "../../shared/historicalChangelogIcons";
 import { failOnConsoleError } from "../../testing/consoleGuard";
 import { clearSentCommands, sentCommands } from "../../testing/mounted";
 import { en } from "../../i18n/catalog/en";
@@ -15,6 +16,121 @@ const { openUrl } = vi.hoisted(() => ({ openUrl: vi.fn() }));
 vi.mock("../../ipc/native", () => ({ native: { openUrl } }));
 vi.mock("../../ipc/client");
 failOnConsoleError();
+
+it("uses the same historical commander and faction icons in original headings and contents links", async () => {
+  const blocks: ChangelogBlock[] = [
+    { type: "heading", payload: { level: 2, text: "ACUs" } },
+    { type: "heading", payload: { level: 3, text: "Cybran" } },
+    { type: "heading", payload: { level: 2, text: "T2 units" } },
+    { type: "heading", payload: { level: 3, text: "Aeon t2" } },
+  ];
+  const illustrations = historicalChangelogIllustrations("3626", blocks);
+  const sections = noteSections(blocks, false, en["changelog.historicalBalance"], 0, illustrations);
+  const onJump = vi.fn();
+  render(<>
+    <NoteBlocks blocks={blocks} illustrations={illustrations} />
+    <NoteContentsColumn sections={sections} activeSectionId={anchorFor(1)} navRef={createRef<HTMLElement>()} onJump={onJump} />
+  </>);
+  const contents = within(screen.getByRole("navigation", { name: en["changelog.contents"] }));
+  const commander = screen.getByRole("heading", { name: "Cybran", level: 3 });
+  expect(commander.querySelector("img")?.getAttribute("src")).toContain("/URL0001_icon.png");
+  expect(contents.getByRole("button", { name: "Cybran" }).querySelector("img")?.getAttribute("src")).toBe(commander.querySelector("img")?.getAttribute("src"));
+  expect(screen.getByRole("heading", { name: "Aeon t2", level: 3 }).querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+  expect(contents.getByRole("button", { name: "Aeon t2" }).querySelector("svg")).not.toBeNull();
+  expect(screen.getByRole("heading", { name: "T2 units" }).querySelector("img,svg")).toBeNull();
+  expect(sections.map(section => section.depth)).toEqual([1, 2, 1, 2]);
+  await userEvent.setup().click(contents.getByRole("button", { name: "Aeon t2" }));
+  expect(onJump).toHaveBeenCalledWith(anchorFor(3));
+});
+
+it("keeps deep historical unit headings and short upgrade captions reachable without rewriting them", () => {
+  const blocks: ChangelogBlock[] = [
+    { type: "heading", payload: { level: 2, text: "SCUs" } },
+    { type: "heading", payload: { level: 5, text: "Aeon SCU :" } },
+    { type: "paragraph", payload: { spans: [{ type: "text", payload: "Ressource Allocation System:" }] } },
+  ];
+  const illustrations = historicalChangelogIllustrations("3619", blocks);
+  const sections = noteSections(blocks, false, en["changelog.historicalBalance"], 0, illustrations);
+  render(<NoteBlocks blocks={blocks} illustrations={illustrations} />);
+  expect(screen.getByRole("heading", { name: "Aeon SCU :", level: 5 })).toBeTruthy();
+  expect(screen.getByText("Ressource Allocation System:").closest("p")?.id).toBe(anchorFor(2));
+  expect(sections.map(section => section.text)).toEqual(["SCUs", "Aeon SCU :", "Ressource Allocation System:"]);
+  expect(sections.every(section => document.getElementById(section.id))).toBe(true);
+  const image = screen.getByText("Ressource Allocation System:").closest("p")?.querySelector("img");
+  expect(image?.getAttribute("src")).toContain("/aeon/ras.png");
+  if (image) {
+    fireEvent.error(image);
+    expect(image.classList.contains("is-missing")).toBe(true);
+    expect(screen.getByText("Ressource Allocation System:")).toBeTruthy();
+  }
+});
+
+it("keeps all four 3626 ACU factions as siblings even though UEF was published as a paragraph", async () => {
+  const blocks: ChangelogBlock[] = [
+    { type: "heading", payload: { level: 2, text: "ACUs" } },
+    { type: "heading", payload: { level: 3, text: "Cybran" } },
+    { type: "heading", payload: { level: 3, text: "Seraphim" } },
+    { type: "heading", payload: { level: 3, text: "Aeon" } },
+    { type: "paragraph", payload: { spans: [{ type: "text", payload: "UEF" }] } },
+    { type: "heading", payload: { level: 2, text: "T1 units" } },
+  ];
+  const illustrations = historicalChangelogIllustrations("3626", blocks);
+  const sections = noteSections(blocks, false, en["changelog.historicalBalance"], 0, illustrations);
+  const onJump = vi.fn();
+  render(<>
+    <NoteBlocks blocks={blocks} illustrations={illustrations} />
+    <NoteContentsColumn sections={sections} activeSectionId={anchorFor(3)} navRef={createRef<HTMLElement>()} onJump={onJump} />
+  </>);
+  expect(sections.map(section => section.depth)).toEqual([1, 2, 2, 2, 2, 1]);
+  const contents = within(screen.getByRole("navigation", { name: en["changelog.contents"] }));
+  const group = contents.getByRole("button", { name: "ACUs" });
+  expect(group.querySelector("img,svg")).toBeNull();
+  const peers = ["Cybran", "Seraphim", "Aeon", "UEF"].map(name => contents.getByRole("button", { name }));
+  const parent = peers[0].closest("li")?.parentElement;
+  for (const peer of peers) {
+    expect(peer.closest("li")?.parentElement).toBe(parent);
+    expect(peer.classList.contains("is-group")).toBe(false);
+    expect(screen.getByRole("heading", { name: peer.textContent ?? "", level: 3 })).toBeTruthy();
+  }
+  expect(parent?.parentElement).toBe(group.closest("li"));
+  await userEvent.setup().click(peers[3]);
+  expect(onJump).toHaveBeenCalledWith(anchorFor(4));
+});
+
+it("renders 3626 credits as normal text and keeps experimental units beside the general subsection", () => {
+  const general = "General change : Veterancy levels adjustments.";
+  const names = "Pip, Blackheart, Crazed, Lu_Xun_17, Nombringer, TAG_Chosen, Voodoo, Zock";
+  const blocks: ChangelogBlock[] = [
+    { type: "heading", payload: { level: 2, text: "T4 units" } },
+    { type: "heading", payload: { level: 3, text: general } },
+    { type: "list", payload: { items: [] } },
+    { type: "paragraph", payload: { spans: [{ type: "text", payload: "Atlantis" }] } },
+    { type: "list", payload: { items: [] } },
+    { type: "paragraph", payload: { spans: [{ type: "text", payload: "Monkeylord" }] } },
+    { type: "list", payload: { items: [] } },
+    { type: "heading", payload: { level: 2, text: "Balance Team credits :" } },
+    { type: "heading", payload: { level: 2, text: names } },
+  ];
+  const illustrations = historicalChangelogIllustrations("3626", blocks);
+  const sections = noteSections(blocks, false, en["changelog.historicalBalance"], 0, illustrations);
+  render(<>
+    <NoteBlocks blocks={blocks} illustrations={illustrations} />
+    <NoteContentsColumn sections={sections} activeSectionId={anchorFor(5)} navRef={createRef<HTMLElement>()} onJump={vi.fn()} />
+  </>);
+  expect(screen.queryByRole("heading", { name: names })).toBeNull();
+  const creditText = screen.getByText(names);
+  expect(creditText.tagName).toBe("P");
+  expect(creditText.classList.contains("changelog-paragraph")).toBe(true);
+  expect(screen.getByRole("heading", { name: "Balance Team credits :", level: 2 })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Atlantis", level: 3 }).querySelector("img")?.getAttribute("src")).toContain("/UES0401_icon.png");
+  expect(screen.getByRole("heading", { name: "Monkeylord", level: 3 }).querySelector("img")?.getAttribute("src")).toContain("/URL0402_icon.png");
+  const contents = within(screen.getByRole("navigation", { name: en["changelog.contents"] }));
+  expect(contents.queryByRole("button", { name: names })).toBeNull();
+  expect(contents.getByRole("button", { name: "Balance Team credits :" })).toBeTruthy();
+  const peers = [general, "Atlantis", "Monkeylord"].map(name => contents.getByRole("button", { name }));
+  expect(peers.every(peer => peer.closest("li")?.parentElement === peers[0].closest("li")?.parentElement)).toBe(true);
+  expect(sections.map(section => section.depth)).toEqual([1, 2, 2, 2, 1]);
+});
 
 it("opens grouped references individually through the existing native URL opener", async () => {
   const user = userEvent.setup();

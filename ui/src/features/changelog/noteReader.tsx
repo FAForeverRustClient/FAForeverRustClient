@@ -11,6 +11,8 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import type { ChangelogBlock } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ChangelogBlockView } from "../../shared/components/ChangelogBlocks";
+import { ChangelogIllustration } from "../../shared/components/ChangelogIllustration";
+import type { ChangelogIllustration as Illustration, HistoricalCaptionIllustrations } from "../../shared/historicalChangelogIcons";
 import { changelogViewMemory, type ChangelogReader } from "./viewMemory";
 
 /** A section of the open note, as the contents list and the jump row name it. */
@@ -25,6 +27,7 @@ export interface Section {
    * differ mostly by faction, and a row of them is noise at this size.
    */
   iconUrl?: string;
+  illustration?: Illustration;
 }
 
 export const anchorFor = (index: number) => `changelog-block-${index}`;
@@ -48,12 +51,18 @@ const contentsDepth = (depth: number) => Math.max(1, Math.min(4, depth)) as Sect
  */
 export function noteSections(
   blocks: ChangelogBlock[], skipFirst: boolean, historicalLabel: string, headingOffset = 0,
+  illustrations?: HistoricalCaptionIllustrations,
 ): Section[] {
   const sections: Section[] = [];
   let unitName = "";
   let groupDepth = headingOffset;
   blocks.forEach((block, index) => {
     if (skipFirst && index === 0) return;
+    const caption = illustrations?.get(index);
+    if (caption?.asParagraph) return;
+    // A historical group such as ACUs names every faction, so its first
+    // portrait must not make the group look like a fifth, UEF-only commander.
+    const illustration = caption?.icons.length === 1 ? caption.icons[0] : undefined;
     if (block.type === "historicalBalance") {
       const id = anchorFor(index);
       sections.push({ id, text: historicalLabel, depth: contentsDepth(headingOffset + 1) }, ...noteSections(block.payload.blocks, false, historicalLabel, headingOffset + 1)
@@ -69,16 +78,23 @@ export function noteSections(
         || FACTION_LABEL.test(text.trim())
         || (unitName !== "" && compact(text) !== "" && unitName.includes(compact(text)))
       );
-      if (sourceLevel <= 4 && !label) {
+      if ((sourceLevel <= 4 || illustration) && !label) {
         unitName = "";
         groupDepth = Math.max(1, sourceLevel + headingOffset - 1);
-        sections.push({ id: anchorFor(index), text, depth: contentsDepth(groupDepth) });
+        sections.push({ id: anchorFor(index), text, depth: contentsDepth(groupDepth), ...(illustration ? { illustration } : {}) });
       }
       return;
     }
     if (block.type === "unit") {
       unitName = compact(block.payload.name);
       sections.push({ id: anchorFor(index), text: block.payload.name, depth: contentsDepth(Math.max(2, groupDepth + 1)), iconUrl: block.payload.units[0]?.iconUrl });
+    }
+    if (block.type === "paragraph" && illustration && caption) {
+      if (caption.headingLevel !== undefined) {
+        unitName = "";
+        groupDepth = Math.max(1, caption.headingLevel + headingOffset - 1);
+      }
+      sections.push({ id: anchorFor(index), text: caption.text, depth: contentsDepth(caption.headingLevel !== undefined ? groupDepth : Math.max(2, groupDepth + 1)), illustration });
     }
   });
   return sections;
@@ -236,15 +252,17 @@ export function useNoteContents(sections: Section[], selection: string, reader: 
  * section changes while scrolling, and a long note redrawn with it (3761's
  * original balance notes are close to 300 blocks) made both lag.
  */
-export const NoteBlocks = memo(function NoteBlocks({ blocks, skipFirst = false }: {
+export const NoteBlocks = memo(function NoteBlocks({ blocks, skipFirst = false, illustrations }: {
   blocks: ChangelogBlock[];
   skipFirst?: boolean;
+  illustrations?: HistoricalCaptionIllustrations;
 }) {
   return (
     <>
       {blocks.map((block, index) =>
         skipFirst && index === 0 ? null : (
-          <ChangelogBlockView key={index} block={block} anchorId={anchorFor(index)} />
+          <ChangelogBlockView key={index} block={block} anchorId={anchorFor(index)} icons={illustrations?.get(index)?.icons}
+            captionHeadingLevel={illustrations?.get(index)?.headingLevel} captionAsParagraph={illustrations?.get(index)?.asParagraph} />
         ),
       )}
     </>
@@ -309,16 +327,18 @@ export const NoteContentsColumn = memo(function NoteContentsColumn({
     <li key={section.id}>
       <button
         type="button"
-        className={`changelog-toc-item depth-${section.depth}${section.iconUrl ? " has-icon" : ""}${children.length ? " is-group" : ""}${
+        className={`changelog-toc-item depth-${section.depth}${section.iconUrl || section.illustration ? " has-icon" : ""}${children.length ? " is-group" : ""}${
           activeSectionId === section.id ? " is-active" : ""
         }`}
         aria-current={activeSectionId === section.id ? "location" : undefined}
         title={section.depth > 1 ? section.text : undefined}
         onClick={() => onJump(section.id)}
       >
-        {section.iconUrl ? <>
-          <img className="changelog-toc-icon" src={section.iconUrl} alt="" loading="lazy" draggable={false}
-            onError={(event) => event.currentTarget.classList.add("is-missing")} />
+        {section.iconUrl || section.illustration ? <>
+          {section.illustration
+            ? <ChangelogIllustration illustration={section.illustration} className="changelog-toc-icon" size={24} />
+            : <img className="changelog-toc-icon" src={section.iconUrl} alt="" loading="lazy" draggable={false}
+                onError={(event) => event.currentTarget.classList.add("is-missing")} />}
           <span className="changelog-toc-text">{section.text}</span>
         </> : section.text}
       </button>

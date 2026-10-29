@@ -62,6 +62,10 @@ fn rank(release: &ChangelogRelease) -> u8 {
 
 /// Keep current published notes where they exist; add missing historical ones.
 /// Corrections change the displayed date, never the source filename/URL.
+/// Git milestones in the import ledger are not release dates: 3616's first
+/// named commit opens testing, while 3609 was tagged after its announcement.
+/// An undated imported note must therefore stay undated until a source proves
+/// public release, even when its development/tagging day is known.
 pub fn with_early_releases(mut releases: Vec<ChangelogRelease>) -> Vec<ChangelogRelease> {
     for correction in &archive().corrections {
         if let Some(release) = releases.iter_mut().find(|release| {
@@ -238,6 +242,40 @@ mod tests {
             if matches!(&spans[0], ChangelogSpan::Text(text) if text.starts_with("Complete changelog from 3599 to 3605.")))
         );
         assert_eq!(with_early_releases(releases.clone()), releases);
+    }
+
+    #[test]
+    fn wiki_balance_notes_are_prose_and_lists_instead_of_code_panels() {
+        let releases = with_early_releases(vec![]);
+        for id in ["legacy-3605", "3615", "3616", "3619"] {
+            let release = releases.iter().find(|release| release.id == id).unwrap();
+            let entry = early_entry(release).unwrap();
+            assert!(
+                !entry
+                    .blocks
+                    .iter()
+                    .any(|block| matches!(block, ChangelogBlock::CodeBlock { .. })),
+                "ordinary wiki balance notes became code in {id}"
+            );
+            if id == "3616" {
+                assert!(entry.blocks.iter().any(|block| matches!(
+                    block,
+                    ChangelogBlock::List { items }
+                    if items.len() == 4 && items[0].spans == [ChangelogSpan::Text("T1 = 1".into())]
+                        && items[3].spans == [ChangelogSpan::Text("XP = 50".into())]
+                )));
+            }
+            if id == "legacy-3605" {
+                assert!(entry.blocks.iter().any(|block| matches!(
+                    block,
+                    ChangelogBlock::Paragraph { spans }
+                    if spans.iter().any(|span| matches!(span,
+                        ChangelogSpan::Text(text)
+                        if text.contains("Cybran cloak energy drain -5 Aeon radar range +5")
+                    ))
+                )));
+            }
+        }
     }
 
     #[test]
