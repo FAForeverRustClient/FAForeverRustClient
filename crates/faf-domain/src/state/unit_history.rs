@@ -207,6 +207,7 @@ mod tests {
             tech: Some(1),
             kind: UnitKind::Land,
             strategic_icon: None,
+            sort_priority: None,
         }
     }
 
