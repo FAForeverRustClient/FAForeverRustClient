@@ -9,6 +9,8 @@ const MAX_ANNOUNCED = 64;
 
 export function reduceStreams(state: StreamsState, event: StreamsEvent): StreamsState {
   switch (event.type) {
+    case "available":
+      return { ...state, available: true };
     case "checking":
       return { ...state, status: { type: "checking" } };
     case "loaded":

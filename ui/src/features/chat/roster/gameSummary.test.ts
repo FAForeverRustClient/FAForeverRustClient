@@ -77,7 +77,7 @@ describe("game team summaries", () => {
       players: [profile("Alpha", 1_200, "us"), profile("Bravo", 1_400, "de")],
     };
     const teams = gameTeamSummaries(
-      game(1, "Alpha", { "-1": ["Observer"], "2": ["Bravo"], "1": ["Alpha", "Unknown"] }),
+      game(1, "Alpha", { "-1": ["Observer"], "3": ["Bravo"], "2": ["Alpha", "Unknown"] }),
       social,
     );
 
@@ -86,6 +86,16 @@ describe("game team summaries", () => {
     expect(teams[0].players[1].rating).toBeNull();
     expect(teams[1].rating).toBe(1_400);
     expect(teams[2].rating).toBeNull();
+  });
+
+  it("names the server's no-team bucket as the Play tab does", () => {
+    const social: SocialState = { friends: [], foes: [], loginLookups: [], staff: [], players: [] };
+
+    const freeForAll = gameTeamSummaries(game(1, "Alpha", { "1": ["Alpha", "Bravo"] }), social);
+    const mixed = gameTeamSummaries(game(2, "Alpha", { "1": ["Alpha"], "2": ["Bravo"] }), social);
+
+    expect(freeForAll.map((team) => team.label)).toEqual(["Free for all"]);
+    expect(mixed.map((team) => team.label)).toEqual(["Unassigned", "Team 1"]);
   });
 
   it("reads the leaderboard the game is rated on, not always the global one", () => {

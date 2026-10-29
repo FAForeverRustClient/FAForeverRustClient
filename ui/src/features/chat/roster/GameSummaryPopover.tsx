@@ -201,7 +201,7 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
               setMapPreviewOpen(true);
             }}
             action={(
-              <button type="button" className="chat-head-action chat-game-popover-action" onClick={act}>
+              <button type="button" className="chat-game-popover-action" onClick={act}>
                 <Icon name={watching ? "eye" : "play"} size={14} />
                 {watching ? t("chat.aside.watch") : t("chat.aside.join")}
               </button>

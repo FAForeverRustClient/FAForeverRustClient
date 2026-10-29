@@ -136,13 +136,9 @@ fn file_ending_in(folder: &Path, suffix: &str) -> Result<PathBuf, String> {
 }
 
 fn read_lua(path: &Path) -> Result<String, String> {
-    let size = std::fs::metadata(path)
-        .map_err(|error| format!("could not read {}: {error}", path.display()))?
-        .len();
-    if size > MAX_LUA_BYTES {
-        return Err(format!("{} is implausibly large", path.display()));
-    }
-    let bytes = std::fs::read(path)
+    // Bounded on the read as well as on the stated size: a file that grew
+    // after it was measured is refused rather than read whole.
+    let bytes = super::metadata_file::read_bounded(path, MAX_LUA_BYTES)
         .map_err(|error| format!("could not read {}: {error}", path.display()))?;
     // Lossy: a map's description is sometimes in a legacy code page, and a
     // stray byte in it says nothing about where the markers are.

@@ -1,0 +1,1 @@
+- The game card in chat numbers teams as the Play tab does, "Team 1" and "Team 2" instead of "Team 2" and "Team 3".
