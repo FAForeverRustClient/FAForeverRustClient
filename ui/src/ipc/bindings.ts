@@ -13723,7 +13723,12 @@ export type UnitHistoryStatus =
 { type: "loading"; payload: {
 	fetched: number,
 	total: number,
-} } | { type: "ready"; payload: {
+} } |
+/**
+ *  Boxed: a history is a few kilobytes of series, and the other two
+ *  states are a pair of numbers and a string. Transparent on the wire.
+ */
+{ type: "ready"; payload: {
 	history: UnitHistory,
 } } | { type: "failed"; payload: {
 	reason: string,
