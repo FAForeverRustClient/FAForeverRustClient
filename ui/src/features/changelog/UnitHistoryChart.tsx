@@ -25,6 +25,8 @@ export interface ChartSeries {
   values: (number | null)[];
   /** 1 to 8: `--color-chart-<n>`, given out in order. */
   color: number;
+  /** An SVG dash pattern, for telling apart lines of one colour. */
+  dash?: string;
   /** What the tooltip says for a release, when the drawn number is not it. */
   describe?: (index: number) => string;
 }
@@ -118,6 +120,24 @@ export function valueExtent(
   return { min: floor === null ? low - room : low, max: high + room };
 }
 
+/** A short piece of a line, for a legend: its colour and its dash. */
+export function LineSample({ color, dash }: { color: number | null; dash?: string }) {
+  return (
+    <svg className="unit-history-sample" width="22" height="8" aria-hidden="true">
+      <line
+        x1="1"
+        x2="21"
+        y1="4"
+        y2="4"
+        style={{
+          stroke: color === null ? "var(--color-border-strong)" : `var(--color-chart-${color})`,
+          strokeDasharray: dash || undefined,
+        }}
+      />
+    </svg>
+  );
+}
+
 export function UnitHistoryChart({ releases, series, format, floor, baseline, onOpenRelease }: Props) {
   const { t } = useTranslation();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -198,7 +218,7 @@ export function UnitHistoryChart({ releases, series, format, floor, baseline, on
           <path
             key={one.key}
             className="unit-history-line"
-            style={{ stroke: `var(--color-chart-${one.color})` }}
+            style={{ stroke: `var(--color-chart-${one.color})`, strokeDasharray: one.dash || undefined }}
             d={stepPath(one.values, x, y)}
           />
         ))}
@@ -234,7 +254,7 @@ export function UnitHistoryChart({ releases, series, format, floor, baseline, on
             const value = one.values[hover] ?? null;
             return (
               <span key={one.key} className="unit-history-tooltip-row">
-                <span className="unit-history-swatch" style={{ background: `var(--color-chart-${one.color})` }} />
+                <LineSample color={one.color} dash={one.dash} />
                 <span className="unit-history-tooltip-label">{one.label}</span>
                 <span>{one.describe ? one.describe(hover) : value === null ? "–" : format(value)}</span>
               </span>

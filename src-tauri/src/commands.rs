@@ -381,6 +381,25 @@ pub(crate) fn snapshot(core: tauri::State<'_, Core>) -> VersionedSnapshot {
     snapshot
 }
 
+/// The unit history's pictures: every unit's build icon and every strategic
+/// icon, read out of the installed game's archives (see
+/// `faf_app::infra::unit_icons`). Through a command of their own rather than
+/// the state, because they are megabytes the page wants only while that
+/// section is open.
+#[tauri::command]
+pub(crate) async fn unit_icons(
+    core: tauri::State<'_, Core>,
+) -> Result<faf_app::infra::unit_icons::UnitIcons, String> {
+    let game_path = core.0.with_state(|state| state.settings.game_path.clone());
+    tauri::async_runtime::spawn_blocking(move || {
+        faf_app::infra::unit_icons::unit_icons(&game_path)
+            .as_ref()
+            .clone()
+    })
+    .await
+    .map_err(|_| "file worker stopped".to_string())
+}
+
 /// Terminate the application process cleanly.
 #[tauri::command]
 pub(crate) fn exit_app(app: tauri::AppHandle) {

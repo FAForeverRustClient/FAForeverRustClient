@@ -2,7 +2,7 @@
 // formatting one, and turning series into chart lines. Kept apart from the
 // views so they can be tested without rendering.
 
-import type { UnitHistory, UnitStat, UnitSummary, UnitValueKey, WeaponStat } from "../../ipc/bindings";
+import type { UnitHistory, UnitKind, UnitStat, UnitSummary, UnitValueKey, WeaponStat } from "../../ipc/bindings";
 import type { MessageKey } from "../../i18n";
 import { formatNumber } from "../../i18n";
 
@@ -40,6 +40,16 @@ export const WEAPON_STAT_LABELS: Record<WeaponStat, MessageKey> = {
   salvoDelay: "changelog.units.weaponStat.salvoDelay",
   dotPulses: "changelog.units.weaponStat.dotPulses",
   dotTime: "changelog.units.weaponStat.dotTime",
+};
+
+/** A faction's units in this order: land, air, naval, then structures. */
+export const UNIT_KINDS: readonly UnitKind[] = ["land", "air", "naval", "structure"];
+
+export const UNIT_KIND_LABELS: Record<UnitKind, MessageKey> = {
+  land: "changelog.units.kind.land",
+  air: "changelog.units.kind.air",
+  naval: "changelog.units.kind.naval",
+  structure: "changelog.units.kind.structure",
 };
 
 /** The factions in the game's own order, as blueprints write them. */
@@ -97,8 +107,9 @@ export function unitTitle(unit: UnitSummary): string {
 const FACTION_ORDER: readonly string[] = UNIT_FACTIONS;
 
 /**
- * The list order: by faction in the game's order, then commanders before tech
- * 1 to experimental, then by name, which keeps a faction's tree together.
+ * The list order: by faction in the game's order, then land, air, naval and
+ * structures, then commanders before tech 1 to experimental, then by name,
+ * which keeps a faction's tree together the way a unit database lays it out.
  */
 export function sortUnits(units: readonly UnitSummary[]): UnitSummary[] {
   const faction = (unit: UnitSummary) => {
@@ -108,6 +119,7 @@ export function sortUnits(units: readonly UnitSummary[]): UnitSummary[] {
   return [...units].sort(
     (left, right) =>
       faction(left) - faction(right) ||
+      UNIT_KINDS.indexOf(left.kind) - UNIT_KINDS.indexOf(right.kind) ||
       (left.tech ?? 0) - (right.tech ?? 0) ||
       unitTitle(left).localeCompare(unitTitle(right)) ||
       left.id.localeCompare(right.id),
@@ -135,12 +147,12 @@ export function filterUnits(
 
 export interface UnitGroup {
   faction: string;
-  tiers: Array<{ tech: number | null; units: UnitSummary[] }>;
+  kinds: Array<{ kind: UnitKind; units: UnitSummary[] }>;
 }
 
 /**
- * The grid of a unit database: one block per faction, one row of icons per
- * tech level inside it (commanders and the like first, experimentals last).
+ * The grid of a unit database: one block per faction, and in it one run of
+ * icons each for land, air, naval and structures, tech 1 to experimental.
  */
 export function groupUnits(units: readonly UnitSummary[]): UnitGroup[] {
   const groups: UnitGroup[] = [];
@@ -148,15 +160,15 @@ export function groupUnits(units: readonly UnitSummary[]): UnitGroup[] {
     const faction = unit.faction ?? "";
     let group = groups.find((candidate) => candidate.faction === faction);
     if (!group) {
-      group = { faction, tiers: [] };
+      group = { faction, kinds: [] };
       groups.push(group);
     }
-    let tier = group.tiers.find((candidate) => candidate.tech === unit.tech);
-    if (!tier) {
-      tier = { tech: unit.tech, units: [] };
-      group.tiers.push(tier);
+    let kind = group.kinds.find((candidate) => candidate.kind === unit.kind);
+    if (!kind) {
+      kind = { kind: unit.kind, units: [] };
+      group.kinds.push(kind);
     }
-    tier.units.push(unit);
+    kind.units.push(unit);
   }
   return groups;
 }

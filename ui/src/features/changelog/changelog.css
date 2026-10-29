@@ -844,19 +844,15 @@
   background: var(--color-surface);
 }
 
-.unit-history-tier {
-  display: grid;
-  grid-template-columns: 2.6rem minmax(0, 1fr);
-  align-items: start;
-  gap: var(--space-2);
-  padding: 2px 0;
+.unit-history-kind {
+  padding: 2px 0 6px;
 }
 
-.unit-history-tier-label {
-  padding-top: 12px;
+.unit-history-kind-label {
+  display: block;
+  margin: 0 0 4px var(--space-1);
   color: var(--color-subtle);
   font-size: 11px;
-  font-variant-numeric: tabular-nums;
 }
 
 .unit-history-icons {
@@ -865,23 +861,43 @@
   gap: 4px;
 }
 
-/* An icon is a toggle: picked, it carries its line's colour as a ring. */
+/* A tile in its faction's colour, as the unit database draws one, with the
+   strategic icon in the corner. Picked, it carries its line's colour as a
+   ring. */
 .unit-history-icon {
+  --faction: var(--color-border-strong);
+  position: relative;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   padding: 0;
-  background: transparent;
-  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--faction) 22%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--faction) 50%, transparent);
   border-radius: var(--radius-sm);
-  outline: 2px solid transparent;
-  outline-offset: -2px;
+  outline: 3px solid transparent;
+  outline-offset: 1px;
   cursor: pointer;
 }
 
+.unit-history-icon.faction-uef {
+  --faction: var(--color-faction-uef);
+}
+
+.unit-history-icon.faction-aeon {
+  --faction: var(--color-faction-aeon);
+}
+
+.unit-history-icon.faction-cybran {
+  --faction: var(--color-faction-cybran);
+}
+
+.unit-history-icon.faction-seraphim {
+  --faction: var(--color-faction-seraphim);
+}
+
 .unit-history-icon:hover {
-  background: var(--color-surface-hover);
+  background: color-mix(in srgb, var(--faction) 38%, var(--color-surface));
 }
 
 .unit-history-icon:focus-visible {
@@ -889,7 +905,7 @@
 }
 
 .unit-history-icon.is-selected {
-  background: var(--color-surface-raised);
+  background: color-mix(in srgb, var(--faction) 45%, var(--color-surface));
 }
 
 .unit-history-icon:disabled {
@@ -897,11 +913,34 @@
   opacity: 0.45;
 }
 
-.unit-history-icon img {
-  width: 40px;
-  height: 40px;
+.unit-history-picture {
   object-fit: contain;
   user-select: none;
+}
+
+.unit-history-strategic {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  isolation: isolate;
+  line-height: 0;
+  pointer-events: none;
+}
+
+/* The game's strategic icons are white with a black edge, tinted by the
+   player's colour: the faction's colour under the icon, multiplied. */
+.unit-history-strategic-tint {
+  position: absolute;
+  inset: 0;
+  background: var(--faction);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.unit-history-strategic img {
+  position: relative;
+  display: block;
+  mix-blend-mode: multiply;
 }
 
 .unit-history-icon-id {
@@ -941,9 +980,7 @@
   border-radius: var(--radius-sm);
 }
 
-.unit-history-chip img {
-  object-fit: contain;
-}
+
 
 .unit-history-chip-remove {
   display: grid;
@@ -990,53 +1027,51 @@
   margin-bottom: var(--space-2);
 }
 
-.unit-history-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 6px;
+.unit-history-values {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 2px var(--space-3);
   margin: 0 0 var(--space-2);
   padding: 0;
-  list-style: none;
+  border: 0;
 }
 
-.unit-history-legend-item {
+.unit-history-values legend {
+  margin-bottom: var(--space-1);
+  padding: 0;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.unit-history-value {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 8px;
-  font: inherit;
-  font-size: 12px;
+  min-width: 0;
+  padding: 2px 0;
   color: var(--color-muted);
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-}
-
-button.unit-history-legend-item {
+  font-size: 12px;
   cursor: pointer;
 }
 
-button.unit-history-legend-item:hover:not(:disabled) {
+.unit-history-value.is-ticked {
   color: var(--color-text);
-  background: var(--color-surface-hover);
 }
 
-button.unit-history-legend-item:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+.unit-history-value span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.unit-history-legend-item.is-active {
-  color: var(--color-text);
-  border-color: var(--color-border-strong);
-}
-
-.unit-history-swatch {
+.unit-history-sample {
   flex: none;
-  width: 14px;
-  height: 3px;
-  background: var(--color-border-strong);
-  border-radius: 1px;
+  display: block;
+}
+
+.unit-history-sample line {
+  stroke-width: 2;
 }
 
 .unit-history-axis-caption {
@@ -1119,7 +1154,7 @@ button.unit-history-legend-item:disabled {
 
 .unit-history-tooltip-row {
   display: grid;
-  grid-template-columns: 14px minmax(0, auto) auto;
+  grid-template-columns: 22px minmax(0, auto) auto;
   align-items: center;
   gap: 6px;
   font-variant-numeric: tabular-nums;
@@ -1191,10 +1226,6 @@ button.unit-history-legend-item:disabled {
   gap: 8px;
 }
 
-.unit-history-change-unit-head .changelog-unit-icon {
-  width: 28px;
-  height: 28px;
-}
 
 .unit-history-change-unit-head .changelog-unit-name {
   font-size: 13px;
@@ -1207,11 +1238,6 @@ button.unit-history-legend-item:disabled {
   color: var(--color-muted);
   font-size: 11px;
   border: 1px solid var(--color-border-strong);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
-.unit-history-limits {
-  max-width: 72ch;
-  font-size: 12px;
-  line-height: 1.5;
-}

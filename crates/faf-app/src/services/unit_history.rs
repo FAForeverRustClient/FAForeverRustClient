@@ -119,7 +119,9 @@ async fn build(id: String, ctx: &ServiceCtx, out: &EventSink) {
         id: id.clone(),
     };
     match history(&id, ctx, out).await {
-        Ok(history) => out.emit(UnitHistoryEvent::HistoryLoaded { history }),
+        Ok(history) => out.emit(UnitHistoryEvent::HistoryLoaded {
+            history: Box::new(history),
+        }),
         Err(reason) => out.emit(UnitHistoryEvent::HistoryFailed { id, reason }),
     }
 }

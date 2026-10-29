@@ -13,6 +13,14 @@ import {
 } from "@tauri-apps/plugin-notification";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
+/** The pictures `unit_icons` answers with. Mirrors the shell's `UnitIcons`. */
+export interface UnitIcons {
+  /** By upper-case blueprint id. */
+  units: Record<string, string>;
+  /** By lower-case strategic icon name, `icon_land1_directfire`. */
+  strategic: Record<string, string>;
+}
+
 /**
  * What a file dialog looks like. Mirrors `PickRequest` in the shell's
  * `picked_paths`: the dialog opens there, so a path the page sends back later
@@ -111,6 +119,15 @@ export const native = {
    */
   readMarkedMapPreview(folderName: string): Promise<MarkedMapPreview> {
     return invoke<MarkedMapPreview>("read_marked_map_preview", { folderName });
+  },
+
+  /**
+   * Every unit's build icon and every strategic icon from the installed
+   * game, as `data:` URLs (`infra::unit_icons`). Megabytes, so asked for once
+   * per session by the one section that shows them.
+   */
+  readUnitIcons(): Promise<UnitIcons> {
+    return invoke<UnitIcons>("unit_icons");
   },
 
   /** One stored sound's bytes, for the page to decode. */
