@@ -8,6 +8,7 @@
 pub mod blueprint;
 pub mod changelog;
 pub mod chat_input;
+pub mod dds;
 pub mod deep_link;
 pub mod discord;
 pub mod galactic_war;

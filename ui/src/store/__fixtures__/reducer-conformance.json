@@ -2517,8 +2517,10 @@
                     "faction": "UEF",
                     "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                     "id": "UEL0201",
+                    "kind": "land",
                     "name": "MA12 Striker",
                     "path": "units/UEL0201/UEL0201_unit.bp",
+                    "strategicIcon": "icon_land1_directfire",
                     "tech": 1
                   },
                   {
@@ -2526,8 +2528,10 @@
                     "faction": "UEF",
                     "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                     "id": "URL0107",
+                    "kind": "land",
                     "name": "MA12 Striker",
                     "path": "units/URL0107/URL0107_unit.bp",
+                    "strategicIcon": "icon_land1_directfire",
                     "tech": 1
                   }
                 ]
@@ -2548,8 +2552,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
@@ -2557,8 +2563,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               }
             ]
@@ -2589,8 +2597,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
@@ -2598,8 +2608,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               }
             ]
@@ -2634,8 +2646,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
@@ -2643,8 +2657,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               }
             ]
@@ -2687,8 +2703,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
@@ -2696,8 +2714,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               }
             ]
@@ -2798,8 +2818,10 @@
                     "faction": "UEF",
                     "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                     "id": "UEL0201",
+                    "kind": "land",
                     "name": "MA12 Striker",
                     "path": "units/UEL0201/UEL0201_unit.bp",
+                    "strategicIcon": "icon_land1_directfire",
                     "tech": 1
                   },
                   "weapons": [
@@ -2910,8 +2932,10 @@
                       "faction": "UEF",
                       "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                       "id": "UEL0201",
+                      "kind": "land",
                       "name": "MA12 Striker",
                       "path": "units/UEL0201/UEL0201_unit.bp",
+                      "strategicIcon": "icon_land1_directfire",
                       "tech": 1
                     },
                     "weapons": [
@@ -2941,8 +2965,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
@@ -2950,8 +2976,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               }
             ]
@@ -3066,8 +3094,10 @@
                       "faction": "UEF",
                       "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                       "id": "UEL0201",
+                      "kind": "land",
                       "name": "MA12 Striker",
                       "path": "units/UEL0201/UEL0201_unit.bp",
+                      "strategicIcon": "icon_land1_directfire",
                       "tech": 1
                     },
                     "weapons": [
@@ -3098,8 +3128,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
@@ -3107,8 +3139,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               }
             ]
@@ -3220,8 +3254,10 @@
                       "faction": "UEF",
                       "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                       "id": "UEL0201",
+                      "kind": "land",
                       "name": "MA12 Striker",
                       "path": "units/UEL0201/UEL0201_unit.bp",
+                      "strategicIcon": "icon_land1_directfire",
                       "tech": 1
                     },
                     "weapons": [
@@ -3258,8 +3294,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
@@ -3267,8 +3305,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               }
             ]
@@ -3310,8 +3350,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
@@ -3319,8 +3361,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               }
             ]
@@ -3421,8 +3465,10 @@
                     "faction": "UEF",
                     "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                     "id": "UEL0201",
+                    "kind": "land",
                     "name": "MA12 Striker",
                     "path": "units/UEL0201/UEL0201_unit.bp",
+                    "strategicIcon": "icon_land1_directfire",
                     "tech": 1
                   },
                   "weapons": [
@@ -3462,8 +3508,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
@@ -3471,8 +3519,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               }
             ]
@@ -3514,8 +3564,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
@@ -3523,8 +3575,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               }
             ]
@@ -3570,8 +3624,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
                 "id": "UEL0201",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
@@ -3579,8 +3635,10 @@
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
                 "id": "URL0107",
+                "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               }
             ]

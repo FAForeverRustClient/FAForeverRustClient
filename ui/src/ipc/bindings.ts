@@ -13760,6 +13760,7 @@ export type UnitHistoryEvent = { type: "listLoading" } | { type: "listLoaded"; p
 	fetched: number,
 	total: number,
 } } | { type: "historyLoaded"; payload: {
+	/**  Boxed: a history is many times the size of every other event. */
 	history: UnitHistory,
 } } | { type: "historyFailed"; payload: {
 	id: string,
@@ -13799,6 +13800,16 @@ export type UnitHistoryStatus =
 } } | { type: "failed"; payload: {
 	reason: string,
 } };
+
+/**
+ *  Where a unit moves, which is how the picker sorts a faction's units:
+ *  land, then air, then naval, then what does not move.
+ */
+export type UnitKind =
+/**  Land, hover and amphibious units, commanders included. */
+"land" | "air" |
+/**  Ships and submarines. */
+"naval" | "structure";
 
 export type UnitListStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
 	reason: string,
@@ -13868,6 +13879,12 @@ export type UnitSummary = {
 	faction: string | null,
 	/**  1 to 3, or 4 for an experimental; `None` for a commander. */
 	tech: number | null,
+	kind: UnitKind,
+	/**
+	 *  `StrategicIconName`, lower case: the icon the game draws for the unit
+	 *  on the map when zoomed out (`icon_land1_directfire`).
+	 */
+	strategicIcon: string | null,
 };
 
 /**  Which value a series or a change is about. */

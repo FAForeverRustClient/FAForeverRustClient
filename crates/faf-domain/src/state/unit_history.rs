@@ -15,6 +15,8 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+#[cfg(test)]
+use crate::protocol::unit_history::UnitKind;
 use crate::protocol::unit_history::{UnitHistory, UnitSummary};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -99,7 +101,8 @@ pub enum UnitHistoryEvent {
         total: u32,
     },
     HistoryLoaded {
-        history: UnitHistory,
+        /// Boxed: a history is many times the size of every other event.
+        history: Box<UnitHistory>,
     },
     HistoryFailed {
         id: String,
@@ -171,7 +174,7 @@ pub fn reduce(state: &mut UnitHistoryState, event: &UnitHistoryEvent) {
                 state.histories.insert(
                     history.unit.id.clone(),
                     UnitHistoryStatus::Ready {
-                        history: Box::new(history.clone()),
+                        history: history.clone(),
                     },
                 );
             }
@@ -202,6 +205,8 @@ mod tests {
             description: None,
             faction: Some("UEF".into()),
             tech: Some(1),
+            kind: UnitKind::Land,
+            strategic_icon: None,
         }
     }
 
@@ -228,13 +233,13 @@ mod tests {
         reduce(
             &mut state,
             &UnitHistoryEvent::HistoryLoaded {
-                history: history("UEL0201"),
+                history: Box::new(history("UEL0201")),
             },
         );
         reduce(
             &mut state,
             &UnitHistoryEvent::HistoryLoaded {
-                history: history("URL0107"),
+                history: Box::new(history("URL0107")),
             },
         );
         assert_eq!(state.histories.len(), 2);
@@ -248,7 +253,7 @@ mod tests {
         reduce(
             &mut state,
             &UnitHistoryEvent::HistoryLoaded {
-                history: history("UEL0201"),
+                history: Box::new(history("UEL0201")),
             },
         );
         assert!(

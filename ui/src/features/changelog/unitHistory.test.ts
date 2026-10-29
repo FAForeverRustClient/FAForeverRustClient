@@ -27,6 +27,8 @@ function unit(id: string, overrides: Partial<UnitSummary> = {}): UnitSummary {
     description: null,
     faction: "UEF",
     tech: 1,
+    kind: "land",
+    strategicIcon: null,
     ...overrides,
   };
 }
@@ -52,6 +54,8 @@ describe("the unit grid", () => {
     unit("UEL0001", { name: "Armored Command Unit", tech: null }),
     unit("URL0107", { name: "Mantis", description: "Assault Bot", faction: "Cybran" }),
     unit("UEL0303", { name: "Titan", tech: 3 }),
+    unit("UEA0102", { name: "Cyclone", tech: 1, kind: "air" }),
+    unit("UES0103", { name: "Thunderhead", tech: 1, kind: "naval" }),
   ];
 
   it("searches the name, the description and the id", () => {
@@ -61,21 +65,29 @@ describe("the unit grid", () => {
   });
 
   it("filters by faction and tech level", () => {
-    expect(filterUnits(units, "", "UEF", null).map((u) => u.id)).toEqual(["UEL0001", "UEL0201", "UEL0303"]);
+    expect(filterUnits(units, "", "UEF", 3).map((u) => u.id)).toEqual(["UEL0303"]);
     expect(filterUnits(units, "", "", 3).map((u) => u.id)).toEqual(["UEL0303"]);
   });
 
-  it("orders by faction, then commanders before tech 1, then name", () => {
-    expect(sortUnits(units).map((u) => u.id)).toEqual(["UEL0001", "UEL0201", "UEL0303", "URL0107", "XSL0101"]);
+  it("orders by faction, then land, air and naval, then tech, then name", () => {
+    expect(sortUnits(units).map((u) => u.id)).toEqual([
+      "UEL0001",
+      "UEL0201",
+      "UEL0303",
+      "UEA0102",
+      "UES0103",
+      "URL0107",
+      "XSL0101",
+    ]);
   });
 
-  it("groups a faction's units into rows by tech level", () => {
+  it("groups a faction's units into land, air and naval", () => {
     const groups = groupUnits(units);
     expect(groups.map((group) => group.faction)).toEqual(["UEF", "Cybran", "Seraphim"]);
-    expect(groups[0].tiers.map((tier) => [tier.tech, tier.units.map((u) => u.id)])).toEqual([
-      [null, ["UEL0001"]],
-      [1, ["UEL0201"]],
-      [3, ["UEL0303"]],
+    expect(groups[0].kinds.map((kind) => [kind.kind, kind.units.map((u) => u.id)])).toEqual([
+      ["land", ["UEL0001", "UEL0201", "UEL0303"]],
+      ["air", ["UEA0102"]],
+      ["naval", ["UES0103"]],
     ]);
   });
 

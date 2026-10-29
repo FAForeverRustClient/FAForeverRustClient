@@ -4119,8 +4119,8 @@ fn cases() -> Vec<Case> {
             "a unit history keeps only the selected units, capped, and ignores late answers",
             {
                 use faf_domain::protocol::unit_history::{
-                    UnitChange, UnitChangeRow, UnitHistory, UnitRelease, UnitSeries, UnitSource,
-                    UnitStat, UnitSummary, UnitValueKey, UnitWeapon, WeaponStat,
+                    UnitChange, UnitChangeRow, UnitHistory, UnitKind, UnitRelease, UnitSeries,
+                    UnitSource, UnitStat, UnitSummary, UnitValueKey, UnitWeapon, WeaponStat,
                 };
                 let summary = |id: &str| UnitSummary {
                     id: id.into(),
@@ -4130,6 +4130,8 @@ fn cases() -> Vec<Case> {
                     description: Some("Medium Tank".into()),
                     faction: Some("UEF".into()),
                     tech: Some(1),
+                    kind: UnitKind::Land,
+                    strategic_icon: Some("icon_land1_directfire".into()),
                 };
                 let history = |id: &str| UnitHistory {
                     unit: summary(id),
@@ -4211,7 +4213,7 @@ fn cases() -> Vec<Case> {
                     }
                     .into(),
                     UnitHistoryEvent::HistoryLoaded {
-                        history: history("UEL0201"),
+                        history: Box::new(history("UEL0201")),
                     }
                     .into(),
                     UnitHistoryEvent::SelectionChanged {
@@ -4228,7 +4230,7 @@ fn cases() -> Vec<Case> {
                     }
                     .into(),
                     UnitHistoryEvent::HistoryLoaded {
-                        history: history("UEL0201"),
+                        history: Box::new(history("UEL0201")),
                     }
                     .into(),
                     UnitHistoryEvent::HistoryProgress {

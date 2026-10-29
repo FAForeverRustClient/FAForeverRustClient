@@ -84,6 +84,31 @@ pub fn release_number(release: &str) -> Option<u32> {
     release.parse().ok()
 }
 
+/// Where a unit moves, which is how the picker sorts a faction's units:
+/// land, then air, then naval, then what does not move.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum UnitKind {
+    /// Land, hover and amphibious units, commanders included.
+    Land,
+    Air,
+    /// Ships and submarines.
+    Naval,
+    Structure,
+}
+
+impl UnitKind {
+    /// From `Physics.MotionType`, the engine's own word for how a unit moves.
+    fn of(blueprint: &LuaTable) -> Self {
+        match blueprint.string(&["Physics", "MotionType"]) {
+            Some("RULEUMT_Air") => UnitKind::Air,
+            Some("RULEUMT_Water" | "RULEUMT_SurfacingSub") => UnitKind::Naval,
+            Some("RULEUMT_None") | None => UnitKind::Structure,
+            Some(_) => UnitKind::Land,
+        }
+    }
+}
+
 /// One unit as the picker lists it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -105,6 +130,10 @@ pub struct UnitSummary {
     pub faction: Option<String>,
     /// 1 to 3, or 4 for an experimental; `None` for a commander.
     pub tech: Option<u8>,
+    pub kind: UnitKind,
+    /// `StrategicIconName`, lower case: the icon the game draws for the unit
+    /// on the map when zoomed out (`icon_land1_directfire`).
+    pub strategic_icon: Option<String>,
 }
 
 /// Categories that mark a unit no player builds: campaign operations,
@@ -141,6 +170,11 @@ pub fn summarize(path: &str, blueprint: &LuaTable) -> Option<UnitSummary> {
         description: without_localization(blueprint.string(&["Description"])),
         faction: Some(faction.to_owned()),
         tech: tech_level(&categories),
+        kind: UnitKind::of(blueprint),
+        strategic_icon: blueprint
+            .string(&["StrategicIconName"])
+            .map(str::to_ascii_lowercase)
+            .filter(|name| !name.is_empty()),
     })
 }
 
@@ -1007,6 +1041,8 @@ mod tests {
                 description: Some("Medium Tank".into()),
                 faction: Some("UEF".into()),
                 tech: Some(1),
+                kind: UnitKind::Land,
+                strategic_icon: None,
             }
         );
         let civilian = parse_blueprint(
