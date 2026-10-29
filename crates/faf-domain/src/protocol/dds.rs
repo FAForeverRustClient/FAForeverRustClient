@@ -227,8 +227,9 @@ fn decode_rgb32(
         ((shifted * 255) / max) as u8
     };
     let mut rgba = Vec::with_capacity(pixels * 4);
-    for pixel in data[..pixels * 4].chunks_exact(4) {
-        let value = u32::from_le_bytes([pixel[0], pixel[1], pixel[2], pixel[3]]);
+    let (pixels_bytes, _) = data[..pixels * 4].as_chunks::<4>();
+    for pixel in pixels_bytes {
+        let value = u32::from_le_bytes(*pixel);
         rgba.extend_from_slice(&[
             channel(value, masks[0]),
             channel(value, masks[1]),
