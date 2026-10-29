@@ -29,6 +29,7 @@ function unit(id: string, overrides: Partial<UnitSummary> = {}): UnitSummary {
     tech: 1,
     kind: "land",
     strategicIcon: null,
+    sortPriority: 10,
     role: null,
     ...overrides,
   };
@@ -52,7 +53,7 @@ describe("the unit grid", () => {
   const units = [
     unit("XSL0101", { name: "Selen", description: "Combat Scout", faction: "Seraphim" }),
     unit("UEL0201", { name: "MA12 Striker", description: "Medium Tank" }),
-    unit("UEL0001", { name: "Armored Command Unit", tech: null }),
+    unit("UEL0001", { name: "Armored Command Unit", tech: null, sortPriority: null }),
     unit("URL0107", { name: "Mantis", description: "Assault Bot", faction: "Cybran" }),
     unit("UEL0303", { name: "Titan", tech: 3 }),
     unit("UEA0102", { name: "Cyclone", tech: 1, kind: "air" }),
@@ -82,14 +83,27 @@ describe("the unit grid", () => {
     ]);
   });
 
-  it("groups a faction's units into land, air and naval", () => {
+  it("groups a faction's units into land, air and naval, one row per tech level", () => {
     const groups = groupUnits(units);
     expect(groups.map((group) => group.faction)).toEqual(["UEF", "Cybran", "Seraphim"]);
-    expect(groups[0].kinds.map((kind) => [kind.kind, kind.units.map((u) => u.id)])).toEqual([
-      ["land", ["UEL0001", "UEL0201", "UEL0303"]],
-      ["air", ["UEA0102"]],
-      ["naval", ["UES0103"]],
+    expect(
+      groups[0].kinds.map((kind) => [kind.kind, kind.tiers.map((tier) => [tier.tech, tier.units.map((u) => u.id)])]),
+    ).toEqual([
+      ["land", [[null, ["UEL0001"]], [1, ["UEL0201"]], [3, ["UEL0303"]]]],
+      ["air", [[1, ["UEA0102"]]]],
+      ["naval", [[1, ["UES0103"]]]],
     ]);
+  });
+
+  it("orders a tech level the way the build menu does, and leaves out what no menu offers", () => {
+    const factory = [
+      unit("UEL0201", { name: "MA12 Striker", sortPriority: 40 }),
+      unit("UEL0105", { description: "Engineer", sortPriority: 10 }),
+      unit("UEL0101", { name: "Snoop", sortPriority: 20 }),
+      unit("UEB5102", { description: "UEF Transport Beacon", tech: null, kind: "structure", sortPriority: null }),
+      unit("UEB5204", { description: "Concrete", tech: 1, kind: "structure", sortPriority: null }),
+    ];
+    expect(filterUnits(factory, "", "", null).map((u) => u.id)).toEqual(["UEL0105", "UEL0101", "UEL0201"]);
   });
 
   it("keeps a selection upper case, unique and capped, like the backend", () => {

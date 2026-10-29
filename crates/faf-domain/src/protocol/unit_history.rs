@@ -181,6 +181,10 @@ pub struct UnitSummary {
     /// `StrategicIconName`, lower case: the icon the game draws for the unit
     /// on the map when zoomed out (`icon_land1_directfire`).
     pub strategic_icon: Option<String>,
+    /// `BuildIconSortPriority`: where the unit sits in its tech level's row
+    /// of a factory's or an engineer's build menu, lowest first. `None` for
+    /// a unit no build menu offers (commanders, concrete, helpers).
+    pub sort_priority: Option<u32>,
     /// What the unit is for, where a replay's build order times it.
     pub role: Option<UnitRole>,
 }
@@ -225,6 +229,10 @@ pub fn summarize(path: &str, blueprint: &LuaTable) -> Option<UnitSummary> {
             .string(&["StrategicIconName"])
             .map(str::to_ascii_lowercase)
             .filter(|name| !name.is_empty()),
+        sort_priority: blueprint
+            .number(&["BuildIconSortPriority"])
+            .filter(|value| value.is_finite() && *value >= 0.0)
+            .map(|value| value as u32),
     })
 }
 
@@ -1093,6 +1101,7 @@ mod tests {
                 tech: Some(1),
                 kind: UnitKind::Land,
                 strategic_icon: None,
+                sort_priority: None,
                 role: None,
             }
         );

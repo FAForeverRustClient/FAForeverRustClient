@@ -107,9 +107,10 @@ export function unitTitle(unit: UnitSummary): string {
 const FACTION_ORDER: readonly string[] = UNIT_FACTIONS;
 
 /**
- * The list order: by faction in the game's order, then land, air, naval and
- * structures, then commanders before tech 1 to experimental, then by name,
- * which keeps a faction's tree together the way a unit database lays it out.
+ * The list order: by faction in the game's own order, then land, air, naval and
+ * structures, then commanders before tech 1 to experimental, and within a
+ * tech level the order of the game's own build menu (`BuildIconSortPriority`),
+ * so a row reads the way a factory or an engineer offers it.
  */
 export function sortUnits(units: readonly UnitSummary[]): UnitSummary[] {
   const faction = (unit: UnitSummary) => {
@@ -121,9 +122,20 @@ export function sortUnits(units: readonly UnitSummary[]): UnitSummary[] {
       faction(left) - faction(right) ||
       UNIT_KINDS.indexOf(left.kind) - UNIT_KINDS.indexOf(right.kind) ||
       (left.tech ?? 0) - (right.tech ?? 0) ||
+      (left.sortPriority ?? Number.MAX_SAFE_INTEGER) - (right.sortPriority ?? Number.MAX_SAFE_INTEGER) ||
       unitTitle(left).localeCompare(unitTitle(right)) ||
       left.id.localeCompare(right.id),
   );
+}
+
+/**
+ * Whether a unit belongs in the grid: everything a build menu offers, and the
+ * commanders, which no menu builds (the only land units without a tech
+ * level). Beacons, concrete, drones and test units have no place in any menu,
+ * and most have no build icon either.
+ */
+export function inBuildMenus(unit: UnitSummary): boolean {
+  return unit.sortPriority !== null || (unit.tech === null && unit.kind === "land");
 }
 
 /**
@@ -138,6 +150,7 @@ export function filterUnits(
 ): UnitSummary[] {
   const needle = query.trim().toLocaleLowerCase();
   return sortUnits(units).filter((unit) => {
+    if (!inBuildMenus(unit)) return false;
     if (faction && unit.faction !== faction) return false;
     if (tech !== null && unit.tech !== tech) return false;
     if (!needle) return true;
@@ -147,12 +160,19 @@ export function filterUnits(
 
 export interface UnitGroup {
   faction: string;
-  kinds: Array<{ kind: UnitKind; units: UnitSummary[] }>;
+  kinds: Array<{ kind: UnitKind; tiers: UnitTier[] }>;
+}
+
+/** One row of the grid: one tech level of one kind, `null` the commanders. */
+export interface UnitTier {
+  tech: number | null;
+  units: UnitSummary[];
 }
 
 /**
- * The grid of a unit database: one block per faction, and in it one run of
- * icons each for land, air, naval and structures, tech 1 to experimental.
+ * The grid of a unit database: one block per faction, in it one block each
+ * for land, air, naval and structures, and in that one row per tech level in
+ * build-menu order.
  */
 export function groupUnits(units: readonly UnitSummary[]): UnitGroup[] {
   const groups: UnitGroup[] = [];
@@ -165,10 +185,15 @@ export function groupUnits(units: readonly UnitSummary[]): UnitGroup[] {
     }
     let kind = group.kinds.find((candidate) => candidate.kind === unit.kind);
     if (!kind) {
-      kind = { kind: unit.kind, units: [] };
+      kind = { kind: unit.kind, tiers: [] };
       group.kinds.push(kind);
     }
-    kind.units.push(unit);
+    let tier = kind.tiers.find((candidate) => candidate.tech === unit.tech);
+    if (!tier) {
+      tier = { tech: unit.tech, units: [] };
+      kind.tiers.push(tier);
+    }
+    tier.units.push(unit);
   }
   return groups;
 }

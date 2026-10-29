@@ -855,6 +855,23 @@
   font-size: 11px;
 }
 
+/* A tech level's row: its short name in a narrow column, then its icons. */
+.unit-history-tier {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: start;
+  gap: 4px;
+  padding-bottom: 4px;
+}
+
+.unit-history-tier-label {
+  padding-top: 15px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .unit-history-icons {
   display: flex;
   flex-wrap: wrap;
@@ -866,14 +883,21 @@
    ring. */
 .unit-history-icon {
   --faction: var(--color-border-strong);
+  --faction-bright: color-mix(in srgb, var(--faction) 70%, var(--color-text));
   position: relative;
   display: grid;
   place-items: center;
   width: 46px;
   height: 46px;
   padding: 0;
-  background: color-mix(in srgb, var(--faction) 22%, var(--color-surface));
-  border: 1px solid color-mix(in srgb, var(--faction) 50%, transparent);
+  /* Every tile of a faction the same colour, light to dark like the game's
+     build buttons, so a faction's units read as one set. */
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--faction) 55%, var(--color-surface)),
+    color-mix(in srgb, var(--faction) 30%, var(--color-surface))
+  );
+  border: 1px solid var(--faction);
   border-radius: var(--radius-sm);
   outline: 3px solid transparent;
   outline-offset: 1px;
@@ -897,7 +921,7 @@
 }
 
 .unit-history-icon:hover {
-  background: color-mix(in srgb, var(--faction) 38%, var(--color-surface));
+  filter: brightness(1.15);
 }
 
 .unit-history-icon:focus-visible {
@@ -905,7 +929,7 @@
 }
 
 .unit-history-icon.is-selected {
-  background: color-mix(in srgb, var(--faction) 45%, var(--color-surface));
+  filter: brightness(1.15);
 }
 
 .unit-history-icon:disabled {
@@ -913,29 +937,21 @@
   opacity: 0.45;
 }
 
+/* The strategic icon as the game shows it on the map, in the faction's
+   colour: its shape filled, with a dark edge so it reads on the tile. */
 .unit-history-strategic {
   position: absolute;
-  top: 1px;
-  left: 1px;
-  isolation: isolate;
-  line-height: 0;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: var(--faction-bright);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  filter: drop-shadow(0 0 1px var(--color-bg));
   pointer-events: none;
-}
-
-/* The game's strategic icons are white with a black edge, tinted by the
-   player's colour: the faction's colour under the icon, multiplied. */
-.unit-history-strategic-tint {
-  position: absolute;
-  inset: 0;
-  background: var(--faction);
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
-}
-
-.unit-history-strategic img {
-  position: relative;
-  display: block;
-  mix-blend-mode: multiply;
 }
 
 .unit-history-head {

@@ -61,6 +61,19 @@ type Translate = ReturnType<typeof useTranslation>["t"];
 const setSelection = (ids: string[]) =>
   ipc.send({ kind: "UnitHistory", command: { type: "setSelection", payload: { ids } } });
 
+/** A grid row's label, "T1" or "ACU", and its full name for the tooltip. */
+function tierShort(tech: number | null, t: Translate): string {
+  if (tech === null) return t("changelog.units.tierShort.commander");
+  if (tech === 4) return t("changelog.units.tierShort.experimental");
+  return t("changelog.units.tierShort.tech", { level: tech });
+}
+
+function tierTitle(tech: number | null, t: Translate): string {
+  if (tech === null) return t("changelog.units.commanders");
+  if (tech === 4) return t("changelog.units.experimental");
+  return t("changelog.units.techLevel", { level: tech });
+}
+
 /** A unit's colour in the chart and around its icon: its place in the selection. */
 const selectionColor = (index: number) => (index % CHART_COLORS) + 1;
 
@@ -163,21 +176,29 @@ export function UnitHistoryView({ onOpenRelease }: { onOpenRelease: (id: string)
               {group.kinds.map((kind) => (
                 <div key={kind.kind} className="unit-history-kind">
                   <span className="unit-history-kind-label">{t(UNIT_KIND_LABELS[kind.kind])}</span>
-                  <div className="unit-history-icons">
-                    {kind.units.map((unit) => {
-                      const index = selected.indexOf(unit.id);
-                      return (
-                        <UnitTile
-                          key={unit.id}
-                          unit={unit}
-                          icons={icons}
-                          color={index === -1 ? null : selectionColor(index)}
-                          disabled={index === -1 && full}
-                          onClick={() => toggle(unit.id)}
-                        />
-                      );
-                    })}
-                  </div>
+                  {/* One row per tech level, as a build menu has them. */}
+                  {kind.tiers.map((tier) => (
+                    <div key={tier.tech ?? "commander"} className="unit-history-tier">
+                      <span className="unit-history-tier-label" title={tierTitle(tier.tech, t)}>
+                        {tierShort(tier.tech, t)}
+                      </span>
+                      <div className="unit-history-icons">
+                        {tier.units.map((unit) => {
+                          const index = selected.indexOf(unit.id);
+                          return (
+                            <UnitTile
+                              key={unit.id}
+                              unit={unit}
+                              icons={icons}
+                              color={index === -1 ? null : selectionColor(index)}
+                              disabled={index === -1 && full}
+                              onClick={() => toggle(unit.id)}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ))}
             </section>
@@ -294,12 +315,13 @@ function UnitTile({
     >
       <UnitPicture unit={unit} icons={icons} size={40} />
       {strategic && (
-        // The game draws strategic icons white and tints them with the
-        // player's colour; here the faction's, under a multiply.
-        <span className="unit-history-strategic" aria-hidden="true">
-          <span className="unit-history-strategic-tint" style={{ maskImage: `url("${strategic}")`, WebkitMaskImage: `url("${strategic}")` }} />
-          <img src={strategic} alt="" draggable={false} />
-        </span>
+        // The strategic icon's shape, filled with the faction's colour: the
+        // game tints it with the player's, and a faction tile has no player.
+        <span
+          className="unit-history-strategic"
+          aria-hidden="true"
+          style={{ maskImage: `url("${strategic}")`, WebkitMaskImage: `url("${strategic}")` }}
+        />
       )}
     </button>
   );
