@@ -196,9 +196,9 @@ describe("binning the points of a replay", () => {
 
 describe("the orders under the graph", () => {
   const orders = [
-    { source: 0, tick: 10, command: 8, blueprint: "uel0105", enhancement: "", units: 1 },
-    { source: 0, tick: 700, command: 2, blueprint: "", enhancement: "", units: 1 },
-    { source: 1, tick: 20, command: 2, blueprint: "", enhancement: "", units: 1 },
+    { source: 0, tick: 10, command: 8, blueprint: "uel0105", enhancement: "", units: 1, id: 0, unit: 0 },
+    { source: 0, tick: 700, command: 2, blueprint: "", enhancement: "", units: 1, id: 0, unit: 0 },
+    { source: 1, tick: 20, command: 2, blueprint: "", enhancement: "", units: 1, id: 0, unit: 0 },
   ];
 
   it("keeps the minute that starts where the pointer is", () => {
@@ -215,17 +215,17 @@ describe("the orders under the graph", () => {
     // The stream writes a record per selected unit. Counting them raw put a
     // number under the graph that the graph's own axis never reached.
     const clicked = [
-      { source: 0, tick: 10, command: 2, blueprint: "", enhancement: "", units: 1 },
-      { source: 0, tick: 10, command: 2, blueprint: "", enhancement: "", units: 1 },
-      { source: 0, tick: 10, command: 2, blueprint: "", enhancement: "", units: 1 },
+      { source: 0, tick: 10, command: 2, blueprint: "", enhancement: "", units: 1, id: 0, unit: 0 },
+      { source: 0, tick: 10, command: 2, blueprint: "", enhancement: "", units: 1, id: 0, unit: 0 },
+      { source: 0, tick: 10, command: 2, blueprint: "", enhancement: "", units: 1, id: 0, unit: 0 },
     ];
     expect(ordersInWindow(clicked, 0).get(0)).toHaveLength(1);
   });
 
   it("keeps two players who gave the same order on the same tick", () => {
     const together = [
-      { source: 0, tick: 10, command: 2, blueprint: "", enhancement: "", units: 1 },
-      { source: 1, tick: 10, command: 2, blueprint: "", enhancement: "", units: 1 },
+      { source: 0, tick: 10, command: 2, blueprint: "", enhancement: "", units: 1, id: 0, unit: 0 },
+      { source: 1, tick: 10, command: 2, blueprint: "", enhancement: "", units: 1, id: 0, unit: 0 },
     ];
     const grouped = ordersInWindow(together, 0);
     expect(grouped.get(0)).toHaveLength(1);
@@ -237,8 +237,8 @@ describe("the orders under the graph", () => {
     // pointer happens to be: otherwise the same order counted once at one
     // pointer position and twice at the next.
     const repeated = [
-      { source: 0, tick: 600, command: 2, blueprint: "", enhancement: "", units: 1 },
-      { source: 0, tick: 600, command: 2, blueprint: "", enhancement: "", units: 1 },
+      { source: 0, tick: 600, command: 2, blueprint: "", enhancement: "", units: 1, id: 0, unit: 0 },
+      { source: 0, tick: 600, command: 2, blueprint: "", enhancement: "", units: 1, id: 0, unit: 0 },
     ];
     expect(ordersInWindow(repeated, 600).get(0)).toHaveLength(1);
   });

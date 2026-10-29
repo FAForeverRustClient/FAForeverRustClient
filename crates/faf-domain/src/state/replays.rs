@@ -409,6 +409,13 @@ pub struct ReplayOrder {
     /// How many units the order went to: for a factory order, how many
     /// factories each build one.
     pub units: u32,
+    /// The id later records name the order by, the one a queue change
+    /// carries.
+    pub id: u32,
+    /// The first unit the order went to, as the stream numbers a player's
+    /// units: in the order they came into being, the commander first. For a
+    /// factory order, the factory.
+    pub unit: u32,
 }
 
 /// A queued order made longer or shorter: the count on a factory's queue
@@ -423,6 +430,8 @@ pub struct ReplayQueueChange {
     pub blueprint: String,
     /// Units added, negative for units taken off.
     pub delta: i32,
+    /// The id of the order whose count changed ([`ReplayOrder::id`]).
+    pub order: u32,
 }
 
 /// Where on the map an order was aimed.

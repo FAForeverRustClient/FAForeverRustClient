@@ -441,6 +441,7 @@ fn walk(
                             tick: ticks,
                             blueprint: built_by_order.get(&id).cloned().unwrap_or_default(),
                             delta,
+                            order: id,
                         });
                     }
                 }
@@ -491,6 +492,8 @@ fn walk(
                             blueprint: order.blueprint,
                             enhancement: order.enhancement,
                             units: order.units,
+                            id: order.id,
+                            unit: order.first_unit,
                         });
                     }
                 }
@@ -565,6 +568,8 @@ struct Order {
     command: i32,
     /// How many units, or factories, the order was given to.
     units: u32,
+    /// The first of them, 0 when there were none.
+    first_unit: u32,
     blueprint: String,
     enhancement: String,
     target: Option<(i32, i32)>,
@@ -584,7 +589,13 @@ fn parse_order(payload: &[u8]) -> Option<Order> {
     let unit_count = replay_u32(&mut cursor)?;
     // The units the order was given to, then the command id and the id of the
     // order it coordinates with.
-    skip(&mut cursor, 4 * u64::from(unit_count))?;
+    let first_unit = if unit_count > 0 {
+        let first = replay_u32(&mut cursor)?;
+        skip(&mut cursor, 4 * (u64::from(unit_count) - 1))?;
+        first
+    } else {
+        0
+    };
     let id = replay_u32(&mut cursor)?;
     skip(&mut cursor, 4)?;
     let command = i32::from(replay_u8(&mut cursor)?);
@@ -623,6 +634,7 @@ fn parse_order(payload: &[u8]) -> Option<Order> {
         id,
         command,
         units: unit_count,
+        first_unit,
         blueprint,
         enhancement,
         target,
@@ -891,7 +903,7 @@ mod tests {
 
     /// The same record with everything a build order reads set: the record
     /// kind (`IssueFactoryCommand` for a factory), how many units it went
-    /// to, the order's id, and its Lua table.
+    /// to (numbered from 7), the order's id, and its Lua table.
     fn given(
         kind: u8,
         command: u8,
@@ -902,7 +914,9 @@ mod tests {
         table: &[u8],
     ) -> Vec<u8> {
         let mut payload = units.to_le_bytes().to_vec();
-        payload.extend_from_slice(&vec![0; 4 * units as usize]); // the units
+        for unit in 0..units {
+            payload.extend_from_slice(&(7 + unit).to_le_bytes());
+        }
         payload.extend_from_slice(&id.to_le_bytes());
         payload.extend_from_slice(&[0; 4]); // the order it coordinates with
         payload.push(command);
@@ -1015,6 +1029,7 @@ mod tests {
         let out = walked(&stream, &[0]);
         assert_eq!(out.orders.len(), 1);
         assert_eq!((out.orders[0].command, out.orders[0].units), (7, 3));
+        assert_eq!((out.orders[0].id, out.orders[0].unit), (41, 7));
         let changes: Vec<_> = out
             .queue_changes
             .iter()
@@ -1026,6 +1041,7 @@ mod tests {
             changes,
             [(40, "uel0105", 4), (40, "uel0105", -1), (40, "", 2)]
         );
+        assert_eq!(out.queue_changes[1].order, 41);
     }
 
     #[test]

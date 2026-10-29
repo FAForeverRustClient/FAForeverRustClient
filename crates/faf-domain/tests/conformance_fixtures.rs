@@ -4134,6 +4134,8 @@ fn cases() -> Vec<Case> {
                     strategic_icon: Some("icon_land1_directfire".into()),
                     sort_priority: Some(40),
                     role: None,
+                    build_time: Some(540.0),
+                    build_rate: None,
                 };
                 let history = |id: &str| UnitHistory {
                     unit: summary(id),

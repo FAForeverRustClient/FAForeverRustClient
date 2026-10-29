@@ -157,7 +157,7 @@ impl UnitKind {
 }
 
 /// One unit as the picker lists it.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UnitSummary {
     /// Upper-case blueprint id, e.g. `UEL0201`.
@@ -187,6 +187,12 @@ pub struct UnitSummary {
     pub sort_priority: Option<u32>,
     /// What the unit is for, where a replay's build order times it.
     pub role: Option<UnitRole>,
+    /// `Economy.BuildTime`: build-power seconds to build the unit, so a
+    /// builder with build power 10 takes a tenth of it.
+    pub build_time: Option<f64>,
+    /// `Economy.BuildRate`: the unit's own build power, for engineers,
+    /// factories and commanders.
+    pub build_rate: Option<f64>,
 }
 
 /// Categories that mark a unit no player builds: campaign operations,
@@ -224,6 +230,8 @@ pub fn summarize(path: &str, blueprint: &LuaTable) -> Option<UnitSummary> {
         faction: Some(faction.to_owned()),
         tech: tech_level(&categories),
         role: UnitRole::of(&categories),
+        build_time: positive(blueprint.number(&["Economy", "BuildTime"])),
+        build_rate: positive(blueprint.number(&["Economy", "BuildRate"])),
         kind: UnitKind::of(blueprint),
         strategic_icon: blueprint
             .string(&["StrategicIconName"])
@@ -1103,6 +1111,8 @@ mod tests {
                 strategic_icon: None,
                 sort_priority: None,
                 role: None,
+                build_time: None,
+                build_rate: None,
             }
         );
         let civilian = parse_blueprint(

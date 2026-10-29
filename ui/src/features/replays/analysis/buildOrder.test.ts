@@ -2,12 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { ReplayOrder, ReplayQueueChange, UnitSummary } from "../../../ipc/bindings";
 import {
   buildEntries,
-  buildRows,
   defaultPair,
   enhancementWords,
   milestoneTicks,
   unitCatalogue,
-  unitsPerMinute,
 } from "./buildOrder";
 
 function unit(id: string, overrides: Partial<UnitSummary>): UnitSummary {
@@ -21,7 +19,10 @@ function unit(id: string, overrides: Partial<UnitSummary>): UnitSummary {
     tech: 1,
     kind: "land",
     strategicIcon: null,
+    sortPriority: null,
     role: null,
+    buildTime: null,
+    buildRate: null,
     ...overrides,
   };
 }
@@ -40,11 +41,11 @@ const catalogue = unitCatalogue([
 ]);
 
 function order(tick: number, command: number, blueprint: string, extra: Partial<ReplayOrder> = {}): ReplayOrder {
-  return { source: 0, tick, command, blueprint, enhancement: "", units: 1, ...extra };
+  return { source: 0, tick, command, blueprint, enhancement: "", units: 1, id: tick, unit: 0, ...extra };
 }
 
 function change(tick: number, blueprint: string, delta: number): ReplayQueueChange {
-  return { source: 0, tick, blueprint, delta };
+  return { source: 0, tick, blueprint, delta, order: 0 };
 }
 
 describe("the build order", () => {
@@ -68,21 +69,6 @@ describe("the build order", () => {
       [20, "UEL0105", null, 3, false],
       [25, "UEL0105", null, 2, true],
       [30, null, "AdvancedEngineering", 1, false],
-    ]);
-  });
-
-  it("folds equal orders of one tick into one row", () => {
-    const entries = buildEntries(
-      {
-        orders: [order(10, 8, "ueb1103"), order(10, 8, "ueb1103"), order(10, 8, "ueb1102"), order(11, 8, "ueb1103")],
-        queueChanges: [],
-      },
-      0,
-    );
-    expect(buildRows(entries).map((row) => [row.tick, row.unit, row.repeats, row.quantity])).toEqual([
-      [10, "UEB1103", 2, 2],
-      [10, "UEB1102", 1, 1],
-      [11, "UEB1103", 1, 1],
     ]);
   });
 
@@ -110,25 +96,6 @@ describe("the build order", () => {
     expect(ticks.t2Unit).toBe(1500);
     expect(ticks.t2Factory).toBeNull();
     expect(ticks.experimental).toBe(3000);
-  });
-
-  it("counts the mobile units ordered per minute, queue changes included", () => {
-    const entries = buildEntries(
-      {
-        orders: [
-          order(100, 7, "uel0105", { units: 2 }),
-          order(200, 8, "ueb0101"), // a structure, not counted
-          order(700, 7, "uel0201", { units: 1 }),
-        ],
-        queueChanges: [change(150, "uel0105", 3), change(710, "uel0201", -1)],
-      },
-      0,
-    );
-    const minutes = unitsPerMinute(entries, catalogue, 3);
-    expect(minutes[0]).toEqual([{ unit: "UEL0105", count: 5 }]);
-    // Ordered and taken back in the same minute: nothing left to show.
-    expect(minutes[1]).toEqual([]);
-    expect(minutes[2]).toEqual([]);
   });
 
   it("writes an enhancement as words", () => {

@@ -1,7 +1,8 @@
 // The build order of a replay: what each player ordered built, in order, and
 // the milestones of an opening read off it. Pure functions over the analysis
 // the backend sends and the unit list of the installed game; the pane
-// (`ReplayBuildOrderPane`) only draws what these return.
+// (`ReplayBuildOrderPane`) only draws what these return, and the lanes under
+// it are `buildFlow.ts`'s.
 //
 // Everything here is an order, not a completion: the replay holds the inputs,
 // not what came of them, so a structure cancelled a second later still counts
@@ -10,13 +11,11 @@
 // The rules follow faf-workshop's Build order tab (Garanas/faf-workshop,
 // `OpeningTimings.cs` and `BuildOrderItem.cs`, MIT): a factory order builds
 // one unit in every factory it went to, an engineer order one structure, a
-// queue change its signed count; equal orders a player gave in one tick are
-// one row; the milestones are firsts only. Where that code tells a structure
+// queue change its signed count; the milestones are firsts only. Where that code tells a structure
 // apart by the words of its description, this uses the role the installed
 // blueprint's categories give it (`UnitSummary.role`).
 
 import type { ReplayAnalysis, ReplayOrder, UnitSummary } from "../../../ipc/bindings";
-import { TICKS_PER_SECOND } from "./replayAnalysis";
 
 /** `EUnitCommandType` values a build order is made of. */
 export const BUILD_FACTORY = 7;
@@ -24,10 +23,6 @@ export const BUILD_MOBILE = 8;
 export const UPGRADE = 27;
 export const SCRIPT = 28;
 
-const TICKS_PER_MINUTE = 60 * TICKS_PER_SECOND;
-
-/** How many minutes the per-minute table covers: the opening, not the game. */
-export const OPENING_MINUTES = 10;
 
 export type BuildEntry = {
   /** Stable within one replay: the order's place among the player's entries. */
@@ -141,37 +136,6 @@ function entryOf(order: ReplayOrder): Omit<BuildEntry, "key"> | null {
   }
 }
 
-export type BuildRow = BuildEntry & {
-  /** How many equal entries the player gave in this tick: a line of walls, a shift-clicked unit. */
-  repeats: number;
-};
-
-/**
- * Equal entries of one tick as one row: dragging a line of twenty walls is
- * one decision, not twenty. Queue changes are never merged with orders.
- */
-export function buildRows(entries: readonly BuildEntry[]): BuildRow[] {
-  const rows: BuildRow[] = [];
-  for (const entry of entries) {
-    const last = rows[rows.length - 1];
-    if (
-      last &&
-      last.tick === entry.tick &&
-      last.unit === entry.unit &&
-      last.enhancement === entry.enhancement &&
-      last.queueChange === entry.queueChange &&
-      last.upgrade === entry.upgrade &&
-      Math.sign(last.quantity) === Math.sign(entry.quantity)
-    ) {
-      last.repeats += 1;
-      last.quantity += entry.quantity;
-      continue;
-    }
-    rows.push({ ...entry, repeats: 1 });
-  }
-  return rows;
-}
-
 /** The tick each milestone was first reached, or null where it never was. */
 export function milestoneTicks(entries: readonly BuildEntry[], units: Catalogue): Record<MilestoneId, number | null> {
   const found = Object.fromEntries(MILESTONES.map((id) => [id, null])) as Record<MilestoneId, number | null>;
@@ -183,32 +147,6 @@ export function milestoneTicks(entries: readonly BuildEntry[], units: Catalogue)
     }
   }
   return found;
-}
-
-export type MinuteCount = { unit: string; count: number };
-
-/**
- * The mobile units ordered in each minute of the opening, most first. Factory
- * orders times their factories, plus queue changes; a unit whose orders were
- * all taken back again in that minute is left out.
- */
-export function unitsPerMinute(entries: readonly BuildEntry[], units: Catalogue, minutes = OPENING_MINUTES): MinuteCount[][] {
-  const perMinute = Array.from({ length: minutes }, () => new Map<string, number>());
-  for (const entry of entries) {
-    if (!entry.unit || entry.upgrade) continue;
-    const unit = units.get(entry.unit);
-    if (!unit || unit.kind === "structure") continue;
-    const minute = Math.floor(entry.tick / TICKS_PER_MINUTE);
-    if (minute >= minutes) continue;
-    const counts = perMinute[minute];
-    counts.set(entry.unit, (counts.get(entry.unit) ?? 0) + entry.quantity);
-  }
-  return perMinute.map((counts) =>
-    [...counts]
-      .filter(([, count]) => count > 0)
-      .map(([unit, count]) => ({ unit, count }))
-      .sort((a, b) => b.count - a.count || a.unit.localeCompare(b.unit)),
-  );
 }
 
 /**
