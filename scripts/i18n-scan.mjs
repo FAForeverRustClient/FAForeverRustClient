@@ -116,7 +116,8 @@ const TYPE_NAMES = new Set([
 const NOT_PROSE = [
   /^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/,          // kebab/snake/lower identifiers
   /^[A-Z][A-Z0-9_]*$/,                            // SCREAMING_CASE
-  /^[\w.-]+\.(?:tsx?|css|json|lua|exe|jar|png|svg)$/i,
+  // Asset filenames can contain spaces, such as the archived SCU icon.
+  /^[\w. -]+\.(?:tsx?|css|json|lua|exe|jar|png|svg)$/i,
   /^#[0-9a-f]{3,8}$/i,                            // colours
   /^\d/,                                          // starts with a digit
   /^[^a-zA-Z]*$/,                                 // no letters at all
