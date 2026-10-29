@@ -40,8 +40,10 @@ pub enum UnitHistoryStatus {
         fetched: u32,
         total: u32,
     },
+    /// Boxed: a history is a few kilobytes of series, and the other two
+    /// states are a pair of numbers and a string. Transparent on the wire.
     Ready {
-        history: UnitHistory,
+        history: Box<UnitHistory>,
     },
     Failed {
         reason: String,
@@ -169,7 +171,7 @@ pub fn reduce(state: &mut UnitHistoryState, event: &UnitHistoryEvent) {
                 state.histories.insert(
                     history.unit.id.clone(),
                     UnitHistoryStatus::Ready {
-                        history: history.clone(),
+                        history: Box::new(history.clone()),
                     },
                 );
             }
