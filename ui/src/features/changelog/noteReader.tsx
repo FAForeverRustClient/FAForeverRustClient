@@ -12,7 +12,7 @@ import type { ChangelogBlock } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ChangelogBlockView } from "../../shared/components/ChangelogBlocks";
 import { ChangelogIllustration } from "../../shared/components/ChangelogIllustration";
-import { changelogUnitIconUrl } from "../../shared/changelogUnitIcons";
+import { ChangelogIcon } from "../../shared/components/ChangelogIcon";
 import type { ChangelogIllustration as Illustration, HistoricalCaptionIllustrations } from "../../shared/historicalChangelogIcons";
 import { changelogViewMemory, type ChangelogReader } from "./viewMemory";
 
@@ -338,9 +338,7 @@ export const NoteContentsColumn = memo(function NoteContentsColumn({
         {section.iconUrl || section.illustration ? <>
           {section.illustration
             ? <ChangelogIllustration illustration={section.illustration} className="changelog-toc-icon" size={24} />
-            : section.iconUrl && <img className="changelog-toc-icon" src={changelogUnitIconUrl(section.iconUrl)} alt="" loading="lazy" draggable={false}
-                onLoad={(event) => event.currentTarget.classList.remove("is-missing")}
-                onError={(event) => event.currentTarget.classList.add("is-missing")} />}
+            : section.iconUrl && <ChangelogIcon className="changelog-toc-icon" source={section.iconUrl} size={24} />}
           <span className="changelog-toc-text">{section.text}</span>
         </> : section.text}
       </button>

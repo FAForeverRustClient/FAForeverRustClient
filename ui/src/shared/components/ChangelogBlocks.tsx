@@ -16,7 +16,7 @@ import { Icon } from "../../design-system/Icon";
 import type { ChangelogIllustration as Illustration } from "../historicalChangelogIcons";
 import { ChangelogIllustration } from "./ChangelogIllustration";
 import { changelogLinkTarget, openChangelogLink } from "../changelogLinks";
-import { changelogUnitIconUrl } from "../changelogUnitIcons";
+import { ChangelogIcon } from "./ChangelogIcon";
 import "./changelog-blocks.css";
 
 export function ChangelogSpans({ spans }: { spans: ChangelogSpan[] }) {
@@ -170,18 +170,12 @@ export function ChangelogBlockView({ block, anchorId, headingOffset = 0, icons, 
         <div id={anchorId} className="changelog-unit">
           <span className="changelog-unit-icons">
             {block.payload.units.map((unit) => (
-              <img
+              <ChangelogIcon
                 key={unit.unitId ?? unit.iconUrl}
                 className="changelog-unit-icon"
-                src={changelogUnitIconUrl(unit.iconUrl)}
-                alt=""
+                source={unit.iconUrl}
+                size={48}
                 title={unit.unitId ?? undefined}
-                loading="lazy"
-                draggable={false}
-                onLoad={(event) => event.currentTarget.classList.remove("is-missing")}
-                /* Older notes name units the site never drew an icon for, and a
-                   missing sprite should leave a gap rather than a broken image. */
-                onError={(event) => event.currentTarget.classList.add("is-missing")}
               />
             ))}
           </span>

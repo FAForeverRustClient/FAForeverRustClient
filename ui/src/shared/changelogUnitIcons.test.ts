@@ -1,10 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { changelogUnitIconUrl } from "./changelogUnitIcons";
+import { changelogUnitIconId, changelogUnitIconUrl } from "./changelogUnitIcons";
 
 const legacy = "https://raw.githubusercontent.com/FAForever/patchnotes/0d01e845da4d72173492751d153771ee17a0f079/images/";
 const clean = "https://faforever.github.io/fa/assets/icons/";
 
 describe("legacy changelog unit pictures", () => {
+  it("identifies local artwork from the picture rather than its caption", () => {
+    expect(changelogUnitIconId(legacy + "nukesub.png")).toBe("UES0304");
+    expect(changelogUnitIconId(clean + "UEL0303_icon.png")).toBe("UEL0303");
+  });
+
+  it.each([
+    legacy + "unknown.png",
+    legacy + "Enhancements/uef/teleport.png",
+    clean + "UEL0303_icon.png?other=true",
+    clean + "../icons/UEL0303_icon.png",
+    clean + "UEL0303_icon.png/extra",
+    clean.replace("faforever.github.io", "example.invalid") + "UEL0303_icon.png",
+    "/assets/changelog/categories/land.png",
+  ])("does not infer a local unit from unrelated artwork %s", (source) => {
+    expect(changelogUnitIconId(source)).toBeNull();
+  });
+
   it.each([
     ["nukesub.png", "UES0304"],
     ["UEF_T2_Shield_Boat.png", "XES0205"],

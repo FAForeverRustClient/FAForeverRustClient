@@ -15,6 +15,7 @@ import { ChangelogIllustration } from "../../shared/components/ChangelogIllustra
 
 const { openUrl } = vi.hoisted(() => ({ openUrl: vi.fn() }));
 vi.mock("../../ipc/native", () => ({ native: { openUrl } }));
+vi.mock("../../shared/useUnitIcons", () => ({ useUnitIcons: () => ({ units: {}, strategic: {} }) }));
 vi.mock("../../ipc/client");
 failOnConsoleError();
 

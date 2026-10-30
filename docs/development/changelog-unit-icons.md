@@ -22,3 +22,18 @@ Only these exact pinned source URLs are replaced. Unknown images, enhancement
 glyphs, category artwork and existing clean icons retain their sources.
 Original patch text, illustration metadata and provenance are preserved.
 No source artwork is cropped, painted over or regenerated.
+
+## Local picture cache
+
+Recognized unit pictures prefer the installed game's existing `unit-icon`
+cache. The source URL identifies the artwork after applying the mapping;
+captions and unit labels do not override that identity. The shared catalogue
+request is retained with its result for the session, so returning to a note
+or switching between the article and contents does not wait for another lookup.
+
+While the small catalogue is loading, pictures keep their reserved dimensions
+without starting remote downloads. Text remains readable. Pictures load lazily
+from the existing local protocol, which reuses decoded PNGs on disk. Missing
+installations, missing local pictures and decode failures retain the original
+web artwork as a fallback. Unknown images and enhancement glyphs keep their
+existing sources and do not start a catalogue lookup.

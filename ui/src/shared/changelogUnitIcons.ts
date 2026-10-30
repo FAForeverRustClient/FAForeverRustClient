@@ -90,3 +90,11 @@ export function changelogUnitIconUrl(source: string): string {
     ? `${CLEAN_ICON_BASE}/${CLEAN_UNIT_ICONS[path]}_icon.png`
     : source;
 }
+
+/** Only the known clean icon source identifies a local unit picture. Captions
+ * and unrelated URLs must not be used to guess an artwork replacement. */
+export function changelogUnitIconId(source: string): string | null {
+  const clean = changelogUnitIconUrl(source);
+  if (!clean.startsWith(`${CLEAN_ICON_BASE}/`)) return null;
+  return /^([A-Z]{3}\d{4})_icon\.png$/.exec(clean.slice(CLEAN_ICON_BASE.length + 1))?.[1] ?? null;
+}
