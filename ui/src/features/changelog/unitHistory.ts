@@ -2,7 +2,7 @@
 // formatting one, and turning series into chart lines. Kept apart from the
 // views so they can be tested without rendering.
 
-import type { UnitHistory, UnitKind, UnitStat, UnitSummary, UnitValueKey, WeaponStat } from "../../ipc/bindings";
+import type { UnitChange, UnitHistory, UnitKind, UnitStat, UnitSummary, UnitValueKey, WeaponStat } from "../../ipc/bindings";
 import type { MessageKey } from "../../i18n";
 import { formatNumber } from "../../i18n";
 
@@ -57,6 +57,35 @@ export const UNIT_FACTIONS = ["UEF", "Aeon", "Cybran", "Seraphim"] as const;
 
 /** How many lines one chart colours: `--color-chart-1` to `-8`. */
 export const CHART_COLORS = 8;
+
+/** A second, third, ... unit of one faction: its colour lighter, then darker,
+ * then further each way, so the faction stays and the lines stay apart. */
+const FACTION_SHADES = [
+  (color: string) => color,
+  (color: string) => `color-mix(in srgb, ${color} 62%, var(--color-text))`,
+  (color: string) => `color-mix(in srgb, ${color} 62%, var(--color-bg))`,
+  (color: string) => `color-mix(in srgb, ${color} 35%, var(--color-text))`,
+  (color: string) => `color-mix(in srgb, ${color} 40%, var(--color-bg))`,
+  (color: string) => `color-mix(in srgb, ${color} 82%, var(--color-text))`,
+];
+
+/**
+ * Each picked unit's colour, wherever it is marked: its card, its column, its
+ * line in the chart. Always its faction's; the first unit of a faction in the
+ * selection takes the colour itself and the next ones a shade of it.
+ */
+export function unitColors(selected: string[], factionOf: (id: string) => string | null | undefined): Record<string, string> {
+  const seen = new Map<string, number>();
+  return Object.fromEntries(
+    selected.map((id) => {
+      const faction = (factionOf(id) ?? "").toLowerCase();
+      const color = faction ? `var(--unit-faction-${faction})` : "var(--color-muted)";
+      const place = seen.get(faction) ?? 0;
+      seen.set(faction, place + 1);
+      return [id, FACTION_SHADES[place % FACTION_SHADES.length](color)];
+    }),
+  );
+}
 
 /** A value's key as one string, for a `<select>` and a React key. */
 export function valueKeyId(key: UnitValueKey): string {
@@ -271,4 +300,120 @@ export function defaultKey(history: UnitHistory): UnitValueKey | null {
 export function releaseOrder(release: string): number {
   const number = Number.parseInt(release, 10);
   return Number.isFinite(number) ? number : 0;
+}
+
+/** The unit's own values a head shows, in this order, where the unit has them. */
+const HEADLINE_STATS: readonly UnitStat[] = [
+  "maxHealth",
+  "shieldHealth",
+  "massCost",
+  "energyCost",
+  "buildTime",
+  "buildRate",
+  "massProduction",
+  "energyProduction",
+  "speed",
+  "visionRadius",
+];
+
+/** One value as a head shows it: the newest release's, and the first one's. */
+export interface UnitFact {
+  key: UnitValueKey;
+  now: number;
+  first: number;
+}
+
+/** The first and the last value of a series that is set, `null` when none is. */
+export function valueSpan(values: readonly (number | null)[]): { first: number; now: number } | null {
+  const set = values.filter((value): value is number => value !== null);
+  return set.length === 0 ? null : { first: set[0], now: set[set.length - 1] };
+}
+
+/**
+ * The values that say what a unit is: its health, costs and speed, then the
+ * DPS of each weapon and the range of the first, as many as `limit`.
+ */
+export function headlineKeys(history: UnitHistory, limit = 8): UnitValueKey[] {
+  const drawable = drawableKeys(history);
+  const own = HEADLINE_STATS.flatMap((stat) =>
+    drawable.filter((key) => key.type === "unit" && key.payload.stat === stat),
+  );
+  const range = drawable.find((key) => key.type === "weapon" && key.payload.stat === "range");
+  // At most three weapon values, so an experimental's dozen guns leave room
+  // for its health and costs.
+  const weapons = [
+    ...drawable.filter((key) => key.type === "weapon" && key.payload.stat === "dps"),
+    ...(range ? [range] : []),
+  ].slice(0, 3);
+  return [...own.slice(0, limit - weapons.length), ...weapons];
+}
+
+/** A unit's headline values, newest and first. */
+export function headlineFacts(history: UnitHistory, limit = 8): UnitFact[] {
+  return headlineKeys(history, limit).flatMap((key) => {
+    const span = valueSpan(alignedValues(history, key, history.releases.map((release) => release.release)));
+    return span ? [{ key, ...span }] : [];
+  });
+}
+
+/**
+ * How many of `count` facts a strip shows, and in how many columns, so no row
+ * has a hole: four or three to a row, the last fact or two left out rather
+ * than a row half empty.
+ */
+export function factsLayout(count: number): { shown: number; columns: 2 | 3 | 4 } {
+  if (count <= 2) return { shown: count, columns: 2 };
+  if (count <= 4) return { shown: count, columns: count as 3 | 4 };
+  if (count % 4 === 0) return { shown: count, columns: 4 };
+  if (count % 3 === 0) return { shown: count, columns: 3 };
+  const byFour = count - (count % 4);
+  const byThree = count - (count % 3);
+  return byThree > byFour ? { shown: byThree, columns: 3 } : { shown: byFour, columns: 4 };
+}
+
+/** A change from `before` to `after` as a signed percentage, `null` without both. */
+export function changePercent(before: number | null, after: number | null): string | null {
+  if (before === null || after === null || before === 0 || before === after) return null;
+  return formatPercentChange((after / before) * 100);
+}
+
+/** Whether a change made the unit stronger or weaker. */
+export type Verdict = "buff" | "nerf";
+
+/** Values a unit is better off with less of: what it costs, how long it takes
+ * to build, what it draws, and how close an enemy can get under its guns. */
+const LOWER_IS_BETTER: ReadonlySet<UnitStat | WeaponStat> = new Set<UnitStat | WeaponStat>([
+  "massCost",
+  "energyCost",
+  "buildTime",
+  "energyUpkeep",
+  "minRange",
+]);
+
+/** Values that say nothing on their own: a longer salvo delay or burn can be
+ * the price of more damage, which DPS already counts. */
+const NO_VERDICT: ReadonlySet<UnitStat | WeaponStat> = new Set<UnitStat | WeaponStat>(["salvoDelay", "dotTime"]);
+
+/** A value going from `before` to `after` as a buff or a nerf, `null` when it
+ * is neither or the value has no better direction. */
+export function valueVerdict(key: UnitValueKey, before: number | null, after: number | null): Verdict | null {
+  if (before === null || after === null || before === after) return null;
+  const stat = key.payload.stat;
+  if (NO_VERDICT.has(stat)) return null;
+  const up = after > before;
+  return up !== LOWER_IS_BETTER.has(stat) ? "buff" : "nerf";
+}
+
+/** What one release did to a unit, by its value changes: all buffs, all
+ * nerfs, both, or `null` when it changed no value with a better direction. */
+export function releaseVerdict(changes: readonly UnitChange[]): Verdict | "mixed" | null {
+  const verdicts = new Set(
+    changes.flatMap((change) =>
+      change.type === "value" ? [valueVerdict(change.payload.key, change.payload.before, change.payload.after)] : [],
+    ),
+  );
+  verdicts.delete(null);
+  if (verdicts.size === 0) return null;
+  if (verdicts.size > 1) return "mixed";
+  return verdicts.has("buff") ? "buff" : "nerf";
 }
