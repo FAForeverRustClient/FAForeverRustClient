@@ -96,6 +96,7 @@ pub mod streams;
 pub mod tourney;
 pub mod training;
 pub mod tutorials;
+pub mod unit_history;
 pub mod uploads;
 
 #[cfg(test)]

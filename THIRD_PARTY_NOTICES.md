@@ -80,6 +80,26 @@ the numbers in the text; none of the wiki's images is shipped. The one figure
 with data of its own, the five teams' ratings over forty games, uses values
 read off the wiki's chart of the same name.
 
+## Unit history rules (faf-workshop, FAF unit database)
+
+The Changelog tab's unit history (`crates/faf-domain/src/protocol/unit_history.rs`)
+follows two other projects closely, without copying their code:
+
+- Which differences between two releases' blueprints count as a change
+  (numbers rounded to four decimals, 0 read as "not set" where it means none,
+  categories compared as a set), and the release from which the FA repository
+  holds every unit (3738), follow
+  [Garanas/faf-workshop](https://github.com/Garanas/faf-workshop)
+  (`UnitSummary.cs`, `tools/generate-unit-data.cs`), distributed under the MIT
+  License. Copyright (c) 2024 (Jip) Willem Wijnia.
+- The DPS tests use the weapon cases of the FAF unit database,
+  [FAForever/etfreeman-db](https://github.com/FAForever/etfreeman-db)
+  (`dpsCalculator.spec.js`), distributed under the MIT License by its
+  contributors. The calculation itself is the game's own unit view
+  (`lua/ui/game/unitviewDetail.lua` in FAForever/fa).
+
+Nothing of either project is embedded, linked to or fetched by the client.
+
 ## Lucide icons
 
 The drawings in `ui/src/design-system/Icon.tsx`, except the GitHub, Twitch and

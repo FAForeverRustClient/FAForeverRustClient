@@ -79,9 +79,9 @@ export type AdminArticle = {
 	updatedAt: number | null,
 };
 
-export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Streams"; command: StreamsCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "LinuxRuntime"; command: LinuxRuntimeCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand } | { kind: "Connectivity"; command: ConnectivityCommand };
+export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Streams"; command: StreamsCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "UnitHistory"; command: UnitHistoryCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "LinuxRuntime"; command: LinuxRuntimeCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand } | { kind: "Connectivity"; command: ConnectivityCommand };
 
-export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Streams"; event: StreamsEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "LinuxRuntime"; event: LinuxRuntimeEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent } | { kind: "Connectivity"; event: ConnectivityEvent };
+export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Streams"; event: StreamsEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "UnitHistory"; event: UnitHistoryEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "LinuxRuntime"; event: LinuxRuntimeEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent } | { kind: "Connectivity"; event: ConnectivityEvent };
 
 /**  The complete client state. One field per domain slice. */
 export type AppState = {
@@ -115,6 +115,7 @@ export type AppState = {
 	clientUpdate: ClientUpdateState,
 	settings: SettingsState,
 	changelog: ChangelogState,
+	unitHistory: UnitHistoryState,
 	connectivity: ConnectivityState,
 };
 
@@ -917,10 +918,10 @@ export type ChangelogSearchState = {
 };
 
 /**
- *  The list open inside Changelog: FAForever's game patches, or this client's
- *  own releases. See [`MapsSection`].
+ *  The list open inside Changelog: FAForever's game patches, this client's own
+ *  releases, or one unit's values across the game patches. See [`MapsSection`].
  */
-export type ChangelogSection = "game" | "client";
+export type ChangelogSection = "game" | "client" | "units";
 
 /**  An inline run inside a paragraph or list item. */
 export type ChangelogSpan = { type: "text"; payload: string } | { type: "strong"; payload: string } | { type: "code"; payload: string } | { type: "link"; payload: {
@@ -10449,7 +10450,12 @@ export type StreamsCommand =
  */
 { type: "check" };
 
-export type StreamsEvent = { type: "checking" } | { type: "loaded"; payload: {
+export type StreamsEvent =
+/**
+ *  This client can check: raised once at startup, and never by a build
+ *  without credentials.
+ */
+{ type: "available" } | { type: "checking" } | { type: "loaded"; payload: {
 	streams: LiveStream[],
 } } | { type: "loadFailed"; payload: {
 	reason: string,
@@ -10471,6 +10477,13 @@ export type StreamsState = {
 	 *  remembering forever which broadcasts a machine has been told about.
 	 */
 	announced: string[],
+	/**
+	 *  Whether this client can check at all, which takes Twitch credentials
+	 *  in the environment it runs in. Releases have none, so nothing about
+	 *  FAF Live is shown there: a switch for announcements that can never
+	 *  come would be a switch that does nothing.
+	 */
+	available: boolean,
 };
 
 /**
@@ -13632,6 +13645,231 @@ export type TypingNotice = {
 
 export type UiDensity = "compact" | "comfortable";
 
+/**  What changed in one release. */
+export type UnitChange =
+/**  The unit exists from this release on. */
+{ type: "added" } |
+/**  The unit no longer exists in this release. */
+{ type: "removed" } | { type: "value"; payload: {
+	key: UnitValueKey,
+	before: number | null,
+	after: number | null,
+} } | { type: "categories"; payload: {
+	added: string[],
+	removed: string[],
+} };
+
+/**
+ *  One row of the change table: a release and everything it changed,
+ *  compared with the last release before it whose values are known.
+ */
+export type UnitChangeRow = {
+	release: string,
+	date: string,
+	changes: UnitChange[],
+};
+
+/**
+ *  A unit's history over every release of the changelog that has a tag,
+ *  oldest first.
+ */
+export type UnitHistory = {
+	unit: UnitSummary,
+	releases: UnitRelease[],
+	weapons: UnitWeapon[],
+	series: UnitSeries[],
+	changes: UnitChangeRow[],
+};
+
+export type UnitHistoryCommand =
+/**
+ *  Read the unit list from the installed game. Sent on every visit to the
+ *  section, so a game update shows its new units.
+ */
+{ type: "loadList" } |
+/**
+ *  Show this one unit and nothing else: what a link opens. The id is the
+ *  blueprint id in any case.
+ */
+{ type: "select"; payload: {
+	id: string,
+} } |
+/**
+ *  Compare these units, in this order, building every history not held
+ *  yet. More than [`MAX_SELECTED`] are cut to the first ones.
+ */
+{ type: "setSelection"; payload: {
+	ids: string[],
+} };
+
+export type UnitHistoryEvent = { type: "listLoading" } | { type: "listLoaded"; payload: {
+	units: UnitSummary[],
+} } | { type: "listFailed"; payload: {
+	reason: string,
+} } | { type: "selectionChanged"; payload: {
+	ids: string[],
+} } | { type: "historyProgress"; payload: {
+	id: string,
+	fetched: number,
+	total: number,
+} } | { type: "historyLoaded"; payload: {
+	/**  Boxed: a history is many times the size of every other event. */
+	history: UnitHistory,
+} } | { type: "historyFailed"; payload: {
+	id: string,
+	reason: string,
+} };
+
+export type UnitHistoryState = {
+	listStatus: UnitListStatus,
+	/**  Every unit a player can build, from the installed game files. */
+	units: UnitSummary[],
+	/**
+	 *  The units compared, by upper-case blueprint id, in the order they were
+	 *  picked. One shows all of its values; several are compared value by
+	 *  value.
+	 */
+	selected: string[],
+	/**  By blueprint id; only the selected units are kept. */
+	histories: { [key in string]: UnitHistoryStatus },
+};
+
+/**  One unit's history, while it loads and once it has. */
+export type UnitHistoryStatus =
+/**
+ *  `fetched` of `total` releases are read; the first open of a unit
+ *  downloads one small file per release, later opens read the disk.
+ */
+{ type: "loading"; payload: {
+	fetched: number,
+	total: number,
+} } |
+/**
+ *  Boxed: a history is a few kilobytes of series, and the other two
+ *  states are a pair of numbers and a string. Transparent on the wire.
+ */
+{ type: "ready"; payload: {
+	history: UnitHistory,
+} } | { type: "failed"; payload: {
+	reason: string,
+} };
+
+/**
+ *  Where a unit moves, which is how the picker sorts a faction's units:
+ *  land, then air, then naval, then what does not move.
+ */
+export type UnitKind =
+/**  Land, hover and amphibious units, commanders included. */
+"land" | "air" |
+/**  Ships and submarines. */
+"naval" | "structure";
+
+export type UnitListStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
+	reason: string,
+} };
+
+/**  One release of the history. */
+export type UnitRelease = {
+	/**  The changelog's release id, e.g. `"3837"`. */
+	release: string,
+	date: string,
+	source: UnitSource,
+};
+
+/**
+ *  One value over all releases, aligned with [`UnitHistory::releases`]. `None`
+ *  where the value is not set, or the release's values are unknown.
+ */
+export type UnitSeries = {
+	key: UnitValueKey,
+	values: (number | null)[],
+};
+
+/**  Where a release's values came from. */
+export type UnitSource =
+/**  FAF's own blueprint in the FA repository at that release. */
+{ type: "repository" } |
+/**
+ *  The base game's blueprint, which the release loaded because the
+ *  repository did not have the unit yet.
+ */
+{ type: "baseGame" } |
+/**  The unit did not exist in that release. */
+{ type: "absent" } |
+/**
+ *  The values could not be found out: a download failed, the blueprint did
+ *  not parse, or the base game is not installed.
+ */
+{ type: "unavailable"; payload: {
+	reason: string,
+} };
+
+/**  A value of the unit as a whole. */
+export type UnitStat = "maxHealth" | "regenRate" | "shieldHealth" | "shieldRegenRate" | "shieldRadius" | "massCost" | "energyCost" | "buildTime" | "buildRate" | "massProduction" | "energyProduction" | "energyUpkeep" | "speed" | "visionRadius" | "waterVisionRadius" | "radarRadius" | "sonarRadius" | "omniRadius";
+
+/**  One unit as the picker lists it. */
+export type UnitSummary = {
+	/**  Upper-case blueprint id, e.g. `UEL0201`. */
+	id: string,
+	/**
+	 *  The blueprint's path inside the installed archive, e.g.
+	 *  `units/UEL0201/UEL0201_unit.bp`, kept for its exact spelling.
+	 */
+	path: string,
+	/**
+	 *  The unit's build icon, from the same site the patch notes take their
+	 *  unit icons from.
+	 */
+	iconUrl: string,
+	/**
+	 *  `General.UnitName` without its localisation tag, e.g. "MA12 Striker".
+	 *  Many structures have none.
+	 */
+	name: string | null,
+	/**  `Description` without its localisation tag, e.g. "Medium Tank". */
+	description: string | null,
+	/**  `General.FactionName`: UEF, Aeon, Cybran or Seraphim. */
+	faction: string | null,
+	/**  1 to 3, or 4 for an experimental; `None` for a commander. */
+	tech: number | null,
+	kind: UnitKind,
+	/**
+	 *  `StrategicIconName`, lower case: the icon the game draws for the unit
+	 *  on the map when zoomed out (`icon_land1_directfire`).
+	 */
+	strategicIcon: string | null,
+	/**
+	 *  `BuildIconSortPriority`: where the unit sits in its tech level's row
+	 *  of a factory's or an engineer's build menu, lowest first. `None` for
+	 *  a unit no build menu offers (commanders, concrete, helpers).
+	 */
+	sortPriority: number | null,
+};
+
+/**  Which value a series or a change is about. */
+export type UnitValueKey = { type: "unit"; payload: {
+	stat: UnitStat,
+} } |
+/**  `weapon` is the weapon's key in [`UnitHistory::weapons`]. */
+{ type: "weapon"; payload: {
+	weapon: string,
+	stat: WeaponStat,
+} };
+
+/**  One weapon as the history names it. */
+export type UnitWeapon = {
+	/**
+	 *  The blueprint's `Label` ("MainGun"), which keeps a weapon recognisable
+	 *  across releases that reorder the list. A weapon without one is keyed
+	 *  by its position.
+	 */
+	key: string,
+	/**  `DisplayName` as the newest release that has the weapon writes it. */
+	name: string,
+	/**  `WeaponCategory`, e.g. "Direct Fire" or "Anti Air". */
+	category: string | null,
+};
+
 /**  Client self-update: whether to look for a newer build, and which ones count. */
 export type UpdatePreferences = {
 	/**
@@ -14135,6 +14373,11 @@ export type VetoTeamA =
 "lowerB" | "random" |
 /**  Nobody until the organiser says, match by match. */
 "manual";
+
+/**  A value of one weapon. */
+export type WeaponStat = "dps" | "damage" | "damageRadius" | "range" | "minRange" |
+/**  Shots per second, as the game fires them: whole ticks between shots. */
+"rateOfFire" | "salvoSize" | "salvoDelay" | "dotPulses" | "dotTime";
 
 /**
  *  Which day a calendar week starts on.

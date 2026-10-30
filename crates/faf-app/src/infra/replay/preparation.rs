@@ -169,8 +169,9 @@ impl ReplayPreparation {
             return Ok(None);
         }
 
+        // Not `self.http`: that client follows redirects without asking.
         if let Err(e) = game_updater::ensure_map_available(
-            &self.http,
+            &crate::infra::http::no_redirect_http_client(),
             &self.content_base,
             target_dir,
             map_folder,

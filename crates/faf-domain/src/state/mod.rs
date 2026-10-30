@@ -36,6 +36,7 @@ pub mod streams;
 pub mod tourney;
 pub mod training;
 pub mod tutorials;
+pub mod unit_history;
 pub mod uploads;
 
 pub use auth::{AuthCommand, AuthEvent, AuthMode, AuthState, AuthStatus, Player};
@@ -231,6 +232,10 @@ pub use tutorials::{
     tutorials_of, Tutorial, TutorialCategory, TutorialLaunchStatus, TutorialsCommand,
     TutorialsEvent, TutorialsState, TutorialsStatus, TUTORIALS_FEATURED_MOD,
 };
+pub use unit_history::{
+    normalized_selection, UnitHistoryCommand, UnitHistoryEvent, UnitHistoryState,
+    UnitHistoryStatus, UnitListStatus, MAX_SELECTED,
+};
 pub use uploads::{
     is_safe_folder_name, UploadKind, UploadRequest, UploadStatus, UploadsCommand, UploadsEvent,
     UploadsState,
@@ -274,5 +279,6 @@ pub struct AppState {
     pub client_update: ClientUpdateState,
     pub settings: SettingsState,
     pub changelog: ChangelogState,
+    pub unit_history: UnitHistoryState,
     pub connectivity: ConnectivityState,
 }

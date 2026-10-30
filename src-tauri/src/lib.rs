@@ -123,6 +123,10 @@ pub fn run() {
                 .build(),
         )
         .on_window_event(window::on_window_event)
+        .register_asynchronous_uri_scheme_protocol(
+            commands::UNIT_ICON_SCHEME,
+            commands::unit_icon_request,
+        )
         .setup(|app| {
             let log_dir = app.path().app_log_dir()?;
             app.manage(diagnostics::init(&log_dir)?);
@@ -179,6 +183,7 @@ pub fn run() {
             commands::read_notification_sound,
             commands::import_background_image,
             commands::read_background_image,
+            commands::unit_icons,
             commands::read_marked_map_preview,
             commands::open_version_folder,
             commands::open_installed_folder,
@@ -431,8 +436,6 @@ mod tests {
             // as well as the window's, so with the root missing here the
             // frame's own page went to the browser (PR 463).
             "https://unitdb.faforever.com/#/",
-            // FAF Daily, the Units tab's second view.
-            "https://daily.faforever.com/",
             // A training video frame, for the same reason.
             "https://www.youtube-nocookie.com/embed/abc?rel=0",
         ] {
@@ -440,6 +443,8 @@ mod tests {
         }
 
         for external in [
+            // Minigames are browser links, not embedded client pages.
+            "https://daily.faforever.com/",
             "https://www.youtube.com/watch?v=abc",
             // Only the player frame, not the rest of that host.
             "https://www.youtube-nocookie.com/watch?v=abc",

@@ -33,7 +33,8 @@ use faf_domain::state::{
     LeaderboardCommand, LinuxRuntimeCommand, LobbyCommand, MapGeneratorCommand, MapsCommand,
     ModsCommand, NavCommand, NotificationCommand, PlayerCardCommand, ReplayCommand,
     ReportingCommand, ReviewsCommand, SessionCommand, SettingsCommand, SocialCommand,
-    StreamsCommand, TourneyCommand, TourneyRead, TrainingCommand, TutorialsCommand, UploadsCommand,
+    StreamsCommand, TourneyCommand, TourneyRead, TrainingCommand, TutorialsCommand,
+    UnitHistoryCommand, UploadsCommand,
 };
 use faf_domain::AppCommand;
 use tokio::sync::oneshot;
@@ -210,6 +211,7 @@ pub(crate) fn policy(command: &AppCommand) -> CommandPolicy {
         AppCommand::Training(command) => training(command),
         AppCommand::Tutorials(command) => tutorials(command),
         AppCommand::Changelog(command) => changelog(command),
+        AppCommand::UnitHistory(command) => unit_history(command),
         AppCommand::Events(command) => events(command),
         AppCommand::Uploads(command) => uploads(command),
         AppCommand::GalacticWar(command) => galactic_war(command),
@@ -591,6 +593,17 @@ fn linux_runtime(command: &LinuxRuntimeCommand) -> CommandPolicy {
     match command {
         LinuxRuntimeCommand::Prepare => single_flight(Key::LinuxRuntime),
         LinuxRuntimeCommand::Cancel => PRIORITY,
+    }
+}
+
+/// All concurrent: reading the unit list twice costs a second read of a
+/// local file, and a unit chosen twice is built once by the service itself
+/// (`UnitHistoryContext::building`).
+fn unit_history(command: &UnitHistoryCommand) -> CommandPolicy {
+    match command {
+        UnitHistoryCommand::LoadList
+        | UnitHistoryCommand::Select { .. }
+        | UnitHistoryCommand::SetSelection { .. } => ORDINARY,
     }
 }
 

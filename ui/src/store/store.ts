@@ -276,7 +276,7 @@ const INITIAL: AppState = {
     },
   },
   social: { friends: [], foes: [], players: [], loginLookups: [], staff: [] },
-  streams: { live: [], status: { type: "idle" }, announced: [] },
+  streams: { live: [], status: { type: "idle" }, announced: [], available: false },
   events: {
     catalogue: [],
     source: "bundled",
@@ -446,6 +446,12 @@ const INITIAL: AppState = {
     selected: "",
     entries: {},
     entryStatus: { type: "idle" },
+  },
+  unitHistory: {
+    listStatus: { type: "idle" },
+    units: [],
+    selected: [],
+    histories: {},
   },
   connectivity: {
     check: { status: { type: "idle" }, steps: [], startedAt: "" },
