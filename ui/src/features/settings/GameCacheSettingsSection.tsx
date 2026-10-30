@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { NumberInput } from "../../design-system/NumberInput";
@@ -6,9 +6,11 @@ import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
 import { formatBytes } from "../../shared/format/formatBytes";
+import { formatDate } from "../../shared/format/dates";
 import { useTranslation } from "../../i18n/useTranslation";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 import type { GamePreferencesPatch } from "../../ipc/bindings";
+import { cachedVersionRelease, cachedVersionReleaseId } from "./cachedVersionRelease";
 
 /// Mirrors `faf_domain::state::settings::MAX_KEPT_GENERATED_MAPS`, so the
 /// input never offers a number the backend would quietly clamp.
@@ -21,7 +23,21 @@ export function GameCacheSettingsSection() {
   const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.game);
   const cacheInfo = useAppStore((state) => state.state.settings.cacheInfo);
+  const releases = useAppStore((state) => state.state.changelog.releases);
+  const releaseStatus = useAppStore((state) => state.state.changelog.status.type);
+  const requestedDates = useRef(false);
   const [showDoc, setShowDoc] = useState(false);
+
+  // Reuse one index for every cached version, including when another reader
+  // already requested it. Missing/unverified dates do not cause retry loops.
+  useEffect(() => {
+    const numbered = cacheInfo?.versions.map(cachedVersionReleaseId).filter(id => id !== null) ?? [];
+    if (numbered.length === 0) return;
+    if (releaseStatus === "loading") { requestedDates.current = true; return; }
+    if (requestedDates.current || numbered.every(id => releases.some(release => release.id === id))) return;
+    requestedDates.current = true;
+    void ipc.send({ kind: "Changelog", command: { type: "load" } });
+  }, [cacheInfo?.versions, releases, releaseStatus]);
 
   const setKeepGeneratedMaps = (keepGeneratedMaps: boolean) => {
     void save({ keepGeneratedMaps });
@@ -46,6 +62,7 @@ export function GameCacheSettingsSection() {
   };
 
   const handleRefreshCache = () => {
+    requestedDates.current = false;
     void ipc.send({ kind: "Settings", command: { type: "refreshGameCache" } });
   };
 
@@ -213,33 +230,41 @@ export function GameCacheSettingsSection() {
             </div>
             {cacheInfo?.versions && cacheInfo.versions.length > 0 ? (
               <div className="settings-cache-versions">
-                {cacheInfo.versions.map((ver) => (
-                  <div key={ver.name} className="settings-cache-chip-container">
-                    <button
-                      type="button"
-                      className="settings-cache-chip"
-                      onClick={() => void native.openVersionFolder(ver.name)}
-                      title={t("settings.game.openLocalFolder", { name: ver.name })}
-                    >
-                      <Icon name="folder" size={13} className="settings-cache-chip-folder-icon" />
-                      <span>{ver.name}</span>
-                      <span className="settings-cache-chip-size">
-                        ({formatBytes(ver.sizeBytes)})
-                      </span>
-                    </button>
-                    {ver.url ? (
+                {cacheInfo.versions.map((ver) => {
+                  const release = cachedVersionRelease(ver, releases);
+                  const releaseInfo = release.kind === "dated"
+                    ? t("settings.game.cachedVersionReleased", { date: formatDate(release.date, "", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) })
+                    : t(release.kind === "development" ? "settings.game.cachedVersionDevelopment" : "settings.game.cachedVersionDateUnknown");
+                  return (
+                    <div key={ver.name} className="settings-cache-chip-container" title={releaseInfo}>
                       <button
                         type="button"
-                        className="settings-cache-chip-ext"
-                        onClick={() => openVersionUrl(ver.url)}
-                        title={t("settings.game.openReleaseNotes", { name: ver.name })}
-                        aria-label={t("settings.game.openReleaseNotes", { name: ver.name })}
+                        className="settings-cache-chip"
+                        onClick={() => void native.openVersionFolder(ver.name)}
+                        title={`${t("settings.game.openLocalFolder", { name: ver.name })}\n${releaseInfo}`}
+                        aria-description={releaseInfo}
                       >
-                        <Icon name="external" size={12} />
+                        <Icon name="folder" size={13} className="settings-cache-chip-folder-icon" />
+                        <span>{ver.name}</span>
+                        <span className="settings-cache-chip-size">
+                          ({formatBytes(ver.sizeBytes)})
+                        </span>
                       </button>
-                    ) : null}
-                  </div>
-                ))}
+                      {ver.url ? (
+                        <button
+                          type="button"
+                          className="settings-cache-chip-ext"
+                          onClick={() => openVersionUrl(ver.url)}
+                          title={`${t("settings.game.openReleaseNotes", { name: ver.name })}\n${releaseInfo}`}
+                          aria-description={releaseInfo}
+                          aria-label={t("settings.game.openReleaseNotes", { name: ver.name })}
+                        >
+                          <Icon name="external" size={12} />
+                        </button>
+                      ) : null}
+                    </div>
+                    );
+                })}
               </div>
             ) : (
               <span className="muted" style={{ fontSize: "11px" }}>
