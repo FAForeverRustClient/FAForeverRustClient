@@ -84,6 +84,9 @@ pub fn run() {
             if let Some(path) = startup::replay_argument(&argv) {
                 startup::open_replay_from_argument(app, path);
             }
+            if let Some(url) = faf_domain::protocol::deep_link::deep_link_argument(&argv) {
+                startup::open_link_from_argument(app, url);
+            }
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
@@ -156,6 +159,11 @@ pub fn run() {
             let arguments = command_line();
             if let Some(path) = startup::replay_argument(&arguments) {
                 startup::open_replay_at_startup(app.handle(), path.to_string());
+            }
+            // And a link that started the client. It waits in the state until
+            // the page is up to show it.
+            if let Some(url) = faf_domain::protocol::deep_link::deep_link_argument(&arguments) {
+                startup::open_link_from_argument(app.handle(), url);
             }
 
             app.manage(window::MainWindow::default());

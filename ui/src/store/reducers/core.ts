@@ -154,6 +154,11 @@ export function reduceNav(state: NavState, event: NavEvent): NavState {
         changelogSection: "client",
         changelogClientVersion: event.payload.version,
       };
+    case "linkRequested":
+      return { ...state, linkRequest: event.payload.request };
+    // Only the request that was shown: a newer one stays waiting.
+    case "linkShown":
+      return state.linkRequest?.id === event.payload.id ? { ...state, linkRequest: null } : state;
   }
 }
 

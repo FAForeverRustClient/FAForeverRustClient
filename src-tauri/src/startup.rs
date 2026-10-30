@@ -83,6 +83,26 @@ pub(crate) fn open_replay_from_argument(app: &tauri::AppHandle, path: &str) {
         }));
 }
 
+/// Hand a `faf://` link to the client, whether it arrived with a second start
+/// or started this one.
+///
+/// Only read here, never followed: the backend parses it and the page opens
+/// what it points at once it is up and signed in, or says the link could not
+/// be read. The operating system starts the client with the link as its one
+/// argument when the scheme is registered (see `plugins.deep-link` in
+/// `tauri.conf.json`), which any web page can ask it to do, so nothing about
+/// the link is trusted beyond that check.
+pub(crate) fn open_link_from_argument(app: &tauri::AppHandle, url: &str) {
+    let Some(core) = app.try_state::<Core>() else {
+        tracing::warn!("asked to open a link before the backend was ready");
+        return;
+    };
+    tracing::info!(%url, "opening a link handed to the client as an argument");
+    let _ = core.0.try_dispatch(AppCommand::Nav(NavCommand::OpenLink {
+        url: url.to_string(),
+    }));
+}
+
 /// [`open_replay_from_argument`] for the replay a cold start was opened with.
 ///
 /// That one arrives before the settings are read and before a remembered
