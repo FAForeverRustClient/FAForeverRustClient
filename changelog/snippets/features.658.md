@@ -1,4 +1,1 @@
-- The game card over a player's game badge in chat is less crowded: teams side by side without boxes, the game's facts on one line.
-- The game card puts Watch live or Join game next to the game's title.
-- The game card shows each team's combined rating without counting its players.
-- Avatars and flags in the game card sit left of the player names, as in the chat roster.
+- The game card over a player's game badge in chat is easier to read: teams side by side with each team's combined rating, avatars and flags left of the names, the game's facts on one line, and Watch live or Join game next to the title.

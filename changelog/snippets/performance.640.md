@@ -1,0 +1,1 @@
+- A profile's game history is kept between visits, so it loads much faster the next time.

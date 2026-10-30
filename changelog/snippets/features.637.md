@@ -1,1 +1,4 @@
-- Game patch notes can be searched by unit names, blueprint IDs and change descriptions.
+- A Search all patches button in Changelogs finds every game patch that mentions a unit, blueprint ID or change, and opens the patch at the match.
+- Older game patches (3629 to 3801) show unit pictures and section headings taken from the original patch notes.
+- Patches 3761, 3774, 3775 and 3776, which only had a summary, include a section with the original balance notes.
+- Patch notes use a slightly wider text column.

@@ -1,1 +1,1 @@
-- No visible changes: runtime, build and test dependencies receive security updates.
+- No visible changes: dependencies receive their security updates.

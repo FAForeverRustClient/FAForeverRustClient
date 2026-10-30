@@ -1,1 +1,1 @@
-- Installed maps show where land, hover, amphibious and naval units can go and how much there is to reclaim, and a map opens its replays in the Replays tab.
+- Installed maps show where land, hover, amphibious and naval units can go and how much there is to reclaim, and every map in the vault has a "Replays on this map" button.

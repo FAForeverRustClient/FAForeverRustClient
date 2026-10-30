@@ -1,1 +1,1 @@
-- Unit entries in the patch notes contents list now show unit icons.
+- The "On this page" list of a game patch shows each unit's icon and groups units under their tier and category.

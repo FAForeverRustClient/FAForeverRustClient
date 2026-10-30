@@ -1,1 +1,1 @@
-- Replay searches can be saved and run again in one click, in Replays > Online and Local.
+- Replay searches can be saved and run again in one click, in Replays > Online and Local, and Recent only, Exact player name and Skip short games are now checkboxes.

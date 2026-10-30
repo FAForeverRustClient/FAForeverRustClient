@@ -1,9 +1,9 @@
-- The chat's reply button is a curved reply arrow.
 - A player report can be minimized while you look things up, and a report opened from a replay fills in its replay ID.
 - Names in your matchmaker party open the player menu.
-- "Moderators & admins" in the chat roster lists FAF's moderators and admins, not only the chat bot.
-- The tournament list shows your drafts and other organisers' drafts as separate groups, each of which can be folded away.
 - The replay details list the simulation mods a game was played with, online replays included.
-- The rating graph opens on the last month, with the whole history one click away, and a marked stretch can be zoomed into.
-- The Statistics tab of a profile shows faftracker.xyz's player report, counted from the game history: the overview, rating gain per queue, monthly performance, teammates and opponents, the improvement detector and the record per faction, every table sortable by any column. A profile's game history is kept, so it loads much faster the next time.
-- The map generator dialog says before Generate when a chosen style does not exist in the selected generator version, which was the commonest reason a generation failed.
+- A profile's rating graph opens on the last month with the whole history one click away, can be plotted against games played (the last 100, 500 or 1000 games, or all), and a marked stretch can be zoomed into.
+- A profile's Statistics tab shows faftracker.xyz's player report, counted from the game history instead of the old achievement counters: the overview, rating gain per queue, monthly performance, teammates and opponents, the improvement detector and the record per faction, every table sortable by any column.
+- The reply button on chat messages is a curved reply arrow instead of a right arrow.
+- "Moderators & admins" in the chat roster lists FAF's moderators and admins, where it used to show only the chat bot.
+- The tournament list shows your drafts and other organisers' drafts as separate groups, each of which can be folded away.
+- The taskbar button flashes when a notification arrives while the client is in the background.

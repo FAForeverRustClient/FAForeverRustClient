@@ -1,0 +1,5 @@
+- Replays have a Build order tab that compares two players' openings, lane by lane.
+- Changelogs gains a Unit history section and a search across every game patch.
+- A profile's Statistics tab shows faftracker.xyz's player report, from the overview to the record per faction.
+- Installed maps show where each kind of unit can go and how much there is to reclaim.
+- On Linux, the client sets up Wine for Forged Alliance by itself.

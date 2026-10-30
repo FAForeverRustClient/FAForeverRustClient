@@ -1,2 +1,1 @@
-- The tournament chat no longer says "1 completed matches".
-- The tournament chat's pin buttons show a drawn icon instead of a pin emoji.
+- The tournament chat says "1 completed match" instead of "1 completed matches".

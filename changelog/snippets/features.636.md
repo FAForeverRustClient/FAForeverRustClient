@@ -1,0 +1,1 @@
+- The Changelog tab is now called Changelogs.

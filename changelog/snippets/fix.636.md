@@ -1,3 +1,1 @@
-- Unit headings in patches 3818 and 3829 now show icons and appear in "On this page".
-- The Changelog tab is now named Changelogs.
-- Unit icons in "On this page" grow from 22 to 24 pixels.
+- Units listed inside other entries in patches 3810, 3813, 3818, 3822 and 3829 show their pictures and appear in "On this page".
