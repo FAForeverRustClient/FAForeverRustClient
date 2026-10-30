@@ -9,6 +9,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { ChatPreferences, ChatUser, PlayerProfile, SocialState } from "../../../ipc/bindings";
 import { EMOJI_PATTERN, emojiName } from "./emoji";
 import { openHttpsUrl, optionalHttpsUrl, validateHttpsUrl } from "../../../shared/externalLinks";
+import { openLink } from "../../../shared/deepLinks";
 import { hourCycleOptions } from "../../../shared/format/clock";
 import { findPlayer, isModerator, playersByNickname } from "../../../store/reducer";
 import { t, type MessageKey } from "../../../i18n";
@@ -145,7 +146,7 @@ export function displayName(name: string, profile: PlayerProfile | undefined): s
   return profile?.clan ? `[${profile.clan}]${name}` : name;
 }
 
-const URL_PATTERN = /((?:https|fafgame|faflive):\/\/[^\s<>"']+)/gi;
+const URL_PATTERN = /((?:https|fafgame|faflive|faf):\/\/[^\s<>"']+)/gi;
 
 export interface ChatGameLink {
   kind: "openGame" | "liveReplay";
@@ -265,6 +266,21 @@ export function renderBody(
             {part}
           </button>
         ) : <span key={i}>{part}</span>;
+      }
+      // A link into the client itself. The backend reads it and says so when
+      // it cannot be opened; nothing here leaves the client.
+      if (/^faf:\/\//i.test(part)) {
+        return (
+          <button
+            key={i}
+            type="button"
+            className="chat-link chat-game-link"
+            title={t("chat.link.openInClient")}
+            onClick={() => openLink(part)}
+          >
+            {part}
+          </button>
+        );
       }
       let href: string;
       try {

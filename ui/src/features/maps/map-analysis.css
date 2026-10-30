@@ -1,0 +1,62 @@
+/* The map's pathing or reclaim, laid over its preview: both pictures stretch
+   to the same square, so an ogrid of the overlay sits on its ogrid of the
+   map whatever their pixel sizes. */
+.map-analysis-stack {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.map-analysis-stack img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.map-analysis-overlay {
+  position: absolute;
+  inset: 0;
+  /* One region's edge is one ogrid: kept sharp rather than blurred into the
+     next region's colour. */
+  image-rendering: pixelated;
+}
+
+/* The reclaim is binned coarsely; smoothing it reads as density, not as
+   blocks. */
+.map-analysis-overlay.is-heat {
+  image-rendering: auto;
+}
+
+/* The way in from a map's big preview. */
+.map-analysis-entry {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--space-2);
+}
+
+.map-analysis-views {
+  align-self: flex-start;
+  margin-bottom: var(--space-2);
+}
+
+.map-analysis-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) 0;
+  font-size: 13px;
+}
+
+.map-analysis-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: var(--space-2);
+  font-size: 12px;
+}
+
+.map-analysis-facts p {
+  margin: 0;
+}

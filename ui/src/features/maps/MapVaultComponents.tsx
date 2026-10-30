@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { ConfirmDialog } from "../../design-system/ConfirmDialog";
 import { FactsStrip } from "../../design-system/FactsStrip";
@@ -14,11 +15,20 @@ import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 import { isOfficialMap, ratingLabel, sizeLabel } from "../../shared/mapPresentation";
 import { MapPreview } from "../../shared/components/MapPreview";
+import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
+import { requestReplaySearch } from "../../shared/replaySearchIntent";
 
 function formatCount(value: number): string {
   return new Intl.NumberFormat(clientIntlTag(), {
     notation: value >= 10_000 ? "compact" : "standard",
   }).format(value);
+}
+
+/** The Replays tab's online vault, searched for games on this map. */
+function showReplaysOn(displayName: string) {
+  requestReplaySearch({ ...EMPTY_REPLAY_QUERY, map: displayName });
+  ipc.send({ kind: "Nav", command: { type: "selectReplaysSection", payload: { section: "online" } } });
+  ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
 }
 
 function cleanDescription(value: string): string {
@@ -184,6 +194,7 @@ export function MapDetailPanel({
   onUnhide,
   onPreview,
   onToggleFavorite,
+  onAnalyse,
 }: {
   map: VaultMap;
   installed: boolean;
@@ -198,6 +209,8 @@ export function MapDetailPanel({
   onUnhide: () => void;
   onPreview: () => void;
   onToggleFavorite: () => void;
+  /** Opens the map's pathing and reclaim, which are read from its files. */
+  onAnalyse: () => void;
 }) {
   useLocale();
   const description = cleanDescription(map.description);
@@ -325,6 +338,23 @@ export function MapDetailPanel({
             <Button variant="ghost" onClick={() => void openReviews("map", map.mapId, map.displayName)}>
               <Icon name="chat" size={15} />
               {t("maps.vault.reviews")}
+            </Button>
+            {/* The games played on it are the Replays tab's, searched by the
+                map's name, rather than a list of their own here. */}
+            <Button variant="ghost" onClick={() => showReplaysOn(map.displayName)}>
+              <Icon name="replays" size={15} />
+              {t("maps.vault.replaysOnMap")}
+            </Button>
+            {/* Read from the map's own files, so only once it is here; shown
+                either way, so it can be found before the map is installed. */}
+            <Button
+              variant="ghost"
+              disabled={!installed}
+              title={installed ? undefined : t("maps.analysis.needsInstall")}
+              onClick={onAnalyse}
+            >
+              <Icon name="grid" size={15} />
+              {t("maps.analysis.open")}
             </Button>
             {mine && (
               map.hidden ? (

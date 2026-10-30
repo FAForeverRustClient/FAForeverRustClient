@@ -92,6 +92,12 @@ follows faf-workshop's Build order tab the same way (`OpeningTimings.cs`,
 every factory it went to, equal orders of one tick are one row, and the
 milestones of an opening are firsts only.
 
+A map's pathing and reclaim (`crates/faf-domain/src/protocol/scmap.rs`,
+`navigation.rs`) follow faf-workshop the same way (`ScmapParser.cs`,
+`NavGenerator.cs`, MIT, same copyright): the field order of a `.scmap` up to
+its props, and the port of the game's `lua/sim/NavGenerator.lua` to regions of
+ogrids linked by their sides, with the game's compression and culling.
+
 Nothing of either project is embedded, linked to or fetched by the client.
 
 ## Lucide icons

@@ -5690,6 +5690,7 @@
             "activeTab": "play",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -5710,6 +5711,7 @@
             "activeTab": "training",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -5735,6 +5737,7 @@
             "activeTab": "maps",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -5755,6 +5758,7 @@
             "activeTab": "maps",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "installed",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -5775,6 +5779,7 @@
             "activeTab": "maps",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "installed",
             "modsSection": "installed",
             "replaysSection": "online",
@@ -5795,6 +5800,7 @@
             "activeTab": "maps",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "installed",
             "modsSection": "installed",
             "replaysSection": "live",
@@ -5815,6 +5821,7 @@
             "activeTab": "maps",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "installed",
             "modsSection": "installed",
             "replaysSection": "live",
@@ -5835,6 +5842,7 @@
             "activeTab": "chat",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "installed",
             "modsSection": "installed",
             "replaysSection": "live",
@@ -5860,6 +5868,7 @@
             "activeTab": "changelog",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -5880,6 +5889,7 @@
             "activeTab": "changelog",
             "changelogClientVersion": null,
             "changelogSection": "client",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -5900,6 +5910,7 @@
             "activeTab": "changelog",
             "changelogClientVersion": null,
             "changelogSection": "units",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -5920,6 +5931,7 @@
             "activeTab": "changelog",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -5940,6 +5952,7 @@
             "activeTab": "changelog",
             "changelogClientVersion": "0.4.0",
             "changelogSection": "client",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -5960,6 +5973,7 @@
             "activeTab": "changelog",
             "changelogClientVersion": "0.4.0",
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -5980,6 +5994,136 @@
             "activeTab": "changelog",
             "changelogClientVersion": "0.3.0",
             "changelogSection": "client",
+            "linkRequest": null,
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a link waits until the frontend has shown it, and only that one is cleared",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "request": {
+                  "id": 1,
+                  "link": {
+                    "payload": {
+                      "folderName": "setons_clutch.v0004"
+                    },
+                    "type": "map"
+                  }
+                }
+              },
+              "type": "linkRequested"
+            },
+            "kind": "Nav"
+          },
+          "expected": {
+            "activeTab": "news",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
+            "linkRequest": {
+              "id": 1,
+              "link": {
+                "payload": {
+                  "folderName": "setons_clutch.v0004"
+                },
+                "type": "map"
+              }
+            },
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "request": {
+                  "id": 2,
+                  "link": {
+                    "payload": {
+                      "id": "UEL0201"
+                    },
+                    "type": "unit"
+                  }
+                }
+              },
+              "type": "linkRequested"
+            },
+            "kind": "Nav"
+          },
+          "expected": {
+            "activeTab": "news",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
+            "linkRequest": {
+              "id": 2,
+              "link": {
+                "payload": {
+                  "id": "UEL0201"
+                },
+                "type": "unit"
+              }
+            },
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "id": 1
+              },
+              "type": "linkShown"
+            },
+            "kind": "Nav"
+          },
+          "expected": {
+            "activeTab": "news",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
+            "linkRequest": {
+              "id": 2,
+              "link": {
+                "payload": {
+                  "id": "UEL0201"
+                },
+                "type": "unit"
+              }
+            },
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "id": 2
+              },
+              "type": "linkShown"
+            },
+            "kind": "Nav"
+          },
+          "expected": {
+            "activeTab": "news",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -129076,6 +129220,7 @@
       "activeTab": "news",
       "changelogClientVersion": null,
       "changelogSection": "game",
+      "linkRequest": null,
       "mapsSection": "vault",
       "modsSection": "vault",
       "replaysSection": "online",

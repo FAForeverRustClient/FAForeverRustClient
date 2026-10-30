@@ -11,11 +11,22 @@
  * One value, consumed once: the tab reads it while mounting and clears it, so
  * coming back to the mods tab later does not repeat somebody's old search.
  */
-let requested: string | null = null;
+export interface ModVaultFocus {
+  search: string;
+  /**
+   * Where the search looks: the name, which is what every button that knows
+   * the mod's name wants, or also the description and the uid, which is how
+   * a `faf://mod/<uid>` link finds its mod.
+   */
+  scope: "name" | "description";
+}
+
+let requested: ModVaultFocus | null = null;
 
 /** Ask the mods tab to open on this mod. Call before navigating to it. */
-export function requestModVaultFocus(modName: string) {
-  requested = modName.trim();
+export function requestModVaultFocus(search: string, scope: ModVaultFocus["scope"] = "name") {
+  const trimmed = search.trim();
+  requested = trimmed ? { search: trimmed, scope } : null;
 }
 
 /**
@@ -27,8 +38,8 @@ export function hasModVaultFocus(): boolean {
 }
 
 /** Take the pending request, if any. Returns it once and forgets it. */
-export function takeModVaultFocus(): string | null {
+export function takeModVaultFocus(): ModVaultFocus | null {
   const pending = requested;
   requested = null;
-  return pending || null;
+  return pending;
 }
