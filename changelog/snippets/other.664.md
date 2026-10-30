@@ -1,1 +1,0 @@
-- FAF Live is switched off for now: the client no longer announces when FAF's Twitch channel goes live or shows LIVE badges, and the "FAF goes live" switch is gone from Settings, Notifications.
