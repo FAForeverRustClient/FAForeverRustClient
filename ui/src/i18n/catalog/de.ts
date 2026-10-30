@@ -1298,6 +1298,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.friendPlaying": "Freunde beginnen zu spielen",
   "settings.notifications.newGames": "Neue eigene Partien",
   "settings.notifications.friendsGamesOnly": "Nur Partien von Freunden",
+  "settings.notifications.friendsGamesOnlyHint": "Aktiviere Benachrichtigungen über neue Spiele, um diese Einstellung zu ändern.",
   "settings.notifications.gameFull": "Partie voll",
   "settings.notifications.queueOpponent": "Gegner in deiner Wertungsspanne",
   "settings.notifications.queueOpponentHint": "Hinweis, wenn jemand, dessen Wertungsspanne deine einschließt, einer Matchmaker-Queue beitritt, in der du gerade nicht suchst. Wähle die Queues aus, die beobachtet werden.",

@@ -1217,6 +1217,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.friendPlaying": "Amis qui commencent à jouer",
   "settings.notifications.newGames": "Nouvelles parties personnalisées",
   "settings.notifications.friendsGamesOnly": "Parties d'amis uniquement",
+  "settings.notifications.friendsGamesOnlyHint": "Activez les notifications de nouvelles parties pour modifier ce réglage.",
   "settings.notifications.gameFull": "Partie complète",
   "settings.notifications.queueOpponent": "Adversaire dans votre plage de classement",
   "settings.notifications.queueOpponentHint": "Alerter quand quelqu'un dont la plage de classement inclut la vôtre rejoint une file de matchmaking où vous ne cherchez pas. Choisissez les files à surveiller.",

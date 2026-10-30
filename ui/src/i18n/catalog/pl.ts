@@ -1168,6 +1168,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.friendPlaying": "Znajomi zaczynają grać",
   "settings.notifications.newGames": "Nowe gry własne",
   "settings.notifications.friendsGamesOnly": "Tylko gry znajomych",
+  "settings.notifications.friendsGamesOnlyHint": "Włącz powiadomienia o nowych grach, aby zmienić to ustawienie.",
   "settings.notifications.gameFull": "Gra pełna",
   "settings.notifications.queueOpponent": "Przeciwnik w twoim zakresie rankingu",
   "settings.notifications.queueOpponentHint": "Powiadom, gdy ktoś, czyj zakres rankingu obejmuje twój, dołączy do kolejki matchmakingu, w której nie szukasz. Wybierz kolejki do obserwowania.",

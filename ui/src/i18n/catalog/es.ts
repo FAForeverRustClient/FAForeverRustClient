@@ -1216,6 +1216,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.friendPlaying": "Amigos que empiezan a jugar",
   "settings.notifications.newGames": "Partidas personalizadas nuevas",
   "settings.notifications.friendsGamesOnly": "Solo partidas de amigos",
+  "settings.notifications.friendsGamesOnlyHint": "Activa las notificaciones de nuevas partidas para cambiar este ajuste.",
   "settings.notifications.gameFull": "Partida completa",
   "settings.notifications.queueOpponent": "Rival en tu rango de puntuación",
   "settings.notifications.queueOpponentHint": "Avisar cuando alguien cuyo rango de puntuación incluye el tuyo entra en una cola de emparejamiento en la que no estás buscando. Elige las colas que quieres vigilar.",

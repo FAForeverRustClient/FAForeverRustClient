@@ -1600,6 +1600,7 @@ export const en = {
   "settings.notifications.friendPlaying": "Friends start playing",
   "settings.notifications.newGames": "New custom games",
   "settings.notifications.friendsGamesOnly": "Friends' games only",
+  "settings.notifications.friendsGamesOnlyHint": "Enable new game notifications to change this setting.",
   "settings.notifications.gameFull": "Game full",
   "settings.notifications.queueOpponent": "Opponent in your rating range",
   "settings.notifications.queueOpponentHint": "Alert when somebody whose rating range takes yours joins a matchmaker queue you are not searching. Pick the queues to watch.",

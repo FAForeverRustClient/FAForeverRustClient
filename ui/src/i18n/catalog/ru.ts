@@ -1280,6 +1280,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.friendPlaying": "Друзья начинают играть",
   "settings.notifications.newGames": "Новые пользовательские игры",
   "settings.notifications.friendsGamesOnly": "Только игры друзей",
+  "settings.notifications.friendsGamesOnlyHint": "Включите уведомления о новых играх, чтобы изменить этот параметр.",
   "settings.notifications.gameFull": "Игра заполнена",
   "settings.notifications.queueOpponent": "Соперник в вашем диапазоне рейтинга",
   "settings.notifications.queueOpponentHint": "Оповещать, если соперник вашего рейтинга появится в очереди, где вы не ищете матч. Выберите очереди для отслеживания.",
