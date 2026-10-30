@@ -5,8 +5,11 @@
 //! exhaustively unit-testable with zero setup; `infra` does the actual IO and
 //! calls into these.
 
+pub mod blueprint;
 pub mod changelog;
 pub mod chat_input;
+pub mod dds;
+pub mod deep_link;
 pub mod discord;
 pub mod galactic_war;
 pub mod game_outcome;
@@ -15,10 +18,14 @@ pub mod irc;
 pub mod log_analysis;
 pub mod map_generator;
 pub mod map_generator_name;
+pub mod map_reclaim;
 pub mod markup;
 pub mod mod_info;
+pub mod navigation;
 pub mod replay_query;
 pub mod report_log;
+pub mod scmap;
 pub mod stun;
 pub mod tourney;
+pub mod unit_history;
 pub mod vault_query;

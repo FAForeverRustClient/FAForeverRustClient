@@ -1,0 +1,53 @@
+// A unit's build icon, for the Changelog's unit history and anything else that
+// shows units: from the installed game (the backend's `unit_icons`, decoded
+// from its texture archives), else from the patch notes' icon set, else the
+// unit's id.
+
+import { useEffect, useState } from "react";
+import type { UnitSummary } from "../../ipc/bindings";
+import { native, type UnitIcons } from "../../ipc/native";
+import "./unit-picture.css";
+
+/** The game's pictures, asked for once per session and shared by every tile.
+ * A failed ask counts as an install with no pictures, so `null` only ever
+ * means the answer has not come yet. */
+let iconsRequest: Promise<UnitIcons> | null = null;
+
+export function useUnitIcons(): UnitIcons | null {
+  const [icons, setIcons] = useState<UnitIcons | null>(null);
+  useEffect(() => {
+    let current = true;
+    iconsRequest ??= native.readUnitIcons().catch(() => ({ units: {}, strategic: {} }));
+    void iconsRequest.then((loaded) => {
+      if (current) setIcons(loaded);
+    });
+    return () => {
+      current = false;
+    };
+  }, []);
+  return icons;
+}
+
+export function UnitPicture({ unit, icons, size }: { unit: UnitSummary; icons: UnitIcons | null; size: number }) {
+  // Each picture that does not load gives way to the next.
+  const [failed, setFailed] = useState(0);
+  // Nothing until the installed game has answered: the website's picture
+  // first would load hundreds of icons only to swap each one a moment later.
+  if (!icons) return <span className="unit-picture-pending" style={{ width: size, height: size }} />;
+  const sources = [icons.units[unit.id], unit.iconUrl].filter((source): source is string => Boolean(source));
+  const source = sources[failed];
+  if (!source) return <span className="unit-picture-id">{unit.id}</span>;
+  return (
+    <img
+      key={source}
+      className="unit-picture"
+      src={source}
+      alt=""
+      width={size}
+      height={size}
+      loading="lazy"
+      draggable={false}
+      onError={() => setFailed(failed + 1)}
+    />
+  );
+}

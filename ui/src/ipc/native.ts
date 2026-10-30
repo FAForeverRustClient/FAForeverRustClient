@@ -2,7 +2,7 @@
 // Feature code stays unaware of Tauri packages, which keeps it browser-testable
 // and gives architecture checks one explicit native boundary to enforce.
 
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow, UserAttentionType } from "@tauri-apps/api/window";
@@ -12,6 +12,61 @@ import {
   sendNotification,
 } from "@tauri-apps/plugin-notification";
 import { openUrl } from "@tauri-apps/plugin-opener";
+
+/** The installed game's pictures, as addresses an `<img>` loads. */
+export interface UnitIcons {
+  /** By upper-case blueprint id. */
+  units: Record<string, string>;
+  /**
+   * By lower-case strategic icon name, `icon_land1_directfire`, then by
+   * lower-case faction: the icon in that faction's colour.
+   */
+  strategic: Record<string, Record<string, string>>;
+}
+
+/** The factions the shell draws strategic icons for (`FACTION_COLOURS`). */
+const ICON_FACTIONS = ["uef", "aeon", "cybran", "seraphim"];
+
+/** What `unit_icons` answers with. Mirrors the shell's `UnitIcons`. */
+interface UnitIconNames {
+  units: string[];
+  strategic: string[];
+}
+
+/** The shell's `UNIT_ICON_SCHEME`, which serves one picture per request. */
+const UNIT_ICON_SCHEME = "unit-icon";
+
+/** One pathing layer of `map_analysis`. Mirrors the shell's `LayerPicture`. */
+export interface MapLayerPicture {
+  layer: "land" | "hover" | "amphibious" | "naval";
+  /** Regions after the game culls the small empty ones. */
+  regions: number;
+  /** From 0 to 1, the share of the map units of the layer can reach. */
+  reachable: number;
+  /** `data:image/png`, the size of the map: a colour per region, dark where they cannot go. */
+  image: string;
+}
+
+/** What `map_analysis` answers with. Mirrors the shell's `MapAnalysis`. */
+export interface MapAnalysis {
+  /** The `.scmap`'s own preview, the picture the layers are drawn over. */
+  preview: string;
+  /** In ogrids. */
+  width: number;
+  height: number;
+  hasWater: boolean;
+  /** Land first; hover, amphibious and naval only on a map with water. */
+  layers: MapLayerPicture[];
+  reclaim: {
+    mass: number;
+    energy: number;
+    props: number;
+    /** Props whose blueprint was found and so counted. */
+    valued: number;
+    /** `data:image/png`: brighter where there is more mass. */
+    image: string;
+  };
+}
 
 /**
  * What a file dialog looks like. Mirrors `PickRequest` in the shell's
@@ -111,6 +166,35 @@ export const native = {
    */
   readMarkedMapPreview(folderName: string): Promise<MarkedMapPreview> {
     return invoke<MarkedMapPreview>("read_marked_map_preview", { folderName });
+  },
+
+  /**
+   * Every unit's build icon and every strategic icon from the installed game
+   * (`infra::unit_icons`), as addresses on the shell's `unit-icon` scheme: the
+   * shell decodes a picture when an `<img>` asks for it, so only the icons on
+   * screen cost anything.
+   */
+  async readUnitIcons(): Promise<UnitIcons> {
+    const names = await invoke<UnitIconNames>("unit_icons");
+    const address = (name: string) => convertFileSrc(name, UNIT_ICON_SCHEME);
+    return {
+      units: Object.fromEntries(names.units.map((id) => [id, address(`unit-${id}`)])),
+      strategic: Object.fromEntries(
+        names.strategic.map((icon) => [
+          icon,
+          Object.fromEntries(ICON_FACTIONS.map((faction) => [faction, address(`strategic-${faction}-${icon}`)])),
+        ]),
+      ),
+    };
+  },
+
+  /**
+   * An installed map's pathing regions per layer and its reclaim, drawn over
+   * its preview (`infra::map_analysis`). A few megabytes of pictures, read
+   * when the dialog opens.
+   */
+  readMapAnalysis(folderName: string): Promise<MapAnalysis> {
+    return invoke<MapAnalysis>("map_analysis", { folderName });
   },
 
   /** One stored sound's bytes, for the page to decode. */

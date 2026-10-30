@@ -9,6 +9,8 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use crate::protocol::deep_link::DeepLink;
+
 /// A top-level destination. Most are placeholders today; each gets its feature
 /// slice as it lands. The frontend tab registry maps these 1:1 to views.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -95,14 +97,31 @@ pub enum SettingsSection {
     Diagnostics,
 }
 
-/// The list open inside Changelog: FAForever's game patches, or this client's
-/// own releases. See [`MapsSection`].
+/// The list open inside Changelog: FAForever's game patches, this client's own
+/// releases, or one unit's values across the game patches. See [`MapsSection`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum ChangelogSection {
     #[default]
     Game,
     Client,
+    Units,
+}
+
+/// A `faf://` link the client was asked to open, waiting for the frontend to
+/// show what it points at.
+///
+/// Held in the state rather than sent to the page once, because a link that
+/// started the client arrives before there is a page to send it to. The
+/// frontend says when it has shown it (`NavCommand::LinkShown`), so a page
+/// that loads again later does not open it a second time.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LinkRequest {
+    /// Counts up within a session, so two clicks on the same link are two
+    /// requests.
+    pub id: u32,
+    pub link: DeepLink,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -122,6 +141,9 @@ pub struct NavState {
     /// at one release: the update banner and the What's new popup select the
     /// tab and then the release.
     pub changelog_client_version: Option<String>,
+    /// The link waiting to be shown, if one is.
+    #[serde(default)]
+    pub link_request: Option<LinkRequest>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -149,6 +171,14 @@ pub enum NavEvent {
     /// release would not be on screen otherwise.
     ChangelogClientReleaseSelected {
         version: String,
+    },
+    /// A `faf://` link was read and is waiting to be shown.
+    LinkRequested {
+        request: LinkRequest,
+    },
+    /// The frontend has shown the link with this id.
+    LinkShown {
+        id: u32,
     },
 }
 
@@ -181,6 +211,15 @@ pub enum NavCommand {
     SelectChangelogClientRelease {
         version: String,
     },
+    /// Open a `faf://` link: from chat, or handed over by the operating
+    /// system. A link that cannot be read opens nothing and says so.
+    OpenLink {
+        url: String,
+    },
+    /// The link request with this id has been shown.
+    LinkShown {
+        id: u32,
+    },
 }
 
 pub fn reduce(state: &mut NavState, event: &NavEvent) {
@@ -194,6 +233,16 @@ pub fn reduce(state: &mut NavState, event: &NavEvent) {
         NavEvent::ChangelogClientReleaseSelected { version } => {
             state.changelog_section = ChangelogSection::Client;
             state.changelog_client_version = Some(version.clone());
+        }
+        NavEvent::LinkRequested { request } => state.link_request = Some(request.clone()),
+        NavEvent::LinkShown { id } => {
+            if state
+                .link_request
+                .as_ref()
+                .is_some_and(|request| request.id == *id)
+            {
+                state.link_request = None;
+            }
         }
     }
 }
@@ -242,6 +291,35 @@ mod tests {
         );
         assert_eq!(s.changelog_section, ChangelogSection::Game);
         assert_eq!(s.changelog_client_version.as_deref(), Some("0.4.0"));
+    }
+
+    #[test]
+    fn a_link_waits_until_the_frontend_has_shown_it() {
+        let mut s = NavState::default();
+        let request = |id| LinkRequest {
+            id,
+            link: DeepLink::Replay { id: 7 },
+        };
+        reduce(
+            &mut s,
+            &NavEvent::LinkRequested {
+                request: request(1),
+            },
+        );
+        reduce(
+            &mut s,
+            &NavEvent::LinkRequested {
+                request: request(2),
+            },
+        );
+        reduce(&mut s, &NavEvent::LinkShown { id: 1 });
+        assert_eq!(
+            s.link_request,
+            Some(request(2)),
+            "an older request being shown leaves a newer one waiting"
+        );
+        reduce(&mut s, &NavEvent::LinkShown { id: 2 });
+        assert_eq!(s.link_request, None);
     }
 
     #[test]

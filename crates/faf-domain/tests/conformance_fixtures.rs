@@ -3854,6 +3854,10 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a client that can check says so, and FAF Live is shown",
+            vec![StreamsEvent::Available.into()],
+        ),
+        case(
             "a channel goes live, is announced once, and goes off air",
             vec![
                 StreamsEvent::Checking.into(),
@@ -4113,6 +4117,142 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
             ],
+        ),
+        // ── unit history ─────────────────────────────────────────────────
+        case(
+            "a unit history keeps only the selected units, capped, and ignores late answers",
+            {
+                use faf_domain::protocol::unit_history::{
+                    UnitChange, UnitChangeRow, UnitHistory, UnitKind, UnitRelease, UnitSeries,
+                    UnitSource, UnitStat, UnitSummary, UnitValueKey, UnitWeapon, WeaponStat,
+                };
+                let summary = |id: &str| UnitSummary {
+                    id: id.into(),
+                    path: format!("units/{id}/{id}_unit.bp"),
+                    icon_url: format!("https://faforever.github.io/fa/assets/icons/{id}_icon.png"),
+                    name: Some("MA12 Striker".into()),
+                    description: Some("Medium Tank".into()),
+                    faction: Some("UEF".into()),
+                    tech: Some(1),
+                    kind: UnitKind::Land,
+                    strategic_icon: Some("icon_land1_directfire".into()),
+                    sort_priority: Some(40),
+                };
+                let history = |id: &str| UnitHistory {
+                    unit: summary(id),
+                    releases: vec![
+                        UnitRelease {
+                            release: "3700".into(),
+                            date: "2021-01-01".into(),
+                            source: UnitSource::BaseGame,
+                        },
+                        UnitRelease {
+                            release: "3701".into(),
+                            date: "2021-02-01".into(),
+                            source: UnitSource::Unavailable {
+                                reason: "offline".into(),
+                            },
+                        },
+                        UnitRelease {
+                            release: "3738".into(),
+                            date: "2022-01-01".into(),
+                            source: UnitSource::Repository,
+                        },
+                    ],
+                    weapons: vec![UnitWeapon {
+                        key: "MainGun".into(),
+                        name: "Gauss Cannon".into(),
+                        category: Some("Direct Fire".into()),
+                    }],
+                    series: vec![
+                        UnitSeries {
+                            key: UnitValueKey::Unit {
+                                stat: UnitStat::MaxHealth,
+                            },
+                            values: vec![Some(270.0), None, Some(300.0)],
+                        },
+                        UnitSeries {
+                            key: UnitValueKey::Weapon {
+                                weapon: "MainGun".into(),
+                                stat: WeaponStat::Dps,
+                            },
+                            values: vec![Some(16.0), None, Some(17.5)],
+                        },
+                    ],
+                    changes: vec![UnitChangeRow {
+                        release: "3738".into(),
+                        date: "2022-01-01".into(),
+                        changes: vec![
+                            UnitChange::Value {
+                                key: UnitValueKey::Unit {
+                                    stat: UnitStat::MaxHealth,
+                                },
+                                before: Some(270.0),
+                                after: Some(300.0),
+                            },
+                            UnitChange::Categories {
+                                added: vec!["SNIPEMODE".into()],
+                                removed: vec![],
+                            },
+                        ],
+                    }],
+                };
+                vec![
+                    UnitHistoryEvent::ListLoading.into(),
+                    UnitHistoryEvent::ListLoaded {
+                        units: vec![summary("UEL0201"), summary("URL0107")],
+                    }
+                    .into(),
+                    UnitHistoryEvent::ListFailed {
+                        reason: "no game".into(),
+                    }
+                    .into(),
+                    UnitHistoryEvent::SelectionChanged {
+                        ids: vec!["uel0201".into()],
+                    }
+                    .into(),
+                    UnitHistoryEvent::HistoryProgress {
+                        id: "UEL0201".into(),
+                        fetched: 12,
+                        total: 160,
+                    }
+                    .into(),
+                    UnitHistoryEvent::HistoryLoaded {
+                        history: Box::new(history("UEL0201")),
+                    }
+                    .into(),
+                    UnitHistoryEvent::SelectionChanged {
+                        ids: vec!["UEL0201".into(), "URL0107".into(), "UEL0201".into()],
+                    }
+                    .into(),
+                    UnitHistoryEvent::HistoryFailed {
+                        id: "URL0107".into(),
+                        reason: "offline".into(),
+                    }
+                    .into(),
+                    UnitHistoryEvent::SelectionChanged {
+                        ids: vec!["URL0107".into()],
+                    }
+                    .into(),
+                    UnitHistoryEvent::HistoryLoaded {
+                        history: Box::new(history("UEL0201")),
+                    }
+                    .into(),
+                    UnitHistoryEvent::HistoryProgress {
+                        id: "UAL0201".into(),
+                        fetched: 1,
+                        total: 2,
+                    }
+                    .into(),
+                    UnitHistoryEvent::SelectionChanged {
+                        ids: ["A", "B", "C", "D", "E", "F", "G"]
+                            .iter()
+                            .map(|id| id.to_string())
+                            .collect(),
+                    }
+                    .into(),
+                ]
+            },
         ),
         // ── changelog ────────────────────────────────────────────────────
         case(
@@ -4429,6 +4569,10 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
                 NavEvent::ChangelogSectionSelected {
+                    section: ChangelogSection::Units,
+                }
+                .into(),
+                NavEvent::ChangelogSectionSelected {
                     section: ChangelogSection::Game,
                 }
                 .into(),
@@ -4446,6 +4590,34 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
             ],
+        ),
+        case(
+            "a link waits until the frontend has shown it, and only that one is cleared",
+            {
+                use faf_domain::protocol::deep_link::DeepLink;
+                vec![
+                    NavEvent::LinkRequested {
+                        request: LinkRequest {
+                            id: 1,
+                            link: DeepLink::Map {
+                                folder_name: "setons_clutch.v0004".into(),
+                            },
+                        },
+                    }
+                    .into(),
+                    NavEvent::LinkRequested {
+                        request: LinkRequest {
+                            id: 2,
+                            link: DeepLink::Unit {
+                                id: "UEL0201".into(),
+                            },
+                        },
+                    }
+                    .into(),
+                    NavEvent::LinkShown { id: 1 }.into(),
+                    NavEvent::LinkShown { id: 2 }.into(),
+                ]
+            },
         ),
         case(
             "install check flips both flags and reports where paths resolve",

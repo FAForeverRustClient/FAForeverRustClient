@@ -84,6 +84,7 @@ fn slice_sizes(state: &faf_domain::AppState) -> Option<(usize, String)> {
         client_update => "clientUpdate",
         settings => "settings",
         changelog => "changelog",
+        unit_history => "unitHistory",
         connectivity => "connectivity",
     );
     sizes.sort_by_key(|(_, bytes)| std::cmp::Reverse(*bytes));

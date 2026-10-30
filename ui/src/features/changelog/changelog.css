@@ -814,3 +814,1030 @@
     padding: 18px 18px 32px;
   }
 }
+
+/* ── Unit history ──────────────────────────────────────────────────────── */
+
+/* A unit database's grid wants more room than a list of patch numbers. */
+.changelog-view.unit-history-view {
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+}
+
+/* Faction and tech level as two rows of exclusive choices, each the panel's
+   full width, so the grid below is filtered with one click. */
+.unit-history-filters {
+  display: grid;
+  gap: var(--space-2);
+  margin-right: var(--space-3);
+}
+
+.unit-history-segmented {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.unit-history-segmented button {
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 28px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A faction's glyph grey until it is pointed at or chosen, so the one chosen
+   is the only one in colour. Chosen, the button is drawn like the faction's
+   unit tiles below it. */
+.unit-history-faction-choice svg {
+  opacity: 0.55;
+  filter: grayscale(1);
+  transition: opacity 120ms ease, filter 120ms ease;
+}
+
+.unit-history-faction-choice:hover svg,
+.unit-history-faction-choice.is-active svg {
+  opacity: 1;
+  filter: none;
+}
+
+.unit-history-segmented .unit-history-faction-choice.is-active {
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.27), rgba(0, 0, 0, 0.27)),
+    var(--faction-tile);
+  box-shadow:
+    inset 0 0 0 1px var(--faction-tile-edge),
+    inset 0 0 4px 0 var(--faction-tile-glow);
+}
+
+.unit-history-faction + .unit-history-faction {
+  margin-top: var(--space-4);
+}
+
+/* A faction's heading: its glyph and name on a band in its colour, held at
+   the top while its units scroll under it. */
+.unit-history-faction h3 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 var(--space-2);
+  padding: 7px var(--space-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: linear-gradient(
+      to right,
+      color-mix(in srgb, var(--faction) 22%, var(--color-surface)),
+      var(--color-surface) 80%
+    ),
+    var(--color-surface);
+  border-left: 2px solid var(--faction);
+  border-radius: var(--radius-sm);
+}
+
+.unit-history-kind {
+  padding: 0 0 var(--space-2);
+}
+
+/* A kind's label with a hairline after it, so land, air, naval and
+   structures read as sections rather than stray words. */
+.unit-history-kind-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 6px var(--space-1);
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.unit-history-kind-label::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--color-border);
+}
+
+/* A tech level's row: its short name in a narrow column, then its icons. */
+.unit-history-tier {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: start;
+  gap: 4px;
+  padding-bottom: 4px;
+}
+
+.unit-history-tier-label {
+  padding-top: 15px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.unit-history-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Every element that carries a faction's colour reads it from here: the
+   FAF unit database's colours (`--color-unitdb-*`), since this section draws
+   units the way it does. */
+.unit-history-view .faction-uef {
+  --faction: var(--color-unitdb-uef);
+  --faction-tile: var(--color-unitdb-uef-tile);
+  --faction-tile-edge: var(--color-unitdb-uef-edge);
+  --faction-tile-glow: var(--color-unitdb-uef-glow);
+}
+
+.unit-history-view .faction-aeon {
+  --faction: var(--color-unitdb-aeon);
+  --faction-tile: var(--color-unitdb-aeon-tile);
+  --faction-tile-edge: var(--color-unitdb-aeon-edge);
+  --faction-tile-glow: var(--color-unitdb-aeon-glow);
+}
+
+.unit-history-view .faction-cybran {
+  --faction: var(--color-unitdb-cybran);
+  --faction-tile: var(--color-unitdb-cybran-tile);
+  --faction-tile-edge: var(--color-unitdb-cybran-edge);
+  --faction-tile-glow: var(--color-unitdb-cybran-glow);
+}
+
+.unit-history-view .faction-seraphim {
+  --faction: var(--color-unitdb-seraphim);
+  --faction-tile: var(--color-unitdb-seraphim-tile);
+  --faction-tile-edge: var(--color-unitdb-seraphim-edge);
+  --faction-tile-glow: var(--color-unitdb-seraphim-glow);
+}
+
+/* A unit's picture on a tile as the unit database draws one, wherever it
+   stands: in the grid, at the head, on a compared unit's card and beside
+   its changes. Its faction's fill under a dark veil, edged and lit from
+   inside in its colour. */
+.unit-history-icon,
+.unit-history-hero-picture,
+.unit-history-card-picture,
+.unit-history-change-picture {
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.27), rgba(0, 0, 0, 0.27)),
+    var(--faction-tile, var(--color-surface-raised));
+  border: 1px solid var(--faction-tile-edge, var(--color-border-strong));
+  border-radius: 5px;
+  box-shadow: inset 0 0 4px 0 var(--faction-tile-glow, transparent);
+  filter: contrast(110%);
+}
+
+/* A grid tile, with the strategic icon in the corner. Picked, it lights up
+   as the unit database's does and carries its unit's colour as a ring. */
+.unit-history-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  outline: 3px solid transparent;
+  outline-offset: 1px;
+  cursor: pointer;
+  transition: filter 120ms ease;
+}
+
+.unit-history-icon:hover {
+  filter: contrast(110%) brightness(120%);
+}
+
+.unit-history-icon:focus-visible {
+  outline-color: var(--color-accent);
+}
+
+.unit-history-icon.is-selected {
+  filter: contrast(120%) brightness(120%) saturate(120%);
+}
+
+.unit-history-icon:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* The strategic icon, already in its faction's colour, at its own size so
+   it stays sharp (12 to 20 pixels a side, in a box the largest fits). */
+.unit-history-strategic {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+/* ── The picked units ── */
+
+.unit-history-detail > .empty-state {
+  flex: 1 1 auto;
+}
+
+.unit-history-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) 24px 32px;
+}
+
+/* One unit: a raised head in its faction's colour, its values below it on
+   the facts strip the side panels use. */
+.unit-history-hero {
+  --facts-strip-bleed: 0px;
+  overflow: hidden;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.unit-history-hero-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--faction, var(--color-border-strong)) 18%, transparent),
+    transparent 60%
+  );
+}
+
+.unit-history-hero-picture {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+}
+
+.unit-history-hero-picture .unit-history-strategic {
+  top: 4px;
+  left: 4px;
+}
+
+.unit-history-hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.unit-history-hero-text h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.unit-history-hero-description {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.unit-history-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.unit-history-meta code {
+  padding: 1px 5px;
+  color: var(--color-muted);
+  font-size: 11px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-sm) - 2px);
+}
+
+.unit-history-hero-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  text-align: right;
+}
+
+.unit-history-hero-count {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.unit-history-hero-count strong {
+  color: var(--color-text);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.unit-history-hero-remove {
+  align-self: start;
+}
+
+.unit-history-facts.facts-strip {
+  border-bottom: 0;
+}
+
+.unit-history-facts-caption {
+  margin: 0;
+  padding: 0 var(--space-4) 10px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
+}
+
+/* How far a value moved: a small square-cornered tag after it, green when the
+   unit is better off for it and red when it is worse off. Up is not better: a
+   higher cost is a nerf, a higher health a buff (`valueVerdict`). A value
+   with no better direction keeps the tag grey. */
+.unit-history-delta {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 4px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  vertical-align: 2px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: calc(var(--radius-sm) - 2px);
+}
+
+.unit-history-view {
+  --verdict-buff: var(--color-ok);
+  --verdict-nerf: var(--color-error);
+  --verdict-mixed: var(--color-warn);
+}
+
+.unit-history-delta.is-buff {
+  color: var(--color-ok-text);
+  background: color-mix(in srgb, var(--verdict-buff) 12%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--verdict-buff) 45%, transparent);
+}
+
+.unit-history-delta.is-nerf {
+  color: var(--color-error-text);
+  background: color-mix(in srgb, var(--verdict-nerf) 12%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--verdict-nerf) 45%, transparent);
+}
+
+/* "Buff", "Nerf", "Buff and nerf": a square in the colour, then the word. */
+.unit-history-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.unit-history-verdict-mark {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--verdict);
+  border-radius: 2px;
+}
+
+.unit-history-verdict.is-buff {
+  --verdict: var(--verdict-buff);
+}
+
+.unit-history-verdict.is-nerf {
+  --verdict: var(--verdict-nerf);
+}
+
+.unit-history-verdict.is-mixed {
+  --verdict: var(--verdict-mixed);
+}
+
+.unit-history-hero-verdicts {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.unit-history-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--space-3);
+  margin-left: auto;
+}
+
+/* Several units: a card each with its line's colour along the top. */
+.unit-history-compare-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.unit-history-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.unit-history-card-unit {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px 10px 10px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-top: 3px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.unit-history-card-picture {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+}
+
+.unit-history-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.unit-history-card-text strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unit-history-card-text .unit-history-meta {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.unit-history-card-text .unit-history-meta svg {
+  flex: none;
+}
+
+.unit-history-card-text .unit-history-meta-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unit-history-card-text .unit-history-meta code {
+  display: none;
+}
+
+.unit-history-chip-remove {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.unit-history-chip-remove:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.unit-history-full {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+}
+
+/* A card: a raised head with its title, then its content. The chart, the
+   comparison and the changes each sit on one. */
+.unit-history-card {
+  min-width: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.unit-history-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--space-3);
+  padding: 10px var(--space-4);
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.unit-history-card-head h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.unit-history-card-head p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.unit-history-count {
+  padding: 0 6px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-sm) - 2px);
+}
+
+.unit-history-card-note {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  font-size: 12px;
+}
+
+.unit-history-progress p {
+  margin: 0 0 4px;
+}
+
+.unit-history-progress progress {
+  width: min(420px, 100%);
+}
+
+/* The comparison: a value per row, a unit per column. */
+.unit-history-table-scroll {
+  overflow-x: auto;
+}
+
+.unit-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.unit-history-table th,
+.unit-history-table td {
+  padding: 7px var(--space-4);
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.unit-history-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.unit-history-table thead th {
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.unit-history-table thead th:first-child,
+.unit-history-table tbody th {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.unit-history-table td {
+  font-weight: 600;
+}
+
+.unit-history-table-unit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The chart beside the list of its values when there is room; under it,
+   when there is not. */
+.unit-history-graph-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+}
+
+.unit-history-graph-plot {
+  min-width: 0;
+  padding: var(--space-3) var(--space-3) var(--space-2) 0;
+}
+
+.unit-history-graph-plot > p {
+  margin: 0 0 var(--space-2) var(--space-4);
+  font-size: 12px;
+}
+
+@container changelog-note (max-width: 760px) {
+  .unit-history-graph-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .unit-history-values {
+    border-top: 1px solid var(--color-border);
+    border-left: 0;
+  }
+
+  .unit-history-hero-head {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .unit-history-hero-side {
+    grid-column: 2 / -1;
+    grid-row: 2;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: var(--space-3);
+  }
+}
+
+.unit-history-values {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3);
+  border: 0;
+  border-left: 1px solid var(--color-border);
+}
+
+.unit-history-values legend {
+  float: left;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.unit-history-value-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.unit-history-value-group-title {
+  margin-bottom: 2px;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unit-history-value {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 3px 6px;
+  color: var(--color-muted);
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.unit-history-value:hover {
+  background: var(--color-surface-hover);
+}
+
+.unit-history-value.is-ticked {
+  color: var(--color-text);
+}
+
+.unit-history-value span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unit-history-sample {
+  flex: none;
+  display: block;
+}
+
+.unit-history-sample line {
+  stroke-width: 2;
+}
+
+.unit-history-chart {
+  position: relative;
+  min-width: 0;
+}
+
+.unit-history-chart-empty {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.unit-history-svg {
+  display: block;
+  cursor: pointer;
+}
+
+.unit-history-grid {
+  stroke: var(--color-border);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+.unit-history-baseline {
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.unit-history-axis {
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+}
+
+.unit-history-label {
+  fill: var(--color-subtle);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.unit-history-hover-band {
+  fill: var(--color-surface-hover);
+  opacity: 0.6;
+}
+
+.unit-history-line {
+  fill: none;
+  stroke-width: 2.25;
+  stroke-linejoin: round;
+}
+
+.unit-history-change {
+  stroke: var(--color-surface);
+  stroke-width: 2;
+}
+
+.unit-history-tooltip {
+  position: absolute;
+  top: 16px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  font-size: 12px;
+  box-shadow: var(--shadow-popover);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.unit-history-tooltip strong {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.unit-history-tooltip-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, auto) auto;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.unit-history-tooltip-label {
+  color: var(--color-muted);
+}
+
+/* The changes as a timeline: a release and its date on the left, a dot on a
+   line through all of them, what the release changed on the right. */
+.unit-history-timeline {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  list-style: none;
+}
+
+.unit-history-timeline-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: 36px;
+  padding: 8px var(--space-2) 8px 0;
+  border-radius: var(--radius-sm);
+}
+
+.unit-history-timeline-row:hover {
+  background: color-mix(in srgb, var(--color-surface-hover) 55%, transparent);
+}
+
+.unit-history-timeline-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(6.5rem + 18px);
+  width: 1px;
+  background: var(--color-border);
+}
+
+.unit-history-timeline-row:first-child::before {
+  top: 18px;
+}
+
+.unit-history-timeline-row:last-child::before {
+  bottom: calc(100% - 18px);
+}
+
+/* A release's dot on the line: filled in green for a buff, red for a nerf,
+   amber for both, hollow in the patch colour when it changed nothing that
+   has a better direction. */
+.unit-history-timeline-node {
+  position: absolute;
+  top: 13px;
+  left: calc(6.5rem + 13px);
+  width: 11px;
+  height: 11px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-event-patch);
+  border-radius: 2px;
+}
+
+.unit-history-timeline-node.is-buff {
+  background: var(--verdict-buff);
+  border-color: var(--verdict-buff);
+}
+
+.unit-history-timeline-node.is-nerf {
+  background: var(--verdict-nerf);
+  border-color: var(--verdict-nerf);
+}
+
+.unit-history-timeline-node.is-mixed {
+  background: linear-gradient(135deg, var(--verdict-buff) 50%, var(--verdict-nerf) 50%);
+  border-color: var(--verdict-mixed);
+}
+
+.unit-history-timeline-release {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  text-align: right;
+}
+
+.unit-history-timeline-release time {
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+.unit-history-release {
+  padding: 0;
+  color: var(--color-event-patch);
+  font: inherit;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.unit-history-release:hover {
+  text-decoration: underline;
+}
+
+.unit-history-hero-side .unit-history-release {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.unit-history-timeline-units {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.unit-history-change-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.unit-history-change-unit-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.unit-history-change-picture {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+}
+
+.unit-history-change-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+/* A value's name in a column, its old and new value after it, so a release's
+   lines align like a table. */
+.unit-history-change-line {
+  display: grid;
+  grid-template-columns: minmax(9rem, 14rem) minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.unit-history-change-label {
+  color: var(--color-muted);
+}
+
+.unit-history-change-values {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.unit-history-old {
+  color: var(--color-subtle);
+  text-decoration: line-through;
+}
+
+.unit-history-new {
+  color: var(--color-text);
+  font-weight: 650;
+}
+
+.unit-history-change-values svg {
+  flex: none;
+  color: var(--color-subtle);
+}
+
+.unit-history-change-values .unit-history-delta {
+  margin-left: 2px;
+  vertical-align: 0;
+}
+
+.unit-history-source {
+  display: inline-block;
+  padding: 0 5px;
+  color: var(--color-muted);
+  font-size: 11px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: calc(var(--radius-sm) - 2px);
+}

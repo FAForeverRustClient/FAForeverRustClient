@@ -621,6 +621,27 @@
       ]
     },
     {
+      "name": "a client that can check says so, and FAF Live is shown",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "type": "available"
+            },
+            "kind": "Streams"
+          },
+          "expected": {
+            "announced": [],
+            "available": true,
+            "live": [],
+            "status": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "a channel goes live, is announced once, and goes off air",
       "steps": [
         {
@@ -632,6 +653,7 @@
           },
           "expected": {
             "announced": [],
+            "available": false,
             "live": [],
             "status": {
               "type": "checking"
@@ -661,6 +683,7 @@
           },
           "expected": {
             "announced": [],
+            "available": false,
             "live": [
               {
                 "channel": "faflive",
@@ -694,6 +717,7 @@
             "announced": [
               "twitch:1"
             ],
+            "available": false,
             "live": [
               {
                 "channel": "faflive",
@@ -736,6 +760,7 @@
             "announced": [
               "twitch:1"
             ],
+            "available": false,
             "live": [
               {
                 "channel": "faflive",
@@ -767,6 +792,7 @@
             "announced": [
               "twitch:1"
             ],
+            "available": false,
             "live": [],
             "status": {
               "type": "ready"
@@ -801,6 +827,7 @@
           },
           "expected": {
             "announced": [],
+            "available": false,
             "live": [
               {
                 "channel": "faflive",
@@ -830,6 +857,7 @@
           },
           "expected": {
             "announced": [],
+            "available": false,
             "live": [
               {
                 "channel": "faflive",
@@ -2484,6 +2512,1193 @@
             "profileError": "",
             "profileStatus": "idle",
             "requestedLogin": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "a unit history keeps only the selected units, capped, and ignores late answers",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "type": "listLoading"
+            },
+            "kind": "UnitHistory"
+          },
+          "expected": {
+            "histories": {},
+            "listStatus": {
+              "type": "loading"
+            },
+            "selected": [],
+            "units": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "units": [
+                  {
+                    "description": "Medium Tank",
+                    "faction": "UEF",
+                    "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                    "id": "UEL0201",
+                    "kind": "land",
+                    "name": "MA12 Striker",
+                    "path": "units/UEL0201/UEL0201_unit.bp",
+                    "sortPriority": 40,
+                    "strategicIcon": "icon_land1_directfire",
+                    "tech": 1
+                  },
+                  {
+                    "description": "Medium Tank",
+                    "faction": "UEF",
+                    "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
+                    "id": "URL0107",
+                    "kind": "land",
+                    "name": "MA12 Striker",
+                    "path": "units/URL0107/URL0107_unit.bp",
+                    "sortPriority": 40,
+                    "strategicIcon": "icon_land1_directfire",
+                    "tech": 1
+                  }
+                ]
+              },
+              "type": "listLoaded"
+            },
+            "kind": "UnitHistory"
+          },
+          "expected": {
+            "histories": {},
+            "listStatus": {
+              "type": "ready"
+            },
+            "selected": [],
+            "units": [
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                "id": "UEL0201",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/UEL0201/UEL0201_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              },
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
+                "id": "URL0107",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/URL0107/URL0107_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "reason": "no game"
+              },
+              "type": "listFailed"
+            },
+            "kind": "UnitHistory"
+          },
+          "expected": {
+            "histories": {},
+            "listStatus": {
+              "payload": {
+                "reason": "no game"
+              },
+              "type": "failed"
+            },
+            "selected": [],
+            "units": [
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                "id": "UEL0201",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/UEL0201/UEL0201_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              },
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
+                "id": "URL0107",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/URL0107/URL0107_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "ids": [
+                  "uel0201"
+                ]
+              },
+              "type": "selectionChanged"
+            },
+            "kind": "UnitHistory"
+          },
+          "expected": {
+            "histories": {},
+            "listStatus": {
+              "payload": {
+                "reason": "no game"
+              },
+              "type": "failed"
+            },
+            "selected": [
+              "UEL0201"
+            ],
+            "units": [
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                "id": "UEL0201",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/UEL0201/UEL0201_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              },
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
+                "id": "URL0107",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/URL0107/URL0107_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "fetched": 12,
+                "id": "UEL0201",
+                "total": 160
+              },
+              "type": "historyProgress"
+            },
+            "kind": "UnitHistory"
+          },
+          "expected": {
+            "histories": {
+              "UEL0201": {
+                "payload": {
+                  "fetched": 12,
+                  "total": 160
+                },
+                "type": "loading"
+              }
+            },
+            "listStatus": {
+              "payload": {
+                "reason": "no game"
+              },
+              "type": "failed"
+            },
+            "selected": [
+              "UEL0201"
+            ],
+            "units": [
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                "id": "UEL0201",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/UEL0201/UEL0201_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              },
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
+                "id": "URL0107",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/URL0107/URL0107_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "history": {
+                  "changes": [
+                    {
+                      "changes": [
+                        {
+                          "payload": {
+                            "after": 300.0,
+                            "before": 270.0,
+                            "key": {
+                              "payload": {
+                                "stat": "maxHealth"
+                              },
+                              "type": "unit"
+                            }
+                          },
+                          "type": "value"
+                        },
+                        {
+                          "payload": {
+                            "added": [
+                              "SNIPEMODE"
+                            ],
+                            "removed": []
+                          },
+                          "type": "categories"
+                        }
+                      ],
+                      "date": "2022-01-01",
+                      "release": "3738"
+                    }
+                  ],
+                  "releases": [
+                    {
+                      "date": "2021-01-01",
+                      "release": "3700",
+                      "source": {
+                        "type": "baseGame"
+                      }
+                    },
+                    {
+                      "date": "2021-02-01",
+                      "release": "3701",
+                      "source": {
+                        "payload": {
+                          "reason": "offline"
+                        },
+                        "type": "unavailable"
+                      }
+                    },
+                    {
+                      "date": "2022-01-01",
+                      "release": "3738",
+                      "source": {
+                        "type": "repository"
+                      }
+                    }
+                  ],
+                  "series": [
+                    {
+                      "key": {
+                        "payload": {
+                          "stat": "maxHealth"
+                        },
+                        "type": "unit"
+                      },
+                      "values": [
+                        270.0,
+                        null,
+                        300.0
+                      ]
+                    },
+                    {
+                      "key": {
+                        "payload": {
+                          "stat": "dps",
+                          "weapon": "MainGun"
+                        },
+                        "type": "weapon"
+                      },
+                      "values": [
+                        16.0,
+                        null,
+                        17.5
+                      ]
+                    }
+                  ],
+                  "unit": {
+                    "description": "Medium Tank",
+                    "faction": "UEF",
+                    "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                    "id": "UEL0201",
+                    "kind": "land",
+                    "name": "MA12 Striker",
+                    "path": "units/UEL0201/UEL0201_unit.bp",
+                    "sortPriority": 40,
+                    "strategicIcon": "icon_land1_directfire",
+                    "tech": 1
+                  },
+                  "weapons": [
+                    {
+                      "category": "Direct Fire",
+                      "key": "MainGun",
+                      "name": "Gauss Cannon"
+                    }
+                  ]
+                }
+              },
+              "type": "historyLoaded"
+            },
+            "kind": "UnitHistory"
+          },
+          "expected": {
+            "histories": {
+              "UEL0201": {
+                "payload": {
+                  "history": {
+                    "changes": [
+                      {
+                        "changes": [
+                          {
+                            "payload": {
+                              "after": 300.0,
+                              "before": 270.0,
+                              "key": {
+                                "payload": {
+                                  "stat": "maxHealth"
+                                },
+                                "type": "unit"
+                              }
+                            },
+                            "type": "value"
+                          },
+                          {
+                            "payload": {
+                              "added": [
+                                "SNIPEMODE"
+                              ],
+                              "removed": []
+                            },
+                            "type": "categories"
+                          }
+                        ],
+                        "date": "2022-01-01",
+                        "release": "3738"
+                      }
+                    ],
+                    "releases": [
+                      {
+                        "date": "2021-01-01",
+                        "release": "3700",
+                        "source": {
+                          "type": "baseGame"
+                        }
+                      },
+                      {
+                        "date": "2021-02-01",
+                        "release": "3701",
+                        "source": {
+                          "payload": {
+                            "reason": "offline"
+                          },
+                          "type": "unavailable"
+                        }
+                      },
+                      {
+                        "date": "2022-01-01",
+                        "release": "3738",
+                        "source": {
+                          "type": "repository"
+                        }
+                      }
+                    ],
+                    "series": [
+                      {
+                        "key": {
+                          "payload": {
+                            "stat": "maxHealth"
+                          },
+                          "type": "unit"
+                        },
+                        "values": [
+                          270.0,
+                          null,
+                          300.0
+                        ]
+                      },
+                      {
+                        "key": {
+                          "payload": {
+                            "stat": "dps",
+                            "weapon": "MainGun"
+                          },
+                          "type": "weapon"
+                        },
+                        "values": [
+                          16.0,
+                          null,
+                          17.5
+                        ]
+                      }
+                    ],
+                    "unit": {
+                      "description": "Medium Tank",
+                      "faction": "UEF",
+                      "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                      "id": "UEL0201",
+                      "kind": "land",
+                      "name": "MA12 Striker",
+                      "path": "units/UEL0201/UEL0201_unit.bp",
+                      "sortPriority": 40,
+                      "strategicIcon": "icon_land1_directfire",
+                      "tech": 1
+                    },
+                    "weapons": [
+                      {
+                        "category": "Direct Fire",
+                        "key": "MainGun",
+                        "name": "Gauss Cannon"
+                      }
+                    ]
+                  }
+                },
+                "type": "ready"
+              }
+            },
+            "listStatus": {
+              "payload": {
+                "reason": "no game"
+              },
+              "type": "failed"
+            },
+            "selected": [
+              "UEL0201"
+            ],
+            "units": [
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                "id": "UEL0201",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/UEL0201/UEL0201_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              },
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
+                "id": "URL0107",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/URL0107/URL0107_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "ids": [
+                  "UEL0201",
+                  "URL0107",
+                  "UEL0201"
+                ]
+              },
+              "type": "selectionChanged"
+            },
+            "kind": "UnitHistory"
+          },
+          "expected": {
+            "histories": {
+              "UEL0201": {
+                "payload": {
+                  "history": {
+                    "changes": [
+                      {
+                        "changes": [
+                          {
+                            "payload": {
+                              "after": 300.0,
+                              "before": 270.0,
+                              "key": {
+                                "payload": {
+                                  "stat": "maxHealth"
+                                },
+                                "type": "unit"
+                              }
+                            },
+                            "type": "value"
+                          },
+                          {
+                            "payload": {
+                              "added": [
+                                "SNIPEMODE"
+                              ],
+                              "removed": []
+                            },
+                            "type": "categories"
+                          }
+                        ],
+                        "date": "2022-01-01",
+                        "release": "3738"
+                      }
+                    ],
+                    "releases": [
+                      {
+                        "date": "2021-01-01",
+                        "release": "3700",
+                        "source": {
+                          "type": "baseGame"
+                        }
+                      },
+                      {
+                        "date": "2021-02-01",
+                        "release": "3701",
+                        "source": {
+                          "payload": {
+                            "reason": "offline"
+                          },
+                          "type": "unavailable"
+                        }
+                      },
+                      {
+                        "date": "2022-01-01",
+                        "release": "3738",
+                        "source": {
+                          "type": "repository"
+                        }
+                      }
+                    ],
+                    "series": [
+                      {
+                        "key": {
+                          "payload": {
+                            "stat": "maxHealth"
+                          },
+                          "type": "unit"
+                        },
+                        "values": [
+                          270.0,
+                          null,
+                          300.0
+                        ]
+                      },
+                      {
+                        "key": {
+                          "payload": {
+                            "stat": "dps",
+                            "weapon": "MainGun"
+                          },
+                          "type": "weapon"
+                        },
+                        "values": [
+                          16.0,
+                          null,
+                          17.5
+                        ]
+                      }
+                    ],
+                    "unit": {
+                      "description": "Medium Tank",
+                      "faction": "UEF",
+                      "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                      "id": "UEL0201",
+                      "kind": "land",
+                      "name": "MA12 Striker",
+                      "path": "units/UEL0201/UEL0201_unit.bp",
+                      "sortPriority": 40,
+                      "strategicIcon": "icon_land1_directfire",
+                      "tech": 1
+                    },
+                    "weapons": [
+                      {
+                        "category": "Direct Fire",
+                        "key": "MainGun",
+                        "name": "Gauss Cannon"
+                      }
+                    ]
+                  }
+                },
+                "type": "ready"
+              }
+            },
+            "listStatus": {
+              "payload": {
+                "reason": "no game"
+              },
+              "type": "failed"
+            },
+            "selected": [
+              "UEL0201",
+              "URL0107"
+            ],
+            "units": [
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                "id": "UEL0201",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/UEL0201/UEL0201_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              },
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
+                "id": "URL0107",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/URL0107/URL0107_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "id": "URL0107",
+                "reason": "offline"
+              },
+              "type": "historyFailed"
+            },
+            "kind": "UnitHistory"
+          },
+          "expected": {
+            "histories": {
+              "UEL0201": {
+                "payload": {
+                  "history": {
+                    "changes": [
+                      {
+                        "changes": [
+                          {
+                            "payload": {
+                              "after": 300.0,
+                              "before": 270.0,
+                              "key": {
+                                "payload": {
+                                  "stat": "maxHealth"
+                                },
+                                "type": "unit"
+                              }
+                            },
+                            "type": "value"
+                          },
+                          {
+                            "payload": {
+                              "added": [
+                                "SNIPEMODE"
+                              ],
+                              "removed": []
+                            },
+                            "type": "categories"
+                          }
+                        ],
+                        "date": "2022-01-01",
+                        "release": "3738"
+                      }
+                    ],
+                    "releases": [
+                      {
+                        "date": "2021-01-01",
+                        "release": "3700",
+                        "source": {
+                          "type": "baseGame"
+                        }
+                      },
+                      {
+                        "date": "2021-02-01",
+                        "release": "3701",
+                        "source": {
+                          "payload": {
+                            "reason": "offline"
+                          },
+                          "type": "unavailable"
+                        }
+                      },
+                      {
+                        "date": "2022-01-01",
+                        "release": "3738",
+                        "source": {
+                          "type": "repository"
+                        }
+                      }
+                    ],
+                    "series": [
+                      {
+                        "key": {
+                          "payload": {
+                            "stat": "maxHealth"
+                          },
+                          "type": "unit"
+                        },
+                        "values": [
+                          270.0,
+                          null,
+                          300.0
+                        ]
+                      },
+                      {
+                        "key": {
+                          "payload": {
+                            "stat": "dps",
+                            "weapon": "MainGun"
+                          },
+                          "type": "weapon"
+                        },
+                        "values": [
+                          16.0,
+                          null,
+                          17.5
+                        ]
+                      }
+                    ],
+                    "unit": {
+                      "description": "Medium Tank",
+                      "faction": "UEF",
+                      "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                      "id": "UEL0201",
+                      "kind": "land",
+                      "name": "MA12 Striker",
+                      "path": "units/UEL0201/UEL0201_unit.bp",
+                      "sortPriority": 40,
+                      "strategicIcon": "icon_land1_directfire",
+                      "tech": 1
+                    },
+                    "weapons": [
+                      {
+                        "category": "Direct Fire",
+                        "key": "MainGun",
+                        "name": "Gauss Cannon"
+                      }
+                    ]
+                  }
+                },
+                "type": "ready"
+              },
+              "URL0107": {
+                "payload": {
+                  "reason": "offline"
+                },
+                "type": "failed"
+              }
+            },
+            "listStatus": {
+              "payload": {
+                "reason": "no game"
+              },
+              "type": "failed"
+            },
+            "selected": [
+              "UEL0201",
+              "URL0107"
+            ],
+            "units": [
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                "id": "UEL0201",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/UEL0201/UEL0201_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              },
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
+                "id": "URL0107",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/URL0107/URL0107_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "ids": [
+                  "URL0107"
+                ]
+              },
+              "type": "selectionChanged"
+            },
+            "kind": "UnitHistory"
+          },
+          "expected": {
+            "histories": {
+              "URL0107": {
+                "payload": {
+                  "reason": "offline"
+                },
+                "type": "failed"
+              }
+            },
+            "listStatus": {
+              "payload": {
+                "reason": "no game"
+              },
+              "type": "failed"
+            },
+            "selected": [
+              "URL0107"
+            ],
+            "units": [
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                "id": "UEL0201",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/UEL0201/UEL0201_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              },
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
+                "id": "URL0107",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/URL0107/URL0107_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "history": {
+                  "changes": [
+                    {
+                      "changes": [
+                        {
+                          "payload": {
+                            "after": 300.0,
+                            "before": 270.0,
+                            "key": {
+                              "payload": {
+                                "stat": "maxHealth"
+                              },
+                              "type": "unit"
+                            }
+                          },
+                          "type": "value"
+                        },
+                        {
+                          "payload": {
+                            "added": [
+                              "SNIPEMODE"
+                            ],
+                            "removed": []
+                          },
+                          "type": "categories"
+                        }
+                      ],
+                      "date": "2022-01-01",
+                      "release": "3738"
+                    }
+                  ],
+                  "releases": [
+                    {
+                      "date": "2021-01-01",
+                      "release": "3700",
+                      "source": {
+                        "type": "baseGame"
+                      }
+                    },
+                    {
+                      "date": "2021-02-01",
+                      "release": "3701",
+                      "source": {
+                        "payload": {
+                          "reason": "offline"
+                        },
+                        "type": "unavailable"
+                      }
+                    },
+                    {
+                      "date": "2022-01-01",
+                      "release": "3738",
+                      "source": {
+                        "type": "repository"
+                      }
+                    }
+                  ],
+                  "series": [
+                    {
+                      "key": {
+                        "payload": {
+                          "stat": "maxHealth"
+                        },
+                        "type": "unit"
+                      },
+                      "values": [
+                        270.0,
+                        null,
+                        300.0
+                      ]
+                    },
+                    {
+                      "key": {
+                        "payload": {
+                          "stat": "dps",
+                          "weapon": "MainGun"
+                        },
+                        "type": "weapon"
+                      },
+                      "values": [
+                        16.0,
+                        null,
+                        17.5
+                      ]
+                    }
+                  ],
+                  "unit": {
+                    "description": "Medium Tank",
+                    "faction": "UEF",
+                    "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                    "id": "UEL0201",
+                    "kind": "land",
+                    "name": "MA12 Striker",
+                    "path": "units/UEL0201/UEL0201_unit.bp",
+                    "sortPriority": 40,
+                    "strategicIcon": "icon_land1_directfire",
+                    "tech": 1
+                  },
+                  "weapons": [
+                    {
+                      "category": "Direct Fire",
+                      "key": "MainGun",
+                      "name": "Gauss Cannon"
+                    }
+                  ]
+                }
+              },
+              "type": "historyLoaded"
+            },
+            "kind": "UnitHistory"
+          },
+          "expected": {
+            "histories": {
+              "URL0107": {
+                "payload": {
+                  "reason": "offline"
+                },
+                "type": "failed"
+              }
+            },
+            "listStatus": {
+              "payload": {
+                "reason": "no game"
+              },
+              "type": "failed"
+            },
+            "selected": [
+              "URL0107"
+            ],
+            "units": [
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                "id": "UEL0201",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/UEL0201/UEL0201_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              },
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
+                "id": "URL0107",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/URL0107/URL0107_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "fetched": 1,
+                "id": "UAL0201",
+                "total": 2
+              },
+              "type": "historyProgress"
+            },
+            "kind": "UnitHistory"
+          },
+          "expected": {
+            "histories": {
+              "URL0107": {
+                "payload": {
+                  "reason": "offline"
+                },
+                "type": "failed"
+              }
+            },
+            "listStatus": {
+              "payload": {
+                "reason": "no game"
+              },
+              "type": "failed"
+            },
+            "selected": [
+              "URL0107"
+            ],
+            "units": [
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                "id": "UEL0201",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/UEL0201/UEL0201_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              },
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
+                "id": "URL0107",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/URL0107/URL0107_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "ids": [
+                  "A",
+                  "B",
+                  "C",
+                  "D",
+                  "E",
+                  "F",
+                  "G"
+                ]
+              },
+              "type": "selectionChanged"
+            },
+            "kind": "UnitHistory"
+          },
+          "expected": {
+            "histories": {},
+            "listStatus": {
+              "payload": {
+                "reason": "no game"
+              },
+              "type": "failed"
+            },
+            "selected": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "E",
+              "F"
+            ],
+            "units": [
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
+                "id": "UEL0201",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/UEL0201/UEL0201_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              },
+              {
+                "description": "Medium Tank",
+                "faction": "UEF",
+                "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
+                "id": "URL0107",
+                "kind": "land",
+                "name": "MA12 Striker",
+                "path": "units/URL0107/URL0107_unit.bp",
+                "sortPriority": 40,
+                "strategicIcon": "icon_land1_directfire",
+                "tech": 1
+              }
+            ]
           }
         }
       ]
@@ -4388,6 +5603,7 @@
             "activeTab": "play",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -4408,6 +5624,7 @@
             "activeTab": "training",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -4433,6 +5650,7 @@
             "activeTab": "maps",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -4453,6 +5671,7 @@
             "activeTab": "maps",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "installed",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -4473,6 +5692,7 @@
             "activeTab": "maps",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "installed",
             "modsSection": "installed",
             "replaysSection": "online",
@@ -4493,6 +5713,7 @@
             "activeTab": "maps",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "installed",
             "modsSection": "installed",
             "replaysSection": "live",
@@ -4513,6 +5734,7 @@
             "activeTab": "maps",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "installed",
             "modsSection": "installed",
             "replaysSection": "live",
@@ -4533,6 +5755,7 @@
             "activeTab": "chat",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "installed",
             "modsSection": "installed",
             "replaysSection": "live",
@@ -4558,6 +5781,7 @@
             "activeTab": "changelog",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -4578,6 +5802,28 @@
             "activeTab": "changelog",
             "changelogClientVersion": null,
             "changelogSection": "client",
+            "linkRequest": null,
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "section": "units"
+              },
+              "type": "changelogSectionSelected"
+            },
+            "kind": "Nav"
+          },
+          "expected": {
+            "activeTab": "changelog",
+            "changelogClientVersion": null,
+            "changelogSection": "units",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -4598,6 +5844,7 @@
             "activeTab": "changelog",
             "changelogClientVersion": null,
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -4618,6 +5865,7 @@
             "activeTab": "changelog",
             "changelogClientVersion": "0.4.0",
             "changelogSection": "client",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -4638,6 +5886,7 @@
             "activeTab": "changelog",
             "changelogClientVersion": "0.4.0",
             "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -4658,6 +5907,136 @@
             "activeTab": "changelog",
             "changelogClientVersion": "0.3.0",
             "changelogSection": "client",
+            "linkRequest": null,
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a link waits until the frontend has shown it, and only that one is cleared",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "request": {
+                  "id": 1,
+                  "link": {
+                    "payload": {
+                      "folderName": "setons_clutch.v0004"
+                    },
+                    "type": "map"
+                  }
+                }
+              },
+              "type": "linkRequested"
+            },
+            "kind": "Nav"
+          },
+          "expected": {
+            "activeTab": "news",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
+            "linkRequest": {
+              "id": 1,
+              "link": {
+                "payload": {
+                  "folderName": "setons_clutch.v0004"
+                },
+                "type": "map"
+              }
+            },
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "request": {
+                  "id": 2,
+                  "link": {
+                    "payload": {
+                      "id": "UEL0201"
+                    },
+                    "type": "unit"
+                  }
+                }
+              },
+              "type": "linkRequested"
+            },
+            "kind": "Nav"
+          },
+          "expected": {
+            "activeTab": "news",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
+            "linkRequest": {
+              "id": 2,
+              "link": {
+                "payload": {
+                  "id": "UEL0201"
+                },
+                "type": "unit"
+              }
+            },
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "id": 1
+              },
+              "type": "linkShown"
+            },
+            "kind": "Nav"
+          },
+          "expected": {
+            "activeTab": "news",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
+            "linkRequest": {
+              "id": 2,
+              "link": {
+                "payload": {
+                  "id": "UEL0201"
+                },
+                "type": "unit"
+              }
+            },
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "id": 2
+              },
+              "type": "linkShown"
+            },
+            "kind": "Nav"
+          },
+          "expected": {
+            "activeTab": "news",
+            "changelogClientVersion": null,
+            "changelogSection": "game",
+            "linkRequest": null,
             "mapsSection": "vault",
             "modsSection": "vault",
             "replaysSection": "online",
@@ -127724,6 +129103,7 @@
       "activeTab": "news",
       "changelogClientVersion": null,
       "changelogSection": "game",
+      "linkRequest": null,
       "mapsSection": "vault",
       "modsSection": "vault",
       "replaysSection": "online",
@@ -128166,6 +129546,7 @@
     },
     "streams": {
       "announced": [],
+      "available": false,
       "live": [],
       "status": {
         "type": "idle"
@@ -128351,6 +129732,14 @@
         "type": "idle"
       },
       "tutorials": []
+    },
+    "unitHistory": {
+      "histories": {},
+      "listStatus": {
+        "type": "idle"
+      },
+      "selected": [],
+      "units": []
     },
     "uploads": {
       "preview": "",

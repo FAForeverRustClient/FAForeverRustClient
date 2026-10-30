@@ -10,9 +10,8 @@ import { friendsInGame } from "./friendPresence";
 import { t } from "../../../i18n";
 import { PlayerName } from "../../../shared/components/nameColors";
 import { displayedRating, gameLeaderboard } from "../../../shared/playerRatings";
-import { observerTeam } from "../../../shared/gameRules";
+import { displayTeamName, observerTeam } from "../../../shared/gameRules";
 import { cancelSocialHide, hideGlobalSocialSoon, type TooltipPosition } from "./hoverPopovers";
-import { displayTeamName } from "./GameLineup";
 
 function friendTeamName(game: Game, login: string): string {
   const lower = login.toLowerCase();

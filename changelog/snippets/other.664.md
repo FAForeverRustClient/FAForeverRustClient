@@ -1,0 +1,2 @@
+- FAF Live stream announcements and LIVE badges are off in releases.
+- The "FAF goes live" switch (Settings, Notifications) is hidden while FAF Live is off.

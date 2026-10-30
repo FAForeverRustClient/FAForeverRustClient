@@ -84,6 +84,9 @@ pub fn run() {
             if let Some(path) = startup::replay_argument(&argv) {
                 startup::open_replay_from_argument(app, path);
             }
+            if let Some(url) = faf_domain::protocol::deep_link::deep_link_argument(&argv) {
+                startup::open_link_from_argument(app, url);
+            }
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
@@ -123,6 +126,10 @@ pub fn run() {
                 .build(),
         )
         .on_window_event(window::on_window_event)
+        .register_asynchronous_uri_scheme_protocol(
+            commands::UNIT_ICON_SCHEME,
+            commands::unit_icon_request,
+        )
         .setup(|app| {
             let log_dir = app.path().app_log_dir()?;
             app.manage(diagnostics::init(&log_dir)?);
@@ -153,6 +160,11 @@ pub fn run() {
             if let Some(path) = startup::replay_argument(&arguments) {
                 startup::open_replay_at_startup(app.handle(), path.to_string());
             }
+            // And a link that started the client. It waits in the state until
+            // the page is up to show it.
+            if let Some(url) = faf_domain::protocol::deep_link::deep_link_argument(&arguments) {
+                startup::open_link_from_argument(app.handle(), url);
+            }
 
             app.manage(window::MainWindow::default());
             #[cfg(windows)]
@@ -179,6 +191,8 @@ pub fn run() {
             commands::read_notification_sound,
             commands::import_background_image,
             commands::read_background_image,
+            commands::unit_icons,
+            commands::map_analysis,
             commands::read_marked_map_preview,
             commands::open_version_folder,
             commands::open_installed_folder,
@@ -431,8 +445,6 @@ mod tests {
             // as well as the window's, so with the root missing here the
             // frame's own page went to the browser (PR 463).
             "https://unitdb.faforever.com/#/",
-            // FAF Daily, the Units tab's second view.
-            "https://daily.faforever.com/",
             // A training video frame, for the same reason.
             "https://www.youtube-nocookie.com/embed/abc?rel=0",
         ] {
@@ -440,6 +452,8 @@ mod tests {
         }
 
         for external in [
+            // Minigames are browser links, not embedded client pages.
+            "https://daily.faforever.com/",
             "https://www.youtube.com/watch?v=abc",
             // Only the player frame, not the rest of that host.
             "https://www.youtube-nocookie.com/watch?v=abc",

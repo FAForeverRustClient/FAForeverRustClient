@@ -273,15 +273,9 @@ jobs:
         uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Baked into the binary by `option_env!`, because a player running a
-          # release has no such variables set and FAF Live could otherwise only
-          # ever work in a developer's shell. Unset secrets expand to an empty
-          # string, which is the existing "no credentials" path: the feature
-          # stays silently off rather than the build failing. See
-          # docs/streams.md for what these are and why they are not a secret
-          # once shipped.
-          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
-          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+          # No Twitch credentials: the client reads them only from the
+          # environment it runs in and compiles nothing in, so a release has
+          # FAF Live off. See docs/streams.md.
         with:
           # Upload into the draft `prepare` opened. Its tag is `v<version>`,
           # because `strip_version_prefix` in faf-domain strips a leading `v`

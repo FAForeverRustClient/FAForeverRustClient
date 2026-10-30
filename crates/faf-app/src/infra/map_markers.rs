@@ -44,10 +44,10 @@ pub struct MarkedMapPreview {
 
 /// Where each kind of marker is, as read from a `_save.lua`.
 #[derive(Debug, Default, Clone, PartialEq)]
-struct Markers {
-    mass: Vec<[f32; 2]>,
-    hydro: Vec<[f32; 2]>,
-    spawns: Vec<[f32; 2]>,
+pub(super) struct Markers {
+    pub(super) mass: Vec<[f32; 2]>,
+    pub(super) hydro: Vec<[f32; 2]>,
+    pub(super) spawns: Vec<[f32; 2]>,
 }
 
 /// The installed map `folder_name`'s picture and markers.
@@ -59,6 +59,36 @@ pub fn marked_map_preview(folder_name: &str) -> Result<MarkedMapPreview, String>
 }
 
 fn marked_map_preview_in(maps_dir: &Path, folder_name: &str) -> Result<MarkedMapPreview, String> {
+    let map = installed_map(maps_dir, folder_name)?;
+    let (scmap, scenario, save) = (map.scmap, map.scenario, map.save);
+    let (width, height) =
+        map_size(&scenario).ok_or_else(|| "the map's scenario names no size".to_string())?;
+    let markers = parse_markers(&save);
+    let image = super::scmap::preview_data_url(&scmap)?;
+    Ok(MarkedMapPreview {
+        image,
+        width,
+        height,
+        mass: markers.mass,
+        hydro: markers.hydro,
+        spawns: markers.spawns,
+    })
+}
+
+/// An installed map's three files: the `.scmap`'s path, and the scenario and
+/// save files read.
+pub(super) struct InstalledMap {
+    pub(super) scmap: PathBuf,
+    pub(super) scenario: String,
+    pub(super) save: String,
+}
+
+/// The installed map `folder_name`, refused where its name is not a folder
+/// name or the generator hides its layout.
+///
+/// The name arrives from the webview, so it goes through the same guard as an
+/// install or an uninstall before it is joined onto the maps folder.
+pub(super) fn installed_map(maps_dir: &Path, folder_name: &str) -> Result<InstalledMap, String> {
     if !is_safe_folder_name(folder_name) {
         return Err("that is not a map folder name".to_string());
     }
@@ -74,24 +104,15 @@ fn marked_map_preview_in(maps_dir: &Path, folder_name: &str) -> Result<MarkedMap
     .ok_or_else(|| "the map is not installed".to_string())?;
 
     let scmap = file_ending_in(&folder, ".scmap")?;
-    let scenario = file_ending_in(&folder, "_scenario.lua")?;
-    let save = file_ending_in(&folder, "_save.lua")?;
-
-    let scenario = read_lua(&scenario)?;
+    let scenario = read_lua(&file_ending_in(&folder, "_scenario.lua")?)?;
     if scenario.contains(HIDDEN_LAYOUT_DESCRIPTION) {
         return Err(HIDDEN_LAYOUT.to_string());
     }
-    let (width, height) =
-        map_size(&scenario).ok_or_else(|| "the map's scenario names no size".to_string())?;
-    let markers = parse_markers(&read_lua(&save)?);
-    let image = super::scmap::preview_data_url(&scmap)?;
-    Ok(MarkedMapPreview {
-        image,
-        width,
-        height,
-        mass: markers.mass,
-        hydro: markers.hydro,
-        spawns: markers.spawns,
+    let save = read_lua(&file_ending_in(&folder, "_save.lua")?)?;
+    Ok(InstalledMap {
+        scmap,
+        scenario,
+        save,
     })
 }
 
@@ -136,13 +157,9 @@ fn file_ending_in(folder: &Path, suffix: &str) -> Result<PathBuf, String> {
 }
 
 fn read_lua(path: &Path) -> Result<String, String> {
-    let size = std::fs::metadata(path)
-        .map_err(|error| format!("could not read {}: {error}", path.display()))?
-        .len();
-    if size > MAX_LUA_BYTES {
-        return Err(format!("{} is implausibly large", path.display()));
-    }
-    let bytes = std::fs::read(path)
+    // Bounded on the read as well as on the stated size: a file that grew
+    // after it was measured is refused rather than read whole.
+    let bytes = super::metadata_file::read_bounded(path, MAX_LUA_BYTES)
         .map_err(|error| format!("could not read {}: {error}", path.display()))?;
     // Lossy: a map's description is sometimes in a legacy code page, and a
     // stray byte in it says nothing about where the markers are.
@@ -168,7 +185,7 @@ fn map_size(scenario: &str) -> Option<(f32, f32)> {
 /// A marker is a block that opens with `['Name'] = {` and closes with `},`; its
 /// `type` and `position` lines come in either order. The armies are known by
 /// their name (`ARMY_1`), since their type is only `Blank Marker`.
-fn parse_markers(save: &str) -> Markers {
+pub(super) fn parse_markers(save: &str) -> Markers {
     #[derive(Clone, Copy)]
     enum Kind {
         Mass,

@@ -416,6 +416,10 @@ fn fail(out: &EventSink, reason: String) {
 /// status to `Failed` and closed the starting dialog of a replay that was
 /// still on its way. Checked under the launch lock, so a launch cannot begin
 /// or settle between the check and the event.
+///
+/// `text` is the catalogue entry the notice is shown in, and `action` is what
+/// the notice offers instead, such as starting the replay once the delay is
+/// over (#653).
 fn refuse(
     ctx: &ServiceCtx,
     out: &EventSink,
