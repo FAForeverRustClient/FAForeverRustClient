@@ -621,6 +621,27 @@
       ]
     },
     {
+      "name": "a client that can check says so, and FAF Live is shown",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "type": "available"
+            },
+            "kind": "Streams"
+          },
+          "expected": {
+            "announced": [],
+            "available": true,
+            "live": [],
+            "status": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "a channel goes live, is announced once, and goes off air",
       "steps": [
         {
@@ -632,6 +653,7 @@
           },
           "expected": {
             "announced": [],
+            "available": false,
             "live": [],
             "status": {
               "type": "checking"
@@ -661,6 +683,7 @@
           },
           "expected": {
             "announced": [],
+            "available": false,
             "live": [
               {
                 "channel": "faflive",
@@ -694,6 +717,7 @@
             "announced": [
               "twitch:1"
             ],
+            "available": false,
             "live": [
               {
                 "channel": "faflive",
@@ -736,6 +760,7 @@
             "announced": [
               "twitch:1"
             ],
+            "available": false,
             "live": [
               {
                 "channel": "faflive",
@@ -767,6 +792,7 @@
             "announced": [
               "twitch:1"
             ],
+            "available": false,
             "live": [],
             "status": {
               "type": "ready"
@@ -801,6 +827,7 @@
           },
           "expected": {
             "announced": [],
+            "available": false,
             "live": [
               {
                 "channel": "faflive",
@@ -830,6 +857,7 @@
           },
           "expected": {
             "announced": [],
+            "available": false,
             "live": [
               {
                 "channel": "faflive",
@@ -129490,6 +129518,7 @@
     },
     "streams": {
       "announced": [],
+      "available": false,
       "live": [],
       "status": {
         "type": "idle"

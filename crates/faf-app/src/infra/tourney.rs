@@ -224,22 +224,25 @@ impl TourneyClient {
         use base64::Engine as _;
         const MAX_PREVIEW_BYTES: usize = 4 * 1024 * 1024;
         const VAULT_PREVIEW_HOST: &str = "content.faforever.com";
-        // Only the vault's own content host, checked before the request is made
-        // and again after: the shared client follows redirects, and a picture
-        // fetched from wherever one pointed would be uploaded to the tournament
-        // under the organiser's name.
+        // Only the vault's own content host, for the address and for every
+        // redirect hop before it is requested: a picture fetched from wherever
+        // one pointed would be uploaded to the tournament under the
+        // organiser's name. Not `self.http`, which follows redirects without
+        // asking.
         let from_vault = |address: &url::Url| {
-            address.scheme() == "https" && address.host_str() == Some(VAULT_PREVIEW_HOST)
+            if address.scheme() == "https" && address.host_str() == Some(VAULT_PREVIEW_HOST) {
+                Ok(())
+            } else {
+                Err("refusing a map preview from outside the vault".to_string())
+            }
         };
-        let address = url::Url::parse(url).ok().filter(from_vault)?;
-        let response = self
-            .http
-            .get(address)
-            .timeout(REQUEST_DEADLINE)
-            .send()
-            .await
-            .ok()?;
-        if !response.status().is_success() || !from_vault(response.url()) {
+        let http = crate::infra::http::no_redirect_http_client();
+        let response = crate::infra::http::send_checking_each_hop(url, from_vault, |hop| {
+            http.get(hop).timeout(REQUEST_DEADLINE)
+        })
+        .await
+        .ok()?;
+        if !response.status().is_success() {
             return None;
         }
         let mime = response

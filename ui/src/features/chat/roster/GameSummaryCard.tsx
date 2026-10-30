@@ -12,7 +12,7 @@ import { Icon } from "../../../design-system/Icon";
 import { MapThumbnail } from "../../../shared/components/MapThumbnail";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
 import { openPlayerCard } from "../../../shared/playerCardActions";
-import { playingCount } from "../../../shared/gameRules";
+import { observerTeam, playingCount } from "../../../shared/gameRules";
 import { GLOBAL_LEADERBOARD, gameLeaderboard, leaderboardLabel } from "../../../shared/playerRatings";
 import { useNamedMapGeneration } from "../../../shared/hooks/useNamedMapGeneration";
 import { displayName } from "../messages/chatFormat";
@@ -28,6 +28,7 @@ import {
   gameTeamSummaries,
   type GamePresence,
   type GameSummaryPlayer,
+  type GameSummaryTeam,
 } from "./gameSummary";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -166,6 +167,11 @@ export function GameSummaryCard({
   const elapsedLabel = presence.status === "hosting" || presence.status === "lobbying"
     ? t("chat.game.openFor")
     : t("chat.game.gameTime");
+  // A team's total only means something against another team's, and a team of
+  // one would repeat its player's rating on the line above it.
+  const contested = teams.filter((team) => !observerTeam(team.id)).length > 1;
+  const showsTeamRating = (team: GameSummaryTeam) =>
+    contested && !observerTeam(team.id) && team.players.length > 1 && team.rating !== null;
 
   return (
     <>
@@ -209,105 +215,119 @@ export function GameSummaryCard({
           </div>
         )}
         <div className="chat-game-popover-info">
-          <strong>{splitGoAdapterTitle(presence.game.title).title || t("chat.game.untitled")}</strong>
-          {/* Worded as the replay tab's cards word it (#448). */}
-          <span>{t("replays.card.onMap", { map: presentation.displayName })}</span>
-        </div>
-        {action ? (
-          <div className="chat-game-popover-side">
-            <span className={`chat-game-status is-${presence.status}`}>{status}</span>
+          {/* The title shares its line with the one thing to do here, so the
+              way in stays beside the map (issue 351) without a column of its
+              own narrowing every line under it. */}
+          <div className="chat-game-title-row">
+            <strong>{splitGoAdapterTitle(presence.game.title).title || t("chat.game.untitled")}</strong>
             {action}
           </div>
-        ) : (
-          <span className={`chat-game-status is-${presence.status}`}>{status}</span>
-        )}
+          {/* Worded as the replay tab's cards word it (#448). */}
+          <span className="chat-game-popover-map">{t("replays.card.onMap", { map: presentation.displayName })}</span>
+          {/* One line of facts, led by what the game is doing and for how
+              long. The status says which clock this is, so the time drops its
+              label on screen and keeps it for a screen reader. */}
+          <div className="chat-game-meta">
+            <div>
+              <span className="chat-game-state">
+                <span className={`chat-game-status is-${presence.status}`}>{status}</span>
+                {elapsed !== null && (
+                  <span className="chat-game-elapsed">
+                    <span className="chat-game-sr">{elapsedLabel} </span>
+                    {formatGameTime(elapsed)}
+                  </span>
+                )}
+              </span>
+              {/* Only a mod other than FAF's own. "FAF" stood on nearly every
+                  card, and a fact that is always there tells nobody anything. */}
+              {presence.game.modName.toLocaleLowerCase() !== "faf" && (
+                <span>{presence.game.modName.toUpperCase()}</span>
+              )}
+              <span>
+                {t("chat.game.players", { count: playingCount(presence.game), max: presence.game.maxPlayers })}
+              </span>
+              {/* Named where it is not the global board, and so is every
+                  rating in the lineup below it. */}
+              {presence.game.averageRating > 0 && (
+                <span>
+                  {leaderboard === GLOBAL_LEADERBOARD
+                    ? t("chat.game.average", { rating: presence.game.averageRating })
+                    : t("chat.game.boardAverage", {
+                        rating: presence.game.averageRating,
+                        board: leaderboardLabel(leaderboard),
+                      })}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
       </header>
-      {/* Each fact with the icon the replay tab's cards give it (#448). */}
-      <div className="chat-game-meta">
-        <span><Icon name="mods" size={13} />{presence.game.modName.toUpperCase()}</span>
-        <span>
-          <Icon name="users" size={13} />
-          {t("chat.game.players", { count: playingCount(presence.game), max: presence.game.maxPlayers })}
-        </span>
-        {/* Named where it is not the global board, and so is every rating in
-            the lineup below it. */}
-        {presence.game.averageRating > 0 && (
-          <span>
-            <Icon name="activity" size={13} />
-            {leaderboard === GLOBAL_LEADERBOARD
-              ? t("chat.game.average", { rating: presence.game.averageRating })
-              : t("chat.game.boardAverage", {
-                  rating: presence.game.averageRating,
-                  board: leaderboardLabel(leaderboard),
-                })}
-          </span>
-        )}
-        {elapsed !== null && (
-          <span className="chat-game-elapsed">
-            <Icon name="clock" size={13} />
-            {elapsedLabel} <b>{formatGameTime(elapsed)}</b>
-          </span>
-        )}
-      </div>
       {showTeams && (teams.length > 0 ? (
         <div className="chat-game-teams">
-          {teams.map((team) => (
-            <section className="chat-game-team surface" key={team.id}>
-              {/* The replay tab's team line (#448): the team, then how many
-                  play in it and their combined rating. */}
-              <h4>
-                <span>{team.label}</span>
-                <span>
-                  {t("replays.detail.playerCount", { count: team.players.length })}
-                  {team.rating !== null && ` · ${t("lobby.browser.teamRating", { rating: team.rating })}`}
-                </span>
-              </h4>
-              <ul>
-                {team.players.map((player) => (
-                  <li key={player.login}>
-                    {/* The avatar the replay tab's lineup shows. FAF avatars
-                        are 40 by 20, which is a lot of a narrow column, so the
-                        panel drops it again at its narrowest step: see
-                        `rosterTier`. An empty slot rather than none, or a team
-                        where one player has an avatar would have its names
-                        indented differently from the rest. */}
-                    <span className="chat-game-player-avatar" aria-hidden="true">
-                      {player.profile?.avatarUrl ? (
+          {teams.map((team) => {
+            // The avatar box is held open on every row of a team where anyone
+            // has an avatar, so its names stay in one column, as in the
+            // roster. A team where nobody has one keeps those 40 px for names.
+            const avatars = team.players.some((player) => player.profile?.avatarUrl);
+            return (
+              <section className={`chat-game-team${avatars ? " has-avatars" : ""}`} key={team.id}>
+                {/* The replay tab's ruled team line (#448): the team, and its
+                    combined rating over the column of ratings it adds up. The
+                    head count went: the names under it are the count. */}
+                <h4>
+                  <span>{team.label}</span>
+                  {showsTeamRating(team) && (
+                    <span className="chat-game-team-rating" title={t("lobby.browser.combinedRating")}>
+                      <span className="chat-game-sr">{t("lobby.browser.combinedRating")} </span>
+                      {team.rating}
+                    </span>
+                  )}
+                </h4>
+                <ul>
+                  {team.players.map((player) => (
+                    <li key={player.login}>
+                      {/* Avatar, flag, name: the order the channel roster beside
+                          this card draws a player in. */}
+                      {avatars && (
+                        <span className="chat-game-player-avatar" aria-hidden="true">
+                          {player.profile?.avatarUrl ? (
+                            <img
+                              src={player.profile.avatarUrl}
+                              alt=""
+                              title={player.profile.avatarTooltip || undefined}
+                              width={40}
+                              height={20}
+                              loading="lazy"
+                              decoding="async"
+                              draggable={false}
+                            />
+                          ) : null}
+                        </span>
+                      )}
+                      {player.country ? (
                         <img
-                          src={player.profile.avatarUrl}
-                          alt=""
-                          title={player.profile.avatarTooltip || undefined}
-                          width={40}
-                          height={20}
-                          loading="lazy"
+                          src={flagSrc(player.country)}
+                          alt={countryOf(player.country)}
+                          title={countryOf(player.country)}
+                          width={16}
+                          height={16}
                           decoding="async"
                           draggable={false}
+                          onError={(event) => { event.currentTarget.style.visibility = "hidden"; }}
                         />
-                      ) : null}
-                    </span>
-                    {player.country ? (
-                      <img
-                        src={flagSrc(player.country)}
-                        alt={countryOf(player.country)}
-                        title={countryOf(player.country)}
-                        width={16}
-                        height={16}
-                        decoding="async"
-                        draggable={false}
-                        onError={(event) => { event.currentTarget.style.visibility = "hidden"; }}
+                      ) : <span className="chat-game-flag-placeholder" />}
+                      <GameSummaryPlayerName
+                        player={player}
+                        onOpenConversation={onOpenConversation}
+                        onPlayerContextMenu={onPlayerContextMenu}
                       />
-                    ) : <span className="chat-game-flag-placeholder" />}
-                    <GameSummaryPlayerName
-                      player={player}
-                      onOpenConversation={onOpenConversation}
-                      onPlayerContextMenu={onPlayerContextMenu}
-                    />
-                    {player.rating !== null && <small>{player.rating}</small>}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
+                      {player.rating !== null && <small>{player.rating}</small>}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
         </div>
       ) : (
         <p className="chat-game-no-teams muted">{t("chat.game.noLineup")}</p>

@@ -276,7 +276,7 @@ const INITIAL: AppState = {
     },
   },
   social: { friends: [], foes: [], players: [], loginLookups: [], staff: [] },
-  streams: { live: [], status: { type: "idle" }, announced: [] },
+  streams: { live: [], status: { type: "idle" }, announced: [], available: false },
   events: {
     catalogue: [],
     source: "bundled",

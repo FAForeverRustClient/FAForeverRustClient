@@ -121,6 +121,11 @@ pub struct StreamsState {
     /// once, which is right: to that client it is news, and the alternative is
     /// remembering forever which broadcasts a machine has been told about.
     pub announced: Vec<String>,
+    /// Whether this client can check at all, which takes Twitch credentials
+    /// in the environment it runs in. Releases have none, so nothing about
+    /// FAF Live is shown there: a switch for announcements that can never
+    /// come would be a switch that does nothing.
+    pub available: bool,
 }
 
 /// How many announced ids are kept.
@@ -162,6 +167,9 @@ impl StreamsState {
     rename_all_fields = "camelCase"
 )]
 pub enum StreamsEvent {
+    /// This client can check: raised once at startup, and never by a build
+    /// without credentials.
+    Available,
     Checking,
     Loaded {
         streams: Vec<LiveStream>,
@@ -190,6 +198,7 @@ pub enum StreamsCommand {
 
 pub fn reduce(state: &mut StreamsState, event: &StreamsEvent) {
     match event {
+        StreamsEvent::Available => state.available = true,
         StreamsEvent::Checking => state.status = StreamsStatus::Checking,
         StreamsEvent::Loaded { streams } => {
             state.live = streams.clone();
@@ -241,6 +250,16 @@ mod tests {
         assert!(state.live.is_empty());
         assert!(state.unannounced().is_empty());
         assert!(state.live_channel("faflive").is_none());
+    }
+
+    /// A build without credentials never says it can check, so FAF Live is
+    /// hidden there; one with them says so once.
+    #[test]
+    fn faf_live_is_unavailable_until_the_client_says_it_can_check() {
+        let mut state = StreamsState::default();
+        assert!(!state.available);
+        reduce(&mut state, &StreamsEvent::Available);
+        assert!(state.available);
     }
 
     #[test]
