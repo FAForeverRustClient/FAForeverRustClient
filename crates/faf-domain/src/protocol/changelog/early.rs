@@ -151,6 +151,12 @@ pub fn early_entry(release: &ChangelogRelease) -> Option<ChangelogEntry> {
             url: note.evidence.clone(),
         });
     }
+    // Editorial metadata follows the source attribution, outside the article.
+    // Raw captures remain hash-pinned; only imported prose spacing is tidied.
+    attribution.push(ChangelogSpan::Text(
+        ". Editorial note: Extra spaces before punctuation have been removed for readability."
+            .to_string(),
+    ));
     let mut blocks = super::parse_html_blocks(&note.html);
     for block in &mut blocks {
         match block {
@@ -275,6 +281,20 @@ mod tests {
                     ))
                 )));
             }
+        }
+    }
+
+    #[test]
+    fn early_archive_discloses_typography_changes_in_source_footer() {
+        for release in with_early_releases(vec![]) {
+            let entry = early_entry(&release).unwrap();
+            let Some(ChangelogBlock::Paragraph { spans }) = entry.blocks.last() else {
+                panic!("historical note must end with source attribution");
+            };
+            assert!(matches!(&spans[0], ChangelogSpan::Link { url, .. }
+                if url == &release.source_url));
+            assert!(spans.iter().any(|span| matches!(span, ChangelogSpan::Text(text)
+                if text.contains("Editorial note: Extra spaces before punctuation have been removed for readability."))));
         }
     }
 

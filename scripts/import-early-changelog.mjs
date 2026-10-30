@@ -76,6 +76,54 @@ function wikiSourceCode(node) {
   return node.querySelector("code") || /(?:^|\n)\s*(?:local\s+\w|function\s|if\s+[^\n]+\bthen\b|for\s+[^\n]+\bdo\b|return\b|end\s*$)/m.test(node.textContent);
 }
 
+// Editorial typography only: remove horizontal space before punctuation in
+// prose, even across inline emphasis. Original source hashes, attributes,
+// line breaks and genuine code/preformatted content are left intact.
+function tidyPunctuation(root, format) {
+  let run = [];
+  const flush = () => {
+    const nodes = run;
+    run = [];
+    const text = nodes.map(node => node.textContent).join("");
+    const edits = [...text.matchAll(/[ \t\u00a0\u202f]+(?=[,;:.!?])/g)]
+      .map(match => [match.index, match.index + match[0].length]);
+    if (!edits.length) return;
+    let offset = 0;
+    let edit = 0;
+    for (const node of nodes) {
+      const original = node.textContent;
+      let cursor = 0;
+      let cleaned = "";
+      while (edit < edits.length && edits[edit][0] < offset + original.length) {
+        const [from, to] = edits[edit];
+        cleaned += original.slice(cursor, Math.max(cursor, from - offset));
+        cursor = Math.min(original.length, to - offset);
+        if (to > offset + original.length) break;
+        edit++;
+      }
+      node.textContent = cleaned + original.slice(cursor);
+      offset += original.length;
+    }
+  };
+  let visited = 0;
+  const walk = (node, depth = 0) => {
+    if (++visited > 20000 || depth > 32) throw new Error("Archive markup exceeds limits");
+    if (node.nodeType === 3) { run.push(node); return; }
+    if (node.nodeType !== 1) return;
+    const tag = node.tagName;
+    if (tag === "CODE" || (tag === "PRE" && (format !== "wiki" || wikiSourceCode(node)))) {
+      flush();
+      return;
+    }
+    const boundary = !inline.has(tag) && tag !== "SPAN";
+    if (boundary) flush();
+    for (const child of node.childNodes) walk(child, depth + 1);
+    if (boundary) flush();
+  };
+  walk(root);
+  flush();
+}
+
 /** Inert parsing, allowlisted output and no fetching of referenced resources. */
 export function extractNote(html, format, base, snapshot = "") {
   if (Buffer.byteLength(html) > 4 * 1024 * 1024) throw new Error("Oversized archive source");
@@ -86,6 +134,7 @@ export function extractNote(html, format, base, snapshot = "") {
     const root = window.document.querySelector(format === "wiki" ? "#mw-content-text" : ".entry-content");
     if (!root) throw new Error("Missing archive article body");
     root.querySelectorAll(dropped).forEach(node => node.remove());
+    tidyPunctuation(root, format);
     const genericHeading = node => /^change\s*log$/i.test(node.textContent.trim());
     const headingOffset = [...root.querySelectorAll("h1")].some(node => !genericHeading(node)) ? 1 : 0;
     let visited = 0;

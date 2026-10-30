@@ -1,9 +1,11 @@
 - Patches 3639 and 3640 now show their January 2015 release dates.
 - Game patch dates no longer shift by a day in timezones west of UTC.
 - Early patch notes no longer display ordinary balance changes as code blocks.
+- Early patch notes no longer have extra spaces before punctuation; an editorial note explains the correction.
 - Historical patch contents now group faction and unit sections under the correct headings.
 - Contributor names in early patch notes no longer appear as oversized headings.
 - Opening an old patch from search now reveals its year in the release list.
 - Small windows now leave more room for reading patch notes.
 - Patch-note icons no longer stay hidden after a replacement image loads successfully.
+- Unit pictures in older patch notes no longer include embedded corner badges.
 - Historical illustration and forum links now open through secure destinations.

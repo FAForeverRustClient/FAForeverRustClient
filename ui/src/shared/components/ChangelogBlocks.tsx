@@ -16,6 +16,7 @@ import { Icon } from "../../design-system/Icon";
 import type { ChangelogIllustration as Illustration } from "../historicalChangelogIcons";
 import { ChangelogIllustration } from "./ChangelogIllustration";
 import { changelogLinkTarget, openChangelogLink } from "../changelogLinks";
+import { changelogUnitIconUrl } from "../changelogUnitIcons";
 import "./changelog-blocks.css";
 
 export function ChangelogSpans({ spans }: { spans: ChangelogSpan[] }) {
@@ -172,7 +173,7 @@ export function ChangelogBlockView({ block, anchorId, headingOffset = 0, icons, 
               <img
                 key={unit.unitId ?? unit.iconUrl}
                 className="changelog-unit-icon"
-                src={unit.iconUrl}
+                src={changelogUnitIconUrl(unit.iconUrl)}
                 alt=""
                 title={unit.unitId ?? undefined}
                 loading="lazy"

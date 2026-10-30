@@ -68,6 +68,15 @@ No explicit public-release evidence for 3617 or 3618 was found in this reachable
 
 ## Presentation
 
+The imported prose receives one editorial typography correction: horizontal
+spaces (including nonbreaking spaces) immediately before commas, semicolons,
+colons, full stops, exclamation marks and question marks are removed. This also
+applies when inline emphasis separates the spaces from the punctuation. Words,
+numbers, dates, link destinations, line breaks and genuine code/preformatted
+blocks are preserved. Raw source captures and their provenance hashes remain
+unchanged. Each imported note discloses this correction in an editorial note
+beside its source attribution, separate from the historical article.
+
 MediaWiki's leading-space `<pre>` convention was used for ordinary notes in 3605, 3615 and 3619, and the first importer also wrapped multiline paragraphs in 3616 as `<pre>`. These now become normal paragraphs or stat/bullet lists without rewritten wording, numbers, invented headings or descriptions. Explicit source-code blocks and blog preformatted blocks keep their code presentation. Regeneration continues to check the original source hashes.
 
 Historical illustrations are presentation metadata in `ui/src/shared/historicalChangelogIcons.ts`. They preserve the archive's wording and block anchors while correcting presentation-only markup. Complete unit captions are matched to identities checked against the game's `LOC/US/strings_db.lua` at tag 3636; the original spelling remains visible. Faction-only captions under an explicit ACU/SCU heading identify that faction's commander, while broad captions such as "Aeon t2" receive the existing faction emblem. Ambiguous general headings keep their text presentation.

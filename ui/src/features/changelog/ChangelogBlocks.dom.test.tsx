@@ -18,6 +18,24 @@ vi.mock("../../ipc/native", () => ({ native: { openUrl } }));
 vi.mock("../../ipc/client");
 failOnConsoleError();
 
+it("uses the same unmarked naval picture in the article, historical caption and contents", () => {
+  const source = "https://raw.githubusercontent.com/FAForever/patchnotes/0d01e845da4d72173492751d153771ee17a0f079/images/nukesub.png";
+  const blocks: ChangelogBlock[] = [{ type: "unit", payload: { name: "Nuke Subs", units: [{ unitId: null, iconUrl: source }] } }];
+  const sections = noteSections(blocks, false, en["changelog.historicalBalance"]);
+  const view = render(<>
+    <NoteBlocks blocks={blocks} />
+    <NoteContentsColumn sections={sections} activeSectionId={anchorFor(0)} navRef={createRef<HTMLElement>()} onJump={vi.fn()} />
+    <ChangelogIllustration illustration={{ type: "unit", iconUrl: source }} className="changelog-unit-icon" size={48} />
+  </>);
+  const pictures = view.container.querySelectorAll("img");
+  expect(pictures).toHaveLength(3);
+  for (const picture of pictures) {
+    expect(picture.getAttribute("src")).toBe("https://faforever.github.io/fa/assets/icons/UES0304_icon.png");
+    expect(picture.getAttribute("alt")).toBe("");
+  }
+  expect(screen.getByRole("button", { name: "Nuke Subs" })).toBeTruthy();
+});
+
 it("shows a replacement historical picture after the previous one failed", () => {
   const first = render(<ChangelogIllustration illustration={{ type: "category", iconUrl: "/assets/changelog/categories/land.png" }}
     className="changelog-unit-icon" size={48} />);

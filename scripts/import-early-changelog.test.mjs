@@ -64,7 +64,28 @@ describe("archived wiki patchnotes", () => {
 
   it("separates the original veterancy caption, stats and trailing explanation", () => {
     const output = extractNote('<div id="mw-content-text"><p>Experimentals veterancy levels :\n+ Level2 = 150,\n+ Level3 = 225,\nfor ML and ythotha, Megalith same as GC.</p></div>', "wiki", "https://example.invalid");
-    expect(output).toBe("<p>Experimentals veterancy levels :</p><ul><li>Level2 = 150,</li><li>Level3 = 225,</li></ul><p>for ML and ythotha, Megalith same as GC.</p>");
+    expect(output).toBe("<p>Experimentals veterancy levels:</p><ul><li>Level2 = 150,</li><li>Level3 = 225,</li></ul><p>for ML and ythotha, Megalith same as GC.</p>");
+  });
+
+  it("tidies prose punctuation across inline tags without changing words or values", () => {
+    const source = '<div id="mw-content-text"><h2>Balance\u00a0:</h2><p><strong>Damage </strong><em>\u202f</em> : 1,500 ; speed : 2.75 , mass : -10% . Ready ! Why ?</p><pre>Health : 100\nMass : 25</pre></div>';
+    const output = extractNote(source, "wiki", "https://example.invalid");
+    expect(output).toContain("<h2>Balance:</h2>");
+    expect(output).toContain("<strong>Damage</strong>: 1,500; speed: 2.75, mass: -10%. Ready! Why?");
+    expect(output).toContain("<ul><li>Health: 100</li><li>Mass: 25</li></ul>");
+  });
+
+  it("keeps code, link destinations, source hashes and block boundaries unchanged", () => {
+    const source = '<div id="mw-content-text"><p>Caption </p><p>: next block</p><p><a href="https://example.invalid/a%20;b?q=x%20:y">Read\u00a0:</a> the source . <code>value ; 1 : 2</code></p><pre>local value = "unchanged ;"\nreturn value</pre></div>';
+    const hash = sourceHash(source, "wiki");
+    const output = extractNote(source, "wiki", "https://example.invalid");
+    expect(output).toContain('<p><a href="https://example.invalid/a%20;b?q=x%20:y">Read:</a> the source. <code>value ; 1 : 2</code></p>');
+    expect(output).toContain('<pre>local value = &quot;unchanged ;&quot;\nreturn value</pre>');
+    expect(output).toContain("<p>Caption</p><p>: next block</p>");
+    expect(sourceHash(source, "wiki")).toBe(hash);
+    expect(source).toContain("Read\u00a0:");
+    expect(extractNote('<div class="entry-content"><pre>values : 1 ; 2</pre></div>', "blog", "https://example.invalid"))
+      .toBe("<pre>values : 1 ; 2</pre>");
   });
 
   it("unwraps wiki indentation blocks used for balance prose and preserves explicit links", () => {
