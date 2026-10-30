@@ -25,6 +25,7 @@ describe("reduceNav", () => {
       settingsSection: "general",
       changelogSection: "game",
       changelogClientVersion: null,
+      linkRequest: null,
     });
   });
 
@@ -53,6 +54,7 @@ describe("reduceNav", () => {
       settingsSection: "cache",
       changelogSection: "game",
       changelogClientVersion: null,
+      linkRequest: null,
     });
   });
 

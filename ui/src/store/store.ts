@@ -21,6 +21,7 @@ const INITIAL: AppState = {
     settingsSection: "general",
     changelogSection: "game",
     changelogClientVersion: null,
+    linkRequest: null,
   },
   notifications: { items: [] },
   chat: {

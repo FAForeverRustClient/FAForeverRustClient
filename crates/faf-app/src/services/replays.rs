@@ -417,13 +417,21 @@ fn fail(out: &EventSink, reason: String) {
 /// still on its way. Checked under the launch lock, so a launch cannot begin
 /// or settle between the check and the event.
 ///
-/// `action` is what the notice offers instead, such as starting the replay
-/// once the delay is over (#653).
-fn refuse(ctx: &ServiceCtx, out: &EventSink, reason: String, action: Option<NotificationAction>) {
+/// `text` is the catalogue entry the notice is shown in, and `action` is what
+/// the notice offers instead, such as starting the replay once the delay is
+/// over (#653).
+fn refuse(
+    ctx: &ServiceCtx,
+    out: &EventSink,
+    text: notifications::Text,
+    reason: String,
+    action: Option<NotificationAction>,
+) {
     let slot = ctx.replays.launch_slot();
-    notifications::add_required_failure(
+    notifications::add_required_text(
         out,
-        notifications::Text::new("notifications.msg.replayFailed"),
+        NotificationKind::Error,
+        text,
         "Replay failed",
         reason.clone(),
         action,
@@ -460,14 +468,18 @@ async fn watch_live(target: LiveReplayTarget, ctx: &ServiceCtx, out: &EventSink)
         (waiting, player)
     });
     if waiting > 0 {
+        let reason = format!(
+            "Live replays are delayed by five minutes so nobody can watch \
+             an ongoing game for an advantage. Try again in {}.",
+            describe(waiting)
+        );
         refuse(
             ctx,
             out,
-            format!(
-                "Live replays are delayed by five minutes so nobody can watch \
-                 an ongoing game for an advantage. Try again in {}.",
-                describe(waiting)
-            ),
+            notifications::Text::new("notifications.msg.liveReplayDelayed")
+                .with("minutes", waiting / 60)
+                .with("seconds", waiting % 60),
+            reason,
             Some(NotificationAction::WatchLiveWhenReady { target }),
         );
         return;
@@ -512,6 +524,8 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                 refuse(
                     ctx,
                     out,
+                    notifications::Text::new("notifications.msg.replayFailed")
+                        .with("reason", "That live game no longer has a known start time."),
                     "That live game no longer has a known start time.".into(),
                     None,
                 );

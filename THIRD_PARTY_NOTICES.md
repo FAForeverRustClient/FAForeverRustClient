@@ -98,6 +98,12 @@ follows two other projects closely, without copying their code:
   contributors. The calculation itself is the game's own unit view
   (`lua/ui/game/unitviewDetail.lua` in FAForever/fa).
 
+A map's pathing and reclaim (`crates/faf-domain/src/protocol/scmap.rs`,
+`navigation.rs`) follow faf-workshop the same way (`ScmapParser.cs`,
+`NavGenerator.cs`, MIT, same copyright): the field order of a `.scmap` up to
+its props, and the port of the game's `lua/sim/NavGenerator.lua` to regions of
+ogrids linked by their sides, with the game's compression and culling.
+
 Nothing of either project is embedded, linked to or fetched by the client.
 
 ## Lucide icons

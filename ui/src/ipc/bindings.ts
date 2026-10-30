@@ -2488,6 +2488,33 @@ export type DecodedStyle =
 /**  The four component styles plus both densities. */
 { kind: "custom"; terrainStyle: string | null; textureStyle: string | null; resourceStyle: string | null; propStyle: string | null; reclaimDensity: number | null; resourceDensity: number | null };
 
+/**  What a link points at. */
+export type DeepLink =
+/**  A tournament on the tournament service, by its id. */
+{ type: "tourney"; payload: {
+	id: string,
+} } |
+/**  A map in the vault, by its folder name (`setons_clutch.v0004`). */
+{ type: "map"; payload: {
+	folderName: string,
+} } |
+/**  A mod in the vault, by its uid. */
+{ type: "mod"; payload: {
+	uid: string,
+} } |
+/**  A game's entry in the replay vault, by its game id. */
+{ type: "replay"; payload: {
+	id: number,
+} } |
+/**  A game release's patch notes, by the changelog's release id. */
+{ type: "changelog"; payload: {
+	release: string,
+} } |
+/**  One unit's history across the game releases, by blueprint id. */
+{ type: "unit"; payload: {
+	id: string,
+} };
+
 /**
  *  What became of one pasted picture: its stored path, or `None` when it
  *  could not be stored.
@@ -4458,6 +4485,24 @@ export type LessonScore = {
 };
 
 /**
+ *  A `faf://` link the client was asked to open, waiting for the frontend to
+ *  show what it points at.
+ *
+ *  Held in the state rather than sent to the page once, because a link that
+ *  started the client arrives before there is a page to send it to. The
+ *  frontend says when it has shown it (`NavCommand::LinkShown`), so a page
+ *  that loads again later does not open it a second time.
+ */
+export type LinkRequest = {
+	/**
+	 *  Counts up within a session, so two clicks on the same link are two
+	 *  requests.
+	 */
+	id: number,
+	link: DeepLink,
+};
+
+/**
  *  Which family of package managers to phrase install commands for.
  *
  *  Read from `/etc/os-release`. The UI uses it only to show the right command;
@@ -6341,6 +6386,17 @@ export type NavCommand = { type: "select"; payload: {
  */
 { type: "selectChangelogClientRelease"; payload: {
 	version: string,
+} } |
+/**
+ *  Open a `faf://` link: from chat, or handed over by the operating
+ *  system. A link that cannot be read opens nothing and says so.
+ */
+{ type: "openLink"; payload: {
+	url: string,
+} } |
+/**  The link request with this id has been shown. */
+{ type: "linkShown"; payload: {
+	id: number,
 } };
 
 export type NavEvent = { type: "tabSelected"; payload: {
@@ -6362,6 +6418,14 @@ export type NavEvent = { type: "tabSelected"; payload: {
  */
 { type: "changelogClientReleaseSelected"; payload: {
 	version: string,
+} } |
+/**  A `faf://` link was read and is waiting to be shown. */
+{ type: "linkRequested"; payload: {
+	request: LinkRequest,
+} } |
+/**  The frontend has shown the link with this id. */
+{ type: "linkShown"; payload: {
+	id: number,
 } };
 
 export type NavState = {
@@ -6383,6 +6447,8 @@ export type NavState = {
 	 *  tab and then the release.
 	 */
 	changelogClientVersion: string | null,
+	/**  The link waiting to be shown, if one is. */
+	linkRequest?: LinkRequest | null,
 };
 
 /**  One announcement from the organiser. */

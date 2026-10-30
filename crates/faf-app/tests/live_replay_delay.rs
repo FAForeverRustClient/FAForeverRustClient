@@ -246,6 +246,18 @@ async fn a_match_that_just_started_cannot_be_watched() {
         }
         other => panic!("expected a refusal, got {other:?}"),
     }
+    let notification = h
+        .app
+        .snapshot()
+        .notifications
+        .items
+        .into_iter()
+        .find(|notification| notification.kind == NotificationKind::Error)
+        .expect("the delay refusal should create a notification");
+    assert_eq!(
+        notification.text.as_ref().map(|text| text.key.as_str()),
+        Some("notifications.msg.liveReplayDelayed")
+    );
     assert!(
         h.watched.lock().unwrap().is_empty(),
         "the stream must never be opened: a disabled button is not enforcement"
