@@ -1,0 +1,1 @@
+- Settings, Game shows the launch command on Windows too, so a lobby modification such as nuggets-lobby can be set up there, and the borderless window now also works through it.
