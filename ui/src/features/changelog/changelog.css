@@ -951,45 +951,35 @@
   gap: 4px;
 }
 
-/* The FAF unit database's faction colours, exactly, since this section
-   draws units the way it does: the colour its strategic icons are drawn in
-   (the shell draws ours the same), which marks a picked unit everywhere, and
-   a tile's fill, edge and inner glow (its `colors.sass` and the thumb's
-   `color.adjust` steps, worked out). */
-.unit-history-view {
-  --unit-faction-uef: #55aaff;
-  --unit-faction-aeon: #20ff20;
-  --unit-faction-cybran: #ff5050;
-  --unit-faction-seraphim: #ffbe2c;
-}
-
-/* Every element that carries a faction's colour reads it from here. */
+/* Every element that carries a faction's colour reads it from here: the
+   FAF unit database's colours (`--color-unitdb-*`), since this section draws
+   units the way it does. */
 .unit-history-view .faction-uef {
-  --faction: var(--unit-faction-uef);
-  --faction-tile: rgba(45, 120, 178, 0.13);
-  --faction-tile-edge: rgba(148, 193, 228, 0.33);
-  --faction-tile-glow: rgba(70, 174, 255, 0.43);
+  --faction: var(--color-unitdb-uef);
+  --faction-tile: var(--color-unitdb-uef-tile);
+  --faction-tile-edge: var(--color-unitdb-uef-edge);
+  --faction-tile-glow: var(--color-unitdb-uef-glow);
 }
 
 .unit-history-view .faction-aeon {
-  --faction: var(--unit-faction-aeon);
-  --faction-tile: rgba(25, 179, 64, 0.13);
-  --faction-tile-edge: rgba(121, 236, 150, 0.33);
-  --faction-tile-glow: rgba(51, 255, 103, 0.43);
+  --faction: var(--color-unitdb-aeon);
+  --faction-tile: var(--color-unitdb-aeon-tile);
+  --faction-tile-edge: var(--color-unitdb-aeon-edge);
+  --faction-tile-glow: var(--color-unitdb-aeon-glow);
 }
 
 .unit-history-view .faction-cybran {
-  --faction: var(--unit-faction-cybran);
-  --faction-tile: rgba(223, 45, 14, 0.1);
-  --faction-tile-edge: rgba(248, 158, 142, 0.3);
-  --faction-tile-glow: rgba(255, 109, 84, 0.4);
+  --faction: var(--color-unitdb-cybran);
+  --faction-tile: var(--color-unitdb-cybran-tile);
+  --faction-tile-edge: var(--color-unitdb-cybran-edge);
+  --faction-tile-glow: var(--color-unitdb-cybran-glow);
 }
 
 .unit-history-view .faction-seraphim {
-  --faction: var(--unit-faction-seraphim);
-  --faction-tile: rgba(252, 180, 25, 0.1);
-  --faction-tile-edge: rgba(254, 229, 176, 0.3);
-  --faction-tile-glow: rgba(255, 213, 124, 0.4);
+  --faction: var(--color-unitdb-seraphim);
+  --faction-tile: var(--color-unitdb-seraphim-tile);
+  --faction-tile-edge: var(--color-unitdb-seraphim-edge);
+  --faction-tile-glow: var(--color-unitdb-seraphim-glow);
 }
 
 /* A unit's picture on a tile as the unit database draws one, wherever it
