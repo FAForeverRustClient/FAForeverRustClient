@@ -1111,7 +1111,8 @@ mod tests {
                 strategic_icon: None,
                 sort_priority: None,
                 role: None,
-                build_time: None,
+                // The test striker's `Economy.BuildTime`; a tank has no build power.
+                build_time: Some(300.0),
                 build_rate: None,
             }
         );
