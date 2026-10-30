@@ -336,10 +336,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "contribution.repo.githubHint": "Все проекты FAF с открытым исходным кодом",
 
   "units.frameTitle": "База данных юнитов ETFreeman",
-  "units.views": "Страницы юнитов",
-  "units.tab.database": "База данных юнитов",
-  "units.tab.daily": "FAF Daily",
-  "units.dailyFrameTitle": "FAF Daily: угадайте юнит дня",
   "news.frameTitle": "Новости FAF",
   "embed.openExternal": "Открыть в браузере",
   "embed.openExternalTitle": "Открыть эту страницу в системном браузере",
