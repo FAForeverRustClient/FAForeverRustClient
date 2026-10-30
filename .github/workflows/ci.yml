@@ -19,8 +19,31 @@ env:
   RUSTFLAGS: -D warnings
 
 jobs:
+  changes:
+    name: Select relevant checks
+    runs-on: ubuntu-latest
+    outputs:
+      rust: ${{ steps.select.outputs.rust }}
+      frontend: ${{ steps.select.outputs.frontend }}
+      bindings: ${{ steps.select.outputs.bindings }}
+      conformance: ${{ steps.select.outputs.conformance }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select checks from the complete PR diff
+        id: select
+        env:
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CI_HEAD_SHA: ${{ github.sha }}
+        run: node scripts/ci-changes.mjs
+
   rust:
     name: Rust - test + clippy
+    needs: changes
+    # Failed/missing selection runs checks. A cancelled run stays cancelled.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.rust != 'false') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -145,6 +168,9 @@ jobs:
 
   frontend:
     name: Frontend - lint + typecheck + test + build
+    needs: changes
+    # Keep audits and policy checks even for documentation-only pull requests.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -176,6 +202,9 @@ jobs:
       - name: Changelog snippets are well formed
         run: node scripts/changelog.mjs verify
 
+      - name: CI change selection regression tests
+        run: node --test scripts/ci-changes.node-test.mjs
+
       # Every user-visible string goes through the i18n catalogue. The scanner
       # lists any literal that still reads like copy; the budget is zero, so a
       # hardcoded string fails the build instead of shipping untranslatable.
@@ -192,15 +221,19 @@ jobs:
           fi
 
       - name: tsc --noEmit
+        if: needs.changes.result != 'success' || needs.changes.outputs.frontend != 'false'
         run: pnpm run typecheck
 
       - name: ESLint
+        if: needs.changes.result != 'success' || needs.changes.outputs.frontend != 'false'
         run: pnpm run lint
 
       - name: vitest
+        if: needs.changes.result != 'success' || needs.changes.outputs.frontend != 'false'
         run: pnpm test
 
       - name: vite build
+        if: needs.changes.result != 'success' || needs.changes.outputs.frontend != 'false'
         run: pnpm run build
 
       # Tokens-only guardrail: components reference semantic tokens, never raw
@@ -217,6 +250,8 @@ jobs:
 
   bindings-drift:
     name: Bindings drift check
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.bindings != 'false') }}
     runs-on: ubuntu-latest
     # faf-ipc depends only on faf-domain + specta (no Tauri), so this job needs
     # no system libraries. It just regenerates the bindings and diffs them.
@@ -241,6 +276,8 @@ jobs:
 
   reducer-conformance-drift:
     name: Reducer conformance fixture drift
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.conformance != 'false') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
