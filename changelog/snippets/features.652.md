@@ -1,10 +1,10 @@
-- The Links page lists FAF Daily again and links only to sites FAF runs.
+- The Links page lists FAF Daily again, now on FAF's own site, and no longer links to the Twitch, YouTube and Kick game category pages.
 - Joining a custom game while searching for a match asks whether to stop searching and join, or stay in the queue.
+- The Play tab's game list keeps its filters and search after a restart, whatever "Remember filters" is set to.
 - Installed maps and mods have an "Open folder" button, in the vaults and in the installed lists.
 - In the host dialog, Ctrl and the mouse wheel step through the map list.
 - Notifications can announce themselves with sound and pop-up, pop-up only or sound only, and can leave the history by themselves after a number of seconds.
-- A profile's rating history can be plotted against games played instead of the date, over the last 100, 500 or 1000 games or all of them.
 - A profile's Results tab can be filtered to rated or unrated games and to any set of queues.
 - The FAF button in the status bar offers "Check connection", which runs the connectivity check and, during a game, shows how each player is connected.
-- A live replay that is not ready yet can be started from its notice with "Start when the replay is ready", and then starts by itself once the delay is over.
-- The tournament chat is laid out like the Chat tab: rooms as tabs across the top, the organisers in a column on the right.
+- Starting a live replay inside its five-minute delay says so in the client's language and offers "Start when the replay is ready", which starts it by itself once the delay is over.
+- The tournament chat looks like the Chat tab: rooms are tabs across the top, the organisers are listed on the right with avatars and flags, messages have the same name colours, avatars and quotes, and the pin is a drawn icon instead of an emoji.

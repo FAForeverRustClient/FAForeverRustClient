@@ -1,1 +1,1 @@
-- Matchmaking queue rating graphs no longer cover the queue details and map pool button.
+- A matchmaking queue's players-by-rating graph opens above the queue card instead of covering its details and the map pool button.

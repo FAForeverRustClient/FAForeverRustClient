@@ -1,1 +1,1 @@
-- On Linux, the client sets up Wine for Forged Alliance by itself on its first start (GE-Proton in the Steam Linux Runtime, as FAForever/faf-linux does), so the faf-linux scripts are no longer needed.
+- On Linux, the client sets up Wine for Forged Alliance by itself on its first start (GE-Proton in the Steam Linux Runtime, about 1.5 GB, as FAForever/faf-linux does), so the faf-linux scripts are no longer needed; a launch command of your own in Settings, Game is still used instead.

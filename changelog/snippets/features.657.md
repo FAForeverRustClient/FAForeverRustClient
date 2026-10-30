@@ -1,5 +1,2 @@
-- Tournament chat messages look exactly like the Chat tab's, with the same name colours, avatars and quotes.
-- Tournament chat rooms can be searched with Ctrl+F or the Search button above the messages.
-- In a tournament chat, right-clicking a name opens the player menu and right-clicking a message replies to it.
-- The tournament chat's organisers are listed like the chat roster, with avatars and flags.
+- In a tournament chat, Ctrl+F or the Search button searches the room, right-clicking a name opens the player menu, and right-clicking a message replies to it.
 - Hovering a message's time in any chat shows its date.

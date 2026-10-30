@@ -1,1 +1,0 @@
-- FAF Daily now opens only in your browser from Links; Units shows the unit database directly.

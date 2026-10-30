@@ -1,1 +1,1 @@
-- No visible changes: changelog search now has shared reducer conformance coverage.
+- No visible changes: the compression library for replays and caches is updated to a patched version.

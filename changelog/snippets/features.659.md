@@ -1,1 +1,1 @@
-- The Changelog tab has a Unit history section: pick a unit and see every game patch that changed it, as a table and a graph.
+- Changelogs has a Unit history section: pick up to four units of the installed game and see every game patch that changed them, as a graph and a list of buffs and nerfs, with each patch one click from its notes.

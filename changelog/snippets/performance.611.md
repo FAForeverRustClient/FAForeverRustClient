@@ -1,1 +1,1 @@
-- Maps with several selected styles generate side by side, and Settings can set how many map generators run at once.
+- When several styles, symmetries or densities are picked in the map generator, the maps are generated side by side, and Settings, Game sets how many generators run at once.

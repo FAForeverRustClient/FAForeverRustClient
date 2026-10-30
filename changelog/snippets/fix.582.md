@@ -1,3 +1,1 @@
-- Resource and reclaim density sliders appear beneath the matching generator choices.
-- The five-minute live-replay delay notice is shown in the client's language.
-- The Keep running during a game hint explains when the client hides and exits.
+- In the map generator, the resource and reclaim density sliders sit beneath the resource and prop style choices they belong to.

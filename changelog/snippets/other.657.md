@@ -1,0 +1,1 @@
+- In the tournament chat, clicking a quote no longer jumps to the quoted message, and the dividers between days are gone.
