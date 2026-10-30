@@ -89,8 +89,7 @@ follows two other projects closely, without copying their code:
 A replay's build order (`ui/src/features/replays/analysis/buildOrder.ts`)
 follows faf-workshop's Build order tab the same way (`OpeningTimings.cs`,
 `BuildOrderItem.cs`, MIT, same copyright): a factory order builds one unit in
-every factory it went to, equal orders of one tick are one row, and the
-milestones of an opening are firsts only.
+every factory it went to, and the milestones of an opening are firsts only.
 
 A map's pathing and reclaim (`crates/faf-domain/src/protocol/scmap.rs`,
 `navigation.rs`) follow faf-workshop the same way (`ScmapParser.cs`,
