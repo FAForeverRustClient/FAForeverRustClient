@@ -2666,6 +2666,7 @@ export const en = {
   "replays.detail.downloadingGenerator": "Downloading generator v{version}…",
   "replays.detail.generationFailed": "Could not generate map: {error}",
   "replays.detail.loadDetailsShort": "More info",
+  "replays.detail.showInExplorer": "Show in Explorer",
   "replays.detail.downloadShort": "Download",
   "replays.detail.loadingDetails": "Loading replay details…",
   "replays.detail.gameOptions": "Game Options",

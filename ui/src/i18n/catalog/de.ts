@@ -2284,6 +2284,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.detail.downloadingGenerator": "Generator v{version} wird heruntergeladen…",
   "replays.detail.generationFailed": "Karte konnte nicht generiert werden: {error}",
   "replays.detail.loadDetailsShort": "Weitere Infos",
+  "replays.detail.showInExplorer": "Im Explorer anzeigen",
   "replays.detail.downloadShort": "Laden",
   "replays.detail.loadingDetails": "Replay-Details werden geladen…",
   "replays.detail.gameOptions": "Spieloptionen",

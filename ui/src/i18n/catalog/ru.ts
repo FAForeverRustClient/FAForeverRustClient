@@ -1951,6 +1951,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.detail.downloadingGenerator": "Загрузка генератора v{version}…",
   "replays.detail.generationFailed": "Не удалось сгенерировать карту: {error}",
   "replays.detail.loadDetailsShort": "Подробности",
+  "replays.detail.showInExplorer": "Показать в Проводнике",
   "replays.detail.downloadShort": "Скачать",
   "replays.detail.loadingDetails": "Загрузка подробностей повтора…",
   "replays.detail.gameOptions": "Параметры игры",

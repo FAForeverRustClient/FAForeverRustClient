@@ -1860,6 +1860,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.detail.downloadingGenerator": "Téléchargement du générateur v{version}…",
   "replays.detail.generationFailed": "Impossible de générer la carte : {error}",
   "replays.detail.loadDetailsShort": "Plus d’informations",
+  "replays.detail.showInExplorer": "Afficher dans l’Explorateur",
   "replays.detail.downloadShort": "Télécharger",
   "replays.detail.loadingDetails": "Chargement des détails du replay…",
   "replays.detail.gameOptions": "Options de jeu",
