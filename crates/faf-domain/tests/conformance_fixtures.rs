@@ -3854,6 +3854,10 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a client that can check says so, and FAF Live is shown",
+            vec![StreamsEvent::Available.into()],
+        ),
+        case(
             "a channel goes live, is announced once, and goes off air",
             vec![
                 StreamsEvent::Checking.into(),

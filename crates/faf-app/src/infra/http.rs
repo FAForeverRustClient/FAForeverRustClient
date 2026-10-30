@@ -11,6 +11,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 static HTTP: OnceLock<reqwest::Client> = OnceLock::new();
+static NO_REDIRECT_HTTP: OnceLock<reqwest::Client> = OnceLock::new();
 
 /// The whole-request deadline for an API call that fetches or writes a
 /// document, as opposed to moving a file.
@@ -159,12 +160,77 @@ impl UploadWatch {
 
 /// A separate client for downloads whose redirects must be inspected one hop
 /// at a time. Using `Policy::none` lets the owning adapter reject an untrusted
-/// destination before any request reaches it.
+/// destination before any request reaches it. One process-wide instance, like
+/// [`shared_http_client`], so a map staged per pool map does not build a
+/// connection pool each time.
 pub(crate) fn no_redirect_http_client() -> reqwest::Client {
-    client_builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .expect("the no-redirect HTTP client configuration is valid")
+    NO_REDIRECT_HTTP
+        .get_or_init(|| {
+            client_builder()
+                .redirect(reqwest::redirect::Policy::none())
+                .build()
+                .expect("the no-redirect HTTP client configuration is valid")
+        })
+        .clone()
+}
+
+/// How many redirects [`send_checking_each_hop`] follows before giving up.
+const MAX_CHECKED_REDIRECTS: usize = 5;
+
+/// Send a request, following redirects one hop at a time and holding every
+/// hop to `allowed` before anything is sent to it.
+///
+/// A redirect policy on the client cannot express this: it is fixed when the
+/// client is built, and the rule for a vault download depends on the download
+/// (the configured content origin and the map or mod category). Map and mod
+/// downloads used to let the shared client follow redirects and check only
+/// where they ended, by which time a request had gone to every hop on the way.
+///
+/// `request` builds the request for one hop, on a client that does not follow
+/// redirects itself ([`no_redirect_http_client`]). One that does would answer
+/// from an address nobody checked; that answer is refused rather than used, so
+/// the mistake fails in a test instead of quietly reopening the gap.
+pub(crate) async fn send_checking_each_hop(
+    start: &str,
+    allowed: impl Fn(&url::Url) -> Result<(), String>,
+    request: impl Fn(url::Url) -> reqwest::RequestBuilder,
+) -> Result<reqwest::Response, String> {
+    let mut url = url::Url::parse(start).map_err(|_| "the address is invalid".to_string())?;
+    for hop in 0..=MAX_CHECKED_REDIRECTS {
+        allowed(&url)?;
+        let response = request(url.clone())
+            .send()
+            .await
+            .map_err(|error| describe_transport_error(&error))?;
+        if response.url() != &url {
+            return Err("the HTTP client followed a redirect without checking it".into());
+        }
+        // The statuses reqwest's own policy follows. Anything else, a 304
+        // included, is the answer.
+        let redirected = matches!(
+            response.status(),
+            reqwest::StatusCode::MOVED_PERMANENTLY
+                | reqwest::StatusCode::FOUND
+                | reqwest::StatusCode::SEE_OTHER
+                | reqwest::StatusCode::TEMPORARY_REDIRECT
+                | reqwest::StatusCode::PERMANENT_REDIRECT
+        );
+        if !redirected {
+            return Ok(response);
+        }
+        if hop == MAX_CHECKED_REDIRECTS {
+            break;
+        }
+        let location = response
+            .headers()
+            .get(reqwest::header::LOCATION)
+            .and_then(|value| value.to_str().ok())
+            .ok_or_else(|| "a redirect without a destination".to_string())?;
+        url = url
+            .join(location)
+            .map_err(|_| "a redirect to an invalid address".to_string())?;
+    }
+    Err("too many redirects".into())
 }
 
 /// A client for the two downloads whose bytes end up being executed: the client

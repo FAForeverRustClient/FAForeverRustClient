@@ -1,32 +1,30 @@
-// The chat's mention rules, taken from the website. Presentation only: the
-// service resolves mentions itself, so what is pinned here is what the reader
-// sees and what the composer offers.
+// The chat's mention rules, taken from the website, and how a post becomes a
+// line of the Chat tab's log. Presentation only: the service resolves
+// mentions itself, so what is pinned here is what the reader sees and what
+// the composer offers.
 
 import { describe, expect, it } from "vitest";
+import type { ChatPost } from "../../../ipc/bindings";
 import { player, team, tourney } from "../fixtures";
 import {
   applyMention,
   mentionCandidates,
   mentionQuery,
-  mentionSpans,
-  postClock,
-  postContinues,
-  postShowsTime,
-  type PostShape,
+  postMessage,
+  quotedPosts,
+  roomUsers,
 } from "./chatPresentation";
 
-describe("mentionSpans", () => {
-  it("marks each @word at the start or after a space", () => {
-    expect(mentionSpans("@Ada gl, @Nuggets!")).toEqual([
-      { kind: "mention", text: "@Ada" },
-      { kind: "text", text: " gl, " },
-      { kind: "mention", text: "@Nuggets!" },
-    ]);
-  });
-
-  it("leaves an address inside a word alone", () => {
-    expect(mentionSpans("mail me at a@b.c")).toEqual([{ kind: "text", text: "mail me at a@b.c" }]);
-  });
+const post = (over: Partial<ChatPost> = {}): ChatPost => ({
+  id: "p1",
+  author: "Ada",
+  fafId: 7,
+  body: "gl hf",
+  at: 1_800_000_000,
+  system: false,
+  replyTo: null,
+  everyone: false,
+  ...over,
 });
 
 describe("mentionQuery", () => {
@@ -66,42 +64,44 @@ describe("applyMention", () => {
   });
 });
 
-describe("postContinues", () => {
-  const post = (author: string, at: number | null, extra: Partial<PostShape> = {}): PostShape => ({
-    author,
-    at,
-    system: false,
-    replyTo: null,
-    ...extra,
+describe("postMessage", () => {
+  it("is an ordinary line, keyed on the post for replies", () => {
+    expect(postMessage(post({ replyTo: { id: "p0", author: "Bob", body: "hi" } }))).toEqual({
+      id: "p1",
+      sender: "Ada",
+      content: "gl hf",
+      timestamp: new Date(1_800_000_000_000).toISOString(),
+      kind: "message",
+      msgid: "p1",
+      replyTo: "p0",
+    });
   });
 
-  it("runs posts from one person a few minutes apart together", () => {
-    expect(postContinues(post("Ada", 1_000), post("Ada", 900))).toBe(true);
-  });
-
-  it("breaks on another author, a long pause, a reply or an announcement", () => {
-    expect(postContinues(post("Ada", 1_000), undefined)).toBe(false);
-    expect(postContinues(post("Ada", 1_000), post("Bob", 900))).toBe(false);
-    expect(postContinues(post("Ada", 2_000), post("Ada", 1_000))).toBe(false);
-    expect(postContinues(post("Ada", 1_000, { replyTo: { id: "p1" } }), post("Ada", 900))).toBe(false);
-    expect(postContinues(post("Ada", 1_000), post("Ada", 900, { system: true }))).toBe(false);
-    expect(postContinues(post("Ada", null), post("Ada", 900))).toBe(false);
+  it("makes the service's announcements info lines without a name or a time it does not have", () => {
+    const line = postMessage(post({ author: "server", system: true, at: null }));
+    expect(line.kind).toBe("info");
+    expect(line.sender).toBe("");
+    expect(line.timestamp).toBe("");
   });
 });
 
-describe("postShowsTime", () => {
-  const at = (seconds: number): PostShape => ({ author: "Ada", at: seconds, system: false, replyTo: null });
-  const minute = 1_800_000_000 - (1_800_000_000 % 60);
-
-  it("prints the time only when the minute changes", () => {
-    expect(postShowsTime(at(minute), undefined, true)).toBe(true);
-    expect(postShowsTime(at(minute + 30), at(minute), true)).toBe(false);
-    expect(postShowsTime(at(minute + 60), at(minute), true)).toBe(true);
+describe("quotedPosts", () => {
+  it("keeps the service's snapshot of each quoted post, whether or not it is still loaded", () => {
+    const quotes = quotedPosts([post({ id: "p2", replyTo: { id: "gone", author: "Bob", body: "first" } })]);
+    expect(quotes.get("gone")).toMatchObject({ sender: "Bob", content: "first", msgid: "gone" });
+    expect(quotes.size).toBe(1);
   });
+});
 
-  it("follows the 24-hour setting", () => {
-    expect(postClock(null, true)).toBe("");
-    expect(postClock(minute, false)).toMatch(/AM|PM/);
-    expect(postClock(minute, true)).not.toMatch(/AM|PM/);
+describe("roomUsers", () => {
+  it("marks the organisers as operators and lists each name once", () => {
+    const event = tourney({
+      organisers: ["Ada"],
+      players: [player({ id: "p1", name: "ada" }), player({ id: "p2", name: "Nuggets" })],
+    });
+    expect(roomUsers(event)).toEqual([
+      { name: "Ada", elevation: "@" },
+      { name: "Nuggets", elevation: "" },
+    ]);
   });
 });

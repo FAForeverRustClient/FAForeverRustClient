@@ -152,7 +152,7 @@ describe("Escape ownership in real overlays", () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     render(<Modal onClose={onClose} ariaLabel="Match chat">
-      <ChatRoomView event={tourney({ players: [player({ name: "Player" })] })} roomId="global"
+      <ChatRoomView event={tourney({ players: [player({ name: "Player" })] })} roomId="global" roomName="Global"
         posts={[{ id: "post", author: "Player", fafId: null, body: "Hello", at: null, system: false, replyTo: null, everyone: false }]}
         status={{ type: "ready" }} busy={false} onPost={() => {}} chat={{ refresh: () => {}, mute: () => {}, deletePost: () => {} }} />
     </Modal>);

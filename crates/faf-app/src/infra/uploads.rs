@@ -39,6 +39,7 @@ use crate::infra::http::{
     UPLOAD_RESPONSE_DEADLINE,
 };
 use crate::infra::jsonapi::api_error_detail;
+use crate::infra::metadata_file::{read_bounded_to_string, MAX_METADATA_BYTES};
 use crate::infra::session::TokenStore;
 use crate::infra::{cache_dir, env_or};
 use crate::ports::UploadsPort;
@@ -371,7 +372,8 @@ fn read_subject_name(request: &UploadRequest) -> Option<String> {
     let folder = source_folder(request).ok()?;
     let name = match request.kind {
         UploadKind::Mod => {
-            let contents = std::fs::read_to_string(folder.join("mod_info.lua")).ok()?;
+            let contents =
+                read_bounded_to_string(&folder.join("mod_info.lua"), MAX_METADATA_BYTES).ok()?;
             crate::infra::mods::mod_info_name(&contents)?
         }
         UploadKind::Map => {
@@ -382,7 +384,7 @@ fn read_subject_name(request: &UploadRequest) -> Option<String> {
                     .to_ascii_lowercase()
                     .ends_with("_scenario.lua")
             })?;
-            let contents = std::fs::read_to_string(scenario.path()).ok()?;
+            let contents = read_bounded_to_string(&scenario.path(), MAX_METADATA_BYTES).ok()?;
             crate::infra::maps::parse_scenario_lua(&contents).name?
         }
     };
@@ -685,7 +687,7 @@ fn write_archive(
                 // Only the root mod metadata needs a rewrite; ordinary files
                 // stream through a bounded buffer and check cancellation per chunk.
                 if let Some(rename) = rename.filter(|_| !renamed && is_root_mod_info(&name)) {
-                    let source_text = std::fs::read_to_string(&path)
+                    let source_text = read_bounded_to_string(&path, MAX_METADATA_BYTES)
                         .map_err(|error| format!("could not read mod_info.lua: {error}"))?;
                     if called_off.is_cancelled() {
                         return Err("upload cancelled".into());

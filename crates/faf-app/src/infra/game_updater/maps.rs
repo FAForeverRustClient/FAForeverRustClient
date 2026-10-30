@@ -298,6 +298,12 @@ pub(in crate::infra) async fn unpack_map_leased(
 /// failing on the folder the other had just put in place. Now the next one
 /// waits, and finds the map there. So does a vault install of the same map,
 /// in either order.
+///
+/// `http` must not follow redirects itself: every hop of the download is held
+/// to the vault's origin and `maps` path before it is requested
+/// ([`send_checking_each_hop`](crate::infra::http::send_checking_each_hop)).
+/// The same goes for the `http` of [`ensure_map_available`] and
+/// [`ensure_live_map`], which is this one.
 async fn stage_map(
     http: &reqwest::Client,
     content_base: &str,
@@ -316,12 +322,13 @@ async fn stage_map(
 
     let url = vault_map_url(content_base, map_folder);
     validate_url(&url, content_base, "maps")?;
-    let resp = http
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("could not download map {map_folder}: {e}"))?;
-    validate_url(resp.url().as_str(), content_base, "maps")?;
+    let resp = crate::infra::http::send_checking_each_hop(
+        &url,
+        |hop| validate_url(hop.as_str(), content_base, "maps"),
+        |hop| http.get(hop),
+    )
+    .await
+    .map_err(|e| format!("could not download map {map_folder}: {e}"))?;
     // An unversioned name the vault does not have is most likely a scenario
     // that ships with the game under a name `is_base_game_map` does not know,
     // which is how every unversioned name used to be treated. A versioned one
@@ -623,6 +630,127 @@ mod tests {
     /// test.
     fn loopback() -> reqwest::Client {
         reqwest::Client::builder().no_proxy().build().unwrap()
+    }
+
+    /// [`loopback`] that does not follow redirects, the kind the map
+    /// downloads are given outside tests.
+    fn loopback_unredirected() -> reqwest::Client {
+        reqwest::Client::builder()
+            .no_proxy()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .unwrap()
+    }
+
+    /// A vault that redirects the map to another origin, here another loopback
+    /// port. Both downloads refuse the hop before anything is sent to it:
+    /// staging a map for a game or a replay, and the vault's Install. They
+    /// used to follow it and check only where it ended.
+    #[tokio::test]
+    async fn a_map_redirect_off_the_content_origin_is_never_requested() {
+        use crate::infra::game_updater::test_support::FakeServer;
+
+        let archive = format!("/maps/{VAULT_MAP}.zip");
+        let elsewhere = FakeServer::start(vec![(archive.clone(), build_map_zip(VAULT_MAP))]).await;
+        let vault = FakeServer::start_with_redirects(
+            Vec::new(),
+            vec![(archive.clone(), format!("{}{archive}", elsewhere.base))],
+        )
+        .await;
+        let temp = tempfile::tempdir().unwrap();
+        let maps = temp.path().join("maps");
+        let http = loopback_unredirected();
+
+        let staged = stage_map(&http, &vault.base, std::slice::from_ref(&maps), VAULT_MAP)
+            .await
+            .expect_err("a redirect off the vault must not stage the map");
+        let installed = crate::infra::maps::install_vault_map(
+            &http,
+            &vault.base,
+            &maps,
+            VAULT_MAP,
+            &format!("{}{archive}", vault.base),
+            &|_| {},
+            &tokio_util::sync::CancellationToken::new(),
+        )
+        .await
+        .expect_err("a redirect off the vault must not install the map");
+
+        for error in [staged, installed] {
+            assert!(
+                error.contains("outside the configured FAF content origin"),
+                "{error}"
+            );
+        }
+        assert_eq!(vault.requests(), [archive.clone(), archive]);
+        assert!(
+            elsewhere.requests().is_empty(),
+            "the redirect's target was requested: {:?}",
+            elsewhere.requests()
+        );
+        assert!(!maps.join(VAULT_MAP).exists());
+    }
+
+    /// The other half: a hop that stays on the vault's maps path is followed,
+    /// so the check refuses where a redirect leads, not that there is one.
+    #[tokio::test]
+    async fn a_map_redirect_within_the_vault_is_followed() {
+        use crate::infra::game_updater::test_support::FakeServer;
+
+        let archive = format!("/maps/{VAULT_MAP}.zip");
+        let moved = format!("/maps/moved/{VAULT_MAP}.zip");
+        let vault = FakeServer::start_with_redirects(
+            vec![(moved.clone(), build_map_zip(VAULT_MAP))],
+            vec![(archive.clone(), moved.clone())],
+        )
+        .await;
+        let temp = tempfile::tempdir().unwrap();
+        let maps = temp.path().join("maps");
+
+        stage_map(
+            &loopback_unredirected(),
+            &vault.base,
+            std::slice::from_ref(&maps),
+            VAULT_MAP,
+        )
+        .await
+        .expect("a redirect within the vault is followed");
+
+        assert_eq!(vault.requests(), [archive, moved]);
+        assert!(maps
+            .join(VAULT_MAP)
+            .join(format!("{VAULT_MAP}.scmap"))
+            .is_file());
+    }
+
+    /// A client that follows redirects on its own has already sent the
+    /// requests the hop check is for. Its answer is refused rather than used,
+    /// so handing a map download the wrong client fails here.
+    #[tokio::test]
+    async fn a_map_redirect_followed_by_the_client_itself_is_refused() {
+        use crate::infra::game_updater::test_support::FakeServer;
+
+        let archive = format!("/maps/{VAULT_MAP}.zip");
+        let moved = format!("/maps/moved/{VAULT_MAP}.zip");
+        let vault = FakeServer::start_with_redirects(
+            vec![(moved.clone(), build_map_zip(VAULT_MAP))],
+            vec![(archive, moved)],
+        )
+        .await;
+        let temp = tempfile::tempdir().unwrap();
+        let maps = temp.path().join("maps");
+
+        let error = stage_map(
+            &loopback(),
+            &vault.base,
+            std::slice::from_ref(&maps),
+            VAULT_MAP,
+        )
+        .await
+        .expect_err("an unchecked redirect must not stage the map");
+
+        assert!(error.contains("without checking it"), "{error}");
+        assert!(!maps.join(VAULT_MAP).exists());
     }
 
     const VAULT_MAP: &str = "adaptive_gadostb.v0002";

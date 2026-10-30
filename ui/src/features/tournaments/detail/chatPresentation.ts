@@ -1,29 +1,11 @@
-// How the tournament chat reads and completes mentions: the website's own
-// rules (`highlightMentions`, `updateMentions` in its `app.results.js`).
+// How the tournament chat completes mentions, by the website's own rules
+// (`updateMentions` in its `app.results.js`), and how its posts become lines
+// of the Chat tab's log.
 //
 // Presentation only. The service resolves `@name` itself when a post arrives,
 // and pings whoever it matches; nothing here decides who is pinged.
 
-import type { Tourney } from "../../../ipc/bindings";
-
-/** The website's mention pattern: `@` at the start or after a space, up to 40 non-space characters. */
-const MENTION = /(^|\s)@([^\s@]{1,40})/g;
-
-export type ChatSpan = { kind: "text"; text: string } | { kind: "mention"; text: string };
-
-/** A post's text split into plain runs and `@mentions`, for highlighting. */
-export function mentionSpans(text: string): ChatSpan[] {
-  const spans: ChatSpan[] = [];
-  let last = 0;
-  for (const match of text.matchAll(MENTION)) {
-    const at = (match.index ?? 0) + match[1].length;
-    if (at > last) spans.push({ kind: "text", text: text.slice(last, at) });
-    spans.push({ kind: "mention", text: `@${match[2]}` });
-    last = at + 1 + match[2].length;
-  }
-  if (last < text.length) spans.push({ kind: "text", text: text.slice(last) });
-  return spans;
-}
+import type { ChatMessage, ChatPost, ChatUser, Tourney } from "../../../ipc/bindings";
 
 export interface MentionQuery {
   /** Where the `@` is. */
@@ -83,58 +65,57 @@ export function applyMention(
 }
 
 /**
- * How long a pause still keeps two posts from one person in one block: the
- * Chat tab's window (`continuesPrevious`), so a run reads the same in both.
+ * A post as a line of the Chat tab's log, which draws the room (`MessageList`).
+ *
+ * The service's announcements (dice rolls, organiser pings) are the log's info
+ * lines: nobody's name, nothing to answer. The post's own id is the line's
+ * `msgid`, which is what a reply and the line's toolbar are keyed on.
  */
-const CONTINUATION_SECONDS = 5 * 60;
-
-/** The fields of a post the row layout decides on. */
-export interface PostShape {
-  author: string;
-  at: number | null;
-  system: boolean;
-  replyTo: unknown;
+export function postMessage(post: ChatPost): ChatMessage {
+  return {
+    id: post.id,
+    sender: post.system ? "" : post.author,
+    content: post.body,
+    timestamp: post.at === null ? "" : new Date(post.at * 1000).toISOString(),
+    kind: post.system ? "info" : "message",
+    msgid: post.id,
+    replyTo: post.replyTo?.id ?? "",
+  };
 }
 
 /**
- * Whether a post continues the one above it, and so carries no name or
- * avatar of its own. The Chat tab's rule: the same person, a few minutes
- * apart, and neither an announcement nor a reply, which needs a name above
- * its quote to make sense.
+ * What each reply in a room quotes, by the quoted post's id, for the log's
+ * quote line. The service's snapshot rather than the post itself, so a quote
+ * survives the original being deleted or scrolled out of what was loaded.
  */
-export function postContinues(post: PostShape, previous: PostShape | undefined): boolean {
-  if (previous === undefined) return false;
-  if (post.system || previous.system) return false;
-  if (post.replyTo !== null) return false;
-  if (post.author !== previous.author) return false;
-  if (post.at === null || previous.at === null) return false;
-  const gap = post.at - previous.at;
-  return gap >= 0 && gap <= CONTINUATION_SECONDS;
+export function quotedPosts(posts: ChatPost[]): Map<string, ChatMessage> {
+  const quotes = new Map<string, ChatMessage>();
+  for (const post of posts) {
+    if (post.replyTo === null) continue;
+    quotes.set(post.replyTo.id, {
+      id: post.replyTo.id,
+      sender: post.replyTo.author,
+      content: post.replyTo.body,
+      timestamp: "",
+      kind: "message",
+      msgid: post.replyTo.id,
+    });
+  }
+  return quotes;
 }
 
 /**
- * A post's clock time as the Chat tab prints it, honouring the same 24-hour
- * setting. Empty for a post without a time.
+ * Everyone who may write in the event's rooms, as the log's roster: what it
+ * colours names by and which names a line can ping. The organisers carry an
+ * operator's mark, so the reader's moderator colour picks them out as it does
+ * a channel's moderators on the Chat tab.
  */
-export function postClock(at: number | null, use24HourTime: boolean): string {
-  if (at === null) return "";
-  const date = new Date(at * 1000);
-  return Number.isNaN(date.getTime())
-    ? ""
-    : date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: !use24HourTime });
-}
-
-/**
- * Whether a post prints its time: only when the minute changed since the post
- * above, as in the Chat tab, so a quick exchange is not a column of the same
- * number.
- */
-export function postShowsTime(
-  post: PostShape,
-  previous: PostShape | undefined,
-  use24HourTime: boolean,
-): boolean {
-  const clock = postClock(post.at, use24HourTime);
-  if (clock === "") return false;
-  return previous === undefined || clock !== postClock(previous.at, use24HourTime);
+export function roomUsers(event: Tourney): ChatUser[] {
+  const users = new Map<string, ChatUser>();
+  for (const name of event.organisers) users.set(name.toLowerCase(), { name, elevation: "@" });
+  for (const player of event.players) {
+    const key = player.name.toLowerCase();
+    if (!users.has(key)) users.set(key, { name: player.name, elevation: "" });
+  }
+  return [...users.values()];
 }

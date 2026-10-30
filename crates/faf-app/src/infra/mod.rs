@@ -100,6 +100,7 @@ pub mod map_analysis;
 pub mod map_generator;
 pub mod map_markers;
 pub mod maps;
+mod metadata_file;
 pub mod mods;
 pub mod notification_sounds;
 pub mod oauth;
