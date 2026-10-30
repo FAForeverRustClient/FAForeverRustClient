@@ -11,8 +11,9 @@
  *
  * True everywhere except Windows. FAF ships no native build of the engine, so
  * on Linux (and on macOS, where the same is true) a launch has to go through
- * Wine or Proton, and the two settings that describe one are worth showing.
- * On Windows they are noise, because the answer is always "run it directly".
+ * Wine or Proton, and the settings that describe one are worth showing. On
+ * Windows the game runs directly unless the player names a program of their
+ * own to run it through.
  *
  * Deliberately a negative test: an unfamiliar user agent shows the settings
  * rather than hiding them, and a setting nobody needs is a smaller failure

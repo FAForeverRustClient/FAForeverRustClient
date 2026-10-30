@@ -1423,6 +1423,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.game.launchWrapperLabel": "Polecenie uruchamiające",
   "settings.game.launchWrapperHint": "Zostaw puste, aby używać środowiska Wine powyżej. Wypełnij tylko, jeśli chcesz uruchamiać grę po swojemu, na przykład przez \"wine\".",
   "settings.game.launchWrapperNote": "To nie powłoka: cudzysłowy łączą słowa, nic więcej nie jest interpretowane. Puste pole używa środowiska Wine przygotowanego przez klienta.",
+  "settings.game.launchWrapperHintWindows": "Zostaw puste, aby uruchamiać grę bezpośrednio. Wypełnij, aby uruchamiać ją przez inny program, na przykład wrapper.exe modyfikacji lobby: gra i jej argumenty zostaną przekazane temu programowi.",
+  "settings.game.launchWrapperNoteWindows": "To nie powłoka: cudzysłowy łączą słowa, nic więcej nie jest interpretowane. Ścieżkę ze spacjami ujmij w cudzysłów; ukośniki wsteczne pisz pojedynczo.",
   "settings.game.linuxRuntime.label": "Środowisko Wine",
   "settings.game.linuxRuntime.hint": "W Linuksie Forged Alliance działa na Wine z GE-Proton wewnątrz Steam Linux Runtime, przygotowanym tak jak w FAForever/faf-linux. Klient instaluje je sam przy pierwszym uruchomieniu, około 1,5 GB.",
   "settings.game.linuxRuntime.ownCommand": "Nieużywane: gry startują przez twoje polecenie uruchamiające poniżej.",

@@ -1599,6 +1599,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.game.launchWrapperLabel": "Startbefehl",
   "settings.game.launchWrapperHint": "Leer lassen, um die Wine-Umgebung oben zu nutzen. Nur ausfüllen, um das Spiel auf eigene Weise zu starten, zum Beispiel mit \"wine\".",
   "settings.game.launchWrapperNote": "Keine Shell: Anführungszeichen fassen Wörter zusammen, sonst wird nichts ausgewertet. Leer nutzt die Wine-Umgebung, die der Client eingerichtet hat.",
+  "settings.game.launchWrapperHintWindows": "Leer lassen, um das Spiel direkt zu starten. Ausfüllen, um es über ein anderes Programm zu starten, etwa die wrapper.exe einer Lobby-Modifikation: Das Spiel und seine Argumente werden an dieses Programm übergeben.",
+  "settings.game.launchWrapperNoteWindows": "Keine Shell: Anführungszeichen fassen Wörter zusammen, sonst wird nichts ausgewertet. Einen Pfad mit Leerzeichen in Anführungszeichen setzen; Backslashes einfach schreiben.",
   "settings.game.linuxRuntime.label": "Wine-Umgebung",
   "settings.game.linuxRuntime.hint": "Unter Linux läuft Forged Alliance mit dem Wine von GE-Proton in der Steam Linux Runtime, eingerichtet wie bei FAForever/faf-linux. Der Client installiert sie beim ersten Start selbst, etwa 1,5 GB.",
   "settings.game.linuxRuntime.ownCommand": "Nicht in Gebrauch: Spiele starten über deinen Startbefehl unten.",
