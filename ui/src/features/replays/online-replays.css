@@ -1728,6 +1728,139 @@ button.vault-input {
   max-height: none;
 }
 
+/* A desync, above whichever tab is open. */
+.replay-insights-desync {
+  margin-bottom: var(--space-3);
+}
+
+/* The build order: two players picked at the top, then the opening, the
+   units per minute and the two ledgers side by side. */
+.replay-build-order {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.replay-build-order-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.replay-build-order-player {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 220px;
+}
+
+.replay-build-order-heading {
+  margin: var(--space-2) 0 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.replay-build-order-label {
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+/* The earlier of the two players to a milestone. */
+.replay-build-order-milestones td.is-first {
+  color: var(--color-ok-text);
+  font-weight: 600;
+}
+
+.replay-build-order-flow-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.replay-build-order-flow-head .replay-build-order-heading {
+  margin: 0;
+}
+
+.replay-build-order-side h4 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+  font-size: 13px;
+}
+
+/* One player's lanes, after the maintainer's build order analyser: dark
+   ground, a lane per builder, and the whole run scrolling sideways past the
+   window the buttons above choose. */
+.replay-build-flow {
+  overflow-x: auto;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+.replay-build-flow svg {
+  display: block;
+}
+
+.replay-build-flow-grid {
+  stroke: color-mix(in srgb, var(--color-text) 6%, transparent);
+}
+
+.replay-build-flow-time,
+.replay-build-flow-label,
+.replay-build-flow-lane-name {
+  font-size: 11px;
+}
+
+.replay-build-flow-time {
+  fill: var(--color-subtle);
+}
+
+.replay-build-flow-row {
+  fill: transparent;
+}
+
+.replay-build-flow-row.is-odd {
+  fill: color-mix(in srgb, var(--color-text) 2%, transparent);
+}
+
+.replay-build-flow-row.is-hot {
+  fill: color-mix(in srgb, var(--color-text) 5%, transparent);
+}
+
+.replay-build-flow-lane {
+  cursor: default;
+}
+
+.replay-build-flow-gutter {
+  fill: var(--color-surface);
+}
+
+.replay-build-flow-lane-name {
+  fill: var(--color-muted);
+}
+
+.replay-build-flow-lane-name.is-hot {
+  fill: var(--color-text);
+}
+
+.replay-build-flow-spine {
+  stroke: color-mix(in srgb, var(--color-text) 13%, transparent);
+}
+
+.replay-build-flow-node {
+  fill: var(--color-surface-raised);
+}
+
+/* An order taken off the queue: hatched, so it does not read as a short
+   build that ran. */
+.replay-build-flow-hatch {
+  fill: color-mix(in srgb, var(--color-text) 35%, transparent);
+}
+
 /* A span inside the cell, never the cell itself: `display: flex` on a `td`
    takes the element out of the table's own box tree, which breaks the
    collapsed row border at that column and leaves the glyphs unmeasured on top

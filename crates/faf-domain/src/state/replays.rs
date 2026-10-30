@@ -398,12 +398,40 @@ pub struct ReplayActivity {
 pub struct ReplayOrder {
     pub source: i32,
     pub tick: u32,
-    /// `EUnitCommandType`: 8 is a mobile build, 27 an upgrade, 28 a script.
+    /// `EUnitCommandType`: 7 a factory build, 8 a mobile build, 27 an
+    /// upgrade, 28 a script.
     pub command: i32,
     /// The unit ordered, where the order names one.
     pub blueprint: String,
-    /// The enhancement or task a script order carried, where it had one.
-    pub detail: String,
+    /// The commander upgrade a script order starts (`AdvancedEngineering`),
+    /// empty for every other order.
+    pub enhancement: String,
+    /// How many units the order went to: for a factory order, how many
+    /// factories each build one.
+    pub units: u32,
+    /// The id later records name the order by, the one a queue change
+    /// carries.
+    pub id: u32,
+    /// The first unit the order went to, as the stream numbers a player's
+    /// units: in the order they came into being, the commander first. For a
+    /// factory order, the factory.
+    pub unit: u32,
+}
+
+/// A queued order made longer or shorter: the count on a factory's queue
+/// changed with a click, rather than a new order given.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayQueueChange {
+    pub source: i32,
+    pub tick: u32,
+    /// The unit the changed order builds, where the stream named the order
+    /// before; empty when it did not.
+    pub blueprint: String,
+    /// Units added, negative for units taken off.
+    pub delta: i32,
+    /// The id of the order whose count changed ([`ReplayOrder::id`]).
+    pub order: u32,
 }
 
 /// Where on the map an order was aimed.
@@ -517,9 +545,17 @@ pub struct ReplayAnalysis {
     pub scenario: ReplayScenario,
     pub activity: Vec<ReplayActivity>,
     pub orders: Vec<ReplayOrder>,
+    pub queue_changes: Vec<ReplayQueueChange>,
     pub points: Vec<ReplayPoint>,
     pub notices: Vec<ReplayNotice>,
     pub stats: Vec<ReplayPlayerStats>,
+    /// The first tick at which the players' games disagreed, where they did.
+    ///
+    /// Every client writes a checksum of its simulation into the stream every
+    /// fifty ticks, and they are equal for as long as the games agree; the
+    /// first pair that differs is the desync. Only the first is kept: after
+    /// it, the replay shows one client's game and not the other's.
+    pub desync_tick: Option<u32>,
 }
 
 /// One game's map, as its replay file names it.
