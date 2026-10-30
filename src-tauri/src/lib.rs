@@ -192,6 +192,7 @@ pub fn run() {
             commands::import_background_image,
             commands::read_background_image,
             commands::unit_icons,
+            commands::map_analysis,
             commands::read_marked_map_preview,
             commands::open_version_folder,
             commands::open_installed_folder,

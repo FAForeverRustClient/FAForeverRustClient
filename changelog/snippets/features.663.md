@@ -1,0 +1,1 @@
+- Installed maps show where land, hover, amphibious and naval units can go and how much there is to reclaim, and a map opens its replays in the Replays tab.
