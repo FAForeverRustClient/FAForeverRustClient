@@ -32,8 +32,13 @@ request is retained with its result for the session, so returning to a note
 or switching between the article and contents does not wait for another lookup.
 
 While the small catalogue is loading, pictures keep their reserved dimensions
-without starting remote downloads. Text remains readable. Pictures load lazily
+without starting remote downloads. Text remains readable. Article pictures load lazily
 from the existing local protocol, which reuses decoded PNGs on disk. Missing
 installations, missing local pictures and decode failures retain the original
 web artwork as a fallback. Unknown images and enhancement glyphs keep their
 existing sources and do not start a catalogue lookup.
+
+Contents thumbnails load as soon as their sources are available, including
+web fallbacks. Their requests do not depend on lazy-image visibility updates
+inside the independently scrolling navigation pane. Article pictures remain
+lazy-loaded so opening a long note does not request every body image at once.

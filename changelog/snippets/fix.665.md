@@ -9,3 +9,4 @@
 - Patch-note icons no longer stay hidden after a replacement image loads successfully.
 - Unit pictures in older patch notes no longer include embedded corner badges.
 - Historical illustration and forum links now open through secure destinations.
+- Patchnote contents icons no longer wait for a click to start loading.

@@ -4,8 +4,8 @@ import { useUnitIcons } from "../useUnitIcons";
 
 /** Prefer the installed game's cached picture; keep the original web artwork
  * for missing installs and failed local pictures. Body and contents share it. */
-export function ChangelogIcon({ source, className, size, title }: {
-  source: string; className: string; size: number; title?: string;
+export function ChangelogIcon({ source, className, size, title, loading = "lazy" }: {
+  source: string; className: string; size: number; title?: string; loading?: "eager" | "lazy";
 }) {
   const unitId = changelogUnitIconId(source);
   const icons = useUnitIcons(unitId !== null);
@@ -25,7 +25,7 @@ export function ChangelogIcon({ source, className, size, title }: {
     width={size}
     height={size}
     className={`${className}${missing ? " is-missing" : ""}`}
-    loading="lazy"
+    loading={loading}
     decoding="async"
     draggable={false}
     onLoad={() => setFailure(current => current?.source === source && current.remote ? { ...current, remote: false } : current)}

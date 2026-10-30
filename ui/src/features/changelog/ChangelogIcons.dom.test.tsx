@@ -35,9 +35,10 @@ it("shares one local catalogue across the article, caption and contents, includi
   expect(readUnitIcons).toHaveBeenCalledTimes(1);
   const pending = view.container.querySelectorAll("img");
   expect(pending).toHaveLength(3);
+  expect([...pending].map(image => image.getAttribute("loading"))).toEqual(["lazy", "lazy", "eager"]);
   for (const image of pending) expect(image.hasAttribute("src")).toBe(false);
   await act(async () => {
-    resolve({ units: Object.fromEntries(["UES0304", "UEL0303", "UEL0203"].map(id => [id, local(id)])), strategic: {} });
+    resolve({ units: Object.fromEntries(["UES0304", "UEL0303", "UEL0203", "UEB4301"].map(id => [id, local(id)])), strategic: {} });
     await Promise.resolve();
   });
   for (const image of view.container.querySelectorAll("img")) {
@@ -47,6 +48,25 @@ it("shares one local catalogue across the article, caption and contents, includi
   const returned = render(<ChangelogIcon source={source} className="changelog-unit-icon" size={48} />);
   expect(returned.container.querySelector("img")?.getAttribute("src")).toBe(local("UES0304"));
   expect(readUnitIcons).toHaveBeenCalledTimes(1);
+});
+
+it.each([false, true])("requests the Shield Assist contents picture without selecting it (historical: %s)", historical => {
+  const onJump = vi.fn();
+  const source = clean + "UEB4301_icon.png";
+  const view = render(<NoteContentsColumn sections={[
+    { id: "engine", depth: 1, text: "Engine" },
+    { id: "shield-assist", depth: 2, text: "Shield Assist", iconUrl: historical ? undefined : source,
+      illustration: historical ? { type: "unit", unitId: "UEB4301", iconUrl: source } : undefined },
+  ]} activeSectionId="engine" navRef={createRef<HTMLElement>()} onJump={onJump} />);
+  const image = view.container.querySelector("img")!;
+  expect(onJump).not.toHaveBeenCalled();
+  expect(image.getAttribute("src")).toBe(local("UEB4301"));
+  expect(image.getAttribute("loading")).toBe("eager");
+  fireEvent.error(image);
+  const fallback = view.container.querySelector("img")!;
+  expect(fallback.getAttribute("src")).toBe(source);
+  expect(fallback.getAttribute("loading")).toBe("eager");
+  expect(onJump).not.toHaveBeenCalled();
 });
 
 it("falls back from a broken local picture and recovers when the unit changes", () => {

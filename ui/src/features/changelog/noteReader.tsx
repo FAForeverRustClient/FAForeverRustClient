@@ -337,8 +337,8 @@ export const NoteContentsColumn = memo(function NoteContentsColumn({
       >
         {section.iconUrl || section.illustration ? <>
           {section.illustration
-            ? <ChangelogIllustration illustration={section.illustration} className="changelog-toc-icon" size={24} />
-            : section.iconUrl && <ChangelogIcon className="changelog-toc-icon" source={section.iconUrl} size={24} />}
+            ? <ChangelogIllustration illustration={section.illustration} className="changelog-toc-icon" size={24} loading="eager" />
+            : section.iconUrl && <ChangelogIcon className="changelog-toc-icon" source={section.iconUrl} size={24} loading="eager" />}
           <span className="changelog-toc-text">{section.text}</span>
         </> : section.text}
       </button>
