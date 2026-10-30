@@ -431,8 +431,6 @@ mod tests {
             // as well as the window's, so with the root missing here the
             // frame's own page went to the browser (PR 463).
             "https://unitdb.faforever.com/#/",
-            // FAF Daily, the Units tab's second view.
-            "https://daily.faforever.com/",
             // A training video frame, for the same reason.
             "https://www.youtube-nocookie.com/embed/abc?rel=0",
         ] {
@@ -440,6 +438,8 @@ mod tests {
         }
 
         for external in [
+            // Minigames are browser links, not embedded client pages.
+            "https://daily.faforever.com/",
             "https://www.youtube.com/watch?v=abc",
             // Only the player frame, not the rest of that host.
             "https://www.youtube-nocookie.com/watch?v=abc",
