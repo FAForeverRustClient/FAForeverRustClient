@@ -16,7 +16,7 @@ import { Icon } from "../../design-system/Icon";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import type { ChangelogBlock, ChangelogListItem, ChangelogSpan, ClientReleaseNotes } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
-import { native } from "../../ipc/native";
+import { openChangelogLink } from "../../shared/changelogLinks";
 import { useTranslation } from "../../i18n/useTranslation";
 import { useRememberedFilter } from "../../shared/filterMemory";
 import { formatDate } from "../../shared/format/dates";
@@ -220,7 +220,7 @@ export function ClientReleasesView() {
   }
 
   const loading = status.type !== "ready";
-  const openOnGithub = (note: ClientReleaseNotes) => void native.openUrl(note.notesUrl);
+  const openOnGithub = (note: ClientReleaseNotes) => ipc.run(openChangelogLink(note.notesUrl));
 
   return (
     <div className="changelog-view">
@@ -310,7 +310,8 @@ export function ClientReleasesView() {
                   <Icon name="chevronDown" size={15} />
                 </button>
               </div>
-              <Button className="changelog-external" onClick={() => openOnGithub(selected)}>
+              <Button className="changelog-external" aria-label={t("changelog.client.openOnGithub")} title={t("changelog.client.openOnGithub")}
+                onClick={() => openOnGithub(selected)}>
                 <Icon name="external" size={13} />
                 <span>{t("changelog.client.openOnGithub")}</span>
               </Button>

@@ -815,6 +815,57 @@
   }
 }
 
+/* Keep room for the article at the shell's 560 by 480 minimum. The stacked
+   release list and two-row header otherwise leave a 48px reading viewport.
+   The unit-history picker has its own layout and needs room for its filters. */
+@media (max-width: 900px) and (max-height: 600px) {
+  .changelog-view:not(.unit-history-view) {
+    grid-template-rows: 128px minmax(0, 1fr);
+  }
+
+  .changelog-view:not(.unit-history-view) .changelog-sidebar {
+    padding: var(--space-2) 0 var(--space-2) var(--space-2);
+    gap: 4px;
+  }
+
+  .changelog-note-head {
+    flex-direction: row;
+    padding: 12px 14px;
+    gap: var(--space-2);
+  }
+
+  .changelog-note-head h1 {
+    font-size: 18px;
+  }
+
+  .changelog-external {
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    padding: 0;
+  }
+
+  .changelog-external > span {
+    display: none;
+  }
+
+  .changelog-note-layout {
+    padding: 12px 14px 24px;
+  }
+
+  .changelog-jump {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    padding-bottom: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+
+  .changelog-jump-item {
+    flex: none;
+  }
+}
 /* ── Unit history ──────────────────────────────────────────────────────── */
 
 /* A unit database's grid wants more room than a list of patch numbers. */

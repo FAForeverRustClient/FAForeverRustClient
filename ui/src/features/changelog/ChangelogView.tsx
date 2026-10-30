@@ -17,14 +17,14 @@
 // and one unit's values across the game's patches (`UnitHistoryView`), which
 // links back into the first.
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Button } from "../../design-system/Button";
 import { EmptyState } from "../../design-system/EmptyState";
 import { Icon } from "../../design-system/Icon";
 import { SectionTabs, sectionPanelProps } from "../../design-system/SectionTabs";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { ipc } from "../../ipc/client";
-import { native } from "../../ipc/native";
+import { openChangelogLink } from "../../shared/changelogLinks";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n";
@@ -35,6 +35,7 @@ import { FeaturedModIcon } from "../../shared/components/FeaturedModIcon";
 import type { ChangelogBlock, ChangelogRelease, ChangelogSearchMatch, ChangelogSection } from "../../ipc/bindings";
 import { ClientReleasesView } from "./ClientReleasesView";
 import { PatchSearch } from "./PatchSearch";
+import { historicalKindKey, isRollingRelease, LEGACY_GROUP, releaseGroup, releaseLabel, UNDATED_GROUP } from "./releasePresentation";
 import { UnitHistoryView } from "./UnitHistoryView";
 import { changelogViewMemory } from "./viewMemory";
 import {
@@ -48,6 +49,7 @@ import {
   useNoteListPosition,
   type Section,
 } from "./noteReader";
+import { historicalChangelogIllustrations } from "../../shared/historicalChangelogIcons";
 import "./changelog.css";
 
 /** Rolling branches have no date and belong above the dated years. */
@@ -115,6 +117,8 @@ const isPatch = (kind: string) => kind.toLowerCase() === "game patch";
 const isHotfix = (kind: string) => kind.toLowerCase() === "hotfix";
 
 function kindLabel(kind: string, t: Translate): string {
+  const historical = historicalKindKey(kind);
+  if (historical) return t(historical);
   if (isPatch(kind)) return t("changelog.kind.patch");
   if (isHotfix(kind)) return t("changelog.kind.hotfix");
   return kind;
@@ -122,7 +126,7 @@ function kindLabel(kind: string, t: Translate): string {
 
 /** Day and month only: the list already groups by year. */
 function listDate(date: string): string {
-  return formatDate(date, "", { day: "numeric", month: "short" });
+  return formatDate(date, "", { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
 /**
@@ -177,7 +181,7 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
   const groups = useMemo(() => {
     const byYear = new Map<string, ChangelogRelease[]>();
     for (const release of filtered) {
-      const key = release.year || BRANCH_GROUP;
+      const key = releaseGroup(release);
       const bucket = byYear.get(key);
       if (bucket) bucket.push(release);
       else byYear.set(key, [release]);
@@ -193,6 +197,7 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
   // group read as no match at all.
   const cutoffYear = new Date().getFullYear() - 2;
   const foldedByDefault = (groupKey: string) => {
+    if (groupKey === UNDATED_GROUP || groupKey === LEGACY_GROUP) return true;
     const year = Number.parseInt(groupKey, 10);
     return Number.isFinite(year) && year <= cutoffYear;
   };
@@ -210,15 +215,21 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
   const newer = selectedIndex > 0 ? changelog.releases[selectedIndex - 1] : undefined;
   const older = selectedIndex >= 0 ? changelog.releases[selectedIndex + 1] : undefined;
   const loadingEntry = changelog.entryStatus.type === "loading";
+  const selectedGroup = selected ? releaseGroup(selected) : null;
+  const selectedGroupFolded = selectedGroup !== null
+    && foldedByDefault(selectedGroup) !== toggledGroups.has(selectedGroup);
 
   const heading = useMemo(
     () => noteTitle(entry?.blocks ?? [], entry?.title || selected?.id || "", Boolean(selected?.date)),
     [entry, selected],
   );
 
+  const illustrations = useMemo(
+    () => historicalChangelogIllustrations(entry?.id ?? "", entry?.blocks ?? []), [entry],
+  );
   const sections = useMemo<Section[]>(
-    () => (entry ? noteSections(entry.blocks, heading.skipFirst, t("changelog.historicalBalance")) : []),
-    [entry, heading.skipFirst, t],
+    () => (entry ? noteSections(entry.blocks, heading.skipFirst, t("changelog.historicalBalance"), 0, illustrations) : []),
+    [entry, heading.skipFirst, t, illustrations],
   );
   const { scrollRef, tocRef, activeSectionId, onNoteScroll, jumpTo } = useNoteContents(sections, changelog.selected, "game", Boolean(entry));
 
@@ -232,10 +243,25 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
     return () => cancelAnimationFrame(frame);
   }, [entry, jumpTarget, loadingEntry, jumpTo, onJumped]);
 
-  useEffect(() => {
-    if (listedSelection.current !== changelog.selected) keepCurrentRowInView(listRef.current);
+  useLayoutEffect(() => {
+    if (listedSelection.current === changelog.selected || selectedGroup === null) return;
+    // A search result or the next/previous controls can choose a folded year.
+    // Open it before measuring the row, including while a filter shows it,
+    // so clearing that filter does not hide the selection again. A remount
+    // of the same note preserves the reader's manual folds and list offset.
+    if (selectedGroupFolded) {
+      setToggledGroups(current => {
+        const next = new Set(current);
+        if (next.has(selectedGroup)) next.delete(selectedGroup);
+        else next.add(selectedGroup);
+        changelogViewMemory.game.years = next;
+        return next;
+      });
+      return;
+    }
+    keepCurrentRowInView(listRef.current);
     listedSelection.current = changelog.selected;
-  }, [changelog.selected]);
+  }, [changelog.selected, selectedGroup, selectedGroupFolded]);
 
   const select = (id: string) =>
     ipc.send({ kind: "Changelog", command: { type: "select", payload: { id } } });
@@ -292,7 +318,7 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
   }
 
   const longDate = selected?.date
-    ? formatDate(selected.date, "", { day: "numeric", month: "long", year: "numeric" })
+    ? formatDate(selected.date, "", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
     : "";
 
   return (
@@ -339,7 +365,8 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
                   onClick={() => toggleGroup(groupKey)}
                 >
                   <Icon name={collapsed ? "chevronRight" : "chevronDown"} size={13} />
-                  <span>{year || t("changelog.branches")}</span>
+                  <span>{groupKey === UNDATED_GROUP ? t("changelog.historical.undated")
+                    : groupKey === LEGACY_GROUP ? t("changelog.historical.legacy") : year || t("changelog.branches")}</span>
                   <span className="changelog-year-count">{releases.length}</span>
                 </button>
                 <ul id={groupId} className="changelog-year-releases" hidden={collapsed}>
@@ -377,8 +404,8 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
                             </>
                           ) : (
                             <>
-                              <span className="changelog-release-id">{release.id}</span>
-                              <span className="changelog-release-kind">{kindLabel(release.kind, t)}</span>
+                              <span className="changelog-release-id">{releaseLabel(release.id)}</span>
+                              <span className="changelog-release-kind" title={kindLabel(release.kind, t)}>{kindLabel(release.kind, t)}</span>
                               <span className="changelog-release-date">{listDate(release.date)}</span>
                             </>
                           )}
@@ -399,12 +426,13 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
             <div className="changelog-note-heading">
               <h1>{entry ? heading.title : selected.id}</h1>
               <p className="changelog-note-meta">
-                {selected.year && (
+                {!isRollingRelease(selected) && (
                   <span className={`changelog-kind-tag${isPatch(selected.kind) ? " is-patch" : ""}`}>
                     {kindLabel(selected.kind, t)}
                   </span>
                 )}
                 {longDate && <time dateTime={selected.date}>{longDate}</time>}
+                {!selected.date && !isRollingRelease(selected) && <span>{t("changelog.historical.dateUnknown")}</span>}
               </p>
             </div>
             <div className="changelog-note-actions">
@@ -414,8 +442,8 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
                   className="changelog-step-btn"
                   disabled={!newer}
                   onClick={() => newer && select(newer.id)}
-                  title={newer ? `${t("changelog.newer")}: ${newer.id}` : t("changelog.newer")}
-                  aria-label={t("changelog.newer")}
+                  title={newer ? `${t(selected.date && newer.date ? "changelog.newer" : "changelog.historical.previous")}: ${releaseLabel(newer.id)}` : t("changelog.newer")}
+                  aria-label={t(selected.date && newer?.date ? "changelog.newer" : "changelog.historical.previous")}
                 >
                   <Icon name="chevronUp" size={15} />
                 </button>
@@ -424,13 +452,14 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
                   className="changelog-step-btn"
                   disabled={!older}
                   onClick={() => older && select(older.id)}
-                  title={older ? `${t("changelog.older")}: ${older.id}` : t("changelog.older")}
-                  aria-label={t("changelog.older")}
+                  title={older ? `${t(selected.date && older.date ? "changelog.older" : "changelog.historical.next")}: ${releaseLabel(older.id)}` : t("changelog.older")}
+                  aria-label={t(selected.date && older?.date ? "changelog.older" : "changelog.historical.next")}
                 >
                   <Icon name="chevronDown" size={15} />
                 </button>
               </div>
-              <Button className="changelog-external" onClick={() => void native.openUrl(selected.webUrl)}>
+              <Button className="changelog-external" aria-label={t("changelog.openOnSite")} title={t("changelog.openOnSite")}
+                onClick={() => ipc.run(openChangelogLink(selected.webUrl))}>
                 <Icon name="external" size={13} />
                 <span>{t("changelog.openOnSite")}</span>
               </Button>
@@ -474,7 +503,7 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
                 <p className="changelog-list-note">{t("changelog.pick")}</p>
               )}
 
-              {entry && <NoteBlocks blocks={entry.blocks} skipFirst={heading.skipFirst} />}
+              {entry && <NoteBlocks blocks={entry.blocks} skipFirst={heading.skipFirst} illustrations={illustrations} />}
             </div>
 
             <NoteContentsColumn

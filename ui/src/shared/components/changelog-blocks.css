@@ -114,6 +114,18 @@
   font-weight: 650;
 }
 
+/* Historical captions keep their source heading level and anchor while using
+   the same portrait dimensions as a modern unit header. */
+.changelog-illustrated-caption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.changelog-illustrated-caption > span:last-child {
+  min-width: 0;
+}
+
 /* ── Balance changes read as a diff ────────────────────────────────────── */
 
 .changelog-change {

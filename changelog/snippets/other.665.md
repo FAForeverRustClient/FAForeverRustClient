@@ -1,0 +1,1 @@
+- No visible changes: translation checks now recognize image filenames containing spaces.

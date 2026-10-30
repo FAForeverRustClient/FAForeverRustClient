@@ -1,7 +1,9 @@
 //! Changelog orchestration: refresh the index on every visit, load a note on
 //! demand, and never serve a rolling branch note out of the cache.
 
-use faf_domain::protocol::changelog::{ChangelogBlock, ChangelogEntry, ChangelogRelease};
+use faf_domain::protocol::changelog::{
+    is_early_release, ChangelogBlock, ChangelogEntry, ChangelogRelease,
+};
 use faf_domain::state::{ChangelogCommand, ChangelogEntryStatus, ChangelogEvent, ChangelogStatus};
 
 use crate::runtime::{CancellationSlot, EventSink, LatestRequest, ServiceCtx};
@@ -96,7 +98,7 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
 fn newest_patch_id(releases: &[ChangelogRelease]) -> Option<String> {
     releases
         .iter()
-        .filter(|release| !release.date.is_empty())
+        .filter(|release| !release.date.is_empty() && !is_early_release(release))
         .max_by(|left, right| left.date.cmp(&right.date))
         .map(|release| release.id.clone())
 }
@@ -178,4 +180,32 @@ fn complete_entry(entry: &ChangelogEntry) -> bool {
             }
         )
     })
+}
+
+#[cfg(test)]
+mod historical_selection_tests {
+    use super::*;
+    use faf_domain::protocol::changelog::with_early_releases;
+
+    #[test]
+    fn early_archive_does_not_replace_the_published_default() {
+        let mut releases = with_early_releases(vec![ChangelogRelease {
+            id: "fafbeta".into(),
+            kind: "FAF Beta".into(),
+            date: String::new(),
+            year: String::new(),
+            source_url: "https://example.invalid/fafbeta".into(),
+            web_url: "https://example.invalid/fafbeta".into(),
+        }]);
+        assert!(newest_patch_id(&releases).is_none());
+        releases.push(ChangelogRelease {
+            id: "3840".into(),
+            kind: "Hotfix".into(),
+            date: "2026-10-20".into(),
+            year: "2026".into(),
+            source_url: "https://example.invalid/3840".into(),
+            web_url: "https://example.invalid/3840".into(),
+        });
+        assert_eq!(newest_patch_id(&releases).as_deref(), Some("3840"));
+    }
 }

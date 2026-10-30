@@ -9,11 +9,14 @@
 
 import { useEffect, useState } from "react";
 import type { ChangelogBlock, ChangelogListItem, ChangelogSpan } from "../../ipc/bindings";
-import { native } from "../../ipc/native";
 import { ipc } from "../../ipc/client";
 import { useTranslation } from "../../i18n/useTranslation";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import type { ChangelogIllustration as Illustration } from "../historicalChangelogIcons";
+import { ChangelogIllustration } from "./ChangelogIllustration";
+import { changelogLinkTarget, openChangelogLink } from "../changelogLinks";
+import { ChangelogIcon } from "./ChangelogIcon";
 import "./changelog-blocks.css";
 
 export function ChangelogSpans({ spans }: { spans: ChangelogSpan[] }) {
@@ -31,8 +34,8 @@ export function ChangelogSpans({ spans }: { spans: ChangelogSpan[] }) {
                 key={index}
                 type="button"
                 className="changelog-link"
-                title={span.payload.url}
-                onClick={() => void native.openUrl(span.payload.url)}
+                title={changelogLinkTarget(span.payload.url)}
+                onClick={() => ipc.run(openChangelogLink(span.payload.url))}
               >
                 {span.payload.text}
               </button>
@@ -44,7 +47,7 @@ export function ChangelogSpans({ spans }: { spans: ChangelogSpan[] }) {
                 type="button"
                 className="changelog-issue"
                 title={span.payload.url}
-                onClick={() => void native.openUrl(span.payload.url)}
+                onClick={() => ipc.run(openChangelogLink(span.payload.url))}
               >
                 {span.payload.label ?? `#${span.payload.number}`}
               </button>
@@ -127,7 +130,7 @@ function HistoricalBalance({ block, anchorId }: {
     <section className="changelog-historical" aria-labelledby={anchorId}>
       <h2 id={anchorId} className="changelog-heading changelog-heading-2">{t("changelog.historicalBalance")}</h2>
       <p className="changelog-paragraph">
-        <button type="button" className="changelog-link" onClick={() => void native.openUrl(block.payload.sourceUrl)}>
+        <button type="button" className="changelog-link" onClick={() => ipc.run(openChangelogLink(block.payload.sourceUrl))}>
           {t("changelog.historicalBalanceSource")}
         </button>
       </p>
@@ -143,17 +146,22 @@ function HistoricalBalance({ block, anchorId }: {
   );
 }
 
-export function ChangelogBlockView({ block, anchorId, headingOffset = 0 }: {
-  block: ChangelogBlock; anchorId: string; headingOffset?: number;
+export function ChangelogBlockView({ block, anchorId, headingOffset = 0, icons, captionHeadingLevel, captionAsParagraph }: {
+  block: ChangelogBlock; anchorId: string; headingOffset?: number; icons?: readonly Illustration[]; captionHeadingLevel?: number; captionAsParagraph?: boolean;
 }) {
+  const illustrations = icons?.length ? <span className="changelog-unit-icons">
+    {icons.map((illustration, index) => <ChangelogIllustration key={index} illustration={illustration} className="changelog-unit-icon" size={48} />)}
+  </span> : null;
   switch (block.type) {
     case "heading": {
+      if (captionAsParagraph) return <p id={anchorId} className="changelog-paragraph">{block.payload.text}</p>;
       // The page title is the one `h1`; the note's sections start at `h2`.
       const level = Math.min(Math.max(block.payload.level + headingOffset, 2), 6);
       const Tag = `h${level}` as "h2" | "h3" | "h4" | "h5" | "h6";
       return (
-        <Tag id={anchorId} className={`changelog-heading changelog-heading-${level}`}>
-          {block.payload.text}
+        <Tag id={anchorId} className={`changelog-heading changelog-heading-${level}${illustrations ? " changelog-illustrated-caption" : ""}`}>
+          {illustrations}
+          {illustrations ? <span>{block.payload.text}</span> : block.payload.text}
         </Tag>
       );
     }
@@ -162,17 +170,12 @@ export function ChangelogBlockView({ block, anchorId, headingOffset = 0 }: {
         <div id={anchorId} className="changelog-unit">
           <span className="changelog-unit-icons">
             {block.payload.units.map((unit) => (
-              <img
+              <ChangelogIcon
                 key={unit.unitId ?? unit.iconUrl}
                 className="changelog-unit-icon"
-                src={unit.iconUrl}
-                alt=""
+                source={unit.iconUrl}
+                size={48}
                 title={unit.unitId ?? undefined}
-                loading="lazy"
-                draggable={false}
-                /* Older notes name units the site never drew an icon for, and a
-                   missing sprite should leave a gap rather than a broken image. */
-                onError={(event) => event.currentTarget.classList.add("is-missing")}
               />
             ))}
           </span>
@@ -185,11 +188,20 @@ export function ChangelogBlockView({ block, anchorId, headingOffset = 0 }: {
       return <HistoricalBalance block={block} anchorId={anchorId} />;
     case "codeBlock":
       return <ChangelogCodeBlock key={block.payload.text} text={block.payload.text} anchorId={anchorId} />;
-    default:
+    default: {
+      if (captionHeadingLevel !== undefined) {
+        const level = Math.min(Math.max(captionHeadingLevel + headingOffset, 2), 6);
+        const Tag = `h${level}` as "h2" | "h3" | "h4" | "h5" | "h6";
+        return <Tag id={anchorId} className={`changelog-heading changelog-heading-${level} changelog-illustrated-caption`}>
+          {illustrations}<span><ChangelogSpans spans={block.payload.spans} /></span>
+        </Tag>;
+      }
       return (
-        <p id={anchorId} className="changelog-paragraph">
-          <ChangelogSpans spans={block.payload.spans} />
+        <p id={anchorId} className={`changelog-paragraph${illustrations ? " changelog-illustrated-caption" : ""}`}>
+          {illustrations}
+          {illustrations ? <span><ChangelogSpans spans={block.payload.spans} /></span> : <ChangelogSpans spans={block.payload.spans} />}
         </p>
       );
+    }
   }
 }

@@ -874,19 +874,26 @@ export type ChangelogListItem = {
 /**  One release in the index. */
 export type ChangelogRelease = {
 	/**
-	 *  Game version, e.g. `"3837"`. Also the id the UI selects by, which is why
-	 *  the two rolling branches get the ids `"fafbeta"` and `"fafdevelop"`.
+	 *  Game version, e.g. `"3837"`, or `"legacy-3605"` for unverified legacy
+	 *  material. Deployment branches use `"fafbeta"` and `"fafdevelop"`.
 	 */
 	id: string,
-	/**  `"Game Patch"`, `"Hotfix"`, or the branch name for a rolling entry. */
+	/**  `"Game Patch"`, `"Hotfix"`, a historical status, or a deployment branch name. */
 	kind: string,
-	/**  ISO `YYYY-MM-DD`, or empty for the rolling branches, which have no date. */
+	/**
+	 *  ISO `YYYY-MM-DD`, or empty when a historical release date is unverified
+	 *  or the entry is a rolling branch. Capture/edit times are never dates.
+	 */
 	date: string,
-	/**  Calendar year as printed on the index, for grouping. Empty for rolling. */
+	/**
+	 *  Calendar year supported by the source, for grouping. Empty for rolling
+	 *  branches and historical notes whose release date remains unverified.
+	 */
 	year: string,
 	/**
 	 *  Absolute URL of the document this release's note is read from: the
-	 *  Markdown post for a dated release, the rendered page for a rolling one.
+	 *  Markdown post for a dated release, the rendered page for a rolling one,
+	 *  or the provenance URL identifying an embedded historical note.
 	 */
 	sourceUrl: string,
 	/**  The page a "view on the website" link should open. */

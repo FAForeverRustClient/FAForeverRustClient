@@ -1,0 +1,1 @@
+- No visible changes: CI skips unrelated build checks for documentation and UI changes.

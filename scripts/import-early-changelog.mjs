@@ -1,0 +1,243 @@
+// Regenerate the inert archive from reviewed, pinned source documents.
+import { Window } from "happy-dom";
+import { createHash } from "node:crypto";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+function blogDocument(raw) {
+  const value = JSON.parse(raw.replace(/^\uFEFF/, ""));
+  return { title: value.title?.rendered ?? value.title, date: value.date,
+    original: value.link ?? value.original, body: value.content?.rendered ?? value.body };
+}
+
+export function sourceHash(source, format) {
+  const document = format === "blog-json" ? blogDocument(source) : null;
+  const normalized = document ? JSON.stringify({ date: document.date, original: document.original, body: document.body })
+    : source.replaceAll("\r\n", "\n").trimEnd();
+  return createHash("sha256").update(normalized).digest("hex");
+}
+
+const escape = value => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+const allowed = new Set(["P", "UL", "OL", "LI", "H1", "H2", "H3", "H4", "H5", "H6", "STRONG", "B", "EM", "I", "CODE", "PRE", "BR", "A", "S", "DEL"]);
+const inline = new Set(["STRONG", "B", "EM", "I", "CODE", "A", "S", "DEL"]);
+const dropped = "script,style,iframe,object,embed,form,input,button,svg,template,#toc,.mw-editsection,.sharedaddy,.entry-meta,.post-navigation";
+
+function safeLink(value, base, snapshot) {
+  try {
+    const url = new URL(value, base);
+    if (!["https:", "http:"].includes(url.protocol) || url.username || url.password) return null;
+    // Preserve old wiki references at the verified capture, never as a PR number.
+    if (snapshot && url.hostname === "wiki.faforever.com") return `https://web.archive.org/web/${snapshot}/${url.href}`;
+    return url.href;
+  } catch { return null; }
+}
+
+// The old wiki used leading-space <pre> blocks for balance notes, not just
+// program code. Render their original lines as prose/stat lists; never infer
+// headings, unit identities, or replacement descriptions from those lines.
+function wikiTextBlocks(text) {
+  const blocks = [];
+  let prose = [];
+  let items = [];
+  const flushProse = () => {
+    // The native inline reader strips <br> tags; retain a word separator as
+    // well so a source line ending in "5" cannot fuse with "Aeon" next.
+    if (prose.length) blocks.push(`<p>${prose.map(escape).join("<br> ")}</p>`);
+    prose = [];
+  };
+  const flushItems = () => {
+    if (items.length) blocks.push(`<ul>${items.map(line => `<li>${escape(line)}</li>`).join("")}</ul>`);
+    items = [];
+  };
+  for (const raw of text.trim().split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) { flushProse(); flushItems(); continue; }
+    const marker = /^[*+-]\s+/.test(line);
+    const caption = line.endsWith(":");
+    // Only the published assignment notation makes an unmarked line a stat.
+    // In particular, prose containing numbers stays prose rather than gaining
+    // a made-up table, heading, or before/after interpretation.
+    const assignment = /^[\w][\w /.-]{0,63}\s*[:=]\s*\S/u.test(line);
+    if (!caption && (marker || assignment)) {
+      flushProse();
+      items.push(line.replace(/^[*+-]\s+/, ""));
+    } else {
+      flushItems();
+      prose.push(line.replace(/^[*+-]\s+/, ""));
+    }
+  }
+  flushProse();
+  flushItems();
+  return blocks.join("");
+}
+
+function wikiSourceCode(node) {
+  return node.querySelector("code") || /(?:^|\n)\s*(?:local\s+\w|function\s|if\s+[^\n]+\bthen\b|for\s+[^\n]+\bdo\b|return\b|end\s*$)/m.test(node.textContent);
+}
+
+// Editorial typography only: remove horizontal space before punctuation in
+// prose, even across inline emphasis. Original source hashes, attributes,
+// line breaks and genuine code/preformatted content are left intact.
+function tidyPunctuation(root, format) {
+  let run = [];
+  const flush = () => {
+    const nodes = run;
+    run = [];
+    const text = nodes.map(node => node.textContent).join("");
+    const edits = [...text.matchAll(/[ \t\u00a0\u202f]+(?=[,;:.!?])/g)]
+      .map(match => [match.index, match.index + match[0].length]);
+    if (!edits.length) return;
+    let offset = 0;
+    let edit = 0;
+    for (const node of nodes) {
+      const original = node.textContent;
+      let cursor = 0;
+      let cleaned = "";
+      while (edit < edits.length && edits[edit][0] < offset + original.length) {
+        const [from, to] = edits[edit];
+        cleaned += original.slice(cursor, Math.max(cursor, from - offset));
+        cursor = Math.min(original.length, to - offset);
+        if (to > offset + original.length) break;
+        edit++;
+      }
+      node.textContent = cleaned + original.slice(cursor);
+      offset += original.length;
+    }
+  };
+  let visited = 0;
+  const walk = (node, depth = 0) => {
+    if (++visited > 20000 || depth > 32) throw new Error("Archive markup exceeds limits");
+    if (node.nodeType === 3) { run.push(node); return; }
+    if (node.nodeType !== 1) return;
+    const tag = node.tagName;
+    if (tag === "CODE" || (tag === "PRE" && (format !== "wiki" || wikiSourceCode(node)))) {
+      flush();
+      return;
+    }
+    const boundary = !inline.has(tag) && tag !== "SPAN";
+    if (boundary) flush();
+    for (const child of node.childNodes) walk(child, depth + 1);
+    if (boundary) flush();
+  };
+  walk(root);
+  flush();
+}
+
+/** Inert parsing, allowlisted output and no fetching of referenced resources. */
+export function extractNote(html, format, base, snapshot = "") {
+  if (Buffer.byteLength(html) > 4 * 1024 * 1024) throw new Error("Oversized archive source");
+  const window = new Window({ settings: { disableJavaScriptEvaluation: true, disableJavaScriptFileLoading: true,
+    disableCSSFileLoading: true, disableIframePageLoading: true, disableComputedStyleRendering: true } });
+  try {
+    window.document.body.innerHTML = html;
+    const root = window.document.querySelector(format === "wiki" ? "#mw-content-text" : ".entry-content");
+    if (!root) throw new Error("Missing archive article body");
+    root.querySelectorAll(dropped).forEach(node => node.remove());
+    tidyPunctuation(root, format);
+    const genericHeading = node => /^change\s*log$/i.test(node.textContent.trim());
+    const headingOffset = [...root.querySelectorAll("h1")].some(node => !genericHeading(node)) ? 1 : 0;
+    let visited = 0;
+    const serialize = (node, depth = 0) => {
+      if (++visited > 20000 || depth > 32) throw new Error("Archive markup exceeds limits");
+      if (node.nodeType === 3) return escape(node.textContent ?? "");
+      if (node.nodeType !== 1) return "";
+      const tag = node.tagName;
+      const inner = [...node.childNodes].map(child => serialize(child, depth + 1)).join("");
+      if (tag === "IMG") {
+        const label = escape(node.getAttribute("alt") || "Original illustration");
+        const href = safeLink(node.getAttribute("src") ?? "", base, snapshot);
+        return href ? ` <a href="${escape(href)}">${label}</a> ` : escape(node.getAttribute("alt") ?? "");
+      }
+      if (!allowed.has(tag)) return inner;
+      if (tag === "BR") return "<br>";
+      // Keep caption-edge spaces outside inline tags, where the native span
+      // parser retains them. Whitespace-only emphasis remains a separator.
+      if (inline.has(tag)) {
+        if (!node.textContent.trim()) return escape(node.textContent);
+        const before = inner.match(/^\s+/)?.[0] ?? "";
+        const after = inner.match(/\s+$/)?.[0] ?? "";
+        const caption = inner.trim();
+        if (tag === "A") {
+          const href = safeLink(node.getAttribute("href") ?? "", base, snapshot);
+          return before + (href ? `<a href="${escape(href)}">${caption}</a>` : caption) + after;
+        }
+        return `${before}<${tag.toLowerCase()}>${caption}</${tag.toLowerCase()}>${after}`;
+      }
+      if (!node.textContent.trim()) return "";
+      if (tag === "H1" && genericHeading(node)) return `<p><strong>${inner}</strong></p>`;
+      if (/^H[1-6]$/.test(tag)) {
+        const level = Math.min(6, Number(tag[1]) + headingOffset);
+        return `<h${level}>${inner}</h${level}>`;
+      }
+      if (format === "wiki" && tag === "PRE" && !wikiSourceCode(node)) {
+        // Preserve any explicit links/emphasis as inline markup, without
+        // leaving ordinary notes inside a code panel merely for indentation.
+        return node.querySelector("a,strong,b,em,i")
+          ? `<p>${inner.trim().replaceAll("\n", "<br> ")}</p>`
+          : wikiTextBlocks(node.textContent);
+      }
+      if (format === "wiki" && tag === "P" && !node.querySelector("a,strong,b,em,i,code")) {
+        return wikiTextBlocks(node.textContent);
+      }
+      return `<${tag.toLowerCase()}>${inner}</${tag.toLowerCase()}>`;
+    };
+    const result = [...root.childNodes].map(node => serialize(node)).join("").trim();
+    if (!result || !root.textContent.trim()) throw new Error("Empty archive note");
+    return result;
+  } finally { window.happyDOM.abort(); }
+}
+
+export async function regenerate(root, cache, check = false) {
+  const manifest = JSON.parse(await readFile(path.join(root, "scripts/data/early-changelog-sources.json"), "utf8"));
+  const notes = [];
+  for (const source of manifest.sources) {
+    if (source.existing) continue;
+    const raw = await readFile(path.join(cache, source.file), "utf8");
+    if (sourceHash(raw, source.format) !== source.sha256) throw new Error(`Source changed: ${source.id}`);
+    const document = source.format === "blog-json" ? `<div class="entry-content">${blogDocument(raw).body}</div>` : raw;
+    const html = extractNote(document, source.format, source.originalUrl, source.capture ?? "");
+    // gitEvidence dates are source milestones, not deployment timestamps:
+    // 3616's 84010a7 commit opens TESTING on 2012-07-15; the 3609 tag was
+    // created on 2011-12-09, after its 2011-12-08 release announcement.
+    // Preserve this evidence in the source ledger without filling an unknown
+    // release date from a tag, content commit, merge, or archive capture.
+    notes.push({ id: source.kind === "Legacy notes" ? `legacy-${source.id}` : source.id, patch: source.id,
+      kind: source.kind, date: source.date, year: source.date.slice(0, 4),
+      sourceUrl: source.sourceUrl, html, evidence: source.evidence });
+  }
+  const output = `${JSON.stringify({ seed: manifest.seed, notes, corrections: manifest.corrections }, null, 2)}\n`;
+  const destination = path.join(root, "crates/faf-domain/src/protocol/data/early_changelog.json");
+  if (check) {
+    if (await readFile(destination, "utf8") !== output) throw new Error("Early changelog archive is stale");
+  } else await writeFile(destination, output);
+  return notes.length;
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  const cacheArg = process.argv.findIndex(arg => arg === "--cache");
+  const cache = cacheArg >= 0 ? path.resolve(process.argv[cacheArg + 1]) : path.join(root, "target/early-changelog-source");
+  if (process.argv.includes("--fetch")) {
+    const manifest = JSON.parse(await readFile(path.join(root, "scripts/data/early-changelog-sources.json"), "utf8"));
+    await mkdir(cache, { recursive: true });
+    // Sequential by design: these old sources are small and the archive is rate limited.
+    for (const source of manifest.sources.filter(source => !source.existing)) {
+      const url = new URL(source.fetchUrl);
+      if (!["web.archive.org", "direct.faforever.com"].includes(url.hostname) || url.protocol !== "https:") throw new Error("Unapproved source host");
+      const response = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(20000) });
+      if (!response.ok) throw new Error(`Source unavailable: ${source.id}`);
+      const chunks = [];
+      let total = 0;
+      for await (const chunk of response.body) {
+        total += chunk.byteLength;
+        if (total > 4 * 1024 * 1024) throw new Error("Oversized archive source");
+        chunks.push(chunk);
+      }
+      const raw = new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks));
+      if (sourceHash(raw, source.format) !== source.sha256) throw new Error(`Source changed: ${source.id}`);
+      await writeFile(path.join(cache, source.file), raw);
+    }
+  }
+  console.log(`${await regenerate(root, cache, process.argv.includes("--check"))} verified historical notes.`);
+}

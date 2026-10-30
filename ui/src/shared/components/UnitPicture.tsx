@@ -3,30 +3,12 @@
 // from its texture archives), else from the patch notes' icon set, else the
 // unit's id.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { UnitSummary } from "../../ipc/bindings";
-import { native, type UnitIcons } from "../../ipc/native";
+import type { UnitIcons } from "../../ipc/native";
 import "./unit-picture.css";
 
-/** The game's pictures, asked for once per session and shared by every tile.
- * A failed ask counts as an install with no pictures, so `null` only ever
- * means the answer has not come yet. */
-let iconsRequest: Promise<UnitIcons> | null = null;
-
-export function useUnitIcons(): UnitIcons | null {
-  const [icons, setIcons] = useState<UnitIcons | null>(null);
-  useEffect(() => {
-    let current = true;
-    iconsRequest ??= native.readUnitIcons().catch(() => ({ units: {}, strategic: {} }));
-    void iconsRequest.then((loaded) => {
-      if (current) setIcons(loaded);
-    });
-    return () => {
-      current = false;
-    };
-  }, []);
-  return icons;
-}
+export { useUnitIcons } from "../useUnitIcons";
 
 export function UnitPicture({ unit, icons, size }: { unit: UnitSummary; icons: UnitIcons | null; size: number }) {
   // Each picture that does not load gives way to the next.

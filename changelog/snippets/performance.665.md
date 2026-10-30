@@ -1,0 +1,1 @@
+- Patchnote unit pictures use cached game artwork when available instead of downloading it.
