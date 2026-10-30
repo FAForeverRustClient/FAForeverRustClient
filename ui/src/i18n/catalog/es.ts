@@ -1412,6 +1412,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.game.launchWrapperLabel": "Orden de inicio",
   "settings.game.launchWrapperHint": "Déjalo vacío para usar el entorno de Wine de arriba. Rellénalo solo para ejecutar el juego a tu manera, por ejemplo con \"wine\".",
   "settings.game.launchWrapperNote": "No es un intérprete de órdenes: las comillas agrupan palabras y nada más se interpreta. Vacío usa el entorno de Wine que preparó el cliente.",
+  "settings.game.launchWrapperHintWindows": "Déjalo vacío para iniciar el juego directamente. Rellénalo para iniciarlo a través de otro programa, como el wrapper.exe de una modificación de la sala: el juego y sus argumentos se le pasan a ese programa.",
+  "settings.game.launchWrapperNoteWindows": "No es un intérprete de órdenes: las comillas agrupan palabras y nada más se interpreta. Pon entre comillas una ruta con espacios; las barras invertidas se escriben una sola vez.",
   "settings.game.linuxRuntime.label": "Entorno de Wine",
   "settings.game.linuxRuntime.hint": "En Linux, Forged Alliance se ejecuta con el Wine de GE-Proton dentro de Steam Linux Runtime, preparado como lo hace FAForever/faf-linux. El cliente lo instala por sí mismo la primera vez que se inicia, unos 1,5 GB.",
   "settings.game.linuxRuntime.ownCommand": "Sin uso: las partidas se inician con tu orden de inicio de abajo.",

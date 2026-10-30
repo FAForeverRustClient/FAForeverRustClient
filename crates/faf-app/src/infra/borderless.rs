@@ -16,24 +16,43 @@
 //! the score screen), and each time puts the frame back, so the window is
 //! checked every second for as long as the game runs rather than once.
 //!
+//! A launch command (Settings, Game) puts a program of the player's own
+//! between the client and the game, such as the wrapper.exe of a lobby
+//! modification (#656). The process the client started is then that program
+//! and the game's window belongs to a child of it, so the window is looked for
+//! in the processes below it that run the game's own executable, and never in
+//! that program itself, whose console window is not the game's.
+//!
 //! Windows only. On Linux the game is a Wine process whose windows belong to
 //! the Wine server, and the window manager there has its own answer.
 
-/// Keep the main window of the game process `pid` borderless for as long as
-/// that process runs. Returns at once: the work happens on a thread of its own
-/// that ends with the game.
-pub fn start(pid: u32) {
+use std::path::Path;
+
+/// Keep the main window of the game borderless for as long as the process
+/// `pid` runs. Returns at once: the work happens on a thread of its own that
+/// ends with the game.
+///
+/// `through` is `None` when `pid` is the game itself, and the game's executable
+/// when `pid` is a launch command that runs it: the game is then the process
+/// below `pid` started from that executable.
+pub fn start(pid: u32, through: Option<&Path>) {
     #[cfg(windows)]
     {
+        let game_file = through.map(|game| {
+            game.file_name()
+                .map(|name| name.to_string_lossy().to_lowercase())
+                .unwrap_or_default()
+        });
         let spawned = std::thread::Builder::new()
             .name("fa-borderless".into())
-            .spawn(move || system::keep_borderless(pid));
+            .spawn(move || system::keep_borderless(pid, game_file.as_deref()));
         if let Err(error) = spawned {
             tracing::warn!(%error, "could not start the borderless window helper");
         }
     }
     #[cfg(not(windows))]
     {
+        let _ = through;
         tracing::info!(pid, "a borderless game window is only applied on Windows");
     }
 }
@@ -77,12 +96,42 @@ mod system {
     const SWP_NOZORDER: u32 = 0x0004;
     const SWP_FRAMECHANGED: u32 = 0x0020;
     const SWP_NOOWNERZORDER: u32 = 0x0200;
+    /// From `tlhelp32.h`.
+    const TH32CS_SNAPPROCESS: u32 = 0x0000_0002;
+    const INVALID_HANDLE_VALUE: Handle = -1;
+    const MAX_PATH: usize = 260;
+
+    /// `PROCESSENTRY32W`.
+    #[repr(C)]
+    struct ProcessEntry {
+        size: u32,
+        usage: u32,
+        process_id: u32,
+        default_heap_id: usize,
+        module_id: u32,
+        threads: u32,
+        parent_process_id: u32,
+        priority_class_base: i32,
+        flags: u32,
+        exe_file: [u16; MAX_PATH],
+    }
+
+    /// A running process, as a snapshot names it.
+    struct Process {
+        id: u32,
+        parent: u32,
+        /// The executable's file name, lowercase.
+        file: String,
+    }
 
     #[link(name = "kernel32")]
     extern "system" {
         fn OpenProcess(access: u32, inherit: i32, process_id: u32) -> Handle;
         fn WaitForSingleObject(handle: Handle, milliseconds: u32) -> u32;
         fn CloseHandle(handle: Handle) -> i32;
+        fn CreateToolhelp32Snapshot(flags: u32, process_id: u32) -> Handle;
+        fn Process32FirstW(snapshot: Handle, entry: *mut ProcessEntry) -> i32;
+        fn Process32NextW(snapshot: Handle, entry: *mut ProcessEntry) -> i32;
     }
 
     #[link(name = "user32")]
@@ -132,7 +181,7 @@ mod system {
         }
     }
 
-    pub(super) fn keep_borderless(pid: u32) {
+    pub(super) fn keep_borderless(pid: u32, game_file: Option<&str>) {
         let Some(game) = Game::open(pid) else {
             tracing::warn!(
                 pid,
@@ -141,26 +190,100 @@ mod system {
             return;
         };
         while game.still_running_after(1_000) {
-            if let Some(window) = main_window(pid) {
+            // Asked again every time: a launch command starts the game a
+            // moment after it starts itself.
+            let pids = match game_file {
+                None => vec![pid],
+                Some(file) => games_below(pid, file),
+            };
+            if let Some(window) = main_window(&pids) {
                 make_borderless(window);
             }
         }
     }
 
-    struct Search {
-        pid: u32,
+    /// The processes below `pid` that run `game_file`. A process keeps the id
+    /// of a parent that has exited, and Windows hands that id out again, so a
+    /// process below only counts when it is the game.
+    fn games_below(pid: u32, game_file: &str) -> Vec<u32> {
+        let processes = all_processes();
+        let mut below = vec![pid];
+        let mut next = 0;
+        while next < below.len() {
+            let parent = below[next];
+            for process in &processes {
+                if process.parent == parent && !below.contains(&process.id) {
+                    below.push(process.id);
+                }
+            }
+            next += 1;
+        }
+        processes
+            .iter()
+            .filter(|process| {
+                process.id != pid && process.file == game_file && below.contains(&process.id)
+            })
+            .map(|process| process.id)
+            .collect()
+    }
+
+    fn all_processes() -> Vec<Process> {
+        // Sound: plain integer arguments; a failure returns
+        // `INVALID_HANDLE_VALUE`.
+        let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
+        if snapshot == INVALID_HANDLE_VALUE {
+            return Vec::new();
+        }
+        let mut entry = ProcessEntry {
+            size: std::mem::size_of::<ProcessEntry>() as u32,
+            usage: 0,
+            process_id: 0,
+            default_heap_id: 0,
+            module_id: 0,
+            threads: 0,
+            parent_process_id: 0,
+            priority_class_base: 0,
+            flags: 0,
+            exe_file: [0; MAX_PATH],
+        };
+        let mut processes = Vec::new();
+        // Sound: a snapshot handle from the call above and a pointer to a
+        // local entry whose `size` is set, which is what both calls require.
+        let mut more = unsafe { Process32FirstW(snapshot, &mut entry) } != 0;
+        while more {
+            let length = entry
+                .exe_file
+                .iter()
+                .position(|&unit| unit == 0)
+                .unwrap_or(MAX_PATH);
+            processes.push(Process {
+                id: entry.process_id,
+                parent: entry.parent_process_id,
+                file: String::from_utf16_lossy(&entry.exe_file[..length]).to_lowercase(),
+            });
+            // Sound: as for `Process32FirstW` above.
+            more = unsafe { Process32NextW(snapshot, &mut entry) } != 0;
+        }
+        // Sound: the snapshot handle came from a successful call and is
+        // closed exactly once, here.
+        unsafe { CloseHandle(snapshot) };
+        processes
+    }
+
+    struct Search<'a> {
+        pids: &'a [u32],
         found: Hwnd,
     }
 
     extern "system" fn visit(window: Hwnd, param: isize) -> i32 {
         // Sound: `param` is the address of the `Search` that `main_window`
         // keeps alive for the whole of the `EnumWindows` call.
-        let search = unsafe { &mut *(param as *mut Search) };
+        let search = unsafe { &mut *(param as *mut Search<'_>) };
         let mut owner_pid = 0u32;
         // Sound: a window handle Windows just handed us and a valid out pointer.
         unsafe { GetWindowThreadProcessId(window, &mut owner_pid) };
         // The game's own top-level window: visible, and not a dialog it owns.
-        let main = owner_pid == search.pid
+        let main = search.pids.contains(&owner_pid)
             && unsafe { IsWindowVisible(window) } != 0
             && unsafe { GetWindow(window, GW_OWNER) } == 0;
         if main {
@@ -171,10 +294,13 @@ mod system {
         }
     }
 
-    fn main_window(pid: u32) -> Option<Hwnd> {
-        let mut search = Search { pid, found: 0 };
+    fn main_window(pids: &[u32]) -> Option<Hwnd> {
+        if pids.is_empty() {
+            return None;
+        }
+        let mut search = Search { pids, found: 0 };
         // Sound: the callback only dereferences `param` during this call.
-        unsafe { EnumWindows(visit, &mut search as *mut Search as isize) };
+        unsafe { EnumWindows(visit, &mut search as *mut Search<'_> as isize) };
         (search.found != 0).then_some(search.found)
     }
 

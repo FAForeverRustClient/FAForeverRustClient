@@ -1917,6 +1917,8 @@ export const en = {
   "settings.game.launchWrapperLabel": "Launch command",
   "settings.game.launchWrapperHint": "Leave it empty to use the Wine environment above. Fill it in only to run the game your own way, for example with \"wine\".",
   "settings.game.launchWrapperNote": "Not a shell: quotes group words, nothing else is interpreted. Empty uses the Wine environment the client set up.",
+  "settings.game.launchWrapperHintWindows": "Leave it empty to start the game directly. Fill it in to start it through another program, such as the wrapper.exe of a lobby modification: the game and its arguments are handed to that program.",
+  "settings.game.launchWrapperNoteWindows": "Not a shell: quotes group words, nothing else is interpreted. Put a path with spaces in quotes; backslashes are written once.",
   "settings.game.linuxRuntime.label": "Wine environment",
   "settings.game.linuxRuntime.hint": "On Linux, Forged Alliance runs with GE-Proton's Wine inside the Steam Linux Runtime, set up the way FAForever/faf-linux does it. The client installs it by itself the first time it starts, about 1.5 GB.",
   "settings.game.linuxRuntime.ownCommand": "Not in use: games start through your launch command below.",

@@ -1487,6 +1487,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.game.launchWrapperLabel": "Команда запуска",
   "settings.game.launchWrapperHint": "Оставьте пустым, чтобы использовать среду Wine выше. Заполняйте, только если запускаете игру по-своему, например через \"wine\".",
   "settings.game.launchWrapperNote": "Это не оболочка: кавычки объединяют слова, больше ничего не разбирается. Пустое поле использует среду Wine, подготовленную клиентом.",
+  "settings.game.launchWrapperHintWindows": "Оставьте пустым, чтобы запускать игру напрямую. Заполните, чтобы запускать её через другую программу, например wrapper.exe модификации лобби: игра и её аргументы передаются этой программе.",
+  "settings.game.launchWrapperNoteWindows": "Это не оболочка: кавычки объединяют слова, больше ничего не разбирается. Путь с пробелами заключите в кавычки; обратные косые черты пишутся по одной.",
   "settings.game.linuxRuntime.label": "Среда Wine",
   "settings.game.linuxRuntime.hint": "В Linux Forged Alliance работает на Wine из GE-Proton внутри Steam Linux Runtime, настроенной так же, как в FAForever/faf-linux. Клиент сам устанавливает её при первом запуске, около 1,5 ГБ.",
   "settings.game.linuxRuntime.ownCommand": "Не используется: игры запускаются вашей командой запуска ниже.",

@@ -53,8 +53,9 @@ pub struct GameConfig {
     ///
     /// This is how the client starts a game on Linux, where the configured
     /// executable is a Windows binary: `wine`, or whatever else a working
-    /// prefix is reached through. Split into arguments by [`split_command`],
-    /// never handed to a shell.
+    /// prefix is reached through. On Windows it is how a lobby modification
+    /// runs the game through its own wrapper.exe (#656). Split into arguments
+    /// by [`split_command`], never handed to a shell.
     pub launch_wrapper: String,
     /// The Wine prefix to run in (`WINEPREFIX`), from Settings, Paths. Empty
     /// leaves the child's environment as this process found it.
@@ -409,10 +410,12 @@ impl GameProcess {
         }
         // Both slots: a replay is watched in the same window a game is
         // played in, and the player who wants one borderless wants the other
-        // so too.
+        // so too. Through a launch command the started process is that
+        // command, and the game a child of it.
         if self.borderless_window.load(Ordering::Relaxed) {
             if let Some(game_pid) = game_pid {
-                crate::infra::borderless::start(game_pid);
+                let through = (runtime.is_none() && !wrapper.is_empty()).then_some(exe.as_path());
+                crate::infra::borderless::start(game_pid, through);
             }
         }
         Ok(())

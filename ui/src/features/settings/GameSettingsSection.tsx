@@ -65,11 +65,12 @@ export function GameSettingsSection() {
   const commitWrapper = () => {
     if (wrapperText.trim() === persistedWrapper) return;
     // Then the runtime is asked again: an emptied field means the client's own
-    // Wine environment is wanted now, and a filled one that it is not.
+    // Wine environment is wanted now, and a filled one that it is not. Windows
+    // has no runtime to ask.
     ipc.run(
       ipc
         .settle({ kind: "Settings", command: { type: "patchGame", payload: { patch: { launchWrapper: wrapperText.trim() } } } })
-        .then(() => ipc.send({ kind: "LinuxRuntime", command: { type: "prepare" } }))
+        .then(() => (gameNeedsALaunchWrapper() ? ipc.send({ kind: "LinuxRuntime", command: { type: "prepare" } }) : undefined))
         .catch((error: unknown) => {
           setWrapperText(persistedWrapper);
           throw error;
@@ -213,32 +214,34 @@ export function GameSettingsSection() {
         />
       </SettingRow>
 
-      {/* Above the arguments, because it decides what runs them. Only where
-          the game is not a native binary: on Windows there is nothing to wrap
-          and an empty field labelled "launch command" invites somebody to
-          fill it in. */}
+      {/* Above the arguments, because it decides what runs them. The Wine
+          environment only where the game is not a native binary. The launch
+          command everywhere: on Windows it is how a lobby modification starts
+          the game through its own wrapper.exe (#656). */}
       {gameNeedsALaunchWrapper() && <LinuxRuntimeSettings />}
 
-      {gameNeedsALaunchWrapper() && (
-        <div className="setting-block">
-          <span className="setting-label">{t("settings.game.launchWrapperLabel")}</span>
-          <span className="muted">{t("settings.game.launchWrapperHint")}</span>
-          <input
-            className="settings-input"
-            type="text"
-            value={wrapperText}
-            onChange={(event) => setWrapperText(event.target.value)}
-            onBlur={commitWrapper}
-            aria-label={t("settings.game.launchWrapperLabel")}
-          />
-          <div className="settings-save-line">
-            <span className="muted">{t("settings.game.launchWrapperNote")}</span>
-            <Button onClick={commitWrapper} disabled={wrapperText.trim() === persistedWrapper}>
-              {t("settings.game.saveArguments")}
-            </Button>
-          </div>
+      <div className="setting-block">
+        <span className="setting-label">{t("settings.game.launchWrapperLabel")}</span>
+        <span className="muted">
+          {t(gameNeedsALaunchWrapper() ? "settings.game.launchWrapperHint" : "settings.game.launchWrapperHintWindows")}
+        </span>
+        <input
+          className="settings-input"
+          type="text"
+          value={wrapperText}
+          onChange={(event) => setWrapperText(event.target.value)}
+          onBlur={commitWrapper}
+          aria-label={t("settings.game.launchWrapperLabel")}
+        />
+        <div className="settings-save-line">
+          <span className="muted">
+            {t(gameNeedsALaunchWrapper() ? "settings.game.launchWrapperNote" : "settings.game.launchWrapperNoteWindows")}
+          </span>
+          <Button onClick={commitWrapper} disabled={wrapperText.trim() === persistedWrapper}>
+            {t("settings.game.saveArguments")}
+          </Button>
         </div>
-      )}
+      </div>
 
       <div className="setting-block">
         <span className="setting-label">{t("settings.game.argumentsLabel")}</span>
