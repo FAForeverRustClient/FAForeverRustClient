@@ -216,9 +216,9 @@ describe("unit colours", () => {
   it("gives every unit its faction's colour, and a second of one faction a shade of it", () => {
     const factions: Record<string, string> = { UEA0305: "UEF", UAA0310: "Aeon", UEL0201: "UEF" };
     const colors = unitColors(["UEA0305", "UAA0310", "UEL0201"], (id) => factions[id]);
-    expect(colors.UEA0305).toBe("var(--unit-faction-uef)");
-    expect(colors.UAA0310).toBe("var(--unit-faction-aeon)");
-    expect(colors.UEL0201).toContain("var(--unit-faction-uef)");
+    expect(colors.UEA0305).toBe("var(--color-unitdb-uef)");
+    expect(colors.UAA0310).toBe("var(--color-unitdb-aeon)");
+    expect(colors.UEL0201).toContain("var(--color-unitdb-uef)");
     expect(colors.UEL0201).not.toBe(colors.UEA0305);
   });
 });

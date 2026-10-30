@@ -79,7 +79,7 @@ export function unitColors(selected: string[], factionOf: (id: string) => string
   return Object.fromEntries(
     selected.map((id) => {
       const faction = (factionOf(id) ?? "").toLowerCase();
-      const color = faction ? `var(--unit-faction-${faction})` : "var(--color-muted)";
+      const color = faction ? `var(--color-unitdb-${faction})` : "var(--color-muted)";
       const place = seen.get(faction) ?? 0;
       seen.set(faction, place + 1);
       return [id, FACTION_SHADES[place % FACTION_SHADES.length](color)];
