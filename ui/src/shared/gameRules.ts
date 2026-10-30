@@ -134,6 +134,21 @@ export function observerTeam(team: string): boolean {
 }
 
 /**
+ * A lobby team's name, numbered from the first real team. Shared by the game
+ * browser's lineup and the chat's game card, which read the same `Game.teams`
+ * and used to number it differently: "Team 2" in chat for "Team 1" in Play.
+ */
+export function displayTeamName(team: string, soleTeam: boolean): string {
+  if (observerTeam(team)) return t("lobby.details.observers");
+  const numeric = Number(team);
+  if (!Number.isInteger(numeric)) return t("lobby.details.team", { id: team });
+  // Team 1 is the server's "no team" bucket. When it holds everyone the game is
+  // a free-for-all, which says more than "No team" did.
+  if (numeric === 1) return soleTeam ? t("lobby.browser.freeForAll") : t("lobby.browser.unassigned");
+  return t("lobby.details.team", { id: numeric - 1 });
+}
+
+/**
  * The players in a lobby, observers left out: the server's `num_players`
  * counts everybody in it, so a host sitting in the observer slot made an empty
  * lobby read "1 / 8" (issue 619). The server's number stands in only where it

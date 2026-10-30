@@ -44,8 +44,9 @@ pub(super) fn build_entry(version: i32, files: &[(&str, &str, &str)]) -> CacheMa
 /// smaller makes every stamp fail, which hides whether a caller checks it.
 pub(super) const EXE_BYTES: usize = 0x476666 + 4;
 
-/// A loopback HTTP server answering a fixed set of paths, and 404 to anything
-/// else, for the tests whose code under test downloads something. Records the
+/// A loopback HTTP server answering a fixed set of paths, optionally with a
+/// redirect, and 404 to anything else, for the tests whose code under test
+/// downloads something. Records the
 /// path of every request, so a test can tell what was fetched and what was
 /// not. One request per connection, answered and closed, the shape of the
 /// fake API in `tests/replay_install.rs`.
@@ -56,6 +57,15 @@ pub(super) struct FakeServer {
 
 impl FakeServer {
     pub(super) async fn start(routes: Vec<(String, Vec<u8>)>) -> Self {
+        Self::start_with_redirects(routes, Vec::new()).await
+    }
+
+    /// [`Self::start`], also answering each path in `redirects` with a `302`
+    /// to the location beside it.
+    pub(super) async fn start_with_redirects(
+        routes: Vec<(String, Vec<u8>)>,
+        redirects: Vec<(String, String)>,
+    ) -> Self {
         use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
         let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
@@ -64,11 +74,13 @@ impl FakeServer {
         let base = format!("http://127.0.0.1:{}", listener.local_addr().unwrap().port());
         let routes: std::sync::Arc<std::collections::HashMap<String, Vec<u8>>> =
             std::sync::Arc::new(routes.into_iter().collect());
+        let redirects: std::sync::Arc<std::collections::HashMap<String, String>> =
+            std::sync::Arc::new(redirects.into_iter().collect());
         let requests = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
         let log = requests.clone();
         tokio::spawn(async move {
             while let Ok((mut stream, _)) = listener.accept().await {
-                let (routes, log) = (routes.clone(), log.clone());
+                let (routes, redirects, log) = (routes.clone(), redirects.clone(), log.clone());
                 tokio::spawn(async move {
                     let mut head = Vec::new();
                     let mut chunk = [0_u8; 4096];
@@ -82,6 +94,14 @@ impl FakeServer {
                     let target = head.split(' ').nth(1).unwrap_or_default();
                     let path = target.split('?').next().unwrap_or_default().to_string();
                     log.lock().unwrap().push(path.clone());
+                    if let Some(location) = redirects.get(&path) {
+                        let response = format!(
+                            "HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                        );
+                        let _ = stream.write_all(response.as_bytes()).await;
+                        let _ = stream.shutdown().await;
+                        return;
+                    }
                     let response = match routes.get(&path) {
                         Some(body) => {
                             let mut response = format!(

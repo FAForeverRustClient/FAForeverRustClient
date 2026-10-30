@@ -154,6 +154,8 @@ export function NotificationsSettingsSection() {
   const preferences = useAppStore((state) => state.state.settings.notifications);
   const volume = preferences.volume;
   const queues = useAppStore((state) => state.state.lobby.matchmakerQueues);
+  // False in a client without Twitch credentials, which is every release.
+  const streamsAvailable = useAppStore((state) => state.state.streams.available);
   const queueOpponentOptions = [
     ...queues.map((queue) => ({ value: queue.queueName, label: `${queue.teamSize} vs ${queue.teamSize}` })),
     ...preferences.queueOpponentQueues
@@ -489,10 +491,13 @@ export function NotificationsSettingsSection() {
       </SettingRow>
       {/* No sound picker, deliberately: a stream is the one kind here that is
           not about this player's game, and a tone for it would be the client
-          making a noise on FAF's behalf. */}
-      <SettingRow label={t("settings.notifications.streamLive")}>
-        <SettingsSwitch checked={preferences.streamLive} disabled={!preferences.enabled} onChange={(streamLive) => update({ streamLive })} label={t("settings.notifications.streamLive")} />
-      </SettingRow>
+          making a noise on FAF's behalf. Hidden in a client that cannot check,
+          where the switch would do nothing. */}
+      {streamsAvailable ? (
+        <SettingRow label={t("settings.notifications.streamLive")}>
+          <SettingsSwitch checked={preferences.streamLive} disabled={!preferences.enabled} onChange={(streamLive) => update({ streamLive })} label={t("settings.notifications.streamLive")} />
+        </SettingRow>
+      ) : null}
       {/* A switch without a sound picker of its own: a finished map plays the
           "other" tone below, and whether it is announced at all is the part
           people asked to change (#307). */}

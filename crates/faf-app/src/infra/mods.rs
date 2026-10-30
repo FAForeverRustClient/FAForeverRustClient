@@ -57,6 +57,10 @@ use crate::infra::jsonapi::{
     fetch_all_pages_with_progress, fetch_document, find_rel_resource, meta_page_i32, rel_target,
     resource_index, total_pages, value_bool, value_f64, value_i32, JsonApiDoc, JsonApiResource,
 };
+use crate::infra::metadata_file::{
+    read_bounded_to_string, read_bounded_to_string_async, truncated, MAX_DESCRIPTION_BYTES,
+    MAX_IDENTIFIER_BYTES, MAX_METADATA_BYTES, MAX_NAME_BYTES,
+};
 use crate::infra::review_totals::{self, ReviewTotal, Subject};
 use crate::infra::vault_install::{
     archive_root_name, bounded_body_with_progress, install_archive, replace_archive, validate_url,
@@ -122,13 +126,16 @@ impl ModsClient {
         progress: &(dyn Fn(VaultInstallStep) + Sync),
     ) -> Result<Vec<u8>, String> {
         validate_url(download_url, &self.config.content_base, "mods")?;
-        let resp = self
-            .http
-            .get(download_url)
-            .send()
-            .await
-            .map_err(|e| format!("could not download mod {uid}: {e}"))?;
-        validate_url(resp.url().as_str(), &self.config.content_base, "mods")?;
+        // Not `self.http`: that client follows redirects without asking, and
+        // every hop is held to the vault's origin before it is requested.
+        let http = crate::infra::http::no_redirect_http_client();
+        let resp = crate::infra::http::send_checking_each_hop(
+            download_url,
+            |hop| validate_url(hop.as_str(), &self.config.content_base, "mods"),
+            |hop| http.get(hop),
+        )
+        .await
+        .map_err(|e| format!("could not download mod {uid}: {e}"))?;
         let status = resp.status();
         if !status.is_success() {
             return Err(format!("could not download mod {uid}: {status}"));
@@ -172,7 +179,7 @@ async fn extract_mod_archive_into(
     tokio::task::spawn_blocking(move || {
         install_archive(&bytes, &dest, None, |staged_root| {
             let info_path = staged_root.join("mod_info.lua");
-            let contents = std::fs::read_to_string(&info_path)
+            let contents = read_bounded_to_string(&info_path, MAX_METADATA_BYTES)
                 .map_err(|error| format!("could not read {}: {error}", info_path.display()))?;
             let info = parse_mod_info(&contents)
                 .ok_or_else(|| "downloaded mod has no valid mod_info.lua".to_string())?;
@@ -200,7 +207,7 @@ async fn remove_installed_mod(dir: &std::path::Path, folder_name: &str) -> Resul
 
     // Read the uid before deleting so we can also scrub it from
     // game.prefs: an uninstalled mod can't stay "enabled".
-    let uid = tokio::fs::read_to_string(target.join("mod_info.lua"))
+    let uid = read_bounded_to_string_async(&target.join("mod_info.lua"), MAX_METADATA_BYTES)
         .await
         .ok()
         .and_then(|contents| parse_mod_info(&contents))
@@ -329,18 +336,24 @@ struct RequiredModVersion {
 ///
 /// `None` covers every remaining way this can fail, and they are all the same
 /// to the caller: a URL that is not https (the client fetches nothing else), a
-/// server that refuses both requests, a redirect chain that drops the headers,
-/// a response with no length in either form, or a timeout. No token: the mod
-/// archives live on content storage rather than behind the API.
-async fn head_content_length(http: &reqwest::Client, url: &str) -> Option<u32> {
+/// URL or a redirect hop outside the vault's mods path (held to the same rule
+/// as the download itself, before it is requested), a server that refuses
+/// both requests, a redirect chain that drops the headers, a response with no
+/// length in either form, or a timeout. No token: the mod archives live on
+/// content storage rather than behind the API.
+///
+/// `http` must not follow redirects itself; see
+/// [`send_checking_each_hop`](crate::infra::http::send_checking_each_hop).
+async fn head_content_length(http: &reqwest::Client, content_base: &str, url: &str) -> Option<u32> {
+    use crate::infra::http::send_checking_each_hop;
+    const PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(6);
+
     if !url.starts_with("https://") {
         return None;
     }
+    let allowed = |hop: &url::Url| validate_url(hop.as_str(), content_base, "mods");
 
-    let head = http
-        .head(url)
-        .timeout(std::time::Duration::from_secs(6))
-        .send()
+    let head = send_checking_each_hop(url, &allowed, |hop| http.head(hop).timeout(PROBE_TIMEOUT))
         .await
         .ok()
         .filter(|response| response.status().is_success())
@@ -350,13 +363,13 @@ async fn head_content_length(http: &reqwest::Client, url: &str) -> Option<u32> {
         return u32::try_from(length).ok();
     }
 
-    let ranged = http
-        .get(url)
-        .header(reqwest::header::RANGE, "bytes=0-0")
-        .timeout(std::time::Duration::from_secs(6))
-        .send()
-        .await
-        .ok()?;
+    let ranged = send_checking_each_hop(url, &allowed, |hop| {
+        http.get(hop)
+            .header(reqwest::header::RANGE, "bytes=0-0")
+            .timeout(PROBE_TIMEOUT)
+    })
+    .await
+    .ok()?;
     if !ranged.status().is_success() {
         return None;
     }
@@ -498,7 +511,13 @@ impl ModsPort for ModsClient {
         let mut sizes = Vec::with_capacity(targets.len());
         for target in targets {
             sizes.push(ModDownloadSize {
-                bytes: head_content_length(&self.http, &target.download_url).await,
+                // Not `self.http`: that client follows redirects without asking.
+                bytes: head_content_length(
+                    &crate::infra::http::no_redirect_http_client(),
+                    &self.config.content_base,
+                    &target.download_url,
+                )
+                .await,
                 uid: target.uid,
             });
         }
@@ -829,7 +848,7 @@ impl ModsPort for ModsClient {
 }
 
 fn validate_mod_uid(staged: &Path, expected: &str) -> Result<(), String> {
-    let contents = std::fs::read_to_string(staged.join("mod_info.lua"))
+    let contents = read_bounded_to_string(&staged.join("mod_info.lua"), MAX_METADATA_BYTES)
         .map_err(|error| format!("could not read staged mod metadata: {error}"))?;
     let info = parse_mod_info(&contents)
         .ok_or_else(|| "downloaded mod has no valid mod_info.lua".to_string())?;
@@ -852,9 +871,20 @@ pub(crate) fn safe_mod_target(root: &Path, folder_name: &str) -> Result<PathBuf,
     Ok(root.join(folder_name))
 }
 
+/// The most mods listed from inside one folder of the mods directory.
+///
+/// One folder is one download, and a real one carries a mod and its UI-only
+/// variant, or a wrapper folder around one mod. An archive may hold thousands
+/// of small folders that each pass as a mod, and listing them all put that
+/// many entries, each with its description, into the installed list.
+const MAX_CHILD_MODS: usize = 32;
+
 /// Scans `dir` for installed mod folders, parsing each one's
 /// `mod_info.lua` and cross-referencing `game.prefs` for `enabled`. The
 /// testable body of [`ModsClient::list_installed`]/post-change rescans.
+///
+/// Bounded per folder by [`MAX_CHILD_MODS`], and per mod by the field caps in
+/// `metadata_file`, so what one download adds to the list is bounded too.
 pub(crate) async fn list_installed_dir(dir: &Path) -> Result<Vec<InstalledMod>, String> {
     static CACHE: std::sync::OnceLock<super::file_cache::FileCache<Option<ModInfoFields>>> =
         std::sync::OnceLock::new();
@@ -911,6 +941,7 @@ pub(crate) async fn list_installed_dir(dir: &Path) -> Result<Vec<InstalledMod>, 
         let Ok(mut children) = tokio::fs::read_dir(&path).await else {
             continue;
         };
+        let mut child_mods = Vec::new();
         while let Ok(Some(child)) = children.next_entry().await {
             let child_path = child.path();
             if is_directory(&child_path).await
@@ -918,9 +949,21 @@ pub(crate) async fn list_installed_dir(dir: &Path) -> Result<Vec<InstalledMod>, 
                     .await
                     .is_ok_and(|meta| meta.is_file())
             {
-                mod_dirs.push(child_path);
+                child_mods.push(child_path);
             }
         }
+        // The same ones every scan: the first by name.
+        if child_mods.len() > MAX_CHILD_MODS {
+            child_mods.sort();
+            tracing::warn!(
+                folder = ?path,
+                found = child_mods.len(),
+                listed = MAX_CHILD_MODS,
+                "listing only the first mods inside one mod folder"
+            );
+            child_mods.truncate(MAX_CHILD_MODS);
+        }
+        mod_dirs.extend(child_mods);
     }
 
     use futures_util::StreamExt;
@@ -933,7 +976,11 @@ pub(crate) async fn list_installed_dir(dir: &Path) -> Result<Vec<InstalledMod>, 
             let folder_name = relative.to_string_lossy().replace('\\', "/");
             let Some(Some(info)) = CACHE
                 .get_or_init(Default::default)
-                .text(&path.join("mod_info.lua"), parse_mod_info)
+                .text(
+                    &path.join("mod_info.lua"),
+                    MAX_METADATA_BYTES,
+                    parse_mod_info,
+                )
                 .await
             else {
                 return None;
@@ -1081,15 +1128,27 @@ fn parse_mod_info(contents: &str) -> Option<ModInfoFields> {
         fields.insert(key, scalar_value(value));
     }
 
-    let uid = fields.get("uid")?.clone();
-    let name = fields.get("name").cloned().unwrap_or_else(|| uid.clone());
-    // Matches Python's `getModInfo` defaults exactly.
-    let version = fields
-        .get("version")
-        .cloned()
-        .unwrap_or_else(|| "1".to_string());
-    let author = fields.get("author").cloned().unwrap_or_default();
-    let description = fields.get("description").cloned().unwrap_or_default();
+    let uid = fields.remove("uid")?;
+    // Compared against the vault's uid and `game.prefs`, so one too long to be
+    // real is refused rather than shortened into a different one.
+    if uid.len() > MAX_IDENTIFIER_BYTES {
+        return None;
+    }
+    // Matches Python's `getModInfo` defaults exactly. Everything kept is
+    // capped: the installed list and its cache hold it for the session.
+    let name = truncated(
+        fields.remove("name").unwrap_or_else(|| uid.clone()),
+        MAX_NAME_BYTES,
+    );
+    let version = truncated(
+        fields.remove("version").unwrap_or_else(|| "1".to_string()),
+        MAX_IDENTIFIER_BYTES,
+    );
+    let author = truncated(fields.remove("author").unwrap_or_default(), MAX_NAME_BYTES);
+    let description = truncated(
+        fields.remove("description").unwrap_or_default(),
+        MAX_DESCRIPTION_BYTES,
+    );
     let ui_only = fields.get("ui_only").is_some_and(|v| v == "true");
 
     Some(ModInfoFields {
@@ -1800,6 +1859,41 @@ mod tests {
         assert_eq!(content_range_total("12345"), None);
         assert_eq!(content_range_total(""), None);
     }
+
+    /// The downloaded `mod_info.lua` is read to check the install's uid, out
+    /// of an archive that may expand to gigabytes. One past the metadata limit
+    /// is refused by its size, before it is in memory, and nothing is
+    /// installed.
+    #[tokio::test]
+    async fn an_oversized_mod_info_refuses_the_install() {
+        use std::io::Write as _;
+
+        let mut archive = std::io::Cursor::new(Vec::new());
+        {
+            let mut writer = zip::ZipWriter::new(&mut archive);
+            writer
+                .start_file(
+                    "Huge Mod/mod_info.lua",
+                    zip::write::SimpleFileOptions::default(),
+                )
+                .unwrap();
+            writer
+                .write_all(&vec![b' '; MAX_METADATA_BYTES as usize + 1])
+                .unwrap();
+            writer.finish().unwrap();
+        }
+        let dest = tempfile::tempdir().unwrap();
+
+        let error = extract_mod_archive_into(dest.path(), "any-uid", archive.into_inner(), None)
+            .await
+            .expect_err("an oversized mod_info.lua must not install");
+
+        assert!(
+            error.contains("mod_info.lua is larger than the 1 MiB allowed for it"),
+            "{error}"
+        );
+        assert_eq!(std::fs::read_dir(dest.path()).unwrap().count(), 0);
+    }
     use serde_json::json;
 
     /// Make `<prefix>/drive_c/users/<user>/AppData/Local`, and the `game.prefs`
@@ -1956,6 +2050,79 @@ mod tests {
             .err()
             .expect("a filter-injection uid must be rejected");
         assert!(error.contains("invalid simulation-mod uid"));
+    }
+
+    /// What the installed list keeps of a `mod_info.lua` is capped field by
+    /// field: shown text is cut, and a uid too long to be real makes the file
+    /// unreadable, since a shortened uid could match another mod's.
+    #[test]
+    fn mod_info_fields_are_capped_and_an_overlong_uid_is_refused() {
+        let long = "x".repeat(100_000);
+        let info = parse_mod_info(&format!(
+            "uid = \"a\"\nname = \"{long}\"\nauthor = \"{long}\"\nversion = \"{long}\"\n\
+             description = [[\n{long}\n]]\n"
+        ))
+        .expect("a valid uid parses");
+        assert_eq!(info.uid, "a");
+        assert_eq!(info.name.len(), MAX_NAME_BYTES);
+        assert_eq!(info.author.len(), MAX_NAME_BYTES);
+        assert_eq!(info.version.len(), MAX_IDENTIFIER_BYTES);
+        assert_eq!(info.description.len(), MAX_DESCRIPTION_BYTES);
+
+        let real = parse_mod_info(SAMPLE_MOD_INFO).unwrap();
+        assert_eq!(real.name, "Total Mayhem");
+        assert_eq!(real.description, "Extended content");
+
+        let longest = "u".repeat(MAX_IDENTIFIER_BYTES);
+        assert!(parse_mod_info(&format!("uid = \"{longest}\"")).is_some());
+        assert!(parse_mod_info(&format!("uid = \"{longest}u\"")).is_none());
+    }
+
+    /// One folder holding far more mods than any download carries is listed
+    /// up to the cap, the same mods every scan, while the ordinary shapes
+    /// beside it (a plain mod, a mod with its UI variant inside) all list.
+    #[tokio::test]
+    async fn a_folder_of_many_mods_is_listed_only_up_to_the_cap() {
+        fn write_mod(folder: &Path, uid: &str) {
+            std::fs::create_dir_all(folder).unwrap();
+            std::fs::write(
+                folder.join("mod_info.lua"),
+                format!("name = \"{uid}\"\nuid = \"{uid}\"\n"),
+            )
+            .unwrap();
+        }
+        let dir = tempfile::tempdir().unwrap();
+        write_mod(&dir.path().join("plain"), "plain");
+        write_mod(&dir.path().join("with_ui"), "with-ui");
+        write_mod(&dir.path().join("with_ui").join("ui"), "with-ui-ui");
+        let pack = dir.path().join("pack");
+        write_mod(&pack, "pack");
+        for index in 0..100 {
+            write_mod(
+                &pack.join(format!("m{index:03}")),
+                &format!("pack-{index:03}"),
+            );
+        }
+
+        let installed = list_installed_dir(dir.path()).await.unwrap();
+
+        let folders: std::collections::BTreeSet<&str> = installed
+            .iter()
+            .map(|entry| entry.folder_name.as_str())
+            .collect();
+        for ordinary in ["plain", "with_ui", "with_ui/ui", "pack"] {
+            assert!(folders.contains(ordinary), "{ordinary} is missing");
+        }
+        let from_pack: Vec<&str> = folders
+            .iter()
+            .copied()
+            .filter(|folder| folder.starts_with("pack/"))
+            .collect();
+        let first: Vec<String> = (0..MAX_CHILD_MODS)
+            .map(|index| format!("pack/m{index:03}"))
+            .collect();
+        assert_eq!(from_pack, first);
+        assert_eq!(installed.len(), 4 + MAX_CHILD_MODS);
     }
 
     #[test]

@@ -391,8 +391,9 @@ impl MapsPort for MapsClient {
         progress: VaultInstallProgress,
         called_off: tokio_util::sync::CancellationToken,
     ) -> Result<Option<Vec<InstalledMap>>, String> {
+        // Not `self.http`: that client follows redirects without asking.
         install_vault_map(
-            &self.http,
+            &crate::infra::http::no_redirect_http_client(),
             &self.config.content_base,
             &maps_dir(),
             &folder_name,
@@ -478,6 +479,10 @@ fn explain_visibility_refusal(error: &str, hidden: bool) -> String {
 /// was, for a caller that stops waiting altogether. The leases go with the
 /// worker either way, so the next writer of the map waits for its staging to
 /// be cleared away.
+///
+/// `http` must not follow redirects itself: every hop of the download is held
+/// to the vault's origin and `maps` path before it is requested
+/// ([`send_checking_each_hop`](crate::infra::http::send_checking_each_hop)).
 pub(in crate::infra) async fn install_vault_map(
     http: &reqwest::Client,
     content_base: &str,
@@ -499,12 +504,13 @@ pub(in crate::infra) async fn install_vault_map(
         if crate::infra::game_updater::map_folder_in_any(&dirs, folder_name).await {
             return Ok(None);
         }
-        let resp = http
-            .get(download_url)
-            .send()
-            .await
-            .map_err(|e| format!("could not download map {folder_name}: {e}"))?;
-        validate_url(resp.url().as_str(), content_base, "maps")?;
+        let resp = crate::infra::http::send_checking_each_hop(
+            download_url,
+            |hop| validate_url(hop.as_str(), content_base, "maps"),
+            |hop| http.get(hop),
+        )
+        .await
+        .map_err(|e| format!("could not download map {folder_name}: {e}"))?;
         let status = resp.status();
         if !status.is_success() {
             return Err(format!("could not download map {folder_name}: {status}"));
@@ -935,16 +941,32 @@ pub(super) async fn read_preview_data_url(path: &std::path::Path) -> Option<Stri
     ))
 }
 
+/// The first scenario file in `folder_path` that reads, of at most a few.
+///
+/// A map folder has one. A folder of thousands that each fail to read (too
+/// large, not UTF-8) cost a read attempt and a log line per scan apiece, so
+/// the look stops after `MAX_SCENARIO_CANDIDATES` and the map is listed by
+/// its folder name.
 async fn find_and_parse_scenario_lua(folder_path: &std::path::Path) -> Option<ScenarioInfo> {
+    const MAX_SCENARIO_CANDIDATES: usize = 4;
     static CACHE: std::sync::OnceLock<super::file_cache::FileCache<ScenarioInfo>> =
         std::sync::OnceLock::new();
     let mut rd = tokio::fs::read_dir(folder_path).await.ok()?;
+    let mut tried = 0;
     while let Ok(Some(entry)) = rd.next_entry().await {
         let name = entry.file_name().to_string_lossy().to_lowercase();
         if name.ends_with("_scenario.lua") || name == "scenario.lua" {
+            if tried == MAX_SCENARIO_CANDIDATES {
+                return None;
+            }
+            tried += 1;
             if let Some(info) = CACHE
                 .get_or_init(Default::default)
-                .text(&entry.path(), parse_scenario_lua)
+                .text(
+                    &entry.path(),
+                    super::metadata_file::MAX_METADATA_BYTES,
+                    parse_scenario_lua,
+                )
                 .await
             {
                 return Some(info);
@@ -1091,6 +1113,23 @@ pub(crate) fn parse_scenario_lua(content: &str) -> ScenarioInfo {
             }
         }
     }
+
+    // Capped, because the installed list and its cache keep these for the
+    // session. A type is compared, so an overlong one is dropped rather than
+    // shortened into a real one.
+    use super::metadata_file::{
+        truncated, MAX_DESCRIPTION_BYTES, MAX_IDENTIFIER_BYTES, MAX_NAME_BYTES,
+    };
+    info.name = info.name.map(|name| truncated(name, MAX_NAME_BYTES));
+    info.version = info
+        .version
+        .map(|version| truncated(version, MAX_IDENTIFIER_BYTES));
+    info.description = info
+        .description
+        .map(|description| truncated(description, MAX_DESCRIPTION_BYTES));
+    info.map_type = info
+        .map_type
+        .filter(|map_type| map_type.len() <= MAX_IDENTIFIER_BYTES);
 
     info
 }
@@ -2119,6 +2158,30 @@ ScenarioInfo = {
         let info = parse_scenario_lua(content);
         assert_eq!(info.map_type.as_deref(), Some("campaign_coop"));
         assert_eq!(parse_scenario_lua("ScenarioInfo = {}").map_type, None);
+    }
+
+    /// What the installed list keeps of a scenario is capped: shown text is
+    /// cut, and a type too long to be one is dropped rather than shortened.
+    #[test]
+    fn scenario_fields_are_capped() {
+        use crate::infra::metadata_file::{
+            MAX_DESCRIPTION_BYTES, MAX_IDENTIFIER_BYTES, MAX_NAME_BYTES,
+        };
+        let long = "x".repeat(100_000);
+        let info = parse_scenario_lua(&format!(
+            "ScenarioInfo = {{\n    name = '{long}',\n    description = '{long}',\n    \
+             map_version = '{long}',\n    type = '{long}',\n}}\n"
+        ));
+        assert_eq!(info.name.map(|name| name.len()), Some(MAX_NAME_BYTES));
+        assert_eq!(
+            info.description.map(|description| description.len()),
+            Some(MAX_DESCRIPTION_BYTES)
+        );
+        assert_eq!(
+            info.version.map(|version| version.len()),
+            Some(MAX_IDENTIFIER_BYTES)
+        );
+        assert_eq!(info.map_type, None);
     }
 
     #[test]

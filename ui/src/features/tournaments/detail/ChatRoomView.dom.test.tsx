@@ -29,6 +29,7 @@ function room(posts: ChatPost[]) {
     <ChatRoomView
       event={event}
       roomId="global"
+      roomName="Global"
       posts={posts}
       status={{ type: "ready" }}
       busy={false}
@@ -97,6 +98,7 @@ describe("ChatRoomView failure, mounted", () => {
       <ChatRoomView
         event={event}
         roomId="global"
+        roomName="Global"
         posts={[]}
         status={{ type: "failed", payload: { reason, kind: "offline" } }}
         busy={false}

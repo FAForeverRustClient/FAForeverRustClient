@@ -162,10 +162,15 @@ fn running_body(stream: &LiveStream) -> String {
 const TICK: Duration = Duration::from_secs(5 * 60);
 
 /// Start the ticker. Called once from the runtime loop; lives for the process.
+///
+/// Also where the slice learns that FAF Live exists in this build at all: a
+/// build that cannot check never says so, and its settings show no switch
+/// for it.
 pub fn spawn(ctx: Arc<ServiceCtx>, sink: EventSink) {
     if !ctx.ports.streams.can_check() {
         return;
     }
+    sink.emit(StreamsEvent::Available);
     tokio::spawn(async move {
         let mut ticker = tokio::time::interval(TICK);
         loop {

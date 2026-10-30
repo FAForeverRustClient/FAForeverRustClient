@@ -1,47 +1,43 @@
 // One chat room: its posts and the composer under them.
 //
 // Shared by the Chat tab and the match chat popup, which the website opens
-// from the bracket, the Vetoes tab and a match's details. The service has no
-// push of any kind, so the room is re-read while it is on screen.
+// from the bracket, the Vetoes tab and a match's details, and by the pinned
+// panel. The service has no push of any kind, so the room is re-read while it
+// is on screen.
 //
-// Each line reads as a line of the client's own Chat tab (issue 367): avatar,
-// name and message on one row, the time at the right edge and only when the
-// minute changes, a run from one person kept together under one name, names
-// in the reader's own name colours, and the line's actions in a small toolbar
-// that appears over the line on hover or focus. What the tournament service
-// adds on top stays: a day divider wherever the date changes, replies quoted
-// above the reply with a click that jumps back to the original, `@mentions`
-// highlighted and completed as they are typed, organiser moderation on the
-// line, and a button that pings the organisers without anyone having to
-// remember `!organizer`.
-//
-// The Chat tab's message list itself is not reused: it is built around IRC
-// messages, reactions and private conversations, none of which this service
-// has, and it has no place for moderation. The row grammar is what is shared.
+// The log is the Chat tab's own (`MessageList`), fed the room's posts as chat
+// lines, so a room reads exactly as a channel does: the same name colours,
+// avatars, runs from one person, times, quotes, find bar, player menu on a
+// right-click of a name and reply on a right-click of a line. It used to be a
+// copy of that log's styles, and the copy drifted until the two no longer
+// looked alike. What the service adds rides on the list's own hooks: an
+// organiser's delete and silence in a line's toolbar, and a tint on an
+// organiser's `@everyone`. The composer keeps what is the tournament's own:
+// `@mentions` completed as they are typed, and a bell that pings the
+// organisers without anyone having to remember `!organizer`.
 
-import { memo, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { StatusNotice } from "../../../design-system/StatusNotice";
-import type { ChatPost, Tourney, TourneyLoadStatus } from "../../../ipc/bindings";
+import type { ChatMessage, ChatPost, Tourney, TourneyLoadStatus } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { plainError } from "../../../shared/plainError";
 import { mayPostChat } from "../../../shared/rules/tourneyRules";
-import { formatDate, formatDateTime } from "../../../shared/format/dates";
-import { usePlayerStyle } from "../../../shared/components/nameColors";
 import { openPlayerCard } from "../../../shared/playerCardActions";
+import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
 import { useAppStore } from "../../../store/store";
+import { MessageList } from "../../chat/messages/MessageList";
+import "../../chat/chat.css";
 import type { ChatActions } from "../tourneyActions";
-import { playersByNickname } from "../../../store/reducer";
 import {
   applyMention,
   mentionCandidates,
   mentionQuery,
-  mentionSpans,
-  postClock,
-  postContinues,
-  postShowsTime,
+  postMessage,
+  quotedPosts,
+  roomUsers,
   type MentionQuery,
 } from "./chatPresentation";
 
@@ -58,20 +54,21 @@ const POLL_MS = 5_000;
 /** The website's limit, on both ends. */
 const MAX_LENGTH = 500;
 
-/** How close to the bottom still counts as reading the newest post. */
-const STICK_PX = 60;
-
 export interface ChatRoomViewProps {
   event: Tourney;
   roomId: string;
+  /** Named in the composer's placeholder, as the Chat tab names the channel. */
+  roomName: string;
   posts: ChatPost[];
   status: TourneyLoadStatus;
   busy: boolean;
   onPost: (body: string, replyTo: string | null) => void;
   /** Moderating a post, and re-reading the room while it is on screen. */
   chat: Pick<ChatActions, "deletePost" | "mute" | "refresh">;
-  /** A shorter log, for the popup. */
+  /** A shorter log, for the popup and the pinned panel. */
   compact?: boolean;
+  /** Bumped by the head row's Search button to open the log's find bar. */
+  searchRequest?: number;
 }
 
 interface Reply {
@@ -83,21 +80,19 @@ interface Reply {
 export function ChatRoomView(props: ChatRoomViewProps) {
   const { event, roomId, posts, status, busy } = props;
   const onRefresh = props.chat.refresh;
+  const { deletePost, mute } = props.chat;
   const { t } = useTranslation();
-  // The Chat tab's own reading settings, so a line looks the same in both.
-  const showTimestamps = useAppStore((store) => store.state.settings.chat.showTimestamps);
-  const use24HourTime = useAppStore((store) => store.state.settings.chat.use24HourTime);
-  const players = useAppStore((store) => store.state.social.players);
+  // The Chat tab's own reading settings and name colours, so a line looks
+  // the same in both.
+  const preferences = useAppStore((store) => store.state.settings.chat);
+  const social = useAppStore((store) => store.state.social);
+  const self = useAppStore((store) => store.state.auth.player?.name ?? "");
+  const { openPlayerMenu, playerMenu, playerMenuTarget } = usePlayerMenu();
   const [draft, setDraft] = useState("");
   const [reply, setReply] = useState<Reply | null>(null);
   const [mention, setMention] = useState<MentionQuery | null>(null);
   const [choice, setChoice] = useState(0);
-  const [flash, setFlash] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
-  const log = useRef<HTMLOListElement>(null);
-  /** Whether the reader was at the bottom before the posts last changed. */
-  const atBottom = useRef(true);
 
   // Poll while the room is on screen, and stop the moment it is not.
   useEffect(() => {
@@ -109,15 +104,7 @@ export function ChatRoomView(props: ChatRoomViewProps) {
   useEffect(() => {
     setReply(null);
     setMention(null);
-    atBottom.current = true;
   }, [roomId]);
-
-  // Keep the newest post in view, but only for a reader who was already
-  // looking at it: somebody scrolled up to read history keeps their place.
-  useLayoutEffect(() => {
-    const element = log.current;
-    if (element !== null && atBottom.current) element.scrollTop = element.scrollHeight;
-  }, [posts, roomId]);
 
   const candidates = mention === null ? [] : mentionCandidates(event, mention.query);
   const mayWrite = !event.chatLocked && !event.chatMutedMe;
@@ -133,7 +120,6 @@ export function ChatRoomView(props: ChatRoomViewProps) {
     setDraft("");
     setReply(null);
     setMention(null);
-    atBottom.current = true;
   };
 
   const updateMention = (text: string, caret: number) => {
@@ -172,169 +158,64 @@ export function ChatRoomView(props: ChatRoomViewProps) {
     }
   };
 
-  const jump = (postId: string) => {
-    const target = log.current?.querySelector(`[data-post="${CSS.escape(postId)}"]`);
-    if (target === null || target === undefined) {
-      setNote(t("tournaments.chat.notLoaded"));
-      window.setTimeout(() => setNote(null), 3000);
-      return;
-    }
-    target.scrollIntoView({ block: "center" });
-    setFlash(postId);
-    window.setTimeout(() => setFlash((held) => (held === postId ? null : held)), 1200);
-  };
-
   const organiser = event.viewer.organiser;
 
-  const profiles = playersByNickname(players);
+  // The room as the log reads it. Every callback below is held stable, since
+  // each line of the log is memoised on them.
+  const messages = useMemo(() => posts.map(postMessage), [posts]);
+  const quotes = useMemo(() => quotedPosts(posts), [posts]);
+  const users = useMemo(() => roomUsers(event), [event]);
+  const byId = useMemo(() => new Map(posts.map((post) => [post.id, post])), [posts]);
+  const findByMsgid = useCallback((msgid: string) => quotes.get(msgid), [quotes]);
+  const isAnnouncement = useCallback(
+    (message: ChatMessage) => byId.get(message.id)?.everyone ?? false,
+    [byId],
+  );
 
-  let lastDay = "";
-  const rows = posts.flatMap((post, index) => {
-    const out = [];
-    // The post above this one, for grouping and the time column. A day
-    // divider starts afresh: the first line under it names its author and
-    // prints its time.
-    let previous: ChatPost | undefined = posts[index - 1];
-    if (post.at !== null) {
-      const day = formatDate(post.at * 1000, "", { day: "numeric", month: "short", year: "numeric" });
-      if (day !== lastDay) {
-        out.push(
-          <li className="tournament-chat-day" key={`day-${post.id}`} aria-hidden>
-            <span>{day}</span>
-          </li>,
-        );
-        lastDay = day;
-        previous = undefined;
-      }
-    }
-    const time = (
-      <span className="tournament-chat-time">
-        {post.at !== null && showTimestamps && postShowsTime(post, previous, use24HourTime) && (
-          <time dateTime={new Date(post.at * 1000).toISOString()} title={formatDateTime(post.at * 1000, "")}>
-            {postClock(post.at, use24HourTime)}
-          </time>
-        )}
-      </span>
-    );
-    if (post.system) {
-      // The server speaking: a dice roll nobody could have faked, or an
-      // organiser ping. An announcement rather than something somebody typed,
-      // so it has no name column, as the Chat tab draws its info lines.
-      out.push(
-        <li className="tournament-chat-post is-system" key={post.id} data-post={post.id}>
-          <span className="tournament-chat-avatar" aria-hidden />
-          <span className="tournament-chat-author" aria-hidden />
-          <span className="tournament-chat-text">{post.body}</span>
-          {time}
-        </li>,
-      );
-      return out;
-    }
-    const continued = postContinues(post, previous);
-    const avatar = continued ? undefined : profiles.get(post.author.toLowerCase());
-    const classes = ["tournament-chat-post"];
-    if (continued) classes.push("is-continued");
-    if (post.everyone) classes.push("is-everyone");
-    if (flash === post.id) classes.push("is-flash");
-    const moderate = organiser;
-    out.push(
-      <li className={classes.join(" ")} key={post.id} data-post={post.id}>
-        {post.replyTo !== null && (
+  // A name opens the FAF player card: there is no private conversation to
+  // open from a tournament room, and the card is what an organiser wants.
+  const openCard = useCallback((nickname: string) => {
+    const author = posts.find((post) => post.author.toLowerCase() === nickname.toLowerCase());
+    void openPlayerCard(author?.fafId ?? null, nickname);
+  }, [posts]);
+
+  const startReply = useCallback((message: ChatMessage) => {
+    setReply({ id: message.msgid ?? message.id, author: message.sender, body: message.content.slice(0, 140) });
+    input.current?.focus();
+  }, []);
+
+  // Moderation sits on the post rather than in a list of its own, because
+  // that is where the organiser is when they decide.
+  const moderation = useCallback((message: ChatMessage) => {
+    const post = byId.get(message.id);
+    if (post === undefined) return null;
+    return (
+      <>
+        <button
+          type="button"
+          className="chat-action-btn is-danger"
+          disabled={busy}
+          aria-label={t("tournaments.chat.deletePost")}
+          title={t("tournaments.chat.deletePost")}
+          onClick={() => deletePost(roomId, post.id)}
+        >
+          <Icon name="trash" size={13} />
+        </button>
+        {post.fafId !== null && (
           <button
             type="button"
-            className="tournament-chat-quote"
-            title={t("tournaments.chat.jumpHint")}
-            onClick={() => post.replyTo !== null && jump(post.replyTo.id)}
+            className="chat-action-btn is-danger"
+            disabled={busy}
+            aria-label={t("tournaments.chat.mute")}
+            title={t("tournaments.chat.mute")}
+            onClick={() => mute(post.fafId as number, post.author, true)}
           >
-            <span className="tournament-chat-quote-who">{post.replyTo.author}</span>
-            <span className="tournament-chat-quote-text">{post.replyTo.body}</span>
+            <Icon name="userX" size={13} />
           </button>
         )}
-        <span className="tournament-chat-avatar">
-          {avatar?.avatarUrl && (
-            <img
-              src={avatar.avatarUrl}
-              alt=""
-              title={avatar.avatarTooltip || undefined}
-              width={32}
-              height={18}
-              loading="lazy"
-              decoding="async"
-              draggable={false}
-            />
-          )}
-        </span>
-        {continued ? (
-          <span className="tournament-chat-author is-continued" aria-hidden />
-        ) : (
-          <PostAuthor name={post.author} fafId={post.fafId} />
-        )}
-        <span className="tournament-chat-text">
-          {mentionSpans(post.body).map((span, part) =>
-            span.kind === "mention" ? (
-              <span className="tournament-chat-ping" key={part}>
-                {span.text}
-              </span>
-            ) : (
-              <span key={part}>{span.text}</span>
-            ),
-          )}
-        </span>
-        {time}
-        {(mayWrite || moderate) && (
-          // The Chat tab's floating toolbar: always in the tab order, shown
-          // while the line is hovered or focus is inside it.
-          <span
-            className="tournament-chat-tools"
-            role="group"
-            aria-label={t("chat.message.actions", { name: post.author })}
-          >
-            {mayWrite && (
-              <button
-                type="button"
-                className="tournament-chat-tool"
-                aria-label={t("tournaments.chat.reply")}
-                title={t("tournaments.chat.reply")}
-                onClick={() => {
-                  setReply({ id: post.id, author: post.author, body: post.body.slice(0, 140) });
-                  input.current?.focus();
-                }}
-              >
-                <Icon name="reply" size={13} />
-              </button>
-            )}
-            {/* Moderation sits on the post rather than in a list of its own,
-                because that is where the organiser is when they decide. */}
-            {moderate && (
-              <button
-                type="button"
-                className="tournament-chat-tool is-danger"
-                disabled={busy}
-                aria-label={t("tournaments.chat.deletePost")}
-                title={t("tournaments.chat.deletePost")}
-                onClick={() => props.chat.deletePost(roomId, post.id)}
-              >
-                <Icon name="trash" size={13} />
-              </button>
-            )}
-            {moderate && post.fafId !== null && (
-              <button
-                type="button"
-                className="tournament-chat-tool is-danger"
-                disabled={busy}
-                aria-label={t("tournaments.chat.mute")}
-                title={t("tournaments.chat.mute")}
-                onClick={() => props.chat.mute(post.fafId as number, post.author, true)}
-              >
-                <Icon name="userX" size={13} />
-              </button>
-            )}
-          </span>
-        )}
-      </li>,
+      </>
     );
-    return out;
-  });
+  }, [byId, busy, deletePost, mute, roomId, t]);
 
   return (
     <div className={props.compact ? "tournament-chat-room-body is-compact" : "tournament-chat-room-body"}>
@@ -350,135 +231,136 @@ export function ChatRoomView(props: ChatRoomViewProps) {
           {plainError(status.payload.reason)}
         </StatusNotice>
       )}
-      <ol
-        className="tournament-chat-posts surface-panel"
-        ref={log}
-        onScroll={(scrolled) => {
-          const element = scrolled.currentTarget;
-          atBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < STICK_PX;
-        }}
-      >
-        {status.type === "loading" && posts.length === 0 && (
-          <li className="muted">{t("tournaments.chat.loading")}</li>
-        )}
-        {status.type === "ready" && posts.length === 0 && (
-          <li className="muted">{t("tournaments.chat.empty")}</li>
-        )}
-        {rows}
-      </ol>
+      <MessageList
+        key={roomId}
+        messages={messages}
+        self={self}
+        emptyLabel={t(status.type === "loading" ? "tournaments.chat.loading" : "tournaments.chat.empty")}
+        onNickClick={openCard}
+        onNickContextMenu={openPlayerMenu}
+        menuTarget={playerMenuTarget}
+        showTimestamps={preferences.showTimestamps}
+        use24HourTime={preferences.use24HourTime}
+        users={users}
+        social={social}
+        preferences={preferences}
+        onReply={mayWrite ? startReply : undefined}
+        findByMsgid={findByMsgid}
+        conversationLabel={props.roomName}
+        lineActions={organiser ? moderation : undefined}
+        isAnnouncement={isAnnouncement}
+        searchable={!props.compact}
+        searchRequest={props.searchRequest}
+      />
 
       {event.chatLocked ? (
         // Reading an old event's chat stays possible; the server closes
-        // posting two days after it ends.
-        <p className="muted">{t("tournaments.chat.locked")}</p>
+        // posting two days after it ends. Where the composer would be, so the
+        // reason sits where the reader looks for the field.
+        <p className="tournament-chat-closed">
+          <Icon name="lock" size={14} />
+          {t("tournaments.chat.locked")}
+        </p>
       ) : event.chatMutedMe ? (
         // Told before typing rather than after.
-        <p className="muted">{t("tournaments.chat.muted")}</p>
+        <p className="tournament-chat-closed">
+          <Icon name="lock" size={14} />
+          {t("tournaments.chat.muted")}
+        </p>
       ) : (
         <>
-          {reply !== null && (
-            <div className="tournament-chat-replybar">
-              <span className="muted">{t("tournaments.chat.replyingTo")}</span>
-              <strong>{reply.author}</strong>
-              <span className="tournament-chat-replybar-text">{reply.body}</span>
-              <button
-                type="button"
-                className="tournament-chat-action"
-                aria-label={t("tournaments.chat.cancelReply")}
-                onClick={() => setReply(null)}
-              >
-                <Icon name="close" size={12} />
-              </button>
-            </div>
-          )}
+          {/* The Chat tab's composer (`.chat-compose-shell`): the reply being
+              written above the field, then the field, one quiet icon button
+              where the Chat tab has its emoji, and Send. */}
           <form
-            className="tournament-chat-composer"
+            className="tournament-chat-compose-shell"
             onSubmit={(submitted) => {
               submitted.preventDefault();
               send(draft, reply?.id ?? null);
             }}
           >
-            <div className="tournament-chat-inwrap">
-              <input
-                ref={input}
-                value={draft}
-                maxLength={MAX_LENGTH}
-                autoComplete="off"
-                onChange={(changed) => {
-                  setDraft(changed.target.value);
-                  updateMention(changed.target.value, changed.target.selectionStart ?? changed.target.value.length);
-                }}
-                onClick={(clicked) =>
-                  updateMention(draft, clicked.currentTarget.selectionStart ?? draft.length)
-                }
-                onKeyDown={onKeyDown}
-                onBlur={() => window.setTimeout(() => setMention(null), 120)}
-                placeholder={t(
-                  organiser ? "tournaments.chat.placeholderOrganiser" : "tournaments.chat.placeholderPlayer",
-                )}
-                aria-label={t("tournaments.chat.placeholder")}
-                title={t("tournaments.chat.commands")}
-              />
-              {mention !== null && candidates.length > 0 && (
-                <ul className="tournament-chat-mentions" role="listbox">
-                  {candidates.map((name, index) => (
-                    <li
-                      key={name}
-                      role="option"
-                      aria-selected={index === choice}
-                      className={index === choice ? "is-on" : undefined}
-                      onMouseDown={(pressed) => {
-                        pressed.preventDefault();
-                        complete(name);
-                      }}
-                    >
-                      @{name}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <Button type="submit" variant="primary" disabled={busy || draft.trim() === "" || !mayPostChat(event)}>
-              {t("tournaments.chat.send")}
-            </Button>
-            {/* Organisers are the ones being asked for; everybody else gets
-                the button, and whatever they have typed goes with it. */}
-            {!organiser && (
-              <Button
-                disabled={busy || !mayPostChat(event)}
-                title={t("tournaments.chat.pingHint")}
-                onClick={() => send(`!organizer ${draft}`.trim(), null)}
-              >
-                <Icon name="bell" size={14} /> {t("tournaments.chat.ping")}
-              </Button>
+            {reply !== null && (
+              <div className="tournament-chat-replybar">
+                <span>
+                  {t("tournaments.chat.replyingTo")} <strong>{reply.author}</strong>
+                </span>
+                <span className="tournament-chat-replybar-text">{reply.body}</span>
+                <button
+                  type="button"
+                  className="tournament-chat-action"
+                  aria-label={t("tournaments.chat.cancelReply")}
+                  onClick={() => setReply(null)}
+                >
+                  <Icon name="close" size={12} />
+                </button>
+              </div>
             )}
+            <div className="tournament-chat-compose">
+              <div className="tournament-chat-inwrap">
+                <input
+                  ref={input}
+                  value={draft}
+                  maxLength={MAX_LENGTH}
+                  autoComplete="off"
+                  onChange={(changed) => {
+                    setDraft(changed.target.value);
+                    updateMention(changed.target.value, changed.target.selectionStart ?? changed.target.value.length);
+                  }}
+                  onClick={(clicked) =>
+                    updateMention(draft, clicked.currentTarget.selectionStart ?? draft.length)
+                  }
+                  onKeyDown={onKeyDown}
+                  onBlur={() => window.setTimeout(() => setMention(null), 120)}
+                  placeholder={t(
+                    organiser ? "tournaments.chat.placeholderOrganiser" : "tournaments.chat.placeholderPlayer",
+                    { room: props.roomName },
+                  )}
+                  aria-label={t("tournaments.chat.placeholder")}
+                  title={t("tournaments.chat.commands")}
+                />
+                {mention !== null && candidates.length > 0 && (
+                  <ul className="tournament-chat-mentions" role="listbox">
+                    {candidates.map((name, index) => (
+                      <li
+                        key={name}
+                        role="option"
+                        aria-selected={index === choice}
+                        className={index === choice ? "is-on" : undefined}
+                        onMouseDown={(pressed) => {
+                          pressed.preventDefault();
+                          complete(name);
+                        }}
+                      >
+                        @{name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              {/* Organisers are the ones being asked for; everybody else gets
+                  the bell, and whatever they have typed goes with it. Beside the
+                  field, where the Chat tab has its emoji button: a labelled
+                  button the size of Send made the row read as two forms. */}
+              {!organiser && (
+                <button
+                  type="button"
+                  className="tournament-chat-ping-button"
+                  disabled={busy || !mayPostChat(event)}
+                  aria-label={t("tournaments.chat.ping")}
+                  title={`${t("tournaments.chat.ping")}. ${t("tournaments.chat.pingHint")}`}
+                  onClick={() => send(`!organizer ${draft}`.trim(), null)}
+                >
+                  <Icon name="bell" size={16} />
+                </button>
+              )}
+              <Button type="submit" variant="primary" disabled={busy || draft.trim() === "" || !mayPostChat(event)}>
+                {t("tournaments.chat.send")}
+              </Button>
+            </div>
           </form>
-          {note !== null && <p className="muted tournament-chat-note">{note}</p>}
         </>
       )}
+      {playerMenu}
     </div>
   );
 }
-
-/**
- * A post's author in the name column, in the colour the reader gave that
- * player (friend, foe, a colour of their own, or the generated one), as the
- * Chat tab colours names. A click opens the FAF player card: there is no
- * private conversation to open from a tournament room, and the card is what
- * an organiser wants from a name.
- */
-const PostAuthor = memo(function PostAuthor({ name, fafId }: { name: string; fafId: number | null }) {
-  const { t } = useTranslation();
-  const style = usePlayerStyle(name);
-  return (
-    <button
-      type="button"
-      className="tournament-chat-author"
-      style={style}
-      title={t("tournaments.entrants.openCard", { name })}
-      onClick={() => openPlayerCard(fafId, name)}
-    >
-      {name}
-    </button>
-  );
-});
