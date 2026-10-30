@@ -1,0 +1,1 @@
+- faf:// links open the client on a tournament, map, mod, replay, patch note or unit history, from chat and, once installed, from Discord or a browser.

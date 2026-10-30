@@ -67,5 +67,12 @@
         "mimeType": "application/x-scfareplay"
       }
     ]
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["faf"]
+      }
+    }
   }
 }

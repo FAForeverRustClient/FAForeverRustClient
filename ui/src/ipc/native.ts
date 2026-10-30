@@ -36,6 +36,38 @@ interface UnitIconNames {
 /** The shell's `UNIT_ICON_SCHEME`, which serves one picture per request. */
 const UNIT_ICON_SCHEME = "unit-icon";
 
+/** One pathing layer of `map_analysis`. Mirrors the shell's `LayerPicture`. */
+export interface MapLayerPicture {
+  layer: "land" | "hover" | "amphibious" | "naval";
+  /** Regions after the game culls the small empty ones. */
+  regions: number;
+  /** From 0 to 1, the share of the map units of the layer can reach. */
+  reachable: number;
+  /** `data:image/png`, the size of the map: a colour per region, dark where they cannot go. */
+  image: string;
+}
+
+/** What `map_analysis` answers with. Mirrors the shell's `MapAnalysis`. */
+export interface MapAnalysis {
+  /** The `.scmap`'s own preview, the picture the layers are drawn over. */
+  preview: string;
+  /** In ogrids. */
+  width: number;
+  height: number;
+  hasWater: boolean;
+  /** Land first; hover, amphibious and naval only on a map with water. */
+  layers: MapLayerPicture[];
+  reclaim: {
+    mass: number;
+    energy: number;
+    props: number;
+    /** Props whose blueprint was found and so counted. */
+    valued: number;
+    /** `data:image/png`: brighter where there is more mass. */
+    image: string;
+  };
+}
+
 /**
  * What a file dialog looks like. Mirrors `PickRequest` in the shell's
  * `picked_paths`: the dialog opens there, so a path the page sends back later
@@ -154,6 +186,15 @@ export const native = {
         ]),
       ),
     };
+  },
+
+  /**
+   * An installed map's pathing regions per layer and its reclaim, drawn over
+   * its preview (`infra::map_analysis`). A few megabytes of pictures, read
+   * when the dialog opens.
+   */
+  readMapAnalysis(folderName: string): Promise<MapAnalysis> {
+    return invoke<MapAnalysis>("map_analysis", { folderName });
   },
 
   /** One stored sound's bytes, for the page to decode. */
