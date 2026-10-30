@@ -3,3 +3,7 @@
 - Early patch notes no longer display ordinary balance changes as code blocks.
 - Historical patch contents now group faction and unit sections under the correct headings.
 - Contributor names in early patch notes no longer appear as oversized headings.
+- Opening an old patch from search now reveals its year in the release list.
+- Small windows now leave more room for reading patch notes.
+- Patch-note icons no longer stay hidden after a replacement image loads successfully.
+- Historical illustration and forum links now open through secure destinations.

@@ -7,6 +7,7 @@ export function ChangelogIllustration({ illustration, className, size }: {
 }) {
   return illustration.type === "faction"
     ? <FactionIcon faction={illustration.faction} size={size} className={className} aria-hidden="true" aria-label={undefined} role="presentation" />
-    : <img src={illustration.iconUrl} alt="" title={illustration.unitId} className={className} loading="lazy" draggable={false}
+    : <img src={illustration.iconUrl} alt="" title={illustration.type === "unit" ? illustration.unitId : undefined} className={className} loading="lazy" draggable={false}
+        onLoad={event => event.currentTarget.classList.remove("is-missing")}
         onError={event => event.currentTarget.classList.add("is-missing")} />;
 }

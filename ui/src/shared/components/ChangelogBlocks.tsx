@@ -9,13 +9,13 @@
 
 import { useEffect, useState } from "react";
 import type { ChangelogBlock, ChangelogListItem, ChangelogSpan } from "../../ipc/bindings";
-import { native } from "../../ipc/native";
 import { ipc } from "../../ipc/client";
 import { useTranslation } from "../../i18n/useTranslation";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type { ChangelogIllustration as Illustration } from "../historicalChangelogIcons";
 import { ChangelogIllustration } from "./ChangelogIllustration";
+import { changelogLinkTarget, openChangelogLink } from "../changelogLinks";
 import "./changelog-blocks.css";
 
 export function ChangelogSpans({ spans }: { spans: ChangelogSpan[] }) {
@@ -33,8 +33,8 @@ export function ChangelogSpans({ spans }: { spans: ChangelogSpan[] }) {
                 key={index}
                 type="button"
                 className="changelog-link"
-                title={span.payload.url}
-                onClick={() => void native.openUrl(span.payload.url)}
+                title={changelogLinkTarget(span.payload.url)}
+                onClick={() => ipc.run(openChangelogLink(span.payload.url))}
               >
                 {span.payload.text}
               </button>
@@ -46,7 +46,7 @@ export function ChangelogSpans({ spans }: { spans: ChangelogSpan[] }) {
                 type="button"
                 className="changelog-issue"
                 title={span.payload.url}
-                onClick={() => void native.openUrl(span.payload.url)}
+                onClick={() => ipc.run(openChangelogLink(span.payload.url))}
               >
                 {span.payload.label ?? `#${span.payload.number}`}
               </button>
@@ -129,7 +129,7 @@ function HistoricalBalance({ block, anchorId }: {
     <section className="changelog-historical" aria-labelledby={anchorId}>
       <h2 id={anchorId} className="changelog-heading changelog-heading-2">{t("changelog.historicalBalance")}</h2>
       <p className="changelog-paragraph">
-        <button type="button" className="changelog-link" onClick={() => void native.openUrl(block.payload.sourceUrl)}>
+        <button type="button" className="changelog-link" onClick={() => ipc.run(openChangelogLink(block.payload.sourceUrl))}>
           {t("changelog.historicalBalanceSource")}
         </button>
       </p>
@@ -177,6 +177,7 @@ export function ChangelogBlockView({ block, anchorId, headingOffset = 0, icons, 
                 title={unit.unitId ?? undefined}
                 loading="lazy"
                 draggable={false}
+                onLoad={(event) => event.currentTarget.classList.remove("is-missing")}
                 /* Older notes name units the site never drew an icon for, and a
                    missing sprite should leave a gap rather than a broken image. */
                 onError={(event) => event.currentTarget.classList.add("is-missing")}

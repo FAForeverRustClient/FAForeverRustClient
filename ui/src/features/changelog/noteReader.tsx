@@ -338,6 +338,7 @@ export const NoteContentsColumn = memo(function NoteContentsColumn({
           {section.illustration
             ? <ChangelogIllustration illustration={section.illustration} className="changelog-toc-icon" size={24} />
             : <img className="changelog-toc-icon" src={section.iconUrl} alt="" loading="lazy" draggable={false}
+                onLoad={(event) => event.currentTarget.classList.remove("is-missing")}
                 onError={(event) => event.currentTarget.classList.add("is-missing")} />}
           <span className="changelog-toc-text">{section.text}</span>
         </> : section.text}

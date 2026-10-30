@@ -3,6 +3,7 @@ import { FACTION_DISPLAY_ORDER } from "./factions";
 
 export type ChangelogIllustration =
   | { type: "unit"; iconUrl: string; unitId?: string }
+  | { type: "category"; iconUrl: string }
   | { type: "faction"; faction: number };
 
 export interface HistoricalCaptionIllustration {
@@ -50,6 +51,16 @@ const NAMED_UNITS: Readonly<Record<string, string>> = {
 const compact = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 const factionCaption = (text: string) => /^(uef|aeon|cybran|seraphim|sera)(?:t[1-4]|tech[1-4])?$/.test(compact(text));
 const unit = (unitId: string): ChangelogIllustration => ({ type: "unit", unitId, iconUrl: `${UNIT_BASE}/${unitId}_icon.png` });
+
+function categoryIcon(text: string): ChangelogIllustration | undefined {
+  const key = compact(text);
+  // FAF's construction icons use land/air/sea backgrounds. Structures share
+  // the land background; this is category artwork, not a unit blueprint.
+  const category = /^(?:structures(?:andweapons)?|land(?:units)?|t[1-4]land)$/.test(key) ? "land"
+    : /^(?:air(?:units)?|t[1-4]air)$/.test(key) ? "air"
+    : /^(?:sea|navy|naval(?:changes)?|t[1-4](?:sea|navy|naval))$/.test(key) ? "sea" : undefined;
+  return category ? { type: "category", iconUrl: `/assets/changelog/categories/${category}.png` } : undefined;
+}
 
 function creditNames(text: string): boolean {
   const names = text.trim().split(/\s*,\s*/);
@@ -164,7 +175,8 @@ export function historicalChangelogIllustrations(
     } else if (headingLevel !== undefined) {
       while (parents.length && parents[parents.length - 1].level >= headingLevel) parents.pop();
     }
-    const icons = iconsFor(text, parents.map(parent => parent.text));
+    const category = block.type === "heading" ? categoryIcon(text) : undefined;
+    const icons = category ? [category] : iconsFor(text, parents.map(parent => parent.text));
     if (icons.length) illustrations.set(index, { text, icons, ...(headingLevel !== undefined ? { headingLevel } : {}) });
     if (block.type === "heading") parents.push({ level: block.payload.level, text });
     else if (headingLevel !== undefined) parents.push({ level: headingLevel, text, unitTopic: Boolean(unitAfterGeneral) });

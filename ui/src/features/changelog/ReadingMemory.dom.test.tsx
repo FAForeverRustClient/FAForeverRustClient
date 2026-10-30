@@ -65,11 +65,10 @@ function scrollTo(top: number) {
   fireEvent.scroll(scroll);
 }
 
-it("restores the open game note, reading offset, release-list offset and expanded year after a tab unmount", async () => {
-  const user = userEvent.setup();
+it("restores the open game note, reading offset, release-list offset and expanded year after a tab unmount", () => {
   const first = render(<ChangelogView />);
   const year = document.querySelector<HTMLButtonElement>('[aria-controls="changelog-group-2024"]')!;
-  await user.click(year);
+  expect(year.getAttribute("aria-expanded")).toBe("true");
   const list = document.querySelector<HTMLElement>(".changelog-releases")!;
   list.scrollTop = 180;
   fireEvent.scroll(list);
@@ -83,6 +82,51 @@ it("restores the open game note, reading offset, release-list offset and expande
   expect(pane().scrollTop).toBe(720);
   expect(document.querySelector<HTMLElement>(".changelog-releases")!.scrollTop).toBe(180);
   expect(document.querySelector('[aria-controls="changelog-group-2024"]')?.getAttribute("aria-expanded")).toBe("true");
+});
+
+it("opens a folded year when a search result chooses an old patch", () => {
+  applyEvent({ kind: "Changelog", event: { type: "entryLoaded", payload: { entry: entry("3837") } } });
+  render(<ChangelogView />);
+  const year = document.querySelector('[aria-controls="changelog-group-2024"]')!;
+  expect(year.getAttribute("aria-expanded")).toBe("false");
+  applyEvent({ kind: "Changelog", event: { type: "entryLoaded", payload: { entry: entry("3810") } } });
+  expect(year.getAttribute("aria-expanded")).toBe("true");
+  expect(document.querySelector('[data-release-id="3810"]')?.closest("ul")?.hidden).toBe(false);
+});
+
+it("keeps the selected year open when a temporary patch filter is cleared", async () => {
+  const user = userEvent.setup();
+  applyEvent({ kind: "Changelog", event: { type: "entryLoaded", payload: { entry: entry("3837") } } });
+  render(<ChangelogView />);
+  const filter = screen.getByRole("searchbox", { name: en["changelog.searchAria"] });
+  await user.type(filter, "3810");
+  applyEvent({ kind: "Changelog", event: { type: "entryLoaded", payload: { entry: entry("3810") } } });
+  await user.clear(filter);
+  expect(document.querySelector('[aria-controls="changelog-group-2024"]')?.getAttribute("aria-expanded")).toBe("true");
+  expect(document.querySelector('[data-release-id="3810"]')?.closest("ul")?.hidden).toBe(false);
+});
+
+it("preserves a manually folded selected year when returning to the same note", async () => {
+  const user = userEvent.setup();
+  const first = render(<ChangelogView />);
+  await user.click(document.querySelector<HTMLButtonElement>('[aria-controls="changelog-group-2024"]')!);
+  first.unmount();
+  render(<ChangelogView />);
+  expect(document.querySelector('[aria-controls="changelog-group-2024"]')?.getAttribute("aria-expanded")).toBe("false");
+});
+
+it.each([
+  ["3616", "Historical FAF patch", "undated"],
+  ["legacy-3605", "Legacy notes", "legacy"],
+])("reveals a selected %s note in its folded historical group", (id, kind, group) => {
+  const historical = { ...release(id, ""), kind };
+  seedStore(state => ({ ...state, changelog: { ...state.changelog,
+    status: { type: "ready" }, entryStatus: { type: "ready" },
+    selected: "3837", releases: [release("3837", "2026-05-15"), historical], entries: { "3837": entry("3837") },
+  } }));
+  render(<ChangelogView />);
+  applyEvent({ kind: "Changelog", event: { type: "entryLoaded", payload: { entry: entry(id) } } });
+  expect(document.querySelector(`[aria-controls="changelog-group-${group}"]`)?.getAttribute("aria-expanded")).toBe("true");
 });
 
 it("keeps game and client reading positions independent when switching sections", () => {

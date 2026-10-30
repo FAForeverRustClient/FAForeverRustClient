@@ -6,6 +6,26 @@ const heading = (text: string, level = 2): ChangelogBlock => ({ type: "heading",
 const paragraph = (text: string): ChangelogBlock => ({ type: "paragraph", payload: { spans: [{ type: "text", payload: text }] } });
 
 describe("historical patchnote illustrations", () => {
+  it("uses original category backgrounds for broad and tier headings without assigning unit identities", () => {
+    const blocks = [heading("Structures"), heading("Air"), heading("Land"), heading("Sea"),
+      heading("Structures and Weapons"), heading("Land Units:"), heading("T1 Land"), heading("T3 Air"), heading("Naval Changes"), heading("T4 Navy")];
+    const original = structuredClone(blocks);
+    const icons = historicalChangelogIllustrations("legacy-3605", blocks);
+    expect([...icons.values()].map(value => value.icons)).toEqual(
+      ["land", "air", "land", "sea", "land", "land", "land", "air", "sea", "sea"].map(category => [
+        { type: "category", iconUrl: `/assets/changelog/categories/${category}.png` },
+      ]),
+    );
+    expect(blocks).toEqual(original);
+  });
+
+  it("keeps category words in prose, ambiguous headings and modern notes unillustrated", () => {
+    const blocks = [paragraph("Air"), paragraph("Land"), heading("General"), heading("Air damage changed"),
+      heading("Land cost reduction"), heading("T2 units")];
+    expect(historicalChangelogIllustrations("legacy-3605", blocks).size).toBe(0);
+    expect(historicalChangelogIllustrations("3818", [heading("Air"), heading("Structures")]).size).toBe(0);
+  });
+
   it("distinguishes faction commanders from broad tier groups without changing the source", () => {
     const blocks = [heading("ACUs"), heading("Cybran", 3), heading("T2 units"), heading("Aeon t2", 3), heading("UEF t2", 3)];
     const original = structuredClone(blocks);

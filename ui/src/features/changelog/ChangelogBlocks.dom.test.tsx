@@ -11,11 +11,80 @@ import { failOnConsoleError } from "../../testing/consoleGuard";
 import { clearSentCommands, sentCommands } from "../../testing/mounted";
 import { en } from "../../i18n/catalog/en";
 import { ChangelogBlockView } from "../../shared/components/ChangelogBlocks";
+import { ChangelogIllustration } from "../../shared/components/ChangelogIllustration";
 
 const { openUrl } = vi.hoisted(() => ({ openUrl: vi.fn() }));
 vi.mock("../../ipc/native", () => ({ native: { openUrl } }));
 vi.mock("../../ipc/client");
 failOnConsoleError();
+
+it("shows a replacement historical picture after the previous one failed", () => {
+  const first = render(<ChangelogIllustration illustration={{ type: "category", iconUrl: "/assets/changelog/categories/land.png" }}
+    className="changelog-unit-icon" size={48} />);
+  const image = first.container.querySelector("img")!;
+  fireEvent.error(image);
+  expect(image.classList.contains("is-missing")).toBe(true);
+  first.rerender(<ChangelogIllustration illustration={{ type: "category", iconUrl: "/assets/changelog/categories/air.png" }}
+    className="changelog-unit-icon" size={48} />);
+  fireEvent.load(first.container.querySelector("img")!);
+  expect(first.container.querySelector("img")?.getAttribute("src")).toContain("/air.png");
+  expect(first.container.querySelector("img")?.classList.contains("is-missing")).toBe(false);
+});
+
+it("restores a contents thumbnail when the reused row loads a valid replacement", () => {
+  const section = { id: anchorFor(0), text: "Titan", depth: 2 as const, iconUrl: "https://example.invalid/failed.png" };
+  const navRef = createRef<HTMLElement>();
+  const first = render(<NoteContentsColumn sections={[section]} activeSectionId={section.id} navRef={navRef} onJump={vi.fn()} />);
+  fireEvent.error(first.container.querySelector("img")!);
+  first.rerender(<NoteContentsColumn sections={[{ ...section, iconUrl: "https://faforever.github.io/fa/assets/icons/UEL0303_icon.png" }]}
+    activeSectionId={section.id} navRef={navRef} onJump={vi.fn()} />);
+  const image = first.container.querySelector("img")!;
+  fireEvent.load(image);
+  expect(image.classList.contains("is-missing")).toBe(false);
+});
+
+it("opens a historical illustration securely without changing the source label", async () => {
+  const user = userEvent.setup();
+  render(<ChangelogBlockView anchorId={anchorFor(0)} block={{ type: "paragraph", payload: { spans: [
+    { type: "link", payload: { text: "Original illustration", url: "http://i.imgur.com/vJ17e3e.jpg" } },
+  ] } }} />);
+  const link = screen.getByRole("button", { name: "Original illustration" });
+  expect(link.getAttribute("title")).toBe("https://i.imgur.com/vJ17e3e.jpg");
+  await user.click(link);
+  expect(openUrl).toHaveBeenCalledWith("https://i.imgur.com/vJ17e3e.jpg");
+});
+
+it("uses matching category backgrounds in historical headings and contents without changing their hierarchy", async () => {
+  const labels = ["Structures", "Air", "Land", "Sea"];
+  const blocks: ChangelogBlock[] = [
+    { type: "heading", payload: { level: 2, text: "General" } },
+    ...labels.map(text => ({ type: "heading" as const, payload: { level: 3, text } })),
+  ];
+  const illustrations = historicalChangelogIllustrations("legacy-3605", blocks);
+  const sections = noteSections(blocks, false, en["changelog.historicalBalance"], 0, illustrations);
+  const onJump = vi.fn();
+  render(<>
+    <NoteBlocks blocks={blocks} illustrations={illustrations} />
+    <NoteContentsColumn sections={sections} activeSectionId={anchorFor(2)} navRef={createRef<HTMLElement>()} onJump={onJump} />
+  </>);
+  const contents = within(screen.getByRole("navigation", { name: en["changelog.contents"] }));
+  expect(screen.getByRole("heading", { name: "General" }).querySelector("img")).toBeNull();
+  expect(sections.map(section => section.depth)).toEqual([1, 2, 2, 2, 2]);
+  labels.forEach((label, index) => {
+    const heading = screen.getByRole("heading", { name: label, level: 3 });
+    const bodyIcon = heading.querySelector("img");
+    const tocIcon = contents.getByRole("button", { name: label }).querySelector("img");
+    expect(bodyIcon?.getAttribute("src")).toBe(`/assets/changelog/categories/${["land", "air", "land", "sea"][index]}.png`);
+    expect(tocIcon?.getAttribute("src")).toBe(bodyIcon?.getAttribute("src"));
+    expect(bodyIcon?.getAttribute("title")).toBeNull();
+    expect(bodyIcon?.getAttribute("alt")).toBe("");
+    expect(bodyIcon?.classList.contains("changelog-unit-icon")).toBe(true);
+    expect(tocIcon?.classList.contains("changelog-toc-icon")).toBe(true);
+    expect(heading.id).toBe(anchorFor(index + 1));
+  });
+  await userEvent.setup().click(contents.getByRole("button", { name: "Sea" }));
+  expect(onJump).toHaveBeenCalledWith(anchorFor(4));
+});
 
 it("uses the same historical commander and faction icons in original headings and contents links", async () => {
   const blocks: ChangelogBlock[] = [

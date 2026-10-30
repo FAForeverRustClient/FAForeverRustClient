@@ -15,14 +15,14 @@
 // The tab has two sections, the game's patches and this client's own
 // releases, which share that layout (`noteReader`) so they read as one tab.
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Button } from "../../design-system/Button";
 import { EmptyState } from "../../design-system/EmptyState";
 import { Icon } from "../../design-system/Icon";
 import { SectionTabs, sectionPanelProps } from "../../design-system/SectionTabs";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { ipc } from "../../ipc/client";
-import { native } from "../../ipc/native";
+import { openChangelogLink } from "../../shared/changelogLinks";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n";
@@ -200,6 +200,9 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
   const newer = selectedIndex > 0 ? changelog.releases[selectedIndex - 1] : undefined;
   const older = selectedIndex >= 0 ? changelog.releases[selectedIndex + 1] : undefined;
   const loadingEntry = changelog.entryStatus.type === "loading";
+  const selectedGroup = selected ? releaseGroup(selected) : null;
+  const selectedGroupFolded = selectedGroup !== null
+    && foldedByDefault(selectedGroup) !== toggledGroups.has(selectedGroup);
 
   const heading = useMemo(
     () => noteTitle(entry?.blocks ?? [], entry?.title || selected?.id || "", Boolean(selected?.date)),
@@ -225,10 +228,25 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
     return () => cancelAnimationFrame(frame);
   }, [entry, jumpTarget, loadingEntry, jumpTo, onJumped]);
 
-  useEffect(() => {
-    if (listedSelection.current !== changelog.selected) keepCurrentRowInView(listRef.current);
+  useLayoutEffect(() => {
+    if (listedSelection.current === changelog.selected || selectedGroup === null) return;
+    // A search result or the next/previous controls can choose a folded year.
+    // Open it before measuring the row, including while a filter shows it,
+    // so clearing that filter does not hide the selection again. A remount
+    // of the same note preserves the reader's manual folds and list offset.
+    if (selectedGroupFolded) {
+      setToggledGroups(current => {
+        const next = new Set(current);
+        if (next.has(selectedGroup)) next.delete(selectedGroup);
+        else next.add(selectedGroup);
+        changelogViewMemory.game.years = next;
+        return next;
+      });
+      return;
+    }
+    keepCurrentRowInView(listRef.current);
     listedSelection.current = changelog.selected;
-  }, [changelog.selected]);
+  }, [changelog.selected, selectedGroup, selectedGroupFolded]);
 
   const select = (id: string) =>
     ipc.send({ kind: "Changelog", command: { type: "select", payload: { id } } });
@@ -425,7 +443,8 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
                   <Icon name="chevronDown" size={15} />
                 </button>
               </div>
-              <Button className="changelog-external" onClick={() => void native.openUrl(selected.webUrl)}>
+              <Button className="changelog-external" aria-label={t("changelog.openOnSite")} title={t("changelog.openOnSite")}
+                onClick={() => ipc.run(openChangelogLink(selected.webUrl))}>
                 <Icon name="external" size={13} />
                 <span>{t("changelog.openOnSite")}</span>
               </Button>

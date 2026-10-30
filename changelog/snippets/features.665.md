@@ -1,3 +1,4 @@
 - The game changelog now includes 28 early patch notes from the archived FAF wiki and original announcements.
 - Early patch notes now show unit, upgrade and faction icons.
+- Land, air, naval and structure headings in early patch notes now show the game's original icon backgrounds.
 - Early patch notes mark unverified dates, uncertain origins, betas, release candidates and withdrawn patches.
