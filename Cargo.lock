@@ -1163,7 +1163,7 @@ dependencies = [
 
 [[package]]
 name = "faf-app"
-version = "1.0.0"
+version = "0.9.5"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -1193,7 +1193,7 @@ dependencies = [
 
 [[package]]
 name = "faf-domain"
-version = "1.0.0"
+version = "0.9.5"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -1204,7 +1204,7 @@ dependencies = [
 
 [[package]]
 name = "faf-ipc"
-version = "1.0.0"
+version = "0.9.5"
 dependencies = [
  "faf-domain",
  "specta",
@@ -1214,7 +1214,7 @@ dependencies = [
 
 [[package]]
 name = "faforever-rust-client"
-version = "1.0.0"
+version = "0.9.5"
 dependencies = [
  "faf-app",
  "faf-domain",
