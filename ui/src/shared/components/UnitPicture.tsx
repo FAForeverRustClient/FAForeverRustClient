@@ -8,14 +8,16 @@ import type { UnitSummary } from "../../ipc/bindings";
 import { native, type UnitIcons } from "../../ipc/native";
 import "./unit-picture.css";
 
-/** The game's pictures, asked for once per session and shared by every tile. */
-let iconsRequest: Promise<UnitIcons | null> | null = null;
+/** The game's pictures, asked for once per session and shared by every tile.
+ * A failed ask counts as an install with no pictures, so `null` only ever
+ * means the answer has not come yet. */
+let iconsRequest: Promise<UnitIcons> | null = null;
 
 export function useUnitIcons(): UnitIcons | null {
   const [icons, setIcons] = useState<UnitIcons | null>(null);
   useEffect(() => {
     let current = true;
-    iconsRequest ??= native.readUnitIcons().catch(() => null);
+    iconsRequest ??= native.readUnitIcons().catch(() => ({ units: {}, strategic: {} }));
     void iconsRequest.then((loaded) => {
       if (current) setIcons(loaded);
     });
@@ -27,12 +29,17 @@ export function useUnitIcons(): UnitIcons | null {
 }
 
 export function UnitPicture({ unit, icons, size }: { unit: UnitSummary; icons: UnitIcons | null; size: number }) {
-  const local = icons?.units[unit.id];
-  const [failed, setFailed] = useState(false);
-  const source = local ?? (failed ? null : unit.iconUrl);
+  // Each picture that does not load gives way to the next.
+  const [failed, setFailed] = useState(0);
+  // Nothing until the installed game has answered: the website's picture
+  // first would load hundreds of icons only to swap each one a moment later.
+  if (!icons) return <span className="unit-picture-pending" style={{ width: size, height: size }} />;
+  const sources = [icons.units[unit.id], unit.iconUrl].filter((source): source is string => Boolean(source));
+  const source = sources[failed];
   if (!source) return <span className="unit-picture-id">{unit.id}</span>;
   return (
     <img
+      key={source}
       className="unit-picture"
       src={source}
       alt=""
@@ -40,7 +47,7 @@ export function UnitPicture({ unit, icons, size }: { unit: UnitSummary; icons: U
       height={size}
       loading="lazy"
       draggable={false}
-      onError={() => setFailed(true)}
+      onError={() => setFailed(failed + 1)}
     />
   );
 }
