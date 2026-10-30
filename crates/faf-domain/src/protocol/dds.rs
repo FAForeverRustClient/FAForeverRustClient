@@ -2,10 +2,12 @@
 //! (64 by 64) and strategic icons (a few pixels square), read out of
 //! `textures.scd` and `textures.nx2`.
 //!
-//! Every such icon in both archives is DXT5; DXT1 and DXT3 are read as well,
-//! and so is uncompressed 32-bit colour, because a file written a little
-//! differently tomorrow should still show. Mipmaps after the first level are
-//! ignored. The output is straight RGBA, row by row from the top.
+//! Nearly every such icon in both archives is DXT5. A few of FAF's are
+//! uncompressed 16-bit colour (the sniper and armoured bots' strategic
+//! icons), so uncompressed 16-, 24- and 32-bit colour is read too, and DXT1
+//! and DXT3, because a file written a little differently tomorrow should
+//! still show. Mipmaps after the first level are ignored. The output is
+//! straight RGBA, row by row from the top.
 
 /// A decoded image.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,14 +61,15 @@ pub fn decode_dds(bytes: &[u8]) -> Result<DecodedImage, String> {
         };
         return decode_blocks(width, height, data, kind);
     }
-    if flags & DDPF_RGB != 0 && u32_at(bytes, 88) == 32 {
+    let bits = u32_at(bytes, 88);
+    if flags & DDPF_RGB != 0 && matches!(bits, 16 | 24 | 32) {
         let masks = [
             u32_at(bytes, 92),
             u32_at(bytes, 96),
             u32_at(bytes, 100),
             u32_at(bytes, 104),
         ];
-        return decode_rgb32(width, height, data, masks);
+        return decode_masked(width, height, data, bits as usize / 8, masks);
     }
     Err("a DDS pixel format this does not read".into())
 }
@@ -208,14 +211,18 @@ fn decode_blocks(
     })
 }
 
-fn decode_rgb32(
+/// Uncompressed colour, `bytes_per_pixel` 2, 3 or 4, each channel where its
+/// mask says. FAF's own strategic icons for the sniper and armoured bots are
+/// 16-bit, one bit of alpha and five of each colour.
+fn decode_masked(
     width: u32,
     height: u32,
     data: &[u8],
+    bytes_per_pixel: usize,
     masks: [u32; 4],
 ) -> Result<DecodedImage, String> {
     let pixels = width as usize * height as usize;
-    if data.len() < pixels * 4 {
+    if data.len() < pixels * bytes_per_pixel {
         return Err("the DDS image is cut short".into());
     }
     let channel = |value: u32, mask: u32| -> u8 {
@@ -227,9 +234,10 @@ fn decode_rgb32(
         ((shifted * 255) / max) as u8
     };
     let mut rgba = Vec::with_capacity(pixels * 4);
-    let (pixels_bytes, _) = data[..pixels * 4].as_chunks::<4>();
-    for pixel in pixels_bytes {
-        let value = u32::from_le_bytes(*pixel);
+    for pixel in data[..pixels * bytes_per_pixel].chunks_exact(bytes_per_pixel) {
+        let mut word = [0_u8; 4];
+        word[..bytes_per_pixel].copy_from_slice(pixel);
+        let value = u32::from_le_bytes(word);
         rgba.extend_from_slice(&[
             channel(value, masks[0]),
             channel(value, masks[1]),
@@ -303,6 +311,24 @@ mod tests {
         dds[104..108].copy_from_slice(&0xff00_0000_u32.to_le_bytes());
         dds.extend_from_slice(&0x80_10_20_30_u32.to_le_bytes());
         assert_eq!(decode_dds(&dds).unwrap().rgba, [0x10, 0x20, 0x30, 0x80]);
+    }
+
+    #[test]
+    fn sixteen_bit_colour_reads_its_five_bit_channels_and_one_bit_alpha() {
+        // A1R5G5B5, as FAF's sniper and armoured bot icons are: an opaque
+        // full red, then a transparent full blue.
+        let mut dds = header(2, 1, DDPF_RGB | 0x1, b"\0\0\0\0");
+        dds[88..92].copy_from_slice(&16_u32.to_le_bytes());
+        dds[92..96].copy_from_slice(&0x7c00_u32.to_le_bytes());
+        dds[96..100].copy_from_slice(&0x03e0_u32.to_le_bytes());
+        dds[100..104].copy_from_slice(&0x001f_u32.to_le_bytes());
+        dds[104..108].copy_from_slice(&0x8000_u32.to_le_bytes());
+        dds.extend_from_slice(&0xfc00_u16.to_le_bytes());
+        dds.extend_from_slice(&0x001f_u16.to_le_bytes());
+        assert_eq!(
+            decode_dds(&dds).unwrap().rgba,
+            [255, 0, 0, 255, 0, 0, 255, 0]
+        );
     }
 
     #[test]

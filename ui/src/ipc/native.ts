@@ -2,7 +2,7 @@
 // Feature code stays unaware of Tauri packages, which keeps it browser-testable
 // and gives architecture checks one explicit native boundary to enforce.
 
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow, UserAttentionType } from "@tauri-apps/api/window";
@@ -13,13 +13,28 @@ import {
 } from "@tauri-apps/plugin-notification";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
-/** The pictures `unit_icons` answers with. Mirrors the shell's `UnitIcons`. */
+/** The installed game's pictures, as addresses an `<img>` loads. */
 export interface UnitIcons {
   /** By upper-case blueprint id. */
   units: Record<string, string>;
-  /** By lower-case strategic icon name, `icon_land1_directfire`. */
-  strategic: Record<string, string>;
+  /**
+   * By lower-case strategic icon name, `icon_land1_directfire`, then by
+   * lower-case faction: the icon in that faction's colour.
+   */
+  strategic: Record<string, Record<string, string>>;
 }
+
+/** The factions the shell draws strategic icons for (`FACTION_COLOURS`). */
+const ICON_FACTIONS = ["uef", "aeon", "cybran", "seraphim"];
+
+/** What `unit_icons` answers with. Mirrors the shell's `UnitIcons`. */
+interface UnitIconNames {
+  units: string[];
+  strategic: string[];
+}
+
+/** The shell's `UNIT_ICON_SCHEME`, which serves one picture per request. */
+const UNIT_ICON_SCHEME = "unit-icon";
 
 /**
  * What a file dialog looks like. Mirrors `PickRequest` in the shell's
@@ -122,12 +137,23 @@ export const native = {
   },
 
   /**
-   * Every unit's build icon and every strategic icon from the installed
-   * game, as `data:` URLs (`infra::unit_icons`). Megabytes, so asked for once
-   * per session by the one section that shows them.
+   * Every unit's build icon and every strategic icon from the installed game
+   * (`infra::unit_icons`), as addresses on the shell's `unit-icon` scheme: the
+   * shell decodes a picture when an `<img>` asks for it, so only the icons on
+   * screen cost anything.
    */
-  readUnitIcons(): Promise<UnitIcons> {
-    return invoke<UnitIcons>("unit_icons");
+  async readUnitIcons(): Promise<UnitIcons> {
+    const names = await invoke<UnitIconNames>("unit_icons");
+    const address = (name: string) => convertFileSrc(name, UNIT_ICON_SCHEME);
+    return {
+      units: Object.fromEntries(names.units.map((id) => [id, address(`unit-${id}`)])),
+      strategic: Object.fromEntries(
+        names.strategic.map((icon) => [
+          icon,
+          Object.fromEntries(ICON_FACTIONS.map((faction) => [faction, address(`strategic-${faction}-${icon}`)])),
+        ]),
+      ),
+    };
   },
 
   /** One stored sound's bytes, for the page to decode. */

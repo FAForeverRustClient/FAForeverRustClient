@@ -13,9 +13,12 @@ import {
   formatValue,
   groupUnits,
   indexedValues,
+  releaseVerdict,
   roundHalfEven,
   sortUnits,
+  unitColors,
   valueKeyId,
+  valueVerdict,
 } from "./unitHistory";
 
 function unit(id: string, overrides: Partial<UnitSummary> = {}): UnitSummary {
@@ -181,5 +184,38 @@ describe("the step chart", () => {
     expect(relative?.max).toBeCloseTo(121.2);
     expect(valueExtent([{ values: [null] }])).toBeNull();
     expect(niceTicks(0, 100)).toEqual([0, 20, 40, 60, 80, 100]);
+  });
+});
+
+describe("buffs and nerfs", () => {
+  const mass: UnitValueKey = { type: "unit", payload: { stat: "massCost" } };
+  const salvoDelay: UnitValueKey = { type: "weapon", payload: { weapon: "MainGun", stat: "salvoDelay" } };
+
+  it("reads a higher cost as a nerf and a higher health as a buff", () => {
+    expect(valueVerdict(health, 300, 320)).toBe("buff");
+    expect(valueVerdict(mass, 54, 56)).toBe("nerf");
+    expect(valueVerdict(mass, 56, 54)).toBe("buff");
+    expect(valueVerdict(salvoDelay, 1, 2)).toBeNull();
+    expect(valueVerdict(health, null, 320)).toBeNull();
+  });
+
+  it("calls a release that did both mixed", () => {
+    const value = (key: UnitValueKey, before: number, after: number) =>
+      ({ type: "value", payload: { key, before, after } }) as const;
+    expect(releaseVerdict([value(health, 300, 320), value(mass, 54, 50)])).toBe("buff");
+    expect(releaseVerdict([value(health, 300, 320), value(mass, 54, 56)])).toBe("mixed");
+    expect(releaseVerdict([value(speed, 3.4, 3)])).toBe("nerf");
+    expect(releaseVerdict([{ type: "added" }])).toBeNull();
+  });
+});
+
+describe("unit colours", () => {
+  it("gives every unit its faction's colour, and a second of one faction a shade of it", () => {
+    const factions: Record<string, string> = { UEA0305: "UEF", UAA0310: "Aeon", UEL0201: "UEF" };
+    const colors = unitColors(["UEA0305", "UAA0310", "UEL0201"], (id) => factions[id]);
+    expect(colors.UEA0305).toBe("var(--unit-faction-uef)");
+    expect(colors.UAA0310).toBe("var(--unit-faction-aeon)");
+    expect(colors.UEL0201).toContain("var(--unit-faction-uef)");
+    expect(colors.UEL0201).not.toBe(colors.UEA0305);
   });
 });

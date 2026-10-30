@@ -3,14 +3,19 @@
 // land, air, naval and structures, and the units picked from it compared
 // across the game releases.
 //
-// Values are ticked in a list. With one value ticked the chart shows it in its
-// own numbers; with several, each line is a percentage of where it started,
-// since a health of 3000 and a speed of 3.4 share no other axis (hovering a
-// release shows the numbers themselves). One unit picked gives each value its
-// own colour; several give each unit its colour and each value its own dash.
-// Under the chart, every release that changed one of the units, with the old
-// and the new value the way the patch notes print a balance change. A release
-// opens its patch notes in the Game section.
+// One unit picked gets a head of its own: its picture, name and tech level,
+// and its main values in the newest release with how far each moved since the
+// first. Several get a card each and a table of those values side by side.
+//
+// Under the head, a card with the chart and the values ticked for it. With one
+// value ticked the chart shows it in its own numbers; with several, each line
+// is a percentage of where it started, since a health of 3000 and a speed of
+// 3.4 share no other axis (hovering a release shows the numbers themselves).
+// One unit picked gives each value its own colour; several give each unit its
+// colour and each value its own dash. Then every release that changed one of
+// the units, as a timeline, with the old and the new value the way the patch
+// notes print a balance change. A release opens its patch notes in the Game
+// section.
 //
 // Every value comes from the units' blueprints as each release had them (see
 // faf-domain's `protocol::unit_history`), the pictures from the installed
@@ -19,11 +24,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { EmptyState } from "../../design-system/EmptyState";
+import { FactsStrip } from "../../design-system/FactsStrip";
 import { Icon } from "../../design-system/Icon";
-import { Select } from "../../design-system/Select";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { ipc } from "../../ipc/client";
-import { native, type UnitIcons } from "../../ipc/native";
+import type { UnitIcons } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
 import { MAX_SELECTED_UNITS } from "../../store/reducers/unitHistory";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -31,28 +36,42 @@ import { formatNumber } from "../../i18n";
 import { useRememberedFilter } from "../../shared/filterMemory";
 import { plainError } from "../../shared/plainError";
 import { formatDate } from "../../shared/format/dates";
+import { factionIdFromName } from "../../shared/factions";
+import { FactionIcon } from "../../shared/components/FactionIcon";
 import type { UnitChange, UnitChangeRow, UnitHistory, UnitRelease, UnitSummary, UnitValueKey } from "../../ipc/bindings";
 import { LineSample, UnitHistoryChart, type ChartSeries } from "./UnitHistoryChart";
 import {
   alignedValues,
   CHART_COLORS,
   changedKeys,
+  changePercent,
   comparableKey,
   defaultKey,
   defaultStatKeys,
+  factsLayout,
   drawableKeys,
   filterUnits,
   formatPercentChange,
   formatValue,
   groupUnits,
+  headlineFacts,
+  headlineKeys,
   indexedValues,
   releaseOrder,
+  releaseVerdict,
   UNIT_FACTIONS,
   UNIT_KIND_LABELS,
+  unitColors,
   unitTitle,
   valueKeyId,
   valueLabel,
+  valueSpan,
+  valueVerdict,
+  type Verdict,
+  WEAPON_STAT_LABELS,
+  UNIT_STAT_LABELS,
 } from "./unitHistory";
+import { UnitPicture, useUnitIcons } from "../../shared/components/UnitPicture";
 import "../../shared/components/changelog-blocks.css";
 
 type Translate = ReturnType<typeof useTranslation>["t"];
@@ -73,29 +92,12 @@ function tierTitle(tech: number | null, t: Translate): string {
   return t("changelog.units.techLevel", { level: tech });
 }
 
-/** A unit's colour in the chart and around its icon: its place in the selection. */
-const selectionColor = (index: number) => (index % CHART_COLORS) + 1;
-
 /** The dashes that tell several values of one unit apart, in order. */
 const DASHES = ["", "7 4", "2 3", "10 3 2 3"];
 
-/** The game's pictures, asked for once per session and shared by every tile. */
-let iconsRequest: Promise<UnitIcons | null> | null = null;
+const factionClass = (unit: UnitSummary) => `faction-${(unit.faction ?? "").toLowerCase()}`;
 
-function useUnitIcons(): UnitIcons | null {
-  const [icons, setIcons] = useState<UnitIcons | null>(null);
-  useEffect(() => {
-    let current = true;
-    iconsRequest ??= native.readUnitIcons().catch(() => null);
-    void iconsRequest.then((loaded) => {
-      if (current) setIcons(loaded);
-    });
-    return () => {
-      current = false;
-    };
-  }, []);
-  return icons;
-}
+const shortDate = (date: string) => formatDate(date, "", { day: "numeric", month: "short", year: "numeric" });
 
 export function UnitHistoryView({ onOpenRelease }: { onOpenRelease: (id: string) => void }) {
   const { t } = useTranslation();
@@ -143,6 +145,9 @@ export function UnitHistoryView({ onOpenRelease }: { onOpenRelease: (id: string)
   const ready = selected
     .map((id) => histories[id])
     .flatMap((status) => (status?.type === "ready" ? [status.payload.history] : []));
+  const picked = selected.map((id) => ({ id, unit: units.find((candidate) => candidate.id === id) }));
+  const single = selected.length === 1;
+  const colors = unitColors(selected, (id) => picked.find((pick) => pick.id === id)?.unit?.faction);
 
   return (
     <div className="changelog-view unit-history-view">
@@ -158,27 +163,40 @@ export function UnitHistoryView({ onOpenRelease }: { onOpenRelease: (id: string)
           />
         </div>
         <div className="unit-history-filters">
-          <Select<string>
-            value={faction}
-            onChange={setFaction}
-            label={t("changelog.units.faction")}
-            options={[
-              { value: "", label: t("changelog.units.anyFaction") },
-              ...UNIT_FACTIONS.map((name) => ({ value: name, label: name })),
-            ]}
-          />
-          <Select<number>
-            value={tech ?? 0}
-            onChange={(value) => setTech(value === 0 ? null : value)}
-            label={t("changelog.units.tech")}
-            options={[
-              { value: 0, label: t("changelog.units.anyTech") },
-              { value: 1, label: t("changelog.units.techLevel", { level: 1 }) },
-              { value: 2, label: t("changelog.units.techLevel", { level: 2 }) },
-              { value: 3, label: t("changelog.units.techLevel", { level: 3 }) },
-              { value: 4, label: t("changelog.units.experimental") },
-            ]}
-          />
+          <div className="settings-segmented unit-history-segmented" role="group" aria-label={t("changelog.units.faction")}>
+            <button type="button" className={faction === "" ? "is-active" : undefined} aria-pressed={faction === ""} onClick={() => setFaction("")}>
+              {t("changelog.units.all")}
+            </button>
+            {UNIT_FACTIONS.map((name) => (
+              <button
+                key={name}
+                type="button"
+                className={`unit-history-faction-choice faction-${name.toLowerCase()}${faction === name ? " is-active" : ""}`}
+                aria-pressed={faction === name}
+                title={name}
+                onClick={() => setFaction(faction === name ? "" : name)}
+              >
+                <FactionIcon faction={factionIdFromName(name) ?? 0} size={15} />
+              </button>
+            ))}
+          </div>
+          <div className="settings-segmented unit-history-segmented" role="group" aria-label={t("changelog.units.tech")}>
+            <button type="button" className={tech === null ? "is-active" : undefined} aria-pressed={tech === null} onClick={() => setTech(null)}>
+              {t("changelog.units.all")}
+            </button>
+            {[1, 2, 3, 4].map((level) => (
+              <button
+                key={level}
+                type="button"
+                className={tech === level ? "is-active" : undefined}
+                aria-pressed={tech === level}
+                title={tierTitle(level, t)}
+                onClick={() => setTech(tech === level ? null : level)}
+              >
+                {tierShort(level, t)}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="changelog-releases unit-history-grid-scroll" aria-label={t("changelog.units.list")}>
           {listStatus.type === "loading" && units.length === 0 && (
@@ -188,8 +206,11 @@ export function UnitHistoryView({ onOpenRelease }: { onOpenRelease: (id: string)
             <p className="changelog-list-note">{t("changelog.units.noMatch")}</p>
           )}
           {groups.map((group) => (
-            <section key={group.faction} className="unit-history-faction">
-              <h3>{group.faction}</h3>
+            <section key={group.faction} className={`unit-history-faction faction-${group.faction.toLowerCase()}`}>
+              <h3>
+                <FactionIcon faction={factionIdFromName(group.faction) ?? 0} size={14} />
+                {group.faction}
+              </h3>
               {group.kinds.map((kind) => (
                 <div key={kind.kind} className="unit-history-kind">
                   <span className="unit-history-kind-label">{t(UNIT_KIND_LABELS[kind.kind])}</span>
@@ -201,14 +222,14 @@ export function UnitHistoryView({ onOpenRelease }: { onOpenRelease: (id: string)
                       </span>
                       <div className="unit-history-icons">
                         {tier.units.map((unit) => {
-                          const index = selected.indexOf(unit.id);
+                          const color = colors[unit.id] ?? null;
                           return (
                             <UnitTile
                               key={unit.id}
                               unit={unit}
                               icons={icons}
-                              color={index === -1 ? null : selectionColor(index)}
-                              disabled={index === -1 && full}
+                              color={color}
+                              disabled={color === null && full}
                               onClick={() => toggle(unit.id)}
                             />
                           );
@@ -223,107 +244,72 @@ export function UnitHistoryView({ onOpenRelease }: { onOpenRelease: (id: string)
         </div>
       </aside>
 
-      <article className="changelog-note surface-panel" aria-busy={selected.some((id) => histories[id]?.type === "loading") || undefined}>
-        <header className="changelog-note-head unit-history-head">
-          {selected.length === 0 ? (
-            <p className="changelog-list-note unit-history-pick">{t("changelog.units.pick")}</p>
-          ) : (
-            <ul className="unit-history-chips" aria-label={t("changelog.units.selected")}>
-              {selected.map((id, index) => {
-                const unit = units.find((candidate) => candidate.id === id);
-                return (
-                  <li key={id} className="unit-history-chip" style={{ borderColor: `var(--color-chart-${selectionColor(index)})` }}>
-                    {unit && <UnitPicture unit={unit} icons={icons} size={24} />}
-                    <span>{unit ? unitTitle(unit) : id}</span>
-                    <button
-                      type="button"
-                      className="unit-history-chip-remove"
-                      aria-label={t("changelog.units.remove", { name: unit ? unitTitle(unit) : id })}
-                      onClick={() => toggle(id)}
-                    >
-                      <Icon name="close" size={12} />
-                    </button>
-                  </li>
-                );
-              })}
-              {selected.length > 1 && (
-                <li>
-                  <Button onClick={() => setSelection([])}>{t("changelog.units.clear")}</Button>
-                </li>
+      <article
+        className="changelog-note surface-panel unit-history-detail"
+        aria-busy={selected.some((id) => histories[id]?.type === "loading") || undefined}
+      >
+        {selected.length === 0 ? (
+          <EmptyState icon="units" title={t("changelog.units.pickTitle")} hint={t("changelog.units.pick")} />
+        ) : (
+          <div className="changelog-note-scroll">
+            <div className="unit-history-body">
+              {single && picked[0].unit ? (
+                <UnitHero
+                  unit={picked[0].unit}
+                  history={ready[0]}
+                  icons={icons}
+                  onRemove={() => toggle(picked[0].id)}
+                  onOpenRelease={onOpenRelease}
+                />
+              ) : (
+                <CompareHead picked={picked} colors={colors} icons={icons} full={full} onRemove={toggle} />
               )}
-            </ul>
-          )}
-          {full && <p className="muted unit-history-full">{t("changelog.units.full", { count: MAX_SELECTED_UNITS })}</p>}
-        </header>
 
-        <div className="changelog-note-scroll">
-          <div className="unit-history-body">
-            {selected.map((id) => {
-              const status = histories[id];
-              const unit = units.find((candidate) => candidate.id === id);
-              const name = unit ? unitTitle(unit) : id;
-              if (status?.type === "loading") {
-                return (
-                  <div key={id} className="unit-history-progress">
-                    <p>{t("changelog.units.loading", { name, fetched: status.payload.fetched, total: status.payload.total })}</p>
-                    <progress max={Math.max(1, status.payload.total)} value={status.payload.fetched} />
-                  </div>
-                );
-              }
-              if (status?.type === "failed") {
-                return (
-                  <StatusNotice
-                    key={id}
-                    tone="error"
-                    action={{ label: t("changelog.retry"), onClick: () => setSelection([...selected]) }}
-                    detail={status.payload.reason}
-                  >
-                    {`${name}: ${plainError(status.payload.reason)}`}
-                  </StatusNotice>
-                );
-              }
-              return null;
-            })}
-            {selected.some((id) => histories[id]?.type === "loading") && (
-              <p className="muted">{t("changelog.units.loadingHint")}</p>
-            )}
+              {selected.map((id) => {
+                const status = histories[id];
+                const unit = units.find((candidate) => candidate.id === id);
+                const name = unit ? unitTitle(unit) : id;
+                if (status?.type === "loading") {
+                  return (
+                    <div key={id} className="unit-history-progress">
+                      <p>{t("changelog.units.loading", { name, fetched: status.payload.fetched, total: status.payload.total })}</p>
+                      <progress max={Math.max(1, status.payload.total)} value={status.payload.fetched} />
+                    </div>
+                  );
+                }
+                if (status?.type === "failed") {
+                  return (
+                    <StatusNotice
+                      key={id}
+                      tone="error"
+                      action={{ label: t("changelog.retry"), onClick: () => setSelection([...selected]) }}
+                      detail={status.payload.reason}
+                    >
+                      {`${name}: ${plainError(status.payload.reason)}`}
+                    </StatusNotice>
+                  );
+                }
+                return null;
+              })}
+              {selected.some((id) => histories[id]?.type === "loading") && (
+                <p className="muted">{t("changelog.units.loadingHint")}</p>
+              )}
 
-            {ready.length > 0 && (
-              <ValueChart
-                key={ready.map((history) => history.unit.id).join(",")}
-                histories={ready}
-                selected={selected}
-                onOpenRelease={onOpenRelease}
-              />
-            )}
-            {ready.length > 0 && <ChangeList histories={ready} icons={icons} onOpenRelease={onOpenRelease} />}
+              {!single && ready.length > 0 && <CompareTable histories={ready} colors={colors} icons={icons} />}
+              {ready.length > 0 && (
+                <ValueChart
+                  key={ready.map((history) => history.unit.id).join(",")}
+                  histories={ready}
+                  colors={colors}
+                  onOpenRelease={onOpenRelease}
+                />
+              )}
+              {ready.length > 0 && <ChangeList histories={ready} icons={icons} onOpenRelease={onOpenRelease} />}
+            </div>
           </div>
-        </div>
+        )}
       </article>
     </div>
-  );
-}
-
-/**
- * A unit's build icon: from the installed game, else from the patch notes'
- * icon set, else its id.
- */
-function UnitPicture({ unit, icons, size }: { unit: UnitSummary; icons: UnitIcons | null; size: number }) {
-  const local = icons?.units[unit.id];
-  const [failed, setFailed] = useState(false);
-  const source = local ?? (failed ? null : unit.iconUrl);
-  if (!source) return <span className="unit-history-icon-id">{unit.id}</span>;
-  return (
-    <img
-      className="unit-history-picture"
-      src={source}
-      alt=""
-      width={size}
-      height={size}
-      loading="lazy"
-      draggable={false}
-      onError={() => setFailed(true)}
-    />
   );
 }
 
@@ -336,17 +322,17 @@ function UnitTile({
 }: {
   unit: UnitSummary;
   icons: UnitIcons | null;
-  color: number | null;
+  /** Its colour while picked. */
+  color: string | null;
   disabled: boolean;
   onClick: () => void;
 }) {
   const label = [unitTitle(unit), unit.name ? unit.description : null, unit.id].filter(Boolean).join(" · ");
-  const strategic = unit.strategicIcon ? icons?.strategic[unit.strategicIcon] : undefined;
   return (
     <button
       type="button"
-      className={`unit-history-icon faction-${(unit.faction ?? "").toLowerCase()}${color !== null ? " is-selected" : ""}`}
-      style={color !== null ? { outlineColor: `var(--color-chart-${color})` } : undefined}
+      className={`unit-history-icon ${factionClass(unit)}${color !== null ? " is-selected" : ""}`}
+      style={color !== null ? { outlineColor: color } : undefined}
       aria-pressed={color !== null}
       aria-label={label}
       title={label}
@@ -354,16 +340,240 @@ function UnitTile({
       onClick={onClick}
     >
       <UnitPicture unit={unit} icons={icons} size={40} />
-      {strategic && (
-        // The strategic icon's shape, filled with the faction's colour: the
-        // game tints it with the player's, and a faction tile has no player.
-        <span
-          className="unit-history-strategic"
-          aria-hidden="true"
-          style={{ maskImage: `url("${strategic}")`, WebkitMaskImage: `url("${strategic}")` }}
+      <StrategicIcon unit={unit} icons={icons} />
+    </button>
+  );
+}
+
+/** The strategic icon at its own size, in its faction's colour as the unit
+ * database draws it (the shell tints it). The game draws it in the player's
+ * colour, and a faction tile has no player. */
+function StrategicIcon({ unit, icons }: { unit: UnitSummary; icons: UnitIcons | null }) {
+  const strategic = unit.strategicIcon ? icons?.strategic[unit.strategicIcon]?.[(unit.faction ?? "").toLowerCase()] : undefined;
+  if (!strategic) return null;
+  return <span className="unit-history-strategic" aria-hidden="true" style={{ backgroundImage: `url("${strategic}")` }} />;
+}
+
+/** "UEF · Tech 1 · Land", the line under a unit's name. */
+function UnitMeta({ unit, t }: { unit: UnitSummary; t: Translate }) {
+  const faction = unit.faction ? factionIdFromName(unit.faction) : null;
+  return (
+    <span className="unit-history-meta">
+      {faction !== null && <FactionIcon faction={faction} size={13} />}
+      <span className="unit-history-meta-text">
+        {[unit.faction, tierTitle(unit.tech, t), t(UNIT_KIND_LABELS[unit.kind])].filter(Boolean).join(" · ")}
+      </span>
+      <code>{unit.id}</code>
+    </span>
+  );
+}
+
+/** How far a value moved, as a tag in green for a buff and red for a nerf. */
+function Delta({ keyOf, before, after }: { keyOf: UnitValueKey; before: number | null; after: number | null }) {
+  const change = changePercent(before, after);
+  if (!change) return null;
+  const verdict = valueVerdict(keyOf, before, after);
+  return <span className={`unit-history-delta${verdict ? ` is-${verdict}` : ""}`}>{change}</span>;
+}
+
+/** A value now, and how far it moved since the first release that had it. */
+function FactValue({ keyOf, now, first }: { keyOf: UnitValueKey; now: number; first: number }) {
+  return (
+    <>
+      {formatValue(keyOf, now)}
+      <Delta keyOf={keyOf} before={first} after={now} />
+    </>
+  );
+}
+
+/** One picked unit: its picture large, its name, and its values now. */
+function UnitHero({
+  unit,
+  history,
+  icons,
+  onRemove,
+  onOpenRelease,
+}: {
+  unit: UnitSummary;
+  history: UnitHistory | undefined;
+  icons: UnitIcons | null;
+  onRemove: () => void;
+  onOpenRelease: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  const all = history ? headlineFacts(history) : [];
+  const layout = factsLayout(all.length);
+  const facts = all.slice(0, layout.shown);
+  const newest = history?.changes.reduce<UnitChangeRow | null>(
+    (latest, row) => (latest === null || releaseOrder(row.release) > releaseOrder(latest.release) ? row : latest),
+    null,
+  );
+  const firstRelease = history?.releases.find((release) => release.source.type !== "absent" && release.source.type !== "unavailable");
+  const verdicts = history?.changes.map((row) => releaseVerdict(row.changes)) ?? [];
+  const buffs = verdicts.filter((verdict) => verdict === "buff").length;
+  const nerfs = verdicts.filter((verdict) => verdict === "nerf").length;
+  return (
+    <section className={`unit-history-hero ${factionClass(unit)}`}>
+      <div className="unit-history-hero-head">
+        <div className="unit-history-hero-picture">
+          <UnitPicture unit={unit} icons={icons} size={64} />
+          <StrategicIcon unit={unit} icons={icons} />
+        </div>
+        <div className="unit-history-hero-text">
+          <h2>{unitTitle(unit)}</h2>
+          {unit.name && unit.description && <p className="unit-history-hero-description">{unit.description}</p>}
+          <UnitMeta unit={unit} t={t} />
+        </div>
+        <div className="unit-history-hero-side">
+          {history && (
+            <span className="unit-history-hero-count">
+              <strong>{formatNumber(history.changes.length)}</strong>
+              {t("changelog.units.changedIn", { count: history.changes.length })}
+            </span>
+          )}
+          {buffs + nerfs > 0 && (
+            <span className="unit-history-hero-verdicts">
+              {buffs > 0 && <VerdictMark verdict="buff">{t("changelog.units.buffCount", { count: buffs })}</VerdictMark>}
+              {nerfs > 0 && <VerdictMark verdict="nerf">{t("changelog.units.nerfCount", { count: nerfs })}</VerdictMark>}
+            </span>
+          )}
+          {newest && (
+            <button type="button" className="unit-history-release" onClick={() => onOpenRelease(newest.release)}>
+              {t("changelog.units.lastChanged", { release: newest.release })}
+            </button>
+          )}
+        </div>
+        <Button className="icon-button unit-history-hero-remove" aria-label={t("changelog.units.remove", { name: unitTitle(unit) })} onClick={onRemove}>
+          <Icon name="close" size={14} />
+        </Button>
+      </div>
+      {facts.length > 0 && (
+        <FactsStrip
+          className="unit-history-facts"
+          columns={layout.columns}
+          groups={[
+            {
+              ariaLabel: t("changelog.units.current", { release: firstRelease?.release ?? "" }),
+              facts: facts.map((fact) => ({
+                id: valueKeyId(fact.key),
+                label: history ? valueLabel(fact.key, history, t) : "",
+                value: <FactValue keyOf={fact.key} now={fact.now} first={fact.first} />,
+              })),
+            },
+          ]}
         />
       )}
-    </button>
+      {facts.length > 0 && firstRelease && (
+        <p className="unit-history-facts-caption">{t("changelog.units.current", { release: firstRelease.release })}</p>
+      )}
+    </section>
+  );
+}
+
+/** Several picked units: a card each, in its faction's colour. */
+function CompareHead({
+  picked,
+  colors,
+  icons,
+  full,
+  onRemove,
+}: {
+  picked: Array<{ id: string; unit: UnitSummary | undefined }>;
+  colors: Record<string, string>;
+  icons: UnitIcons | null;
+  full: boolean;
+  onRemove: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <section className="unit-history-compare-head">
+      <ul className="unit-history-cards" aria-label={t("changelog.units.selected")}>
+        {picked.map(({ id, unit }) => (
+          <li key={id} className="unit-history-card-unit" style={{ borderTopColor: colors[id] }}>
+            {unit && (
+              <span className={`unit-history-card-picture ${factionClass(unit)}`}>
+                <UnitPicture unit={unit} icons={icons} size={36} />
+              </span>
+            )}
+            <span className="unit-history-card-text">
+              <strong>{unit ? unitTitle(unit) : id}</strong>
+              {unit && <UnitMeta unit={unit} t={t} />}
+            </span>
+            <button
+              type="button"
+              className="unit-history-chip-remove"
+              aria-label={t("changelog.units.remove", { name: unit ? unitTitle(unit) : id })}
+              onClick={() => onRemove(id)}
+            >
+              <Icon name="close" size={12} />
+            </button>
+          </li>
+        ))}
+      </ul>
+      <Button onClick={() => setSelection([])}>{t("changelog.units.clear")}</Button>
+      {full && <p className="muted unit-history-full">{t("changelog.units.full", { count: MAX_SELECTED_UNITS })}</p>}
+    </section>
+  );
+}
+
+/** The picked units' main values in the newest release, side by side. */
+function CompareTable({
+  histories,
+  colors,
+  icons,
+}: {
+  histories: UnitHistory[];
+  colors: Record<string, string>;
+  icons: UnitIcons | null;
+}) {
+  const { t } = useTranslation();
+  const first = histories[0];
+  const keys = headlineKeys(first, 10);
+  return (
+    <section className="unit-history-card">
+      <header className="unit-history-card-head">
+        <h2>{t("changelog.units.compare")}</h2>
+      </header>
+      <div className="unit-history-table-scroll">
+        <table className="unit-history-table">
+          <thead>
+            <tr>
+              <th scope="col">{t("changelog.units.value")}</th>
+              {histories.map((history) => (
+                <th
+                  key={history.unit.id}
+                  scope="col"
+                  style={{ boxShadow: `inset 0 2px 0 ${colors[history.unit.id]}` }}
+                >
+                  <span className="unit-history-table-unit">
+                    <UnitPicture unit={history.unit} icons={icons} size={22} />
+                    {unitTitle(history.unit)}
+                  </span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {keys.map((key) => (
+              <tr key={valueKeyId(key)}>
+                {/* A weapon value by its stat alone: each unit's column takes it
+                    from its own weapon, and those are named differently. */}
+                <th scope="row">{t(key.type === "unit" ? UNIT_STAT_LABELS[key.payload.stat] : WEAPON_STAT_LABELS[key.payload.stat])}</th>
+                {histories.map((history) => {
+                  const own = comparableKey(history, key);
+                  const span = own ? valueSpan(alignedValues(history, own, history.releases.map((release) => release.release))) : null;
+                  return (
+                    <td key={history.unit.id}>
+                      {own && span ? <FactValue keyOf={own} now={span.now} first={span.first} /> : <span className="muted">–</span>}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -373,6 +583,21 @@ interface TickedValue {
   color: number;
 }
 
+/** The ticked values' list, grouped: the unit's own, then one group per weapon. */
+function valueGroups(keys: UnitValueKey[], history: UnitHistory): Array<{ title: string; keys: UnitValueKey[] }> {
+  const groups: Array<{ title: string; keys: UnitValueKey[] }> = [];
+  const own = keys.filter((key) => key.type === "unit");
+  if (own.length > 0) groups.push({ title: unitTitle(history.unit), keys: own });
+  for (const key of keys) {
+    if (key.type !== "weapon") continue;
+    const title = history.weapons.find((weapon) => weapon.key === key.payload.weapon)?.name ?? key.payload.weapon;
+    const group = groups.find((candidate) => candidate.title === title && candidate.keys[0]?.type === "weapon");
+    if (group) group.keys.push(key);
+    else groups.push({ title, keys: [key] });
+  }
+  return groups;
+}
+
 /**
  * The chart with its ticked values. One unit lists the values that changed
  * and colours each; several list the first unit's values and draw each unit
@@ -380,11 +605,12 @@ interface TickedValue {
  */
 function ValueChart({
   histories,
-  selected,
+  colors,
   onOpenRelease,
 }: {
   histories: UnitHistory[];
-  selected: string[];
+  /** Each unit's colour, by id: its faction's (`unitColors`). */
+  colors: Record<string, string>;
   onOpenRelease: (id: string) => void;
 }) {
   const { t } = useTranslation();
@@ -429,7 +655,7 @@ function ValueChart({
   const series: ChartSeries[] = ticked.flatMap(({ id, color }, valueIndex) => {
     const key = keys.find((candidate) => valueKeyId(candidate) === id);
     if (!key) return [];
-    if (single) return [{ key: id, label: valueLabel(key, first, t), color, ...line(first, key) }];
+    if (single) return [{ key: id, label: valueLabel(key, first, t), color: `var(--color-chart-${color})`, ...line(first, key) }];
     return histories.flatMap((history) => {
       const own = comparableKey(history, key);
       if (!own) return [];
@@ -437,7 +663,7 @@ function ValueChart({
         {
           key: `${history.unit.id}:${id}`,
           label: `${unitTitle(history.unit)}: ${valueLabel(own, history, t)}`,
-          color: selectionColor(selected.indexOf(history.unit.id)),
+          color: colors[history.unit.id],
           dash: DASHES[valueIndex],
           ...line(history, own),
         },
@@ -455,54 +681,64 @@ function ValueChart({
       );
 
   return (
-    <section className="unit-history-graph" aria-label={t("changelog.units.chart.title")}>
-      <fieldset className="unit-history-values">
-        <legend>{t("changelog.units.chart.values")}</legend>
-        {keys.map((key) => {
-          const id = valueKeyId(key);
-          const position = ticked.findIndex((value) => value.id === id);
-          const shown = position === -1 ? undefined : ticked[position];
-          return (
-            <label key={id} className={`unit-history-value${shown ? " is-ticked" : ""}`}>
-              <input
-                type="checkbox"
-                checked={Boolean(shown)}
-                disabled={!shown && ticked.length >= limit}
-                onChange={() => toggle(id)}
-              />
-              <LineSample color={shown ? (single ? shown.color : null) : null} dash={shown && !single ? DASHES[position] : undefined} />
-              <span>{valueLabel(key, first, t)}</span>
-            </label>
-          );
-        })}
-      </fieldset>
-      {ticked.length === 0 ? (
-        <p className="muted">{t("changelog.units.chart.tickValue")}</p>
-      ) : (
-        <>
-          <p className="unit-history-axis-caption muted">
-            {relative ? t("changelog.units.chart.relative") : shownKey ? valueLabel(shownKey, first, t) : ""}
-          </p>
+    <section className="unit-history-card unit-history-graph" aria-label={t("changelog.units.chart.title")}>
+      <header className="unit-history-card-head">
+        <h2>{t("changelog.units.chart.title")}</h2>
+        {ticked.length > 0 && (
+          <p className="muted">{relative ? t("changelog.units.chart.relative") : shownKey ? valueLabel(shownKey, first, t) : ""}</p>
+        )}
+      </header>
+      <div className="unit-history-graph-body">
+        <div className="unit-history-graph-plot">
           {lacking.length > 0 && (
             <p className="muted">
               {t("changelog.units.lacksValue", { names: lacking.map((history) => unitTitle(history.unit)).join(", ") })}
             </p>
           )}
-          <UnitHistoryChart
-            releases={releases}
-            series={series}
-            format={relative ? (value) => `${formatNumber(Math.round(value))}%` : (value) => (shownKey ? formatValue(shownKey, value) : formatNumber(value))}
-            floor={relative ? null : 0}
-            baseline={relative ? 100 : undefined}
-            onOpenRelease={onOpenRelease}
-          />
-        </>
-      )}
+          {ticked.length === 0 ? (
+            <p className="unit-history-chart-empty">{t("changelog.units.chart.tickValue")}</p>
+          ) : (
+            <UnitHistoryChart
+              releases={releases}
+              series={series}
+              format={relative ? (value) => `${formatNumber(Math.round(value))}%` : (value) => (shownKey ? formatValue(shownKey, value) : formatNumber(value))}
+              floor={relative ? null : 0}
+              baseline={relative ? 100 : undefined}
+              onOpenRelease={onOpenRelease}
+            />
+          )}
+        </div>
+        <fieldset className="unit-history-values">
+          <legend>{t("changelog.units.chart.values")}</legend>
+          {valueGroups(keys, first).map((group) => (
+            <div key={`${group.keys[0].type}:${group.title}`} className="unit-history-value-group">
+              <span className="unit-history-value-group-title">{group.title}</span>
+              {group.keys.map((key) => {
+                const id = valueKeyId(key);
+                const position = ticked.findIndex((value) => value.id === id);
+                const shown = position === -1 ? undefined : ticked[position];
+                return (
+                  <label key={id} className={`unit-history-value${shown ? " is-ticked" : ""}`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(shown)}
+                      disabled={!shown && ticked.length >= limit}
+                      onChange={() => toggle(id)}
+                    />
+                    <span>{key.type === "unit" ? t(UNIT_STAT_LABELS[key.payload.stat]) : t(WEAPON_STAT_LABELS[key.payload.stat])}</span>
+                    <LineSample color={shown && single ? `var(--color-chart-${shown.color})` : null} dash={shown && !single ? DASHES[position] : undefined} />
+                  </label>
+                );
+              })}
+            </div>
+          ))}
+        </fieldset>
+      </div>
     </section>
   );
 }
 
-/** Every release that changed one of the units, newest first. */
+/** Every release that changed one of the units, newest first, as a timeline. */
 function ChangeList({
   histories,
   icons,
@@ -522,38 +758,57 @@ function ChangeList({
         byRelease.set(row.release, entry);
       }
     }
-    return [...byRelease.values()].sort((left, right) => releaseOrder(right.release) - releaseOrder(left.release));
+    return [...byRelease.values()]
+      .sort((left, right) => releaseOrder(right.release) - releaseOrder(left.release))
+      .map((row) => ({ ...row, verdict: releaseVerdict(row.entries.flatMap(({ row: changes }) => changes.changes)) }));
   }, [histories]);
   const several = histories.length > 1;
 
   return (
-    <section className="unit-history-changes" aria-label={t("changelog.units.changes")}>
-      <h2>{t("changelog.units.changes")}</h2>
+    <section className="unit-history-card unit-history-changes" aria-label={t("changelog.units.changes")}>
+      <header className="unit-history-card-head">
+        <h2>{t("changelog.units.changes")}</h2>
+        {rows.length > 0 && <span className="unit-history-count">{formatNumber(rows.length)}</span>}
+        {rows.some((row) => row.verdict !== null) && (
+          <span className="unit-history-legend">
+            <VerdictMark verdict="buff">{t("changelog.units.verdict.buff")}</VerdictMark>
+            <VerdictMark verdict="nerf">{t("changelog.units.verdict.nerf")}</VerdictMark>
+            <VerdictMark verdict="mixed">{t("changelog.units.verdict.mixed")}</VerdictMark>
+          </span>
+        )}
+      </header>
       {rows.length === 0 ? (
-        <p className="muted">{t("changelog.units.noChanges")}</p>
+        <p className="muted unit-history-card-note">{t("changelog.units.noChanges")}</p>
       ) : (
-        <ol className="unit-history-change-rows">
+        <ol className="unit-history-timeline">
           {rows.map((row) => (
-            <li key={row.release} className="unit-history-change-row">
-              <div className="unit-history-change-release">
+            <li key={row.release} className="unit-history-timeline-row">
+              <span
+                className={`unit-history-timeline-node${row.verdict ? ` is-${row.verdict}` : ""}`}
+                role={row.verdict ? "img" : undefined}
+                aria-label={row.verdict ? t(`changelog.units.verdict.${row.verdict}`) : undefined}
+                title={row.verdict ? t(`changelog.units.verdict.${row.verdict}`) : undefined}
+                aria-hidden={row.verdict ? undefined : true}
+              />
+              <div className="unit-history-timeline-release">
                 <button type="button" className="unit-history-release" onClick={() => onOpenRelease(row.release)}>
                   {row.release}
                 </button>
-                {row.date && (
-                  <time dateTime={row.date}>{formatDate(row.date, "", { day: "numeric", month: "short", year: "numeric" })}</time>
-                )}
+                {row.date && <time dateTime={row.date}>{shortDate(row.date)}</time>}
               </div>
-              <div className="unit-history-change-units">
+              <div className="unit-history-timeline-units">
                 {row.entries.map(({ history, row: changes }) => (
                   <div key={history.unit.id} className="unit-history-change-unit">
                     {several && (
-                      <div className="changelog-unit unit-history-change-unit-head">
-                        <UnitPicture unit={history.unit} icons={icons} size={28} />
-                        <span className="changelog-unit-name">{unitTitle(history.unit)}</span>
+                      <div className="unit-history-change-unit-head">
+                        <span className={`unit-history-change-picture ${factionClass(history.unit)}`}>
+                          <UnitPicture unit={history.unit} icons={icons} size={24} />
+                        </span>
+                        <span>{unitTitle(history.unit)}</span>
                       </div>
                     )}
                     <SourceTag release={history.releases.find((release) => release.release === row.release)} t={t} />
-                    <ul className="changelog-list">
+                    <ul className="unit-history-change-lines">
                       {changes.changes.map((change, index) => (
                         <li key={index}>
                           <ChangeLine change={change} history={history} t={t} />
@@ -574,13 +829,23 @@ function ChangeList({
   );
 }
 
+/** A buff, a nerf or both, as a square in its colour and a word. */
+function VerdictMark({ verdict, children }: { verdict: Verdict | "mixed"; children: string }) {
+  return (
+    <span className={`unit-history-verdict is-${verdict}`}>
+      <span className="unit-history-verdict-mark" aria-hidden="true" />
+      {children}
+    </span>
+  );
+}
+
 function SourceTag({ release, t }: { release: UnitRelease | undefined; t: Translate }) {
   if (release?.source.type !== "baseGame") return null;
   return <span className="unit-history-source">{t("changelog.units.baseGame")}</span>;
 }
 
 /** A change the way the patch notes print one: the old value struck through
- * in red, an arrow, the new value in green. */
+ * in red, an arrow, the new value in green, and how far it moved. */
 function ChangeLine({ change, history, t }: { change: UnitChange; history: UnitHistory; t: Translate }) {
   switch (change.type) {
     case "added":
@@ -589,24 +854,29 @@ function ChangeLine({ change, history, t }: { change: UnitChange; history: UnitH
       return <span className="changelog-old">{t("changelog.units.removed")}</span>;
     case "categories":
       return (
-        <span className="changelog-change">
-          <span className="changelog-change-label">{t("changelog.units.categories")}</span>
-          {change.payload.removed.map((category) => (
-            <span key={`-${category}`} className="changelog-old">{category}</span>
-          ))}
-          {change.payload.added.map((category) => (
-            <span key={`+${category}`} className="changelog-new">{category}</span>
-          ))}
+        <span className="unit-history-change-line">
+          <span className="unit-history-change-label">{t("changelog.units.categories")}</span>
+          <span className="unit-history-change-values">
+            {change.payload.removed.map((category) => (
+              <span key={`-${category}`} className="changelog-old">{category}</span>
+            ))}
+            {change.payload.added.map((category) => (
+              <span key={`+${category}`} className="changelog-new">{category}</span>
+            ))}
+          </span>
         </span>
       );
     case "value": {
       const { key, before, after } = change.payload;
       return (
-        <span className="changelog-change">
-          <span className="changelog-change-label">{valueLabel(key, history, t)}</span>
-          {before !== null && <span className="changelog-old">{formatValue(key, before)}</span>}
-          {before !== null && after !== null && <Icon name="arrowRight" size={12} />}
-          {after !== null && <span className="changelog-new">{formatValue(key, after)}</span>}
+        <span className="unit-history-change-line">
+          <span className="unit-history-change-label">{valueLabel(key, history, t)}</span>
+          <span className="unit-history-change-values">
+            {before !== null && <span className="unit-history-old">{formatValue(key, before)}</span>}
+            {before !== null && after !== null && <Icon name="arrowRight" size={12} />}
+            {after !== null && <span className="unit-history-new">{formatValue(key, after)}</span>}
+            <Delta keyOf={key} before={before} after={after} />
+          </span>
         </span>
       );
     }
@@ -624,7 +894,7 @@ function UnavailableReleases({ history, several, t }: { history: UnitHistory; se
     releases: unavailable.map((release) => release.release).join(", "),
   });
   return (
-    <p className="muted" title={reason}>
+    <p className="muted unit-history-card-note" title={reason}>
       {several ? `${unitTitle(history.unit)}: ${text}` : text}
     </p>
   );

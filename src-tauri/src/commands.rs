@@ -381,23 +381,49 @@ pub(crate) fn snapshot(core: tauri::State<'_, Core>) -> VersionedSnapshot {
     snapshot
 }
 
-/// The unit history's pictures: every unit's build icon and every strategic
-/// icon, read out of the installed game's archives (see
-/// `faf_app::infra::unit_icons`). Through a command of their own rather than
-/// the state, because they are megabytes the page wants only while that
-/// section is open.
+/// The unit history's pictures: which units and strategic icons the installed
+/// game has a picture for (see `faf_app::infra::unit_icons`). The pictures
+/// themselves come one at a time through [`UNIT_ICON_SCHEME`].
 #[tauri::command]
 pub(crate) async fn unit_icons(
     core: tauri::State<'_, Core>,
 ) -> Result<faf_app::infra::unit_icons::UnitIcons, String> {
     let game_path = core.0.with_state(|state| state.settings.game_path.clone());
+    tauri::async_runtime::spawn_blocking(move || faf_app::infra::unit_icons::unit_icons(&game_path))
+        .await
+        .map_err(|_| "file worker stopped".to_string())
+}
+
+/// The scheme the page loads a unit or strategic icon through, one request
+/// per picture, so the grid draws the icons it shows as they are decoded
+/// instead of waiting for all of them. The page builds the addresses
+/// (`ui/src/ipc/native.ts`) from the names [`unit_icons`] answers with.
+pub(crate) const UNIT_ICON_SCHEME: &str = "unit-icon";
+
+/// Answers a [`UNIT_ICON_SCHEME`] request off the webview's thread. Open to
+/// any origin, because a CSS mask fetches its picture as a cross-origin
+/// request, and the pictures are the game's own interface icons.
+pub(crate) fn unit_icon_request<R: tauri::Runtime>(
+    _context: tauri::UriSchemeContext<'_, R>,
+    request: tauri::http::Request<Vec<u8>>,
+    responder: tauri::UriSchemeResponder,
+) {
+    use tauri::http::{header, Response, StatusCode};
+    let name = request.uri().path().trim_start_matches('/').to_owned();
     tauri::async_runtime::spawn_blocking(move || {
-        faf_app::infra::unit_icons::unit_icons(&game_path)
-            .as_ref()
-            .clone()
-    })
-    .await
-    .map_err(|_| "file worker stopped".to_string())
+        let response = match faf_app::infra::unit_icons::icon_png(&name) {
+            Some(png) => Response::builder()
+                .header(header::CONTENT_TYPE, "image/png")
+                .header(header::CACHE_CONTROL, "max-age=86400")
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(png),
+            None => Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Vec::new()),
+        };
+        responder.respond(response.unwrap_or_default());
+    });
 }
 
 /// Terminate the application process cleanly.

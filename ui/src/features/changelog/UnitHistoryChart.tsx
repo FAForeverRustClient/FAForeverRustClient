@@ -23,8 +23,8 @@ export interface ChartSeries {
   label: string;
   /** What is drawn, aligned with the chart's releases; `null` where unset. */
   values: (number | null)[];
-  /** 1 to 8: `--color-chart-<n>`, given out in order. */
-  color: number;
+  /** A CSS colour: a value's `--color-chart-<n>`, or a unit's faction colour. */
+  color: string;
   /** An SVG dash pattern, for telling apart lines of one colour. */
   dash?: string;
   /** What the tooltip says for a release, when the drawn number is not it. */
@@ -121,7 +121,7 @@ export function valueExtent(
 }
 
 /** A short piece of a line, for a legend: its colour and its dash. */
-export function LineSample({ color, dash }: { color: number | null; dash?: string }) {
+export function LineSample({ color, dash }: { color: string | null; dash?: string }) {
   return (
     <svg className="unit-history-sample" width="22" height="8" aria-hidden="true">
       <line
@@ -130,7 +130,7 @@ export function LineSample({ color, dash }: { color: number | null; dash?: strin
         y1="4"
         y2="4"
         style={{
-          stroke: color === null ? "var(--color-border-strong)" : `var(--color-chart-${color})`,
+          stroke: color ?? "var(--color-border-strong)",
           strokeDasharray: dash || undefined,
         }}
       />
@@ -218,7 +218,7 @@ export function UnitHistoryChart({ releases, series, format, floor, baseline, on
           <path
             key={one.key}
             className="unit-history-line"
-            style={{ stroke: `var(--color-chart-${one.color})`, strokeDasharray: one.dash || undefined }}
+            style={{ stroke: one.color, strokeDasharray: one.dash || undefined }}
             d={stepPath(one.values, x, y)}
           />
         ))}
@@ -232,7 +232,7 @@ export function UnitHistoryChart({ releases, series, format, floor, baseline, on
               <circle
                 key={`${one.key}-${index}`}
                 className="unit-history-change"
-                style={{ fill: `var(--color-chart-${one.color})` }}
+                style={{ fill: one.color }}
                 cx={x(index)}
                 cy={y(value)}
                 r={4}
