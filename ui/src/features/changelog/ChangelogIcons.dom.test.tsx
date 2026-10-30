@@ -38,16 +38,38 @@ it("shares one local catalogue across the article, caption and contents, includi
   expect([...pending].map(image => image.getAttribute("loading"))).toEqual(["lazy", "lazy", "eager"]);
   for (const image of pending) expect(image.hasAttribute("src")).toBe(false);
   await act(async () => {
-    resolve({ units: Object.fromEntries(["UES0304", "UEL0303", "UEL0203", "UEB4301"].map(id => [id, local(id)])), strategic: {} });
+    resolve({ units: Object.fromEntries(["UES0304", "UEL0303", "UEL0203", "UEB4301", "UEB0102", "UEB0103", "URL0401", "ZZZ9999"].map(id => [id, local(id)])), strategic: {} });
     await Promise.resolve();
   });
   for (const image of view.container.querySelectorAll("img")) {
     expect(image.getAttribute("src")).toBe(local("UES0304"));
+    expect(image.classList.contains("changelog-icon-background-sea")).toBe(true);
   }
   view.unmount();
   const returned = render(<ChangelogIcon source={source} className="changelog-unit-icon" size={48} />);
   expect(returned.container.querySelector("img")?.getAttribute("src")).toBe(local("UES0304"));
   expect(readUnitIcons).toHaveBeenCalledTimes(1);
+});
+
+it.each([
+  ["UEB4301", "land"], ["UEB0102", "air"], ["UEB0103", "sea"], ["URL0401", "amph"],
+])("restores %s's game background in both picture sizes", (id, background) => {
+  const view = render(<>
+    <ChangelogIcon source={clean + id + "_icon.png"} className="changelog-unit-icon" size={48} />
+    <ChangelogIcon source={clean + id + "_icon.png"} className="changelog-toc-icon" size={24} loading="eager" />
+  </>);
+  for (const picture of view.container.querySelectorAll("img")) {
+    expect(picture.getAttribute("src")).toBe(local(id));
+    expect(picture.classList.contains(`changelog-icon-background-${background}`)).toBe(true);
+  }
+});
+
+it("preserves a valid local portrait when its background is unknown", () => {
+  const source = clean + "ZZZ9999_icon.png";
+  const view = render(<ChangelogIcon source={source} className="changelog-unit-icon" size={48} />);
+  const picture = view.container.querySelector("img")!;
+  expect(picture.getAttribute("src")).toBe(local("ZZZ9999"));
+  expect(picture.classList.contains("changelog-icon-background")).toBe(false);
 });
 
 it.each([false, true])("requests the Shield Assist contents picture without selecting it (historical: %s)", historical => {
@@ -74,6 +96,7 @@ it("falls back from a broken local picture and recovers when the unit changes", 
   expect(view.container.querySelector("img")?.getAttribute("src")).toBe(local("UEL0303"));
   fireEvent.error(view.container.querySelector("img")!);
   expect(view.container.querySelector("img")?.getAttribute("src")).toBe(clean + "UEL0303_icon.png");
+  expect(view.container.querySelector("img")?.classList.contains("changelog-icon-background")).toBe(false);
   expect(view.container.querySelector("img")?.classList.contains("is-missing")).toBe(false);
   fireEvent.error(view.container.querySelector("img")!);
   expect(view.container.querySelector("img")?.classList.contains("is-missing")).toBe(true);

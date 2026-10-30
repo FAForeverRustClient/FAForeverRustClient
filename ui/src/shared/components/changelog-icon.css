@@ -1,0 +1,23 @@
+/* Original construction-button textures behind the transparent game portrait.
+   Web fallbacks already contain their backgrounds and do not get this layer. */
+.changelog-icon-background {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+.changelog-icon-background-land {
+  background-image: url("/assets/changelog/categories/land.png");
+}
+
+.changelog-icon-background-air {
+  background-image: url("/assets/changelog/categories/air.png");
+}
+
+.changelog-icon-background-sea {
+  background-image: url("/assets/changelog/categories/sea.png");
+}
+
+.changelog-icon-background-amph {
+  background-image: url("/assets/changelog/categories/amph.png");
+}
