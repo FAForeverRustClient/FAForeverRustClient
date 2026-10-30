@@ -65,6 +65,29 @@
   --color-league-master: #8aaec4;
   --color-league-grandmaster: #e27e84;
 
+  /* The FAF unit database's faction colours, for the unit history, which
+     draws units the way it does. Fixed in every theme: they are its colours,
+     not this palette's. The plain one is what its strategic icons are drawn
+     in (the shell draws ours the same) and marks a picked unit; `tile`,
+     `edge` and `glow` are its unit tile's fill, border and inner light,
+     worked out from its colors.sass and the thumb's color.adjust steps. */
+  --color-unitdb-uef: #55aaff;
+  --color-unitdb-uef-tile: rgba(45, 120, 178, 0.13);
+  --color-unitdb-uef-edge: rgba(148, 193, 228, 0.33);
+  --color-unitdb-uef-glow: rgba(70, 174, 255, 0.43);
+  --color-unitdb-aeon: #20ff20;
+  --color-unitdb-aeon-tile: rgba(25, 179, 64, 0.13);
+  --color-unitdb-aeon-edge: rgba(121, 236, 150, 0.33);
+  --color-unitdb-aeon-glow: rgba(51, 255, 103, 0.43);
+  --color-unitdb-cybran: #ff5050;
+  --color-unitdb-cybran-tile: rgba(223, 45, 14, 0.1);
+  --color-unitdb-cybran-edge: rgba(248, 158, 142, 0.3);
+  --color-unitdb-cybran-glow: rgba(255, 109, 84, 0.4);
+  --color-unitdb-seraphim: #ffbe2c;
+  --color-unitdb-seraphim-tile: rgba(252, 180, 25, 0.1);
+  --color-unitdb-seraphim-edge: rgba(254, 229, 176, 0.3);
+  --color-unitdb-seraphim-glow: rgba(255, 213, 124, 0.4);
+
   /* Calendar categories. Aliases rather than six new colours: the palette
      already carries four faction hues and a gold that read as distinct at the
      3 px edge of an event chip, and inventing six more would mean maintaining
@@ -101,6 +124,20 @@
   --color-rating: #d9ad57;
   /* A series author's amber identity, independent of caution status. */
   --color-series-amber: #d9ad57;
+
+  /* Lines of one chart that are told apart by colour: the unit history's
+     values and units. Eight hues in a fixed order, checked with the palette
+     validator against this surface (every adjacent pair clear for each kind
+     of colour vision). Assigned in order, never cycled; a ninth line does not
+     get a colour. */
+  --color-chart-1: #3987e5;
+  --color-chart-2: #d95926;
+  --color-chart-3: #199e70;
+  --color-chart-4: #c98500;
+  --color-chart-5: #d55181;
+  --color-chart-6: #008300;
+  --color-chart-7: #9085e9;
+  --color-chart-8: #e66767;
 
   /* A lobby with somebody from your friends list in it. An alias rather than a
      fifth green kept in step across four themes: the palette already carries
@@ -207,6 +244,17 @@
      theme's surfaces, the hover one included. */
   --color-rating: #7d5a10;
   --color-series-amber: #7d5a10;
+  /* The same eight hues stepped for a light surface. Three of them fall
+     under 3:1 on white, which is why the chart always has a legend and its
+     values a table. */
+  --color-chart-1: #2a78d6;
+  --color-chart-2: #eb6834;
+  --color-chart-3: #1baf7a;
+  --color-chart-4: #eda100;
+  --color-chart-5: #e87ba4;
+  --color-chart-6: #008300;
+  --color-chart-7: #6250d6;
+  --color-chart-8: #e34948;
   --color-ok: #3f8f5d;
   --color-warn: #a66d21;
   --color-error: #c24d57;

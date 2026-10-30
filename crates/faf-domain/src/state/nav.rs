@@ -95,14 +95,15 @@ pub enum SettingsSection {
     Diagnostics,
 }
 
-/// The list open inside Changelog: FAForever's game patches, or this client's
-/// own releases. See [`MapsSection`].
+/// The list open inside Changelog: FAForever's game patches, this client's own
+/// releases, or one unit's values across the game patches. See [`MapsSection`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum ChangelogSection {
     #[default]
     Game,
     Client,
+    Units,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]

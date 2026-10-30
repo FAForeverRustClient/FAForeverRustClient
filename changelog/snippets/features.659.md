@@ -1,0 +1,1 @@
+- The Changelog tab has a Unit history section: pick a unit and see every game patch that changed it, as a table and a graph.

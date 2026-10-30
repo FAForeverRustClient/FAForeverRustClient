@@ -28,6 +28,7 @@ import { reduceSocial } from "./reducers/social";
 import { reduceStreams } from "./reducers/streams";
 import { reduceTraining } from "./reducers/training";
 import { reduceTutorials } from "./reducers/tutorials";
+import { reduceUnitHistory } from "./reducers/unitHistory";
 import { reduceUploads } from "./reducers/uploads";
 import { reduceTourney } from "./reducers/tourney";
 
@@ -50,6 +51,8 @@ export function applyEvent(state: AppState, event: AppEvent): AppState {
       return { ...state, clan: reduceClan(state.clan, event.event) };
     case "Changelog":
       return { ...state, changelog: reduceChangelog(state.changelog, event.event) };
+    case "UnitHistory":
+      return { ...state, unitHistory: reduceUnitHistory(state.unitHistory, event.event) };
     case "Coop":
       return { ...state, coop: reduceCoop(state.coop, event.event) };
     case "Events":

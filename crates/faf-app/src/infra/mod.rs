@@ -105,6 +105,7 @@ pub mod notification_sounds;
 pub mod oauth;
 pub mod paths;
 pub mod player_card;
+pub mod png;
 pub mod relay;
 pub mod replay;
 pub(crate) mod replay_analysis;
@@ -124,6 +125,8 @@ pub mod tourney;
 pub mod tourney_fake;
 pub mod training;
 pub mod tutorials;
+pub mod unit_history;
+pub mod unit_icons;
 pub mod updater;
 pub mod uploads;
 pub(crate) mod vault_install;
@@ -169,6 +172,7 @@ pub use tourney::{TourneyClient, TourneyConfig};
 pub use tourney_fake::FakeTourney;
 pub use training::{FakeTraining, TrainingCatalogueClient, TrainingConfig};
 pub use tutorials::{FakeTutorials, TutorialsClient, TutorialsConfig};
+pub use unit_history::{FakeUnitHistory, UnitHistoryClient, UnitHistoryConfig};
 pub use updater::{FakeGameUpdater, GameUpdaterClient, UpdaterConfig};
 pub use uploads::{FakeUploads, UploadsClient, UploadsConfig};
 
@@ -692,6 +696,7 @@ pub fn fake_ports() -> Ports {
         guides: Arc::new(FakeGuides),
         tutorials: Arc::new(FakeTutorials),
         changelog: Arc::new(FakeChangelog),
+        unit_history: Arc::new(FakeUnitHistory),
         uploads: Arc::new(FakeUploads),
         client_update: Arc::new(FakeClientUpdates),
         galactic_war: Arc::new(FakeGalacticWar),
@@ -828,6 +833,8 @@ pub fn real_ports() -> Ports {
     // Public static documents, so no token and no gating: like the update check
     // below, this works before login.
     let changelog: Arc<dyn crate::ports::ChangelogPort> = Arc::new(ChangelogClient::faf());
+    // The same kind of public files, plus the game install on this machine.
+    let unit_history: Arc<dyn crate::ports::UnitHistoryPort> = Arc::new(UnitHistoryClient::faf());
     let clan: Arc<dyn crate::ports::ClanPort> = Arc::new(ClanClient::faf(tokens.clone()));
     let reviews: Arc<dyn crate::ports::ReviewsPort> = Arc::new(ReviewsClient::faf(tokens.clone()));
     let uploads: Arc<dyn crate::ports::UploadsPort> = Arc::new(UploadsClient::faf(tokens.clone()));
@@ -892,6 +899,7 @@ pub fn real_ports() -> Ports {
         guides,
         tutorials,
         changelog,
+        unit_history,
         uploads,
         client_update,
         galactic_war,

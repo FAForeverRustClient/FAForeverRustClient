@@ -123,6 +123,10 @@ pub fn run() {
                 .build(),
         )
         .on_window_event(window::on_window_event)
+        .register_asynchronous_uri_scheme_protocol(
+            commands::UNIT_ICON_SCHEME,
+            commands::unit_icon_request,
+        )
         .setup(|app| {
             let log_dir = app.path().app_log_dir()?;
             app.manage(diagnostics::init(&log_dir)?);
@@ -179,6 +183,7 @@ pub fn run() {
             commands::read_notification_sound,
             commands::import_background_image,
             commands::read_background_image,
+            commands::unit_icons,
             commands::read_marked_map_preview,
             commands::open_version_folder,
             commands::open_installed_folder,
