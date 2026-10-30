@@ -208,6 +208,9 @@ mod tests {
             kind: UnitKind::Land,
             strategic_icon: None,
             sort_priority: None,
+            role: None,
+            build_time: None,
+            build_rate: None,
         }
     }
 

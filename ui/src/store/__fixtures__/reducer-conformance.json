@@ -2541,6 +2541,8 @@
               "payload": {
                 "units": [
                   {
+                    "buildRate": null,
+                    "buildTime": 540.0,
                     "description": "Medium Tank",
                     "faction": "UEF",
                     "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -2548,11 +2550,14 @@
                     "kind": "land",
                     "name": "MA12 Striker",
                     "path": "units/UEL0201/UEL0201_unit.bp",
+                    "role": null,
                     "sortPriority": 40,
                     "strategicIcon": "icon_land1_directfire",
                     "tech": 1
                   },
                   {
+                    "buildRate": null,
+                    "buildTime": 540.0,
                     "description": "Medium Tank",
                     "faction": "UEF",
                     "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
@@ -2560,6 +2565,7 @@
                     "kind": "land",
                     "name": "MA12 Striker",
                     "path": "units/URL0107/URL0107_unit.bp",
+                    "role": null,
                     "sortPriority": 40,
                     "strategicIcon": "icon_land1_directfire",
                     "tech": 1
@@ -2578,6 +2584,8 @@
             "selected": [],
             "units": [
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -2585,11 +2593,14 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
@@ -2597,6 +2608,7 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
@@ -2625,6 +2637,8 @@
             "selected": [],
             "units": [
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -2632,11 +2646,14 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
@@ -2644,6 +2661,7 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
@@ -2676,6 +2694,8 @@
             ],
             "units": [
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -2683,11 +2703,14 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
@@ -2695,6 +2718,7 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
@@ -2735,6 +2759,8 @@
             ],
             "units": [
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -2742,11 +2768,14 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
@@ -2754,6 +2783,7 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
@@ -2852,6 +2882,8 @@
                     }
                   ],
                   "unit": {
+                    "buildRate": null,
+                    "buildTime": 540.0,
                     "description": "Medium Tank",
                     "faction": "UEF",
                     "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -2859,6 +2891,7 @@
                     "kind": "land",
                     "name": "MA12 Striker",
                     "path": "units/UEL0201/UEL0201_unit.bp",
+                    "role": null,
                     "sortPriority": 40,
                     "strategicIcon": "icon_land1_directfire",
                     "tech": 1
@@ -2967,6 +3000,8 @@
                       }
                     ],
                     "unit": {
+                      "buildRate": null,
+                      "buildTime": 540.0,
                       "description": "Medium Tank",
                       "faction": "UEF",
                       "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -2974,6 +3009,7 @@
                       "kind": "land",
                       "name": "MA12 Striker",
                       "path": "units/UEL0201/UEL0201_unit.bp",
+                      "role": null,
                       "sortPriority": 40,
                       "strategicIcon": "icon_land1_directfire",
                       "tech": 1
@@ -3001,6 +3037,8 @@
             ],
             "units": [
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -3008,11 +3046,14 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
@@ -3020,6 +3061,7 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
@@ -3132,6 +3174,8 @@
                       }
                     ],
                     "unit": {
+                      "buildRate": null,
+                      "buildTime": 540.0,
                       "description": "Medium Tank",
                       "faction": "UEF",
                       "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -3139,6 +3183,7 @@
                       "kind": "land",
                       "name": "MA12 Striker",
                       "path": "units/UEL0201/UEL0201_unit.bp",
+                      "role": null,
                       "sortPriority": 40,
                       "strategicIcon": "icon_land1_directfire",
                       "tech": 1
@@ -3167,6 +3212,8 @@
             ],
             "units": [
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -3174,11 +3221,14 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
@@ -3186,6 +3236,7 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
@@ -3295,6 +3346,8 @@
                       }
                     ],
                     "unit": {
+                      "buildRate": null,
+                      "buildTime": 540.0,
                       "description": "Medium Tank",
                       "faction": "UEF",
                       "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -3302,6 +3355,7 @@
                       "kind": "land",
                       "name": "MA12 Striker",
                       "path": "units/UEL0201/UEL0201_unit.bp",
+                      "role": null,
                       "sortPriority": 40,
                       "strategicIcon": "icon_land1_directfire",
                       "tech": 1
@@ -3336,6 +3390,8 @@
             ],
             "units": [
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -3343,11 +3399,14 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
@@ -3355,6 +3414,7 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
@@ -3394,6 +3454,8 @@
             ],
             "units": [
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -3401,11 +3463,14 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
@@ -3413,6 +3478,7 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
@@ -3511,6 +3577,8 @@
                     }
                   ],
                   "unit": {
+                    "buildRate": null,
+                    "buildTime": 540.0,
                     "description": "Medium Tank",
                     "faction": "UEF",
                     "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -3518,6 +3586,7 @@
                     "kind": "land",
                     "name": "MA12 Striker",
                     "path": "units/UEL0201/UEL0201_unit.bp",
+                    "role": null,
                     "sortPriority": 40,
                     "strategicIcon": "icon_land1_directfire",
                     "tech": 1
@@ -3555,6 +3624,8 @@
             ],
             "units": [
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -3562,11 +3633,14 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
@@ -3574,6 +3648,7 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
@@ -3613,6 +3688,8 @@
             ],
             "units": [
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -3620,11 +3697,14 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
@@ -3632,6 +3712,7 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
@@ -3675,6 +3756,8 @@
             ],
             "units": [
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/UEL0201_icon.png",
@@ -3682,11 +3765,14 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/UEL0201/UEL0201_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
               },
               {
+                "buildRate": null,
+                "buildTime": 540.0,
                 "description": "Medium Tank",
                 "faction": "UEF",
                 "iconUrl": "https://faforever.github.io/fa/assets/icons/URL0107_icon.png",
@@ -3694,6 +3780,7 @@
                 "kind": "land",
                 "name": "MA12 Striker",
                 "path": "units/URL0107/URL0107_unit.bp",
+                "role": null,
                 "sortPriority": 40,
                 "strategicIcon": "icon_land1_directfire",
                 "tech": 1
@@ -53668,12 +53755,14 @@
                     }
                   ],
                   "armies": [],
+                  "desyncTick": null,
                   "gameVersion": "Supreme Commander v1.50.3839",
                   "key": "uid:11",
                   "notices": [],
                   "observers": [],
                   "orders": [],
                   "points": [],
+                  "queueChanges": [],
                   "scenario": {
                     "description": "",
                     "height": 0,
@@ -53705,12 +53794,14 @@
                 }
               ],
               "armies": [],
+              "desyncTick": null,
               "gameVersion": "Supreme Commander v1.50.3839",
               "key": "uid:11",
               "notices": [],
               "observers": [],
               "orders": [],
               "points": [],
+              "queueChanges": [],
               "scenario": {
                 "description": "",
                 "height": 0,
@@ -54753,12 +54844,14 @@
                 "analysis": {
                   "activity": [],
                   "armies": [],
+                  "desyncTick": null,
                   "gameVersion": "",
                   "key": "uid:11",
                   "notices": [],
                   "observers": [],
                   "orders": [],
                   "points": [],
+                  "queueChanges": [],
                   "scenario": {
                     "description": "",
                     "height": 0,
@@ -54780,12 +54873,14 @@
             "analysis": {
               "activity": [],
               "armies": [],
+              "desyncTick": null,
               "gameVersion": "",
               "key": "uid:11",
               "notices": [],
               "observers": [],
               "orders": [],
               "points": [],
+              "queueChanges": [],
               "scenario": {
                 "description": "",
                 "height": 0,
@@ -54885,12 +54980,14 @@
             "analysis": {
               "activity": [],
               "armies": [],
+              "desyncTick": null,
               "gameVersion": "",
               "key": "uid:11",
               "notices": [],
               "observers": [],
               "orders": [],
               "points": [],
+              "queueChanges": [],
               "scenario": {
                 "description": "",
                 "height": 0,
@@ -55158,12 +55255,14 @@
                 "analysis": {
                   "activity": [],
                   "armies": [],
+                  "desyncTick": null,
                   "gameVersion": "",
                   "key": "uid:21",
                   "notices": [],
                   "observers": [],
                   "orders": [],
                   "points": [],
+                  "queueChanges": [],
                   "scenario": {
                     "description": "",
                     "height": 0,
@@ -55263,12 +55362,14 @@
                 "analysis": {
                   "activity": [],
                   "armies": [],
+                  "desyncTick": null,
                   "gameVersion": "",
                   "key": "uid:22",
                   "notices": [],
                   "observers": [],
                   "orders": [],
                   "points": [],
+                  "queueChanges": [],
                   "scenario": {
                     "description": "",
                     "height": 0,
@@ -55290,12 +55391,14 @@
             "analysis": {
               "activity": [],
               "armies": [],
+              "desyncTick": null,
               "gameVersion": "",
               "key": "uid:22",
               "notices": [],
               "observers": [],
               "orders": [],
               "points": [],
+              "queueChanges": [],
               "scenario": {
                 "description": "",
                 "height": 0,
@@ -55388,12 +55491,14 @@
                 "analysis": {
                   "activity": [],
                   "armies": [],
+                  "desyncTick": null,
                   "gameVersion": "",
                   "key": "uid:21",
                   "notices": [],
                   "observers": [],
                   "orders": [],
                   "points": [],
+                  "queueChanges": [],
                   "scenario": {
                     "description": "",
                     "height": 0,
@@ -55415,12 +55520,14 @@
             "analysis": {
               "activity": [],
               "armies": [],
+              "desyncTick": null,
               "gameVersion": "",
               "key": "uid:22",
               "notices": [],
               "observers": [],
               "orders": [],
               "points": [],
+              "queueChanges": [],
               "scenario": {
                 "description": "",
                 "height": 0,
@@ -55521,12 +55628,14 @@
             "analysis": {
               "activity": [],
               "armies": [],
+              "desyncTick": null,
               "gameVersion": "",
               "key": "uid:22",
               "notices": [],
               "observers": [],
               "orders": [],
               "points": [],
+              "queueChanges": [],
               "scenario": {
                 "description": "",
                 "height": 0,
@@ -56072,12 +56181,14 @@
                 "analysis": {
                   "activity": [],
                   "armies": [],
+                  "desyncTick": null,
                   "gameVersion": "",
                   "key": "path:c:/replays/a.fafreplay",
                   "notices": [],
                   "observers": [],
                   "orders": [],
                   "points": [],
+                  "queueChanges": [],
                   "scenario": {
                     "description": "",
                     "height": 0,
@@ -56099,12 +56210,14 @@
             "analysis": {
               "activity": [],
               "armies": [],
+              "desyncTick": null,
               "gameVersion": "",
               "key": "path:c:/replays/a.fafreplay",
               "notices": [],
               "observers": [],
               "orders": [],
               "points": [],
+              "queueChanges": [],
               "scenario": {
                 "description": "",
                 "height": 0,
@@ -56215,12 +56328,14 @@
             "analysis": {
               "activity": [],
               "armies": [],
+              "desyncTick": null,
               "gameVersion": "",
               "key": "path:c:/replays/a.fafreplay",
               "notices": [],
               "observers": [],
               "orders": [],
               "points": [],
+              "queueChanges": [],
               "scenario": {
                 "description": "",
                 "height": 0,
@@ -56420,12 +56535,14 @@
                 "analysis": {
                   "activity": [],
                   "armies": [],
+                  "desyncTick": null,
                   "gameVersion": "",
                   "key": "path:c:/replays/a.fafreplay",
                   "notices": [],
                   "observers": [],
                   "orders": [],
                   "points": [],
+                  "queueChanges": [],
                   "scenario": {
                     "description": "",
                     "height": 0,

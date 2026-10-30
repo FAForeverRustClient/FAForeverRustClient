@@ -18,7 +18,7 @@ function replay(active: boolean, duplicateSources = false): ReplayAnalysis {
     activity: armies.map(({ source }) => ({
       source, commandTicks: active ? [0] : [], lastTick: MAX_ACTIVITY_TICKS,
     })),
-    orders: [], points: [], notices: [], stats: [],
+    orders: [], queueChanges: [], points: [], notices: [], stats: [], desyncTick: null,
   };
 }
 

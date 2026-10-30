@@ -8502,9 +8502,19 @@ export type ReplayAnalysis = {
 	scenario: ReplayScenario,
 	activity: ReplayActivity[],
 	orders: ReplayOrder[],
+	queueChanges: ReplayQueueChange[],
 	points: ReplayPoint[],
 	notices: ReplayNotice[],
 	stats: ReplayPlayerStats[],
+	/**
+	 *  The first tick at which the players' games disagreed, where they did.
+	 *
+	 *  Every client writes a checksum of its simulation into the stream every
+	 *  fifty ticks, and they are equal for as long as the games agree; the
+	 *  first pair that differs is the desync. Only the first is kept: after
+	 *  it, the replay shows one client's game and not the other's.
+	 */
+	desyncTick: number | null,
 };
 
 /**
@@ -9001,12 +9011,34 @@ export type ReplayNotice = {
 export type ReplayOrder = {
 	source: number,
 	tick: number,
-	/**  `EUnitCommandType`: 8 is a mobile build, 27 an upgrade, 28 a script. */
+	/**
+	 *  `EUnitCommandType`: 7 a factory build, 8 a mobile build, 27 an
+	 *  upgrade, 28 a script.
+	 */
 	command: number,
 	/**  The unit ordered, where the order names one. */
 	blueprint: string,
-	/**  The enhancement or task a script order carried, where it had one. */
-	detail: string,
+	/**
+	 *  The commander upgrade a script order starts (`AdvancedEngineering`),
+	 *  empty for every other order.
+	 */
+	enhancement: string,
+	/**
+	 *  How many units the order went to: for a factory order, how many
+	 *  factories each build one.
+	 */
+	units: number,
+	/**
+	 *  The id later records name the order by, the one a queue change
+	 *  carries.
+	 */
+	id: number,
+	/**
+	 *  The first unit the order went to, as the stream numbers a player's
+	 *  units: in the order they came into being, the commander first. For a
+	 *  factory order, the factory.
+	 */
+	unit: number,
 };
 
 export type ReplayPlayer = {
@@ -9207,6 +9239,24 @@ export type ReplayQuery = {
 	/**  1-based, matching the API's `page[number]`. */
 	page: number,
 	pageSize: number,
+};
+
+/**
+ *  A queued order made longer or shorter: the count on a factory's queue
+ *  changed with a click, rather than a new order given.
+ */
+export type ReplayQueueChange = {
+	source: number,
+	tick: number,
+	/**
+	 *  The unit the changed order builds, where the stream named the order
+	 *  before; empty when it did not.
+	 */
+	blueprint: string,
+	/**  Units added, negative for units taken off. */
+	delta: number,
+	/**  The id of the order whose count changed ([`ReplayOrder::id`]). */
+	order: number,
 };
 
 /**
@@ -13836,6 +13886,14 @@ export type UnitRelease = {
 };
 
 /**
+ *  What a structure is for, where a replay's build order needs to know it:
+ *  the factories by what they build, and the three economy buildings an
+ *  opening is timed by. Read from the blueprint's categories, which every
+ *  release has kept the same for these.
+ */
+export type UnitRole = "landFactory" | "airFactory" | "navalFactory" | "massExtractor" | "hydrocarbon" | "energyStorage";
+
+/**
  *  One value over all releases, aligned with [`UnitHistory::releases`]. `None`
  *  where the value is not set, or the release's values are unknown.
  */
@@ -13903,6 +13961,18 @@ export type UnitSummary = {
 	 *  a unit no build menu offers (commanders, concrete, helpers).
 	 */
 	sortPriority: number | null,
+	/**  What the unit is for, where a replay's build order times it. */
+	role: UnitRole | null,
+	/**
+	 *  `Economy.BuildTime`: build-power seconds to build the unit, so a
+	 *  builder with build power 10 takes a tenth of it.
+	 */
+	buildTime: number | null,
+	/**
+	 *  `Economy.BuildRate`: the unit's own build power, for engineers,
+	 *  factories and commanders.
+	 */
+	buildRate: number | null,
 };
 
 /**  Which value a series or a change is about. */

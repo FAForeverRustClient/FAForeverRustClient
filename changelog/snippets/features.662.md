@@ -1,0 +1,1 @@
+- Replays have a Build order tab that compares two players' openings and draws each build order as lanes, one per ACU, engineer and factory, and a desynced replay says when it desynced.
