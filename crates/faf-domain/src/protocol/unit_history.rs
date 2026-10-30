@@ -97,6 +97,53 @@ pub enum UnitKind {
     Structure,
 }
 
+/// What a structure is for, where a replay's build order needs to know it:
+/// the factories by what they build, and the three economy buildings an
+/// opening is timed by. Read from the blueprint's categories, which every
+/// release has kept the same for these.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum UnitRole {
+    LandFactory,
+    AirFactory,
+    NavalFactory,
+    MassExtractor,
+    Hydrocarbon,
+    EnergyStorage,
+}
+
+impl UnitRole {
+    /// A factory is a structure with `FACTORY` and the layer it builds for;
+    /// the quantum gateway (`GATE`) builds commanders and is none of them.
+    /// Support factories count as factories of their tech level.
+    fn of(categories: &BTreeSet<String>) -> Option<Self> {
+        let has = |category: &str| categories.contains(category);
+        if !has("STRUCTURE") {
+            return None;
+        }
+        if has("FACTORY") && !has("GATE") {
+            return if has("LAND") {
+                Some(UnitRole::LandFactory)
+            } else if has("AIR") {
+                Some(UnitRole::AirFactory)
+            } else if has("NAVAL") {
+                Some(UnitRole::NavalFactory)
+            } else {
+                None
+            };
+        }
+        if has("MASSEXTRACTION") {
+            Some(UnitRole::MassExtractor)
+        } else if has("HYDROCARBON") {
+            Some(UnitRole::Hydrocarbon)
+        } else if has("ENERGYSTORAGE") {
+            Some(UnitRole::EnergyStorage)
+        } else {
+            None
+        }
+    }
+}
+
 impl UnitKind {
     /// From `Physics.MotionType`, the engine's own word for how a unit moves.
     fn of(blueprint: &LuaTable) -> Self {
@@ -110,7 +157,7 @@ impl UnitKind {
 }
 
 /// One unit as the picker lists it.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UnitSummary {
     /// Upper-case blueprint id, e.g. `UEL0201`.
@@ -138,6 +185,14 @@ pub struct UnitSummary {
     /// of a factory's or an engineer's build menu, lowest first. `None` for
     /// a unit no build menu offers (commanders, concrete, helpers).
     pub sort_priority: Option<u32>,
+    /// What the unit is for, where a replay's build order times it.
+    pub role: Option<UnitRole>,
+    /// `Economy.BuildTime`: build-power seconds to build the unit, so a
+    /// builder with build power 10 takes a tenth of it.
+    pub build_time: Option<f64>,
+    /// `Economy.BuildRate`: the unit's own build power, for engineers,
+    /// factories and commanders.
+    pub build_rate: Option<f64>,
 }
 
 /// Categories that mark a unit no player builds: campaign operations,
@@ -174,6 +229,9 @@ pub fn summarize(path: &str, blueprint: &LuaTable) -> Option<UnitSummary> {
         description: without_localization(blueprint.string(&["Description"])),
         faction: Some(faction.to_owned()),
         tech: tech_level(&categories),
+        role: UnitRole::of(&categories),
+        build_time: positive(blueprint.number(&["Economy", "BuildTime"])),
+        build_rate: positive(blueprint.number(&["Economy", "BuildRate"])),
         kind: UnitKind::of(blueprint),
         strategic_icon: blueprint
             .string(&["StrategicIconName"])
@@ -1052,6 +1110,10 @@ mod tests {
                 kind: UnitKind::Land,
                 strategic_icon: None,
                 sort_priority: None,
+                role: None,
+                // The test striker's `Economy.BuildTime`; a tank has no build power.
+                build_time: Some(300.0),
+                build_rate: None,
             }
         );
         let civilian = parse_blueprint(
@@ -1064,6 +1126,44 @@ mod tests {
             None,
             "a campaign operation unit"
         );
+    }
+
+    #[test]
+    fn factories_and_economy_buildings_get_their_role() {
+        let role = |categories: &str| {
+            let blueprint = parse_blueprint(&format!(
+                "UnitBlueprint {{ Categories = {{ {categories} }}, General = {{ FactionName = 'UEF' }} }}"
+            ))
+            .unwrap();
+            summarize("units/UEB0101/UEB0101_unit.bp", &blueprint).and_then(|unit| unit.role)
+        };
+        assert_eq!(
+            role("'STRUCTURE', 'FACTORY', 'LAND', 'TECH1'"),
+            Some(UnitRole::LandFactory)
+        );
+        assert_eq!(
+            role("'STRUCTURE', 'FACTORY', 'AIR', 'SUPPORTFACTORY', 'TECH2'"),
+            Some(UnitRole::AirFactory)
+        );
+        assert_eq!(
+            role("'STRUCTURE', 'FACTORY', 'NAVAL', 'TECH3'"),
+            Some(UnitRole::NavalFactory)
+        );
+        assert_eq!(role("'STRUCTURE', 'FACTORY', 'GATE', 'TECH3'"), None);
+        assert_eq!(
+            role("'STRUCTURE', 'MASSEXTRACTION', 'TECH2'"),
+            Some(UnitRole::MassExtractor)
+        );
+        assert_eq!(
+            role("'STRUCTURE', 'HYDROCARBON', 'TECH1'"),
+            Some(UnitRole::Hydrocarbon)
+        );
+        assert_eq!(
+            role("'STRUCTURE', 'ENERGYSTORAGE', 'TECH1'"),
+            Some(UnitRole::EnergyStorage)
+        );
+        // A mobile unit that builds (the Fatboy) is no factory.
+        assert_eq!(role("'MOBILE', 'FACTORY', 'LAND', 'EXPERIMENTAL'"), None);
     }
 
     #[test]

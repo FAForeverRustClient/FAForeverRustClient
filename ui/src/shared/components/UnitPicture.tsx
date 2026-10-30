@@ -1,5 +1,5 @@
-// A unit's build icon, for the Changelog's unit history and anything else that
-// shows units: from the installed game (the backend's `unit_icons`, decoded
+// A unit's build icon, shared by the Changelog's unit history and a replay's
+// build order: from the installed game (the backend's `unit_icons`, decoded
 // from its texture archives), else from the patch notes' icon set, else the
 // unit's id.
 

@@ -77,6 +77,8 @@ function analysisOf(file: LocalReplay): ReplayAnalysis {
     scenario: { name: "", description: "", mapFolder: "", width: 0, height: 0, options: [] },
     activity: [],
     orders: [],
+    queueChanges: [],
+    desyncTick: null,
     points: [],
     notices: [{ tick: 600, source: 0, text: `upgrade in ${file.title}` }],
     stats: [],
