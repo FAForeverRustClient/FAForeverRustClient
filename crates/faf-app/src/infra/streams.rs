@@ -4,15 +4,14 @@
 //! unauthenticated endpoint, no RSS feed, and no page a client can read that
 //! says it reliably. Helix wants an application's own client id and secret,
 //! exchanged for a token under the client-credentials grant, which is a
-//! deployment's credential and not something a public repository, or a
-//! binary handed to every player, can hold. So this adapter has two modes, and
-//! the one without credentials is not a degraded mode: it is the correct
-//! behaviour for a client that has not been given any, which includes every
-//! release.
+//! deployment's credential and not something a public repository can hold. So
+//! this adapter has two modes, and the one without credentials is not a
+//! degraded mode: it is the correct behaviour for a build that has not been
+//! given any.
 //!
-//! * **Configured** (`TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET` in the
-//!   environment the client runs in): ask Helix about the configured
-//!   channels, cache the app token until it expires, and report what is live.
+//! * **Configured** (`TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET`): ask Helix
+//!   about the configured channels, cache the app token until it expires, and
+//!   report what is live.
 //! * **Not configured**: [`StreamsPort::can_check`] answers `false`, the
 //!   service never starts its ticker, nothing is ever announced, and the
 //!   settings show no switch for it. One log line at startup says so, because
@@ -68,24 +67,39 @@ pub struct TwitchConfig {
     pub channels: Vec<String>,
 }
 
-/// A credential from the environment the client is *running* in, and never
-/// from the one it was built in.
+/// A credential, from the environment this build was *compiled* in, or the one
+/// it is *running* in.
 ///
-/// A value compiled into a binary is a value anybody can read back out of it,
-/// and an application secret shipped to every player is no longer the
-/// application's. So nothing is compiled in: a release, which nobody runs with
-/// these set, has FAF Live off, and a developer can turn it on for a local
-/// run. Having it in releases takes an endpoint FAF hosts that holds the
-/// secret and answers the one question; see `docs/streams.md`.
-fn credential(key: &str) -> String {
-    env_or(key, "")
+/// Both, in that order of preference, because the two answer different
+/// questions. A release is run by a player who has never heard of these
+/// variables, so the only way credentials can reach them is to have been
+/// present when the binary was built: that is what `option_env!` reads, and it
+/// is why reading the environment at runtime alone meant FAF Live could never
+/// work in a shipped client, only in a developer's shell.
+///
+/// The runtime value wins where both exist, so setting the variable in a shell
+/// still overrides whatever a build was given, which is what makes a local
+/// check of somebody else's build possible.
+///
+/// None of this hides anything. A string compiled into a binary is a string
+/// anybody can read out of it, and no amount of encoding changes that while the
+/// key to decode it ships alongside. What it does buy is the thing actually
+/// worth buying: the secret is not in the repository and not in its history.
+/// See `docs/streams.md`.
+macro_rules! credential {
+    ($key:literal) => {
+        match std::env::var($key) {
+            Ok(value) if !value.is_empty() => value,
+            _ => option_env!($key).unwrap_or("").to_string(),
+        }
+    };
 }
 
 impl TwitchConfig {
     pub fn faf() -> Self {
         Self {
-            client_id: credential("TWITCH_CLIENT_ID"),
-            client_secret: credential("TWITCH_CLIENT_SECRET"),
+            client_id: credential!("TWITCH_CLIENT_ID"),
+            client_secret: credential!("TWITCH_CLIENT_SECRET"),
             channels: split_channels(&env_or("FAF_TWITCH_CHANNELS", DEFAULT_CHANNELS)),
         }
     }
@@ -142,7 +156,7 @@ impl TwitchStreams {
             // Said once, at startup, rather than never: "the live announcements
             // do nothing" is otherwise indistinguishable from a bug.
             tracing::info!(
-                "no Twitch application credentials in the environment (TWITCH_CLIENT_ID / \
+                "no Twitch application credentials configured (TWITCH_CLIENT_ID / \
                  TWITCH_CLIENT_SECRET); FAF live announcements are off. See docs/streams.md",
             );
         }

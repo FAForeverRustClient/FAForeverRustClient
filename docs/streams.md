@@ -1,9 +1,8 @@
 # FAF Live: announcing the stream
 
-The client can tell players when FAF's own Twitch channel goes live. This page
-is the whole operational story, because the feature has one prerequisite that
-is not in this repository, cannot be, and is not in a release either: releases
-ship with FAF Live off.
+The client tells players when FAF's own Twitch channel goes live. This page is
+the whole operational story, because the feature has one prerequisite that is
+not in this repository and cannot be.
 
 ## What the client does
 
@@ -29,19 +28,15 @@ own credentials. There is no unauthenticated endpoint, no feed, and no page a
 client can read that answers it reliably. Helix wants a client id and a client
 secret, exchanged for an application token under the client-credentials grant.
 
-A client secret in a public repository is not a secret, and neither is one
-compiled into a binary every player downloads: a string in a binary is a
-string anybody can read out of it, and no encoding changes that while the key
-to decode it ships alongside. So **neither the repository nor a release
-contains one**. The client reads both values only from the environment it runs
-in, and compiles nothing in.
+A client secret in a public repository is not a secret, so **the repository
+does not contain one**. A build is given them from the environment instead, and
+a build that was not is not in a broken state: `StreamsPort::can_check` answers
+`false`, the five-minute ticker never starts, no request is ever made, the
+settings show no "FAF goes live" switch, and the feature is silently absent. One line at startup says so, so that an operator
+wondering why it is quiet has something to read.
 
-A client without them is not in a broken state: `StreamsPort::can_check`
-answers `false`, the five-minute ticker never starts, no request is ever made,
-the settings show no "FAF goes live" switch, and the feature is silently
-absent. One line at startup says so, so that an operator wondering why it is
-quiet has something to read. That is every release, and every build from a
-clone of this repository unless its developer sets the two variables.
+Which means an official release announces streams and a build from a clone of
+this repository does not, without the two differing by a line of code.
 
 ## Configuring it
 
@@ -65,9 +60,16 @@ $env:TWITCH_CLIENT_SECRET = "<the application's client secret>"
 pnpm tauri dev
 ```
 
-   The same two variables turn it on for a release build run from that shell.
+3. **To ship it**, add the same two values as repository secrets named
+   `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET` (Settings, Secrets and
+   variables, Actions). The release workflow passes them to the build, and
+   `option_env!` bakes them in; a release built without them behaves exactly as
+   it does today, with the feature silently off.
 
-3. Optionally override which channels are watched. The default is FAF's own:
+   The runtime environment still wins where both exist, so a shell variable
+   overrides a baked-in value and a local check of a release build is possible.
+
+4. Optionally override which channels are watched. The default is FAF's own:
 
 ```powershell
 $env:FAF_TWITCH_CHANNELS = "faflive, stellartactician"
@@ -75,17 +77,23 @@ $env:FAF_TWITCH_CHANNELS = "faflive, stellartactician"
 
 Comma or whitespace separated, case-insensitive, deduplicated.
 
-### Bringing it to releases
+### What "not in the repository" does and does not buy
 
-Releases used to be built with the two values and have them compiled in. That
-handed the application's secret to everybody who downloaded the client, so it
-was taken out, and the feature is off in releases until it can be done without
-one.
+A string compiled into a binary is a string anybody can read out of it, and no
+encoding changes that while the key to decode it ships alongside. So this is
+not a way to keep the secret from the people running the client, and it is not
+meant to be.
 
-The design that does is a small FAF-hosted endpoint that holds the secret and
-answers the same question, leaving the client with no credentials at all.
-`StreamsPort` is the boundary it would be implemented behind, and the ticker,
-the announcement and the badge would not change.
+What it does buy is the thing worth buying: the secret is not in the repository
+and not in its git history, which is the leak that actually costs something.
+The token reads public "is this channel live" information and nothing else, so
+the worst an extracted copy can do is spend the rate limit, and the answer to
+that is to rotate it.
+
+The only design that keeps the secret genuinely secret is a small FAF-hosted
+endpoint that holds it and answers the same question, leaving the client with
+no credentials at all. `StreamsPort` is the boundary that would be implemented
+behind, and nothing above this line would change.
 
 Twitch's public-client flows (device code, PKCE) are not a substitute: they
 issue tokens for a signed-in Twitch user, so every player would have to connect
