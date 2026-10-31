@@ -13,4 +13,23 @@
   if (authorLink && typeof authorLink === "object") {
     authorLink.value = forumLink;
   }
+
+  // Sandboxed iframe popups do not always reach the native new-window hook.
+  // Use the same origin/source-validated bridge as News, for this link only.
+  document.addEventListener("click", (event) => {
+    if (event.defaultPrevented || event.button !== 0) return;
+
+    const target = event.target instanceof Element
+      ? event.target
+      : event.target?.parentElement;
+    const anchor = target?.closest("a[href]");
+    if (anchor?.href !== forumLink) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    window.top.postMessage(
+      { type: "faf:open-external-link", url: forumLink },
+      "*",
+    );
+  }, true);
 })();

@@ -14,4 +14,4 @@
 - Early patch notes written one bullet at a time show those bullets as one list.
 - Bold section titles in early patch notes, such as GAME and SERVER in 3613, are headings in the note and its contents.
 - A patch note with only one section no longer shows a contents column beside it.
-- The support link in Units opens the FAF forum post instead of the donation page.
+- The Units support link opens its FAF forum post in your browser instead of the donation page.

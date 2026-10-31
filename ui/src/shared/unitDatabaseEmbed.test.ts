@@ -20,7 +20,7 @@ function frame(url = "https://unitdb.faforever.com/#/", embedded = true): Databa
 }
 
 function initialize(window: DatabaseFrame): void {
-  runInNewContext(script, { window });
+  runInNewContext(script, { window, document: { addEventListener() {} } });
 }
 
 describe("the embedded unit database's author link", () => {
