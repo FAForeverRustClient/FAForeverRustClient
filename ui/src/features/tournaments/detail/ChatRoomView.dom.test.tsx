@@ -11,7 +11,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChatPost } from "../../../ipc/bindings";
 import { en } from "../../../i18n/catalog/en";
-import { clearSentCommands, sentCommands } from "../../../testing/mounted";
+import { clearSentCommands, sentCommands, seedStore } from "../../../testing/mounted";
 import { tourney } from "../fixtures";
 import { createTourneyActions } from "../tourneyActions";
 import { ChatRoomView } from "./ChatRoomView";
@@ -54,6 +54,15 @@ afterEach(() => {
 });
 
 describe("ChatRoomView polling, mounted", () => {
+  it("pauses during a game and refreshes after returning", () => {
+    render(room([]));
+    clearSentCommands();
+    act(() => seedStore(state => ({ ...state, lobby: { ...state.lobby, join: { type: "inGame" } } })));
+    advance(15_000);
+    expect(refreshes()).toHaveLength(0);
+    act(() => seedStore(state => ({ ...state, lobby: { ...state.lobby, join: { type: "idle" } } })));
+    expect(refreshes()).toHaveLength(1);
+  });
   it("re-reads the open room every five seconds, through the event's own command", () => {
     render(room([]));
     clearSentCommands();

@@ -1,5 +1,5 @@
 import type { LocalReplay, ReplayNote } from "../../../ipc/bindings";
-import { hasAnyTag, noteForReplay, replayNoteMatches } from "../../../shared/rules/replayNotes";
+import { noteForReplay } from "../../../shared/rules/replayNotes";
 import { matchesLocalGameMode, type LocalGameMode } from "./localGameModes";
 
 export type LocalReplaySortField = "date" | "title" | "map" | "players" | "size";
@@ -97,9 +97,28 @@ export function filterLocalReplays(
   const replayId = query.replayId.trim().replace(/^#/, "");
   const after = dateBoundary(query.after, false);
   const before = dateBoundary(query.before, true);
+  const noteWords = query.note.toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  const tags = new Set(query.tags.map(tag => tag.toLocaleLowerCase()));
+  const matchesNotes = (replay: LocalReplay): boolean => {
+    if (noteWords.length === 0 && tags.size === 0) return true;
+    const note = noteForReplay(replayNotes, replay.uid, replay.path);
+    if (!note) return false;
+    const text = noteWords.length > 0 ? [note.comment, ...note.tags].join(" ").toLocaleLowerCase() : "";
+    return noteWords.every(word => text.includes(word))
+      && (tags.size === 0 || note.tags.some(tag => tags.has(tag.toLocaleLowerCase())));
+  };
+  const mapNames = new Map<LocalReplay, string>();
+  const mapName = (replay: LocalReplay): string => {
+    let name = mapNames.get(replay);
+    if (name === undefined) {
+      name = mapDisplayName(replay);
+      mapNames.set(replay, name);
+    }
+    return name;
+  };
 
   const filtered = replays.filter((replay) => {
-    const players = replay.teams.flatMap((team) => team.players);
+    const players = targetPlayers.length > 0 ? replay.teams.flatMap((team) => team.players) : [];
     const matchesPlayer = targetPlayers.length === 0 || targetPlayers.every((target) =>
       players.some((player) => {
         const normalized = player.name.toLocaleLowerCase();
@@ -108,13 +127,12 @@ export function filterLocalReplays(
     );
     const timestamp = localReplayTimestamp(replay);
     return matchesPlayer
-      && (!query.map || contains(replay.map, query.map) || contains(mapDisplayName(replay), query.map))
+      && (!query.map || contains(replay.map, query.map) || contains(mapName(replay), query.map))
       && (!replayId || replay.uid !== null && String(replay.uid).includes(replayId))
       && (!query.mod || contains(replay.modName, query.mod))
       && matchesLocalGameMode(replay, query.gameMode)
       && (!query.title || contains(replay.title || replay.fileName, query.title))
-      && (!query.note.trim() || replayNoteMatches(noteForReplay(replayNotes, replay.uid, replay.path), query.note))
-      && (query.tags.length === 0 || hasAnyTag(noteForReplay(replayNotes, replay.uid, replay.path), query.tags))
+      && matchesNotes(replay)
       && (!query.recorder || contains(replay.recorder, query.recorder))
       && (!query.simMod || replay.simMods.some((mod) => contains(mod, query.simMod)))
       && (query.minRating === null || replay.averageRating !== null && replay.averageRating >= query.minRating)
@@ -129,11 +147,11 @@ export function filterLocalReplays(
   });
 
   const direction = query.sortDescending ? -1 : 1;
-  return filtered.slice().sort((left, right) => {
+  return filtered.sort((left, right) => {
     let comparison = 0;
     switch (query.sortBy) {
       case "title": comparison = (left.title || left.fileName).localeCompare(right.title || right.fileName); break;
-      case "map": comparison = mapDisplayName(left).localeCompare(mapDisplayName(right)); break;
+      case "map": comparison = mapName(left).localeCompare(mapName(right)); break;
       case "players": comparison = playerCount(left) - playerCount(right); break;
       case "size": comparison = left.fileSizeBytes - right.fileSizeBytes; break;
       case "date": comparison = localReplayTimestamp(left) - localReplayTimestamp(right); break;

@@ -52,6 +52,14 @@ pub(crate) enum Lane {
 /// What a command is exclusive with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum Key {
+    /// Replaceable reads: a newer query drops the older request future.
+    ReplaySearch,
+    MapSearch,
+    ModSearch,
+    RatingSearch,
+    AccountLookup,
+    /// Preserve the dispatch order of locally drafted calendar filters.
+    EventQuery,
     /// The whole map catalogue crawl.
     MapVault,
     /// The whole mod catalogue crawl.
@@ -145,6 +153,8 @@ pub(crate) enum Admission {
     /// Commands with this key run one after another, in the order they were
     /// dispatched. For writes, where each must see the last one's result.
     Serial(Key),
+    /// Only the latest read for this key is useful; cancel its predecessor.
+    Latest(Key),
     /// Concurrent here; the service holds the guard named. See [`ServiceGuard`].
     ServiceGuarded(ServiceGuard),
 }
@@ -176,6 +186,13 @@ const fn serial(key: Key) -> CommandPolicy {
     CommandPolicy {
         lane: Lane::Ordinary,
         admission: Admission::Serial(key),
+    }
+}
+
+const fn latest(key: Key) -> CommandPolicy {
+    CommandPolicy {
+        lane: Lane::Ordinary,
+        admission: Admission::Latest(key),
     }
 }
 
@@ -334,10 +351,10 @@ fn lobby(command: &LobbyCommand) -> CommandPolicy {
 
 fn replays(command: &ReplayCommand) -> CommandPolicy {
     match command {
+        ReplayCommand::SearchVault { .. } => latest(Key::ReplaySearch),
         ReplayCommand::WatchLive(..)
         | ReplayCommand::TrackLive { .. }
         | ReplayCommand::OpenFile { .. }
-        | ReplayCommand::SearchVault { .. }
         | ReplayCommand::LoadFeaturedMods
         | ReplayCommand::LoadRecentMatchmaker
         | ReplayCommand::WatchVault { .. }
@@ -361,8 +378,8 @@ fn maps(command: &MapsCommand) -> CommandPolicy {
     match command {
         MapsCommand::CancelVaultLoad => PRIORITY,
         MapsCommand::LoadVault => single_flight(Key::MapVault),
-        MapsCommand::SearchVault { .. }
-        | MapsCommand::LoadInstalled
+        MapsCommand::SearchVault { .. } => latest(Key::MapSearch),
+        MapsCommand::LoadInstalled
         | MapsCommand::ResolveVaultFolders { .. }
         | MapsCommand::ResolveVaultNames { .. }
         | MapsCommand::LoadLocalPreviews { .. }
@@ -396,6 +413,7 @@ fn map_generator(command: &MapGeneratorCommand) -> CommandPolicy {
 
 fn mods(command: &ModsCommand) -> CommandPolicy {
     match command {
+        ModsCommand::SearchVault { .. } => latest(Key::ModSearch),
         ModsCommand::CancelVaultLoad => PRIORITY,
         // A second load while one runs is dropped: every tab that shows mods
         // asks on mount, and queued they each ran a crawl of their own. A
@@ -403,9 +421,7 @@ fn mods(command: &ModsCommand) -> CommandPolicy {
         // waits for that load in the service, then makes its own request.
         ModsCommand::LoadVault => single_flight(Key::ModVault),
         ModsCommand::ReloadVault => single_flight(Key::ModVaultCheck),
-        ModsCommand::SearchVault { .. }
-        | ModsCommand::LoadInstalled
-        | ModsCommand::QueryDownloadSizes { .. } => ORDINARY,
+        ModsCommand::LoadInstalled | ModsCommand::QueryDownloadSizes { .. } => ORDINARY,
         ModsCommand::InstallMod { .. }
         | ModsCommand::UpdateMod { .. }
         | ModsCommand::UninstallMod { .. }
@@ -418,9 +434,9 @@ fn mods(command: &ModsCommand) -> CommandPolicy {
 
 fn leaderboard(command: &LeaderboardCommand) -> CommandPolicy {
     match command {
+        LeaderboardCommand::LoadRatings { .. } => latest(Key::RatingSearch),
         LeaderboardCommand::SetMode { .. }
         | LeaderboardCommand::LoadCatalog
-        | LeaderboardCommand::LoadRatings { .. }
         | LeaderboardCommand::SelectLeague { .. }
         | LeaderboardCommand::SelectSeason { .. } => ORDINARY,
     }
@@ -428,8 +444,8 @@ fn leaderboard(command: &LeaderboardCommand) -> CommandPolicy {
 
 fn player_card(command: &PlayerCardCommand) -> CommandPolicy {
     match command {
+        PlayerCardCommand::LookUpAccounts { .. } => latest(Key::AccountLookup),
         PlayerCardCommand::Open { .. }
-        | PlayerCardCommand::LookUpAccounts { .. }
         | PlayerCardCommand::Close
         | PlayerCardCommand::LoadHistory { .. }
         | PlayerCardCommand::LoadMatchmakerProfile { .. }
@@ -563,10 +579,10 @@ fn changelog(command: &ChangelogCommand) -> CommandPolicy {
 
 fn events(command: &EventsCommand) -> CommandPolicy {
     match command {
+        EventsCommand::SetQuery { .. } => serial(Key::EventQuery),
         EventsCommand::Load
         | EventsCommand::SetView { .. }
         | EventsCommand::SetAnchor { .. }
-        | EventsCommand::SetQuery { .. }
         | EventsCommand::Select { .. }
         | EventsCommand::Remind { .. }
         | EventsCommand::Forget { .. } => ORDINARY,
@@ -686,17 +702,27 @@ tokio::task_local! {
 ///
 /// `turn` must already be [`Turn::ready`]. It is dropped when `work` is
 /// finished, unless `work` ended it first.
-pub(crate) async fn run_admitted<F: std::future::Future>(
+pub(crate) async fn run_admitted<F: std::future::Future<Output = ()>>(
     admission: Admission,
     turn: Turn,
     work: F,
-) -> F::Output {
+) {
+    let cancelled = turn.cancelled.clone();
     let slot = Arc::new(Mutex::new(Some(turn)));
-    let output = TURN
-        .scope(slot.clone(), ADMITTED_AS.scope(admission, work))
+    let run = async move {
+        if let Some(cancelled) = cancelled {
+            tokio::select! {
+                biased;
+                () = cancelled.cancelled() => {},
+                () = work => {},
+            }
+        } else {
+            work.await;
+        }
+    };
+    TURN.scope(slot.clone(), ADMITTED_AS.scope(admission, run))
         .await;
     drop(slot.lock().unwrap_or_else(PoisonError::into_inner).take());
-    output
 }
 
 /// Hand the running command's turn on before the command is finished.
@@ -743,7 +769,7 @@ pub(crate) fn expect_admitted(key: Key) {
     );
 }
 
-/// Enforces [`Admission::SingleFlight`] and [`Admission::Serial`].
+/// Enforces single-flight, serial and latest-read admission.
 ///
 /// [`Self::admit`] is synchronous, and is called where the command is taken
 /// off its queue, before its task is spawned. That is what fixes a serial
@@ -756,6 +782,8 @@ pub(crate) struct CommandAdmission {
     /// Per serial key, what the last command admitted under it signals when it
     /// finishes. The next one waits for that before it runs.
     tails: Mutex<HashMap<Key, oneshot::Receiver<()>>>,
+    /// Claimed before task spawn so an unpolled old read cannot cancel a newer one.
+    latest: Mutex<HashMap<Key, tokio_util::sync::CancellationToken>>,
 }
 
 impl CommandAdmission {
@@ -764,6 +792,19 @@ impl CommandAdmission {
     pub(crate) fn admit(&self, admission: Admission) -> Option<Turn> {
         match admission {
             Admission::Concurrent | Admission::ServiceGuarded(_) => Some(Turn::default()),
+            Admission::Latest(key) => {
+                let cancelled = tokio_util::sync::CancellationToken::new();
+                let mut latest = self.latest.lock().unwrap_or_else(PoisonError::into_inner);
+                if let Some(previous) = latest.insert(key, cancelled.clone()) {
+                    previous.cancel();
+                }
+                Some(Turn {
+                    cancelled: Some(cancelled),
+                    wait: None,
+                    done: None,
+                    flight: None,
+                })
+            }
             Admission::SingleFlight(key) => {
                 let mut running = self.running.lock().unwrap_or_else(PoisonError::into_inner);
                 if !running.insert(key) {
@@ -773,6 +814,7 @@ impl CommandAdmission {
                     wait: None,
                     done: None,
                     flight: Some((self.running.clone(), key)),
+                    cancelled: None,
                 })
             }
             Admission::Serial(key) => {
@@ -786,6 +828,7 @@ impl CommandAdmission {
                     wait: previous,
                     done: Some(done),
                     flight: None,
+                    cancelled: None,
                 })
             }
         }
@@ -799,6 +842,7 @@ pub(crate) struct Turn {
     wait: Option<oneshot::Receiver<()>>,
     done: Option<oneshot::Sender<()>>,
     flight: Option<(Arc<Mutex<HashSet<Key>>>, Key)>,
+    cancelled: Option<tokio_util::sync::CancellationToken>,
 }
 
 impl Turn {
@@ -933,6 +977,61 @@ mod tests {
     }
 
     #[test]
+    fn search_efficiency_only_replaceable_reads_use_latest_admission() {
+        let cases = [
+            (
+                ReplayCommand::SearchVault {
+                    query: Box::default(),
+                }
+                .into(),
+                Key::ReplaySearch,
+            ),
+            (
+                MapsCommand::SearchVault {
+                    query: Default::default(),
+                }
+                .into(),
+                Key::MapSearch,
+            ),
+            (
+                ModsCommand::SearchVault {
+                    query: Default::default(),
+                }
+                .into(),
+                Key::ModSearch,
+            ),
+            (
+                LeaderboardCommand::LoadRatings {
+                    query: Default::default(),
+                }
+                .into(),
+                Key::RatingSearch,
+            ),
+            (
+                PlayerCardCommand::LookUpAccounts {
+                    query: "player".into(),
+                }
+                .into(),
+                Key::AccountLookup,
+            ),
+        ];
+        for (command, key) in cases {
+            assert_eq!(policy(&command).admission, Admission::Latest(key));
+        }
+        assert_eq!(
+            policy(
+                &EventsCommand::SetQuery {
+                    query: Default::default()
+                }
+                .into()
+            )
+            .admission,
+            Admission::Serial(Key::EventQuery),
+            "draft echoes must follow dispatch order"
+        );
+    }
+
+    #[test]
     fn a_single_flight_command_is_refused_while_its_kind_runs() {
         let admission = CommandAdmission::default();
         let first = admission.admit(Admission::SingleFlight(Key::MapVault));
@@ -956,6 +1055,62 @@ mod tests {
                 .is_some(),
             "finished, so the next one runs"
         );
+    }
+
+    #[tokio::test]
+    async fn search_efficiency_superseded_unpolled_reads_never_start() {
+        let admission = CommandAdmission::default();
+        let first = admission.admit(Admission::Latest(Key::MapSearch)).unwrap();
+        let second = admission.admit(Admission::Latest(Key::MapSearch)).unwrap();
+        run_admitted(Admission::Latest(Key::MapSearch), first, async {
+            panic!("the superseded port call must not start");
+        })
+        .await;
+        run_admitted(Admission::Latest(Key::MapSearch), second, async {}).await;
+        let map = admission.admit(Admission::Latest(Key::MapSearch)).unwrap();
+        let _replay = admission
+            .admit(Admission::Latest(Key::ReplaySearch))
+            .unwrap();
+        assert!(
+            !map.cancelled.as_ref().unwrap().is_cancelled(),
+            "different search areas stay independent"
+        );
+    }
+
+    #[tokio::test]
+    async fn search_efficiency_replacement_drops_the_running_port_future() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        struct Dropped(Arc<AtomicBool>);
+        impl Drop for Dropped {
+            fn drop(&mut self) {
+                self.0.store(true, Ordering::SeqCst);
+            }
+        }
+        let admission = CommandAdmission::default();
+        let first = admission
+            .admit(Admission::Latest(Key::ReplaySearch))
+            .unwrap();
+        let dropped = Arc::new(AtomicBool::new(false));
+        let observed = dropped.clone();
+        let (entered, started) = oneshot::channel();
+        let running = tokio::spawn(run_admitted(
+            Admission::Latest(Key::ReplaySearch),
+            first,
+            async move {
+                let _owned = Dropped(observed);
+                entered.send(()).unwrap();
+                std::future::pending::<()>().await;
+            },
+        ));
+        started.await.unwrap();
+        let _replacement = admission
+            .admit(Admission::Latest(Key::ReplaySearch))
+            .unwrap();
+        tokio::time::timeout(std::time::Duration::from_secs(1), running)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(dropped.load(Ordering::SeqCst));
     }
 
     #[tokio::test]
