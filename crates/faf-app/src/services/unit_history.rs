@@ -9,7 +9,8 @@
 //! projectiles are read, and the pure part of the work is done off the async
 //! runtime.
 
-use std::collections::HashSet;
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -34,26 +35,46 @@ const DOWNLOADS: usize = 12;
 const PROGRESS_INTERVAL: Duration = Duration::from_millis(200);
 
 /// The histories being built. Owned by this service.
-#[derive(Default)]
 pub struct UnitHistoryContext {
     /// A unit chosen twice while its history is still being read is built
     /// once: the second choice finds it here and leaves it to the first.
-    building: Mutex<HashSet<String>>,
+    building: Mutex<HashMap<String, Arc<tokio_util::sync::CancellationToken>>>,
+    downloads: Arc<tokio::sync::Semaphore>,
+}
+
+impl Default for UnitHistoryContext {
+    fn default() -> Self {
+        Self {
+            building: Mutex::default(),
+            downloads: Arc::new(tokio::sync::Semaphore::new(DOWNLOADS)),
+        }
+    }
+}
+
+pub(crate) struct SelectionWork {
+    builds: Vec<(String, Arc<tokio_util::sync::CancellationToken>)>,
 }
 
 /// Takes a unit off [`UnitHistoryContext::building`] however the build ends.
 struct Building<'a> {
     context: &'a UnitHistoryContext,
     id: String,
+    owner: Arc<tokio_util::sync::CancellationToken>,
 }
 
 impl Drop for Building<'_> {
     fn drop(&mut self) {
-        self.context
+        let mut building = self
+            .context
             .building
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .remove(&self.id);
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if building
+            .get(&self.id)
+            .is_some_and(|owner| Arc::ptr_eq(owner, &self.owner))
+        {
+            building.remove(&self.id);
+        }
     }
 }
 
@@ -65,13 +86,64 @@ pub async fn handle(cmd: UnitHistoryCommand, ctx: &ServiceCtx, out: &EventSink) 
     }
 }
 
-/// Show these units and build every history that is not held yet, all at
-/// once: each is its own twelve downloads, and a unit already on disk is
-/// built in a moment.
+/// Show these units and build histories not held yet. All selected units share
+/// twelve downloads; a unit already on disk is built in a moment.
 async fn set_selection(ids: Vec<String>, ctx: &ServiceCtx, out: &EventSink) {
+    let work = begin_selection(ids, ctx, out);
+    run_selection(work, ctx, out).await;
+}
+
+/// Claim the selection before task spawn, retaining work for units still selected.
+pub(crate) fn begin_selection(
+    ids: Vec<String>,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+) -> SelectionWork {
     let ids = normalized_selection(&ids);
     out.emit(UnitHistoryEvent::SelectionChanged { ids: ids.clone() });
-    futures_util::future::join_all(ids.into_iter().map(|id| build(id, ctx, out))).await;
+    let ready = out.with_state(|state| {
+        ids.iter()
+            .filter(|id| {
+                matches!(
+                    state.unit_history.histories.get(*id),
+                    Some(UnitHistoryStatus::Ready { .. })
+                )
+            })
+            .cloned()
+            .collect::<Vec<_>>()
+    });
+    let mut building = ctx
+        .unit_history
+        .building
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    building.retain(|id, cancelled| {
+        if ids.contains(id) {
+            true
+        } else {
+            cancelled.cancel();
+            false
+        }
+    });
+    let mut builds = Vec::new();
+    for id in ids {
+        if ready.contains(&id) || building.contains_key(&id) {
+            continue;
+        }
+        let owner = Arc::new(tokio_util::sync::CancellationToken::new());
+        building.insert(id.clone(), owner.clone());
+        builds.push((id, owner));
+    }
+    SelectionWork { builds }
+}
+
+pub(crate) async fn run_selection(work: SelectionWork, ctx: &ServiceCtx, out: &EventSink) {
+    futures_util::future::join_all(
+        work.builds
+            .into_iter()
+            .map(|(id, owner)| build(id, owner, ctx, out)),
+    )
+    .await;
 }
 
 async fn load_list(ctx: &ServiceCtx, out: &EventSink) {
@@ -95,30 +167,35 @@ async fn load_list(ctx: &ServiceCtx, out: &EventSink) {
     }
 }
 
-async fn build(id: String, ctx: &ServiceCtx, out: &EventSink) {
+async fn build(
+    id: String,
+    owner: Arc<tokio_util::sync::CancellationToken>,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+) {
+    let _building = Building {
+        context: &ctx.unit_history,
+        id: id.clone(),
+        owner: owner.clone(),
+    };
     let held = out.with_state(|state| {
         matches!(
             state.unit_history.histories.get(&id),
             Some(UnitHistoryStatus::Ready { .. })
         )
     });
-    if held {
+    if held || owner.is_cancelled() {
         return;
     }
-    if !ctx
-        .unit_history
-        .building
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .insert(id.clone())
-    {
-        return;
-    }
-    let _building = Building {
-        context: &ctx.unit_history,
-        id: id.clone(),
+    let result = tokio::select! {
+        biased;
+        () = owner.cancelled() => return,
+        result = history(&id, ctx, out) => result,
     };
-    match history(&id, ctx, out).await {
+    if owner.is_cancelled() {
+        return;
+    }
+    match result {
         Ok(history) => out.emit(UnitHistoryEvent::HistoryLoaded {
             history: Box::new(history),
         }),
@@ -174,9 +251,16 @@ async fn history(id: &str, ctx: &ServiceCtx, out: &EventSink) -> Result<UnitHist
         .enumerate()
         .map(|(index, (number, release))| {
             let port = port.clone();
+            let downloads = ctx.unit_history.downloads.clone();
             let paths = blueprint_paths(*number, &unit.path);
             let tag = release.id.clone();
-            async move { (index, port.release_blueprint(&tag, &paths).await) }
+            async move {
+                let _permit = downloads
+                    .acquire_owned()
+                    .await
+                    .expect("unit history budget stays open");
+                (index, port.release_blueprint(&tag, &paths).await)
+            }
         })
         .collect();
     let mut reads = stream::iter(jobs).buffer_unordered(DOWNLOADS);

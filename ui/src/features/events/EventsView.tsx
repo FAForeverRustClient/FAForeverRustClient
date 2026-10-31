@@ -27,6 +27,7 @@ import { EventWeek } from "./EventWeek";
 import { CATEGORIES, categoryLabel, monthTitle, weekTitle } from "./eventPresentation";
 import "./events.css";
 import { plainError } from "../../shared/plainError";
+import { useEventsQueryDraft } from "./useEventsQueryDraft";
 
 const setView = (view: CalendarView) =>
   ipc.send({ kind: "Events", command: { type: "setView", payload: { view } } });
@@ -51,6 +52,7 @@ export function EventsView() {
   const tourneys = useAppStore((state) => state.state.tourney.events);
   const releases = useAppStore((state) => state.state.changelog.releases);
   const preferences = useAppStore((state) => state.state.settings.events);
+  const { draft: query, patch } = useEventsQueryDraft(events.query, setQuery);
 
   // The wall clock as component state, so the grid's "today" moves at midnight
   // in a client that is left open. Not in the slice: nothing in the backend has
@@ -70,14 +72,11 @@ export function EventsView() {
     [preferences.reminders],
   );
 
-  const entries = useMemo(() => {
+  const feed = useMemo(() => {
     const { from, to } = viewWindow(events.view, anchor, weekStart, now);
-    return filterFeed(
-      buildFeed({ catalogue: events.catalogue, tourneys, releases, from, to }),
-      events.query,
-      reminded,
-    );
-  }, [anchor, events.catalogue, events.query, events.view, now, releases, reminded, tourneys, weekStart]);
+    return buildFeed({ catalogue: events.catalogue, tourneys, releases, from, to });
+  }, [anchor, events.catalogue, events.view, now, releases, tourneys, weekStart]);
+  const entries = useMemo(() => filterFeed(feed, query, reminded), [feed, query, reminded]);
 
   const byDay = useMemo(() => entriesByDay(entries), [entries]);
 
@@ -127,15 +126,14 @@ export function EventsView() {
         ? weekTitle(anchor, weekStart)
         : t("events.view.upcoming");
 
-  const patch = (change: Partial<EventsQuery>) => setQuery({ ...events.query, ...change });
   // Whether the catalogue has answered, either way: only then can an empty
   // period or an empty agenda be told apart from one still loading.
   const settled = events.status.type === "ready" || events.status.type === "failed";
   const filtered = Boolean(
-    events.query.text || events.query.category || events.query.origin || events.query.onlyReminders,
+    query.text || query.category || query.origin || query.onlyReminders,
   );
   const clearFilters = () =>
-    setQuery({ ...events.query, text: "", category: null, origin: null, onlyReminders: false });
+    patch({ text: "", category: null, origin: null, onlyReminders: false });
 
   return (
     <div className="events-view">
@@ -199,7 +197,7 @@ export function EventsView() {
           <Icon name="search" size={14} />
           <input
             type="search"
-            value={events.query.text}
+            value={query.text}
             placeholder={t("events.filter.search")}
             aria-label={t("events.filter.search")}
             onChange={(change) => patch({ text: change.target.value })}
@@ -208,7 +206,7 @@ export function EventsView() {
         <Select<EventCategory | "">
           className="events-category-select"
           label={t("events.filter.category")}
-          value={events.query.category ?? ""}
+          value={query.category ?? ""}
           options={[
             { value: "", label: t("events.filter.allCategories") },
             ...CATEGORIES.map((category) => ({
@@ -220,25 +218,25 @@ export function EventsView() {
         />
         <button
           type="button"
-          className={events.query.origin === "official" ? "events-chip is-on" : "events-chip"}
-          aria-pressed={events.query.origin === "official"}
-          onClick={() => patch({ origin: events.query.origin === "official" ? null : "official" })}
+          className={query.origin === "official" ? "events-chip is-on" : "events-chip"}
+          aria-pressed={query.origin === "official"}
+          onClick={() => patch({ origin: query.origin === "official" ? null : "official" })}
         >
           <Icon name="shield" size={13} /> {t("events.origin.official")}
         </button>
         <button
           type="button"
-          className={events.query.origin === "community" ? "events-chip is-on" : "events-chip"}
-          aria-pressed={events.query.origin === "community"}
-          onClick={() => patch({ origin: events.query.origin === "community" ? null : "community" })}
+          className={query.origin === "community" ? "events-chip is-on" : "events-chip"}
+          aria-pressed={query.origin === "community"}
+          onClick={() => patch({ origin: query.origin === "community" ? null : "community" })}
         >
           <Icon name="users" size={13} /> {t("events.origin.community")}
         </button>
         <button
           type="button"
-          className={events.query.onlyReminders ? "events-chip is-on" : "events-chip"}
-          aria-pressed={events.query.onlyReminders}
-          onClick={() => patch({ onlyReminders: !events.query.onlyReminders })}
+          className={query.onlyReminders ? "events-chip is-on" : "events-chip"}
+          aria-pressed={query.onlyReminders}
+          onClick={() => patch({ onlyReminders: !query.onlyReminders })}
         >
           <Icon name="bell" size={13} /> {t("events.filter.mine")}
         </button>
