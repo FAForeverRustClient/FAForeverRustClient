@@ -18,11 +18,17 @@ describe("the connection check dialog", () => {
     seedStore((state) => ({ ...state, lobby: { ...state.lobby, status: "connected" } }));
     render(<ClientStatusBar />);
     await user.click(screen.getByRole("button", { name: /^FAF / }));
-    expect(screen.getByRole("menuitem", { name: "Disconnect" })).toBeTruthy();
+    const menu = screen.getByRole("menu", { name: "FAF connection status" });
+    // The state heads the menu as text; only what can be done is an item.
+    expect(within(menu).getByText("connected").closest("button")).toBeNull();
+    expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Disconnect", "Check connection"]);
     await user.click(screen.getByRole("menuitem", { name: "Check connection" }));
     const dialog = screen.getByRole("dialog", { name: "Connection check" });
     expect(dialog.classList.contains("has-live")).toBe(false);
-    expect(within(dialog).getByRole("region", { name: "Live connections" }).textContent).toContain("No game is running.");
+    expect(within(dialog).getByRole("region", { name: "Live connections" }).textContent)
+      .toContain("During a game, the players and how each one is connected are listed here.");
+    // The dialog's title already says what this is; no second heading repeats it.
+    expect(within(dialog).queryByRole("heading", { name: "Connectivity check" })).toBeNull();
     expect(sentCommands()).toContainEqual({ kind: "Connectivity", command: { type: "runCheck" } });
     expect(sentCommands()).not.toContainEqual({ kind: "Connectivity", command: { type: "refreshRelayStatus" } });
   });
@@ -40,14 +46,17 @@ describe("the connection check dialog", () => {
     const row = screen.getByText("Java runtime").closest("li");
     if (!row) throw new Error("No runtime result");
     expect(within(row).getByText("Java 25.0.3, at java.exe.")).toBeTruthy();
-    const details = row.querySelector("details");
-    expect(details?.open).toBe(false);
-    expect(within(row).getByText(path).tagName).toBe("CODE");
-    await user.tab();
-    expect(document.activeElement).toBe(within(row).getByText("Show installation path"));
-    await user.click(within(row).getByText("Show installation path"));
-    expect(details?.open).toBe(true);
-    expect(within(row).getByText(path).textContent).toBe(path);
+    expect(within(row).queryByText(path)).toBeNull();
+    const toggle = within(row).getByRole("button", { name: "Show path" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    await user.click(toggle);
+    const shown = within(row).getByText(path);
+    expect(shown.tagName).toBe("CODE");
+    const hide = within(row).getByRole("button", { name: "Hide path" });
+    expect(hide.getAttribute("aria-expanded")).toBe("true");
+    expect(hide.getAttribute("aria-controls")).toBe(shown.id);
+    await user.click(hide);
+    expect(within(row).queryByText(path)).toBeNull();
   });
 
   it("adds the live column and polls only while a game runs and the dialog is mounted", () => {

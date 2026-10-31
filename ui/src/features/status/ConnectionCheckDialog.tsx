@@ -8,8 +8,11 @@
 // each one is reached. The Settings page keeps the same view.
 //
 // The check starts as the dialog opens: asking for it is why the dialog was
-// opened. The results use the width of the dialog unless a game is running,
-// when live connections get a second column beside the check.
+// opened. It is sized to fit a window without scrolling: one line per finding,
+// and no heading over the check that repeats the dialog's title. The results
+// use the width of the dialog unless a game is running, when live connections
+// get a second column beside the check; outside a game they are one line at
+// the foot saying when they appear.
 
 import { useEffect } from "react";
 import { Button } from "../../design-system/Button";
@@ -52,20 +55,26 @@ export function ConnectionCheckDialog({ onClose }: { onClose: () => void }) {
         </Button>
       </header>
       <div className="connection-check-columns">
-        <section className="connection-check-column" aria-labelledby="connection-check-test">
-          <h3 id="connection-check-test">{t("settings.connectivityCheck.label")}</h3>
+        <section className="connection-check-column" aria-label={t("settings.connectivityCheck.label")}>
           {check.status.type === "idle"
             ? <p className="muted">{t("settings.connectivityCheck.running")}</p>
             : <CheckResults check={check} />}
         </section>
-        <section className={`connection-check-column${inGame ? "" : " connection-check-empty"}`} aria-labelledby="connection-check-live">
-          {!inGame && <Icon name="info" size={18} />}
-          <div>
+        {inGame ? (
+          <section className="connection-check-column" aria-labelledby="connection-check-live">
             <h3 id="connection-check-live">{t("settings.liveRelay.label")}</h3>
-            {!inGame && <p className="muted">{t("settings.liveRelay.noGame")}</p>}
-          </div>
-          {inGame && <LiveRelay relay={relay} />}
-        </section>
+            <LiveRelay relay={relay} />
+          </section>
+        ) : (
+          <section className="connection-check-live-note" aria-labelledby="connection-check-live">
+            <Icon name="info" size={15} />
+            <p>
+              <strong id="connection-check-live">{t("settings.liveRelay.label")}</strong>
+              {" "}
+              {t("status.connectionCheck.liveHint")}
+            </p>
+          </section>
+        )}
       </div>
     </Modal>
   );

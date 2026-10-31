@@ -610,34 +610,39 @@ export function ClientStatusBar() {
           <span className="client-status-chevron" aria-hidden="true" />
         </button>
         {isOpen && (
-          <div className="client-status-popover" id={`client-status-menu-${kind}`} role="menu">
-            <div className="client-status-popover-heading">
-              <span className="client-status-popover-dot" data-status={status} aria-hidden="true" />
-              <span>{t("status.connection.heading", { service: label })}</span>
+          <div
+            className="client-status-popover"
+            id={`client-status-menu-${kind}`}
+            role="menu"
+            aria-label={t("status.connection.heading", { service: label })}
+          >
+            {/* The state is the menu's header, coloured and plainly not a
+                button; what can be done about it follows as ordinary menu
+                rows. Side by side and the same size, the state read as a
+                second button beside Disconnect. */}
+            <div className="client-status-popover-head">
+              <span className="client-status-popover-label">{t("status.connection.heading", { service: label })}</span>
+              <span className="client-status-state" data-status={status}>
+                <span className="client-status-popover-dot" data-status={status} aria-hidden="true" />
+                {stateLabel}
+              </span>
             </div>
-            {/* The state and the thing you can do about it, side by side and the
-                same size. They used to be a word tucked into the heading and a
-                full-width menu row, which read as one item with a caption: the
-                pair is what the popover is actually for. */}
-            <div className="client-status-popover-row">
-              <span className="client-status-state" data-status={status}>{stateLabel}</span>
-              <button
-                type="button"
-                className="client-status-action"
-                role="menuitem"
-                disabled={!canConnect}
-                onClick={() => void reconnect(kind)}
-              >
-                {actionLabel}
-              </button>
-            </div>
+            <button
+              type="button"
+              className="client-status-action"
+              role="menuitem"
+              disabled={!canConnect}
+              onClick={() => void reconnect(kind)}
+            >
+              {actionLabel}
+            </button>
             {/* The connectivity check, one click from the button that says
                 whether FAF is connected (#647), rather than only from
                 Settings. */}
             {kind === "faf" && (
               <button
                 type="button"
-                className="client-status-action client-status-check"
+                className="client-status-action"
                 role="menuitem"
                 onClick={() => {
                   setOpenMenu(null);
