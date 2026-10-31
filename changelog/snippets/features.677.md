@@ -1,0 +1,1 @@
+- The Java Client theme now looks like the Java client, with its header bar, matchmaker and controls.
