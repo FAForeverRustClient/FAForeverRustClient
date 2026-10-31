@@ -1,0 +1,5 @@
+- Unit pictures in patch notes once again show their original in-game backgrounds.
+- On/off switches respond across the whole control and no longer show an extra checkbox.
+- The friends-only notification setting explains when new-game notifications need to be enabled.
+- Replay copy buttons restore their original icons two seconds after copying.
+- The Units tab no longer shows the "support the author" link.

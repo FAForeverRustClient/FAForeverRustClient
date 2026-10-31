@@ -6,7 +6,9 @@ use std::sync::Mutex;
 
 use tauri::Manager;
 
-use crate::navigation::{is_internal_navigation, open_externally, NEWS_EXTERNAL_LINK_SCRIPT};
+use crate::navigation::{
+    is_internal_navigation, open_externally, NEWS_EXTERNAL_LINK_SCRIPT, UNIT_DATABASE_EMBED_SCRIPT,
+};
 
 /// The first main window's label.
 pub(crate) const MAIN_LABEL: &str = "main";
@@ -239,6 +241,7 @@ pub(crate) fn build_main(
         // recovery shows it (`webview_recovery`).
         .focused(build == Build::First)
         .initialization_script_for_all_frames(NEWS_EXTERNAL_LINK_SCRIPT)
+        .initialization_script_for_all_frames(UNIT_DATABASE_EMBED_SCRIPT)
         // The only navigation hook. A plugin carrying a second copy of
         // this used to be registered as well, and never ran: Tauri asks
         // the builder closure first (`manager::webview::prepare_pending_webview`)
