@@ -7,7 +7,7 @@
  *
  *   :root                       → forgeDark (default neutral dark workspace)
  *   [data-theme="forgeLight"]   → neutral light workspace
- *   [data-theme="javaClient"]   → FAF Java client aesthetic
+ *   [data-theme="javaClient"]   → the FAF Java client (+ themes/java-client.css)
  *   [data-theme="pythonClient"] → FAF Python client aesthetic
  *
  * To add a theme: add a `[data-theme="…"]` block + a `Theme` variant in
@@ -289,53 +289,71 @@
   --chat-nick-lightness: 38%;
 }
 
-/* ── javaClient: JavaFX/Modena: cool blue-gray, rounder, Roboto, FAF blue ─ */
+/* ── javaClient: the FAF Java client, measured from its stylesheets ──────
+   Waitomo over Modena, then the client's colors.css and style.css; the
+   derive() values are JavaFX's own algorithm. The full analysis is in
+   plan-java-client-design.md. The structure (header bar, controls) is in
+   themes/java-client.css. */
 [data-theme='javaClient'] {
   color-scheme: dark;
-  --color-bg: #2b2f3a;
-  --color-sidebar: #242832;
-  --color-surface: #353a47;
-  --color-surface-raised: #3f4555;
-  --color-border: rgba(255, 255, 255, 0.10);
-  --color-border-strong: rgba(255, 255, 255, 0.20);
-  --color-text: #e8eaf0;
-  /* Lifted, hue kept, to the default theme's contrast on its own raised
-     surface: muted 5.7:1, subtle 4.6:1 (they were 3.8 and 2.2), so headings'
-     captions and the metadata under a name read as clearly here as there,
-     and one level stays a step below the other. */
-  --color-muted: #c3c9d1;
-  --color-subtle: #afb5be;
-  --color-surface-hover: #474e60;
-  --color-accent: #3d9bfd;
-  /* Dark on the accent rather than white: white on this blue is 2.9:1, too
-     faint for a primary button's label. This is 6.5:1. The accent itself stays
-     as bright as it is, because links and focus rings sit on the dark surfaces. */
-  --color-accent-contrast: #0b1220;
-  --color-accent-glow: rgba(61, 155, 253, 0.30);
-  /* A lighter tint of this theme's blue rather than the accent itself: the
-     accent is 3.9:1 on these surfaces, and the queue name above the rating is
-     11 px. */
-  --color-rating: #8ec7ff;
+  /* -fx-base, the window. */
+  --color-bg: #212121;
+  /* The header and status bars: #FFFFFF12 over the window. */
+  --color-sidebar: #313131;
+  /* The detail panes (#FFFFFF09 over the window), the control fill
+     (-fx-control-inner-background) and Modena's hover base. */
+  --color-surface: #292929;
+  --color-surface-raised: #333333;
+  --color-surface-hover: #3c3c3c;
+  /* -divider-color and -fx-box-border. */
+  --color-border: #424242;
+  --color-border-strong: #626262;
+  --color-text: #dcdcdc;
+  /* The client prints secondary text in derive(#DCDCDC, -30%), #9a9a9a,
+     which is 4.49:1 on the control fill; one step lighter clears 4.5. It has
+     no level between that and the text, so muted sits halfway. */
+  --color-muted: #b8b8b8;
+  --color-subtle: #9b9b9b;
+  /* White on the accent is 4.7:1: the Java client's own label colour. */
+  --color-accent: #2b71d9;
+  --color-accent-contrast: #ffffff;
+  --color-accent-glow: rgba(43, 113, 217, 0.30);
+  /* The matchmaker's gold (`.name`), the one number the client colours. */
+  --color-rating: #e19e3b;
+  --color-series-amber: #e19e3b;
   --color-ok: #4caf50;
   --color-warn: #ff9800;
   --color-error: #f44336;
-  /* Lifted towards white, hue kept, until each clears 4.5:1 as text on the
-     raised surface. The fills keep the Java client's own colours; as text
-     Defeat was 2.6:1 there and Victory 3.4:1. */
-  --color-ok-text: #7ac57d;
-  --color-warn-text: #ff9e0f;
-  --color-error-text: #f99b94;
-  /* Lifted towards white until each clears 4.5:1 on this theme's raised
-     surface, which is lighter than the default theme's: Cybran was 2.8:1. */
-  --color-faction-uef: #80baef;
-  --color-faction-aeon: #88c194;
-  --color-faction-cybran: #eaa1a1;
-  --color-faction-seraphim: #d6af4b;
+  /* -good and -warn clear 4.5:1 on every surface as they are. -bad is 3.4:1
+     on the control fill, so as text it is mixed a quarter towards white. */
+  --color-ok-text: #4caf50;
+  --color-warn-text: #ff9800;
+  --color-error-text: #f77268;
+  /* AEON_COLOR and SERAPHIM_COLOR exactly. UEF_COLOR (4.0:1) and
+     CYBRAN_COLOR (3.4:1) mixed towards white by the smallest step that
+     clears 4.5:1 on the control fill: 10 and 25 %. */
+  --color-faction-uef: #37a1f4;
+  --color-faction-aeon: #4caf50;
+  --color-faction-cybran: #f77268;
+  --color-faction-seraphim: #ffc107;
 
-  --radius-md: 6px;
+  /* 3 px on every control, card, menu and dialog; 2 px on scroll bar thumbs,
+     pagination and progress bars. Tags are Modena labels, 3 px as well. */
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 3px;
+  --radius-xl: 3px;
+  --radius-pill: 3px;
 
-  --font-sans: 'Roboto', 'Segoe UI', system-ui, sans-serif;
-  --font-mono: 'Roboto Mono', 'JetBrains Mono', monospace;
+  /* Flat. The only shadow is the dropshadow on overlays, SHADOW_COLOR.
+     Transparent rather than `none`: some rules list this with others. */
+  --shadow-sm: 0 0 0 transparent;
+  --shadow-md: 0 0 10px rgba(0, 0, 0, 0.6);
+  --shadow-popover: 0 0 10px rgba(0, 0, 0, 0.6);
+
+  /* No family is set anywhere, so it is JavaFX's "System": Segoe UI. */
+  --font-sans: 'Segoe UI', system-ui, sans-serif;
+  --font-mono: Consolas, 'Courier New', monospace;
 
   --chat-nick-saturation: 60%;
   --chat-nick-lightness: 70%;
