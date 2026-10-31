@@ -183,3 +183,16 @@ export function historicalChangelogIllustrations(
   });
   return illustrations;
 }
+
+/**
+ * The early-note rules for the note on screen, only when it is the one bundled
+ * with the client: the note that ends in the client's own attribution. The
+ * backend prefers a published note over a bundled one with the same number,
+ * and that published note is drawn as published.
+ */
+export function bundledNoteIllustrations(
+  entry: { id: string; blocks: ChangelogBlock[] } | undefined,
+): HistoricalCaptionIllustrations {
+  if (!entry?.blocks.some(block => block.type === "provenance")) return EMPTY;
+  return historicalChangelogIllustrations(entry.id, entry.blocks);
+}

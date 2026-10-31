@@ -72,16 +72,19 @@ pub struct ChangelogRelease {
 }
 
 impl ChangelogRelease {
-    /// Whether this is one of the two explicitly identified deployment branches.
-    /// An unknown historical date does not make a note a rolling branch.
+    /// Whether this is a deployment branch (today `fafbeta` and `fafdevelop`):
+    /// any release named by something other than a patch number, as the index
+    /// lists them. An unknown historical date does not make a note a rolling
+    /// branch, and the archive's legacy notes (`legacy-3605`) are not ones.
     ///
     /// Worth a name because the answer decides three separate things: which
     /// codec reads the note, whether the note may be cached at all, and whether
     /// the release is a candidate for "open on the newest patch". A dated post
     /// is finished the day it is published; a branch page is rewritten every
-    /// time something is deployed to that branch.
+    /// time something is deployed to that branch, so a branch the index adds
+    /// later must not be read and cached as a post.
     pub fn is_rolling(&self) -> bool {
-        matches!(self.id.as_str(), "fafbeta" | "fafdevelop")
+        !self.id.starts_with("legacy-") && !self.id.bytes().all(|byte| byte.is_ascii_digit())
     }
 }
 
@@ -172,6 +175,16 @@ pub enum ChangelogBlock {
         source_url: String,
         blocks: Vec<ChangelogBlock>,
         unavailable: bool,
+    },
+    /// The client's own attribution under a note bundled from the archive:
+    /// where it came from, the evidence for its date, and that its spacing
+    /// was tidied. Data rather than prose, so the reader's language words it,
+    /// and never part of the note's text: the archive search skips it.
+    #[serde(rename_all = "camelCase")]
+    Provenance {
+        source_url: String,
+        /// Empty when the release date rests on no separate evidence.
+        evidence_url: String,
     },
 }
 
@@ -434,7 +447,8 @@ pub fn parse_release_notes(markdown: &str, issue_base: &str) -> Vec<ChangelogBlo
             ChangelogBlock::Heading { .. }
             | ChangelogBlock::Unit { .. }
             | ChangelogBlock::CodeBlock { .. }
-            | ChangelogBlock::HistoricalBalance { .. } => {}
+            | ChangelogBlock::HistoricalBalance { .. }
+            | ChangelogBlock::Provenance { .. } => {}
         }
     }
     blocks
@@ -2152,6 +2166,18 @@ mod tests {
         );
         assert_eq!(branch.source_url, branch.web_url);
         assert!(branch.is_rolling());
+        // A branch the index adds later is read and refreshed as a branch, not
+        // parsed as a post and cached; the archive's legacy notes are not ones.
+        let added = ChangelogRelease {
+            id: "fafexperimental".into(),
+            ..branch.clone()
+        };
+        assert!(added.is_rolling());
+        let legacy = ChangelogRelease {
+            id: "legacy-3605".into(),
+            ..branch.clone()
+        };
+        assert!(!legacy.is_rolling());
 
         let latest = &releases[1];
         assert_eq!(latest.id, "3837");

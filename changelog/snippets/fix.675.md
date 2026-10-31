@@ -9,3 +9,5 @@
 - Searching the patch notes no longer finds every early patch through the source line under it.
 - Early patch notes show their number as the title while they load, not an internal name.
 - Dates in the unit history no longer show a day early in timezones west of UTC.
+- Without an internet connection, the patch notes show the archived early patch notes that come with the client instead of an error page.
+- The source line under early patch notes is written in the client's language instead of English.

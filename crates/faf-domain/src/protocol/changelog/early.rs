@@ -133,17 +133,6 @@ fn literal_list_references(items: &mut [ChangelogListItem], source: &str) {
     }
 }
 
-/// The opening of the attribution line the client adds under every early note.
-const ATTRIBUTION: &str = "Original source: FAForever contributors";
-
-/// The client's own attribution line under an early note. The archive search
-/// leaves it out: it is the same under all 28 notes, so "source", "note" or
-/// "removed" would otherwise find every one of them, the footer as the hit.
-pub(super) fn is_attribution(block: &ChangelogBlock) -> bool {
-    matches!(block, ChangelogBlock::Paragraph { spans }
-        if matches!(spans.first(), Some(ChangelogSpan::Link { text, .. }) if text == ATTRIBUTION))
-}
-
 /// An exact identity/source match is required. An arbitrary incoming URL never
 /// selects a different embedded note, and no archive network request is made.
 pub fn early_entry(release: &ChangelogRelease) -> Option<ChangelogEntry> {
@@ -151,23 +140,8 @@ pub fn early_entry(release: &ChangelogRelease) -> Option<ChangelogEntry> {
         .notes
         .iter()
         .find(|note| note.id == release.id && note.source_url == release.source_url)?;
-    let mut attribution = vec![ChangelogSpan::Link {
-        text: ATTRIBUTION.to_string(),
-        url: note.source_url.clone(),
-    }];
-    if !note.evidence.is_empty() {
-        attribution.push(ChangelogSpan::Text("; ".to_string()));
-        attribution.push(ChangelogSpan::Link {
-            text: "Date/provenance evidence".to_string(),
-            url: note.evidence.clone(),
-        });
-    }
-    // Editorial metadata follows the source attribution, outside the article.
-    // Raw captures remain hash-pinned; only imported prose spacing is tidied.
-    attribution.push(ChangelogSpan::Text(
-        ". Editorial note: Extra spaces before punctuation have been removed for readability."
-            .to_string(),
-    ));
+    // Raw captures remain hash-pinned; only imported prose spacing is tidied,
+    // which the client says in its attribution line under the note.
     let mut blocks = super::parse_html_blocks(&note.html);
     for block in &mut blocks {
         match block {
@@ -178,7 +152,10 @@ pub fn early_entry(release: &ChangelogRelease) -> Option<ChangelogEntry> {
     }
     // Attribution is metadata after the original article, never an invented
     // introduction or replacement description for the historical changes.
-    blocks.push(ChangelogBlock::Paragraph { spans: attribution });
+    blocks.push(ChangelogBlock::Provenance {
+        source_url: note.source_url.clone(),
+        evidence_url: note.evidence.clone(),
+    });
     Some(ChangelogEntry {
         id: note.id.clone(),
         title: format!("Patch {}", note.patch),
@@ -269,9 +246,17 @@ mod tests {
             .find(|release| release.id == "3616")
             .unwrap();
         let entry = early_entry(release).unwrap();
-        assert!(is_attribution(entry.blocks.last().unwrap()));
+        let Some(ChangelogBlock::Provenance { source_url, .. }) = entry.blocks.last() else {
+            panic!("historical note must end with source attribution");
+        };
         let document = super::super::ChangelogSearchDocument::new(&entry);
-        for footer_only in ["original source", "editorial note", "provenance evidence"] {
+        // Neither its address nor any of its words: the reader's language
+        // words it, and the search reads only the note itself.
+        for footer_only in [
+            source_url.to_lowercase().as_str(),
+            "original source",
+            "editorial note",
+        ] {
             assert!(document.search(footer_only).is_none(), "{footer_only}");
         }
     }
@@ -311,16 +296,22 @@ mod tests {
     }
 
     #[test]
-    fn early_archive_discloses_typography_changes_in_source_footer() {
+    fn early_archive_ends_every_note_with_its_provenance() {
         for release in with_early_releases(vec![]) {
             let entry = early_entry(&release).unwrap();
-            let Some(ChangelogBlock::Paragraph { spans }) = entry.blocks.last() else {
+            let Some(ChangelogBlock::Provenance { source_url, .. }) = entry.blocks.last() else {
                 panic!("historical note must end with source attribution");
             };
-            assert!(matches!(&spans[0], ChangelogSpan::Link { url, .. }
-                if url == &release.source_url));
-            assert!(spans.iter().any(|span| matches!(span, ChangelogSpan::Text(text)
-                if text.contains("Editorial note: Extra spaces before punctuation have been removed for readability."))));
+            assert_eq!(source_url, &release.source_url);
+            // Only the last block: the attribution never interrupts the note.
+            assert_eq!(
+                entry
+                    .blocks
+                    .iter()
+                    .filter(|block| matches!(block, ChangelogBlock::Provenance { .. }))
+                    .count(),
+                1
+            );
         }
     }
 

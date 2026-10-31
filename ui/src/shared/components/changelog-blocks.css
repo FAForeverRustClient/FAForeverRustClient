@@ -46,6 +46,25 @@
   color: var(--color-text);
 }
 
+/* The client's attribution under a bundled archive note: a footnote, ruled
+   off from the note so it never reads as part of it. */
+.changelog-provenance {
+  margin: var(--space-4) 0 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.changelog-provenance .changelog-link {
+  font-size: inherit;
+}
+
+.changelog-provenance-note {
+  display: block;
+}
+
 .changelog-list {
   padding-left: 20px;
 }

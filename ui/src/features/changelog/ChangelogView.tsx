@@ -49,7 +49,7 @@ import {
   useNoteListPosition,
   type Section,
 } from "./noteReader";
-import { historicalChangelogIllustrations } from "../../shared/historicalChangelogIcons";
+import { bundledNoteIllustrations } from "../../shared/historicalChangelogIcons";
 import "./changelog.css";
 
 /** Rolling branches have no date and belong above the dated years. */
@@ -150,7 +150,8 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
   const entryStatus = useAppStore((state) => state.state.changelog.entryStatus);
   const selectedId = useAppStore((state) => state.state.changelog.selected);
   const entries = useAppStore((state) => state.state.changelog.entries);
-  const changelog = { releases, status, entryStatus, selected: selectedId, entries };
+  const indexUnavailable = useAppStore((state) => state.state.changelog.indexUnavailable ?? null);
+  const changelog = { releases, status, entryStatus, selected: selectedId, entries, indexUnavailable };
   // Remembered as the filter setting says (#447).
   const [search, setSearch] = useRememberedFilter("changelog.search", "", (value) => typeof value === "string");
   /// The years the reader has flipped from their default, folded or open.
@@ -225,9 +226,7 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
     [entry, selected],
   );
 
-  const illustrations = useMemo(
-    () => historicalChangelogIllustrations(entry?.id ?? "", entry?.blocks ?? []), [entry],
-  );
+  const illustrations = useMemo(() => bundledNoteIllustrations(entry), [entry]);
   const sections = useMemo<Section[]>(
     () => (entry ? noteSections(entry.blocks, heading.skipFirst, t("changelog.historicalBalance"), 0, illustrations) : []),
     [entry, heading.skipFirst, t, illustrations],
@@ -337,6 +336,23 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
             aria-label={t("changelog.searchAria")}
           />
         </div>
+
+        {/* Without the current list, the notes bundled with the client are
+            still readable; the failure is said above them, not instead of
+            them. */}
+        {changelog.indexUnavailable && (
+          <StatusNotice
+            tone="info"
+            className="changelog-index-notice"
+            action={{
+              label: t("changelog.retry"),
+              onClick: () => ipc.send({ kind: "Changelog", command: { type: "load" } }),
+            }}
+            detail={changelog.indexUnavailable}
+          >
+            {t("changelog.indexUnavailable")}
+          </StatusNotice>
+        )}
 
         <nav
           ref={listRef}

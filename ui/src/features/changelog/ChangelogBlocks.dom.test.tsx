@@ -442,6 +442,17 @@ it("renders image-only historical headings and gives the contents entry the matc
   expect(jump.textContent).toBe("Titan and Loyalist");
 });
 
+it("words a bundled note's attribution in the reader's language and drops an empty evidence link", () => {
+  const source = "https://web.archive.org/web/2015/http://wiki.faforever.com/index.php?title=3616";
+  const view = render(<ChangelogBlockView anchorId={anchorFor(0)} block={{ type: "provenance", payload: { sourceUrl: source, evidenceUrl: "" } }} />);
+  const footer = view.container.querySelector(".changelog-provenance")!;
+  expect(within(footer as HTMLElement).getByRole("button", { name: en["changelog.provenance.source"] })).toBeTruthy();
+  expect(within(footer as HTMLElement).queryByRole("button", { name: en["changelog.provenance.evidence"] })).toBeNull();
+  expect(footer.textContent).toContain(en["changelog.provenance.editorial"]);
+  view.rerender(<ChangelogBlockView anchorId={anchorFor(0)} block={{ type: "provenance", payload: { sourceUrl: source, evidenceUrl: "https://direct.faforever.com/2011/12/3609-patch-released/" } }} />);
+  expect(within(footer as HTMLElement).getByRole("button", { name: en["changelog.provenance.evidence"] })).toBeTruthy();
+});
+
 it("keeps genuine blueprint tooltips and a readable heading when an image fails", () => {
   const block: ChangelogBlock = { type: "unit", payload: { name: "Titan", units: [
     { unitId: "UEL0303", iconUrl: "https://faforever.github.io/fa/assets/icons/UEL0303_icon.png" },

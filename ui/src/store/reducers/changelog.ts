@@ -9,9 +9,11 @@ export function reduceChangelog(state: ChangelogState, event: ChangelogEvent): C
     case "loading":
       return { ...state, status: { type: "loading" } };
     case "loaded":
-      return { ...state, releases: event.payload.releases, status: { type: "ready" } };
+      return { ...state, releases: event.payload.releases, status: { type: "ready" }, indexUnavailable: null };
     case "loadFailed":
       return { ...state, status: { type: "failed", payload: { reason: event.payload.reason } } };
+    case "indexUnavailable":
+      return { ...state, indexUnavailable: event.payload.reason };
     case "entryLoading":
       // The selection moves immediately, so the header and the highlighted row
       // track the click rather than the download.
