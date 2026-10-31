@@ -1544,6 +1544,147 @@ fn build_active_mods_block(uids: &[String]) -> String {
     format!("active_mods = {{\n{}\n}}", entries.join(",\n"))
 }
 
+/// The `game.prefs` switch that lets a second Forged Alliance start.
+const DEBUG_FACILITIES_KEY: &str = "enable_debug_facilities";
+
+/// What a `game.prefs` the game has never written starts as: the flag, and the
+/// version FA checks before it accepts the file at all. Without
+/// `version.major = 1` FA renames the file `.bad` and starts from defaults,
+/// which is what became of a prefs file the Java client appended its flag to
+/// before the game had ever written one. FAF ships no `Installed.Prefs`, so
+/// defaults are all a first start has either way.
+const FRESH_GAME_PREFS: &str =
+    "version = {\n    major = 1\n}\ndebug = {\n    enable_debug_facilities = true\n}\n";
+
+/// Let a second Forged Alliance start while one is running.
+///
+/// FA refuses to: at startup it creates a named mutex, `SupComMutex`, and on
+/// finding one already there it says "Forged Alliance is already running" and
+/// exits. The mutex is system-wide, so a replay launched from its own install
+/// was refused just the same as one from the game's. The engine skips the
+/// check when `debug.enable_debug_facilities` is set in `game.prefs`, and the
+/// Java client sets it at every start for exactly this
+/// (`GamePrefsService.patchGamePrefsForMultiInstances`).
+///
+/// Here before every launch rather than once at startup. FA writes all of its
+/// prefs back from memory when it exits, so a flag added while a game is
+/// running is gone again when that game closes; a launch is when the file is
+/// read, and the instance about to start is the one that has to see it.
+pub(crate) async fn allow_second_game_instance() -> Result<(), String> {
+    allow_second_game_instance_at(game_prefs_path()).await
+}
+
+async fn allow_second_game_instance_at(path: PathBuf) -> Result<(), String> {
+    let _write = GAME_PREFS_WRITE.lock().await;
+    let updated = match tokio::fs::read_to_string(&path).await {
+        Ok(contents) => match with_debug_facilities(&contents) {
+            Some(updated) => updated,
+            None => return Ok(()),
+        },
+        // A first start: the game writes this file only when it exits.
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => FRESH_GAME_PREFS.to_string(),
+        // Anything else is a file that exists and could not be read, and the
+        // rule for that is the active mods' rule: leave it alone.
+        Err(e) => {
+            return Err(format!(
+                "could not read {}: leaving it untouched: {e}",
+                path.display()
+            ))
+        }
+    };
+    let target = path.clone();
+    tokio::task::spawn_blocking(move || {
+        if let Some(parent) = target.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        crate::infra::settings_file::write_atomically(&target, updated.as_bytes())
+    })
+    .await
+    .map_err(|e| format!("the game.prefs writer stopped: {e}"))?
+    .map_err(|e| format!("could not write {}: {e}", path.display()))
+}
+
+/// `contents` with `debug.enable_debug_facilities = true`, or `None` when it
+/// already says so. The rest of the file is left as it is, the way
+/// [`write_active_mod_uids`] leaves it: an existing `debug` table gains the key
+/// rather than being replaced, since a second `debug = { … }` further down
+/// would win in Lua and drop whatever else the first one held.
+fn with_debug_facilities(contents: &str) -> Option<String> {
+    let Some((open, close)) = find_top_level_table(contents, "debug") else {
+        let mut updated = contents.to_string();
+        if !updated.is_empty() && !updated.ends_with('\n') {
+            updated.push('\n');
+        }
+        updated.push_str("debug = {\n    enable_debug_facilities = true\n}\n");
+        return Some(updated);
+    };
+    let table = &contents[open + 1..close];
+    if let Some(at) = table.find(DEBUG_FACILITIES_KEY) {
+        let after_key = &table[at + DEBUG_FACILITIES_KEY.len()..];
+        if let Some(value) = after_key.trim_start().strip_prefix('=') {
+            let value = value.trim_start();
+            if value.starts_with("true") {
+                return None;
+            }
+            // `false`, or anything else that is not `true`: replace just the
+            // value, up to whatever ends it.
+            let value_start = open + 1 + (table.len() - value.len());
+            let value_len = value
+                .find(|c: char| c == ',' || c == '}' || c.is_whitespace())
+                .unwrap_or(value.len());
+            return Some(format!(
+                "{}true{}",
+                &contents[..value_start],
+                &contents[value_start + value_len..]
+            ));
+        }
+    }
+    Some(format!(
+        "{}\n    enable_debug_facilities = true,{}",
+        &contents[..=open],
+        &contents[open + 1..]
+    ))
+}
+
+/// Byte offsets of the braces of the top-level table `key = { … }`.
+///
+/// Top-level means at the start of a line: FA writes the root keys of
+/// `game.prefs` at column 0 and everything inside them indented, and the name
+/// `debug` is common inside them (`Options.Log.Debug`, lobby options ending in
+/// `Debug`). Unbalanced braces answer `None`, like
+/// [`find_active_mods_block`], and the caller then appends a table of its own.
+fn find_top_level_table(contents: &str, key: &str) -> Option<(usize, usize)> {
+    let line_starts = std::iter::once(0).chain(contents.match_indices('\n').map(|(at, _)| at + 1));
+    for start in line_starts {
+        let Some(after_key) = contents[start..].strip_prefix(key) else {
+            continue;
+        };
+        let Some(after_eq) = after_key.trim_start().strip_prefix('=') else {
+            continue;
+        };
+        let after_eq = after_eq.trim_start();
+        if !after_eq.starts_with('{') {
+            continue;
+        }
+        let open = contents.len() - after_eq.len();
+        let mut depth = 0i32;
+        for (i, c) in contents[open..].char_indices() {
+            match c {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return Some((open, open + i));
+                    }
+                }
+                _ => {}
+            }
+        }
+        return None;
+    }
+    None
+}
+
 /// What a vault listing has to bring back with each mod.
 ///
 /// `latestVersion.reviewsSummary` is the part that was missing, and it is why
@@ -2202,6 +2343,76 @@ active_mods = {
         let updated = write_active_mod_uids(original, &["abc-123".to_string()]);
         assert!(updated.contains("some_setting = 1"));
         assert_eq!(parse_active_mod_uids(&updated), vec!["abc-123".to_string()]);
+    }
+
+    /// The flag set: a `debug` table whose `enable_debug_facilities` is `true`.
+    fn debug_facilities_on(contents: &str) -> bool {
+        let Some((open, close)) = find_top_level_table(contents, "debug") else {
+            return false;
+        };
+        let table: String = contents[open + 1..close].split_whitespace().collect();
+        table.contains("enable_debug_facilities=true")
+    }
+
+    #[test]
+    fn debug_facilities_are_appended_when_the_prefs_have_no_debug_table() {
+        let original = "profile = {\n    current = 1\n}\nactive_mods = {\n}\n";
+        let updated = with_debug_facilities(original).unwrap();
+        assert!(updated.starts_with(original));
+        assert!(debug_facilities_on(&updated));
+        assert_eq!(with_debug_facilities(&updated), None);
+    }
+
+    #[test]
+    fn debug_facilities_already_on_leave_the_file_alone() {
+        // The form the Java client appends, with no newline before the next key.
+        let java = "debug = {\n    enable_debug_facilities = true\n}active_mods = {\n}\n";
+        assert_eq!(with_debug_facilities(java), None);
+        let inline = "debug = { enable_debug_facilities = true, other = 2 }\n";
+        assert_eq!(with_debug_facilities(inline), None);
+    }
+
+    #[test]
+    fn an_existing_debug_table_gains_the_key_and_keeps_the_rest() {
+        let original = "debug = {\n    keep_me = 'yes'\n}\nversion = {\n    major = 1\n}\n";
+        let updated = with_debug_facilities(original).unwrap();
+        assert!(debug_facilities_on(&updated));
+        assert!(updated.contains("keep_me = 'yes'"));
+        assert!(updated.contains("version = {\n    major = 1\n}"));
+        assert_eq!(updated.matches("debug = {").count(), 1);
+    }
+
+    #[test]
+    fn debug_facilities_switched_off_are_switched_on() {
+        let original = "debug = {\n    enable_debug_facilities = false,\n    keep_me = 1\n}\n";
+        let updated = with_debug_facilities(original).unwrap();
+        assert_eq!(
+            updated,
+            "debug = {\n    enable_debug_facilities = true,\n    keep_me = 1\n}\n"
+        );
+    }
+
+    #[test]
+    fn a_debug_key_inside_another_table_is_not_the_debug_table() {
+        // From a real game.prefs: `Options.Log.Debug` and a lobby option.
+        let original = "Options = {\n    Log = {\n        Debug = false,\n        Filter = '*debug:'\n    },\n    debug = {\n        enable_debug_facilities = true\n    }\n}\nLobbyOpt_AIPathingDebug = 'off'\n";
+        let updated = with_debug_facilities(original).unwrap();
+        assert!(updated.starts_with(original));
+        assert!(updated.ends_with("debug = {\n    enable_debug_facilities = true\n}\n"));
+    }
+
+    #[tokio::test]
+    async fn a_missing_game_prefs_is_created_with_the_version_fa_accepts() {
+        let dir = std::env::temp_dir().join(format!("faf-prefs-{}", rand::random::<u64>()));
+        let path = dir.join("Gas Powered Games/Game.prefs");
+        allow_second_game_instance_at(path.clone()).await.unwrap();
+        let written = std::fs::read_to_string(&path).unwrap();
+        assert!(written.contains("version = {\n    major = 1\n}"));
+        assert!(debug_facilities_on(&written));
+        // Twice is once: the second call finds the flag and writes nothing.
+        allow_second_game_instance_at(path.clone()).await.unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), written);
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     /// Regression: replacing an existing block must never leave a doubled
