@@ -1,0 +1,2 @@
+- No visible changes: development builds unfold the year of a patch note opened from search again.
+- No visible changes: the translation check again flags untranslated sentences that end in a file name.

@@ -98,7 +98,9 @@ export function changelogUnitIconUrl(source: string): string {
 export function changelogUnitIconId(source: string): string | null {
   const clean = changelogUnitIconUrl(source);
   if (!clean.startsWith(`${CLEAN_ICON_BASE}/`)) return null;
-  return /^([A-Z]{3}\d{4})_icon\.png$/.exec(clean.slice(CLEAN_ICON_BASE.length + 1))?.[1] ?? null;
+  // Three letters and four characters, the fourth of which may be a letter:
+  // the T3 mobile anti-air units are DALK003, DELK002, DRLK001 and DSLK004.
+  return /^([A-Z]{3}[A-Z\d]\d{3})_icon\.png$/.exec(clean.slice(CLEAN_ICON_BASE.length + 1))?.[1] ?? null;
 }
 
 export type ChangelogUnitBackground = "land" | "air" | "sea" | "amph";

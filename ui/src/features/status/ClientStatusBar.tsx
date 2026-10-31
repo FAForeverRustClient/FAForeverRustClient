@@ -619,9 +619,10 @@ export function ClientStatusBar() {
             {/* The state is the menu's header, coloured and plainly not a
                 button; what can be done about it follows as ordinary menu
                 rows. Side by side and the same size, the state read as a
-                second button beside Disconnect. */}
+                second button beside Disconnect. The service is not repeated:
+                the button just clicked says it, and the menu's name carries
+                it for a screen reader. */}
             <div className="client-status-popover-head">
-              <span className="client-status-popover-label">{t("status.connection.heading", { service: label })}</span>
               <span className="client-status-state" data-status={status}>
                 <span className="client-status-popover-dot" data-status={status} aria-hidden="true" />
                 {stateLabel}

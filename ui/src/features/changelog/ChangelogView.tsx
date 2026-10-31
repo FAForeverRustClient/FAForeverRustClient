@@ -216,8 +216,9 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
   const older = selectedIndex >= 0 ? changelog.releases[selectedIndex + 1] : undefined;
   const loadingEntry = changelog.entryStatus.type === "loading";
   const selectedGroup = selected ? releaseGroup(selected) : null;
+  const selectedFoldedByDefault = selectedGroup !== null && foldedByDefault(selectedGroup);
   const selectedGroupFolded = selectedGroup !== null
-    && foldedByDefault(selectedGroup) !== toggledGroups.has(selectedGroup);
+    && selectedFoldedByDefault !== toggledGroups.has(selectedGroup);
 
   const heading = useMemo(
     () => noteTitle(entry?.blocks ?? [], entry?.title || selected?.id || "", Boolean(selected?.date)),
@@ -250,10 +251,12 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
     // so clearing that filter does not hide the selection again. A remount
     // of the same note preserves the reader's manual folds and list offset.
     if (selectedGroupFolded) {
+      // Set, not flip: a development build runs this effect twice on mount,
+      // and two flips would leave the year folded.
       setToggledGroups(current => {
         const next = new Set(current);
-        if (next.has(selectedGroup)) next.delete(selectedGroup);
-        else next.add(selectedGroup);
+        if (selectedFoldedByDefault) next.add(selectedGroup);
+        else next.delete(selectedGroup);
         changelogViewMemory.game.years = next;
         return next;
       });
@@ -261,7 +264,7 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
     }
     keepCurrentRowInView(listRef.current);
     listedSelection.current = changelog.selected;
-  }, [changelog.selected, selectedGroup, selectedGroupFolded]);
+  }, [changelog.selected, selectedGroup, selectedGroupFolded, selectedFoldedByDefault]);
 
   const select = (id: string) =>
     ipc.send({ kind: "Changelog", command: { type: "select", payload: { id } } });
@@ -424,7 +427,7 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
         {selected && (
           <header className="changelog-note-head">
             <div className="changelog-note-heading">
-              <h1>{entry ? heading.title : selected.id}</h1>
+              <h1>{entry ? heading.title : releaseLabel(selected.id)}</h1>
               <p className="changelog-note-meta">
                 {!isRollingRelease(selected) && (
                   <span className={`changelog-kind-tag${isPatch(selected.kind) ? " is-patch" : ""}`}>

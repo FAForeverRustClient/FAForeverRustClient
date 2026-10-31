@@ -133,6 +133,17 @@ fn literal_list_references(items: &mut [ChangelogListItem], source: &str) {
     }
 }
 
+/// The opening of the attribution line the client adds under every early note.
+const ATTRIBUTION: &str = "Original source: FAForever contributors";
+
+/// The client's own attribution line under an early note. The archive search
+/// leaves it out: it is the same under all 28 notes, so "source", "note" or
+/// "removed" would otherwise find every one of them, the footer as the hit.
+pub(super) fn is_attribution(block: &ChangelogBlock) -> bool {
+    matches!(block, ChangelogBlock::Paragraph { spans }
+        if matches!(spans.first(), Some(ChangelogSpan::Link { text, .. }) if text == ATTRIBUTION))
+}
+
 /// An exact identity/source match is required. An arbitrary incoming URL never
 /// selects a different embedded note, and no archive network request is made.
 pub fn early_entry(release: &ChangelogRelease) -> Option<ChangelogEntry> {
@@ -141,7 +152,7 @@ pub fn early_entry(release: &ChangelogRelease) -> Option<ChangelogEntry> {
         .iter()
         .find(|note| note.id == release.id && note.source_url == release.source_url)?;
     let mut attribution = vec![ChangelogSpan::Link {
-        text: "Original source: FAForever contributors".to_string(),
+        text: ATTRIBUTION.to_string(),
         url: note.source_url.clone(),
     }];
     if !note.evidence.is_empty() {
@@ -248,6 +259,21 @@ mod tests {
             if matches!(&spans[0], ChangelogSpan::Text(text) if text.starts_with("Complete changelog from 3599 to 3605.")))
         );
         assert_eq!(with_early_releases(releases.clone()), releases);
+    }
+
+    #[test]
+    fn the_attribution_line_is_shown_but_not_searched() {
+        let releases = with_early_releases(vec![]);
+        let release = releases
+            .iter()
+            .find(|release| release.id == "3616")
+            .unwrap();
+        let entry = early_entry(release).unwrap();
+        assert!(is_attribution(entry.blocks.last().unwrap()));
+        let document = super::super::ChangelogSearchDocument::new(&entry);
+        for footer_only in ["original source", "editorial note", "provenance evidence"] {
+            assert!(document.search(footer_only).is_none(), "{footer_only}");
+        }
     }
 
     #[test]

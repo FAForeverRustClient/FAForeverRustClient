@@ -268,19 +268,14 @@ html[data-reduced-motion="true"] .client-status-progress[data-indeterminate="tru
   box-shadow: var(--shadow-popover);
 }
 
-/* The menu's header: which connection, and its state in its status colour. */
+/* The menu's header: the connection's state in its status colour. */
 .client-status-popover-head {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px var(--space-2) var(--space-2);
+  min-height: 32px;
+  align-items: center;
+  padding: 0 var(--space-2);
   margin-bottom: var(--space-1);
   border-bottom: 1px solid var(--color-border);
-}
-
-.client-status-popover-label {
-  color: var(--color-muted);
-  font-size: 12px;
 }
 
 .client-status-state {

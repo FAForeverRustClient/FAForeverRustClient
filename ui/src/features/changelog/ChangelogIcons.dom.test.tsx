@@ -33,18 +33,26 @@ it("shares one local catalogue across the article, caption and contents, includi
       activeSectionId="unit" navRef={createRef<HTMLElement>()} onJump={vi.fn()} />
   </>);
   expect(readUnitIcons).toHaveBeenCalledTimes(1);
-  const pending = view.container.querySelectorAll("img");
-  expect(pending).toHaveLength(3);
-  expect([...pending].map(image => image.getAttribute("loading"))).toEqual(["lazy", "lazy", "eager"]);
-  for (const image of pending) expect(image.hasAttribute("src")).toBe(false);
+  // Nothing is requested before the catalogue answers, and nothing is drawn
+  // as an empty image meanwhile: each picture holds its place as a tile.
+  expect(view.container.querySelectorAll("img")).toHaveLength(0);
+  const pending = view.container.querySelectorAll(".changelog-icon-pending");
+  expect([...pending].map(tile => tile.classList.contains("changelog-toc-icon"))).toEqual([false, false, true]);
   await act(async () => {
     resolve({ units: Object.fromEntries(["UES0304", "UEL0303", "UEL0203", "UEB4301", "UEB0102", "UEB0103", "URL0401", "ZZZ9999"].map(id => [id, local(id)])), strategic: {} });
     await Promise.resolve();
   });
-  for (const image of view.container.querySelectorAll("img")) {
+  const pictures = view.container.querySelectorAll("img");
+  expect([...pictures].map(image => image.getAttribute("loading"))).toEqual(["lazy", "lazy", "eager"]);
+  for (const image of pictures) {
     expect(image.getAttribute("src")).toBe(local("UES0304"));
     expect(image.classList.contains("changelog-icon-background-sea")).toBe(true);
   }
+  // Until a picture has arrived it keeps the tile's fill underneath.
+  const unitPicture = pictures[0];
+  expect(unitPicture.classList.contains("changelog-icon-loading")).toBe(true);
+  fireEvent.load(unitPicture);
+  expect(unitPicture.classList.contains("changelog-icon-loading")).toBe(false);
   view.unmount();
   const returned = render(<ChangelogIcon source={source} className="changelog-unit-icon" size={48} />);
   expect(returned.container.querySelector("img")?.getAttribute("src")).toBe(local("UES0304"));

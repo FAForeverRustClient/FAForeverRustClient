@@ -28,6 +28,13 @@ describe("legacy changelog unit pictures", () => {
     expect(changelogUnitIconId(clean + "UEL0303_icon.png")).toBe("UEL0303");
   });
 
+  // Every unit with a recorded background must be reachable from its icon, or
+  // the record is dead weight and the unit falls back to web artwork.
+  it.each(["DALK003", "DELK002", "DRLK001", "DSLK004"])("identifies the T3 mobile anti-air unit %s", (id) => {
+    expect(changelogUnitIconId(clean + id + "_icon.png")).toBe(id);
+    expect(changelogUnitIconBackground(clean + id + "_icon.png")).toBe("land");
+  });
+
   it.each([
     legacy + "unknown.png",
     legacy + "Enhancements/uef/teleport.png",

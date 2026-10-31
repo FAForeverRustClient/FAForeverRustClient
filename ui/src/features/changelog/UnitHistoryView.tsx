@@ -97,7 +97,9 @@ const DASHES = ["", "7 4", "2 3", "10 3 2 3"];
 
 const factionClass = (unit: UnitSummary) => `faction-${(unit.faction ?? "").toLowerCase()}`;
 
-const shortDate = (date: string) => formatDate(date, "", { day: "numeric", month: "short", year: "numeric" });
+// A patch date is a calendar day, read as UTC midnight: in UTC, so it is the
+// same day west of Greenwich, as in the patch list.
+const shortDate = (date: string) => formatDate(date, "", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
 export function UnitHistoryView({ onOpenRelease }: { onOpenRelease: (id: string) => void }) {
   const { t } = useTranslation();

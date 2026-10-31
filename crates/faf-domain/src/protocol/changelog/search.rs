@@ -112,6 +112,10 @@ impl ChangelogSearchDocument {
     pub fn new(entry: &ChangelogEntry) -> Self {
         fn walk(blocks: &[ChangelogBlock], prefix: &[u32], indexed: &mut Vec<SearchBlock>) {
             for (index, block) in blocks.iter().enumerate() {
+                // An early note's attribution is the client's, not the note's.
+                if prefix.is_empty() && super::early::is_attribution(block) {
+                    continue;
+                }
                 let mut path = prefix.to_vec();
                 path.push(index as u32);
                 if let ChangelogBlock::HistoricalBalance { blocks, .. } = block {
