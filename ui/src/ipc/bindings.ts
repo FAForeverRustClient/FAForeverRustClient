@@ -2119,6 +2119,19 @@ export type ConnectivityState = {
 /**  Which parts of the console the server lets this account use. */
 export type ConsoleRole = "admin" | "director" | "editor";
 
+/**  A relation keeps its stable account id even when its name cannot be loaded. */
+export type Contact = {
+	playerId: number,
+	login: string | null,
+	relation: Relation,
+};
+
+export type ContactsState = {
+	open: boolean,
+	entries: Contact[],
+	refreshing: boolean,
+};
+
 /**  A content submission, as the player edits it. */
 export type ContributionDraft = {
 	title: string,
@@ -10409,7 +10422,9 @@ export type SiteWrite =
 	apiKey: string,
 } };
 
-export type SocialCommand =
+export type SocialCommand = { type: "setContactsOpen"; payload: {
+	open: boolean,
+} } | { type: "resolveContacts" } |
 /**
  *  Add or remove a friend/foe.
  *
@@ -10433,7 +10448,16 @@ export type SocialCommand =
 	login: string,
 } };
 
-export type SocialEvent =
+export type SocialEvent = { type: "contactsUpdated"; payload: {
+	contacts: Contact[],
+} } | { type: "contactSet"; payload: {
+	contact: Contact,
+	member: boolean,
+} } | { type: "contactsOpened"; payload: {
+	open: boolean,
+} } | { type: "contactsRefreshing"; payload: {
+	refreshing: boolean,
+} } |
 /**  A full replacement of both relation lists (the lobby sends them together). */
 { type: "relationsUpdated"; payload: {
 	friends: string[],
@@ -10489,6 +10513,7 @@ export type SocialPreferences = {
 };
 
 export type SocialState = {
+	contacts?: ContactsState,
 	/**  Logins of players on our friends list, sorted. */
 	friends: string[],
 	/**  Logins of players on our foes list, sorted. */

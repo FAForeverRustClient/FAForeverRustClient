@@ -47754,6 +47754,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [
               "Cid"
             ],
@@ -47787,6 +47792,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [
               "Cid"
             ],
@@ -47822,12 +47832,430 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [
               "Cid"
             ],
             "friends": [
               "Bob"
             ],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "contacts retain offline identities and manage unresolved accounts",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "open": true
+              },
+              "type": "contactsOpened"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [],
+              "open": true,
+              "refreshing": false
+            },
+            "foes": [],
+            "friends": [],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "foes": [],
+                "friends": [
+                  "Offline"
+                ]
+              },
+              "type": "relationsUpdated"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [],
+              "open": true,
+              "refreshing": false
+            },
+            "foes": [],
+            "friends": [
+              "Offline"
+            ],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "contacts": [
+                  {
+                    "login": "Offline",
+                    "playerId": 7,
+                    "relation": "friend"
+                  },
+                  {
+                    "login": null,
+                    "playerId": 99,
+                    "relation": "foe"
+                  }
+                ]
+              },
+              "type": "contactsUpdated"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [
+                {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "friend"
+                },
+                {
+                  "login": null,
+                  "playerId": 99,
+                  "relation": "foe"
+                }
+              ],
+              "open": true,
+              "refreshing": false
+            },
+            "foes": [],
+            "friends": [
+              "Offline"
+            ],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "refreshing": true
+              },
+              "type": "contactsRefreshing"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [
+                {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "friend"
+                },
+                {
+                  "login": null,
+                  "playerId": 99,
+                  "relation": "foe"
+                }
+              ],
+              "open": true,
+              "refreshing": true
+            },
+            "foes": [],
+            "friends": [
+              "Offline"
+            ],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "contact": {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "foe"
+                },
+                "member": true
+              },
+              "type": "contactSet"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [
+                {
+                  "login": null,
+                  "playerId": 99,
+                  "relation": "foe"
+                },
+                {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "foe"
+                }
+              ],
+              "open": true,
+              "refreshing": true
+            },
+            "foes": [
+              "Offline"
+            ],
+            "friends": [],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "contact": {
+                  "login": null,
+                  "playerId": 99,
+                  "relation": "foe"
+                },
+                "member": false
+              },
+              "type": "contactSet"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [
+                {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "foe"
+                }
+              ],
+              "open": true,
+              "refreshing": true
+            },
+            "foes": [
+              "Offline"
+            ],
+            "friends": [],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "refreshing": false
+              },
+              "type": "contactsRefreshing"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [
+                {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "foe"
+                }
+              ],
+              "open": true,
+              "refreshing": false
+            },
+            "foes": [
+              "Offline"
+            ],
+            "friends": [],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "foes": [
+                  "Offline"
+                ],
+                "friends": [
+                  "Resolved"
+                ]
+              },
+              "type": "relationsUpdated"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [
+                {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "foe"
+                }
+              ],
+              "open": true,
+              "refreshing": false
+            },
+            "foes": [
+              "Offline"
+            ],
+            "friends": [
+              "Resolved"
+            ],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "contacts": [
+                  {
+                    "login": "Offline",
+                    "playerId": 7,
+                    "relation": "foe"
+                  },
+                  {
+                    "login": "Resolved",
+                    "playerId": 99,
+                    "relation": "friend"
+                  }
+                ]
+              },
+              "type": "contactsUpdated"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [
+                {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "foe"
+                },
+                {
+                  "login": "Resolved",
+                  "playerId": 99,
+                  "relation": "friend"
+                }
+              ],
+              "open": true,
+              "refreshing": false
+            },
+            "foes": [
+              "Offline"
+            ],
+            "friends": [
+              "Resolved"
+            ],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "contact": {
+                  "login": null,
+                  "playerId": 99,
+                  "relation": "friend"
+                },
+                "member": false
+              },
+              "type": "contactSet"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [
+                {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "foe"
+                }
+              ],
+              "open": true,
+              "refreshing": false
+            },
+            "foes": [
+              "Offline"
+            ],
+            "friends": [],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "cleared"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [],
+              "open": true,
+              "refreshing": false
+            },
+            "foes": [],
+            "friends": [],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "open": false
+              },
+              "type": "contactsOpened"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
+            "foes": [],
+            "friends": [],
             "loginLookups": [],
             "players": [],
             "staff": []
@@ -83621,6 +84049,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [
               "Cid"
             ],
@@ -83665,6 +84098,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [
               "Cid"
             ],
@@ -83711,6 +84149,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [],
             "friends": [
               "Ada",
@@ -83756,6 +84199,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [],
             "friends": [
               "Ada",
@@ -83800,6 +84248,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [
               "Ada"
             ],
@@ -83845,6 +84298,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [
               "Ada"
             ],
@@ -83875,6 +84333,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [],
             "friends": [],
             "loginLookups": [],
@@ -83901,6 +84364,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [],
             "friends": [],
             "loginLookups": [],
@@ -83919,6 +84387,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [],
             "friends": [],
             "loginLookups": [],
@@ -83946,6 +84419,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [],
             "friends": [],
             "loginLookups": [
@@ -83970,6 +84448,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [],
             "friends": [],
             "loginLookups": [
@@ -83998,6 +84481,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [],
             "friends": [],
             "loginLookups": [
@@ -129655,6 +130143,11 @@
       }
     },
     "social": {
+      "contacts": {
+        "entries": [],
+        "open": false,
+        "refreshing": false
+      },
       "foes": [],
       "friends": [],
       "loginLookups": [],

@@ -52,6 +52,7 @@ pub(crate) enum Lane {
 /// What a command is exclusive with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum Key {
+    Contacts,
     /// The whole map catalogue crawl.
     MapVault,
     /// The whole mod catalogue crawl.
@@ -466,6 +467,8 @@ fn reviews(command: &ReviewsCommand) -> CommandPolicy {
 
 fn social(command: &SocialCommand) -> CommandPolicy {
     match command {
+        SocialCommand::SetContactsOpen { .. } => ORDINARY,
+        SocialCommand::ResolveContacts => single_flight(Key::Contacts),
         SocialCommand::SetRelation { .. } => ORDINARY,
         // A read whose answer is keyed by its login, so two at once are two
         // answers, never one overwriting the other.

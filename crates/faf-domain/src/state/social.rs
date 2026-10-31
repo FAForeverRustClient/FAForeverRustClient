@@ -72,6 +72,23 @@ pub enum Relation {
     Foe,
 }
 
+/// A relation keeps its stable account id even when its name cannot be loaded.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Contact {
+    pub player_id: i32,
+    pub login: Option<String>,
+    pub relation: Relation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ContactsState {
+    pub open: bool,
+    pub entries: Vec<Contact>,
+    pub refreshing: bool,
+}
+
 /// What the API said about a login nobody online answers to.
 ///
 /// The user menu opens on names from replays, results and leaderboards, most
@@ -92,6 +109,8 @@ pub const MAX_LOGIN_LOOKUPS: usize = 200;
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SocialState {
+    #[serde(default)]
+    pub contacts: ContactsState,
     /// Logins of players on our friends list, sorted.
     pub friends: Vec<String>,
     /// Logins of players on our foes list, sorted.
@@ -143,6 +162,19 @@ impl SocialState {
     rename_all_fields = "camelCase"
 )]
 pub enum SocialEvent {
+    ContactsUpdated {
+        contacts: Vec<Contact>,
+    },
+    ContactSet {
+        contact: Contact,
+        member: bool,
+    },
+    ContactsOpened {
+        open: bool,
+    },
+    ContactsRefreshing {
+        refreshing: bool,
+    },
     /// A full replacement of both relation lists (the lobby sends them together).
     RelationsUpdated {
         friends: Vec<String>,
@@ -159,18 +191,27 @@ pub enum SocialEvent {
     },
     /// Profiles newly seen or changed. Merged into the existing set by login,
     /// not replacing it.
-    PlayersSeen { players: Vec<PlayerProfile> },
+    PlayersSeen {
+        players: Vec<PlayerProfile>,
+    },
     /// Profiles authoritatively marked offline by `player_info`. Relations are
     /// retained: going offline does not stop somebody being a friend or foe.
-    PlayersRemoved { logins: Vec<String> },
+    PlayersRemoved {
+        logins: Vec<String>,
+    },
     /// The lobby connection went away; relations are no longer authoritative.
     Cleared,
     /// The API answered an account lookup by login: the id, or `None` for a
     /// login with no account behind it.
-    LoginLookedUp { login: String, id: Option<i32> },
+    LoginLookedUp {
+        login: String,
+        id: Option<i32>,
+    },
     /// The API listed FAF's moderators and administrators (see
     /// [`SocialState::staff`]). Replaces the list.
-    StaffLoaded { logins: Vec<String> },
+    StaffLoaded {
+        logins: Vec<String>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -181,6 +222,10 @@ pub enum SocialEvent {
     rename_all_fields = "camelCase"
 )]
 pub enum SocialCommand {
+    SetContactsOpen {
+        open: bool,
+    },
+    ResolveContacts,
     /// Add or remove a friend/foe.
     ///
     /// Carries `login` alongside `player_id` because the wire command addresses
@@ -196,11 +241,66 @@ pub enum SocialCommand {
     /// Find the account behind a login nobody online answers to, so the user
     /// menu can offer an offline player the same account actions as an
     /// online one.
-    LookUpLogin { login: String },
+    LookUpLogin {
+        login: String,
+    },
 }
 
 pub fn reduce(state: &mut SocialState, event: &SocialEvent) {
     match event {
+        SocialEvent::ContactsOpened { open } => state.contacts.open = *open,
+        SocialEvent::ContactsRefreshing { refreshing } => state.contacts.refreshing = *refreshing,
+        SocialEvent::ContactsUpdated { contacts } => state.contacts.entries = contacts.clone(),
+        SocialEvent::ContactSet { contact, member } => {
+            let previous: Vec<_> = state
+                .contacts
+                .entries
+                .iter()
+                .filter(|known| {
+                    known.player_id == contact.player_id
+                        && (*member || known.relation == contact.relation)
+                })
+                .cloned()
+                .collect();
+            // A lookup may have resolved the name since the action was sent.
+            // Remove the prior identity by id, even if the action had no name.
+            for known in &previous {
+                if let Some(login) = &known.login {
+                    reduce(
+                        state,
+                        &SocialEvent::RelationSet {
+                            login: login.clone(),
+                            relation: known.relation,
+                            member: false,
+                        },
+                    );
+                }
+            }
+            let login = contact
+                .login
+                .clone()
+                .or_else(|| previous.iter().find_map(|known| known.login.clone()));
+            if let Some(login) = &login {
+                reduce(
+                    state,
+                    &SocialEvent::RelationSet {
+                        login: login.clone(),
+                        relation: contact.relation,
+                        member: *member,
+                    },
+                );
+            }
+            state.contacts.entries.retain(|known| {
+                known.player_id != contact.player_id
+                    || (!*member && known.relation != contact.relation)
+            });
+            if *member {
+                state.contacts.entries.push(Contact {
+                    login,
+                    ..contact.clone()
+                });
+            }
+        }
         SocialEvent::RelationsUpdated { friends, foes } => {
             state.friends = sorted(friends.clone());
             state.foes = sorted(foes.clone());
@@ -244,6 +344,10 @@ pub fn reduce(state: &mut SocialState, event: &SocialEvent) {
         // does not make it any less true.
         SocialEvent::Cleared => {
             *state = SocialState {
+                contacts: ContactsState {
+                    open: state.contacts.open,
+                    ..ContactsState::default()
+                },
                 staff: std::mem::take(&mut state.staff),
                 ..SocialState::default()
             }
@@ -275,6 +379,68 @@ fn sorted(mut values: Vec<String>) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn contacts_keep_offline_ids_and_move_or_remove_without_a_profile() {
+        let mut state = SocialState::default();
+        reduce(&mut state, &SocialEvent::ContactsOpened { open: true });
+        let friend = Contact {
+            player_id: 7,
+            login: Some("Offline".into()),
+            relation: Relation::Friend,
+        };
+        reduce(
+            &mut state,
+            &SocialEvent::ContactSet {
+                contact: friend.clone(),
+                member: true,
+            },
+        );
+        let unknown = Contact {
+            player_id: 99,
+            login: None,
+            relation: Relation::Foe,
+        };
+        reduce(
+            &mut state,
+            &SocialEvent::ContactSet {
+                contact: unknown.clone(),
+                member: true,
+            },
+        );
+        assert!(state.players.is_empty());
+        assert_eq!(state.friends, ["Offline"]);
+        assert_eq!(state.contacts.entries.len(), 2);
+        reduce(
+            &mut state,
+            &SocialEvent::ContactSet {
+                contact: Contact {
+                    relation: Relation::Foe,
+                    ..friend
+                },
+                member: true,
+            },
+        );
+        assert!(state.friends.is_empty());
+        assert_eq!(state.foes, ["Offline"]);
+        assert_eq!(state.contacts.entries.len(), 2);
+        reduce(
+            &mut state,
+            &SocialEvent::ContactSet {
+                contact: unknown,
+                member: false,
+            },
+        );
+        assert_eq!(state.contacts.entries.len(), 1);
+        reduce(
+            &mut state,
+            &SocialEvent::ContactsRefreshing { refreshing: true },
+        );
+        reduce(&mut state, &SocialEvent::Cleared);
+        assert!(state.contacts.open);
+        assert!(!state.contacts.refreshing);
+        assert!(state.contacts.entries.is_empty());
+    }
 
     fn names(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| s.to_string()).collect()
@@ -422,6 +588,7 @@ mod tests {
     #[test]
     fn removing_an_offline_profile_keeps_its_friend_relation() {
         let mut s = SocialState {
+            contacts: ContactsState::default(),
             friends: names(&["Aurora"]),
             foes: Vec::new(),
             players: vec![profile(1, "Aurora"), profile(2, "Zed")],
@@ -443,6 +610,7 @@ mod tests {
     #[test]
     fn cleared_resets_everything_the_lobby_told_us() {
         let mut s = SocialState {
+            contacts: ContactsState::default(),
             friends: names(&["Aurora"]),
             foes: names(&["Griefer"]),
             players: vec![profile(1, "Aurora")],

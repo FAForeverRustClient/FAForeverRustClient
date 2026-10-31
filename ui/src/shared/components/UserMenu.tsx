@@ -161,7 +161,7 @@ export function UserMenu({
   // The most common actions come first. Double-clicking the source name
   // already opens a private message, so profile lookup leads the menu.
   const { viewProfile } = actions;
-  if (viewProfile) item(t("chat.menu.viewProfile"), () => viewProfile(profile?.id ?? null, nickname));
+  if (viewProfile) item(t("chat.menu.viewProfile"), () => viewProfile(account?.id ?? profile?.id ?? null, nickname));
   if (!isSelf) item(t("chat.menu.privateMessage"), () => actions.privateMessage(nickname));
   item(t("chat.menu.copyUsername"), () => actions.copyUsername(nickname));
 

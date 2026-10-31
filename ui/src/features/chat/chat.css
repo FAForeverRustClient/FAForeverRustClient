@@ -244,6 +244,7 @@ html.is-resizing-chat-roster * {
 /* Conversation context and controls sit below the switcher. The channel name
    is not repeated here: the strip above is showing it. */
 .chat-head {
+  flex-wrap: wrap;
   flex: none;
   display: flex;
   min-height: 30px;
@@ -256,6 +257,15 @@ html.is-resizing-chat-roster * {
 
 .chat-head .spacer {
   flex: 1;
+}
+
+.chat-head-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 100%;
+  gap: var(--space-2);
 }
 
 .chat-topic {

@@ -149,6 +149,13 @@ fn default_uid_path() -> String {
 /// See where the outgoing channel is made, in [`LobbyClient::connect`].
 const OUTGOING_FRAME_CAPACITY: usize = 1024;
 
+enum Outgoing {
+    Frame(Value),
+    ContactRelation(faf_domain::state::Contact, bool),
+    /// Local lookup results, never serialized to the lobby protocol.
+    ContactNames(Vec<(i64, String)>),
+}
+
 pub struct LobbyClient {
     config: LobbyConfig,
     tokens: TokenStore,
@@ -156,7 +163,7 @@ pub struct LobbyClient {
     cancel: Arc<Mutex<Option<CancellationToken>>>,
     /// Outgoing frames for the live connection. `join` pushes a `game_join` here;
     /// `run_session` drains it and writes to the socket. `None` when not connected.
-    outgoing: Arc<Mutex<Option<mpsc::Sender<Value>>>>,
+    outgoing: Arc<Mutex<Option<mpsc::Sender<Outgoing>>>>,
 }
 
 impl LobbyClient {
@@ -177,28 +184,56 @@ impl LobbyClient {
     /// Push a JSON frame onto the live connection's outgoing channel. Returns
     /// `false` if there is no active connection (so callers can log).
     fn send_frame(&self, frame: Value) -> bool {
+        self.send(Outgoing::Frame(frame))
+    }
+
+    fn send(&self, request: Outgoing) -> bool {
         let guard = self.outgoing.lock().unwrap();
         let Some(tx) = guard.as_ref() else {
             return false;
         };
-        match tx.try_send(frame) {
+        match tx.try_send(request) {
             Ok(()) => true,
-            Err(mpsc::error::TrySendError::Full(frame)) => {
+            Err(mpsc::error::TrySendError::Full(request)) => {
                 // Every caller logs a `false` as "disconnected", which is not
                 // what happened here, so this says what did.
                 tracing::warn!(
-                    command = command_of(&frame),
+                    command = match &request {
+                        Outgoing::Frame(frame) => command_of(frame),
+                        Outgoing::ContactRelation(_, _) => "social",
+                        Outgoing::ContactNames(_) => "contact_names",
+                    },
                     "lobby frame dropped: the outgoing queue is full"
                 );
                 false
             }
-            Err(mpsc::error::TrySendError::Closed(_)) => false,
+            Err(_) => false,
         }
     }
 }
 
 #[async_trait]
 impl LobbyPort for LobbyClient {
+    async fn resolve_contacts(&self, ids: &[i32]) -> Result<(), String> {
+        let outgoing = self
+            .outgoing
+            .lock()
+            .unwrap()
+            .clone()
+            .ok_or("not connected")?;
+        let cancel = self.cancel.lock().unwrap().clone().ok_or("not connected")?;
+        let token = self.tokens.get();
+        let ids: Vec<i64> = ids.iter().map(|id| i64::from(*id)).collect();
+        let names = tokio::select! {
+            () = cancel.cancelled() => return Err("not connected".into()),
+            result = fetch_player_logins(&self.http, &self.config.api_base, token.as_deref(), &ids) => result?,
+        };
+        tokio::select! {
+            () = cancel.cancelled() => Err("not connected".into()),
+            result = outgoing.send(Outgoing::ContactNames(names)) => result.map_err(|_| "not connected".into()),
+        }
+    }
+
     async fn connect(&self) -> mpsc::Receiver<LobbyUpdate> {
         let token = CancellationToken::new();
         if let Some(prev) = self.cancel.lock().unwrap().replace(token.clone()) {
@@ -215,7 +250,7 @@ impl LobbyPort for LobbyClient {
         // burst of candidates away from losing `GameState Ended`, the report
         // the server ends a player's game on. Java's lobby writer queues
         // without a bound.
-        let (out_tx, out_rx) = mpsc::channel::<Value>(OUTGOING_FRAME_CAPACITY);
+        let (out_tx, out_rx) = mpsc::channel::<Outgoing>(OUTGOING_FRAME_CAPACITY);
         *self.outgoing.lock().unwrap() = Some(out_tx);
 
         let config = self.config.clone();
@@ -356,6 +391,10 @@ impl LobbyPort for LobbyClient {
         let _ = self.send_frame(relation_frame(player_id, relation, member));
     }
 
+    fn set_contact_relation(&self, contact: faf_domain::state::Contact, member: bool) {
+        let _ = self.send(Outgoing::ContactRelation(contact, member));
+    }
+
     fn set_player_vetoes(&self, vetoes: Vec<PlayerVeto>) {
         let vetoes = vetoes
             .into_iter()
@@ -429,7 +468,7 @@ async fn run_session(
     http: reqwest::Client,
     access_token: Option<String>,
     tx: mpsc::Sender<LobbyUpdate>,
-    outgoing: &mut mpsc::Receiver<Value>,
+    outgoing: &mut mpsc::Receiver<Outgoing>,
     cancel: CancellationToken,
 ) -> SessionEnd {
     // Borrowed rather than owned: the queue of client frames outlives any one
@@ -592,6 +631,15 @@ async fn run_session(
                     let _ = write.send(Message::Close(None)).await;
                     ending = SessionEnd::Cancelled;
                     break;
+                };
+                let frame = match frame {
+                    Outgoing::Frame(frame) => frame,
+                    Outgoing::ContactRelation(contact, member) => directory.contact_relation_frame(contact, member),
+                    Outgoing::ContactNames(names) => {
+                        for (id, login) in names { directory.record_login(id, login); }
+                        if tx.send(directory.contact_update()).await.is_err() { break 'connection; }
+                        continue;
+                    }
                 };
                 // A relation the user just set is a change to state this
                 // session re-broadcasts, and the server tells nobody about it.
@@ -825,7 +873,7 @@ async fn run_session(
                             if relations != relations_before {
                                 let (friends, foes) = relations;
                                 if tx
-                                    .send(LobbyUpdate::Relations { friends, foes })
+                                    .send(LobbyUpdate::Relations { friends, foes, contacts: directory.contacts() })
                                     .await
                                     .is_err()
                                 {
@@ -1089,7 +1137,7 @@ async fn run_session(
                         }
                         let (friends, foes) = directory.relations();
                         if tx
-                            .send(LobbyUpdate::Relations { friends, foes })
+                            .send(LobbyUpdate::Relations { friends, foes, contacts: directory.contacts() })
                             .await
                             .is_err()
                         {
@@ -1671,6 +1719,47 @@ struct PlayerDirectory {
 const DEPARTED_LIMIT: usize = 4096;
 
 impl PlayerDirectory {
+    fn contact_relation_frame(
+        &mut self,
+        contact: faf_domain::state::Contact,
+        member: bool,
+    ) -> Value {
+        if let Some(login) = contact.login.filter(|login| !login.is_empty()) {
+            // UI actions may outlive a rename; only seed an unknown identity.
+            self.logins
+                .entry(i64::from(contact.player_id))
+                .or_insert(login);
+        }
+        relation_frame(contact.player_id, contact.relation, member)
+    }
+    fn contacts(&self) -> Vec<faf_domain::state::Contact> {
+        [
+            (Relation::Friend, &self.friend_ids),
+            (Relation::Foe, &self.foe_ids),
+        ]
+        .into_iter()
+        .flat_map(|(relation, ids)| {
+            ids.iter().filter_map(move |id| {
+                let player_id = i32::try_from(*id).ok().filter(|id| *id > 0)?;
+                Some(faf_domain::state::Contact {
+                    player_id,
+                    login: self.logins.get(id).cloned(),
+                    relation,
+                })
+            })
+        })
+        .collect()
+    }
+
+    fn contact_update(&self) -> LobbyUpdate {
+        let (friends, foes) = self.relations();
+        LobbyUpdate::Relations {
+            friends,
+            foes,
+            contacts: self.contacts(),
+        }
+    }
+
     fn login(&self, id: i32) -> Option<String> {
         self.logins.get(&(id as i64)).cloned()
     }
@@ -1864,6 +1953,12 @@ impl PlayerDirectory {
     }
 
     fn record_login(&mut self, id: i64, login: String) {
+        // A lookup started before a rename must not replace a live profile.
+        let login = self
+            .profiles
+            .get(&id)
+            .map(|profile| profile.login.clone())
+            .unwrap_or(login);
         self.logins.insert(id, login);
     }
 
@@ -2527,6 +2622,57 @@ fn host_frame(config: HostGameConfig) -> Value {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn contacts_preserve_unresolved_ids_and_never_turn_lookups_into_online_profiles() {
+        let mut directory = super::PlayerDirectory::default();
+        directory.set_relations(&serde_json::json!({ "friends": [7], "foes": [99] }));
+        let before = directory.contacts();
+        assert_eq!(before.len(), 2);
+        assert!(before.iter().all(|contact| contact.login.is_none()));
+        directory.record_login(7, "Offline".into());
+        let after = directory.contacts();
+        assert_eq!(after[0].login.as_deref(), Some("Offline"));
+        assert!(directory.profiles.is_empty());
+        directory.note_local_relation(&super::relation_frame(
+            99,
+            faf_domain::state::Relation::Foe,
+            false,
+        ));
+        // A lookup completing after removal must not put the contact back.
+        directory.record_login(99, "Removed".into());
+        assert_eq!(directory.contacts().len(), 1);
+        let frame = directory.contact_relation_frame(
+            faf_domain::state::Contact {
+                player_id: 42,
+                login: Some("NewOffline".into()),
+                relation: faf_domain::state::Relation::Friend,
+            },
+            true,
+        );
+        directory.note_local_relation(&frame);
+        assert_eq!(
+            frame,
+            serde_json::json!({ "command": "social_add", "friend": 42 })
+        );
+        assert!(directory
+            .contacts()
+            .iter()
+            .any(|contact| contact.login.as_deref() == Some("NewOffline")));
+        assert!(directory.profiles.is_empty());
+        directory.record_login(42, "Renamed".into());
+        directory.contact_relation_frame(
+            faf_domain::state::Contact {
+                player_id: 42,
+                login: Some("Stale".into()),
+                relation: faf_domain::state::Relation::Friend,
+            },
+            true,
+        );
+        assert_eq!(directory.login(42).as_deref(), Some("Renamed"));
+        directory.observe(&serde_json::json!({ "id": 42, "login": "LiveName" }));
+        directory.record_login(42, "StaleLookup".into());
+        assert_eq!(directory.login(42).as_deref(), Some("LiveName"));
+    }
     use super::*;
     use std::time::Duration;
 

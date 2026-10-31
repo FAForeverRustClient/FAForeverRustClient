@@ -170,8 +170,8 @@ pub use settings::{
     WeekStart, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_RAIL_BELOW,
 };
 pub use social::{
-    LoginLookup, PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent,
-    SocialState, MAX_LOGIN_LOOKUPS,
+    Contact, ContactsState, LoginLookup, PlayerLobbyRating, PlayerProfile, Relation, SocialCommand,
+    SocialEvent, SocialState, MAX_LOGIN_LOOKUPS,
 };
 pub use streams::{
     LiveStream, StreamPlatform, StreamsCommand, StreamsEvent, StreamsState, StreamsStatus,
