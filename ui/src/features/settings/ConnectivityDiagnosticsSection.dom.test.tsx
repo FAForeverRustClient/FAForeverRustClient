@@ -91,7 +91,7 @@ describe("ConnectivityDiagnosticsSection", () => {
 
     expect(within(lineOf("Selected adapter")).getByText("Joining: Dynamic (follows the host). Hosting: Java.")).toBeTruthy();
     expect(within(lineOf("FAF relay list")).getByRole("img", { name: "Warning" })).toBeTruthy();
-    expect(screen.getByText("Works, with warnings below.")).toBeTruthy();
+    expect(screen.getByText("Check completed with warnings.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Run again" })).toHaveProperty("disabled", false);
   });
 

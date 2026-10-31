@@ -1,7 +1,6 @@
 // The replay detail panel's map-facing parts: the hero across the top, and
 // the enlarged map preview it opens.
 
-import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
 import type { VaultReplay } from "../../ipc/bindings";
@@ -9,6 +8,7 @@ import { ipc } from "../../ipc/client";
 import { useTranslation } from "../../i18n/useTranslation";
 import { MapPreviewFrame } from "../../shared/components/MapPreviewZoom";
 import { onlineReplayLink } from "../../shared/replayLinks";
+import { useClipboardCopy } from "../../shared/hooks/useClipboardCopy";
 import { ReplayMapThumb } from "./ReplayCard";
 import type { ReplayMapPreparation } from "./useReplayMapPreparation";
 
@@ -37,21 +37,8 @@ export function ReplayDetailHero({
 }: HeroProps) {
   const { t } = useTranslation();
   const { effectiveMap, seed, thumbGenerateAction, isGeneratingThisMap, downloadMap } = map;
-  const [copied, setCopied] = useState(false);
-  const [copiedId, setCopiedId] = useState(false);
-
-  const copyLink = () =>
-    ipc.run(
-      navigator.clipboard
-        .writeText(onlineReplayLink(replay.uid))
-        .then(() => setCopied(true)),
-    );
-  const copyReplayId = () =>
-    ipc.run(
-      navigator.clipboard
-        .writeText(String(replay.uid))
-        .then(() => setCopiedId(true)),
-    );
+  const [copied, copyLink] = useClipboardCopy(onlineReplayLink(replay.uid));
+  const [copiedId, copyReplayId] = useClipboardCopy(String(replay.uid));
 
   return (
     <header className="replay-detail-hero">
@@ -121,7 +108,7 @@ export function ReplayDetailHero({
                 className="replay-card-icon-btn"
                 aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
                 title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-                onClick={copyReplayId}
+                onClick={() => ipc.run(copyReplayId())}
               >
                 <Icon name={copiedId ? "check" : "copy"} size={13} />
               </button>
@@ -130,7 +117,7 @@ export function ReplayDetailHero({
                 className="replay-card-icon-btn"
                 aria-label={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
                 title={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
-                onClick={copyLink}
+                onClick={() => ipc.run(copyLink())}
               >
                 <Icon name={copied ? "check" : "external"} size={13} />
               </button>

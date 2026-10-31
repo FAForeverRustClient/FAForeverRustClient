@@ -248,7 +248,7 @@ export function UnitHistoryChart({ releases, series, format, floor, baseline, on
         >
           <strong>{hovered.id}</strong>
           {hovered.date && (
-            <span className="muted">{formatDate(hovered.date, "", { day: "numeric", month: "short", year: "numeric" })}</span>
+            <span className="muted">{formatDate(hovered.date, "", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}</span>
           )}
           {series.map((one) => {
             const value = one.values[hover] ?? null;

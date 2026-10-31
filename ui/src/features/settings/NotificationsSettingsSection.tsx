@@ -435,7 +435,8 @@ export function NotificationsSettingsSection() {
         <SoundChoice value={preferences.sounds.newCustomGame} disabled={mute || !preferences.newCustomGames} what={t("settings.notifications.newGames")} onChange={(newCustomGame) => setSound({ newCustomGame })} custom={choosableSounds} onAdd={addSound} />
         <SettingsSwitch checked={preferences.newCustomGames} disabled={!preferences.enabled} onChange={(newCustomGames) => update({ newCustomGames })} label={t("settings.notifications.newGames")} />
       </SettingRow>
-      <SettingRow label={t("settings.notifications.friendsGamesOnly")}>
+      <SettingRow label={t("settings.notifications.friendsGamesOnly")}
+        hint={!preferences.newCustomGames ? t("settings.notifications.friendsGamesOnlyHint") : undefined}>
         <SettingsSwitch checked={preferences.newCustomGamesFriendsOnly} disabled={!preferences.enabled || !preferences.newCustomGames} onChange={(newCustomGamesFriendsOnly) => update({ newCustomGamesFriendsOnly })} label={t("settings.notifications.friendsGamesOnly")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.gameFull")}>

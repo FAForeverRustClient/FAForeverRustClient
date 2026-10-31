@@ -1,10 +1,24 @@
 /* The connectivity check's results and the live relay table, under Settings >
-   Connectivity. Drawn as blocks between the setting rows, so they keep the
-   page's rhythm: the same padding and rule as `.setting-block`, and the
-   status colours only on the marks that carry an outcome. */
+   Connectivity and in the status bar's connection check. Drawn as blocks
+   between the setting rows, so they keep the page's rhythm: the same padding
+   and rule as `.setting-block`, and the status colours only on the marks that
+   carry an outcome. */
 
 .connectivity-check {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
+  /* Narrow (the dialog's check column beside a game's live connections),
+     a line stacks its sentence under its title; see the query below. */
+  container-type: inline-size;
+}
+
+/* The verdict and the lines it sums up, one box. */
+.connectivity-check-box {
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
 .connectivity-check-summary {
@@ -13,7 +27,10 @@
   align-items: center;
   gap: var(--space-2);
   margin: 0;
+  padding: 10px var(--space-4);
   color: var(--color-text);
+  background: var(--color-surface-raised);
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -25,35 +42,80 @@
 }
 
 .connectivity-check-lines {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
+  border-top: 1px solid var(--color-border);
 }
 
 .connectivity-check-lines:empty {
   display: none;
 }
 
+/* Mark, title, sentence and any control on one line; whatever a control
+   unfolds goes under it, from the title's edge. */
 .connectivity-check-line {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
-  gap: var(--space-2);
-  padding: 10px var(--space-3);
-  background: var(--color-surface);
+  grid-template-columns: 20px minmax(0, 148px) minmax(0, 1fr) auto;
+  grid-template-areas:
+    "mark title detail actions"
+    ".    extra extra  extra";
+  align-items: start;
+  column-gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .connectivity-check-line + .connectivity-check-line {
   border-top: 1px solid var(--color-border);
 }
 
+/* An address is longer than the title column: it takes the line, and its
+   sentence goes under it. */
+.connectivity-check-line[data-address] {
+  grid-template-areas:
+    "mark title  title  actions"
+    ".    detail detail detail"
+    ".    extra  extra  extra";
+}
+
+/* The log's two controls would squeeze its sentence onto three lines in the
+   dialog's check column beside a game; there they go under the sentence. */
+@container (max-width: 720px) {
+  .connectivity-check-line[data-log] {
+    grid-template-areas:
+      "mark title detail  detail"
+      ".    .     actions actions"
+      ".    extra extra   extra";
+  }
+
+  .connectivity-check-line[data-log] > .connectivity-check-actions {
+    justify-content: flex-start;
+    margin: var(--space-1) 0 -2px;
+  }
+}
+
+@container (max-width: 520px) {
+  .connectivity-check-line,
+  .connectivity-check-line[data-address],
+  .connectivity-check-line[data-log] {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "mark title  actions"
+      ".    detail detail"
+      ".    extra  extra";
+  }
+
+  .connectivity-check-line[data-log] > .connectivity-check-actions {
+    justify-content: flex-end;
+    margin: -6px 0;
+  }
+}
+
 .connectivity-check-mark {
   display: inline-flex;
+  grid-area: mark;
   align-items: center;
   justify-content: center;
   width: 20px;
@@ -95,15 +157,9 @@
   animation: none;
 }
 
-.connectivity-check-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  line-height: 20px;
-}
-
 .connectivity-check-title {
+  grid-area: title;
+  min-width: 0;
   color: var(--color-text);
   font-weight: 600;
   overflow-wrap: anywhere;
@@ -116,43 +172,51 @@
 }
 
 .connectivity-check-detail {
+  grid-area: detail;
+  min-width: 0;
   color: var(--color-muted);
-  font-size: 13px;
   overflow-wrap: anywhere;
 }
 
-.connectivity-check-log {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-}
-
+/* Controls are taller than the 20px line; the negative margin centres them on
+   it without making a line with a control taller than one without. */
 .connectivity-check-actions {
   display: flex;
-  flex-wrap: wrap;
+  grid-area: actions;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-2);
+  margin: -6px 0;
 }
 
 .connectivity-check-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-height: 32px;
-  margin-right: auto;
-  padding: 0 var(--space-2) 0 0;
-  color: var(--color-text);
+  padding: 0 var(--space-2);
+  color: var(--color-muted);
   background: transparent;
   border: 0;
   border-radius: var(--radius-sm);
+  font: inherit;
   font-size: 12px;
-  font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.connectivity-check-toggle:hover,
+.connectivity-check-toggle[aria-expanded="true"] {
+  color: var(--color-text);
 }
 
 .connectivity-check-toggle:hover {
-  color: var(--color-accent);
+  background: var(--color-surface-hover);
+}
+
+.connectivity-check-toggle:active {
+  background: var(--color-border);
 }
 
 .connectivity-check-toggle:focus-visible {
@@ -161,16 +225,61 @@
 }
 
 .connectivity-check-toggle svg {
-  color: var(--color-muted);
   transition: transform 150ms ease;
 }
 
 .connectivity-check-toggle svg.is-open {
-  transform: rotate(90deg);
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .connectivity-check-toggle svg {
+    transition: none;
+  }
+}
+
+.btn-ghost.connectivity-check-action {
+  padding-block: 0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.connectivity-check-extra {
+  grid-area: extra;
+  min-width: 0;
+  margin-top: var(--space-2);
+}
+
+.connectivity-check-path {
+  display: block;
+  padding: var(--space-2);
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.connectivity-check-log,
+.connectivity-check-log-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.connectivity-check-log-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
 }
 
 .connectivity-check-note {
-  margin: 0;
+  margin: 0 auto 0 0;
   color: var(--color-muted);
   font-size: 12px;
 }
@@ -182,7 +291,7 @@
 }
 
 .connectivity-check-log-text {
-  max-height: 280px;
+  max-height: 240px;
   margin: 0;
   padding: var(--space-3);
   overflow: auto;

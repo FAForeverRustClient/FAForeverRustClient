@@ -8,6 +8,9 @@
 
 use tauri_plugin_opener::OpenerExt;
 
+/// Point the embedded unit database's support control to its FAF forum post.
+pub(crate) const UNIT_DATABASE_EMBED_SCRIPT: &str = include_str!("unit_database_embed.js");
+
 // The News Hub creates most article cards after page load. WebView popup hooks
 // do not receive every target="_blank" click from a sandboxed iframe, so mirror
 // the Java client's approach: capture every current and future News Hub anchor

@@ -6,6 +6,7 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type { GeneratorStatus, VaultReplay } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
+import { native } from "../../ipc/native";
 import { formatDecimal } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { formatDate, formatTime } from "../../shared/format/dates";
@@ -389,6 +390,16 @@ export function ReplayDetailToolbar({
         >
           <Icon name="edit" size={16} />
           <span>{t("replays.notes.open")}</span>
+        </Button>
+      )}
+      {localPath && (
+        <Button
+          className="replay-detail-tool"
+          title={t("replays.detail.showInExplorer")}
+          onClick={() => ipc.run(native.revealReplay(localPath))}
+        >
+          <Icon name="folder" size={16} />
+          <span>{t("replays.detail.showInExplorer")}</span>
         </Button>
       )}
       {/* What the replay file itself holds: chat, options, mods and the

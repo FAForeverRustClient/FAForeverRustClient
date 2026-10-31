@@ -90,7 +90,9 @@ export function noteSections(
       unitName = compact(block.payload.name);
       sections.push({ id: anchorFor(index), text: block.payload.name, depth: contentsDepth(Math.max(2, groupDepth + 1)), iconUrl: block.payload.units[0]?.iconUrl });
     }
-    if (block.type === "paragraph" && illustration && caption) {
+    // A caption with its own picture is an entry; so is one that starts a
+    // section of its own, pictured or not (3613's "GAME" and "SERVER").
+    if (block.type === "paragraph" && caption && (illustration || caption.headingLevel !== undefined)) {
       if (caption.headingLevel !== undefined) {
         unitName = "";
         groupDepth = Math.max(1, caption.headingLevel + headingOffset - 1);
@@ -275,6 +277,12 @@ export const NoteBlocks = memo(function NoteBlocks({ blocks, skipFirst = false, 
  * contents column. Only the top level: units are many, and a wrapped row of
  * thirty names is not a way to find one.
  */
+/** A contents column is worth its width from two entries: with one, it only
+ * repeats the note's single heading beside it. */
+export function showsContents(sections: readonly Section[]): boolean {
+  return sections.length > 1;
+}
+
 export function NoteJumpRow({ sections, onJump }: { sections: Section[]; onJump: (id: string) => void }) {
   const { t } = useTranslation();
   const topSections = sections.filter((section) => section.depth === 1);

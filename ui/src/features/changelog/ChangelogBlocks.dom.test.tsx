@@ -5,7 +5,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 import type { ChangelogBlock } from "../../ipc/bindings";
-import { anchorFor, noteSections, NoteBlocks, NoteContentsColumn } from "./noteReader";
+import { anchorFor, noteSections, NoteBlocks, NoteContentsColumn, showsContents } from "./noteReader";
 import { historicalChangelogIllustrations } from "../../shared/historicalChangelogIcons";
 import { failOnConsoleError } from "../../testing/consoleGuard";
 import { clearSentCommands, sentCommands } from "../../testing/mounted";
@@ -440,6 +440,31 @@ it("renders image-only historical headings and gives the contents entry the matc
   fireEvent.error(jump.querySelector("img")!);
   expect(jump.querySelector("img")?.classList.contains("is-missing")).toBe(true);
   expect(jump.textContent).toBe("Titan and Loyalist");
+});
+
+it("words a bundled note's attribution in the reader's language and drops an empty evidence link", () => {
+  const source = "https://web.archive.org/web/2015/http://wiki.faforever.com/index.php?title=3616";
+  const view = render(<ChangelogBlockView anchorId={anchorFor(0)} block={{ type: "provenance", payload: { sourceUrl: source, evidenceUrl: "" } }} />);
+  const footer = view.container.querySelector(".changelog-provenance")!;
+  expect(within(footer as HTMLElement).getByRole("button", { name: en["changelog.provenance.source"] })).toBeTruthy();
+  expect(within(footer as HTMLElement).queryByRole("button", { name: en["changelog.provenance.evidence"] })).toBeNull();
+  expect(footer.textContent).toContain(en["changelog.provenance.editorial"]);
+  view.rerender(<ChangelogBlockView anchorId={anchorFor(0)} block={{ type: "provenance", payload: { sourceUrl: source, evidenceUrl: "https://direct.faforever.com/2011/12/3609-patch-released/" } }} />);
+  expect(within(footer as HTMLElement).getByRole("button", { name: en["changelog.provenance.evidence"] })).toBeTruthy();
+});
+
+it("draws bold section labels as headings and lists them in the contents", () => {
+  const label = (text: string): ChangelogBlock => ({ type: "paragraph", payload: { spans: [{ type: "strong", payload: text }] } });
+  const list: ChangelogBlock = { type: "list", payload: { items: [{ spans: [{ type: "text", payload: "Fixed a desync." }], change: null, children: [] }] } };
+  const blocks = [label("GAME"), list, label("SERVER"), list];
+  const illustrations = historicalChangelogIllustrations("3613", blocks);
+  expect(noteSections(blocks, false, "", 0, illustrations).map(section => [section.text, section.depth])).toEqual([["GAME", 1], ["SERVER", 1]]);
+  render(<NoteBlocks blocks={blocks} illustrations={illustrations} />);
+  expect(screen.getByRole("heading", { level: 2, name: "GAME" })).toBeTruthy();
+  expect(screen.getByRole("heading", { level: 2, name: "SERVER" }).classList.contains("changelog-illustrated-caption")).toBe(false);
+  // One entry is not worth a contents column; two are.
+  expect(showsContents(noteSections(blocks.slice(0, 2), false, "", 0, illustrations))).toBe(false);
+  expect(showsContents(noteSections(blocks, false, "", 0, illustrations))).toBe(true);
 });
 
 it("keeps genuine blueprint tooltips and a readable heading when an image fails", () => {
