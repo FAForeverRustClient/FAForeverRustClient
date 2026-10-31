@@ -2,3 +2,5 @@
 - On/off switches respond across the whole control and no longer show an extra checkbox.
 - The friends-only notification setting explains when new-game notifications need to be enabled.
 - Replay copy buttons restore their original icons two seconds after copying.
+- Connection status menus have more vertical spacing between their controls.
+- Connection checks have clearer summaries, expandable installation paths and a compact layout when no game is running.

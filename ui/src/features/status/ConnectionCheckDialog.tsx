@@ -8,12 +8,12 @@
 // each one is reached. The Settings page keeps the same view.
 //
 // The check starts as the dialog opens: asking for it is why the dialog was
-// opened. Wide, with the check and the live connections side by side, because
-// a check line carries a sentence of explanation and a column the width of a
-// confirmation stacked every one of them into a tall, thin strip.
+// opened. The results use the width of the dialog unless a game is running,
+// when live connections get a second column beside the check.
 
 import { useEffect } from "react";
 import { Button } from "../../design-system/Button";
+import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
 import { useTranslation } from "../../i18n/useTranslation";
 import { useAppStore } from "../../store/store";
@@ -41,7 +41,7 @@ export function ConnectionCheckDialog({ onClose }: { onClose: () => void }) {
   }, []);
 
   return (
-    <Modal className="connection-check-modal" onClose={onClose} ariaLabel={t("status.connectionCheck.title")}>
+    <Modal className={`connection-check-modal${inGame ? " has-live" : ""}`} onClose={onClose} ariaLabel={t("status.connectionCheck.title")}>
       <header className="connection-check-head">
         <div>
           <h2>{t("status.connectionCheck.title")}</h2>
@@ -58,9 +58,13 @@ export function ConnectionCheckDialog({ onClose }: { onClose: () => void }) {
             ? <p className="muted">{t("settings.connectivityCheck.running")}</p>
             : <CheckResults check={check} />}
         </section>
-        <section className="connection-check-column" aria-labelledby="connection-check-live">
-          <h3 id="connection-check-live">{t("settings.liveRelay.label")}</h3>
-          {inGame ? <LiveRelay relay={relay} /> : <p className="muted">{t("settings.liveRelay.noGame")}</p>}
+        <section className={`connection-check-column${inGame ? "" : " connection-check-empty"}`} aria-labelledby="connection-check-live">
+          {!inGame && <Icon name="info" size={18} />}
+          <div>
+            <h3 id="connection-check-live">{t("settings.liveRelay.label")}</h3>
+            {!inGame && <p className="muted">{t("settings.liveRelay.noGame")}</p>}
+          </div>
+          {inGame && <LiveRelay relay={relay} />}
         </section>
       </div>
     </Modal>

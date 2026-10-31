@@ -2,19 +2,32 @@
    line's explanation reads as a sentence, with the check and the live
    connections side by side. */
 .modal-panel.connection-check-modal {
-  width: min(920px, calc(100vw - 48px));
-  max-width: 920px;
+  width: min(860px, calc(100vw - 48px));
+  max-width: 860px;
   padding: 24px;
+}
+
+.modal-panel.connection-check-modal.has-live {
+  width: min(1040px, calc(100vw - 48px));
+  max-width: 1040px;
 }
 
 .connection-check-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
   /* Clear of the dialog's close button in the corner. */
   padding-right: 24px;
   margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.connection-check-head > div {
+  flex: 1 1 360px;
+  min-width: 0;
 }
 
 .connection-check-head h2 {
@@ -26,6 +39,7 @@
 .connection-check-head p {
   margin: 0;
   font-size: 13px;
+  line-height: 1.6;
 }
 
 .connection-check-head .btn,
@@ -35,9 +49,13 @@
 
 .connection-check-columns {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
   align-items: start;
+}
+
+.has-live .connection-check-columns {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
 }
 
 .connection-check-column {
@@ -50,10 +68,26 @@
 .connection-check-column h3 {
   margin: 0;
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+}
+
+.connection-check-column.connection-check-empty {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.connection-check-empty > svg {
+  flex: none;
+  color: var(--color-muted);
+}
+
+.connection-check-empty p {
+  margin: var(--space-1) 0 0;
+  font-size: 13px;
 }
 
 /* The Settings page draws these as page blocks with a rule under each; in a
@@ -64,7 +98,7 @@
 }
 
 @media (max-width: 760px) {
-  .connection-check-columns {
+  .has-live .connection-check-columns {
     grid-template-columns: minmax(0, 1fr);
   }
 }

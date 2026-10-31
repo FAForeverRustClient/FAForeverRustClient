@@ -93,6 +93,12 @@ interface Phrased {
   detail: string;
   /** The title is an address, drawn in the monospace face. */
   address?: boolean;
+  /** The full installation path, available without crowding the result. */
+  path?: string;
+}
+
+function fileName(path: string): string {
+  return path.split(/[\\/]/).pop() || path;
 }
 
 // The reasons inside a finding stay as the probe reported them, unlike the
@@ -137,24 +143,28 @@ export function phraseFinding(finding: CheckFinding, t: Translate): Phrased {
       return {
         title: t("settings.connectivityCheck.javaRuntime.title"),
         detail: version
-          ? t("settings.connectivityCheck.javaRuntime.found", { version, path })
-          : t("settings.connectivityCheck.javaRuntime.unknownVersion", { path }),
+          ? t("settings.connectivityCheck.javaRuntime.found", { version, path: fileName(path) })
+          : t("settings.connectivityCheck.javaRuntime.unknownVersion", { path: fileName(path) }),
+        path,
       };
     }
     case "javaRuntimeTooOld":
       return {
         title: t("settings.connectivityCheck.javaRuntime.title"),
-        detail: t("settings.connectivityCheck.javaRuntime.tooOld", finding.payload),
+        detail: t("settings.connectivityCheck.javaRuntime.tooOld", { ...finding.payload, path: fileName(finding.payload.path) }),
+        path: finding.payload.path,
       };
     case "javaRuntimeMissing":
       return {
         title: t("settings.connectivityCheck.javaRuntime.title"),
-        detail: t("settings.connectivityCheck.javaRuntime.missing", finding.payload),
+        detail: t("settings.connectivityCheck.javaRuntime.missing", { ...finding.payload, path: fileName(finding.payload.path) }),
+        path: finding.payload.path,
       };
     case "javaAdapter":
       return {
         title: t("settings.connectivityCheck.javaAdapter.title"),
-        detail: t("settings.connectivityCheck.javaAdapter.found", finding.payload),
+        detail: t("settings.connectivityCheck.javaAdapter.found", { path: fileName(finding.payload.path) }),
+        path: finding.payload.path,
       };
     case "javaAdapterMissing":
       return {
@@ -164,7 +174,8 @@ export function phraseFinding(finding: CheckFinding, t: Translate): Phrased {
     case "pioneerAdapter":
       return {
         title: t("settings.connectivityCheck.pioneer.title"),
-        detail: t("settings.connectivityCheck.pioneer.found", finding.payload),
+        detail: t("settings.connectivityCheck.pioneer.found", { path: fileName(finding.payload.path) }),
+        path: finding.payload.path,
       };
     case "pioneerAdapterMissing":
       return {
@@ -352,6 +363,12 @@ function CheckLine({ step }: { step: CheckStep }) {
       <div className="connectivity-check-copy">
         <span className={`connectivity-check-title${phrased.address ? " is-address" : ""}`}>{phrased.title}</span>
         <span className="connectivity-check-detail">{phrased.detail}</span>
+        {phrased.path && phrased.path !== fileName(phrased.path) && (
+          <details className="connectivity-check-path">
+            <summary tabIndex={0}>{t("settings.connectivityCheck.showPath")}</summary>
+            <code>{phrased.path}</code>
+          </details>
+        )}
         {step.finding.type === "adapterLog" && (
           <AdapterLogBlock
             fileName={step.finding.payload.fileName}
