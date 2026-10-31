@@ -1,0 +1,1 @@
+- You can watch a replay while you are in a game lobby, and join a game while a replay is open.

@@ -300,7 +300,9 @@ impl GameProcess {
         // is the change here. The previous code killed whatever was running,
         // which is how starting a replay ended the game somebody was in the
         // middle of joining, and that is what was reported. A second install
-        // (Settings, Paths, replay install) makes both run side by side.
+        // (Settings, Paths, replay install) makes both run side by side, with
+        // the `game.prefs` flag [`allow_second_instance`] sets before every
+        // launch: without it FA refuses a second copy of itself on its own.
         if self.other_slot_holds(slot, &exe) {
             return Err(match slot {
                 Slot::Game => "a replay is already running from this install, and two copies of one install cannot run at once: close the replay window, or point Settings → Paths at a separate replay install".to_string(),
@@ -517,6 +519,7 @@ impl ProcessPort for GameProcess {
             .as_ref()
             .map(|recorder| recorder.savereplay_url(params.game_id, &params.player_login));
 
+        allow_second_instance(&path).await;
         let result = self.spawn(
             Slot::Game,
             &path,
@@ -550,6 +553,7 @@ impl ProcessPort for GameProcess {
         require_init_name(&featured_mod)?;
         let path = self.config.lock().unwrap().game_path.clone();
         let log_path = crate::infra::game_logs::next_path("offline", None)?;
+        allow_second_instance(&path).await;
         self.spawn(
             Slot::Game,
             &path,
@@ -564,6 +568,7 @@ impl ProcessPort for GameProcess {
     async fn launch_replay(&self, args: Vec<String>) -> Result<(), String> {
         self.end_previous(Slot::Replay).await;
         let path = self.config.lock().unwrap().replay_game_path.clone();
+        allow_second_instance(&path).await;
         self.spawn(Slot::Replay, &path, &args, "replay")
     }
 
@@ -664,6 +669,24 @@ impl ProcessPort for GameProcess {
 
     async fn stop_replay(&self) {
         self.end_previous(Slot::Replay).await;
+    }
+}
+
+/// Set the `game.prefs` flag that lets this launch start next to a Forged
+/// Alliance that is already running: a replay watched from a lobby, or a game
+/// joined while a replay is open. See
+/// [`crate::infra::mods::allow_second_game_instance`].
+///
+/// Only for an executable that exists, since nothing starts otherwise and the
+/// launch fails on that in [`GameProcess::spawn`]. Not a reason to refuse the
+/// launch either: without the flag the game still starts, just not beside
+/// another copy.
+async fn allow_second_instance(game_path: &str) {
+    if game_path.is_empty() || !Path::new(game_path).is_file() {
+        return;
+    }
+    if let Err(reason) = crate::infra::mods::allow_second_game_instance().await {
+        tracing::warn!(%reason, "could not let a second Forged Alliance start");
     }
 }
 
