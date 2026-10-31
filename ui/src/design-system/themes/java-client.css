@@ -1,0 +1,1622 @@
+/*
+ * The Java client's window frame and controls, for the `javaClient` theme.
+ *
+ * tokens.css carries its colours. This carries what a colour cannot say: the
+ * navigation is a bar across the top, a button is a filled 3 px block, a tab
+ * has a 4 px underline. Every value comes from the Java client's own
+ * stylesheets (Modena, Waitomo 0.3.0, colors.css, style.css), with JavaFX's
+ * derive() worked out by its own algorithm; plan-java-client-design.md has
+ * the analysis and the table.
+ *
+ * Everything is scoped to the theme, so no other theme moves, and no
+ * component knows the theme exists.
+ */
+
+html[data-theme='javaClient'] {
+  /* The Java values no shared token has a name for. */
+  --java-button: #3f3f3f; /* -fx-color, derive(#333, 10%) */
+  --java-button-hover: #3c3c3c; /* -fx-hover-base */
+  --java-selection-unfocused: #1a4482; /* derive(accent, -40%) */
+  --java-primary-hover: #1e4f98; /* derive(accent, -30%) */
+  --java-primary-pressed: #112d57; /* derive(accent, -60%) */
+  --java-focus-border: #5890e2; /* box border with -fx-color: accent */
+  --java-toggle-selected: #585858; /* derive(#333, 30%) */
+  --java-toggle-selected-hover: #646464;
+  --java-toggle-selected-border: #4985df; /* derive(accent, 20%) */
+  --java-danger: #8b0000; /* -fx-uninstall-color */
+  --java-danger-hover: #720000;
+  --java-card: #3b3b3b; /* -card-color, #424242CC over the window */
+  --java-card-hover: #474747;
+  --java-context-menu: #414547;
+  --java-context-menu-border: #868686;
+  --java-highlight: #ff9800; /* HIGHLIGHT_COLOR */
+  --java-gold: #e19e3b;
+  --java-gold-border: #9b7634;
+  /* #FFFFFF12, #FFFFFF11, #FFFFFF22 and #FFFFFF33: the white veils every bar
+     and tab is drawn with. */
+  --java-veil-07: rgba(255, 255, 255, 0.07);
+  --java-veil-067: rgba(255, 255, 255, 0.067);
+  --java-veil-13: rgba(255, 255, 255, 0.133);
+  --java-veil-20: rgba(255, 255, 255, 0.2);
+}
+
+/* ── Window frame: header bar, view, status bar ─────────────────────── */
+
+html[data-theme='javaClient'] .app-shell {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) 24px;
+  background: var(--color-bg);
+}
+
+/* The sidebar is the header bar (`.main-navigation-top`): one row,
+   #FFFFFF12 over the window. */
+html[data-theme='javaClient'] .app-shell .sidebar {
+  grid-column: 1;
+  grid-row: 1;
+  flex-direction: row;
+  align-items: stretch;
+  min-width: 0;
+  padding: 0;
+  border-right: 0;
+}
+
+html[data-theme='javaClient'] .app-shell .sidebar-resizer {
+  display: none;
+}
+
+/* No logo: the bar starts with the main menu button (`.main-menu-button`,
+   NavMainMenu.tsx), which holds the folders, the links and the settings.
+   The sidebar's bottom group, which holds the same, goes; the way back into
+   an account in an offline session stays in the bar. */
+html[data-theme='javaClient'] .app-shell .brand {
+  display: none;
+}
+
+html[data-theme='javaClient'] .app-shell .nav-main-menu {
+  position: relative;
+  display: flex;
+  flex: none;
+}
+
+html[data-theme='javaClient'] .app-shell .nav-main-menu-toggle {
+  padding: 9px 14px 12px;
+  border-bottom: 0;
+}
+
+/* Three bars, drawn as one: a 2 px bar with a shadow above and below it. */
+html[data-theme='javaClient'] .app-shell .nav-main-menu-bars {
+  display: inline-block;
+  width: 12px;
+  height: 2px;
+  background: currentColor;
+  box-shadow: 0 -4px 0 currentColor, 0 4px 0 currentColor;
+}
+
+html[data-theme='javaClient'] .app-shell .nav-bottom > :not(.tab-sign-in) {
+  display: none;
+}
+
+/* The navigation buttons in a row. The places to play give way first: what
+   does not fit goes into the dropdown after the last one that does
+   (`navigationDropdown`, NavOverflowMenu.tsx). */
+html[data-theme='javaClient'] .app-shell .tabbar {
+  flex-direction: row;
+  align-items: stretch;
+  min-width: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+html[data-theme='javaClient'] .app-shell .nav-group {
+  flex-direction: row;
+  gap: 0;
+}
+
+html[data-theme='javaClient'] .app-shell .nav-places {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* The dropdown's button is a navigation button with nothing but the arrow,
+   and its list a context menu hanging from the bar. */
+html[data-theme='javaClient'] .app-shell .nav-overflow-toggle {
+  padding-inline: 12px;
+}
+
+html[data-theme='javaClient'] .nav-overflow-menu {
+  background: var(--java-context-menu);
+  border: 1px solid var(--java-context-menu-border);
+}
+
+html[data-theme='javaClient'] .nav-overflow-item {
+  font-size: 14px;
+}
+
+html[data-theme='javaClient'] .nav-overflow-item:is(:hover, :focus-visible) {
+  color: #ffffff;
+  background: var(--color-accent);
+}
+
+html[data-theme='javaClient'] .app-shell .nav-spacer {
+  min-width: 24px;
+}
+
+html[data-theme='javaClient'] .app-shell .game-folders {
+  flex-direction: row;
+}
+
+/* `.main-navigation-button`: text only, 1.2em, padding 0.5em 1.5em, a 4 px
+   rule under it. Hover draws the rule in the unfocused selection blue, the
+   open one in the accent on a #FFFFFF33 fill. */
+html[data-theme='javaClient'] .app-shell .tab {
+  flex: none;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  /* Measured beside the client on the same screen: the words 14.4 px
+     (1.2em) with 21.6 px (1.5em) either side and their middle 9 px into a
+     31 px button, under the 9 px a window that is not maximised keeps over
+     the bar (the client always runs under the system title bar). The 9 px
+     are the button's own here, so a chosen button's fill reaches the top. */
+  height: 40px;
+  min-height: 0;
+  padding: 9px 21.6px 8px;
+  color: var(--color-text);
+  font-size: 14.4px;
+  line-height: 19px;
+  font-weight: 400;
+  white-space: nowrap;
+  background: transparent;
+  border-bottom: 4px solid transparent;
+  border-radius: 0;
+}
+
+html[data-theme='javaClient'] .app-shell .tab:hover {
+  color: var(--color-text);
+  background: var(--java-veil-07);
+  border-bottom-color: var(--java-selection-unfocused);
+}
+
+html[data-theme='javaClient'] .app-shell .tab.tab-active,
+html[data-theme='javaClient'] .app-shell .game-folders-toggle.is-open {
+  color: var(--color-text);
+  font-weight: 400;
+  background: var(--java-veil-20);
+  border-bottom-color: var(--color-accent);
+}
+
+/* `.main-navigation-button:highlighted`: filled with the accent. */
+html[data-theme='javaClient'] .app-shell .tab-sign-in,
+html[data-theme='javaClient'] .app-shell .tab-sign-in:hover {
+  color: #ffffff;
+  background: var(--color-accent);
+}
+
+html[data-theme='javaClient'] .app-shell .tab > svg {
+  display: none;
+}
+
+/* The labels stay, whatever width the sidebar was dragged to and however
+   narrow the window: the rail is a sidebar's answer to narrowness. */
+html[data-theme='javaClient'] .app-shell .tab > span:not(.tab-badge, .nav-overflow-arrow, .nav-main-menu-bars) {
+  display: inline;
+}
+
+html[data-theme='javaClient'] .app-shell .tab > .nav-overflow-arrow {
+  display: inline-block;
+}
+
+html[data-theme='javaClient'] .app-shell .tab > span.tab-badge {
+  position: static;
+  margin-left: 0;
+}
+
+/* Right of the navigation: the inbox, then the user button. */
+html[data-theme='javaClient'] .app-shell .sidebar-footer {
+  display: flex;
+  flex: none;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 6px;
+  min-height: 0;
+  padding: 0 10px 0 0;
+  border-top: 0;
+}
+
+html[data-theme='javaClient'] .app-shell .sidebar-footer > .update-notice {
+  order: 0;
+  align-self: center;
+}
+
+html[data-theme='javaClient'] .app-shell .sidebar-footer > .notification-center {
+  order: 1;
+  /* On the words' line, which sits 1.5 px above the bar's middle. */
+  padding-bottom: 3px;
+}
+
+html[data-theme='javaClient'] .app-shell .sidebar-footer > .sidebar-profile-button {
+  order: 2;
+}
+
+html[data-theme='javaClient'] .app-shell .update-notice-button {
+  width: auto;
+  min-height: 28px;
+}
+
+/* `.user-button`: the name and the menu arrow, no picture, on the same
+   line as the navigation's words. */
+html[data-theme='javaClient'] .app-shell .sidebar-profile-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 9px 12px 12px;
+  border: 0;
+  border-radius: 0;
+}
+
+html[data-theme='javaClient'] .app-shell .sidebar-profile-button:hover {
+  background: var(--java-button-hover);
+}
+
+html[data-theme='javaClient'] .app-shell .sidebar-profile-button .profile-avatar,
+html[data-theme='javaClient'] .app-shell .sidebar-profile-button .profile-status {
+  display: none;
+}
+
+html[data-theme='javaClient'] .app-shell .sidebar-profile-button .profile-copy {
+  display: flex;
+  font-size: 12px;
+  line-height: 19px;
+}
+
+html[data-theme='javaClient'] .app-shell .sidebar-profile-button .player-name {
+  font-weight: 400;
+}
+
+html[data-theme='javaClient'] .app-shell .sidebar-profile-button::after {
+  width: 0;
+  height: 0;
+  border-top: 5px solid currentColor;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+  content: "";
+}
+
+/* `.inbox-icon` in the light text colour, its badge an orange dot. */
+html[data-theme='javaClient'] .app-shell .notification-bell {
+  align-self: center;
+  color: var(--color-text);
+  border: 0;
+}
+
+html[data-theme='javaClient'] .app-shell .notification-bell:hover,
+html[data-theme='javaClient'] .app-shell .notification-bell[aria-expanded="true"] {
+  background: var(--java-veil-13);
+}
+
+html[data-theme='javaClient'] .notification-badge {
+  color: var(--color-bg);
+  background: var(--java-highlight);
+  border: 1px solid var(--color-bg);
+}
+
+/* The pop-ups that hung off the sidebar hang off the header bar. */
+html[data-theme='javaClient'] .notification-panel {
+  top: 46px;
+  right: 10px;
+  bottom: auto;
+  left: auto;
+}
+
+html[data-theme='javaClient'] .notification-toasts.is-topLeft,
+html[data-theme='javaClient'] .notification-toasts.is-bottomLeft {
+  left: 12px;
+}
+
+html[data-theme='javaClient'] .notification-toasts.is-topRight,
+html[data-theme='javaClient'] .notification-toasts.is-topLeft {
+  top: 52px;
+}
+
+html[data-theme='javaClient'] .notification-toasts.is-bottomRight,
+html[data-theme='javaClient'] .notification-toasts.is-bottomLeft {
+  bottom: 34px;
+}
+
+html[data-theme='javaClient'] .game-folders-popover {
+  top: 46px !important;
+}
+
+html[data-theme='javaClient'] .app-shell .workspace {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+/* `.status-bar`: #FFFFFF12, version left, the connections right, each a
+   10 px dot and its label between vertical separators. */
+html[data-theme='javaClient'] .client-status-bar {
+  grid-column: 1;
+  grid-row: 3;
+  padding: 0 10px;
+  color: var(--color-text);
+  background: var(--color-sidebar);
+  border: 0;
+}
+
+html[data-theme='javaClient'] .client-status-version {
+  color: var(--color-text);
+}
+
+html[data-theme='javaClient'] .client-status-connection {
+  min-width: 0;
+  padding: 0 10px;
+  color: var(--color-text);
+  border-left-color: var(--color-border-strong);
+}
+
+html[data-theme='javaClient'] .client-status-connection i {
+  width: 10px;
+  height: 10px;
+  background: var(--color-text);
+}
+
+html[data-theme='javaClient'] .client-status-connection[data-status="connected"] i {
+  background: var(--color-ok);
+}
+
+html[data-theme='javaClient'] .client-status-connection[data-status="disconnected"] i {
+  background: var(--color-error);
+}
+
+/* `.progress-bar`: a #333 track, the accent bar inset 2 px. */
+html[data-theme='javaClient'] .client-status-progress {
+  height: 12px;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+}
+
+html[data-theme='javaClient'] .client-status-progress > span {
+  border-radius: 1px;
+  background: var(--color-accent);
+}
+
+/* ── Type ───────────────────────────────────────────────────────────── */
+
+/* Headings are the system font at regular weight: `.h2` 24 px, `.header`
+   1.6em. */
+html[data-theme='javaClient'] .view-title {
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+html[data-theme='javaClient'] .feature-heading h2 {
+  font-size: 19px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────── */
+
+/* `.button`: a filled block with no border. Hovering takes Modena's hover
+   base, which on this base is a shade darker. The padding stays the
+   client's own: icon buttons are sized around it. */
+html[data-theme='javaClient'] .btn-ghost,
+html[data-theme='javaClient'] .btn-ghost:has(+ .btn-primary) {
+  color: var(--color-text);
+  background: var(--java-button);
+  border-color: transparent;
+}
+
+html[data-theme='javaClient'] .btn-ghost:hover:not(:disabled) {
+  background: var(--java-button-hover);
+}
+
+html[data-theme='javaClient'] :is(.btn-primary, .btn-ghost, .btn-danger):disabled {
+  color: var(--color-text);
+  opacity: 0.4;
+}
+
+/* An icon alone is drawn on nothing, as the Java client's close and copy
+   buttons are, and lights up with a white veil. */
+html[data-theme='javaClient'] .btn-ghost.icon-button {
+  padding: 0;
+  background: transparent;
+}
+
+html[data-theme='javaClient'] .btn-ghost.icon-button:hover:not(:disabled) {
+  background: var(--java-veil-20);
+}
+
+/* `.primary-button`. */
+html[data-theme='javaClient'] .btn-primary {
+  color: #ffffff;
+  background: var(--color-accent);
+}
+
+html[data-theme='javaClient'] .btn-primary:hover:not(:disabled) {
+  opacity: 1;
+  background: var(--java-primary-hover);
+}
+
+html[data-theme='javaClient'] .btn-primary:active:not(:disabled) {
+  background: var(--java-primary-pressed);
+}
+
+/* `.uninstall-button`. */
+html[data-theme='javaClient'] .btn-danger {
+  color: #ffffff;
+  background: var(--java-danger);
+  border-color: transparent;
+}
+
+html[data-theme='javaClient'] .btn-danger:hover:not(:disabled) {
+  background: var(--java-danger-hover);
+}
+
+/* `.toggle-button`: the control fill, a box border, 3 px; selected a
+   lighter fill and the accent as the border. */
+html[data-theme='javaClient'] :is(.settings-segmented button, .surface-chip) {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+html[data-theme='javaClient'] .settings-segmented button.is-active {
+  color: var(--color-text);
+  background: var(--java-toggle-selected);
+  border-color: var(--color-accent);
+}
+
+html[data-theme='javaClient'] .settings-segmented button.is-active:hover {
+  background: var(--java-toggle-selected-hover);
+  border-color: var(--java-toggle-selected-border);
+}
+
+/* ── Fields ─────────────────────────────────────────────────────────── */
+
+/* `.text-input`: the control fill, a box border, 3 px. Focus lightens the
+   fill and draws the border in the accent's derived blue, which is the
+   focus mark: no ring on top of it. Inputs that live inside a framed
+   wrapper leave the frame to the wrapper. */
+html[data-theme='javaClient'] :is(
+  .search-field,
+  .select-trigger,
+  textarea,
+  input:is([type="text"], [type="search"], [type="number"], [type="password"], [type="email"], [type="url"])
+):not(:is(.search-field, .date-input, .color-input, .range-slider, .chat-compose-shell, .chat-compose, .chat-roster-search, .select-option-row, .pagination-jump) *) {
+  color: var(--color-text);
+  background-color: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+html[data-theme='javaClient'] :is(
+  textarea,
+  input:is([type="text"], [type="search"], [type="number"], [type="password"], [type="email"], [type="url"])
+):not(:is(.search-field, .date-input, .color-input, .range-slider, .chat-compose-shell, .chat-compose, .chat-roster-search, .select-option-row, .pagination-jump) *):focus,
+html[data-theme='javaClient'] .search-field:focus-within {
+  background-color: var(--java-button);
+  border-color: var(--java-focus-border);
+  outline: none;
+}
+
+html[data-theme='javaClient'] :is(input, textarea)::placeholder {
+  color: #848484;
+}
+
+/* `.combo-box`: a button's fill with a box border; open, the accent frames
+   it and the list below it, which shares its edge. */
+html[data-theme='javaClient'] select:not([multiple]):not([size]) {
+  color: var(--color-text);
+  background-color: var(--java-button);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+html[data-theme='javaClient'] .select-trigger {
+  background-color: var(--java-button);
+}
+
+html[data-theme='javaClient'] .select-trigger.is-open {
+  background-color: var(--java-button-hover);
+  border-color: var(--color-accent);
+  border-bottom-color: transparent;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+html[data-theme='javaClient'] .select-popover {
+  background: var(--color-bg);
+  border: 1px solid var(--color-accent);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  box-shadow: none;
+}
+
+html[data-theme='javaClient'] .select-popover.is-above {
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+html[data-theme='javaClient'] .select-option {
+  padding: 7px 13px;
+  border-radius: 0;
+}
+
+html[data-theme='javaClient'] .select-option.is-highlighted {
+  background: var(--java-selection-unfocused);
+}
+
+html[data-theme='javaClient'] .select-option.is-selected {
+  color: #ffffff;
+  background: var(--color-accent);
+}
+
+/* `.check-box > .box`: 22 px, a box border on nothing, 3 px. Ticked, the
+   accent with the tick in the light text colour. Waitomo draws the radio
+   button the same way, round, and ticks it too. */
+html[data-theme='javaClient'] input:is([type="checkbox"], [type="radio"]):not(.switch input) {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-grid;
+  flex: none;
+  place-content: center;
+  width: 22px;
+  height: 22px;
+  margin-block: 0;
+  vertical-align: -6px;
+  background: transparent;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+html[data-theme='javaClient'] input[type="radio"] {
+  border-radius: 50%;
+}
+
+html[data-theme='javaClient'] input[type="radio"]::after {
+  content: "";
+  width: 12px;
+  height: 12px;
+  background-color: var(--color-text);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 6.2l2.4 2.4 4.6-5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 6.2l2.4 2.4 4.6-5'/%3E%3C/svg%3E") center / contain no-repeat;
+  opacity: 0;
+}
+
+html[data-theme='javaClient'] input[type="checkbox"]::after {
+  width: 12px;
+  height: 12px;
+  background-color: var(--color-text);
+}
+
+html[data-theme='javaClient'] input:is([type="checkbox"], [type="radio"]):hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
+html[data-theme='javaClient'] input:is([type="checkbox"]:checked, [type="checkbox"]:indeterminate, [type="radio"]:checked) {
+  background: var(--color-accent);
+  border-color: transparent;
+}
+
+html[data-theme='javaClient'] input:is([type="checkbox"]:checked, [type="radio"]:checked):hover:not(:disabled) {
+  background: #3a7bdc; /* derive(accent, 10%) */
+}
+
+html[data-theme='javaClient'] input[type="radio"]:checked::after {
+  opacity: 1;
+}
+
+/* The Java client has no switch: every on/off setting is a check box. The
+   switch keeps its native checkbox and its markup and is drawn as one. */
+html[data-theme='javaClient'] .switch,
+html[data-theme='javaClient'] .switch-track {
+  width: 22px;
+  height: 22px;
+}
+
+html[data-theme='javaClient'] .switch-track {
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border-color: var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+html[data-theme='javaClient'] .switch-track span {
+  width: 12px;
+  height: 12px;
+  background: var(--color-text);
+  border-radius: 0;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 6.2l2.4 2.4 4.6-5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 6.2l2.4 2.4 4.6-5'/%3E%3C/svg%3E") center / contain no-repeat;
+  opacity: 0;
+}
+
+html[data-theme='javaClient'] .switch input:checked + .switch-track {
+  background: var(--color-accent);
+  border-color: transparent;
+}
+
+html[data-theme='javaClient'] .switch input:checked + .switch-track span {
+  background: var(--color-text);
+  transform: none;
+  opacity: 1;
+}
+
+html[data-theme='javaClient'] .switch input:disabled + .switch-track {
+  opacity: 0.4;
+}
+
+/* ── Tabs ───────────────────────────────────────────────────────────── */
+
+/* `.tab-pane`: a #FFFFFF12 strip, 1.1em, padding 5 20, a 4 px rule. Measured
+   on the Play tab: the tabs are the strip's colour until chosen, #5a5a5a
+   once chosen. The chat's channel tabs (below) carry Waitomo's own fill. */
+html[data-theme='javaClient'] .section-tabs {
+  gap: 2px;
+  background: var(--java-veil-07);
+  border-bottom: 0;
+}
+
+html[data-theme='javaClient'] .section-tabs button:not(.chat-tab-add, .chat-tab-close) {
+  /* 40 px with the rule, as measured under the header bar; the words
+     13.2 px (1.1em), their middle 17 px from the top. */
+  min-height: 40px;
+  margin-bottom: 0;
+  padding: 0 20px 2px;
+  color: var(--color-text);
+  font-size: 13.2px;
+  line-height: 18px;
+  font-weight: 400;
+  background: transparent;
+  border-bottom: 4px solid transparent;
+  border-radius: 0;
+}
+
+html[data-theme='javaClient'] .section-tabs button:not(.chat-tab-add, .chat-tab-close):hover {
+  background: var(--java-veil-13);
+  border-bottom-color: var(--java-selection-unfocused);
+}
+
+html[data-theme='javaClient'] .section-tabs button.active {
+  background: var(--java-veil-20);
+  border-bottom-color: var(--color-accent);
+}
+
+/* A view's own tabs are a strip across the whole view, straight under the
+   header bar, as a TabPane at the top of a Java view is. They bleed out of
+   the view's margin; a header that holds them beside an action (Maps, Mods,
+   Leaderboard, Events, Changelog) bleeds with them and carries the strip. */
+html[data-theme='javaClient'] .content-inner > :first-child > .section-tabs:first-child,
+html[data-theme='javaClient'] .content-inner > :first-child > :is(.maps-header, .mods-header, .leaderboard-header, .events-toolbar, .vault-subnav, .training-tabs-row, .tournaments-tabs-row):first-child,
+html[data-theme='javaClient'] .content-inner > .chat > .chat-main:first-child > .chat-tabs:first-child {
+  /* To the scrollbar's kept room on the right, not into it. */
+  margin: -10px calc(-1 * max(0px, 10px - var(--content-gutter, 0px))) 10px -10px;
+  background: var(--java-veil-07);
+}
+
+/* Training and the leaderboard scroll inside their own view, which clips
+   anything pulled out past its edges, so there the view's margin moves into
+   the view and the strip starts at its top. `.content` in front for weight
+   over the view frame's padding further down. */
+html[data-theme='javaClient'] .content > .content-inner:is(.content-training, .content-leaderboard) {
+  padding: 0;
+}
+
+html[data-theme='javaClient'] .content-inner > :is(.training-view, .leaderboard-view) {
+  padding: 0 max(0px, 10px - var(--scrollbar-size)) 10px 10px;
+}
+
+html[data-theme='javaClient'] .content-inner > .training-view > .training-tabs-row:first-child,
+html[data-theme='javaClient'] .content-inner > .leaderboard-view > .leaderboard-header:first-child {
+  margin: 0 calc(-1 * max(0px, 10px - var(--scrollbar-size))) 10px -10px;
+  border-bottom: 0;
+}
+
+html[data-theme='javaClient'] :is(.maps-header, .mods-header, .leaderboard-header, .events-toolbar, .vault-subnav, .training-tabs-row, .tournaments-tabs-row) > .section-tabs {
+  background: transparent;
+}
+
+/* The chat's channel tabs: #FFFFFF11 on the strip, a white × after the name
+   that is always there, and a + tab after the last. */
+html[data-theme='javaClient'] .chat-tabs .chat-tab-button {
+  background: var(--java-veil-067);
+}
+
+html[data-theme='javaClient'] .chat-tab.is-closable .chat-tab-button {
+  padding-right: 34px;
+}
+
+html[data-theme='javaClient'] .chat-tabs .chat-tab-close {
+  right: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--color-text);
+  background: transparent;
+  opacity: 1;
+}
+
+html[data-theme='javaClient'] .chat-tabs .chat-tab-close:hover {
+  color: #ffffff;
+  background: var(--java-veil-20);
+}
+
+html[data-theme='javaClient'] .chat-tabs .chat-tab-add {
+  align-self: stretch;
+  width: 36px;
+  height: auto;
+  margin-left: 0;
+  color: var(--color-text);
+  background: var(--java-veil-067);
+  border: 0;
+  border-bottom: 4px solid transparent;
+  border-radius: 0;
+}
+
+html[data-theme='javaClient'] .chat-tabs .chat-tab-add:hover {
+  background: var(--java-veil-13);
+  border-bottom-color: var(--java-selection-unfocused);
+}
+
+html[data-theme='javaClient'] .chat-tabs .chat-tab-add.is-active {
+  background: var(--java-veil-20);
+  border-bottom-color: var(--color-accent);
+}
+
+/* ── View frame ─────────────────────────────────────────────────────── */
+
+/* Java views sit 10 px from the window's edges, not 28. */
+html[data-theme='javaClient'] .content-inner:not(.content-news, .content-units) {
+  padding: 10px;
+  padding-right: max(0px, 10px - var(--content-gutter, 0px));
+}
+
+/* The game list is drawn on the window itself, with no panel around it;
+   the detail pane beside it is #FFFFFF09 with no frame. */
+html[data-theme='javaClient'] :is(.game-browser-panel, .coop-games-main) {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 0;
+}
+
+html[data-theme='javaClient'] :is(.game-detail-panel, .coop-detail) {
+  background: var(--color-surface);
+  border-color: transparent;
+  border-radius: 0;
+}
+
+/* The vaults' search forms stand on the window, as the Java client's
+   replay search does: no panel, no frame. */
+html[data-theme='javaClient'] .search-panel.surface-panel {
+  padding-inline: 0;
+  background: transparent;
+  border-color: transparent;
+  border-radius: 0;
+}
+
+/* ── Lists and tables ───────────────────────────────────────────────── */
+
+/* `.column-header`: #333333CC, 3em, labels as they are written, left. */
+html[data-theme='javaClient'] .list-head,
+html[data-theme='javaClient'] .list-head > th {
+  color: var(--color-text);
+  background: rgba(51, 51, 51, 0.8);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ── Scroll bars ────────────────────────────────────────────────────── */
+
+/* No track, no arrows; the thumb derive(base, 20%), inset 2 px, 2 px
+   corners, and it does not react to the pointer. */
+html[data-theme='javaClient'] ::-webkit-scrollbar-thumb,
+html[data-theme='javaClient'] ::-webkit-scrollbar-thumb:hover {
+  background: #3c3c3c;
+  background-clip: padding-box;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Pagination ─────────────────────────────────────────────────────── */
+
+/* The client's own pagination: 50 x 50, 1.5em, a box border, 2 px. */
+html[data-theme='javaClient'] .pagination-btn {
+  flex-basis: 50px;
+  width: 50px;
+  height: 50px;
+  color: var(--color-text);
+  font-size: 18px;
+  font-weight: 400;
+  border-color: var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+html[data-theme='javaClient'] .pagination-btn:hover:not(:disabled) {
+  background: var(--java-card);
+}
+
+html[data-theme='javaClient'] .pagination-btn.active {
+  color: #ffffff;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* ── Dialogs and menus ──────────────────────────────────────────────── */
+
+/* `.dialog-content`: the window colour, a box border, 3 px, over #00000099. */
+html[data-theme='javaClient'] .modal-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: none;
+}
+
+html[data-theme='javaClient'] .modal-panel {
+  background: var(--color-bg);
+  border-color: var(--color-border-strong);
+}
+
+/* `.context-menu`: derive(#3c3f41, 5%), a #868686 frame, 3 px; Modena
+   fills the item under the pointer with the accent. */
+html[data-theme='javaClient'] :is(.chat-user-menu, .game-context-menu, .tournament-replay-menu, .live-delay-menu, .client-status-popover, .game-folders-popover) {
+  background: var(--java-context-menu);
+  border: 1px solid var(--java-context-menu-border);
+  border-radius: var(--radius-md);
+}
+
+html[data-theme='javaClient'] .chat-user-menu-item:hover:not(:disabled),
+html[data-theme='javaClient'] .game-folders-entry:hover,
+html[data-theme='javaClient'] :is(.game-context-menu, .tournament-replay-menu, .live-delay-menu) button:hover:not(:disabled) {
+  color: #ffffff;
+  background: var(--color-accent);
+}
+
+html[data-theme='javaClient'] .chat-user-menu-separator {
+  border-color: #5d6163; /* derive(#3c3f41, 30%) */
+}
+
+/* ── Cards ──────────────────────────────────────────────────────────── */
+
+/* `.card`: -card-color, 3 px; hover a tenth lighter. Its frame measures
+   #424242 in the client, not the box border. */
+html[data-theme='javaClient'] :is(.card, .game-tile, .map-vault-card, .mod-vault-card, .replay-card, .live-replay-card, .installed-map-card, .installed-mod-card, .map-pool-card) {
+  background-color: var(--java-card);
+  border-color: var(--color-border);
+}
+
+html[data-theme='javaClient'] :is(.game-tile, .map-vault-card, .mod-vault-card, .replay-card, .live-replay-card, .map-pool-card):hover {
+  background-color: var(--java-card-hover);
+}
+
+/* ── Chat ───────────────────────────────────────────────────────────── */
+
+/* `.message-container:hover`, derive(base, 5%). */
+html[data-theme='javaClient'] .chat-message:hover {
+  background: #282828;
+}
+
+/* `.chat-channel-users-pane`: #FFFFFF08 (measured #282828) from the tab strip
+   to the status bar and out to the window's edge, with a dim grey rule on its
+   left and no other frame. */
+html[data-theme='javaClient'] .chat-roster-shell {
+  margin: -10px -10px -10px 0;
+}
+
+html[data-theme='javaClient'] .chat-roster {
+  height: 100%;
+  background: #282828;
+  border: 0;
+  border-left: 1px solid #696969;
+  border-radius: 0;
+}
+
+/* `.user-list-tools`: the filter field bare on the pane, a 2 px divider
+   under the row. */
+html[data-theme='javaClient'] .chat-roster-search {
+  padding: 10px 10px 2px;
+  border-bottom: 2px solid var(--color-border);
+}
+
+html[data-theme='javaClient'] .chat-roster-search-field {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* `.chat-user-list-category`: the name bold at 16 px, its count right after
+   it at 12 px in grey; the people under it at 14 px, regular. */
+/* The list is virtual with rows of a fixed height, so the heading keeps the
+   row's padding and grows only in type. */
+html[data-theme='javaClient'] .chat-roster-heading {
+  padding-block: 0;
+  color: var(--color-text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+html[data-theme='javaClient'] .chat-roster-count {
+  margin-left: 6px;
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+html[data-theme='javaClient'] .chat-roster .chat-nick {
+  font-weight: 400;
+}
+
+/* The messages are written on the window, with no panel around them
+   (measured #212121), and the channel tab names its room with the # it
+   already has, without an icon. */
+html[data-theme='javaClient'] .chat-messages {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 0;
+}
+
+html[data-theme='javaClient'] .chat-tabs .chat-tab-button > svg {
+  display: none;
+}
+
+/* `.channel-chat-container`: a 2 px divider, then the input as a bare line
+   of text on the window. */
+html[data-theme='javaClient'] .chat-compose-shell {
+  margin-top: 0;
+  padding-top: 6px;
+  border-top: 2px solid var(--color-border);
+}
+
+html[data-theme='javaClient'] .chat-compose-input {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 0;
+}
+
+html[data-theme='javaClient'] .chat-compose-input:focus {
+  border-color: transparent;
+  outline: none;
+}
+
+/* ── Settings ───────────────────────────────────────────────────────── */
+
+/* `.setting-container`: a box-border rule under each, the title 1.25em
+   bold, the description in secondary text. */
+html[data-theme='javaClient'] :is(.setting-row, .setting-block) {
+  border-bottom-color: var(--color-border-strong);
+}
+
+html[data-theme='javaClient'] .setting-row .setting-copy > :first-child {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* ── Matchmaker ─────────────────────────────────────────────────────── */
+
+/* The Java client's matchmaker (JavaMatchmaker.tsx, `team_matchmaking.fxml`):
+   one column, 25 px between its parts, padded 23 20 5 20; the chat beside it
+   behind a 2 px divider. Every value below is style.css's `.tmm` family. */
+html[data-theme='javaClient'] .matchmaker-main.java-tmm {
+  gap: 25px;
+  /* With the view's 10 px: the heading's capitals start 21 px under the
+     tab strip, as measured. */
+  padding: 6px 10px 5px;
+}
+
+/* The two columns share what the window has beyond their minimums, 710 and
+   500 px (`ColumnConstraints`, both `hgrow="ALWAYS"`), so the chat grows
+   with the window instead of keeping a dragged width: there is no divider
+   to drag in the client. Below 1100 px the chat still drops under the
+   column (matchmaker.css), which is narrower than the client goes. */
+html[data-theme='javaClient'] .matchmaking-layout.is-java {
+  gap: 0;
+}
+
+@media (min-width: 1101px) {
+  html[data-theme='javaClient'] .matchmaking-layout.is-java {
+    grid-template-columns: minmax(0, calc(50% + 105px)) minmax(0, 1fr);
+  }
+}
+
+html[data-theme='javaClient'] .matchmaking-layout.is-java .matchmaker-chat-divider {
+  display: none;
+}
+
+/* The play sections carry no counts in the client. */
+html[data-theme='javaClient'] .play-mode-tabs .section-tab-count {
+  display: none;
+}
+
+html[data-theme='javaClient'] .matchmaking-layout.is-java .matchmaker-party-chat {
+  border-left: 2px solid var(--color-border);
+}
+
+/* `.h1-tmm`: 24 px semibold, 16 px in, in capitals as the client prints it.
+   Its #5f5f5f is 2.5:1 on the window; one step lighter makes the 3:1 that
+   text this large needs. */
+html[data-theme='javaClient'] .java-tmm-heading {
+  margin: 0;
+  padding-left: 16px;
+  color: #6b6b6b;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+/* `.player-card`: #1d1d1d99, a #636363 frame, 9 px corners, padded 10 15; the
+   league picture 80 x 40, the name 24 px in the matchmaker's gold, the clan
+   12 px light, the league and games 14 px #8f8f8f, the flag at the end of
+   that line. */
+html[data-theme='javaClient'] .java-tmm .matchmaker-player-card,
+html[data-theme='javaClient'] .party-strip.is-java .party-seat {
+  background: rgba(29, 29, 29, 0.6);
+  border: 1px solid #636363;
+  border-radius: 9px;
+}
+
+/* 66 px tall in the client: the 48 px faction buttons and 8 px above and
+   below them; name and stats sit tight on two lines. */
+html[data-theme='javaClient'] .java-tmm .matchmaker-player-card {
+  margin-top: -7px;
+  flex-wrap: nowrap;
+  gap: 10px;
+  padding: 8px 15px;
+}
+
+html[data-theme='javaClient'] .java-tmm .matchmaker-player-identity {
+  flex: 1 1 auto;
+  gap: 10px;
+}
+
+html[data-theme='javaClient'] .java-tmm .matchmaker-player-copy {
+  flex: 1 1 auto;
+  gap: 0;
+}
+
+html[data-theme='javaClient'] .java-tmm .matchmaker-player-name {
+  line-height: 1.15;
+}
+
+html[data-theme='javaClient'] .java-tmm .matchmaker-player-meta {
+  line-height: 17px;
+}
+
+html[data-theme='javaClient'] .java-tmm .matchmaker-league-mark {
+  width: 80px;
+  height: 40px;
+}
+
+html[data-theme='javaClient'] .java-tmm .matchmaker-player-name strong,
+html[data-theme='javaClient'] .java-tmm .matchmaker-player-name strong * {
+  color: var(--java-gold) !important;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+html[data-theme='javaClient'] .java-tmm .matchmaker-player-name > span {
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 300;
+}
+
+html[data-theme='javaClient'] .java-tmm .matchmaker-player-meta {
+  gap: 15px;
+  color: #8f8f8f;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+html[data-theme='javaClient'] .java-tmm .matchmaker-player-meta img {
+  order: 3;
+  margin-left: auto;
+  margin-right: 15px;
+}
+
+/* `.faction-button.tmm`: 50 x 50, nothing behind it, a 2 px divider frame
+   with 10 px corners that takes the faction's colour once chosen; the emblem
+   at 20 % until then. */
+html[data-theme='javaClient'] .java-tmm .faction-chips {
+  gap: 10px;
+}
+
+html[data-theme='javaClient'] .java-tmm .faction-chip {
+  /* 46 px on the client's screen beside a 64 px card, not the 50 the
+     stylesheet caps them at. */
+  width: 46px;
+  height: 46px;
+  min-height: 46px;
+  padding: 6px;
+  background: transparent;
+  border: 2px solid var(--color-border);
+  border-radius: 10px;
+}
+
+html[data-theme='javaClient'] .java-tmm .faction-chip[data-faction="uef"] { --java-faction: #2196f3; }
+html[data-theme='javaClient'] .java-tmm .faction-chip[data-faction="aeon"] { --java-faction: #4caf50; }
+html[data-theme='javaClient'] .java-tmm .faction-chip[data-faction="cybran"] { --java-faction: #f44336; }
+html[data-theme='javaClient'] .java-tmm .faction-chip[data-faction="seraphim"] { --java-faction: #ffc107; }
+
+html[data-theme='javaClient'] .java-tmm .faction-chip.is-active {
+  background: transparent;
+  border-color: var(--java-faction);
+}
+
+html[data-theme='javaClient'] .java-tmm .faction-chip > span {
+  display: none;
+}
+
+html[data-theme='javaClient'] .java-tmm .faction-chip svg {
+  width: 32px;
+  height: 32px;
+  opacity: 0.2;
+  filter: none;
+}
+
+html[data-theme='javaClient'] .java-tmm .faction-chip.is-active svg,
+html[data-theme='javaClient'] .java-tmm .faction-chip:hover:not(:disabled) svg {
+  opacity: 1;
+}
+
+/* "Your party:" and its two outlined buttons on one line (`.invite-button`,
+   `.leave-button`: 14 px, padded 3 14, 29 px, a 2 px frame in the accent or
+   in #cb0e0e, a third of it behind on hover). */
+html[data-theme='javaClient'] .party-strip.is-java {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+/* Alone, the members' grid is empty but keeps its place in the column, so
+   the separator is two gaps below the party row, as measured. */
+html[data-theme='javaClient'] .party-strip.is-java:not(:has(.party-seat)) {
+  margin-bottom: 25px;
+}
+
+html[data-theme='javaClient'] .java-tmm-party-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+html[data-theme='javaClient'] .java-tmm-outline {
+  min-height: 29px;
+  padding: 3px 14px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  text-transform: uppercase;
+  background: transparent;
+  border: 2px solid var(--color-border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+html[data-theme='javaClient'] .java-tmm-outline:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+html[data-theme='javaClient'] .java-tmm-outline.is-invite {
+  border-color: var(--color-accent);
+}
+
+html[data-theme='javaClient'] .java-tmm-outline.is-invite:hover:not(:disabled) {
+  background: rgba(43, 113, 217, 0.19);
+}
+
+html[data-theme='javaClient'] .java-tmm-outline.is-leave {
+  border-color: #cb0e0e;
+}
+
+html[data-theme='javaClient'] .java-tmm-outline.is-leave:hover:not(:disabled) {
+  background: rgba(203, 14, 14, 0.19);
+}
+
+/* The members, two to a row (`partyMemberPane`: 35 x 23 apart), each a
+   player card 75 px tall with the name at 20 px; the leader's frame
+   #dddddd. */
+html[data-theme='javaClient'] .party-strip.is-java .party-seats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 23px 35px;
+  margin-top: 0;
+}
+
+html[data-theme='javaClient'] .party-strip.is-java .party-seat {
+  min-height: 75px;
+  padding: 12px 14px 8px 12px;
+}
+
+html[data-theme='javaClient'] .party-strip.is-java .party-seat.is-leader {
+  border-color: #dddddd;
+}
+
+html[data-theme='javaClient'] .party-strip.is-java .party-seat-name {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Modena's separator: a dark line over a light one. */
+html[data-theme='javaClient'] .java-tmm-separator {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid #0e0e0e;
+  border-bottom: 1px solid #292929;
+}
+
+/* `.toggle-button.start-search`: as wide as the column, 80 px, a 2 px gold
+   frame, 24 px semibold in capitals; a third of the gold behind it on hover,
+   filled with the dark gold while the party searches. */
+html[data-theme='javaClient'] .java-tmm-search {
+  width: 100%;
+  min-height: 78px;
+  padding: 8px 5px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 24px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: transparent;
+  border: 2px solid var(--java-gold-border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+html[data-theme='javaClient'] .java-tmm-search:hover:not(:disabled) {
+  background: rgba(225, 158, 59, 0.19);
+}
+
+html[data-theme='javaClient'] .java-tmm-search[aria-pressed="true"],
+html[data-theme='javaClient'] .java-tmm-search[aria-pressed="true"]:hover {
+  background: var(--java-gold-border);
+}
+
+html[data-theme='javaClient'] .java-tmm-search:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+/* The queues side by side, 12 px apart, each as wide as the others. */
+html[data-theme='javaClient'] .java-tmm-queues {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+html[data-theme='javaClient'] .java-tmm-queue {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 170px;
+}
+
+/* `.toggle-button.queue`: a 2 px accent frame, 24 px semibold, at most 50 px;
+   a third of the accent behind it on hover, filled with it once chosen. */
+html[data-theme='javaClient'] .java-tmm-queue-toggle {
+  max-height: 50px;
+  padding: 8px 5px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+  background: transparent;
+  border: 2px solid var(--color-accent);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+html[data-theme='javaClient'] .java-tmm-queue-toggle:hover:not(:disabled) {
+  background: rgba(43, 113, 217, 0.19);
+}
+
+html[data-theme='javaClient'] .java-tmm-queue-toggle[aria-pressed="true"] {
+  color: #ffffff;
+  background: var(--color-accent);
+}
+
+html[data-theme='javaClient'] .java-tmm-queue-toggle[aria-pressed="true"]:hover:not(:disabled) {
+  background: #2f7bed;
+}
+
+html[data-theme='javaClient'] .java-tmm-queue-toggle:disabled,
+html[data-theme='javaClient'] .java-tmm-queue.is-incompatible .java-tmm-queue-toggle {
+  cursor: default;
+  opacity: 0.4;
+}
+
+/* `.map-pool`: the frame in the divider colour, the label in the card's
+   grey; #42424230 behind it on hover. */
+html[data-theme='javaClient'] .java-tmm-map-list {
+  /* A plain button's height in the client, 35 px, not the 29 of the party
+     row's buttons. */
+  min-height: 35px;
+  color: #8f8f8f;
+}
+
+html[data-theme='javaClient'] .java-tmm-map-list:hover {
+  background: rgba(66, 66, 66, 0.19);
+}
+
+html[data-theme='javaClient'] .java-tmm-queue-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 10px;
+  margin: 0;
+  padding-left: 15px;
+  color: #8f8f8f;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+/* The search state under a queue, bold: #83be15, or #be6800 for a match that
+   fell through. */
+html[data-theme='javaClient'] .java-tmm-queue-status {
+  margin: 0;
+  color: #83be15;
+  font-weight: 700;
+  text-align: center;
+}
+
+html[data-theme='javaClient'] .java-tmm-queue-status.is-cancelled {
+  color: #be6800;
+}
+
+/* Flush with the heading above it, and no empty row of seats while alone. */
+html[data-theme='javaClient'] .party-strip.is-java {
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+html[data-theme='javaClient'] .party-strip.is-java .party-seats:empty {
+  display: none;
+}
+
+/* ── Labels ─────────────────────────────────────────────────────────── */
+
+/* The client writes its labels as sentences, regular weight, never in
+   spaced capitals: the shared label styles that do are set back to that. */
+html[data-theme='javaClient'] :is(
+  .search-panel-label,
+  .eyebrow,
+  .facts-grid dt,
+  .vault-filters label > span,
+  .vault-detail-description h3,
+  .matchmaker-kicker,
+  .links-card-title
+) {
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* A TabPane's tabs are words only. The chat's × and + are buttons in the
+   strip too and keep their glyphs. */
+html[data-theme='javaClient'] .section-tabs button:not(.chat-tab-close, .chat-tab-add) > svg,
+html[data-theme='javaClient'] .section-tabs .section-tab-label > svg {
+  display: none;
+}
+
+/* ── Panes ──────────────────────────────────────────────────────────── */
+
+/* A large panel is a pane in the client: the detail pane beside a list,
+   #FFFFFF09 on the window (measured #292929), with no frame and no corners.
+   Cards (`.card` and the vault and game tiles above) keep theirs. */
+html[data-theme='javaClient'] :where(.surface-panel) {
+  border-color: transparent;
+  border-radius: 0;
+}
+
+/* ── View titles ────────────────────────────────────────────────────── */
+
+/* No view in the client repeats its navigation button as a heading: the
+   open button already says where you are. */
+html[data-theme='javaClient'] .view-title,
+html[data-theme='javaClient'] .events-head:not(:has(> :not(.events-head-copy))) {
+  display: none;
+}
+
+/* With its title gone, the events' toolbar is the view's first row and
+   becomes its tab strip. */
+html[data-theme='javaClient'] .content-inner > .events-view > .events-head + .events-toolbar {
+  margin: -10px calc(-1 * max(0px, 10px - var(--content-gutter, 0px))) 10px -10px;
+  background: var(--java-veil-07);
+}
+
+html[data-theme='javaClient'] .events-toolbar > .section-tabs {
+  background: transparent;
+}
+
+/* The changelog's strip keeps its one action on the same row as its tabs,
+   at the end, rather than wrapping it onto a second row of the strip. */
+html[data-theme='javaClient'] .changelog-subnav {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+html[data-theme='javaClient'] .changelog-subnav > .section-tabs {
+  flex: 1 1 auto;
+  width: auto;
+}
+
+html[data-theme='javaClient'] .changelog-subnav > .changelog-archive-trigger {
+  flex: none;
+  margin-right: 10px;
+}
+
+/* ── Settings window ────────────────────────────────────────────────── */
+
+/* `.settings .tab-header-area`: the categories are a tab strip across the
+   top, #FFFFFF12, each tab 1.1em with 1em around it and a 4 px rule,
+   #FFFFFF33 once chosen, its words in the light text colour; no icons.
+   The search, which the client does not have, sits at the strip's end. */
+html[data-theme='javaClient'] .content > .content-inner.content-settings {
+  padding: 0;
+}
+
+html[data-theme='javaClient'] .settings-view {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0;
+}
+
+html[data-theme='javaClient'] .settings-sidebar {
+  flex-direction: row;
+  align-items: stretch;
+  min-width: 0;
+  padding: 0;
+  background: var(--java-veil-07);
+  border-right: 0;
+}
+
+html[data-theme='javaClient'] .settings-sidebar-head {
+  order: 2;
+  flex-direction: row;
+  align-items: center;
+  margin-left: auto;
+  padding: 0 10px;
+}
+
+html[data-theme='javaClient'] .settings-sidebar-list {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+html[data-theme='javaClient'] .settings-sidebar-item {
+  height: 100%;
+  min-height: 0;
+  padding: 13.2px 13.2px 9.2px;
+  color: var(--color-text);
+  font-size: 13.2px;
+  font-weight: 400;
+  white-space: nowrap;
+  border-bottom: 4px solid transparent;
+  border-radius: 0;
+}
+
+html[data-theme='javaClient'] .settings-sidebar-item > svg {
+  display: none;
+}
+
+html[data-theme='javaClient'] .settings-sidebar-item:hover {
+  color: var(--color-text);
+  background: var(--java-veil-07);
+}
+
+html[data-theme='javaClient'] .settings-sidebar-item.is-active {
+  color: var(--color-text);
+  font-weight: 400;
+  background: var(--java-veil-20);
+  border-bottom-color: var(--color-accent);
+}
+
+html[data-theme='javaClient'] .settings-page-scroll {
+  padding: 10px max(0px, 10px - var(--scrollbar-size)) 32px 20px;
+}
+
+/* ── Custom games ───────────────────────────────────────────────────── */
+
+/* `custom_games.fxml`: the toolbar sits over the game list only, and the
+   detail pane runs the full height beside both, from the tab strip to the
+   status bar, flush with the window's right edge. */
+html[data-theme='javaClient'] .custom-games-layout > .play-toolbar {
+  grid-column: 1 / 2;
+}
+
+html[data-theme='javaClient'] .custom-games-layout > .custom-games-divider {
+  grid-row: 1 / -1;
+}
+
+html[data-theme='javaClient'] .custom-games-layout > .game-detail-panel {
+  grid-row: 1 / -1;
+  margin: -10px calc(-1 * max(0px, 10px - var(--content-gutter, 0px))) -10px 0;
+}
+
+/* Nowhere but in the matchmaker does the client write in capitals or space
+   its letters; the client's own labels, kickers and column headings in
+   capitals are set back to the words as written. `body *` for weight over
+   the feature stylesheets that set them. */
+html[data-theme='javaClient'] body *:not(.java-tmm *, .java-tmm-heading) {
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+/* Events: "Suggest an event" ends the toolbar's strip on the same row, in
+   place of a row of its own over it (the title beside it is gone). */
+html[data-theme='javaClient'] .events-view {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  row-gap: var(--space-3);
+  column-gap: 0;
+}
+
+html[data-theme='javaClient'] .events-view > * {
+  grid-column: 1 / -1;
+}
+
+html[data-theme='javaClient'] .events-view > .events-head {
+  grid-row: 1;
+  grid-column: 2;
+  margin: -10px calc(-1 * max(0px, 10px - var(--content-gutter, 0px))) 10px 0;
+  padding: 0 10px;
+  background: var(--java-veil-07);
+}
+
+html[data-theme='javaClient'] .events-head > .events-head-copy {
+  display: none;
+}
+
+html[data-theme='javaClient'] .events-view > .events-toolbar {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+html[data-theme='javaClient'] .content-inner > .events-view:has(> .events-head > button) > .events-toolbar {
+  margin-right: 0;
+}
+
+/* Replay detail: the actions at its foot are the client's own buttons in a
+   row to the right, 20 px apart (`replay_detail.fxml`), not a strip of
+   flat tools with rules between them. A switched-on one (watched, has a
+   note) is drawn as a selected toggle. */
+html[data-theme='javaClient'] .replay-detail-toolbar {
+  justify-content: flex-end;
+  gap: 8px 20px;
+  padding: 10px var(--space-4);
+  background: transparent;
+  border-top: 0;
+}
+
+html[data-theme='javaClient'] .replay-detail-toolbar > .replay-detail-tool {
+  flex: none;
+  min-height: 32px;
+  padding: 0 15px;
+  font-weight: 400;
+  background: var(--java-button);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+}
+
+html[data-theme='javaClient'] .replay-detail-toolbar > .replay-detail-tool + .replay-detail-tool::before {
+  display: none;
+}
+
+html[data-theme='javaClient'] .replay-detail-toolbar > .replay-detail-tool:hover:not(:disabled) {
+  background: var(--java-button-hover);
+}
+
+html[data-theme='javaClient'] .replay-detail-toolbar > .replay-detail-tool:is(.is-on, [aria-pressed="true"]) {
+  background: var(--java-toggle-selected);
+  border-color: var(--color-accent);
+}
+
+html[data-theme='javaClient'] .replay-detail-toolbar > .replay-detail-tool > svg {
+  color: var(--color-text);
+}
