@@ -79,6 +79,8 @@ function noteText(blocks: ChangelogBlock[]): string {
           return items(block.payload.items);
         case "historicalBalance":
           return [noteText(block.payload.blocks)];
+        case "provenance":
+          return [];
         default:
           return [block.payload.spans.map(spanText).join("")];
       }

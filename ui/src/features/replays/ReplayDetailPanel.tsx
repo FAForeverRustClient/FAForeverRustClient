@@ -15,6 +15,7 @@ import type { VaultReplay } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { plainError } from "../../shared/plainError";
+import { useClipboardCopy } from "../../shared/hooks/useClipboardCopy";
 import { useGameRating } from "./useGameRating";
 import { withGameContext, type PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { ReplayInsights } from "./analysis/ReplayInsights";
@@ -115,7 +116,7 @@ export function ReplayDetailPanel({
     ipc.send({ kind: "Replays", command: { type: "resolveSimMods", payload: { uid: replay.uid } } });
   }, [canRead, replay.uid]);
 
-  const [copiedMapName, setCopiedMapName] = useState(false);
+  const [copiedMapName, copyMapName] = useClipboardCopy(effectiveMap);
   /// Whether the map preview has been opened out of the rail.
   const [enlarged, setEnlarged] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
@@ -163,8 +164,6 @@ export function ReplayDetailPanel({
   // Fresh from the reviews panel once it has been open on this game: the
   // vault's own number is whatever the search that listed it returned.
   const rating = useGameRating(replay.uid, replay.reviewsAverage ?? null, replay.reviewsCount ?? null);
-  const copyMapName = () =>
-    ipc.run(navigator.clipboard.writeText(effectiveMap).then(() => setCopiedMapName(true)));
   return (
     <Modal className="replay-detail-modal replay-detail-modal-wide" ariaLabel={t("replays.detail.aria", { name: cardTitle })} onClose={onClose}>
       {/* The hero: the map as a dimmed backdrop across the top of the dialog,
@@ -179,7 +178,7 @@ export function ReplayDetailPanel({
         mapLabel={mapLabel}
         cardTitle={cardTitle}
         copiedMapName={copiedMapName}
-        onCopyMapName={copyMapName}
+        onCopyMapName={() => ipc.run(copyMapName())}
         onEnlarge={() => setEnlarged(true)}
       />
 
@@ -246,7 +245,7 @@ export function ReplayDetailPanel({
           mapLabel={mapLabel}
           cardTitle={cardTitle}
           copiedMapName={copiedMapName}
-          onCopyMapName={copyMapName}
+          onCopyMapName={() => ipc.run(copyMapName())}
           onClose={() => setEnlarged(false)}
         />
       )}

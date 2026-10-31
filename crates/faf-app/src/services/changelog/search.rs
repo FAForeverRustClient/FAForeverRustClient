@@ -165,12 +165,11 @@ pub(super) async fn run(query: String, ctx: &ServiceCtx, out: &EventSink) {
                     releases: releases.clone(),
                 });
             }
+            // The bundled notes are searchable without a connection, as the
+            // tab shows them without one.
             Err(reason) => {
-                search.status = ChangelogStatus::Failed { reason };
-                if !cancel.is_cancelled() {
-                    out.emit(ChangelogEvent::SearchUpdated { search });
-                }
-                return;
+                super::show_bundled(reason, out);
+                releases = out.with_state(|state| state.changelog.releases.clone());
             }
         }
     }

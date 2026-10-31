@@ -77,6 +77,11 @@ pub struct ChangelogState {
     /// again rather than serving it back: only a dated post is final.
     pub entries: BTreeMap<String, ChangelogEntry>,
     pub entry_status: ChangelogEntryStatus,
+    /// Why the current release list could not be read, while the tab shows
+    /// only the notes bundled with the client (the early archive) instead of
+    /// an error page. `None` once the list has been read.
+    #[serde(default)]
+    pub index_unavailable: Option<String>,
 }
 
 impl ChangelogState {
@@ -101,6 +106,11 @@ pub enum ChangelogEvent {
         releases: Vec<ChangelogRelease>,
     },
     LoadFailed {
+        reason: String,
+    },
+    /// The release list could not be read and the bundled notes are shown in
+    /// its place. Follows the `Loaded` that put them there.
+    IndexUnavailable {
         reason: String,
     },
     #[serde(rename_all = "camelCase")]
@@ -140,11 +150,15 @@ pub fn reduce(state: &mut ChangelogState, event: &ChangelogEvent) {
         ChangelogEvent::Loaded { releases } => {
             state.releases = releases.clone();
             state.status = ChangelogStatus::Ready;
+            state.index_unavailable = None;
         }
         ChangelogEvent::LoadFailed { reason } => {
             state.status = ChangelogStatus::Failed {
                 reason: reason.clone(),
             }
+        }
+        ChangelogEvent::IndexUnavailable { reason } => {
+            state.index_unavailable = Some(reason.clone());
         }
         ChangelogEvent::EntryLoading { id } => {
             // The selection moves immediately, so the header and the highlighted
@@ -241,6 +255,32 @@ mod tests {
         assert_eq!(state.releases.len(), 1);
         assert_eq!(state.release("3837").unwrap().kind, "Game Patch");
         assert!(state.release("3836").is_none());
+    }
+
+    #[test]
+    fn an_unreadable_index_is_said_until_the_list_is_read() {
+        let mut state = ChangelogState::default();
+        reduce(
+            &mut state,
+            &ChangelogEvent::Loaded {
+                releases: vec![release("3635")],
+            },
+        );
+        reduce(
+            &mut state,
+            &ChangelogEvent::IndexUnavailable {
+                reason: "offline".into(),
+            },
+        );
+        assert_eq!(state.status, ChangelogStatus::Ready);
+        assert_eq!(state.index_unavailable.as_deref(), Some("offline"));
+        reduce(
+            &mut state,
+            &ChangelogEvent::Loaded {
+                releases: vec![release("3837")],
+            },
+        );
+        assert_eq!(state.index_unavailable, None);
     }
 
     #[test]

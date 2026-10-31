@@ -116,8 +116,10 @@ const TYPE_NAMES = new Set([
 const NOT_PROSE = [
   /^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/,          // kebab/snake/lower identifiers
   /^[A-Z][A-Z0-9_]*$/,                            // SCREAMING_CASE
-  // Asset filenames can contain spaces, such as the archived SCU icon.
-  /^[\w. -]+\.(?:tsx?|css|json|lua|exe|jar|png|svg)$/i,
+  /^[\w.-]+\.(?:tsx?|css|json|lua|exe|jar|png|svg)$/i,
+  // Archived image names can contain spaces ("scu tml.png"). Lower case and
+  // images only, so a sentence ending in a filename is still prose.
+  /^[a-z0-9_.-]+(?: [a-z0-9_.-]+)+\.(?:png|svg)$/,
   /^#[0-9a-f]{3,8}$/i,                            // colours
   /^\d/,                                          // starts with a digit
   /^[^a-zA-Z]*$/,                                 // no letters at all
