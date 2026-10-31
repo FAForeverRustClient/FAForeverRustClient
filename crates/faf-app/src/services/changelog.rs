@@ -2,7 +2,7 @@
 //! demand, and never serve a rolling branch note out of the cache.
 
 use faf_domain::protocol::changelog::{
-    is_early_release, ChangelogBlock, ChangelogEntry, ChangelogRelease,
+    is_early_release, with_early_releases, ChangelogBlock, ChangelogEntry, ChangelogRelease,
 };
 use faf_domain::state::{ChangelogCommand, ChangelogEntryStatus, ChangelogEvent, ChangelogStatus};
 
@@ -85,14 +85,52 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
         // A refresh that fails leaves what is on screen alone: the list the
         // reader is looking at is still the list, and replacing it with an
         // error page would make a tab switch on a flaky connection destroy a
-        // working tab. The failure is only worth reporting when there is
-        // nothing to report it in place of.
+        // working tab. With nothing on screen yet, the notes bundled with the
+        // client (the early archive) are still readable without a connection:
+        // they are shown, with the failure said above them, rather than an
+        // error page.
         Err(reason) => {
             if !showing {
-                out.emit(ChangelogEvent::LoadFailed { reason });
+                show_bundled(reason, out);
+                if !ctx
+                    .changelog
+                    .entry_generation
+                    .is_current(selection_generation)
+                {
+                    return;
+                }
+                let chosen = out.with_state(|state| {
+                    let releases = &state.changelog.releases;
+                    releases
+                        .iter()
+                        .find(|release| release.id == state.changelog.selected)
+                        .map(|release| release.id.clone())
+                        .or_else(|| newest_dated_id(releases))
+                });
+                if let Some(id) = chosen {
+                    select(id, ctx, out).await;
+                }
             }
         }
     }
+}
+
+/// The bundled notes in place of a release list that could not be read.
+fn show_bundled(reason: String, out: &EventSink) {
+    out.emit(ChangelogEvent::Loaded {
+        releases: with_early_releases(Vec::new()),
+    });
+    out.emit(ChangelogEvent::IndexUnavailable { reason });
+}
+
+/// The newest note with a date, early ones included: what opens when only the
+/// bundled notes are there to open.
+fn newest_dated_id(releases: &[ChangelogRelease]) -> Option<String> {
+    releases
+        .iter()
+        .filter(|release| !release.date.is_empty())
+        .max_by(|left, right| left.date.cmp(&right.date))
+        .map(|release| release.id.clone())
 }
 
 fn newest_patch_id(releases: &[ChangelogRelease]) -> Option<String> {

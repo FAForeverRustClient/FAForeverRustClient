@@ -19,6 +19,7 @@ export function Switch({ checked, onChange, label, disabled = false, className }
   return (
     <label className={className ? `switch ${className}` : "switch"}>
       <input
+        className="switch-input"
         type="checkbox"
         checked={checked}
         disabled={disabled}

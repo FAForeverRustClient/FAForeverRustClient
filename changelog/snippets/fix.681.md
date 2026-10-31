@@ -1,0 +1,2 @@
+- Newly added offline contacts no longer disappear from your lists after unrelated lobby updates.
+- Player menus use known account IDs when opening offline profiles.

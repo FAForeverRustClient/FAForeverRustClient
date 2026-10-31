@@ -250,6 +250,7 @@ export function renderBody(
   onGameLink?: (link: ChatGameLink) => void,
   pings?: PingIndex,
   fromSelf = false,
+  translate: typeof t = t,
 ): ReactNode[] {
   return content.split(URL_PATTERN).map((part, i) => {
     if (i % 2 === 1) {
@@ -260,7 +261,7 @@ export function renderBody(
             key={i}
             type="button"
             className="chat-link chat-game-link"
-            title={gameLink.kind === "openGame" ? t("chat.link.joinGame") : t("chat.link.watchLive")}
+            title={gameLink.kind === "openGame" ? translate("chat.link.joinGame") : translate("chat.link.watchLive")}
             onClick={() => onGameLink(gameLink)}
           >
             {part}
@@ -275,7 +276,7 @@ export function renderBody(
             key={i}
             type="button"
             className="chat-link chat-game-link"
-            title={t("chat.link.openInClient")}
+            title={translate("chat.link.openInClient")}
             onClick={() => openLink(part)}
           >
             {part}

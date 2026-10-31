@@ -30,6 +30,7 @@ import { ipc } from "../../../ipc/client";
 import { isGeneratedMap, mapPresentation, mapSize } from "../../../shared/mapPresentation";
 import { useAppStore } from "../../../store/store";
 import { useNamedMapGeneration } from "../../../shared/hooks/useNamedMapGeneration";
+import { useClipboardCopy } from "../../../shared/hooks/useClipboardCopy";
 import { ReplayMapThumb } from "../ReplayCard";
 import { MapPreviewFrame } from "../../../shared/components/MapPreviewZoom";
 import { GeneratorFailure } from "../../../shared/components/GeneratorFailure";
@@ -66,8 +67,8 @@ export function LiveReplayDetail({
   const socialPlayers = useAppStore((state) => state.state.social.players);
   const lookup = useAppStore((state) => state.state.replays.onlineLookups?.[game.id]);
   const mapGen = useNamedMapGeneration(game.map);
-  const [copiedId, setCopiedId] = useState(false);
-  const [copiedMapName, setCopiedMapName] = useState(false);
+  const [copiedId, copyReplayId] = useClipboardCopy(String(game.id));
+  const [copiedMapName, copyMapName] = useClipboardCopy(game.map);
   /// Whether the map preview has been opened out of the head.
   const [enlarged, setEnlarged] = useState(false);
 
@@ -94,9 +95,6 @@ export function LiveReplayDetail({
     });
   }, [isGenerated, decoded, game.map]);
   const size = mapSize(vault, game.map, decoded?.mapSize);
-
-  const copyMapName = () =>
-    ipc.run(navigator.clipboard.writeText(game.map).then(() => setCopiedMapName(true)));
 
   const presentation = mapPresentation(vault, game.map, missions);
   const mapLabel = presentation.displayName || game.map;
@@ -258,9 +256,7 @@ export function LiveReplayDetail({
               className="replay-card-icon-btn"
               aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
               title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-              onClick={() =>
-                ipc.run(navigator.clipboard.writeText(String(game.id)).then(() => setCopiedId(true)))
-              }
+              onClick={() => ipc.run(copyReplayId())}
             >
               <Icon name={copiedId ? "check" : "copy"} size={13} />
             </button>
@@ -278,7 +274,7 @@ export function LiveReplayDetail({
                 title={copiedMapName
                   ? t("lobby.browser.mapNameCopied")
                   : `${t("lobby.browser.copyMapName")}\n${game.map}`}
-                onClick={copyMapName}
+                onClick={() => ipc.run(copyMapName())}
               >
                 <Icon name={copiedMapName ? "check" : "copy"} size={13} />
               </button>
@@ -365,7 +361,7 @@ export function LiveReplayDetail({
                     className="replay-card-icon-btn"
                     aria-label={t(copiedMapName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
                     title={t(copiedMapName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
-                    onClick={copyMapName}
+                    onClick={() => ipc.run(copyMapName())}
                   >
                     <Icon name={copiedMapName ? "check" : "copy"} size={13} />
                   </button>

@@ -749,6 +749,23 @@ impl AppLoop {
                 )),
                 _ => None,
             };
+            let unit_selection = match &command {
+                AppCommand::UnitHistory(faf_domain::state::UnitHistoryCommand::Select { id }) => {
+                    Some(services::unit_history::begin_selection(
+                        vec![id.clone()],
+                        &ctx,
+                        &sink,
+                    ))
+                }
+                AppCommand::UnitHistory(faf_domain::state::UnitHistoryCommand::SetSelection {
+                    ids,
+                }) => Some(services::unit_history::begin_selection(
+                    ids.clone(),
+                    &ctx,
+                    &sink,
+                )),
+                _ => None,
+            };
             async move {
                 let Some(mut turn) = turn else {
                     tracing::debug!("dropped a command whose kind is already running");
@@ -760,6 +777,8 @@ impl AppLoop {
                         services::replays::run_analysis(work, &ctx, &sink).await;
                     } else if let Some(work) = details {
                         services::replays::run_details(work, &ctx, &sink).await;
+                    } else if let Some(work) = unit_selection {
+                        services::unit_history::run_selection(work, &ctx, &sink).await;
                     } else if !matches!(
                         command,
                         AppCommand::Replays(faf_domain::state::ReplayCommand::LoadAnalysis { .. })

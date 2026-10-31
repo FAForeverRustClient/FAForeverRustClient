@@ -22,7 +22,8 @@
 use std::collections::BTreeSet;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant, SystemTime};
 
 use async_trait::async_trait;
 use faf_domain::protocol::blueprint::parse_blueprint;
@@ -69,6 +70,31 @@ pub struct UnitHistoryClient {
     config: UnitHistoryConfig,
     http: reqwest::Client,
     tags: tokio::sync::Mutex<Option<(Instant, BTreeSet<String>)>>,
+    units: Arc<Mutex<Option<ArchiveValue<Vec<UnitSummary>>>>>,
+    projectiles: Arc<Mutex<Option<ArchiveValue<BTreeSet<String>>>>>,
+}
+
+type ArchiveStamp = Vec<(PathBuf, Option<(SystemTime, u64)>)>;
+
+struct ArchiveValue<T> {
+    stamp: ArchiveStamp,
+    value: T,
+}
+
+fn archive_stamp(paths: &[PathBuf]) -> Option<ArchiveStamp> {
+    paths
+        .iter()
+        .map(|path| match std::fs::metadata(path) {
+            Ok(metadata) if metadata.is_file() => Some((
+                path.clone(),
+                Some((metadata.modified().ok()?, metadata.len())),
+            )),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                Some((path.clone(), None))
+            }
+            _ => None,
+        })
+        .collect()
 }
 
 impl UnitHistoryClient {
@@ -77,6 +103,8 @@ impl UnitHistoryClient {
             config,
             http: super::http::shared_http_client(),
             tags: tokio::sync::Mutex::new(None),
+            units: Arc::default(),
+            projectiles: Arc::default(),
         }
     }
 
@@ -339,7 +367,20 @@ impl UnitHistoryPort for UnitHistoryClient {
             .map(|dir| dir.join("gamedata").join("units.nx2"))
             .filter(|archive| archive.is_file())
             .ok_or("the game files are not installed yet")?;
+        let cached = self.units.clone();
         tokio::task::spawn_blocking(move || {
+            let paths = [archive.clone()];
+            let stamp = archive_stamp(&paths);
+            // The lock covers the first parse, coalescing simultaneous readers.
+            let mut cached = cached
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(value) = cached
+                .as_ref()
+                .filter(|value| Some(&value.stamp) == stamp.as_ref())
+            {
+                return Ok(value.value.clone());
+            }
             let mut units: Vec<UnitSummary> = archive_blueprints(&archive, "_unit.bp")?
                 .into_iter()
                 .filter_map(|(path, source)| {
@@ -349,6 +390,13 @@ impl UnitHistoryPort for UnitHistoryClient {
                 .collect();
             units.sort_by(|left, right| left.id.cmp(&right.id));
             units.dedup_by(|left, right| left.id == right.id);
+            if let Some(stamp) = stamp.filter(|stamp| Some(stamp) == archive_stamp(&paths).as_ref())
+            {
+                *cached = Some(ArchiveValue {
+                    stamp,
+                    value: units.clone(),
+                });
+            }
             Ok(units)
         })
         .await
@@ -464,11 +512,25 @@ impl UnitHistoryPort for UnitHistoryClient {
         let base = super::game_updater::find_retail_install()
             .map(|dir| dir.join("gamedata").join("projectiles.scd"));
         let faf = install_dir.map(|dir| dir.join("gamedata").join("projectiles.nx2"));
+        let cached = self.projectiles.clone();
         tokio::task::spawn_blocking(move || {
+            let paths: Vec<_> = [base, faf].into_iter().flatten().collect();
+            let stamp = archive_stamp(&paths);
+            let mut cached = cached
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(value) = cached
+                .as_ref()
+                .filter(|value| Some(&value.stamp) == stamp.as_ref())
+            {
+                return value.value.clone();
+            }
             let mut fragmenting = BTreeSet::new();
+            let mut complete = true;
             // The base game first, then FAF's copies over it.
-            for archive in [base, faf].into_iter().flatten() {
-                let Ok(blueprints) = archive_blueprints(&archive, "_proj.bp") else {
+            for archive in &paths {
+                let Ok(blueprints) = archive_blueprints(archive, "_proj.bp") else {
+                    complete = false;
                     continue;
                 };
                 for (path, source) in blueprints {
@@ -478,6 +540,16 @@ impl UnitHistoryPort for UnitHistoryClient {
                     } else {
                         fragmenting.remove(&key);
                     }
+                }
+            }
+            if complete {
+                if let Some(stamp) =
+                    stamp.filter(|stamp| Some(stamp) == archive_stamp(&paths).as_ref())
+                {
+                    *cached = Some(ArchiveValue {
+                        stamp,
+                        value: fragmenting.clone(),
+                    });
                 }
             }
             fragmenting
@@ -522,6 +594,77 @@ mod tests {
         Arc,
     };
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    #[tokio::test]
+    async fn search_efficiency_unit_archive_cache_reuses_and_invalidates_metadata() {
+        use std::io::Write;
+        fn write_units(path: &Path, name: &str) {
+            let mut zip = zip::ZipWriter::new(std::fs::File::create(path).unwrap());
+            zip.start_file(
+                "units/uel0101/uel0101_unit.bp",
+                zip::write::SimpleFileOptions::default(),
+            )
+            .unwrap();
+            write!(
+                zip,
+                "UnitBlueprint {{ General = {{ FactionName = 'UEF', UnitName = '{name}' }} }}"
+            )
+            .unwrap();
+            zip.finish().unwrap();
+        }
+        let folder = tempfile::tempdir().unwrap();
+        let gamedata = folder.path().join("gamedata");
+        std::fs::create_dir(&gamedata).unwrap();
+        let archive = gamedata.join("units.nx2");
+        write_units(&archive, "First");
+        let client = UnitHistoryClient::new(UnitHistoryConfig {
+            raw_base: "https://example.invalid".into(),
+            git_upload_pack: "https://example.invalid".into(),
+            cache_dir: None,
+        });
+        let units = client
+            .list_units(Some(folder.path().to_path_buf()))
+            .await
+            .unwrap();
+        assert_eq!(units[0].name.as_deref(), Some("First"));
+        let parsed = client
+            .units
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .value
+            .as_ptr() as usize;
+        assert_eq!(
+            client
+                .list_units(Some(folder.path().to_path_buf()))
+                .await
+                .unwrap(),
+            units
+        );
+        assert_eq!(
+            client
+                .units
+                .lock()
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .value
+                .as_ptr() as usize,
+            parsed
+        );
+        write_units(&archive, "Changed unit name");
+        let changed = client
+            .list_units(Some(folder.path().to_path_buf()))
+            .await
+            .unwrap();
+        assert_eq!(changed[0].name.as_deref(), Some("Changed unit name"));
+        std::fs::remove_file(&archive).unwrap();
+        assert!(client
+            .list_units(Some(folder.path().to_path_buf()))
+            .await
+            .is_err());
+    }
 
     #[test]
     fn the_tag_list_reads_from_pkt_lines() {

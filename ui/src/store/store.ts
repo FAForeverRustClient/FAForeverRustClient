@@ -447,6 +447,7 @@ const INITIAL: AppState = {
     selected: "",
     entries: {},
     entryStatus: { type: "idle" },
+    indexUnavailable: null,
   },
   unitHistory: {
     listStatus: { type: "idle" },

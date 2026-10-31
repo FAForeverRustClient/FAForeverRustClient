@@ -27,6 +27,7 @@ import {
   NoteBlocks,
   NoteContentsColumn,
   NoteJumpRow,
+  showsContents,
   noteSections,
   useNoteContents,
   useNoteListPosition,
@@ -79,6 +80,8 @@ function noteText(blocks: ChangelogBlock[]): string {
           return items(block.payload.items);
         case "historicalBalance":
           return [noteText(block.payload.blocks)];
+        case "provenance":
+          return [];
         default:
           return [block.payload.spans.map(spanText).join("")];
       }
@@ -329,7 +332,7 @@ export function ClientReleasesView() {
         )}
 
         <div className="changelog-note-scroll" ref={scrollRef} onScroll={onNoteScroll}>
-          <div className={`changelog-note-layout${sections.length > 0 ? " has-toc" : ""}`}>
+          <div className={`changelog-note-layout${showsContents(sections) ? " has-toc" : ""}`}>
             <div className="changelog-note-copy">
               <NoteJumpRow sections={sections} onJump={jumpTo} />
 
@@ -353,12 +356,14 @@ export function ClientReleasesView() {
               <NoteBlocks blocks={blocks} />
             </div>
 
-            <NoteContentsColumn
-              sections={sections}
-              activeSectionId={activeSectionId}
-              navRef={tocRef}
-              onJump={jumpTo}
-            />
+            {showsContents(sections) && (
+              <NoteContentsColumn
+                sections={sections}
+                activeSectionId={activeSectionId}
+                navRef={tocRef}
+                onJump={jumpTo}
+              />
+            )}
           </div>
         </div>
       </article>

@@ -1,0 +1,6 @@
+- Chat and your profile menu now open Contacts, listing all friends and foes, including offline players.
+- Contacts can be searched by name or account ID.
+- Online contacts are listed first, followed by alphabetical order.
+- Contacts show available avatars, with initials when an avatar image is unavailable.
+- Contact relationships can be changed or removed without waiting for players to log in.
+- Unnamed contacts remain visible by account ID, with a button to retry loading their names.

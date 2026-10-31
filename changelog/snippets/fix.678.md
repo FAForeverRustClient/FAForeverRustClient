@@ -1,0 +1,1 @@
+- Calendar search text no longer waits for the backend before appearing as you type.

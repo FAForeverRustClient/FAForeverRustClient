@@ -8,12 +8,15 @@
 // each one is reached. The Settings page keeps the same view.
 //
 // The check starts as the dialog opens: asking for it is why the dialog was
-// opened. Wide, with the check and the live connections side by side, because
-// a check line carries a sentence of explanation and a column the width of a
-// confirmation stacked every one of them into a tall, thin strip.
+// opened. It is sized to fit a window without scrolling: one line per finding,
+// and no heading over the check that repeats the dialog's title. The results
+// use the width of the dialog unless a game is running, when live connections
+// get a second column beside the check; outside a game they are one line at
+// the foot saying when they appear.
 
 import { useEffect } from "react";
 import { Button } from "../../design-system/Button";
+import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
 import { useTranslation } from "../../i18n/useTranslation";
 import { useAppStore } from "../../store/store";
@@ -41,7 +44,7 @@ export function ConnectionCheckDialog({ onClose }: { onClose: () => void }) {
   }, []);
 
   return (
-    <Modal className="connection-check-modal" onClose={onClose} ariaLabel={t("status.connectionCheck.title")}>
+    <Modal className={`connection-check-modal${inGame ? " has-live" : ""}`} onClose={onClose} ariaLabel={t("status.connectionCheck.title")}>
       <header className="connection-check-head">
         <div>
           <h2>{t("status.connectionCheck.title")}</h2>
@@ -52,16 +55,26 @@ export function ConnectionCheckDialog({ onClose }: { onClose: () => void }) {
         </Button>
       </header>
       <div className="connection-check-columns">
-        <section className="connection-check-column" aria-labelledby="connection-check-test">
-          <h3 id="connection-check-test">{t("settings.connectivityCheck.label")}</h3>
+        <section className="connection-check-column" aria-label={t("settings.connectivityCheck.label")}>
           {check.status.type === "idle"
             ? <p className="muted">{t("settings.connectivityCheck.running")}</p>
             : <CheckResults check={check} />}
         </section>
-        <section className="connection-check-column" aria-labelledby="connection-check-live">
-          <h3 id="connection-check-live">{t("settings.liveRelay.label")}</h3>
-          {inGame ? <LiveRelay relay={relay} /> : <p className="muted">{t("settings.liveRelay.noGame")}</p>}
-        </section>
+        {inGame ? (
+          <section className="connection-check-column" aria-labelledby="connection-check-live">
+            <h3 id="connection-check-live">{t("settings.liveRelay.label")}</h3>
+            <LiveRelay relay={relay} />
+          </section>
+        ) : (
+          <section className="connection-check-live-note" aria-labelledby="connection-check-live">
+            <Icon name="info" size={15} />
+            <p>
+              <strong id="connection-check-live">{t("settings.liveRelay.label")}</strong>
+              {" "}
+              {t("status.connectionCheck.liveHint")}
+            </p>
+          </section>
+        )}
       </div>
     </Modal>
   );

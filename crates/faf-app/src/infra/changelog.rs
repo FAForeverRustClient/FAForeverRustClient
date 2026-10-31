@@ -190,7 +190,8 @@ impl ChangelogPort for ChangelogClient {
 }
 
 /// Offline stand-in. Reports rather than inventing patch notes: a fabricated
-/// changelog would be worse than an empty tab.
+/// changelog would be worse than an empty tab. The notes bundled with the
+/// client are real ones, though, and readable here as anywhere else.
 pub struct FakeChangelog;
 
 #[async_trait]
@@ -199,8 +200,8 @@ impl ChangelogPort for FakeChangelog {
         Err("the changelog is unavailable in offline mode".into())
     }
 
-    async fn load_entry(&self, _release: ChangelogRelease) -> Result<ChangelogEntry, String> {
-        Err("the changelog is unavailable in offline mode".into())
+    async fn load_entry(&self, release: ChangelogRelease) -> Result<ChangelogEntry, String> {
+        early_entry(&release).ok_or_else(|| "the changelog is unavailable in offline mode".into())
     }
 }
 

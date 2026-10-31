@@ -804,6 +804,17 @@ export type ChangelogBlock = { type: "heading"; payload: {
 	sourceUrl: string,
 	blocks: ChangelogBlock[],
 	unavailable: boolean,
+} } |
+/**
+ *  The client's own attribution under a note bundled from the archive:
+ *  where it came from, the evidence for its date, and that its spacing
+ *  was tidied. Data rather than prose, so the reader's language words it,
+ *  and never part of the note's text: the archive search skips it.
+ */
+{ type: "provenance"; payload: {
+	sourceUrl: string,
+	/**  Empty when the release date rests on no separate evidence. */
+	evidenceUrl: string,
 } };
 
 /**
@@ -855,6 +866,13 @@ export type ChangelogEvent = { type: "searchUpdated"; payload: {
 } } | { type: "loading" } | { type: "loaded"; payload: {
 	releases: ChangelogRelease[],
 } } | { type: "loadFailed"; payload: {
+	reason: string,
+} } |
+/**
+ *  The release list could not be read and the bundled notes are shown in
+ *  its place. Follows the `Loaded` that put them there.
+ */
+{ type: "indexUnavailable"; payload: {
 	reason: string,
 } } | { type: "entryLoading"; payload: {
 	id: string,
@@ -953,6 +971,12 @@ export type ChangelogState = {
 	 */
 	entries: { [key in string]: ChangelogEntry },
 	entryStatus: ChangelogEntryStatus,
+	/**
+	 *  Why the current release list could not be read, while the tab shows
+	 *  only the notes bundled with the client (the early archive) instead of
+	 *  an error page. `None` once the list has been read.
+	 */
+	indexUnavailable?: string | null,
 };
 
 /**  Status of the index fetch. Mirrors the other list statuses in this crate. */

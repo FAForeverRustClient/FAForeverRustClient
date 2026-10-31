@@ -9,6 +9,7 @@
 // seconds while the phase is open, as the website does.
 
 import { useEffect, useRef, useState } from "react";
+import { useForegroundInterval } from "../../../shared/hooks/useForegroundInterval";
 import { Button } from "../../../design-system/Button";
 import type { PickPhase, Tourney, TourneyAdmin } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -43,15 +44,8 @@ export function PickPhasePanel({ event, picks, busy, onAdmin, onRefresh }: PickP
   });
   const refreshedFor = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (!picks.open) return;
-    const tick = window.setInterval(() => setNow(Date.now()), 1_000);
-    const poll = window.setInterval(() => refresh.current(), POLL_MS);
-    return () => {
-      window.clearInterval(tick);
-      window.clearInterval(poll);
-    };
-  }, [picks.open]);
+  useForegroundInterval(() => setNow(Date.now()), 1_000, picks.open);
+  useForegroundInterval(() => refresh.current(), POLL_MS, picks.open);
 
   const left =
     picks.secondsLeft === null ? null : Math.max(0, picks.secondsLeft - Math.floor((now - reading.at) / 1000));

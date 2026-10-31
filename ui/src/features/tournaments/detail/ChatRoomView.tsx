@@ -17,6 +17,7 @@
 // organisers without anyone having to remember `!organizer`.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useForegroundInterval } from "../../../shared/hooks/useForegroundInterval";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
@@ -95,10 +96,7 @@ export function ChatRoomView(props: ChatRoomViewProps) {
   const input = useRef<HTMLInputElement>(null);
 
   // Poll while the room is on screen, and stop the moment it is not.
-  useEffect(() => {
-    const timer = window.setInterval(() => onRefresh(roomId), POLL_MS);
-    return () => window.clearInterval(timer);
-  }, [roomId, onRefresh]);
+  useForegroundInterval(() => onRefresh(roomId), POLL_MS);
 
   // A room switch starts fresh: no half-written reply to another room's post.
   useEffect(() => {

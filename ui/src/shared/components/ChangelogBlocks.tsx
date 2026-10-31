@@ -60,6 +60,26 @@ export function ChangelogSpans({ spans }: { spans: ChangelogSpan[] }) {
   );
 }
 
+/** The client's attribution under a note bundled from the archive, worded in
+ * the reader's language: the backend sends only where it came from. */
+function ChangelogProvenance({ sourceUrl, evidenceUrl, anchorId }: {
+  sourceUrl: string; evidenceUrl: string; anchorId?: string;
+}) {
+  const { t } = useTranslation();
+  const link = (url: string, text: string) => (
+    <button type="button" className="changelog-link" title={changelogLinkTarget(url)} onClick={() => ipc.run(openChangelogLink(url))}>
+      {text}
+    </button>
+  );
+  return (
+    <p id={anchorId} className="changelog-provenance">
+      {link(sourceUrl, t("changelog.provenance.source"))}
+      {evidenceUrl && <>{" · "}{link(evidenceUrl, t("changelog.provenance.evidence"))}</>}
+      <span className="changelog-provenance-note">{t("changelog.provenance.editorial")}</span>
+    </p>
+  );
+}
+
 export function ChangelogListItems({ items, anchorId }: { items: ChangelogListItem[]; anchorId?: string }) {
   return (
     <ul id={anchorId} className="changelog-list">
@@ -188,11 +208,13 @@ export function ChangelogBlockView({ block, anchorId, headingOffset = 0, icons, 
       return <HistoricalBalance block={block} anchorId={anchorId} />;
     case "codeBlock":
       return <ChangelogCodeBlock key={block.payload.text} text={block.payload.text} anchorId={anchorId} />;
+    case "provenance":
+      return <ChangelogProvenance sourceUrl={block.payload.sourceUrl} evidenceUrl={block.payload.evidenceUrl} anchorId={anchorId} />;
     default: {
       if (captionHeadingLevel !== undefined) {
         const level = Math.min(Math.max(captionHeadingLevel + headingOffset, 2), 6);
         const Tag = `h${level}` as "h2" | "h3" | "h4" | "h5" | "h6";
-        return <Tag id={anchorId} className={`changelog-heading changelog-heading-${level} changelog-illustrated-caption`}>
+        return <Tag id={anchorId} className={`changelog-heading changelog-heading-${level}${illustrations ? " changelog-illustrated-caption" : ""}`}>
           {illustrations}<span><ChangelogSpans spans={block.payload.spans} /></span>
         </Tag>;
       }

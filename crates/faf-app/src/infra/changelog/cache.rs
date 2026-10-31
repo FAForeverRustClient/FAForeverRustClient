@@ -3,7 +3,7 @@
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 
 use sha2::{Digest, Sha256};
 
@@ -13,7 +13,65 @@ const MAX_AGE: Duration = Duration::from_secs(7 * 24 * 60 * 60);
 
 pub(super) struct DocumentCache {
     directory: Option<PathBuf>,
-    writes: Arc<Mutex<()>>,
+    writes: Arc<Mutex<Option<CacheIndex>>>,
+}
+
+struct CacheIndex {
+    files: Vec<(SystemTime, u64, PathBuf)>,
+    modified: Option<SystemTime>,
+    reconciled: Instant,
+}
+
+impl CacheIndex {
+    fn scan(directory: &Path) -> std::io::Result<Self> {
+        let files = std::fs::read_dir(directory)?
+            .filter_map(Result::ok)
+            .filter(|entry| is_document(&entry.path()))
+            .filter_map(|entry| {
+                entry
+                    .metadata()
+                    .ok()
+                    .filter(|metadata| metadata.is_file())
+                    .map(|metadata| {
+                        (
+                            metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH),
+                            metadata.len(),
+                            entry.path(),
+                        )
+                    })
+            })
+            .collect();
+        Ok(Self {
+            files,
+            modified: std::fs::metadata(directory)?.modified().ok(),
+            reconciled: Instant::now(),
+        })
+    }
+
+    fn store(&mut self, directory: &Path, path: PathBuf, source: &str) -> std::io::Result<()> {
+        self.files.retain(|(_, _, known)| *known != path);
+        let mut bytes =
+            self.files.iter().map(|(_, size, _)| size).sum::<u64>() + source.len() as u64;
+        if bytes > BUDGET || self.files.len() + 1 > MAX_FILES {
+            self.files.sort_by_key(|(modified, _, _)| *modified);
+            while bytes > BUDGET || self.files.len() + 1 > MAX_FILES {
+                let (_, size, oldest) = self.files.remove(0);
+                std::fs::remove_file(oldest)?;
+                bytes -= size;
+            }
+        }
+        let mut temporary = tempfile::NamedTempFile::new_in(directory)?;
+        temporary.write_all(source.as_bytes())?;
+        temporary.persist(&path).map_err(|error| error.error)?;
+        let metadata = std::fs::metadata(&path)?;
+        self.files.push((
+            metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH),
+            metadata.len(),
+            path,
+        ));
+        self.modified = std::fs::metadata(directory)?.modified().ok();
+        Ok(())
+    }
 }
 
 fn filename(url: &str) -> String {
@@ -81,44 +139,30 @@ impl DocumentCache {
         // Keep directory scans, eviction and atomic replacement off the runtime.
         // The guard remains held even if the caller cancels this short disk job.
         let _ = tokio::task::spawn_blocking(move || -> std::io::Result<()> {
-            let _guard = writes
+            let mut index = writes
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             std::fs::create_dir_all(&directory)?;
             let path = directory.join(name);
-            let mut files: Vec<_> = std::fs::read_dir(&directory)?
-                .filter_map(Result::ok)
-                .filter(|entry| is_document(&entry.path()) && entry.path() != path)
-                .filter_map(|entry| {
-                    entry
-                        .metadata()
-                        .ok()
-                        .filter(|metadata| metadata.is_file())
-                        .map(|metadata| {
-                            (
-                                metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH),
-                                metadata.len(),
-                                entry.path(),
-                            )
-                        })
-                })
-                .collect();
-            let mut bytes =
-                files.iter().map(|(_, bytes, _)| bytes).sum::<u64>() + source.len() as u64;
-            let mut count = files.len() + 1;
-            files.sort_by_key(|(modified, _, _)| *modified);
-            for (_, size, oldest) in files {
-                if bytes <= BUDGET && count <= MAX_FILES {
-                    break;
-                }
-                std::fs::remove_file(oldest)?;
-                bytes -= size;
-                count -= 1;
+            let modified = std::fs::metadata(&directory)?.modified().ok();
+            // Reconcile outside changes and periodically recheck accounting.
+            // Our own atomic writes update the stamp kept by the index.
+            if index.as_ref().is_none_or(|index| {
+                modified.is_none()
+                    || index.modified != modified
+                    || index.reconciled.elapsed() >= Duration::from_secs(30)
+            }) {
+                *index = None;
+                *index = Some(CacheIndex::scan(&directory)?);
             }
-            let mut temporary = tempfile::NamedTempFile::new_in(&directory)?;
-            temporary.write_all(source.as_bytes())?;
-            temporary.persist(path).map_err(|error| error.error)?;
-            Ok(())
+            let result = index
+                .as_mut()
+                .expect("cache was reconciled")
+                .store(&directory, path, &source);
+            if result.is_err() {
+                *index = None;
+            }
+            result
         })
         .await;
     }
@@ -127,6 +171,59 @@ impl DocumentCache {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn search_efficiency_document_writes_reuse_accounting_and_replace_sizes() {
+        let folder = tempfile::tempdir().unwrap();
+        let cache = DocumentCache::new(Some(folder.path().to_path_buf()));
+        cache.store("https://example.invalid/one", "one").await;
+        let reconciled = cache.writes.lock().unwrap().as_ref().unwrap().reconciled;
+        cache.store("https://example.invalid/two", "second").await;
+        {
+            let held = cache.writes.lock().unwrap();
+            let index = held.as_ref().unwrap();
+            assert_eq!(
+                index.reconciled, reconciled,
+                "own writes must not scan the directory again"
+            );
+            assert_eq!(index.files.len(), 2);
+        }
+        cache
+            .store("https://example.invalid/one", "replacement")
+            .await;
+        let held = cache.writes.lock().unwrap();
+        let index = held.as_ref().unwrap();
+        assert_eq!(index.files.len(), 2);
+        assert_eq!(
+            index.files.iter().map(|(_, bytes, _)| bytes).sum::<u64>(),
+            17
+        );
+    }
+
+    #[tokio::test]
+    async fn search_efficiency_document_cache_reconciles_external_entries_before_eviction() {
+        let folder = tempfile::tempdir().unwrap();
+        let cache = DocumentCache::new(Some(folder.path().to_path_buf()));
+        cache.store("https://example.invalid/one", "one").await;
+        let external = folder
+            .path()
+            .join(filename("https://example.invalid/external"));
+        let file = std::fs::File::create(&external).unwrap();
+        file.set_len(BUDGET).unwrap();
+        drop(file);
+        // Force reconciliation independently of filesystem timestamp precision.
+        cache.writes.lock().unwrap().as_mut().unwrap().modified = None;
+        cache.store("https://example.invalid/two", "two").await;
+        let bytes: u64 = std::fs::read_dir(folder.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().metadata().unwrap().len())
+            .sum();
+        assert!(bytes <= BUDGET);
+        assert_eq!(
+            cache.read("https://example.invalid/two").await.as_deref(),
+            Some("two")
+        );
+    }
 
     #[tokio::test]
     async fn public_document_cache_survives_restarts_and_is_bounded() {

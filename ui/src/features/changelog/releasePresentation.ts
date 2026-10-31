@@ -4,8 +4,10 @@ import type { MessageKey } from "../../i18n";
 export const UNDATED_GROUP = "undated";
 export const LEGACY_GROUP = "legacy";
 
+/** A deployment branch: named by anything but a patch number, as in
+ * `ChangelogRelease::is_rolling`. Legacy notes (`legacy-3605`) are not. */
 export function isRollingRelease(release: Pick<ChangelogRelease, "id">): boolean {
-  return release.id === "fafbeta" || release.id === "fafdevelop";
+  return !release.id.startsWith("legacy-") && !/^\d+$/.test(release.id);
 }
 
 export function releaseLabel(id: string): string {

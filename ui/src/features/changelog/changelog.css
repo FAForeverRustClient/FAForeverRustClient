@@ -149,6 +149,12 @@
   margin-right: var(--space-3);
 }
 
+/* Above the list it qualifies: only the bundled notes are listed. */
+.status-notice.changelog-index-notice {
+  flex: 0 0 auto;
+  margin: 0 var(--space-3) var(--space-2) 0;
+}
+
 .changelog-releases {
   flex: 1 1 auto;
   min-height: 0;

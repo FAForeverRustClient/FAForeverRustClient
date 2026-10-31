@@ -4292,6 +4292,34 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "the bundled notes stand in for an unreadable index until the list is read",
+            {
+                let release = |id: &str| faf_domain::protocol::changelog::ChangelogRelease {
+                    id: id.into(),
+                    kind: "Game Patch".into(),
+                    date: "2014-11-28".into(),
+                    year: "2014".into(),
+                    source_url: format!("https://example.invalid/{id}.md"),
+                    web_url: format!("https://example.invalid/{id}"),
+                };
+                vec![
+                    ChangelogEvent::Loading.into(),
+                    ChangelogEvent::Loaded {
+                        releases: vec![release("3635")],
+                    }
+                    .into(),
+                    ChangelogEvent::IndexUnavailable {
+                        reason: "could not reach the changelog".into(),
+                    }
+                    .into(),
+                    ChangelogEvent::Loaded {
+                        releases: vec![release("3837"), release("3635")],
+                    }
+                    .into(),
+                ]
+            },
+        ),
+        case(
             "archive progress preserves the selected note and ignores stale results after cancellation",
             {
                 use faf_domain::protocol::changelog::{ChangelogEntry, ChangelogSearchMatch};

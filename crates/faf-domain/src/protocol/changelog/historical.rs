@@ -702,7 +702,8 @@ fn enrich_with_associations(entry: &mut ChangelogEntry, associate_prose: bool) {
                 enricher.blocks.push(ChangelogBlock::Unit { name, units });
             }
             block @ (ChangelogBlock::HistoricalBalance { .. }
-            | ChangelogBlock::CodeBlock { .. }) => enricher.blocks.push(block),
+            | ChangelogBlock::CodeBlock { .. }
+            | ChangelogBlock::Provenance { .. }) => enricher.blocks.push(block),
         }
     }
     entry.blocks = enricher.blocks;
@@ -1115,7 +1116,7 @@ mod tests {
                 ChangelogBlock::List { items: content } => {
                     items(content, &mut text, &mut values, &mut links)
                 }
-                ChangelogBlock::HistoricalBalance { .. } => {}
+                ChangelogBlock::HistoricalBalance { .. } | ChangelogBlock::Provenance { .. } => {}
                 ChangelogBlock::CodeBlock { text: code } => text.push(code.clone()),
             }
         }

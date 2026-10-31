@@ -3,6 +3,8 @@
 // identities come from the pictures, never inferred from arbitrary captions.
 // Keep unknown sources and enhancement/category artwork unchanged.
 
+import unitBackgrounds from "./changelogUnitBackgrounds.json";
+
 const LEGACY_ICON_BASE = "https://raw.githubusercontent.com/FAForever/patchnotes/0d01e845da4d72173492751d153771ee17a0f079/images/";
 const CLEAN_ICON_BASE = "https://faforever.github.io/fa/assets/icons";
 
@@ -96,5 +98,19 @@ export function changelogUnitIconUrl(source: string): string {
 export function changelogUnitIconId(source: string): string | null {
   const clean = changelogUnitIconUrl(source);
   if (!clean.startsWith(`${CLEAN_ICON_BASE}/`)) return null;
-  return /^([A-Z]{3}\d{4})_icon\.png$/.exec(clean.slice(CLEAN_ICON_BASE.length + 1))?.[1] ?? null;
+  // Three letters and four characters, the fourth of which may be a letter:
+  // the T3 mobile anti-air units are DALK003, DELK002, DRLK001 and DSLK004.
+  return /^([A-Z]{3}[A-Z\d]\d{3})_icon\.png$/.exec(clean.slice(CLEAN_ICON_BASE.length + 1))?.[1] ?? null;
+}
+
+export type ChangelogUnitBackground = "land" | "air" | "sea" | "amph";
+const BACKGROUNDS: Readonly<Record<string, string>> = unitBackgrounds.backgrounds;
+
+/** The game's construction.lua selects the frame from General.Icon. Unit
+ * identifiers do not encode it: factories, commanders and hover units differ. */
+export function changelogUnitIconBackground(source: string): ChangelogUnitBackground | null {
+  const id = changelogUnitIconId(source);
+  const background = id ? BACKGROUNDS[id] : undefined;
+  return background === "land" || background === "air" || background === "sea" || background === "amph"
+    ? background : null;
 }

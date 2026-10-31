@@ -1,0 +1,35 @@
+/* While the local catalogue or the picture itself is on its way: a quiet tile
+   the size and shape of the picture, not an empty framed box. Each picture's
+   own class sets the size and corners. */
+.changelog-icon-pending {
+  display: inline-block;
+  background-color: var(--color-surface-hover);
+}
+
+.changelog-icon-loading {
+  background-color: var(--color-surface-hover);
+}
+
+/* Original construction-button textures behind the transparent game portrait.
+   Web fallbacks already contain their backgrounds and do not get this layer. */
+.changelog-icon-background {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+.changelog-icon-background-land {
+  background-image: url("/assets/changelog/categories/land.png");
+}
+
+.changelog-icon-background-air {
+  background-image: url("/assets/changelog/categories/air.png");
+}
+
+.changelog-icon-background-sea {
+  background-image: url("/assets/changelog/categories/sea.png");
+}
+
+.changelog-icon-background-amph {
+  background-image: url("/assets/changelog/categories/amph.png");
+}

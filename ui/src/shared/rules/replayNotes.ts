@@ -85,6 +85,12 @@ export function normalizeReplayNotes(notes: readonly ReplayNote[]): ReplayNote[]
     .map(({ note }) => note);
 }
 
+// Store updates replace the immutable array, so each revision gets its own index.
+const noteIndexes = new WeakMap<readonly ReplayNote[], {
+  games: Map<number, ReplayNote>;
+  files: Map<string, ReplayNote>;
+}>();
+
 /**
  * The note on one replay: on its game when it has an id, otherwise on its
  * file, however that file's path is spelt. Twin of
@@ -101,9 +107,22 @@ export function noteForReplay(
 ): ReplayNote | null {
   const wanted = noteTarget(replayId, localPath);
   if (!wanted) return null;
-  return notes.find((entry) => wanted.path === null
-    ? entry.replayId === wanted.replayId
-    : entry.replayId <= 0 && entry.path === wanted.path) ?? null;
+  let index = noteIndexes.get(notes);
+  if (!index) {
+    index = { games: new Map(), files: new Map() };
+    for (const note of notes) {
+      // Preserve find's first-match behavior, including callers with duplicates.
+      if (note.replayId > 0) {
+        if (!index.games.has(note.replayId)) index.games.set(note.replayId, note);
+      } else if (note.path && !index.files.has(note.path)) {
+        index.files.set(note.path, note);
+      }
+    }
+    noteIndexes.set(notes, index);
+  }
+  return (wanted.path === null
+    ? index.games.get(wanted.replayId)
+    : index.files.get(wanted.path)) ?? null;
 }
 
 /** Tags typed as one comma-separated line. */

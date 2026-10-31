@@ -258,9 +258,9 @@ html[data-reduced-motion="true"] .client-status-progress[data-indeterminate="tru
      heading onto two lines in Russian and French and squeezed
      "Переподключить" into a 90px half it does not fit (issue 351). */
   width: max-content;
-  min-width: 190px;
+  min-width: 200px;
   max-width: calc(100vw - 16px);
-  padding: 8px;
+  padding: var(--space-1);
   color: var(--color-text);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
@@ -268,60 +268,42 @@ html[data-reduced-motion="true"] .client-status-progress[data-indeterminate="tru
   box-shadow: var(--shadow-popover);
 }
 
-.client-status-popover-heading {
-  display: grid;
-  grid-template-columns: 7px minmax(0, 1fr);
+/* The menu's header: the connection's state in its status colour. */
+.client-status-popover-head {
+  display: flex;
+  min-height: 32px;
   align-items: center;
-  gap: 7px;
-  padding: 3px 4px 8px;
-  color: var(--color-muted);
-  font-size: 12px;
-}
-
-/* Two equal halves: what the connection is, and what you can do to it. Equal
-   because neither is the caption of the other. */
-.client-status-popover-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  margin-bottom: var(--space-1);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .client-status-state {
-  display: grid;
-  min-height: 28px;
-  place-items: center;
-  padding: 5px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   color: var(--color-muted);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 550;
+  font-size: 13px;
+  font-weight: 600;
   text-transform: capitalize;
 }
 
-/* The same tinted-badge pattern the vault uses for a state worth a colour. */
 .client-status-state[data-status="connected"] {
   color: var(--color-ok-text);
-  background: color-mix(in srgb, var(--color-ok) 12%, transparent);
-  border-color: color-mix(in srgb, var(--color-ok) 25%, transparent);
 }
 
 .client-status-state[data-status="connecting"] {
   color: var(--color-warn-text);
-  background: color-mix(in srgb, var(--color-warn) 12%, transparent);
-  border-color: color-mix(in srgb, var(--color-warn) 25%, transparent);
 }
 
 .client-status-state[data-status="disconnected"] {
   color: var(--color-error-text);
-  background: color-mix(in srgb, var(--color-error) 12%, transparent);
-  border-color: color-mix(in srgb, var(--color-error) 25%, transparent);
 }
 
 .client-status-popover-dot {
   width: 7px;
   height: 7px;
+  flex: none;
   border-radius: 50%;
   background: var(--color-subtle);
 }
@@ -334,24 +316,36 @@ html[data-reduced-motion="true"] .client-status-progress[data-indeterminate="tru
   background: var(--color-warn);
 }
 
+/* Menu rows, as in any other menu: full width, left aligned, a fill on
+   hover rather than a box around each. */
 .client-status-action {
-  display: grid;
+  display: flex;
   width: 100%;
-  min-height: 28px;
-  place-items: center;
-  padding: 5px 8px;
+  min-height: 32px;
+  align-items: center;
+  padding: 0 var(--space-2);
   color: var(--color-text);
-  text-align: center;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  text-align: left;
+  background: transparent;
+  border: 0;
   border-radius: var(--radius-sm);
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
+  white-space: nowrap;
   cursor: pointer;
 }
 
 .client-status-action:hover:not(:disabled) {
   background: var(--color-surface-hover);
+}
+
+.client-status-action:active:not(:disabled) {
+  background: var(--color-border);
+}
+
+.client-status-action:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
 }
 
 .client-status-action:disabled {

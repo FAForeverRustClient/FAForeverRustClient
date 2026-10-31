@@ -1,24 +1,35 @@
-/* The status bar's connection check (issue 647): wide enough that a check
-   line's explanation reads as a sentence, with the check and the live
-   connections side by side. */
+/* The status bar's connection check (issue 647): wide enough that a finding
+   and its sentence share a line, so the whole check fits a window without
+   scrolling, with the check and the live connections side by side in a
+   game. */
 .modal-panel.connection-check-modal {
-  width: min(920px, calc(100vw - 48px));
-  max-width: 920px;
-  padding: 24px;
+  width: min(860px, calc(100vw - 48px));
+  max-width: 860px;
+  padding: 20px 24px 24px;
+}
+
+.modal-panel.connection-check-modal.has-live {
+  width: min(1080px, calc(100vw - 48px));
+  max-width: 1080px;
 }
 
 .connection-check-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
   /* Clear of the dialog's close button in the corner. */
-  padding-right: 24px;
+  padding-right: 28px;
   margin-bottom: var(--space-4);
 }
 
+.connection-check-head > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .connection-check-head h2 {
-  margin: 0 0 var(--space-1);
+  margin: 0 0 2px;
   font-size: 16px;
   font-weight: 600;
 }
@@ -26,18 +37,23 @@
 .connection-check-head p {
   margin: 0;
   font-size: 13px;
+  line-height: 1.5;
 }
 
-.connection-check-head .btn,
-.connection-check-head button {
+.connection-check-head .btn-ghost {
   flex: none;
 }
 
 .connection-check-columns {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.has-live .connection-check-columns {
   grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   gap: 24px;
-  align-items: start;
 }
 
 .connection-check-column {
@@ -50,10 +66,33 @@
 .connection-check-column h3 {
   margin: 0;
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+}
+
+/* Outside a game: one quiet line saying when live connections appear. */
+.connection-check-live-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.connection-check-live-note > svg {
+  flex: none;
+  margin-top: 2.5px;
+}
+
+.connection-check-live-note p {
+  margin: 0;
+}
+
+.connection-check-live-note strong {
+  color: var(--color-text);
+  font-weight: 600;
 }
 
 /* The Settings page draws these as page blocks with a rule under each; in a
@@ -64,7 +103,7 @@
 }
 
 @media (max-width: 760px) {
-  .connection-check-columns {
+  .has-live .connection-check-columns {
     grid-template-columns: minmax(0, 1fr);
   }
 }
