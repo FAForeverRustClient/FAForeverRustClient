@@ -44,6 +44,7 @@ import {
   NoteBlocks,
   NoteContentsColumn,
   NoteJumpRow,
+  showsContents,
   noteSections,
   useNoteContents,
   useNoteListPosition,
@@ -498,7 +499,7 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
         )}
 
         <div className="changelog-note-scroll" ref={scrollRef} onScroll={onNoteScroll}>
-          <div className={`changelog-note-layout${sections.length > 0 ? " has-toc" : ""}`}>
+          <div className={`changelog-note-layout${showsContents(sections) ? " has-toc" : ""}`}>
             <div className="changelog-note-copy">
               <NoteJumpRow sections={sections} onJump={jumpTo} />
 
@@ -525,12 +526,14 @@ function GameChangelogView({ jumpTarget, onJumped }: { jumpTarget: ChangelogSear
               {entry && <NoteBlocks blocks={entry.blocks} skipFirst={heading.skipFirst} illustrations={illustrations} />}
             </div>
 
-            <NoteContentsColumn
-              sections={sections}
-              activeSectionId={activeSectionId}
-              navRef={tocRef}
-              onJump={jumpTo}
-            />
+            {showsContents(sections) && (
+              <NoteContentsColumn
+                sections={sections}
+                activeSectionId={activeSectionId}
+                navRef={tocRef}
+                onJump={jumpTo}
+              />
+            )}
           </div>
         </div>
       </article>

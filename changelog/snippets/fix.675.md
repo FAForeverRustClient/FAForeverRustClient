@@ -11,3 +11,6 @@
 - Dates in the unit history no longer show a day early in timezones west of UTC.
 - Without an internet connection, the patch notes show the archived early patch notes that come with the client instead of an error page.
 - The source line under early patch notes is written in the client's language instead of English.
+- Early patch notes written one bullet at a time show those bullets as one list.
+- Bold section titles in early patch notes, such as GAME and SERVER in 3613, are headings in the note and its contents.
+- A patch note with only one section no longer shows a contents column beside it.

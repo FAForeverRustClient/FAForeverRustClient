@@ -28,6 +28,20 @@ describe("historical patchnote illustrations", () => {
     expect(bundledNoteIllustrations(undefined).size).toBe(0);
   });
 
+  it("makes a bold label heading a list a section, its next label a sibling", () => {
+    const label = (text: string): ChangelogBlock => ({ type: "paragraph", payload: { spans: [{ type: "strong", payload: text }] } });
+    const list: ChangelogBlock = { type: "list", payload: { items: [{ spans: [{ type: "text", payload: "Fixed a desync." }], change: null, children: [] }] } };
+    const icons = historicalChangelogIllustrations("3613", [label("GAME"), list, label("SERVER"), list]);
+    expect([...icons.entries()]).toEqual([
+      [0, { text: "GAME", icons: [], headingLevel: 2 }],
+      [2, { text: "SERVER", icons: [], headingLevel: 2 }],
+    ]);
+    // Under a heading it nests; a bold sentence, or a label before prose, stays prose.
+    expect(historicalChangelogIllustrations("3613", [heading("Changes"), label("GAME"), list]).get(1)?.headingLevel).toBe(3);
+    expect(historicalChangelogIllustrations("3613", [label("This patch fixes desyncs."), list]).size).toBe(0);
+    expect(historicalChangelogIllustrations("3613", [label("GAME"), paragraph("Fixed a desync.")]).size).toBe(0);
+  });
+
   it("keeps category words in prose, ambiguous headings and modern notes unillustrated", () => {
     const blocks = [paragraph("Air"), paragraph("Land"), heading("General"), heading("Air damage changed"),
       heading("Land cost reduction"), heading("T2 units")];

@@ -214,7 +214,7 @@ export function ChangelogBlockView({ block, anchorId, headingOffset = 0, icons, 
       if (captionHeadingLevel !== undefined) {
         const level = Math.min(Math.max(captionHeadingLevel + headingOffset, 2), 6);
         const Tag = `h${level}` as "h2" | "h3" | "h4" | "h5" | "h6";
-        return <Tag id={anchorId} className={`changelog-heading changelog-heading-${level} changelog-illustrated-caption`}>
+        return <Tag id={anchorId} className={`changelog-heading changelog-heading-${level}${illustrations ? " changelog-illustrated-caption" : ""}`}>
           {illustrations}<span><ChangelogSpans spans={block.payload.spans} /></span>
         </Tag>;
       }

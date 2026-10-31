@@ -133,6 +133,37 @@ fn literal_list_references(items: &mut [ChangelogListItem], source: &str) {
     }
 }
 
+/// One-bullet lists in a row, as one list. The wiki wrote some notes a bullet
+/// at a time, each its own `<ul>` (five in a row in 3608), which drew a
+/// paragraph's gap between bullets that belong together. A list of several
+/// bullets is a list of its own and keeps its neighbours apart: in 3616 the
+/// four new XP values are followed straight away by an unrelated one-bullet
+/// change, which must not read as a fifth value. Items keep order and text.
+fn merge_adjacent_lists(blocks: Vec<ChangelogBlock>) -> Vec<ChangelogBlock> {
+    let mut merged: Vec<ChangelogBlock> = Vec::with_capacity(blocks.len());
+    // Whether the last block is a list built from one-bullet lists only.
+    let mut singles = false;
+    for block in blocks {
+        match block {
+            ChangelogBlock::List { items } if items.len() == 1 => {
+                if let (true, Some(ChangelogBlock::List { items: previous })) =
+                    (singles, merged.last_mut())
+                {
+                    previous.extend(items);
+                } else {
+                    merged.push(ChangelogBlock::List { items });
+                    singles = true;
+                }
+            }
+            block => {
+                merged.push(block);
+                singles = false;
+            }
+        }
+    }
+    merged
+}
+
 /// An exact identity/source match is required. An arbitrary incoming URL never
 /// selects a different embedded note, and no archive network request is made.
 pub fn early_entry(release: &ChangelogRelease) -> Option<ChangelogEntry> {
@@ -142,7 +173,7 @@ pub fn early_entry(release: &ChangelogRelease) -> Option<ChangelogEntry> {
         .find(|note| note.id == release.id && note.source_url == release.source_url)?;
     // Raw captures remain hash-pinned; only imported prose spacing is tidied,
     // which the client says in its attribution line under the note.
-    let mut blocks = super::parse_html_blocks(&note.html);
+    let mut blocks = merge_adjacent_lists(super::parse_html_blocks(&note.html));
     for block in &mut blocks {
         match block {
             ChangelogBlock::Paragraph { spans } => literal_references(spans, &note.html),
@@ -236,6 +267,36 @@ mod tests {
             if matches!(&spans[0], ChangelogSpan::Text(text) if text.starts_with("Complete changelog from 3599 to 3605.")))
         );
         assert_eq!(with_early_releases(releases.clone()), releases);
+    }
+
+    #[test]
+    fn bullets_written_one_list_at_a_time_read_as_one_list() {
+        let single = |block: &ChangelogBlock| matches!(block, ChangelogBlock::List { items } if items.len() == 1);
+        for release in with_early_releases(vec![]) {
+            let entry = early_entry(&release).unwrap();
+            assert!(
+                !entry
+                    .blocks
+                    .windows(2)
+                    .any(|pair| single(&pair[0]) && single(&pair[1])),
+                "{} has two one-bullet lists in a row",
+                release.id
+            );
+        }
+        let release = with_early_releases(vec![])
+            .into_iter()
+            .find(|release| release.id == "3608")
+            .unwrap();
+        let lists: Vec<usize> = early_entry(&release)
+            .unwrap()
+            .blocks
+            .iter()
+            .filter_map(|block| match block {
+                ChangelogBlock::List { items } => Some(items.len()),
+                _ => None,
+            })
+            .collect();
+        assert!(lists.iter().any(|&items| items >= 5), "{lists:?}");
     }
 
     #[test]
