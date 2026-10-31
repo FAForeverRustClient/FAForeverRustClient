@@ -75,6 +75,8 @@ const PATIENCE: Duration = Duration::from_secs(5);
 /// in for a gate.
 const WINDOW: Duration = Duration::from_millis(100);
 
+const HELD_POOL_PREFIX: &str = "saturation-pool-";
+
 // ── Gates ───────────────────────────────────────────────────────────────────
 
 /// Port calls held until the test lets them through, and the order they
@@ -197,6 +199,9 @@ impl MapsPort for GatedMaps {
         FakeMaps.list_installed().await
     }
     async fn list_matchmaker_pools(&self, queue: String) -> Result<Vec<MatchmakerMapPool>, String> {
+        if queue.starts_with(HELD_POOL_PREFIX) {
+            self.0.pass(&format!("map-pool:{queue}")).await;
+        }
         FakeMaps.list_matchmaker_pools(queue).await
     }
     async fn install_map(&self, folder: String, _url: String) -> Result<Vec<InstalledMap>, String> {
@@ -1131,36 +1136,35 @@ fn priority_commands() -> Vec<(&'static str, AppCommand)> {
     ]
 }
 
-/// Every ordinary slot is taken by a search held at its gate and the
+/// Every ordinary slot is taken by a pool load held at its gate and the
 /// ordinary queue is full behind them, so no ordinary command can even be
 /// queued. Each priority command still runs to the end.
 #[tokio::test]
 async fn a_priority_command_is_not_held_up_by_a_saturated_ordinary_lane() {
     let gates = Gates::default();
     let app = start(gated_ports(&gates));
-    let search = |n: usize| -> AppCommand {
-        MapsCommand::SearchVault {
-            query: MapVaultQuery {
-                search: format!("held-{n}"),
-                ..MapVaultQuery::default()
-            },
+    // Searches replace their predecessors, so they cannot hold all the slots.
+    // Distinct pool loads run concurrently and leave each command at its gate.
+    let load = |n: usize| -> AppCommand {
+        MapsCommand::LoadMatchmakerPools {
+            queue_name: format!("{HELD_POOL_PREFIX}{n}"),
         }
         .into()
     };
 
     // Fill the queue until it says so, let the loop hand the first ones every
-    // slot, and top the queue up again, until the searches at their gates
+    // slot, and top the queue up again, until the pool loads at their gates
     // stop growing and the queue stays full: nothing ordinary is moving.
     let mut sent = 0;
     tokio::time::timeout(PATIENCE, async {
         loop {
-            while app.try_dispatch(search(sent)).is_ok() {
+            while app.try_dispatch(load(sent)).is_ok() {
                 sent += 1;
             }
             let running = gates.entered().len();
             tokio::time::sleep(WINDOW).await;
             if running > 0 && gates.entered().len() == running {
-                if app.try_dispatch(search(sent)).is_err() {
+                if app.try_dispatch(load(sent)).is_err() {
                     return;
                 }
                 sent += 1;
@@ -1170,7 +1174,7 @@ async fn a_priority_command_is_not_held_up_by_a_saturated_ordinary_lane() {
     .await
     .expect("the ordinary lane never settled");
     assert!(
-        app.try_dispatch(search(sent)).is_err(),
+        app.try_dispatch(load(sent)).is_err(),
         "the ordinary lane is not saturated"
     );
 
