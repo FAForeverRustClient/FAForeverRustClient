@@ -28,12 +28,13 @@ interface Props {
   target: ProfileMenuTarget;
   name: string;
   onCopyName: () => void;
+  onContacts: () => void;
   onPlayOffline: () => void;
   onLogOut: () => void;
   onClose: () => void;
 }
 
-export function ProfileMenu({ target, name, onCopyName, onPlayOffline, onLogOut, onClose }: Props) {
+export function ProfileMenu({ target, name, onCopyName, onContacts, onPlayOffline, onLogOut, onClose }: Props) {
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
@@ -93,6 +94,7 @@ export function ProfileMenu({ target, name, onCopyName, onPlayOffline, onLogOut,
         onContextMenu={(e) => e.preventDefault()}
       >
         {entry(t("chat.menu.copyUsername"), onCopyName)}
+        {entry(t("contacts.title"), onContacts)}
         <hr className="chat-user-menu-separator" />
         {entry(t("auth.playOffline"), onPlayOffline)}
         <hr className="chat-user-menu-separator" />

@@ -52,6 +52,8 @@ pub(crate) enum Lane {
 /// What a command is exclusive with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum Key {
+    /// Contact-name lookup retries are single-flight.
+    Contacts,
     /// Replaceable reads: a newer query drops the older request future.
     ReplaySearch,
     MapSearch,
@@ -482,6 +484,8 @@ fn reviews(command: &ReviewsCommand) -> CommandPolicy {
 
 fn social(command: &SocialCommand) -> CommandPolicy {
     match command {
+        SocialCommand::SetContactsOpen { .. } => ORDINARY,
+        SocialCommand::ResolveContacts => single_flight(Key::Contacts),
         SocialCommand::SetRelation { .. } => ORDINARY,
         // A read whose answer is keyed by its login, so two at once are two
         // answers, never one overwriting the other.

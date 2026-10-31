@@ -115,6 +115,11 @@ impl LobbyPort for FakeLobby {
                 .send(LobbyUpdate::Relations {
                     friends: vec!["Stormlord".into()],
                     foes: vec![],
+                    contacts: vec![faf_domain::state::Contact {
+                        player_id: 2,
+                        login: Some("Stormlord".into()),
+                        relation: Relation::Friend,
+                    }],
                 })
                 .await;
             // The real `social` message carries the channels the server has on

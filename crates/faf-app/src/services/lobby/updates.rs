@@ -143,8 +143,13 @@ pub(super) async fn handle_update<'a>(
                 tracing::info!(game_id = id, %reason, "ignored a join refusal for a join no longer pending");
             }
         }
-        LobbyUpdate::Relations { friends, foes } => {
-            out.emit(SocialEvent::RelationsUpdated { friends, foes })
+        LobbyUpdate::Relations {
+            friends,
+            foes,
+            contacts,
+        } => {
+            out.emit(SocialEvent::RelationsUpdated { friends, foes });
+            out.emit(SocialEvent::ContactsUpdated { contacts });
         }
         LobbyUpdate::AutoJoinChannels(channels) => {
             // Recorded first: the reducer normalizes the names, and if chat is

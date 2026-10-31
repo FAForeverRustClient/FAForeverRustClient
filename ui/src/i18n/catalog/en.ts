@@ -31,6 +31,26 @@ export interface PluralMessage {
 export type Message = string | PluralMessage;
 
 export const en = {
+  "contacts.title": "Contacts",
+  "contacts.description": "Manage your friends and foes, including players who are offline.",
+  "contacts.search": "Search contacts",
+  "contacts.disconnected": "Connect to FAF to load and manage your contacts.",
+  "contacts.unresolved": "Some account names could not be loaded. These contacts are still listed by account ID.",
+  "contacts.retryNames": "Retry names",
+  "contacts.loadingNames": "Loading names…",
+  "contacts.noMatches": "No contacts match your search.",
+  "contacts.noFriends": "Your friends list is empty.",
+  "contacts.noFoes": "Your foes list is empty.",
+  "contacts.unknownAccount": "Account #{id}",
+  "contacts.nameUnavailable": "Name unavailable",
+  "contacts.presenceUnknown": "Status unavailable",
+  "contacts.online": "Online",
+  "contacts.offline": "Offline",
+  "contacts.remove": "Remove",
+  "contacts.removeFriend": "Remove {name} from friends",
+  "contacts.removeFoe": "Remove {name} from foes",
+  "contacts.actions": "Actions",
+  "contacts.actionsFor": "Actions for {name}",
   // Navigation: label is the tab caption, description is its subtitle.
   "nav.tab.news.label": "News",
   "nav.tab.news.description": "Community updates",

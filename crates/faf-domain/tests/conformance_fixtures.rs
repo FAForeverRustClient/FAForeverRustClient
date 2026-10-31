@@ -6797,6 +6797,33 @@ fn cases() -> Vec<Case> {
         ),
         // ── maps / mods ──────────────────────────────────────────────────
         case(
+            "contacts retain offline identities and manage unresolved accounts",
+            vec![
+                SocialEvent::ContactsOpened { open: true }.into(),
+                SocialEvent::RelationsUpdated { friends: vec!["Offline".into()], foes: vec![] }.into(),
+                SocialEvent::ContactsUpdated { contacts: vec![
+                    Contact { player_id: 7, login: Some("Offline".into()), relation: Relation::Friend },
+                    Contact { player_id: 99, login: None, relation: Relation::Foe },
+                ] }.into(),
+                SocialEvent::ContactsRefreshing { refreshing: true }.into(),
+                SocialEvent::ContactSet { contact: Contact {
+                    player_id: 7, login: Some("Offline".into()), relation: Relation::Foe,
+                }, member: true }.into(),
+                SocialEvent::ContactSet { contact: Contact {
+                    player_id: 99, login: None, relation: Relation::Foe,
+                }, member: false }.into(),
+                SocialEvent::ContactsRefreshing { refreshing: false }.into(),
+                SocialEvent::RelationsUpdated { friends: vec!["Resolved".into()], foes: vec!["Offline".into()] }.into(),
+                SocialEvent::ContactsUpdated { contacts: vec![
+                    Contact { player_id: 7, login: Some("Offline".into()), relation: Relation::Foe },
+                    Contact { player_id: 99, login: Some("Resolved".into()), relation: Relation::Friend },
+                ] }.into(),
+                SocialEvent::ContactSet { contact: Contact { player_id: 99, login: None, relation: Relation::Friend }, member: false }.into(),
+                SocialEvent::Cleared.into(),
+                SocialEvent::ContactsOpened { open: false }.into(),
+            ],
+        ),
+        case(
             "maps load the vault and the installed list",
             vec![
                 MapsEvent::VaultLoading.into(),

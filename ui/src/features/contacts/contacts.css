@@ -1,0 +1,36 @@
+.modal-panel.contacts-modal {
+  width: min(640px, calc(100vw - 32px));
+  height: min(680px, 85vh);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow: hidden;
+}
+.contacts-heading { padding-right: var(--space-4); }
+.contacts-heading h2 { margin: 0 0 var(--space-2); font-size: 18px; }
+.contacts-heading p { margin: 0; font-size: 13px; }
+.contacts-modal .contacts-search { width: 100%; min-height: 36px; flex: none; }
+.contacts-results { min-height: 0; flex: 1; overflow-y: auto; scrollbar-gutter: stable; }
+.contacts-list { padding: 0; margin: 0; list-style: none; }
+.contacts-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-2); border-bottom: 1px solid var(--color-border); }
+.contacts-row.is-menu-target { background: var(--color-surface-hover); }
+.contacts-person { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.contacts-person > span { font-size: 12px; }
+.contacts-name { align-self: flex-start; max-width: 100%; padding: 0; border: 0; background: transparent; color: var(--color-text); font: inherit; font-weight: 600; overflow-wrap: anywhere; text-align: left; cursor: pointer; }
+.contacts-name:hover { text-decoration: underline; }
+.contacts-name:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: var(--radius-sm); }
+.contacts-name:active { opacity: 0.8; }
+.contacts-name:disabled { cursor: default; }
+.contacts-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.contacts-avatar { position: relative; display: grid; place-items: center; width: 40px; height: 32px; flex: none; }
+.contacts-avatar .profile-avatar.has-image { width: 40px; height: 28px; }
+.contacts-avatar .contacts-presence { position: absolute; right: 0; bottom: 0; box-shadow: 0 0 0 2px var(--color-surface); }
+.contacts-presence { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--color-muted); }
+.contacts-presence.is-online { background: var(--color-ok); }
+.contacts-presence.is-unknown { background: transparent; border: 1px solid var(--color-muted); }
+.contacts-notice { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; font-size: 13px; }
+.contacts-empty { padding: var(--space-4) var(--space-2); font-size: 13px; }
+@media (max-width: 480px) {
+  .contacts-row { flex-wrap: wrap; }
+  .contacts-actions { width: 100%; justify-content: flex-end; }
+}

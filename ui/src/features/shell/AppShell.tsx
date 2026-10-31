@@ -19,6 +19,8 @@ import { UpdateGate } from "../updates/UpdateGate";
 import { WhatsNewDialog } from "../updates/WhatsNewDialog";
 import { BrandMark } from "../../design-system/BrandMark";
 import { PlayerCardModal } from "../player-card/PlayerCardModal";
+import { ContactsDialog } from "../contacts/ContactsDialog";
+import { openContacts } from "../../shared/contactsActions";
 import { ReviewsPanel } from "../reviews/ReviewsPanel";
 import { JoinDownloadDialog } from "../lobby/join/JoinDownloadDialog";
 import { JoinWhileSearchingDialog } from "../lobby/join/JoinWhileSearchingDialog";
@@ -286,6 +288,7 @@ export function AppShell() {
               target={profileMenu}
               name={player.name}
               onCopyName={() => void navigator.clipboard?.writeText(player.name)}
+              onContacts={openContacts}
               onPlayOffline={() => ipc.send({ kind: "Auth", command: { type: "launchOfflineGame" } })}
               onLogOut={logOut}
               onClose={() => setProfileMenu(null)}
@@ -343,6 +346,7 @@ export function AppShell() {
       <JoinDownloadDialog />
       <JoinPreparationDialog />
       <ReplayStartDialog />
+      <ContactsDialog />
       <PlayerCardModal />
       <ReviewsPanel />
       <UploadDialog />

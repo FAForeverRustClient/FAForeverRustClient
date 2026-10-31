@@ -19,18 +19,50 @@
 //! waiting on: see `PlayerDirectory::note_local_relation`. Without it that
 //! re-send undid whatever the user had just done.
 
-use faf_domain::state::{Relation, SocialCommand, SocialEvent};
+use faf_domain::state::{Contact, Relation, SocialCommand, SocialEvent};
 
 use crate::runtime::{EventSink, ServiceCtx};
 
 pub async fn handle(cmd: SocialCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
+        SocialCommand::SetContactsOpen { open } => out.emit(SocialEvent::ContactsOpened { open }),
+        SocialCommand::ResolveContacts => {
+            let ids = out.with_state(|state| {
+                state
+                    .social
+                    .contacts
+                    .entries
+                    .iter()
+                    .filter(|contact| contact.login.is_none())
+                    .map(|contact| contact.player_id)
+                    .collect::<Vec<_>>()
+            });
+            if ids.is_empty() {
+                return;
+            }
+            out.emit(SocialEvent::ContactsRefreshing { refreshing: true });
+            if let Err(error) = ctx.ports.lobby.resolve_contacts(&ids).await {
+                tracing::warn!(%error, "could not resolve contact names");
+            }
+            out.emit(SocialEvent::ContactsRefreshing { refreshing: false });
+        }
         SocialCommand::SetRelation {
             player_id,
             login,
             relation,
             member,
         } => {
+            let login = out
+                .with_state(|state| {
+                    state
+                        .social
+                        .contacts
+                        .entries
+                        .iter()
+                        .find(|contact| contact.player_id == player_id)
+                        .and_then(|contact| contact.login.clone())
+                })
+                .unwrap_or(login);
             // The slice treats friend and foe as mutually exclusive, and the
             // server does not: `social_add` writes a row per list, so marking
             // a friend as a foe left the account on both and the next login
@@ -46,18 +78,31 @@ pub async fn handle(cmd: SocialCommand, ctx: &ServiceCtx, out: &EventSink) {
                         Relation::Friend => &state.social.friends,
                         Relation::Foe => &state.social.foes,
                     };
-                    list.iter().any(|known| known == &login)
+                    list.iter().any(|known| known.eq_ignore_ascii_case(&login))
+                        || state.social.contacts.entries.iter().any(|contact| {
+                            contact.player_id == player_id && contact.relation == opposite
+                        })
                 });
 
-            out.emit(SocialEvent::RelationSet {
-                login,
+            let contact = Contact {
+                player_id,
+                login: (!login.is_empty()).then_some(login),
                 relation,
+            };
+            out.emit(SocialEvent::ContactSet {
+                contact: contact.clone(),
                 member,
             });
             if was_opposite {
-                ctx.ports.lobby.set_relation(player_id, opposite, false);
+                ctx.ports.lobby.set_contact_relation(
+                    Contact {
+                        relation: opposite,
+                        ..contact.clone()
+                    },
+                    false,
+                );
             }
-            ctx.ports.lobby.set_relation(player_id, relation, member);
+            ctx.ports.lobby.set_contact_relation(contact, member);
         }
         SocialCommand::LookUpLogin { login } => {
             let login = login.trim().to_string();

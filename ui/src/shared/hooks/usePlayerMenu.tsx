@@ -74,6 +74,8 @@ const inGame = (list: Game[], nickname: string) =>
   list.find((game) => Object.values(game.teams).some((team) => team.includes(nickname)));
 
 export interface PlayerMenuOptions {
+  /** Close a source dialog when an action opens another view. */
+  onNavigate?: () => void;
   /**
    * How "Join game" joins. The Play tab passes its own, which asks for a
    * password first when the lobby has one.
@@ -110,6 +112,7 @@ export function usePlayerMenu(options: PlayerMenuOptions = {}): {
   const [menu, setMenu] = useState<UserMenuTarget | null>(null);
   const [menuContext, setMenuContext] = useState<PlayerMenuContext>({});
   const [noteTarget, setNoteTarget] = useState<AccountRef | null>(null);
+  const onNavigate = options.onNavigate;
 
   const self = chatUsername || player?.name || "";
 
@@ -137,15 +140,17 @@ export function usePlayerMenu(options: PlayerMenuOptions = {}): {
 
   const openConversation = useCallback((nick: string) => {
     if (!nick) return;
+    onNavigate?.();
     ipc.send({ kind: "Chat", command: { type: "joinChannel", payload: { channel: nick } } });
     ipc.send({ kind: "Chat", command: { type: "selectChannel", payload: { channel: nick } } });
     ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "chat" } } });
-  }, []);
+  }, [onNavigate]);
 
   const viewReplays = useCallback((username: string) => {
+    onNavigate?.();
     requestReplaySearch({ ...EMPTY_REPLAY_QUERY, player: username, exactPlayer: true });
     ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
-  }, []);
+  }, [onNavigate]);
 
   // Which game the menu's target is in, from the lists the Play tab already
   // keeps: `player_info` doesn't carry a game, but `game_info` carries rosters.
@@ -180,10 +185,10 @@ export function usePlayerMenu(options: PlayerMenuOptions = {}): {
           nameColor={menuNameColor}
           actions={{
             privateMessage: openConversation,
-            viewProfile: options.fromProfile ? undefined : (playerId, nickname) => void openPlayerCard(playerId, nickname),
+            viewProfile: options.fromProfile ? undefined : (playerId, nickname) => { options.onNavigate?.(); void openPlayerCard(playerId, nickname); },
             copyUsername: (nickname) => void navigator.clipboard?.writeText(nickname),
-            joinGame: (game) => void (options.joinGame ?? joinGame)(game),
-            watchGame: (game) => void watchGame(game),
+            joinGame: (game) => { options.onNavigate?.(); void (options.joinGame ?? joinGame)(game); },
+            watchGame: (game) => { options.onNavigate?.(); void watchGame(game); },
             viewReplays,
             inviteToParty: (id) => void inviteToParty(id),
             setRelation: (account, relation, member) => void setRelation(account, relation, member),
@@ -191,7 +196,7 @@ export function usePlayerMenu(options: PlayerMenuOptions = {}): {
             setNameColor: setPlayerNameColor,
             setMuted: setPlayerMuted,
             editNote: setNoteTarget,
-            reportPlayer: (account) => openReport(account, menuContext.gameId),
+            reportPlayer: (account) => { options.onNavigate?.(); openReport(account, menuContext.gameId); },
           }}
           onClose={closeMenu}
         />

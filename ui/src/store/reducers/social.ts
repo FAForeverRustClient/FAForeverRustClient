@@ -1,6 +1,7 @@
-import type { PlayerProfile, SocialEvent, SocialState } from "../../ipc/bindings";
+import type { ContactsState, PlayerProfile, SocialEvent, SocialState } from "../../ipc/bindings";
 
-const EMPTY_SOCIAL: SocialState = { friends: [], foes: [], players: [], loginLookups: [], staff: [] };
+export const EMPTY_CONTACTS: ContactsState = { open: false, entries: [], refreshing: false };
+const EMPTY_SOCIAL: SocialState = { friends: [], foes: [], players: [], loginLookups: [], staff: [], contacts: EMPTY_CONTACTS };
 
 /** Twin of `MAX_LOGIN_LOOKUPS`. */
 const MAX_LOGIN_LOOKUPS = 200;
@@ -58,7 +59,32 @@ export const findPlayer = (social: SocialState, login: string): PlayerProfile | 
   exactIndex(social.players).get(login) ?? playersByNickname(social.players).get(login.toLowerCase());
 
 export function reduceSocial(state: SocialState, event: SocialEvent): SocialState {
+  const contacts = state.contacts ?? EMPTY_CONTACTS;
   switch (event.type) {
+    case "contactsOpened":
+      return { ...state, contacts: { ...contacts, open: event.payload.open } };
+    case "contactsRefreshing":
+      return { ...state, contacts: { ...contacts, refreshing: event.payload.refreshing } };
+    case "contactsUpdated":
+      return { ...state, contacts: { ...contacts, entries: event.payload.contacts } };
+    case "contactSet": {
+      const { contact, member } = event.payload;
+      const previous = contacts.entries.filter(known => known.playerId === contact.playerId && (member || known.relation === contact.relation));
+      let updated = state;
+      for (const known of previous) {
+        if (known.login !== null) updated = reduceSocial(updated, {
+          type: "relationSet", payload: { login: known.login, relation: known.relation, member: false },
+        });
+      }
+      const login = contact.login ?? previous.find(known => known.login !== null)?.login ?? null;
+      if (login !== null) updated = reduceSocial(updated, {
+        type: "relationSet", payload: { login, relation: contact.relation, member },
+      });
+      const entries = contacts.entries.filter(known => known.playerId !== contact.playerId
+        || (!member && known.relation !== contact.relation));
+      if (member) entries.push({ ...contact, login });
+      return { ...updated, contacts: { ...contacts, entries } };
+    }
     case "relationsUpdated":
       return {
         ...state,
@@ -117,7 +143,7 @@ export function reduceSocial(state: SocialState, event: SocialEvent): SocialStat
     }
     case "cleared":
       // The staff list is the API's, so a lobby disconnect keeps it.
-      return { ...EMPTY_SOCIAL, staff: state.staff };
+      return { ...EMPTY_SOCIAL, staff: state.staff, contacts: { ...EMPTY_CONTACTS, open: contacts.open } };
     case "staffLoaded":
       return { ...state, staff: sortedUnique(event.payload.logins) };
     case "loginLookedUp": {
@@ -146,6 +172,8 @@ export interface AccountRef {
 export function accountFor(social: SocialState, login: string): AccountRef | null | undefined {
   const online = findPlayer(social, login);
   if (online) return { id: online.id, login: online.login };
+  const contact = social.contacts?.entries.find(entry => entry.login !== null && asciiLower(entry.login) === asciiLower(login));
+  if (contact?.login) return { id: contact.playerId, login: contact.login };
   const lower = asciiLower(login);
   const lookup = social.loginLookups.find((entry) => asciiLower(entry.login) === lower);
   if (!lookup) return undefined;

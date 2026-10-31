@@ -90,6 +90,7 @@ pub enum LobbyUpdate {
     Relations {
         friends: Vec<String>,
         foes: Vec<String>,
+        contacts: Vec<faf_domain::state::Contact>,
     },
     /// Channels the server says this account belongs in (language, clan),
     /// from the same `social` message as the relations above.
@@ -141,6 +142,10 @@ pub enum LobbyUpdate {
 
 #[async_trait]
 pub trait LobbyPort: Send + Sync {
+    /// Retry names for unresolved relations without blocking the socket reader.
+    async fn resolve_contacts(&self, _ids: &[i32]) -> Result<(), String> {
+        Err("contact lookup is unavailable".into())
+    }
     /// Connect to the lobby. The receiver yields a [`LobbyUpdate`] on each change;
     /// it closes when the connection ends (server-side or via [`Self::disconnect`]).
     async fn connect(&self) -> mpsc::Receiver<LobbyUpdate>;
@@ -179,6 +184,11 @@ pub trait LobbyPort: Send + Sync {
     /// fresh `social` message, which is why the caller updates local state
     /// optimistically: both reference clients do the same.
     fn set_relation(&self, player_id: i32, relation: Relation, member: bool);
+
+    /// Keep a newly added offline account's known name in the live directory.
+    fn set_contact_relation(&self, contact: faf_domain::state::Contact, member: bool) {
+        self.set_relation(contact.player_id, contact.relation, member);
+    }
 
     fn set_player_vetoes(&self, vetoes: Vec<PlayerVeto>);
 

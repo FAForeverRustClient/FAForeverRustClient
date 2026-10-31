@@ -13,6 +13,7 @@
 // event arrived.
 
 import { useForegroundInterval } from "../../shared/hooks/useForegroundInterval";
+import { openContacts } from "../../shared/contactsActions";
 import { sectionPanelProps } from "../../design-system/SectionTabs";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
@@ -343,32 +344,35 @@ export function ChatView() {
             );
           })()}
           <span className="spacer" />
-          {gameLinkNotice && <span className="chat-link-notice" role="status">{gameLinkNotice}</span>}
-          {/* A button that looks like one, as "More filters" does elsewhere:
-              as bare text with an icon it read as a label. */}
-          <Button
-            className="chat-search-button"
-            title={t("chat.search.shortcut")}
-            onClick={() => setSearchRequest((request) => request + 1)}
-          >
-            <Icon name="search" size={14} /> {t("chat.search.open")}
-          </Button>
-          <label className="chat-toggle">
-            <input
-              type="checkbox"
-              checked={chatPreferences.showJoinsParts}
-              onChange={(event) => ipc.send({
-                kind: "Settings",
-                command: {
-                  type: "patchChat",
-                  payload: {
-                    patch: { showJoinsParts: event.target.checked },
+          <div className="chat-head-controls">
+            <Button onClick={openContacts}><Icon name="users" size={16} /> {t("contacts.title")}</Button>
+            {gameLinkNotice && <span className="chat-link-notice" role="status">{gameLinkNotice}</span>}
+            {/* A button that looks like one, as "More filters" does elsewhere:
+                as bare text with an icon it read as a label. */}
+            <Button
+              className="chat-search-button"
+              title={t("chat.search.shortcut")}
+              onClick={() => setSearchRequest((request) => request + 1)}
+            >
+              <Icon name="search" size={14} /> {t("chat.search.open")}
+            </Button>
+            <label className="chat-toggle">
+              <input
+                type="checkbox"
+                checked={chatPreferences.showJoinsParts}
+                onChange={(event) => ipc.send({
+                  kind: "Settings",
+                  command: {
+                    type: "patchChat",
+                    payload: {
+                      patch: { showJoinsParts: event.target.checked },
+                    },
                   },
-                },
-              })}
-            />
-            {t("chat.joinsAndParts")}
-          </label>
+                })}
+              />
+              {t("chat.joinsAndParts")}
+            </label>
+          </div>
         </header>
 
         {active ? (
