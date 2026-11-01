@@ -258,6 +258,73 @@ for (const path of await sourceFiles(featuresRoot, new Set([".ts", ".tsx"]))) {
   }
 }
 
+// No UI module imports itself back, however long the way round. In a runtime
+// cycle one module meets the other half-initialised, depending on which the
+// bundler evaluates first, and the feature rule above cannot see a cycle
+// inside one feature: the tournament form and its create starters imported
+// each other until the draft builders moved to `tourneyDraft.ts`. Type-only
+// imports and lazy `import()` are left out; neither runs when a module loads.
+const uiModules = (await sourceFiles(resolve(root, "ui/src"), new Set([".ts", ".tsx"])))
+  .filter((path) => !/\.test\.tsx?$|\.d\.ts$/.test(path));
+const knownModules = new Set(uiModules);
+const runtimeImports = new Map();
+for (const path of uiModules) {
+  const source = (await readFile(path, "utf8")).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, blank);
+  const targets = new Set();
+  const specifiers = [
+    // The clause holds no quote or semicolon, so a match cannot run on from a
+    // side-effect import into the next statement.
+    ...[...source.matchAll(/^\s*(?:import|export)\s+(type\s+)?([^;"'`]*?)\s+from\s+["'](\.\.?\/[^"']+)["']/gm)]
+      .filter(([, typeOnly, clause]) => {
+        if (typeOnly) return false;
+        const named = /^\{([\s\S]*)\}$/.exec(clause.trim());
+        return !named || !named[1].split(",").map((part) => part.trim()).filter(Boolean).every((part) => part.startsWith("type "));
+      })
+      .map((match) => match[3]),
+    ...[...source.matchAll(/^\s*import\s+["'](\.\.?\/[^"']+)["']/gm)].map((match) => match[1]),
+  ];
+  for (const specifier of specifiers) {
+    const base = resolve(path, "..", specifier);
+    const target = [base, `${base}.ts`, `${base}.tsx`, resolve(base, "index.ts"), resolve(base, "index.tsx")]
+      .find((candidate) => knownModules.has(candidate));
+    if (target) targets.add(target);
+  }
+  runtimeImports.set(path, targets);
+}
+// Tarjan's strongly connected components: each group of two or more modules
+// that reach one another is one cycle to report, however many paths it has.
+const order = new Map();
+const lowest = new Map();
+const onStack = new Set();
+const stack = [];
+function visit(module) {
+  order.set(module, order.size);
+  lowest.set(module, order.get(module));
+  stack.push(module);
+  onStack.add(module);
+  for (const next of runtimeImports.get(module) ?? []) {
+    if (!order.has(next)) {
+      visit(next);
+      lowest.set(module, Math.min(lowest.get(module), lowest.get(next)));
+    } else if (onStack.has(next)) {
+      lowest.set(module, Math.min(lowest.get(module), order.get(next)));
+    }
+  }
+  if (lowest.get(module) !== order.get(module)) return;
+  const group = [];
+  let member;
+  do {
+    member = stack.pop();
+    onStack.delete(member);
+    group.push(member);
+  } while (member !== module);
+  if (group.length > 1 || runtimeImports.get(module).has(module)) {
+    const names = group.map((path) => relative(root, path).split(sep).join("/")).sort();
+    report(group[0], `imports form a runtime cycle with ${names.join(", ")}; move what they share into a module none of them imports`);
+  }
+}
+for (const module of uiModules) if (!order.has(module)) visit(module);
+
 // A box that scrolls up and down keeps its scrollbar's room, or says why not.
 // Without the room, the scrollbar takes 11 px from the content the moment the
 // content overflows, and everything in the box moves left; a grid can lose a

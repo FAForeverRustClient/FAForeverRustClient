@@ -13,7 +13,7 @@ import { Button } from "../../../design-system/Button";
 import type { CopySource, Tourney, TourneyDraft, TourneyLoadStatus, TourneyPreset } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { plainError } from "../../../shared/plainError";
-import { draftOf } from "./TournamentForm";
+import { draftOf } from "./tourneyDraft";
 
 /**
  * A draft filled from another event: everything but its dates, which belong

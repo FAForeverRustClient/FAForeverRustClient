@@ -101,20 +101,13 @@ export function usePlayerMenu(options: PlayerMenuOptions = {}): {
    */
   playerMenuTarget: string | null;
 } {
-  const social = useAppStore((s) => s.state.social);
-  const player = useAppStore((s) => s.state.auth.player);
-  const chatUsername = useAppStore((s) => s.state.chat.username);
-  const games = useAppStore((s) => s.state.lobby.games);
-  const liveGames = useAppStore((s) => s.state.lobby.liveGames);
-  const party = useAppStore((s) => s.state.lobby.party);
-  const chatPreferences = useAppStore((s) => s.state.settings.chat);
-  const playerNotes = useAppStore((s) => s.state.settings.social.playerNotes);
+  // Only what is open, and to whom. The live data the menu draws from is read
+  // by `PlayerMenuLayer`, which exists while something is open: fourteen
+  // views offer this menu, and each of them used to redraw on every lobby
+  // and social update with the menu closed.
   const [menu, setMenu] = useState<UserMenuTarget | null>(null);
   const [menuContext, setMenuContext] = useState<PlayerMenuContext>({});
   const [noteTarget, setNoteTarget] = useState<AccountRef | null>(null);
-  const onNavigate = options.onNavigate;
-
-  const self = chatUsername || player?.name || "";
 
   const openPlayerMenu = useCallback<PlayerMenuOpener>((nickname, event, context) => {
     // Replace the webview's own context menu, which offers "Reload"/"Inspect".
@@ -137,6 +130,46 @@ export function usePlayerMenu(options: PlayerMenuOptions = {}): {
     }
   }, []);
   const closeMenu = useCallback(() => setMenu(null), []);
+  const closeNote = useCallback(() => setNoteTarget(null), []);
+
+  const playerMenu = menu || noteTarget ? (
+    <PlayerMenuLayer
+      menu={menu}
+      menuContext={menuContext}
+      noteTarget={noteTarget}
+      options={options}
+      onCloseMenu={closeMenu}
+      onEditNote={setNoteTarget}
+      onCloseNote={closeNote}
+    />
+  ) : null;
+
+  // `openPlayerMenu` is stable, so a caller can pass it through a `memo`'d row
+  // without defeating the memo; only the rendered node changes per render.
+  return { openPlayerMenu, playerMenu, playerMenuTarget: menu?.nickname ?? null };
+}
+
+/** The open menu and note editor, subscribed to what they show. */
+function PlayerMenuLayer({ menu, menuContext, noteTarget, options, onCloseMenu, onEditNote, onCloseNote }: {
+  menu: UserMenuTarget | null;
+  menuContext: PlayerMenuContext;
+  noteTarget: AccountRef | null;
+  options: PlayerMenuOptions;
+  onCloseMenu: () => void;
+  onEditNote: (account: AccountRef) => void;
+  onCloseNote: () => void;
+}) {
+  const social = useAppStore((s) => s.state.social);
+  const player = useAppStore((s) => s.state.auth.player);
+  const chatUsername = useAppStore((s) => s.state.chat.username);
+  const games = useAppStore((s) => s.state.lobby.games);
+  const liveGames = useAppStore((s) => s.state.lobby.liveGames);
+  const party = useAppStore((s) => s.state.lobby.party);
+  const chatPreferences = useAppStore((s) => s.state.settings.chat);
+  const playerNotes = useAppStore((s) => s.state.settings.social.playerNotes);
+  const onNavigate = options.onNavigate;
+
+  const self = chatUsername || player?.name || "";
 
   const openConversation = useCallback((nick: string) => {
     if (!nick) return;
@@ -164,7 +197,7 @@ export function usePlayerMenu(options: PlayerMenuOptions = {}): {
   // Read on every render, so the lookup's answer lands in the open menu.
   const menuAccount = menu ? accountFor(social, menu.nickname) : undefined;
 
-  const playerMenu = (
+  return (
     <>
       {menu && (
         <UserMenu
@@ -195,10 +228,10 @@ export function usePlayerMenu(options: PlayerMenuOptions = {}): {
             kickFromParty: (id) => void kickFromParty(id),
             setNameColor: setPlayerNameColor,
             setMuted: setPlayerMuted,
-            editNote: setNoteTarget,
+            editNote: onEditNote,
             reportPlayer: (account) => { options.onNavigate?.(); openReport(account, menuContext.gameId); },
           }}
-          onClose={closeMenu}
+          onClose={onCloseMenu}
         />
       )}
       {noteTarget && (
@@ -206,13 +239,9 @@ export function usePlayerMenu(options: PlayerMenuOptions = {}): {
           playerId={noteTarget.id}
           login={noteTarget.login}
           initialNote={noteForPlayer(playerNotes, noteTarget.id)}
-          onClose={() => setNoteTarget(null)}
+          onClose={onCloseNote}
         />
       )}
     </>
   );
-
-  // `openPlayerMenu` is stable, so a caller can pass it through a `memo`'d row
-  // without defeating the memo; only the rendered node changes per render.
-  return { openPlayerMenu, playerMenu, playerMenuTarget: menu?.nickname ?? null };
 }

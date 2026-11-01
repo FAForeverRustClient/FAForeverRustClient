@@ -469,7 +469,19 @@ function usePresence(login: string | undefined): { kind: "playing" | "lobby"; ti
   return null;
 }
 
+/**
+ * The shell mounts the card for good, so this part reads one flag and nothing
+ * else. Closing keeps the last profile in the state, and the card used to keep
+ * every subscription its content needs: a closed card searched both game lists
+ * and the whole player directory again on each lobby and social update. The
+ * content mounts when the card opens, which loads a profile afresh anyway.
+ */
 export function PlayerCardModal() {
+  const open = useAppStore((store) => store.state.playerCard.open);
+  return open ? <PlayerCardContent /> : null;
+}
+
+function PlayerCardContent() {
   const countryOf = useCountryLabel();
   const state = useAppStore((store) => store.state.playerCard);
   const { t } = useTranslation();
@@ -505,8 +517,7 @@ export function PlayerCardModal() {
     setCopied(false);
   }, [profile]);
 
-  if (!state.open) return null;
-  const rating = profile?.ratings.find((candidate) => candidate.leaderboardId === ratingId) ?? profile?.ratings[0] ?? null;
+  const rating =profile?.ratings.find((candidate) => candidate.leaderboardId === ratingId) ?? profile?.ratings[0] ?? null;
   const isMe = profile && me?.id === profile.playerId;
   const isFriend = profile ? social.friends.some((name) => name.localeCompare(profile.login, undefined, { sensitivity: "base" }) === 0) : false;
   const playerNote = profile ? noteForPlayer(playerNotes, profile.playerId) : "";
