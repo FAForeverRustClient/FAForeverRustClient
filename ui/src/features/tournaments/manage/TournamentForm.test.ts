@@ -10,7 +10,8 @@
 import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { draftOf, FormFrame, TournamentForm } from "./TournamentForm";
+import { FormFrame, TournamentForm } from "./TournamentForm";
+import { draftOf } from "./tourneyDraft";
 import { rejectionOf } from "../../../shared/rules/tourneyRules";
 import { tourney } from "../fixtures";
 import type { TourneyDraft } from "../../../ipc/bindings";
