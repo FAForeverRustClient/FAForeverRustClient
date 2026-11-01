@@ -145,7 +145,7 @@ fn merge_adjacent_lists(blocks: Vec<ChangelogBlock>) -> Vec<ChangelogBlock> {
     let mut singles = false;
     for block in blocks {
         match block {
-            ChangelogBlock::List { items } if items.len() == 1 => {
+            ChangelogBlock::List { items } if items.len() == 1 && items[0].ordinal.is_none() => {
                 if let (true, Some(ChangelogBlock::List { items: previous })) =
                     (singles, merged.last_mut())
                 {
@@ -164,6 +164,101 @@ fn merge_adjacent_lists(blocks: Vec<ChangelogBlock>) -> Vec<ChangelogBlock> {
     merged
 }
 
+fn split_inline_bullets(items: Vec<ChangelogListItem>) -> Vec<ChangelogListItem> {
+    let mut result = Vec::new();
+    for mut item in items {
+        item.children = split_inline_bullets(item.children);
+        // Legacy 3605 pasted a second bullet into the Restorer prose. Restrict
+        // this repair to plain, childless bullets, leaving code and values alone.
+        if item.ordinal.is_none() && item.change.is_none() && item.children.is_empty() {
+            if let [ChangelogSpan::Text(text)] = item.spans.as_slice() {
+                if text.contains(" • ") {
+                    result.extend(text.split(" • ").map(|part| ChangelogListItem {
+                        ordinal: None,
+                        spans: vec![ChangelogSpan::Text(part.trim().to_string())],
+                        change: None,
+                        children: Vec::new(),
+                    }));
+                    continue;
+                }
+            }
+        }
+        result.push(item);
+    }
+    result
+}
+
+fn repair_legacy_lists(id: &str, blocks: Vec<ChangelogBlock>) -> Vec<ChangelogBlock> {
+    let mut result = Vec::with_capacity(blocks.len());
+    let mut blocks = blocks.into_iter().peekable();
+    while let Some(mut block) = blocks.next() {
+        if id == "legacy-3605" {
+            if let ChangelogBlock::List { items } = block {
+                result.push(ChangelogBlock::List {
+                    items: split_inline_bullets(items),
+                });
+                continue;
+            }
+        }
+        if id == "3615" {
+            if let ChangelogBlock::Paragraph { spans } = &mut block {
+                // The wiki mixed literal dashes, italic captions and real lists.
+                // Keep captions as captions; the complete Gunship sentence is a
+                // list item, continuing the other Tier 2 changes that follow it.
+                let marked = match spans.first_mut() {
+                    Some(ChangelogSpan::Text(text) | ChangelogSpan::Strong(text)) => {
+                        if let Some(unmarked) = text.strip_prefix('-') {
+                            let unmarked = unmarked.trim_start();
+                            if unmarked.is_empty() || unmarked.starts_with(char::is_alphabetic) {
+                                *text = unmarked.to_string();
+                                true
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    }
+                    _ => false,
+                };
+                let sentence = spans
+                    .iter()
+                    .filter_map(|span| match span {
+                        ChangelogSpan::Text(text) | ChangelogSpan::Strong(text) => {
+                            Some(text.as_str())
+                        }
+                        _ => None,
+                    })
+                    .collect::<String>();
+                // The source also has an otherwise empty dash between naval captions.
+                if marked && sentence.trim().is_empty() {
+                    continue;
+                }
+                if marked && sentence.trim_end().ends_with('.') {
+                    let item = ChangelogListItem {
+                        ordinal: None,
+                        spans: std::mem::take(spans),
+                        change: None,
+                        children: Vec::new(),
+                    };
+                    let mut items = vec![item];
+                    if matches!(blocks.peek(), Some(ChangelogBlock::List { items })
+                        if items.iter().all(|item| item.ordinal.is_none()))
+                    {
+                        if let Some(ChangelogBlock::List { items: following }) = blocks.next() {
+                            items.extend(following);
+                        }
+                    }
+                    result.push(ChangelogBlock::List { items });
+                    continue;
+                }
+            }
+        }
+        result.push(block);
+    }
+    result
+}
+
 /// An exact identity/source match is required. An arbitrary incoming URL never
 /// selects a different embedded note, and no archive network request is made.
 pub fn early_entry(release: &ChangelogRelease) -> Option<ChangelogEntry> {
@@ -171,9 +266,12 @@ pub fn early_entry(release: &ChangelogRelease) -> Option<ChangelogEntry> {
         .notes
         .iter()
         .find(|note| note.id == release.id && note.source_url == release.source_url)?;
-    // Raw captures remain hash-pinned; only imported prose spacing is tidied,
-    // which the client says in its attribution line under the note.
-    let mut blocks = merge_adjacent_lists(super::parse_html_blocks(&note.html));
+    // Raw captures remain hash-pinned. Repair their list presentation here;
+    // the importer tidies punctuation spacing, as the attribution discloses.
+    let mut blocks = merge_adjacent_lists(repair_legacy_lists(
+        &note.id,
+        super::parse_html_blocks(&note.html),
+    ));
     for block in &mut blocks {
         match block {
             ChangelogBlock::Paragraph { spans } => literal_references(spans, &note.html),
@@ -197,6 +295,182 @@ pub fn early_entry(release: &ChangelogRelease) -> Option<ChangelogEntry> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn entry(id: &str) -> ChangelogEntry {
+        let release = with_early_releases(vec![])
+            .into_iter()
+            .find(|release| release.id == id)
+            .unwrap();
+        early_entry(&release).unwrap()
+    }
+
+    fn text(spans: &[ChangelogSpan]) -> String {
+        spans
+            .iter()
+            .map(|span| match span {
+                ChangelogSpan::Text(text)
+                | ChangelogSpan::Strong(text)
+                | ChangelogSpan::Code(text) => text.clone(),
+                ChangelogSpan::Link { text, .. } => text.clone(),
+                ChangelogSpan::Issue { number, label, .. } => {
+                    label.clone().unwrap_or_else(|| format!("#{number}"))
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn legacy_3615_repairs_caption_markers_and_the_gunship_bullet() {
+        let entry = entry("3615");
+        let captions: Vec<_> = entry
+            .blocks
+            .iter()
+            .filter_map(|block| match block {
+                ChangelogBlock::Paragraph { spans } => Some(text(spans)),
+                _ => None,
+            })
+            .collect();
+        assert!(captions
+            .iter()
+            .all(|caption| !caption.trim_start().starts_with('-') && !caption.is_empty()));
+        for caption in [
+            "air scouts",
+            "Sera T1 arty:",
+            "UEF BattleCruiser:",
+            "Soul Ripper:",
+            "Galactic Colossus Veterancy",
+        ] {
+            assert!(
+                captions.iter().any(|found| found == caption),
+                "{caption}: {captions:?}"
+            );
+        }
+        assert!(entry.blocks.iter().any(|block| matches!(block,
+            ChangelogBlock::List { items } if items.len() >= 2
+                && text(&items[0].spans) == "T2 Gunship: Health reduced to 80% of the original value."
+                && text(&items[1].spans) == "Siren proto cannon buff to 92."
+        )));
+        // Keep arithmetic signs and negative values outside literal markers intact.
+        let control = super::super::parse_html_blocks("<p>-5 energy</p><p>+ 15 range</p>");
+        assert_eq!(repair_legacy_lists("3615", control.clone()), control);
+    }
+
+    #[test]
+    fn legacy_3605_splits_restorer_changes_without_rewriting_their_values() {
+        let entry = entry("legacy-3605");
+        let items = entry
+            .blocks
+            .iter()
+            .find_map(|block| match block {
+                ChangelogBlock::List { items }
+                    if items
+                        .iter()
+                        .any(|item| text(&item.spans).starts_with("Restorer max")) =>
+                {
+                    Some(items)
+                }
+                _ => None,
+            })
+            .unwrap();
+        let index = items
+            .iter()
+            .position(|item| text(&item.spans).starts_with("Restorer max"))
+            .unwrap();
+        assert_eq!(text(&items[index].spans), "Restorer max airspeed reduced to 8 from 10, health reduced to 6500 from 7200 and anti ground damage per shot reduced to 24 from 32. AA weapon damage increased to 71 * 2 from 65 * 2.");
+        assert_eq!(
+            text(&items[index + 1].spans),
+            "Restorers cost 50% + 400 more energy than a Air Superiority fighter now."
+        );
+        assert!(items[index].children.is_empty());
+    }
+
+    #[test]
+    fn early_archive_retains_numbered_steps_and_nested_faction_lists() {
+        let entry = entry("3626");
+        let steps = entry
+            .blocks
+            .iter()
+            .find_map(|block| match block {
+                ChangelogBlock::List { items }
+                    if text(&items[0].spans).starts_with("Select some of your units.") =>
+                {
+                    Some(items)
+                }
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(
+            steps.iter().map(|item| item.ordinal).collect::<Vec<_>>(),
+            [Some(1), Some(2), Some(3)]
+        );
+        assert_eq!(text(&steps[1].spans), "Press shift-G.");
+        let entry = self::entry("3629");
+        fn find_numbered(items: &[ChangelogListItem]) -> Option<&ChangelogListItem> {
+            items.iter().find_map(|item| {
+                if text(&item.spans).starts_with("One Projectile at a time") {
+                    Some(item)
+                } else {
+                    find_numbered(&item.children)
+                }
+            })
+        }
+        let mobile_aa = entry
+            .blocks
+            .iter()
+            .find_map(|block| match block {
+                ChangelogBlock::List { items } => find_numbered(items),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(mobile_aa.ordinal, Some(1));
+        let factions = &mobile_aa.children;
+        assert_eq!(
+            factions.iter().map(|item| item.ordinal).collect::<Vec<_>>(),
+            [Some(1), Some(2)]
+        );
+        assert!(factions.iter().all(|faction| !faction.children.is_empty()
+            && faction.children.iter().all(|item| item.ordinal.is_none())));
+    }
+
+    #[test]
+    fn early_archive_formatting_preserves_every_source_word_in_order() {
+        fn list_text(items: &[ChangelogListItem], output: &mut String) {
+            for item in items {
+                output.push_str(&text(&item.spans));
+                output.push('\n');
+                list_text(&item.children, output);
+            }
+        }
+        fn words(blocks: &[ChangelogBlock]) -> Vec<String> {
+            let mut output = String::new();
+            for block in blocks {
+                match block {
+                    ChangelogBlock::Heading { text, .. } | ChangelogBlock::CodeBlock { text } => {
+                        output.push_str(text)
+                    }
+                    ChangelogBlock::Paragraph { spans } => output.push_str(&text(spans)),
+                    ChangelogBlock::List { items } => list_text(items, &mut output),
+                    ChangelogBlock::Unit { name, .. } => output.push_str(name),
+                    ChangelogBlock::HistoricalBalance { .. }
+                    | ChangelogBlock::Provenance { .. } => {}
+                }
+                output.push('\n');
+            }
+            output
+                .split(|ch: char| !ch.is_alphanumeric())
+                .filter(|word| !word.is_empty())
+                .map(String::from)
+                .collect()
+        }
+        for note in &archive().notes {
+            assert_eq!(
+                words(&entry(&note.id).blocks),
+                words(&super::super::parse_html_blocks(&note.html)),
+                "{}",
+                note.id
+            );
+        }
+    }
 
     #[test]
     fn early_archive_keeps_explicit_numeric_links_without_inventing_pr_links() {

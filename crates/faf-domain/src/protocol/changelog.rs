@@ -135,6 +135,10 @@ pub struct ChangelogChange {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangelogListItem {
+    /// The published number in an ordered list. Missing in old caches; null for bullets.
+    #[serde(default)]
+    #[specta(optional)]
+    pub ordinal: Option<i32>,
     pub spans: Vec<ChangelogSpan>,
     /// Set instead of `spans` carrying the whole line when it is a value change.
     pub change: Option<ChangelogChange>,
@@ -792,7 +796,17 @@ fn append_at_depth(
 }
 
 fn build_item(text: &str) -> ChangelogListItem {
+    // 3772 doubled the Markdown markers on five wall changes. Remove only
+    // extra markers before a complete stat change, never signs on its values.
+    let mut text = text;
+    while let Some(unmarked) = text.strip_prefix("- ") {
+        if parse_change(unmarked).is_none() {
+            break;
+        }
+        text = unmarked.trim_start();
+    }
     ChangelogListItem {
+        ordinal: None,
         change: parse_change(text),
         spans: parse_spans(text),
         children: Vec::new(),
@@ -1553,7 +1567,7 @@ fn parse_html_blocks(html: &str) -> Vec<ChangelogBlock> {
                 text: preformatted_html_text(element.inner),
             }),
             "ul" | "ol" => {
-                let items = parse_html_items(element.inner);
+                let items = parse_html_items(element.inner, list_ordinal(&element));
                 if !items.is_empty() {
                     blocks.push(ChangelogBlock::List { items });
                 }
@@ -1633,22 +1647,37 @@ fn unit_id_from_icon(src: &str) -> Option<String> {
     (!id.is_empty()).then(|| id.to_string())
 }
 
-fn parse_html_items(html: &str) -> Vec<ChangelogListItem> {
+fn list_ordinal(element: &Element<'_>) -> Option<i32> {
+    (element.name == "ol").then(|| {
+        attribute(element.open_tag, "start")
+            .and_then(|value| value.parse().ok())
+            .unwrap_or(1)
+    })
+}
+
+fn parse_html_items(html: &str, mut ordinal: Option<i32>) -> Vec<ChangelogListItem> {
     let mut items = Vec::new();
     let mut rest = html;
 
     while let Some(element) = next_element(rest) {
         if element.name == "li" {
             let own = own_content(element.inner);
+            if ordinal.is_some() {
+                ordinal = attribute(element.open_tag, "value")
+                    .and_then(|value| value.parse().ok())
+                    .or(ordinal);
+            }
             items.push(ChangelogListItem {
+                ordinal,
                 change: parse_html_change(&own),
                 spans: parse_html_spans(&own),
                 children: nested_items(element.inner),
             });
+            ordinal = ordinal.map(|value| value.saturating_add(1));
         } else if element.name == "ul" || element.name == "ol" {
             // Older pages sometimes close the category's li before its list.
             // Keep that following list under the preceding category.
-            let nested = parse_html_items(element.inner);
+            let nested = parse_html_items(element.inner, list_ordinal(&element));
             if let Some(previous) = items.last_mut() {
                 previous.children.extend(nested);
             } else {
@@ -1697,7 +1726,7 @@ fn nested_items(html: &str) -> Vec<ChangelogListItem> {
 
     while let Some(element) = next_element(rest) {
         if element.name == "ul" || element.name == "ol" {
-            items.extend(parse_html_items(element.inner));
+            items.extend(parse_html_items(element.inner, list_ordinal(&element)));
         }
         rest = element.after;
     }
@@ -1900,6 +1929,68 @@ fn decode_entities(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ordered_html_lists_keep_numbers_at_each_depth_and_explicit_restarts() {
+        let blocks = parse_html_blocks(
+            r#"<ol start="3"><li>Third<ul><li>Bullet</li></ul><ol start="0"><li>Zero</li><li value="4">Four</li><li>Five</li></ol></li><li value="8">Eighth</li><li>Ninth</li></ol>"#,
+        );
+        let [ChangelogBlock::List { items }] = blocks.as_slice() else {
+            panic!("{blocks:?}");
+        };
+        assert_eq!(
+            items.iter().map(|item| item.ordinal).collect::<Vec<_>>(),
+            [Some(3), Some(8), Some(9)]
+        );
+        assert_eq!(
+            items[0]
+                .children
+                .iter()
+                .map(|item| item.ordinal)
+                .collect::<Vec<_>>(),
+            [None, Some(0), Some(4), Some(5)]
+        );
+        let legacy: ChangelogListItem =
+            serde_json::from_str(r#"{"spans":[],"change":null,"children":[]}"#).unwrap();
+        assert_eq!(legacy.ordinal, None, "older snapshots remain readable");
+        let encoded = serde_json::to_string(&items[0]).unwrap();
+        assert_eq!(
+            serde_json::from_str::<ChangelogListItem>(&encoded).unwrap(),
+            items[0]
+        );
+    }
+
+    #[test]
+    fn doubled_wall_bullets_do_not_change_stat_values_or_literal_minus_signs() {
+        // Published 3772 wall changes, including the author's unknown old value X.
+        let blocks = parse_blocks("- - Health: X -> 500\n- - Health regeneration: X -> 0\n- - Build time: 20 -> 15\n- - Mass costs: 2 -> 3\n- - Energy costs: 10 -> 20\n- Energy drain: -5 -> -10\n- - Keep this literal prose");
+        let [ChangelogBlock::List { items }] = blocks.as_slice() else {
+            panic!("{blocks:?}");
+        };
+        assert_eq!(items.len(), 7);
+        for (item, (label, old, new)) in items.iter().zip([
+            ("Health", "X", "500"),
+            ("Health regeneration", "X", "0"),
+            ("Build time", "20", "15"),
+            ("Mass costs", "2", "3"),
+            ("Energy costs", "10", "20"),
+            ("Energy drain", "-5", "-10"),
+        ]) {
+            assert_eq!(
+                item.change,
+                Some(ChangelogChange {
+                    label: label.into(),
+                    old: old.into(),
+                    new: new.into()
+                })
+            );
+            assert!(item.ordinal.is_none());
+        }
+        assert_eq!(
+            items[6].spans,
+            [ChangelogSpan::Text("- Keep this literal prose".into())]
+        );
+    }
 
     #[test]
     fn markdown_headings_distinguish_issue_numbers_from_legacy_titles() {
@@ -2480,9 +2571,11 @@ mod tests {
             );
         }
         let mut item = ChangelogListItem {
+            ordinal: None,
             spans: vec![ChangelogSpan::Text("Soul Ripper (URA0401)".into())],
             change: None,
             children: vec![ChangelogListItem {
+                ordinal: None,
                 spans: vec![ChangelogSpan::Text("Health: 1 -> 2".into())],
                 change: parse_change("Health: 1 -> 2"),
                 children: Vec::new(),
@@ -2490,6 +2583,7 @@ mod tests {
         };
         for _ in 0..40 {
             item = ChangelogListItem {
+                ordinal: None,
                 spans: vec![ChangelogSpan::Text("Group".into())],
                 change: None,
                 children: vec![item],

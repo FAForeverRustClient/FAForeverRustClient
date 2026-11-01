@@ -613,6 +613,7 @@ impl Enricher<'_> {
                 } else {
                     self.blocks.push(ChangelogBlock::List {
                         items: vec![ChangelogListItem {
+                            ordinal: item.ordinal,
                             spans: item.spans,
                             change: item.change,
                             children: Vec::new(),
@@ -1296,6 +1297,7 @@ mod tests {
     #[test]
     fn historical_stat_associations_reject_ambiguous_or_different_changes() {
         let item = ChangelogListItem {
+            ordinal: None,
             spans: Vec::new(),
             children: Vec::new(),
             change: Some(ChangelogChange {
@@ -1517,12 +1519,14 @@ mod tests {
     #[test]
     fn historical_extreme_list_depth_is_left_as_written() {
         let mut item = ChangelogListItem {
+            ordinal: None,
             spans: vec![ChangelogSpan::Text("Titan".into())],
             change: None,
             children: Vec::new(),
         };
         for _ in 0..80 {
             item = ChangelogListItem {
+                ordinal: None,
                 spans: vec![ChangelogSpan::Text("Nested category".into())],
                 change: None,
                 children: vec![item],
