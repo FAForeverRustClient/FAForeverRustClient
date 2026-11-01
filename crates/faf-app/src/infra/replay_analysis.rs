@@ -246,12 +246,11 @@ fn army_from_lua(fields: &serde_json::Map<String, Value>, source: u8) -> ReplayA
             .unwrap_or_default()
             .to_string()
     };
-    // The displayed rating both reference clients compute, truncated rather
-    // than rounded, so this client and they agree about the same player.
+    // The displayed rating both reference clients compute, so this client and
+    // they agree about the same player.
     let rating = match (number("MEAN"), number("DEV")) {
         (Some(mean), Some(deviation)) => {
-            let value = mean - 3.0 * deviation;
-            value.is_finite().then_some(value as i32)
+            faf_domain::protocol::rating::displayed_points(mean, deviation)
         }
         _ => None,
     };

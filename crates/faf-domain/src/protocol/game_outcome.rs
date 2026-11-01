@@ -110,7 +110,7 @@ fn displayed(mean: Option<f64>, deviation: Option<f64>) -> Option<f64> {
         return None;
     }
     let deviation = deviation.filter(|value| value.is_finite()).unwrap_or(0.0);
-    Some(mean - 3.0 * deviation)
+    Some(super::rating::displayed(mean, deviation))
 }
 
 /// What one game was, once every rule has had its say.
