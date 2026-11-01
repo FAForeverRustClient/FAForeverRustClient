@@ -94,6 +94,41 @@ jobs:
         # old grep (which missed crates and matched comments).
         run: cargo clippy --workspace --all-targets -- -D warnings -D clippy::print_stderr
 
+  # Most players run Windows, and the code only Windows compiles is the code
+  # that is hardest to check by hand: web view crash recovery, the borderless
+  # window, the locale lookup, the WebView2 bindings and the Steam helper. The
+  # job above builds none of it, so until this one a break there surfaced at
+  # release time, when release.yml builds Windows without clippy or tests. The
+  # reverse is caught above: a helper used only from cfg(windows) code is dead
+  # code on Linux and fails `-D warnings` there.
+  rust-windows:
+    name: Rust - Windows test + clippy
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.rust != 'false') }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # No system packages: WebView2 ships with the runner, and the Windows
+      # bindings are crates.
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      # The cache is keyed by runner OS, so this does not share or evict the
+      # Linux job's.
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      # Clippy first: it is the cheaper of the two and the likelier to fail on
+      # Windows-only code.
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings -D clippy::print_stderr
+
+      - name: cargo test
+        run: cargo test --workspace --all-targets
+
   # Advisories and licences. Its own job because it needs no system libraries
   # and no build of the workspace: both tools read Cargo.lock. Kept out of the
   # Rust job so a new advisory does not look like a broken test.

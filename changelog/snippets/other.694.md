@@ -1,0 +1,1 @@
+- No visible changes: Rust code is now also checked on Windows before it is merged.
