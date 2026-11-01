@@ -36,7 +36,7 @@ function QueueRatingPlot({ graph }: { graph: QueueRatingGraph }) {
       aria-hidden
     >
       <line
-        className="matchmaker-queue-grid"
+        className="matchmaker-queue-plot-grid"
         x1={PLOT_PAD.left}
         x2={PLOT_WIDTH - PLOT_PAD.right}
         y1={base - usableHeight * 0.5}
