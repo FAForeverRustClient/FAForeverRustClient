@@ -2943,7 +2943,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.details.ratingLockedTitle": "El anfitrión ha limitado la puntuación de esta sala: {range}. La tuya es {rating}.",
   "lobby.browser.footerCount": "Se muestran {shown} de {total} partidas",
   "settings.notifications.desktopAllKinds": "Notificaciones del escritorio para todos los eventos",
-  "settings.notifications.desktopAllKindsHint": "Desactivado: solo los eventos urgentes llegan al escritorio, como una partida encontrada, una invitación de grupo o una partida completa. Los eventos sueltos se cambian en «Avisos por evento».",
+  "settings.notifications.desktopAllKindsHint": "Desactivado: solo los eventos urgentes llegan al escritorio, como una partida encontrada, una invitación de grupo, un mensaje privado, una mención o una partida completa. Los eventos sueltos se cambian en «Avisos por evento».",
   "settings.notifications.sound.silent": "Silencio",
   "settings.notifications.sound.soft": "Suave",
   "settings.notifications.sound.chime": "Campanilla",

@@ -2945,7 +2945,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.details.ratingLockedTitle": "L'hôte a limité le classement de ce lobby : {range}. Le vôtre est {rating}.",
   "lobby.browser.footerCount": "{shown} parties affichées sur {total}",
   "settings.notifications.desktopAllKinds": "Notifications du bureau pour chaque événement",
-  "settings.notifications.desktopAllKindsHint": "Désactivé : seuls les événements urgents arrivent sur le bureau, comme une partie trouvée, une invitation de groupe ou une partie complète. Chaque événement se règle dans « Diffusion par événement ».",
+  "settings.notifications.desktopAllKindsHint": "Désactivé : seuls les événements urgents arrivent sur le bureau, comme une partie trouvée, une invitation de groupe, un message privé, une mention ou une partie complète. Chaque événement se règle dans « Diffusion par événement ».",
   "settings.notifications.sound.silent": "Silencieux",
   "settings.notifications.sound.soft": "Doux",
   "settings.notifications.sound.chime": "Carillon",

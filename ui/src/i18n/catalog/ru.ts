@@ -3434,7 +3434,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.details.ratingLocked": "Вне диапазона рейтинга",
   "lobby.details.ratingLockedTitle": "Хост ограничил рейтинг в этом лобби: {range}. У вас {rating}.",
   "settings.notifications.desktopAllKinds": "Уведомления на рабочем столе для всех событий",
-  "settings.notifications.desktopAllKindsHint": "Выключено: на рабочий стол попадают только срочные события, например найденный матч, приглашение в группу или заполненная игра. Отдельные события настраиваются в разделе «Способы оповещения для событий».",
+  "settings.notifications.desktopAllKindsHint": "Выключено: на рабочий стол попадают только срочные события, например найденный матч, приглашение в группу, личное сообщение, упоминание или заполненная игра. Отдельные события настраиваются в разделе «Способы оповещения для событий».",
   "settings.notifications.sound.silent": "Без звука",
   "settings.notifications.sound.soft": "Мягкий",
   "settings.notifications.sound.chime": "Звонок",

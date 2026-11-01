@@ -105,6 +105,13 @@ impl NotificationKind {
     ///   waiting with the client in the background for an opponent to turn up,
     ///   it is off until a queue is picked, and the opponent it announces stops
     ///   waiting the moment somebody else takes them.
+    /// - [`Self::PrivateMessage`] and [`Self::Mention`]: a player wrote to the
+    ///   user or named them and is waiting for an answer, which is worth little
+    ///   once they have given up. The Java client shows both as its corner
+    ///   popup by default. Only lines addressed to the user count, the channel
+    ///   already in front of them with the client focused announces nothing
+    ///   (`notificationGate.ts`), and a burst of pings is held to the repeat
+    ///   cooldown.
     ///
     /// Everything else fails that test, including the loud-sounding ones. An
     /// error, a server notice, a cache warning and a new client version are all
@@ -124,6 +131,8 @@ impl NotificationKind {
                 | Self::EventReminder
                 | Self::GameFull
                 | Self::QueueOpponent
+                | Self::PrivateMessage
+                | Self::Mention
         )
     }
 }
@@ -322,6 +331,8 @@ mod tests {
             NotificationKind::EventReminder,
             NotificationKind::GameFull,
             NotificationKind::QueueOpponent,
+            NotificationKind::PrivateMessage,
+            NotificationKind::Mention,
         ] {
             assert!(kind.raises_os_notification(), "{kind:?} expires");
         }
@@ -338,8 +349,6 @@ mod tests {
             NotificationKind::ClientUpdate,
             NotificationKind::UploadFinished,
             NotificationKind::AvatarRestored,
-            NotificationKind::PrivateMessage,
-            NotificationKind::Mention,
             NotificationKind::FriendOnline,
             NotificationKind::FriendOffline,
             NotificationKind::FriendPlaying,
