@@ -1,0 +1,1 @@
+- Mentions and private messages now open the desktop popup by default while the client is in the background.
