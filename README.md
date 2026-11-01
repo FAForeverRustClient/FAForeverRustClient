@@ -54,7 +54,7 @@ answer, and `docs/PROJECT_GUIDE.md` maps them:
 - **six languages** (`en`, `de`, `fr`, `ru`, `es`, `pl`): a missing translation falls back to
   English, and a missing key is a compile error. See `ui/src/i18n/`.
 
-**CI** (`.github/workflows/ci.yml`) runs tests, clippy, frontend linting,
+**CI** (`.github/workflows/ci.yml`) runs tests and clippy on Linux and Windows, frontend linting,
 typecheck, build, a bindings-drift check (fails if `ui/src/ipc/bindings.ts` is
 stale), and a tokens-only guardrail (fails if any component CSS hardcodes a
 hex color instead of a token).
