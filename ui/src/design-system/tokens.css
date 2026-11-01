@@ -357,6 +357,72 @@
 
   --chat-nick-saturation: 60%;
   --chat-nick-lightness: 70%;
+
+  /* The Java client's values that no shared token has a name for, used by
+     themes/java-client.css (colours live in this file only). */
+  /* The Java values no shared token has a name for. */
+  --java-button: #3f3f3f; /* -fx-color, derive(333, 10%) */
+  --java-button-hover: #3c3c3c; /* -fx-hover-base */
+  --java-selection-unfocused: #1a4482; /* derive(accent, -40%) */
+  --java-primary-hover: #1e4f98; /* derive(accent, -30%) */
+  --java-primary-pressed: #112d57; /* derive(accent, -60%) */
+  --java-focus-border: #5890e2; /* box border with -fx-color: accent */
+  --java-toggle-selected: #585858; /* derive(333, 30%) */
+  --java-toggle-selected-hover: #646464;
+  --java-toggle-selected-border: #4985df; /* derive(accent, 20%) */
+  --java-danger: #8b0000; /* -fx-uninstall-color */
+  --java-danger-hover: #720000;
+  --java-card: #3b3b3b; /* -card-color, 424242CC over the window */
+  --java-card-hover: #474747;
+  --java-context-menu: #414547;
+  --java-context-menu-border: #868686;
+  --java-highlight: #ff9800; /* HIGHLIGHT_COLOR */
+  --java-gold: #e19e3b;
+  --java-gold-border: #9b7634;
+  /* FFFFFF12, FFFFFF11, FFFFFF22 and FFFFFF33: the white veils every bar
+     and tab is drawn with. */
+  --java-veil-07: rgba(255, 255, 255, 0.07);
+  --java-veil-067: rgba(255, 255, 255, 0.067);
+  --java-veil-13: rgba(255, 255, 255, 0.133);
+  --java-veil-20: rgba(255, 255, 255, 0.2);
+  /* Labels on the accent, the danger fill and a chosen queue. */
+  --java-white: #ffffff;
+  /* The chat's user list pane, FFFFFF08 over the window. */
+  --java-pane: #282828;
+  /* -darkened-color (dimgrey): the user list's rule. */
+  --java-darkened: #696969;
+  /* Prompt text, derive(text, -40%). */
+  --java-prompt: #848484;
+  /* derive(accent, 10%): a ticked box under the pointer. */
+  --java-accent-hover: #3a7bdc;
+  /* A chosen queue under the pointer. */
+  --java-accent-selected-hover: #2f7bed;
+  /* derive(3c3f41, 30%). */
+  --java-context-menu-separator: #5d6163;
+  /* Modena's separator: this line over the pane colour. */
+  --java-separator-shadow: #0e0e0e;
+  /* `.h1-tmm`, its 5f5f5f lifted to 3:1 for 24 px text. */
+  --java-tmm-heading: #6b6b6b;
+  /* `.player-card`'s frame. */
+  --java-player-card-border: #636363;
+  /* `.player-card:leader`. */
+  --java-party-leader: #dddddd;
+  /* `.player-card-text`. */
+  --java-card-text: #8f8f8f;
+  /* `.leave-button`'s frame. */
+  --java-leave: #cb0e0e;
+  /* A queue's search state. */
+  --java-match-good: #83be15;
+  /* A match that fell through. */
+  --java-match-cancelled: #be6800;
+  /* UEF_COLOR, as a frame (the text tokens are lifted). */
+  --java-faction-uef: #2196f3;
+  /* AEON_COLOR. */
+  --java-faction-aeon: #4caf50;
+  /* CYBRAN_COLOR. */
+  --java-faction-cybran: #f44336;
+  /* SERAPHIM_COLOR. */
+  --java-faction-seraphim: #ffc107;
 }
 
 /* ── pythonClient: PyQt/Fusion: neutral dark, square, system font, teal ── */

@@ -12,34 +12,6 @@
  * component knows the theme exists.
  */
 
-html[data-theme='javaClient'] {
-  /* The Java values no shared token has a name for. */
-  --java-button: #3f3f3f; /* -fx-color, derive(#333, 10%) */
-  --java-button-hover: #3c3c3c; /* -fx-hover-base */
-  --java-selection-unfocused: #1a4482; /* derive(accent, -40%) */
-  --java-primary-hover: #1e4f98; /* derive(accent, -30%) */
-  --java-primary-pressed: #112d57; /* derive(accent, -60%) */
-  --java-focus-border: #5890e2; /* box border with -fx-color: accent */
-  --java-toggle-selected: #585858; /* derive(#333, 30%) */
-  --java-toggle-selected-hover: #646464;
-  --java-toggle-selected-border: #4985df; /* derive(accent, 20%) */
-  --java-danger: #8b0000; /* -fx-uninstall-color */
-  --java-danger-hover: #720000;
-  --java-card: #3b3b3b; /* -card-color, #424242CC over the window */
-  --java-card-hover: #474747;
-  --java-context-menu: #414547;
-  --java-context-menu-border: #868686;
-  --java-highlight: #ff9800; /* HIGHLIGHT_COLOR */
-  --java-gold: #e19e3b;
-  --java-gold-border: #9b7634;
-  /* #FFFFFF12, #FFFFFF11, #FFFFFF22 and #FFFFFF33: the white veils every bar
-     and tab is drawn with. */
-  --java-veil-07: rgba(255, 255, 255, 0.07);
-  --java-veil-067: rgba(255, 255, 255, 0.067);
-  --java-veil-13: rgba(255, 255, 255, 0.133);
-  --java-veil-20: rgba(255, 255, 255, 0.2);
-}
-
 /* ── Window frame: header bar, view, status bar ─────────────────────── */
 
 html[data-theme='javaClient'] .app-shell {
@@ -49,7 +21,7 @@ html[data-theme='javaClient'] .app-shell {
 }
 
 /* The sidebar is the header bar (`.main-navigation-top`): one row,
-   #FFFFFF12 over the window. */
+   FFFFFF12 over the window. */
 html[data-theme='javaClient'] .app-shell .sidebar {
   grid-column: 1;
   grid-row: 1;
@@ -134,7 +106,7 @@ html[data-theme='javaClient'] .nav-overflow-item {
 }
 
 html[data-theme='javaClient'] .nav-overflow-item:is(:hover, :focus-visible) {
-  color: #ffffff;
+  color: var(--java-white);
   background: var(--color-accent);
 }
 
@@ -148,7 +120,7 @@ html[data-theme='javaClient'] .app-shell .game-folders {
 
 /* `.main-navigation-button`: text only, 1.2em, padding 0.5em 1.5em, a 4 px
    rule under it. Hover draws the rule in the unfocused selection blue, the
-   open one in the accent on a #FFFFFF33 fill. */
+   open one in the accent on a FFFFFF33 fill. */
 html[data-theme='javaClient'] .app-shell .tab {
   flex: none;
   justify-content: center;
@@ -189,7 +161,7 @@ html[data-theme='javaClient'] .app-shell .game-folders-toggle.is-open {
 /* `.main-navigation-button:highlighted`: filled with the accent. */
 html[data-theme='javaClient'] .app-shell .tab-sign-in,
 html[data-theme='javaClient'] .app-shell .tab-sign-in:hover {
-  color: #ffffff;
+  color: var(--java-white);
   background: var(--color-accent);
 }
 
@@ -334,7 +306,7 @@ html[data-theme='javaClient'] .app-shell .workspace {
   grid-row: 2;
 }
 
-/* `.status-bar`: #FFFFFF12, version left, the connections right, each a
+/* `.status-bar`: FFFFFF12, version left, the connections right, each a
    10 px dot and its label between vertical separators. */
 html[data-theme='javaClient'] .client-status-bar {
   grid-column: 1;
@@ -370,7 +342,7 @@ html[data-theme='javaClient'] .client-status-connection[data-status="disconnecte
   background: var(--color-error);
 }
 
-/* `.progress-bar`: a #333 track, the accent bar inset 2 px. */
+/* `.progress-bar`: a 333 track, the accent bar inset 2 px. */
 html[data-theme='javaClient'] .client-status-progress {
   height: 12px;
   padding: 2px;
@@ -432,7 +404,7 @@ html[data-theme='javaClient'] .btn-ghost.icon-button:hover:not(:disabled) {
 
 /* `.primary-button`. */
 html[data-theme='javaClient'] .btn-primary {
-  color: #ffffff;
+  color: var(--java-white);
   background: var(--color-accent);
 }
 
@@ -447,7 +419,7 @@ html[data-theme='javaClient'] .btn-primary:active:not(:disabled) {
 
 /* `.uninstall-button`. */
 html[data-theme='javaClient'] .btn-danger {
-  color: #ffffff;
+  color: var(--java-white);
   background: var(--java-danger);
   border-color: transparent;
 }
@@ -505,7 +477,7 @@ html[data-theme='javaClient'] .search-field:focus-within {
 }
 
 html[data-theme='javaClient'] :is(input, textarea)::placeholder {
-  color: #848484;
+  color: var(--java-prompt);
 }
 
 /* `.combo-box`: a button's fill with a box border; open, the accent frames
@@ -549,7 +521,7 @@ html[data-theme='javaClient'] .select-option.is-highlighted {
 }
 
 html[data-theme='javaClient'] .select-option.is-selected {
-  color: #ffffff;
+  color: var(--java-white);
   background: var(--color-accent);
 }
 
@@ -602,7 +574,7 @@ html[data-theme='javaClient'] input:is([type="checkbox"]:checked, [type="checkbo
 }
 
 html[data-theme='javaClient'] input:is([type="checkbox"]:checked, [type="radio"]:checked):hover:not(:disabled) {
-  background: #3a7bdc; /* derive(accent, 10%) */
+  background: var(--java-accent-hover); /* derive(accent, 10%) */
 }
 
 html[data-theme='javaClient'] input[type="radio"]:checked::after {
@@ -652,8 +624,8 @@ html[data-theme='javaClient'] .switch input:disabled + .switch-track {
 
 /* ── Tabs ───────────────────────────────────────────────────────────── */
 
-/* `.tab-pane`: a #FFFFFF12 strip, 1.1em, padding 5 20, a 4 px rule. Measured
-   on the Play tab: the tabs are the strip's colour until chosen, #5a5a5a
+/* `.tab-pane`: a FFFFFF12 strip, 1.1em, padding 5 20, a 4 px rule. Measured
+   on the Play tab: the tabs are the strip's colour until chosen, 5a5a5a
    once chosen. The chat's channel tabs (below) carry Waitomo's own fill. */
 html[data-theme='javaClient'] .section-tabs {
   gap: 2px;
@@ -720,7 +692,7 @@ html[data-theme='javaClient'] :is(.maps-header, .mods-header, .leaderboard-heade
   background: transparent;
 }
 
-/* The chat's channel tabs: #FFFFFF11 on the strip, a white × after the name
+/* The chat's channel tabs: FFFFFF11 on the strip, a white × after the name
    that is always there, and a + tab after the last. */
 html[data-theme='javaClient'] .chat-tabs .chat-tab-button {
   background: var(--java-veil-067);
@@ -740,7 +712,7 @@ html[data-theme='javaClient'] .chat-tabs .chat-tab-close {
 }
 
 html[data-theme='javaClient'] .chat-tabs .chat-tab-close:hover {
-  color: #ffffff;
+  color: var(--java-white);
   background: var(--java-veil-20);
 }
 
@@ -775,7 +747,7 @@ html[data-theme='javaClient'] .content-inner:not(.content-news, .content-units) 
 }
 
 /* The game list is drawn on the window itself, with no panel around it;
-   the detail pane beside it is #FFFFFF09 with no frame. */
+   the detail pane beside it is FFFFFF09 with no frame. */
 html[data-theme='javaClient'] :is(.game-browser-panel, .coop-games-main) {
   background: transparent;
   border-color: transparent;
@@ -799,7 +771,7 @@ html[data-theme='javaClient'] .search-panel.surface-panel {
 
 /* ── Lists and tables ───────────────────────────────────────────────── */
 
-/* `.column-header`: #333333CC, 3em, labels as they are written, left. */
+/* `.column-header`: 333333CC, 3em, labels as they are written, left. */
 html[data-theme='javaClient'] .list-head,
 html[data-theme='javaClient'] .list-head > th {
   color: var(--color-text);
@@ -816,7 +788,7 @@ html[data-theme='javaClient'] .list-head > th {
    corners, and it does not react to the pointer. */
 html[data-theme='javaClient'] ::-webkit-scrollbar-thumb,
 html[data-theme='javaClient'] ::-webkit-scrollbar-thumb:hover {
-  background: #3c3c3c;
+  background: var(--java-button-hover);
   background-clip: padding-box;
   border-radius: var(--radius-sm);
 }
@@ -840,14 +812,14 @@ html[data-theme='javaClient'] .pagination-btn:hover:not(:disabled) {
 }
 
 html[data-theme='javaClient'] .pagination-btn.active {
-  color: #ffffff;
+  color: var(--java-white);
   background: var(--color-accent);
   border-color: var(--color-accent);
 }
 
 /* ── Dialogs and menus ──────────────────────────────────────────────── */
 
-/* `.dialog-content`: the window colour, a box border, 3 px, over #00000099. */
+/* `.dialog-content`: the window colour, a box border, 3 px, over 00000099. */
 html[data-theme='javaClient'] .modal-backdrop {
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: none;
@@ -858,7 +830,7 @@ html[data-theme='javaClient'] .modal-panel {
   border-color: var(--color-border-strong);
 }
 
-/* `.context-menu`: derive(#3c3f41, 5%), a #868686 frame, 3 px; Modena
+/* `.context-menu`: derive(3c3f41, 5%), a 868686 frame, 3 px; Modena
    fills the item under the pointer with the accent. */
 html[data-theme='javaClient'] :is(.chat-user-menu, .game-context-menu, .tournament-replay-menu, .live-delay-menu, .client-status-popover, .game-folders-popover) {
   background: var(--java-context-menu);
@@ -869,18 +841,18 @@ html[data-theme='javaClient'] :is(.chat-user-menu, .game-context-menu, .tourname
 html[data-theme='javaClient'] .chat-user-menu-item:hover:not(:disabled),
 html[data-theme='javaClient'] .game-folders-entry:hover,
 html[data-theme='javaClient'] :is(.game-context-menu, .tournament-replay-menu, .live-delay-menu) button:hover:not(:disabled) {
-  color: #ffffff;
+  color: var(--java-white);
   background: var(--color-accent);
 }
 
 html[data-theme='javaClient'] .chat-user-menu-separator {
-  border-color: #5d6163; /* derive(#3c3f41, 30%) */
+  border-color: var(--java-context-menu-separator); /* derive(3c3f41, 30%) */
 }
 
 /* ── Cards ──────────────────────────────────────────────────────────── */
 
 /* `.card`: -card-color, 3 px; hover a tenth lighter. Its frame measures
-   #424242 in the client, not the box border. */
+   424242 in the client, not the box border. */
 html[data-theme='javaClient'] :is(.card, .game-tile, .map-vault-card, .mod-vault-card, .replay-card, .live-replay-card, .installed-map-card, .installed-mod-card, .map-pool-card) {
   background-color: var(--java-card);
   border-color: var(--color-border);
@@ -894,10 +866,10 @@ html[data-theme='javaClient'] :is(.game-tile, .map-vault-card, .mod-vault-card, 
 
 /* `.message-container:hover`, derive(base, 5%). */
 html[data-theme='javaClient'] .chat-message:hover {
-  background: #282828;
+  background: var(--java-pane);
 }
 
-/* `.chat-channel-users-pane`: #FFFFFF08 (measured #282828) from the tab strip
+/* `.chat-channel-users-pane`: FFFFFF08 (measured 282828) from the tab strip
    to the status bar and out to the window's edge, with a dim grey rule on its
    left and no other frame. */
 html[data-theme='javaClient'] .chat-roster-shell {
@@ -906,9 +878,9 @@ html[data-theme='javaClient'] .chat-roster-shell {
 
 html[data-theme='javaClient'] .chat-roster {
   height: 100%;
-  background: #282828;
+  background: var(--java-pane);
   border: 0;
-  border-left: 1px solid #696969;
+  border-left: 1px solid var(--java-darkened);
   border-radius: 0;
 }
 
@@ -947,7 +919,7 @@ html[data-theme='javaClient'] .chat-roster .chat-nick {
 }
 
 /* The messages are written on the window, with no panel around them
-   (measured #212121), and the channel tab names its room with the # it
+   (measured 212121), and the channel tab names its room with the # it
    already has, without an icon. */
 html[data-theme='javaClient'] .chat-messages {
   background: transparent;
@@ -1032,26 +1004,26 @@ html[data-theme='javaClient'] .matchmaking-layout.is-java .matchmaker-party-chat
 }
 
 /* `.h1-tmm`: 24 px semibold, 16 px in, in capitals as the client prints it.
-   Its #5f5f5f is 2.5:1 on the window; one step lighter makes the 3:1 that
+   Its 5f5f5f is 2.5:1 on the window; one step lighter makes the 3:1 that
    text this large needs. */
 html[data-theme='javaClient'] .java-tmm-heading {
   margin: 0;
   padding-left: 16px;
-  color: #6b6b6b;
+  color: var(--java-tmm-heading);
   font-size: 24px;
   font-weight: 600;
   line-height: 1;
   text-transform: uppercase;
 }
 
-/* `.player-card`: #1d1d1d99, a #636363 frame, 9 px corners, padded 10 15; the
+/* `.player-card`: 1d1d1d99, a 636363 frame, 9 px corners, padded 10 15; the
    league picture 80 x 40, the name 24 px in the matchmaker's gold, the clan
-   12 px light, the league and games 14 px #8f8f8f, the flag at the end of
+   12 px light, the league and games 14 px 8f8f8f, the flag at the end of
    that line. */
 html[data-theme='javaClient'] .java-tmm .matchmaker-player-card,
 html[data-theme='javaClient'] .party-strip.is-java .party-seat {
   background: rgba(29, 29, 29, 0.6);
-  border: 1px solid #636363;
+  border: 1px solid var(--java-player-card-border);
   border-radius: 9px;
 }
 
@@ -1102,7 +1074,7 @@ html[data-theme='javaClient'] .java-tmm .matchmaker-player-name > span {
 
 html[data-theme='javaClient'] .java-tmm .matchmaker-player-meta {
   gap: 15px;
-  color: #8f8f8f;
+  color: var(--java-card-text);
   font-size: 14px;
   text-transform: uppercase;
 }
@@ -1132,10 +1104,10 @@ html[data-theme='javaClient'] .java-tmm .faction-chip {
   border-radius: 10px;
 }
 
-html[data-theme='javaClient'] .java-tmm .faction-chip[data-faction="uef"] { --java-faction: #2196f3; }
-html[data-theme='javaClient'] .java-tmm .faction-chip[data-faction="aeon"] { --java-faction: #4caf50; }
-html[data-theme='javaClient'] .java-tmm .faction-chip[data-faction="cybran"] { --java-faction: #f44336; }
-html[data-theme='javaClient'] .java-tmm .faction-chip[data-faction="seraphim"] { --java-faction: #ffc107; }
+html[data-theme='javaClient'] .java-tmm .faction-chip[data-faction="uef"] { --java-faction: var(--java-faction-uef); }
+html[data-theme='javaClient'] .java-tmm .faction-chip[data-faction="aeon"] { --java-faction: var(--java-faction-aeon); }
+html[data-theme='javaClient'] .java-tmm .faction-chip[data-faction="cybran"] { --java-faction: var(--java-faction-cybran); }
+html[data-theme='javaClient'] .java-tmm .faction-chip[data-faction="seraphim"] { --java-faction: var(--java-faction-seraphim); }
 
 html[data-theme='javaClient'] .java-tmm .faction-chip.is-active {
   background: transparent;
@@ -1160,7 +1132,7 @@ html[data-theme='javaClient'] .java-tmm .faction-chip:hover:not(:disabled) svg {
 
 /* "Your party:" and its two outlined buttons on one line (`.invite-button`,
    `.leave-button`: 14 px, padded 3 14, 29 px, a 2 px frame in the accent or
-   in #cb0e0e, a third of it behind on hover). */
+   in cb0e0e, a third of it behind on hover). */
 html[data-theme='javaClient'] .party-strip.is-java {
   display: flex;
   flex-direction: column;
@@ -1206,7 +1178,7 @@ html[data-theme='javaClient'] .java-tmm-outline.is-invite:hover:not(:disabled) {
 }
 
 html[data-theme='javaClient'] .java-tmm-outline.is-leave {
-  border-color: #cb0e0e;
+  border-color: var(--java-leave);
 }
 
 html[data-theme='javaClient'] .java-tmm-outline.is-leave:hover:not(:disabled) {
@@ -1215,7 +1187,7 @@ html[data-theme='javaClient'] .java-tmm-outline.is-leave:hover:not(:disabled) {
 
 /* The members, two to a row (`partyMemberPane`: 35 x 23 apart), each a
    player card 75 px tall with the name at 20 px; the leader's frame
-   #dddddd. */
+   dddddd. */
 html[data-theme='javaClient'] .party-strip.is-java .party-seats {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 23px 35px;
@@ -1228,7 +1200,7 @@ html[data-theme='javaClient'] .party-strip.is-java .party-seat {
 }
 
 html[data-theme='javaClient'] .party-strip.is-java .party-seat.is-leader {
-  border-color: #dddddd;
+  border-color: var(--java-party-leader);
 }
 
 html[data-theme='javaClient'] .party-strip.is-java .party-seat-name {
@@ -1240,8 +1212,8 @@ html[data-theme='javaClient'] .party-strip.is-java .party-seat-name {
 html[data-theme='javaClient'] .java-tmm-separator {
   margin: 0;
   border: 0;
-  border-top: 1px solid #0e0e0e;
-  border-bottom: 1px solid #292929;
+  border-top: 1px solid var(--java-separator-shadow);
+  border-bottom: 1px solid var(--color-surface);
 }
 
 /* `.toggle-button.start-search`: as wide as the column, 80 px, a 2 px gold
@@ -1312,12 +1284,12 @@ html[data-theme='javaClient'] .java-tmm-queue-toggle:hover:not(:disabled) {
 }
 
 html[data-theme='javaClient'] .java-tmm-queue-toggle[aria-pressed="true"] {
-  color: #ffffff;
+  color: var(--java-white);
   background: var(--color-accent);
 }
 
 html[data-theme='javaClient'] .java-tmm-queue-toggle[aria-pressed="true"]:hover:not(:disabled) {
-  background: #2f7bed;
+  background: var(--java-accent-selected-hover);
 }
 
 html[data-theme='javaClient'] .java-tmm-queue-toggle:disabled,
@@ -1327,12 +1299,12 @@ html[data-theme='javaClient'] .java-tmm-queue.is-incompatible .java-tmm-queue-to
 }
 
 /* `.map-pool`: the frame in the divider colour, the label in the card's
-   grey; #42424230 behind it on hover. */
+   grey; 42424230 behind it on hover. */
 html[data-theme='javaClient'] .java-tmm-map-list {
   /* A plain button's height in the client, 35 px, not the 29 of the party
      row's buttons. */
   min-height: 35px;
-  color: #8f8f8f;
+  color: var(--java-card-text);
 }
 
 html[data-theme='javaClient'] .java-tmm-map-list:hover {
@@ -1345,22 +1317,22 @@ html[data-theme='javaClient'] .java-tmm-queue-facts {
   gap: 0 10px;
   margin: 0;
   padding-left: 15px;
-  color: #8f8f8f;
+  color: var(--java-card-text);
   font-size: 14px;
   text-transform: uppercase;
 }
 
-/* The search state under a queue, bold: #83be15, or #be6800 for a match that
+/* The search state under a queue, bold: 83be15, or be6800 for a match that
    fell through. */
 html[data-theme='javaClient'] .java-tmm-queue-status {
   margin: 0;
-  color: #83be15;
+  color: var(--java-match-good);
   font-weight: 700;
   text-align: center;
 }
 
 html[data-theme='javaClient'] .java-tmm-queue-status.is-cancelled {
-  color: #be6800;
+  color: var(--java-match-cancelled);
 }
 
 /* Flush with the heading above it, and no empty row of seats while alone. */
@@ -1402,7 +1374,7 @@ html[data-theme='javaClient'] .section-tabs .section-tab-label > svg {
 /* ── Panes ──────────────────────────────────────────────────────────── */
 
 /* A large panel is a pane in the client: the detail pane beside a list,
-   #FFFFFF09 on the window (measured #292929), with no frame and no corners.
+   FFFFFF09 on the window (measured 292929), with no frame and no corners.
    Cards (`.card` and the vault and game tiles above) keep theirs. */
 html[data-theme='javaClient'] :where(.surface-panel) {
   border-color: transparent;
@@ -1450,8 +1422,8 @@ html[data-theme='javaClient'] .changelog-subnav > .changelog-archive-trigger {
 /* ── Settings window ────────────────────────────────────────────────── */
 
 /* `.settings .tab-header-area`: the categories are a tab strip across the
-   top, #FFFFFF12, each tab 1.1em with 1em around it and a 4 px rule,
-   #FFFFFF33 once chosen, its words in the light text colour; no icons.
+   top, FFFFFF12, each tab 1.1em with 1em around it and a 4 px rule,
+   FFFFFF33 once chosen, its words in the light text colour; no icons.
    The search, which the client does not have, sits at the strip's end. */
 html[data-theme='javaClient'] .content > .content-inner.content-settings {
   padding: 0;
