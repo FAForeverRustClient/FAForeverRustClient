@@ -3,7 +3,8 @@
 // the only writes are `apply` (from events) and `hydrate` (initial snapshot).
 
 import { create } from "zustand";
-import type { AppEvent, AppState } from "../ipc/bindings";
+import type { AppEvent, AppState, AuthState } from "../ipc/bindings";
+import { clearDrafts } from "../shared/chatDrafts";
 import { EMPTY_REPLAY_QUERY } from "../shared/replayQuery";
 import { EMPTY_TRAINING_QUERY } from "../shared/trainingQuery";
 import { EMPTY_MAP_QUERY, EMPTY_MOD_QUERY } from "../shared/vaultQuery";
@@ -737,9 +738,22 @@ interface AppStore {
   hydrate: (state: AppState) => void;
 }
 
+function clearDraftsOnAuthChange(previous: AuthState, next: AuthState): void {
+  if (previous.status !== next.status || previous.mode !== next.mode || previous.player?.id !== next.player?.id) {
+    clearDrafts();
+  }
+}
+
 export const useAppStore = create<AppStore>((set) => ({
   state: INITIAL,
   hydrated: false,
-  apply: (event) => set((s) => ({ state: applyEvent(s.state, event) })),
-  hydrate: (state) => set({ state, hydrated: true }),
+  apply: (event) => set((s) => {
+    const state = applyEvent(s.state, event);
+    clearDraftsOnAuthChange(s.state.auth, state.auth);
+    return { state };
+  }),
+  hydrate: (state) => set((s) => {
+    clearDraftsOnAuthChange(s.state.auth, state.auth);
+    return { state, hydrated: true };
+  }),
 }));

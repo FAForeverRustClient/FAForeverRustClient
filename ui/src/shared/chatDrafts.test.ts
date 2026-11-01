@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { partyDraftKey, readDraft, writeDraft } from "./composerDrafts";
+import { beforeEach, describe, expect, it } from "vitest";
+import { clearDrafts, draftSession, partyDraftKey, readDraft, tournamentDraftKey, writeDraft } from "./chatDrafts";
+
+beforeEach(clearDrafts);
 
 describe("composer drafts", () => {
   it("keeps one unsent line per conversation", () => {
@@ -23,5 +25,19 @@ describe("composer drafts", () => {
     expect(readDraft(room)).toBe("typed in the Chat tab");
     expect(readDraft(partyDraftKey(room))).toBe("typed in the matchmaker");
     expect(partyDraftKey(room)).not.toBe(room);
+  });
+
+  it("clears inactive conversation, party and tournament drafts together", () => {
+    const keys = ["#aeolus", "Somebody", partyDraftKey("party"), tournamentDraftKey("event", "global")];
+    for (const key of keys) writeDraft(key, "private draft");
+    clearDrafts();
+    for (const key of keys) expect(readDraft(key)).toBe("");
+  });
+
+  it("rejects a write captured before the session ended", () => {
+    const owner = draftSession();
+    clearDrafts();
+    writeDraft("#aeolus", "old session", owner);
+    expect(readDraft("#aeolus")).toBe("");
   });
 });

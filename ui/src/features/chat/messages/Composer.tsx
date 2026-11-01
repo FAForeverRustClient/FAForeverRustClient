@@ -16,14 +16,14 @@
 // Slash commands are *not* interpreted here: the backend owns that grammar
 // (`faf-domain::protocol::chat_input`). This component only sends raw text.
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { EmojiPicker } from "./EmojiPicker";
 import { partyChannelLabel } from "../../../shared/partyChat";
-import { readDraft, writeDraft } from "./composerDrafts";
+import { useChatDraft } from "../../../shared/hooks/useChatDraft";
 import { tabCompletion, type Completion } from "./nickCompletion";
 
 /** How many sent lines to keep for Up/Down recall. */
@@ -50,7 +50,7 @@ interface Props {
   /**
    * Which saved draft this box edits. Defaults to the channel name; party chat
    * passes its own key so the same room open in the Chat tab keeps a separate
-   * line (see `composerDrafts.ts`).
+   * line (see `shared/chatDrafts.ts`).
    */
   draftKey?: string;
 }
@@ -67,13 +67,7 @@ export function Composer({
 }: Props) {
   const { t } = useTranslation();
   const key = draftKey ?? channel;
-  const [draft, setDraftText] = useState(() => readDraft(key));
-  // Every change is mirrored into the session's draft store as it happens, so
-  // the line survives a channel switch and the composer unmounting alike.
-  const setDraft = (value: string) => {
-    setDraftText(value);
-    writeDraft(key, value);
-  };
+  const [draft, setDraft, session] = useChatDraft(key);
   const inputRef = useRef<HTMLInputElement>(null);
   const completion = useRef<Completion | null>(null);
   const completionCaret = useRef<number | null>(null);
@@ -212,18 +206,16 @@ export function Composer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel]);
 
-  // Switching conversation brings back whatever was left unsent in the one
-  // being opened. The line being left needs no saving here: `setDraft` has
-  // already stored every change to it. A layout effect, so the new
-  // conversation never paints for a frame with the old one's text in its box.
-  const previousKey = useRef(key);
+  // The draft hook reads the selected conversation immediately. Completion
+  // and recall state must also stop belonging to the old conversation/account.
+  const previousSession = useRef(session);
   useLayoutEffect(() => {
-    if (previousKey.current === key) return;
-    previousKey.current = key;
-    setDraftText(readDraft(key));
+    if (previousSession.current !== session) history.current = [];
+    previousSession.current = session;
     completion.current = null;
+    completionCaret.current = null;
     historyIndex.current = null;
-  }, [key]);
+  }, [key, session]);
 
   return (
     <form className="chat-compose-shell" onSubmit={submit}>

@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyEvent, clearSentCommands, initialState, seedStore, sentCommands } from "./mounted";
 import { failOnConsoleError } from "./consoleGuard";
 import { Composer } from "../features/chat/messages/Composer";
-import { writeDraft } from "../features/chat/messages/composerDrafts";
+import { writeDraft } from "../shared/chatDrafts";
 import { ReviewsPanel } from "../features/reviews/ReviewsPanel";
 import { DisplaySettingsDialog } from "../features/tournaments/detail/DisplaySettingsDialog";
 import { HOTKEY_ACTIONS, type HotkeyAction } from "../features/tournaments/display";
