@@ -716,31 +716,6 @@ html.is-resizing-chat-roster * {
 }
 
 @media (max-width: 760px) {
-  .settings-section-head,
-  .settings-section-body {
-    padding-right: 14px;
-    padding-left: 14px;
-  }
-
-  .setting-row {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .setting-control {
-    justify-content: flex-start;
-  }
-
-  .settings-select {
-    width: 100%;
-  }
-
-  .settings-save-line,
-  .settings-path-row {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
   .chat-category-colors {
     grid-template-columns: 1fr;
   }

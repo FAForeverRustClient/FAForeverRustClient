@@ -11,15 +11,13 @@ import { plainError } from "../../../shared/plainError";
 // the one the file has always carried and nothing ever read: how many orders
 // each player gave.
 //
-// Drawn over the replay panel rather than as a second `Modal`, and one layer
-// of the overlay stack while open: Escape closes this and leaves the replay
-// open, and a list open inside it (the chat's "From") closes before it does.
-// The same three ways out as a dialog: the button, the scrim and Escape.
+// A nested Modal owns focus and Escape: closing it leaves the replay open,
+// and a list opened inside it (the chat's "From") closes before it does.
 
 import { useId, useMemo, useState } from "react";
 import { Icon } from "../../../design-system/Icon";
 import { SectionTabs, sectionPanelProps } from "../../../design-system/SectionTabs";
-import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
+import { Modal } from "../../../design-system/Modal";
 import type {
   ReplayAnalysis,
   ReplayDetails,
@@ -116,7 +114,6 @@ export function ReplayInsights({
   const { t } = useTranslation();
   const [tab, setTab] = useState<InsightTab>("options");
   const [optionFilter, setOptionFilter] = useState("");
-  useOverlayLayer(true, onClose);
   const tabsId = useId();
 
   // Absent on a file whose stream could not be walked, and on a legacy
@@ -186,106 +183,90 @@ export function ReplayInsights({
     : null;
 
   return (
-    <div className="replay-preview-scrim" role="presentation" onClick={onClose}>
-      <div
-        className="replay-insights"
-        role="dialog"
-        aria-label={t("replays.insights.aria", { name: title })}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <header className="replay-insights-head">
-          <div className="replay-insights-heading">
-            <span className="replay-insights-kicker">{t("replays.insights.kicker")}</span>
-            <h2 title={title}>{title}</h2>
-          </div>
-          <button
-            type="button"
-            className="replay-card-icon-btn"
-            aria-label={t("replays.insights.close")}
-            title={t("replays.insights.close")}
-            onClick={onClose}
-          >
-            <Icon name="close" size={15} />
-          </button>
-        </header>
-
-        <SectionTabs
-          active={tab}
-          ariaLabel={t("replays.insights.tabsAria")}
-          items={tabs}
-          onChange={setTab}
-          idPrefix={tabsId}
-        />
-
-        <div className="replay-insights-body" {...sectionPanelProps(tabsId, tab)}>
-          {/* One state for the whole panel while the file is on its way: the
-              tabs are already there to be read, and putting the same spinner
-              in each of them would say four different things are loading. */}
-          {!details && (
-            error
-              ? failure(error)
-              : (
-                <p className="replay-insights-loading muted">
-                  <Icon name="refresh" size={15} className="spin" />
-                  <span>{t(loading ? "replays.insights.reading" : "replays.detail.loadingDetails")}</span>
-                </p>
-              )
-          )}
-
-          {analysisNotice}
-
-          {/* On every tab: a desynced replay shows one client's game from
-              that moment on, which is worth knowing before reading anything
-              after it. */}
-          {analysis?.desyncTick != null && (
-            <StatusNotice tone="info" className="replay-insights-desync">
-              {t("replays.insights.desynced", { time: formatGameTime(analysis.desyncTick) })}
-            </StatusNotice>
-          )}
-
-          {analysis && tab === "buildOrder" && <ReplayBuildOrderPane analysis={analysis} />}
-          {analysis && tab === "events" && <ReplayEventsPanel analysis={analysis} />}
-          {analysis && tab === "graph" && <ReplayActivityChart analysis={analysis} />}
-          {analysis && tab === "heatmap" && (
-            <ReplayHeatmap analysis={analysis} mapPreviewUrl={mapPreviewUrl} mapAction={mapAction} />
-          )}
-          {analysis && tab === "stats" && <ReplayGameStats stats={analysis.stats} />}
-
-          {/* The lineup and their rates. Drawn from the stream once it is
-              here, because that is where a player's colour, faction and own
-              last action come from; from the cheap read until then, which
-              knows the names and the counts. */}
-          {analysis && tab === "players" && <ReplayPlayersPanel analysis={analysis} />}
-
-          {!analysis && details && tab === "players" && <ReplayActivityPane rows={rows} />}
-
-          {details && tab === "chat" && <ReplayChatPane chat={chat} />}
-
-          {details && tab === "options" && (
-            <ReplayOptionsPane filteredOptions={filteredOptions} optionFilter={optionFilter} setOptionFilter={setOptionFilter} />
-          )}
-
-          {details && tab === "mods" && (
-            <ul className="replay-sim-mod-list">
-              {/* Each one opens the mod vault on that mod (#343), the way a
-                  lobby's mod list does. The replay names its mods, not their
-                  vault ids, so the vault is searched by the name. */}
-              {simMods.map((mod) => (
-                <li key={mod}>
-                  <button
-                    type="button"
-                    className="surface-chip replay-sim-mod"
-                    title={t("lobby.details.openModInVault", { mod })}
-                    onClick={() => openModInVault(mod)}
-                  >
-                    {mod}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+    <Modal className="replay-insights" ariaLabel={t("replays.insights.aria", { name: title })} onClose={onClose}>
+      <header className="replay-insights-head">
+        <div className="replay-insights-heading">
+          <span className="replay-insights-kicker">{t("replays.insights.kicker")}</span>
+          <h2 title={title}>{title}</h2>
         </div>
+      </header>
+
+      <SectionTabs
+        active={tab}
+        ariaLabel={t("replays.insights.tabsAria")}
+        items={tabs}
+        onChange={setTab}
+        idPrefix={tabsId}
+      />
+
+      <div className="replay-insights-body" {...sectionPanelProps(tabsId, tab)}>
+        {/* One state for the whole panel while the file is on its way: the
+            tabs are already there to be read, and putting the same spinner
+            in each of them would say four different things are loading. */}
+        {!details && (
+          error
+            ? failure(error)
+            : (
+              <p className="replay-insights-loading muted">
+                <Icon name="refresh" size={15} className="spin" />
+                <span>{t(loading ? "replays.insights.reading" : "replays.detail.loadingDetails")}</span>
+              </p>
+            )
+        )}
+
+        {analysisNotice}
+
+        {/* On every tab: a desynced replay shows one client's game from
+            that moment on, which is worth knowing before reading anything
+            after it. */}
+        {analysis?.desyncTick != null && (
+          <StatusNotice tone="info" className="replay-insights-desync">
+            {t("replays.insights.desynced", { time: formatGameTime(analysis.desyncTick) })}
+          </StatusNotice>
+        )}
+
+        {analysis && tab === "buildOrder" && <ReplayBuildOrderPane analysis={analysis} />}
+        {analysis && tab === "events" && <ReplayEventsPanel analysis={analysis} />}
+        {analysis && tab === "graph" && <ReplayActivityChart analysis={analysis} />}
+        {analysis && tab === "heatmap" && (
+          <ReplayHeatmap analysis={analysis} mapPreviewUrl={mapPreviewUrl} mapAction={mapAction} />
+        )}
+        {analysis && tab === "stats" && <ReplayGameStats stats={analysis.stats} />}
+
+        {/* The lineup and their rates. Drawn from the stream once it is
+            here, because that is where a player's colour, faction and own
+            last action come from; from the cheap read until then, which
+            knows the names and the counts. */}
+        {analysis && tab === "players" && <ReplayPlayersPanel analysis={analysis} />}
+
+        {!analysis && details && tab === "players" && <ReplayActivityPane rows={rows} />}
+
+        {details && tab === "chat" && <ReplayChatPane chat={chat} />}
+
+        {details && tab === "options" && (
+          <ReplayOptionsPane filteredOptions={filteredOptions} optionFilter={optionFilter} setOptionFilter={setOptionFilter} />
+        )}
+
+        {details && tab === "mods" && (
+          <ul className="replay-sim-mod-list">
+            {/* Each one opens the mod vault on that mod (#343), the way a
+                lobby's mod list does. The replay names its mods, not their
+                vault ids, so the vault is searched by the name. */}
+            {simMods.map((mod) => (
+              <li key={mod}>
+                <button
+                  type="button"
+                  className="surface-chip replay-sim-mod"
+                  title={t("lobby.details.openModInVault", { mod })}
+                  onClick={() => openModInVault(mod)}
+                >
+                  {mod}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }

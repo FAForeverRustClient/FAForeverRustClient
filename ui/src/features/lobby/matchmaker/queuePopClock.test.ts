@@ -29,6 +29,13 @@ describe("the queue pop countdown", () => {
     expect(secondsUntil(queue({ queuePopsAt: popsAt }), Date.parse("2026-10-01T12:05:00.000Z"))).toBe(0);
   });
 
+  it("never shows more than the delta the server sent, however old the reading", () => {
+    // A queue update read against a clock that stopped 20 seconds earlier, or
+    // a machine clock set back by as much: 62 seconds, not the 42 sent.
+    const arrived = queue({ queuePopTimeSeconds: 42, queuePopsAt: popsAt });
+    expect(secondsUntil(arrived, Date.parse("2026-10-01T11:59:40.000Z"))).toBe(42);
+  });
+
   it("falls back to the delta when there is no instant", () => {
     expect(secondsUntil(queue(), Date.parse("2026-10-01T12:00:00.000Z"))).toBe(42);
   });

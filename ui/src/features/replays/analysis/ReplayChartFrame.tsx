@@ -12,9 +12,8 @@
 // would leave the ref pointing at whichever mounted last.
 
 import type { ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { Icon } from "../../../design-system/Icon";
-import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
+import { Modal } from "../../../design-system/Modal";
 import { useTranslation } from "../../../i18n/useTranslation";
 
 export function ReplayChartFrame({
@@ -36,11 +35,6 @@ export function ReplayChartFrame({
   children: ReactNode;
 }) {
   const { t } = useTranslation();
-
-  // One layer of the overlay stack while enlarged, above the panel it was
-  // opened from: one press steps out of the enlarged chart, the next closes
-  // the panel.
-  useOverlayLayer(zoomed, () => onZoom(false));
 
   const body = (
     <>
@@ -66,30 +60,13 @@ export function ReplayChartFrame({
       {zoomed
         ? <p className="replay-chart-frame-away muted">{t("replays.insights.chartEnlarged")}</p>
         : body}
-      {zoomed && createPortal(
-        <div className="replay-preview-scrim" role="presentation" onClick={() => onZoom(false)}>
-          <div
-            className="replay-chart-zoom"
-            role="dialog"
-            aria-label={title}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <header className="replay-chart-zoom-head">
-              <h3>{title}</h3>
-              <button
-                type="button"
-                className="replay-card-icon-btn"
-                aria-label={t("replays.insights.close")}
-                title={t("replays.insights.close")}
-                onClick={() => onZoom(false)}
-              >
-                <Icon name="close" size={15} />
-              </button>
-            </header>
-            <div className="replay-chart-zoom-body">{body}</div>
-          </div>
-        </div>,
-        document.body,
+      {zoomed && (
+        <Modal className="replay-chart-zoom" ariaLabel={title} onClose={() => onZoom(false)}>
+          <header className="replay-chart-zoom-head">
+            <h3>{title}</h3>
+          </header>
+          <div className="replay-chart-zoom-body">{body}</div>
+        </Modal>
       )}
     </figure>
   );

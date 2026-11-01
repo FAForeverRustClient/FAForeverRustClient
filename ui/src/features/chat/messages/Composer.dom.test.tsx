@@ -16,7 +16,7 @@ import type { ChatChannel } from "../../../ipc/bindings";
 import { failOnConsoleError } from "../../../testing/consoleGuard";
 import { applyEvent, clearSentCommands, seedStore, sentCommands } from "../../../testing/mounted";
 import { ChatView } from "../ChatView";
-import { writeDraft } from "./composerDrafts";
+import { writeDraft } from "../../../shared/chatDrafts";
 
 vi.mock("../../../ipc/client");
 
@@ -33,7 +33,7 @@ function channel(name: string, users: string[]): ChatChannel {
   };
 }
 
-// Drafts outlive the composer on purpose (see `composerDrafts.ts`), so they
+// Drafts outlive the composer on purpose (see `shared/chatDrafts.ts`), so they
 // outlive a test as well unless they are put back.
 afterEach(() => {
   for (const key of ["#aeolus", "#other"]) writeDraft(key, "");
@@ -255,6 +255,19 @@ describe("chat composer keyboard, mounted", () => {
     await user.keyboard("{ArrowUp}");
     expect(input.value).toBe("first");
     await user.keyboard("{ArrowDown}{ArrowDown}");
+    expect(input.value).toBe("");
+  });
+
+  it("clears drafts and sent-line recall when the account changes", async () => {
+    const user = userEvent.setup();
+    const input = mount();
+    applyEvent({ kind: "Auth", event: { type: "loggedIn", payload: { player: { id: 1, name: "First", roles: [] } } } });
+    await user.click(input);
+    await user.keyboard("first account sent this{Enter}private unfinished line");
+
+    applyEvent({ kind: "Auth", event: { type: "loggedIn", payload: { player: { id: 2, name: "Second", roles: [] } } } });
+    expect(input.value).toBe("");
+    await user.keyboard("{ArrowUp}");
     expect(input.value).toBe("");
   });
 });

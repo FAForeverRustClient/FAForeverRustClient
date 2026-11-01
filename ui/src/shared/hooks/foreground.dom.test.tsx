@@ -32,6 +32,23 @@ it("suspends optional work while hidden and during games, refreshing once on ret
   expect(second).toHaveBeenCalledTimes(3);
 });
 
+it("keeps work that asked for it running through games and replays, but not while hidden", () => {
+  vi.useFakeTimers();
+  const visibility = vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+  const tick = vi.fn();
+  function Probe() { useForegroundInterval(tick, 1000, true, true); return null; }
+  render(<Probe />);
+  expect(tick).toHaveBeenCalledTimes(1);
+  act(() => useAppStore.getState().hydrate({
+    ...pristine.state,
+    replays: { ...pristine.state.replays, status: { type: "playing", payload: { uid: 1 } } },
+  }));
+  act(() => { vi.advanceTimersByTime(3000); });
+  expect(tick).toHaveBeenCalledTimes(4);
+  act(() => { visibility.mockReturnValue("hidden"); document.dispatchEvent(new Event("visibilitychange")); vi.advanceTimersByTime(5000); });
+  expect(tick).toHaveBeenCalledTimes(4);
+});
+
 it("does not repeat a poll when the window is hidden and shown again within one interval", () => {
   vi.useFakeTimers();
   const visibility = vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
