@@ -84,7 +84,7 @@ export function MatchmakingPanel({
   const [selectedFactions, setSelectedFactions] = useState<string[]>(browsing.matchmakerFactions);
   const [mapPoolQueueName, setMapPoolQueueName] = useState<string | null>(null);
   const [explaining, setExplaining] = useState(false);
-  const [clock, setClock] = useState(() => Date.now());
+  const [, setClock] = useState(() => Date.now());
   // The same shape as the game browser's detail divider: the saved width seeds
   // a local copy, the drag moves the copy, letting go persists it. A settings
   // write per pointer move would be a backend round trip per pixel.
@@ -155,8 +155,13 @@ export function MatchmakingPanel({
     saveChatWidth(0);
   };
 
-  // Every queue card counts down to its next pop, searching or not.
-  useForegroundInterval(() => setClock(Date.now()), 1000, sortedQueues.length > 0);
+  // Every queue card counts down to its next pop, searching or not, and a
+  // search keeps counting through a game or replay: waiting in the queue while
+  // watching one is when the countdown is read. The tick only redraws the
+  // cards. The time is read as they are drawn, because a queue update that
+  // arrived while the tick slept counted from the tick's last run and froze.
+  useForegroundInterval(() => setClock(Date.now()), 1000, sortedQueues.length > 0, isSearching);
+  const now = Date.now();
 
   useEffect(() => {
     setUnselectedQueues(browsing.matchmakerUnselectedQueues);
@@ -352,7 +357,7 @@ export function MatchmakingPanel({
           </div>
           <div className="matchmaker-queue-grid">
             {sortedQueues.map((queue) => {
-              const remaining = secondsUntil(queue, clock);
+              const remaining = secondsUntil(queue, now);
               const activeGames = activeMatchmakerGames.filter((game) => game.maxPlayers === queue.teamSize * 2).length;
               const queueRating = ratingForQueue(matchmakerProfile?.ratings ?? [], queue.queueName, ownLobbyRatings);
               const queuePlacement = placementForQueue(matchmakerProfile?.leaguePlacements ?? [], queue.queueName);

@@ -8,10 +8,15 @@ import { useAppStore } from "../../store/store";
  * still shows its countdowns. Enabling runs the callback at once; returning
  * from a hidden window or a game does so only if a full interval has passed,
  * so toggling visibility cannot burst a poll.
+ *
+ * `duringGames` keeps the work running while a game or replay runs, for the
+ * rare display that is read precisely then: a matchmaker search counting down
+ * while its player watches a replay.
  */
-export function useForegroundInterval(callback: () => void, delay: number, enabled = true) {
+export function useForegroundInterval(callback: () => void, delay: number, enabled = true, duringGames = false) {
   const gameActive = useAppStore((store) =>
-    store.state.lobby.join.type === "inGame" || store.state.lobby.join.type === "launched" || store.state.replays.status.type === "playing");
+    !duringGames
+    && (store.state.lobby.join.type === "inGame" || store.state.lobby.join.type === "launched" || store.state.replays.status.type === "playing"));
   const latest = useRef(callback);
   useEffect(() => { latest.current = callback; });
   const lastRun = useRef(Number.NEGATIVE_INFINITY);

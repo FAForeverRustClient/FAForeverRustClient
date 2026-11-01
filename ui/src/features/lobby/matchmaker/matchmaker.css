@@ -770,9 +770,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 16px at full strength in the muted text colour. At 14px the strokes were
+   about one device pixel wide, and dimming them further left only the pixels
+   a curve or diagonal fully covered: the circles and the tick broke up into
+   dashes. */
 .matchmaker-queue-facts svg {
   flex: 0 0 auto;
-  opacity: 0.7;
 }
 
 /* Holds the line's height until the answer is known. See the card. */
