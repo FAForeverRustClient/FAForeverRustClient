@@ -30,7 +30,7 @@ import { native } from "../../ipc/native";
 import { formatShortDateTime, formatTime } from "../../shared/format/dates";
 import { plainError } from "../../shared/plainError";
 import { useAppStore } from "../../store/store";
-import { SettingRow } from "./SettingControls";
+import { SettingRow, SettingsGroup } from "./SettingControls";
 import "./connectivity-check.css";
 
 /** How often the live view asks the adapter, as the Python client's dialog does. */
@@ -560,7 +560,7 @@ export function ConnectivityDiagnosticsSection() {
   useLiveRelayPolling(inGame && pageOpen);
 
   return (
-    <>
+    <SettingsGroup title={t("settings.section.troubleshooting.title")}>
       <SettingRow label={t("settings.connectivityCheck.label")}>
         <Button onClick={runConnectivityCheck} disabled={running}>
           {checkRunLabel(check, t)}
@@ -571,6 +571,6 @@ export function ConnectivityDiagnosticsSection() {
         {!inGame && <span className="muted">{t("settings.liveRelay.noGame")}</span>}
       </SettingRow>
       {inGame && <LiveRelay relay={relay} />}
-    </>
+    </SettingsGroup>
   );
 }

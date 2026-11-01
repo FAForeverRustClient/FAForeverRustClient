@@ -4,7 +4,7 @@ import type { GamePreferencesPatch } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { steamStatusIsSupported } from "../../shared/platform";
-import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { SettingRow, SettingsGroup, SettingsSwitch } from "./SettingControls";
 import { useTranslation } from "../../i18n/useTranslation";
 
 const save = (patch: GamePreferencesPatch) =>
@@ -31,7 +31,7 @@ export function SteamSettingsSection() {
   if (!steamStatusIsSupported()) return null;
 
   return (
-    <>
+    <SettingsGroup title={t("settings.section.steam.title")}>
       <SettingRow
         className="setting-row-with-note"
         label={t("settings.steam.presence")}
@@ -66,6 +66,6 @@ export function SteamSettingsSection() {
           onCancel={() => setConfirming(false)}
         />
       )}
-    </>
+    </SettingsGroup>
   );
 }

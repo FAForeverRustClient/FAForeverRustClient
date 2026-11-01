@@ -1,7 +1,7 @@
 import type { DebugPreferencesPatch } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
-import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { SettingRow, SettingsGroup, SettingsSwitch } from "./SettingControls";
 import { useTranslation } from "../../i18n/useTranslation";
 
 const save = (patch: DebugPreferencesPatch) =>
@@ -36,7 +36,7 @@ export function IceDebugWindowsSection() {
   const { preferences, set } = useDebugPreferences();
 
   return (
-    <>
+    <SettingsGroup title={t("settings.section.debugWindows.title")}>
       <SettingRow
         label={t("settings.debug.iceAdapterDebugWindow")}
         hint={t("settings.debug.iceAdapterDebugWindowHint")}
@@ -67,7 +67,7 @@ export function IceDebugWindowsSection() {
           label={t("settings.debug.iceAdapterConsoleWindow")}
         />
       </SettingRow>
-    </>
+    </SettingsGroup>
   );
 }
 
@@ -83,15 +83,17 @@ export function MapGeneratorWindowSection() {
   const { preferences, set } = useDebugPreferences();
 
   return (
-    <SettingRow
-      label={t("settings.debug.mapGeneratorWindow")}
-      hint={t("settings.debug.mapGeneratorWindowHint")}
-    >
-      <SettingsSwitch
-        checked={preferences.mapGeneratorWindow}
-        onChange={(mapGeneratorWindow) => set({ mapGeneratorWindow })}
+    <SettingsGroup title={t("settings.section.debugWindows.title")}>
+      <SettingRow
         label={t("settings.debug.mapGeneratorWindow")}
-      />
-    </SettingRow>
+        hint={t("settings.debug.mapGeneratorWindowHint")}
+      >
+        <SettingsSwitch
+          checked={preferences.mapGeneratorWindow}
+          onChange={(mapGeneratorWindow) => set({ mapGeneratorWindow })}
+          label={t("settings.debug.mapGeneratorWindow")}
+        />
+      </SettingRow>
+    </SettingsGroup>
   );
 }
