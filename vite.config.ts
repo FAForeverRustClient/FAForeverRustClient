@@ -20,6 +20,7 @@ export default defineConfig({
     // the libraries and icon drawings the client ships out of the copy that
     // ships, where their licences ask for them to be.
     rolldownOptions: {
+      input: { main: "ui/index.html", notifications: "ui/notifications.html" },
       output: {
         comments: { legal: true },
       },

@@ -1,0 +1,1 @@
+- A reply to one of your chat messages now raises a mention notification, not only the unread badge.

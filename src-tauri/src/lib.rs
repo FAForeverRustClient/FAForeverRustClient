@@ -24,6 +24,7 @@ mod commands;
 mod diagnostics;
 mod exit;
 mod navigation;
+mod notification_popup;
 mod picked_paths;
 mod startup;
 mod tray;
@@ -150,6 +151,7 @@ pub fn run() {
             app.manage(picked_paths::PickedPaths::default());
             exit::watch(app, core.clone());
             app.manage(Core(core));
+            app.manage(notification_popup::Popups::default());
 
             // The other half of the file association: this is the client being
             // started *by* a double-click rather than being told about one by
@@ -179,35 +181,57 @@ pub fn run() {
             tray::build(app)?;
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            commands::dispatch,
-            commands::dispatch_and_wait,
-            commands::snapshot,
-            commands::open_log_folder,
-            commands::open_client_folder,
-            commands::client_folder_path,
-            commands::import_notification_sound,
-            commands::list_notification_sounds,
-            commands::read_notification_sound,
-            commands::import_background_image,
-            commands::read_background_image,
-            commands::unit_icons,
-            commands::map_analysis,
-            commands::read_marked_map_preview,
-            commands::open_version_folder,
-            commands::open_installed_folder,
-            commands::reveal_replay,
-            commands::read_latest_log,
-            commands::webview_engine,
-            commands::system_date_pattern,
-            commands::map_generator_automatic_instances,
-            commands::report_webview_stall,
-            commands::report_event_cost,
-            commands::exit_app,
-            commands::page_ready,
-            commands::page_gone,
-            picked_paths::pick_path
-        ])
+        .invoke_handler({
+            let handler: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
+                commands::dispatch,
+                commands::dispatch_and_wait,
+                commands::snapshot,
+                commands::open_log_folder,
+                commands::open_client_folder,
+                commands::client_folder_path,
+                commands::import_notification_sound,
+                commands::list_notification_sounds,
+                commands::read_notification_sound,
+                commands::import_background_image,
+                commands::read_background_image,
+                commands::unit_icons,
+                commands::map_analysis,
+                commands::read_marked_map_preview,
+                commands::open_version_folder,
+                commands::open_installed_folder,
+                commands::reveal_replay,
+                commands::read_latest_log,
+                commands::webview_engine,
+                commands::system_date_pattern,
+                commands::map_generator_automatic_instances,
+                commands::report_webview_stall,
+                commands::report_event_cost,
+                commands::exit_app,
+                commands::page_ready,
+                commands::page_gone,
+                picked_paths::pick_path,
+                notification_popup::show_notification_popup,
+                notification_popup::notification_displays,
+                notification_popup::notification_popup_snapshot,
+                notification_popup::notification_popup_interact,
+                notification_popup::notification_popup_size,
+                notification_popup::game_notification_attention,
+            ];
+            move |invoke| {
+                let webview = invoke.message.webview();
+                if !notification_popup::allowed(
+                    webview.label(),
+                    invoke.message.command(),
+                    window::is_main(webview.app_handle(), webview.label()),
+                ) {
+                    invoke
+                        .resolver
+                        .reject("This window cannot invoke that command");
+                    return true;
+                }
+                handler(invoke)
+            }
+        })
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|_app, _event| {

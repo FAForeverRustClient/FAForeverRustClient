@@ -19,6 +19,7 @@ pub(super) enum GameNotificationSignal {
     NewGame(Game),
     GameFull(Game),
     FriendsPlaying { logins: Vec<String>, game: Game },
+    FriendsJoinedGame { logins: Vec<String>, game: Game },
     OwnGameEnded(Game),
 }
 
@@ -225,6 +226,52 @@ fn match_reach(deviation: f64, expansion: f64) -> f64 {
 }
 
 impl GameNotificationTracker {
+    /// Friends who are in a lobby they were not in at the last update.
+    ///
+    /// A friend hosting a lobby the client has not seen before is also its
+    /// host. When `hosts_announced` (new-game alerts are on) that lobby gets
+    /// its own "hosted" notice, so the host is left out here rather than
+    /// announced twice.
+    pub(super) fn friends_joined(
+        &self,
+        games: &[Game],
+        friends: &[String],
+        hosts_announced: bool,
+    ) -> Vec<GameNotificationSignal> {
+        let Some(index) = self.open.as_ref() else {
+            return Vec::new();
+        };
+        if self
+            .suppress_until
+            .is_some_and(|until| Instant::now() < until)
+        {
+            return Vec::new();
+        }
+        games
+            .iter()
+            .filter_map(|game| {
+                let old = index.get(&game.id);
+                let mut logins = Vec::new();
+                for login in participants(game) {
+                    let hosting = old.is_none() && login.eq_ignore_ascii_case(&game.host);
+                    if contains_name(friends, login)
+                        && !contains_name(&logins, login)
+                        && !(hosting && hosts_announced)
+                        && old.is_none_or(|old| {
+                            !participants(old).any(|prior| prior.eq_ignore_ascii_case(login))
+                        })
+                    {
+                        logins.push(login.to_owned());
+                    }
+                }
+                (!logins.is_empty()).then(|| GameNotificationSignal::FriendsJoinedGame {
+                    logins,
+                    game: game.clone(),
+                })
+            })
+            .collect()
+    }
+
     pub(super) fn mark_authenticated(&mut self) {
         self.suppress_until = Some(Instant::now() + Duration::from_secs(5));
     }
@@ -466,6 +513,7 @@ pub(super) fn notify_game_signal(
     out: &EventSink,
     preferences: &NotificationPreferences,
     signal: GameNotificationSignal,
+    game_attention: bool,
 ) {
     match signal {
         GameNotificationSignal::NewGame(game) => {
@@ -482,7 +530,7 @@ pub(super) fn notify_game_signal(
                         .with("title", &game.title),
                     "New custom game",
                     format!("{} hosted {}.", game.host, game.title),
-                    Some(NotificationAction::OpenCustomGames),
+                    Some(NotificationAction::OpenGame { game_id: game.id }),
                 );
             }
         }
@@ -492,7 +540,11 @@ pub(super) fn notify_game_signal(
             notifications::Text::new("notifications.msg.gameFull").with("title", &game.title),
             "Game full",
             format!("{} is full and ready to launch.", game.title),
-            Some(NotificationAction::OpenCustomGames),
+            Some(if game_attention {
+                NotificationAction::FocusGame
+            } else {
+                NotificationAction::OpenGame { game_id: game.id }
+            }),
         ),
         GameNotificationSignal::FriendsPlaying { logins, game } if preferences.friend_playing => {
             let (title, message) = format_friends_playing(&logins, &game.title);
@@ -503,7 +555,36 @@ pub(super) fn notify_game_signal(
                 text,
                 title,
                 message,
-                None,
+                Some(NotificationAction::WatchLiveWhenReady {
+                    target: faf_domain::state::replays::LiveReplayTarget {
+                        uid: game.id,
+                        mod_name: game.mod_name.clone(),
+                        map: game.map.clone(),
+                    },
+                }),
+            );
+        }
+        GameNotificationSignal::FriendsJoinedGame { logins, game }
+            if preferences.friend_joined_game =>
+        {
+            let players = logins.join(", ");
+            let (key, title) = if logins.len() == 1 {
+                ("notifications.msg.friendJoinedGame", "Friend joined a game")
+            } else {
+                (
+                    "notifications.msg.friendsJoinedGame",
+                    "Friends joined a game",
+                )
+            };
+            notifications::add_text(
+                out,
+                NotificationKind::FriendJoinedGame,
+                notifications::Text::new(key)
+                    .with("players", &players)
+                    .with("game", &game.title),
+                title,
+                format!("{players} joined {}.", game.title),
+                Some(NotificationAction::OpenGame { game_id: game.id }),
             );
         }
         GameNotificationSignal::OwnGameEnded(game) if preferences.review_reminder => {
@@ -513,8 +594,14 @@ pub(super) fn notify_game_signal(
                 notifications::Text::new("notifications.msg.reviewReminder")
                     .with("title", &game.title),
                 "How was your game?",
-                format!("Review the map or mods you played in {}.", game.title),
-                None,
+                format!("Review your game in {}.", game.title),
+                Some(NotificationAction::OpenReview {
+                    target: faf_domain::state::ReviewTarget {
+                        kind: faf_domain::state::ReviewKind::Game,
+                        id: game.id,
+                        name: game.title.clone(),
+                    },
+                }),
             );
         }
         _ => {}
@@ -605,6 +692,49 @@ mod tests {
             )]),
             sim_mods: BTreeMap::new(),
         }
+    }
+
+    #[test]
+    fn friend_joins_use_the_baseline_and_do_not_repeat_existing_players() {
+        let mut tracker = GameNotificationTracker::default();
+        let old = game(1, "Host", &["Host"], 1, 4);
+        let friends = vec!["Friend".into()];
+        let joined = game(1, "Host", &["Host", "Friend"], 2, 4);
+        assert!(tracker
+            .friends_joined(std::slice::from_ref(&joined), &friends, false)
+            .is_empty());
+        tracker.observe_open(&[old], None);
+        let signals = tracker.friends_joined(std::slice::from_ref(&joined), &friends, false);
+        assert!(
+            matches!(&signals[..], [GameNotificationSignal::FriendsJoinedGame { logins, game }] if logins == &friends && game.id == 1)
+        );
+        tracker.observe_open(std::slice::from_ref(&joined), None);
+        assert!(tracker
+            .friends_joined(std::slice::from_ref(&joined), &friends, false)
+            .is_empty());
+        tracker.mark_authenticated();
+        assert!(tracker
+            .friends_joined(&[game(2, "Friend", &["Friend"], 1, 4)], &friends, false)
+            .is_empty());
+    }
+
+    #[test]
+    fn a_friend_hosting_a_new_lobby_is_announced_once() {
+        let mut tracker = GameNotificationTracker::default();
+        tracker.observe_open(&[], None);
+        let friends = vec!["Friend".into()];
+        let hosted = game(2, "Friend", &["Friend"], 1, 4);
+        // New-game alerts on: their "hosted" notice covers the friend.
+        assert!(tracker
+            .friends_joined(std::slice::from_ref(&hosted), &friends, true)
+            .is_empty());
+        // Off: the friend-joined notice is the only one there is.
+        assert_eq!(
+            tracker
+                .friends_joined(std::slice::from_ref(&hosted), &friends, false)
+                .len(),
+            1
+        );
     }
 
     #[test]

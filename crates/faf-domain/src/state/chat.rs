@@ -434,6 +434,33 @@ impl ChatState {
     }
 }
 
+/// Whether `message` is addressed to `username`: it names them, or it replies
+/// to one of their lines.
+///
+/// One rule for the unread-mention badge and for the mention notification, so
+/// a reply that raises the badge also raises the alert. `require_at` narrows
+/// the name match to `@name`; a reply still counts, because it is addressed to
+/// the player whatever it says.
+pub fn addresses_user(
+    message: &ChatMessage,
+    messages: &[ChatMessage],
+    username: &str,
+    require_at: bool,
+) -> bool {
+    if username.is_empty() {
+        return false;
+    }
+    answers(messages, &message.reply_to, username)
+        || mentions(
+            &message.content,
+            &if require_at {
+                format!("@{username}")
+            } else {
+                username.to_owned()
+            },
+        )
+}
+
 /// Does a reply to `reply_to` answer something `username` wrote?
 ///
 /// A reply carries only the id it answers, not the name of whoever wrote the
@@ -983,10 +1010,7 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
                 && !matches!(message.kind, ChatMessageKind::Info | ChatMessageKind::Error);
             if counts {
                 c.unread = c.unread.saturating_add(1);
-                if is_private
-                    || mentions(&message.content, &username)
-                    || answers(&c.messages, &message.reply_to, &username)
-                {
+                if is_private || addresses_user(message, &c.messages, &username, false) {
                     c.unread_mentions = c.unread_mentions.saturating_add(1);
                 }
             }
@@ -1537,6 +1561,26 @@ mod tests {
         let c = s.channel("#newbie").unwrap();
         assert_eq!(c.unread, 2);
         assert_eq!(c.unread_mentions, 1);
+    }
+
+    #[test]
+    fn notification_mentions_include_replies_and_can_require_an_at_sign() {
+        let mut ours = message("1");
+        ours.sender = "Aurora".into();
+        let mut reply = message("2");
+        reply.reply_to = "srv-1".into();
+        reply.content = "agreed".into();
+        assert!(addresses_user(&reply, &[ours], "aurora", true));
+        assert!(!addresses_user(&reply, &[], "Aurora", false));
+        reply.reply_to.clear();
+        reply.content = "Aurora, agreed".into();
+        assert!(addresses_user(&reply, &[], "Aurora", false));
+        assert!(!addresses_user(&reply, &[], "Aurora", true));
+        reply.content = "@Aurora, agreed".into();
+        assert!(addresses_user(&reply, &[], "Aurora", true));
+        assert!(!addresses_user(&reply, &[], "", true));
+        reply.content = "@AuroraExtra".into();
+        assert!(!addresses_user(&reply, &[], "Aurora", true));
     }
 
     #[test]

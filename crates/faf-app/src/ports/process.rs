@@ -122,6 +122,19 @@ pub trait ProcessPort: Send + Sync {
         false
     }
 
+    /// Native attention is restricted to the live process owned by this launcher.
+    fn supports_game_attention(&self) -> bool {
+        false
+    }
+
+    fn game_is_focused(&self) -> bool {
+        false
+    }
+    fn focus_game(&self) -> Result<(), String> {
+        Err("No running game window is available".into())
+    }
+    fn request_game_attention(&self) {}
+
     /// Whether the last online game's replay is still being written or
     /// uploaded. The recorder outlives the game by up to a minute, and the
     /// shell, which can exit by itself once a game ends, waits for it. A port

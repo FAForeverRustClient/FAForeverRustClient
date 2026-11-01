@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "notification-popup",
+  "description": "The notification popup may listen for its bounded presentation updates. Application commands are restricted by the shell's window admission policy.",
+  "windows": ["notification-popup"],
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
+}

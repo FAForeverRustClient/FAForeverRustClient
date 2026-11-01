@@ -39,8 +39,10 @@ pub enum SettingsEvent {
     SocialChanged {
         preferences: SocialPreferences,
     },
+    /// Notification delivery preferences carry a map and per-event sound choices.
+    /// Keep that allocation out of every unrelated settings event.
     NotificationsChanged {
-        preferences: NotificationPreferences,
+        preferences: Box<NotificationPreferences>,
     },
     /// Boxed for the same reason `Loaded` is: chat preferences carry the name
     /// colours and are far larger than any sibling variant, so an unboxed one

@@ -176,6 +176,7 @@ export function soundForKind(
     case "friendOnline": return choices.friendOnline;
     case "friendOffline": return choices.friendOffline;
     case "friendPlaying": return choices.friendPlaying;
+    case "friendJoinedGame": return choices.friendJoinedGame;
     case "newCustomGame": return choices.newCustomGame;
     case "gameFull": return choices.gameFull;
     case "gameLaunched": return choices.gameLaunched;

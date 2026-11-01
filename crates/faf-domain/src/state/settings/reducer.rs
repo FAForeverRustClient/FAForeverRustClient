@@ -48,7 +48,7 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
             state.social = preferences.clone().normalized()
         }
         SettingsEvent::NotificationsChanged { preferences } => {
-            state.notifications = preferences.clone()
+            state.notifications = preferences.as_ref().clone()
         }
         SettingsEvent::ChatChanged { preferences } => state.chat = preferences.as_ref().clone(),
         SettingsEvent::GameChanged { preferences } => state.game = preferences.clone(),

@@ -25,6 +25,7 @@ const CHOICES: NotificationSoundChoices = {
   friendOnline: "soft",
   friendOffline: "soft",
   friendPlaying: "soft",
+  friendJoinedGame: "ping",
   newCustomGame: "soft",
   gameFull: "alert",
   gameLaunched: "chime",
@@ -109,6 +110,7 @@ describe("which tone a notification plays", () => {
   it("uses the choice made for that kind", () => {
     expect(soundForKind("matchFound", CHOICES)).toBe("alert");
     expect(soundForKind("friendOnline", CHOICES)).toBe("soft");
+    expect(soundForKind("friendJoinedGame", CHOICES)).toBe("ping");
     expect(soundForKind("privateMessage", CHOICES)).toBe("ping");
   });
 

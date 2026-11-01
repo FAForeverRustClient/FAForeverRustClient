@@ -485,6 +485,38 @@ impl ProcessPort for GameProcess {
         self.game_child.lock().unwrap().is_some()
     }
 
+    fn supports_game_attention(&self) -> bool {
+        cfg!(windows)
+    }
+
+    fn game_is_focused(&self) -> bool {
+        self.game_child
+            .lock()
+            .unwrap()
+            .as_ref()
+            .is_some_and(|running| {
+                running.child.id().is_some_and(|pid| {
+                    crate::infra::borderless::game_attention(pid, &running.exe, false, false)
+                        .unwrap_or(false)
+                })
+            })
+    }
+
+    fn focus_game(&self) -> Result<(), String> {
+        let game = self.game_child.lock().unwrap();
+        let running = game.as_ref().ok_or("No running game is available")?;
+        let pid = running.child.id().ok_or("The game has already ended")?;
+        crate::infra::borderless::game_attention(pid, &running.exe, true, false).map(|_| ())
+    }
+
+    fn request_game_attention(&self) {
+        if let Some(running) = self.game_child.lock().unwrap().as_ref() {
+            if let Some(pid) = running.child.id() {
+                let _ = crate::infra::borderless::game_attention(pid, &running.exe, false, true);
+            }
+        }
+    }
+
     fn replay_upload_pending(&self) -> bool {
         self.replay_recorder
             .lock()
