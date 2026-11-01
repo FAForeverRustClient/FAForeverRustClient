@@ -304,3 +304,9 @@
     left: 58px;
   }
 }
+.notification-badge.is-error { background: var(--color-surface); color: var(--color-error-text); border: 1px solid var(--color-error); }
+.notification-badge.is-warning { background: var(--color-surface); color: var(--color-warn-text); border: 1px solid var(--color-warn); }
+.notification-recovery { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 0 var(--space-3) var(--space-3) 22px; grid-column: 1 / -1; }
+.notification-title { display: inline-flex; gap: var(--space-2); align-items: center; min-width: 0; }
+.notification-artwork { flex: none; width: 36px; height: 36px; object-fit: contain; border-radius: var(--radius-sm); }
+.notification-artwork[hidden] { display: none; }

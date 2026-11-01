@@ -2563,6 +2563,9 @@ export type DescImageAnswer = {
 	url: string | null,
 };
 
+/**  Desktop delivery can use an independent client popup or the OS service. */
+export type DesktopNotificationStyle = "popup" | "system";
+
 /**
  *  A device-flow login in progress.
  *
@@ -6510,7 +6513,13 @@ export type NewsPost = {
 
 export type NotificationAction = { type: "openChat"; payload: {
 	channel: string,
-} } | { type: "openMatchmaking" } | { type: "openCustomGames" } | { type: "acceptPartyInvite"; payload: {
+} } | { type: "openMatchmaking" } |
+/**  Return to the live game owned by this client. Never accepts a process id. */
+{ type: "focusGame" } | { type: "openGame"; payload: {
+	gameId: number,
+} } | { type: "openReview"; payload: {
+	target: ReviewTarget,
+} } | { type: "openCustomGames" } | { type: "acceptPartyInvite"; payload: {
 	playerId: number,
 } } | { type: "watchLive"; payload: {
 	target: LiveReplayTarget,
@@ -6547,6 +6556,29 @@ export type NotificationCommand = { type: "markRead"; payload: {
 	id: string,
 } } | { type: "clear" };
 
+/**  Per-event delivery limits; absent entries inherit the global switches. */
+export type NotificationDelivery = {
+	sound: boolean | null,
+	popup: boolean | null,
+	desktop: boolean | null,
+};
+
+/**  Only the delivery channels touched by one control. */
+export type NotificationDeliveryPatch = {
+	sound?: boolean | null,
+	popup?: boolean | null,
+	desktop?: boolean | null,
+};
+
+/**
+ *  Merge individual event/channel edits against the authoritative settings,
+ *  so quick edits do not replace one another with a stale renderer copy.
+ */
+export type NotificationDeliveryPatches = {
+	replace?: Partial<{ [key in NotificationKind]: NotificationDelivery }> | null,
+	events: Partial<{ [key in NotificationKind]: NotificationDeliveryPatch | null }>,
+};
+
 export type NotificationEvent = { type: "added"; payload: {
 	notification: ClientNotification,
 } } | { type: "read"; payload: {
@@ -6555,7 +6587,7 @@ export type NotificationEvent = { type: "added"; payload: {
 	id: string,
 } } | { type: "cleared" };
 
-export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "friendOnline" | "friendOffline" | "friendPlaying" | "newCustomGame" | "gameFull" | "gameLaunched" | "reviewReminder" |
+export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "friendOnline" | "friendOffline" | "friendPlaying" | "friendJoinedGame" | "newCustomGame" | "gameFull" | "gameLaunched" | "reviewReminder" |
 /**  A calendar event the player asked to be reminded about is coming up. */
 "eventReminder" | "replayAvailable" | "partyInvite" | "reportSubmitted" |
 /**  An operational message authored by the FAF lobby server. */
@@ -6679,12 +6711,19 @@ export type NotificationPreferences = {
 	notifyWhenFocused: boolean,
 	/**  Which corner a toast appears in. See [`ToastPosition`]. */
 	toastPosition: ToastPosition,
+	delivery: Partial<{ [key in NotificationKind]: NotificationDelivery }>,
+	mentionsRequireAt: boolean,
+	toastDurationSeconds: number,
+	desktopMonitor: string | null,
+	desktopPosition: ToastPosition,
+	desktopStyle: DesktopNotificationStyle,
 	matchFound: boolean,
 	privateMessages: boolean,
 	mentions: boolean,
 	friendOnline: boolean,
 	friendOffline: boolean,
 	friendPlaying: boolean,
+	friendJoinedGame: boolean,
 	newCustomGames: boolean,
 	newCustomGamesFriendsOnly: boolean,
 	gameFull: boolean,
@@ -6748,12 +6787,18 @@ export type NotificationPreferencesPatch = {
 	soundChoiceVersion?: number,
 	notifyWhenFocused?: boolean,
 	toastPosition?: ToastPosition,
+	desktopStyle?: DesktopNotificationStyle,
+	desktopPosition?: ToastPosition,
+	desktopMonitor?: string | null,
+	toastDurationSeconds?: number,
+	mentionsRequireAt?: boolean,
 	matchFound?: boolean,
 	privateMessages?: boolean,
 	mentions?: boolean,
 	friendOnline?: boolean,
 	friendOffline?: boolean,
 	friendPlaying?: boolean,
+	friendJoinedGame?: boolean,
 	newCustomGames?: boolean,
 	newCustomGamesFriendsOnly?: boolean,
 	gameFull?: boolean,
@@ -6767,6 +6812,7 @@ export type NotificationPreferencesPatch = {
 	repeatCooldownSeconds?: number,
 	mapPoolMutedQueues?: string[],
 	sounds?: NotificationSoundChoicesPatch,
+	delivery?: NotificationDeliveryPatches,
 };
 
 /**
@@ -6866,6 +6912,7 @@ export type NotificationSoundChoices = {
 	friendOnline: NotificationSound,
 	friendOffline: NotificationSound,
 	friendPlaying: NotificationSound,
+	friendJoinedGame: NotificationSound,
 	newCustomGame: NotificationSound,
 	gameFull: NotificationSound,
 	gameLaunched: NotificationSound,
@@ -6883,6 +6930,7 @@ export type NotificationSoundChoicesPatch = {
 	friendOnline?: NotificationSound,
 	friendOffline?: NotificationSound,
 	friendPlaying?: NotificationSound,
+	friendJoinedGame?: NotificationSound,
 	newCustomGame?: NotificationSound,
 	gameFull?: NotificationSound,
 	gameLaunched?: NotificationSound,
@@ -10144,7 +10192,12 @@ export type SettingsEvent = { type: "loaded"; payload: {
 	preferences: AppearancePreferences,
 } } | { type: "socialChanged"; payload: {
 	preferences: SocialPreferences,
-} } | { type: "notificationsChanged"; payload: {
+} } |
+/**
+ *  Notification delivery preferences carry a map and per-event sound choices.
+ *  Keep that allocation out of every unrelated settings event.
+ */
+{ type: "notificationsChanged"; payload: {
 	preferences: NotificationPreferences,
 } } |
 /**

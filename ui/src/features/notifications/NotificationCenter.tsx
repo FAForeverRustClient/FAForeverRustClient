@@ -1,5 +1,5 @@
 import { useOverlayLayer } from "../../design-system/useOverlayLayer";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, lazy, Suspense, type ReactNode } from "react";
 import { Icon } from "../../design-system/Icon";
 import type { ClientNotification, NotificationAction } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
@@ -11,19 +11,17 @@ import { formatTime } from "../../shared/format/dates";
 import { useAppStore } from "../../store/store";
 import { renderFormattedText, stripHtmlTags } from "../chat/messages/chatFormat";
 import { playNotificationSound, soundForKind } from "./notificationSound";
-import { raisesOsNotification } from "./osNotifications";
+import { deliveryFor } from "./notificationDelivery";
+import { TimedToast } from "./TimedToast";
+import { NotificationRecovery } from "./NotificationRecovery";
+import { NotificationArtwork, notificationArtwork } from "./notificationArtwork";
 import { RepeatCooldown, expiredNotifications, happensInView, nextExpiry } from "./notificationGate";
 import { notificationBody, notificationBodyDetail, notificationTitle } from "./notificationText";
 import "./notifications.css";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 
-/**
- * How long a toast stays on screen (#455): long enough to read, short enough
- * that a "player in range" alert is not still in the corner a minute later.
- * The notification itself stays in the centre under the bell.
- */
-const TOAST_DURATION_MS = 5_000;
+const NotificationGameDialog = lazy(() => import("./NotificationGameDialog"));
 
 const markRead = (id: string) =>
   ipc.send({ kind: "Notifications", command: { type: "markRead", payload: { id } } });
@@ -53,6 +51,9 @@ function actionLabel(action: NotificationAction | null): string | null {
     case "watchLive": return t("notifications.action.watchLive");
     case "watchLiveWhenReady": return t("notifications.action.watchLiveWhenReady");
     case "openStream": return t("notifications.action.openStream");
+    case "focusGame": return t("notifications.action.focusGame");
+    case "openGame": return t("notifications.action.openGame");
+    case "openReview": return t("notifications.action.openReview");
     case "openChat":
     case "openMatchmaking":
     case "openCustomGames":
@@ -93,7 +94,7 @@ function isTwitchUrl(url: string): boolean {
   }
 }
 
-async function runAction(item: ClientNotification) {
+async function runAction(item: ClientNotification, openGame: (id: number) => void) {
   const action = item.action;
   if (action) {
     switch (action.type) {
@@ -101,6 +102,15 @@ async function runAction(item: ClientNotification) {
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "chat" } } });
         await ipc.settle({ kind: "Chat", command: { type: "joinChannel", payload: { channel: action.payload.channel } } });
         await ipc.settle({ kind: "Chat", command: { type: "selectChannel", payload: { channel: action.payload.channel } } });
+        break;
+      case "openGame":
+        openGame(action.payload.gameId);
+        break;
+      case "openReview":
+        await ipc.settle({ kind: "Reviews", command: { type: "open", payload: { target: action.payload.target } } });
+        break;
+      case "focusGame":
+        await native.gameNotificationAttention(true);
         break;
       case "openMatchmaking":
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "play" } } });
@@ -175,19 +185,16 @@ export function NotificationCenter() {
   // rather than reading it once: flipping the switch redraws the cards (#425).
   const use24HourTime = useClockPreference();
   const [open, setOpen] = useState(false);
+  const [gamePreviewId, setGamePreviewId] = useState<number | null>(null);
   const [toastIds, setToastIds] = useState<string[]>([]);
   const processed = useRef(new Set<string>());
   const cooldown = useRef(new RepeatCooldown());
-  const timers = useRef(new Map<string, number>());
   const panelRef = useRef<HTMLDivElement>(null);
   const unread = items.filter((item) => !item.read).length;
   const toasts = toastIds
     .map((id) => items.find((item) => item.id === id))
     .filter((item): item is ClientNotification => !!item);
   const hideToast = useCallback((id: string) => {
-    const timer = timers.current.get(id);
-    if (timer !== undefined) window.clearTimeout(timer);
-    timers.current.delete(id);
     setToastIds((current) => current.filter((candidate) => candidate !== id));
   }, []);
   const autoDismiss = useCallback((id: string) => {
@@ -201,11 +208,9 @@ export function NotificationCenter() {
   }, [hideToast]);
   const handleAction = useCallback((item: ClientNotification) => {
     hideToast(item.id);
-    ipc.run(runAction(item));
+    ipc.run(runAction(item, setGamePreviewId));
   }, [hideToast]);
   const clearAll = useCallback(() => {
-    timers.current.forEach((timer) => window.clearTimeout(timer));
-    timers.current.clear();
     setToastIds([]);
     ipc.send({ kind: "Notifications", command: { type: "clear" } });
   }, []);
@@ -226,6 +231,10 @@ export function NotificationCenter() {
       window.removeEventListener("pointerdown", onPointerDown, true);
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!preferences.enabled || !preferences.popup) setToastIds([]);
+  }, [preferences.enabled, preferences.popup]);
 
   useEffect(() => {
     const unreadIds = new Set(items.filter((item) => !item.read).map((item) => item.id));
@@ -258,66 +267,73 @@ export function NotificationCenter() {
       // the history, unread, but not announced a second time.
       return cooldown.current.admit(item.kind, now, preferences.repeatCooldownSeconds ?? 0);
     });
-    if (fresh.length === 0) return;
-    // "Sound only" (#644): heard, and kept in the history, with no card.
-    if (preferences.popup ?? true) {
-      setToastIds((current) => [...fresh.map((item) => item.id), ...current].slice(0, 3));
-    }
-
-    fresh.forEach((item) => {
-      // Per kind now, not one tone for everything with a louder variant for two
-      // of them: which tone a kind plays is the player's choice, and "silent"
-      // is one of the choices, so a kind can be seen and not heard.
-      if (preferences.sound) {
-        playNotificationSound(soundForKind(item.kind, preferences.sounds), preferences.volume);
+    const announcing = fresh.filter((item) => Object.values(deliveryFor(item.kind, preferences)).some(Boolean));
+    if (announcing.length === 0) return;
+    void (async () => {
+      const focused = await native.isWindowFocused().catch(() => document.hasFocus());
+      let gameFocused = false;
+      if (announcing.some((item) => item.kind === "gameFull")) {
+        gameFocused = await native.gameNotificationAttention().catch(() => false);
       }
-    });
-    // A client in the background says so on its taskbar button (issue 641):
-    // the toast alone sits inside a window nobody is looking at, and the OS
-    // pop-up, when there is one, is gone a few seconds later.
-    void native
-      .isWindowFocused()
-      .then((focused) => (focused ? undefined : native.requestAttention()))
-      .catch(() => undefined);
-    if (preferences.desktop) {
-      // Not the whole batch. The client used to hand every notification it
-      // raised to the operating system as well, so a friend coming online
-      // interrupted whatever the user was doing; `raisesOsNotification` is the
-      // short list of kinds somebody is waiting on. The switch below restores
-      // the old behaviour for anyone who wants it.
-      const leaving = preferences.desktopAllKinds
-        ? fresh
-        : fresh.filter((item) => raisesOsNotification(item.kind));
-      if (leaving.length === 0) return;
-      // Check focus and request permission once per batch. Parallel permission
-      // prompts from several notifications are rejected on some platforms.
-      void (async () => {
-        const focused = await native.isWindowFocused().catch(() => true);
-        if (focused && !preferences.notifyWhenFocused) return;
-        if (!await native.ensureNotificationPermission()) return;
-        leaving.forEach((item) => native.sendNotification(notificationTitle(item), stripHtmlTags(notificationBody(item))));
-      })().catch(() => undefined);
-    }
+      if (!focused && !gameFocused) void native.requestAttention().catch(() => undefined);
+      const currentState = useAppStore.getState().state;
+      const visible = announcing.filter((item) => !(item.kind === "gameFull" && gameFocused)
+        && currentState.settings.notifications.enabled
+        && currentState.notifications.items.some((n) => n.id === item.id && !n.read));
+      // Sound admission is independent from popup delivery and focus.
+      visible.forEach((item) => {
+        if (deliveryFor(item.kind, preferences).sound) {
+          playNotificationSound(soundForKind(item.kind, preferences.sounds), preferences.volume);
+        }
+      });
+      const desktop = visible.filter((item) => deliveryFor(item.kind, preferences).desktop)
+        .filter(() => !focused || preferences.notifyWhenFocused);
+      const popupStyle = (preferences.desktopStyle ?? "popup") === "popup";
+      const showInside = (candidates: ClientNotification[]) => {
+        const current = useAppStore.getState().state;
+        const inside = candidates.filter((item) => current.notifications.items.some((n) => n.id === item.id && !n.read)
+          && deliveryFor(item.kind, current.settings.notifications).popup);
+        if (inside.length) setToastIds((ids) => [...inside.map((item) => item.id), ...ids].slice(0, 3));
+      };
+      // What will not be offered to the desktop popup is shown now: the popup
+      // can take up to three seconds to answer, and these do not depend on it.
+      showInside(visible.filter((item) => !(popupStyle && desktop.includes(item))));
+      let delivered = false;
+      if (desktop.length && popupStyle) {
+        delivered = await native.showNotificationPopup(desktop.map((item) => ({
+          id: item.id, title: notificationTitle(item), body: stripHtmlTags(notificationBody(item)),
+          actionLabel: actionLabel(item.action), tone: notificationTone(item).trim(), imageUrl: notificationArtwork(item, useAppStore.getState().state),
+        })), t("notifications.popup.dismiss")).then(() => true, () => false);
+      }
+      if (desktop.length && !delivered) {
+        const state = useAppStore.getState().state;
+        const focusedNow = await native.isWindowFocused().catch(() => true);
+        const fallback = desktop.filter((item) => deliveryFor(item.kind, state.settings.notifications).desktop
+          && (!focusedNow || state.settings.notifications.notifyWhenFocused)
+          && state.notifications.items.some((n) => n.id === item.id && !n.read));
+        if (fallback.length && await native.ensureNotificationPermission().catch(() => false)) {
+          fallback.forEach((item) => native.sendNotification(notificationTitle(item), stripHtmlTags(notificationBody(item))));
+        }
+      }
+      // The popup could not show them: they get the in-client card after all.
+      if (popupStyle && !delivered) showInside(desktop);
+    })().catch(() => undefined);
   }, [items, preferences]);
 
   useEffect(() => {
-    const activeIds = new Set(toastIds);
-    timers.current.forEach((timer, id) => {
-      if (!activeIds.has(id)) {
-        window.clearTimeout(timer);
-        timers.current.delete(id);
-      }
-    });
-    toastIds.forEach((id) => {
-      if (timers.current.has(id)) return;
-      timers.current.set(id, window.setTimeout(() => autoDismiss(id), TOAST_DURATION_MS));
-    });
-  }, [autoDismiss, toastIds]);
-
-  useEffect(() => () => {
-    timers.current.forEach((timer) => window.clearTimeout(timer));
-    timers.current.clear();
-  }, []);
+    let disposed = false;
+    let stop: (() => void) | undefined;
+    void native.onNotificationInteraction(({ id, interaction }) => {
+      const item = useAppStore.getState().state.notifications.items.find((candidate) => candidate.id === id);
+      if (!item) return;
+      hideToast(id);
+      if (interaction === "dismiss") dismiss(id);
+      // Native activation already focused the owned game. Avoid doing it twice.
+      else if (item.action?.type === "focusGame") markRead(id);
+      else ipc.run(runAction(item, setGamePreviewId));
+    }).then((unlisten) => { if (disposed) unlisten(); else stop = unlisten; }).catch(() => undefined);
+    return () => { disposed = true; stop?.(); };
+  }, [hideToast]);
 
   // A notification leaves the history by itself once it is older than the
   // player's chosen time (#644); zero keeps every one. One timer, for the
@@ -340,6 +356,7 @@ export function NotificationCenter() {
 
   return (
     <div className="notification-center" ref={panelRef}>
+      {gamePreviewId !== null && <Suspense fallback={null}><NotificationGameDialog id={gamePreviewId} onClose={() => setGamePreviewId(null)} /></Suspense>}
       <button
         type="button"
         className="notification-bell"
@@ -349,7 +366,7 @@ export function NotificationCenter() {
         onClick={() => setOpen((value) => !value)}
       >
         <Icon name="bell" size={16} />
-        {unread > 0 && <span className="notification-badge">{unread > 99 ? "99+" : unread}</span>}
+        {unread > 0 && <span className={`notification-badge${items.some((item) => !item.read && item.kind === "error") ? " is-error" : items.some((item) => !item.read && ["serverWarning", "gameCacheAlert"].includes(item.kind)) ? " is-warning" : ""}`}>{unread > 99 ? "99+" : unread}</span>}
       </button>
 
       {open && (
@@ -368,13 +385,14 @@ export function NotificationCenter() {
             ) : items.map((item) => (
               <article className={`notification-item${item.read ? " is-read" : ""}${notificationTone(item)}`} key={item.id}>
                 <button className="notification-content" type="button" onClick={() => handleAction(item)}>
-                  <span className="notification-item-head"><strong>{notificationTitle(item)}</strong><time dateTime={item.createdAt}>{formatTime(item.createdAt, "", use24HourTime)}</time></span>
+                  <span className="notification-item-head"><span className="notification-title"><NotificationArtwork url={notificationArtwork(item, useAppStore.getState().state)} /><strong>{notificationTitle(item)}</strong></span><time dateTime={item.createdAt}>{formatTime(item.createdAt, "", use24HourTime)}</time></span>
                   <span className="notification-body" title={notificationBodyDetail(item) ?? undefined}>{renderFormattedText(notificationBody(item))}</span>
                   {actionContent(item.action)}
                 </button>
                 <button className="notification-dismiss" type="button" onClick={() => { hideToast(item.id); dismiss(item.id); }} aria-label={t("notifications.dismiss", { title: notificationTitle(item) })}>
                   <Icon name="close" size={12} />
                 </button>
+                {item.kind === "error" && <NotificationRecovery item={item} />}
               </article>
             ))}
           </div>
@@ -391,9 +409,9 @@ export function NotificationCenter() {
         aria-atomic="false"
       >
         {toasts.map((item) => (
-          <article className={`notification-toast${notificationTone(item)}`} key={item.id}>
+          <TimedToast className={notificationTone(item)} key={item.id} duration={(preferences.toastDurationSeconds ?? 5) * 1000} onExpire={() => autoDismiss(item.id)}>
             <button type="button" onClick={() => handleAction(item)}>
-              <strong>{notificationTitle(item)}</strong>
+              <span className="notification-title"><NotificationArtwork url={notificationArtwork(item, useAppStore.getState().state)} /><strong>{notificationTitle(item)}</strong></span>
               {/* A failure reason is worded plainly; the original is on hover,
                   here and in the centre (see `notificationText`). */}
               <span className="notification-body" title={notificationBodyDetail(item) ?? undefined}>{renderFormattedText(notificationBody(item))}</span>
@@ -410,7 +428,7 @@ export function NotificationCenter() {
             >
               <Icon name="close" size={12} />
             </button>
-          </article>
+          </TimedToast>
         ))}
       </div>
     </div>

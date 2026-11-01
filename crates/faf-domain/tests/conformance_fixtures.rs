@@ -9391,10 +9391,10 @@ fn transition_cases() -> Vec<Case> {
                 }
                 .into(),
                 SettingsEvent::NotificationsChanged {
-                    preferences: NotificationPreferences {
+                    preferences: Box::new(NotificationPreferences {
                         enabled: false,
                         ..NotificationPreferences::default()
-                    },
+                    }),
                 }
                 .into(),
                 SettingsEvent::ChatChanged {

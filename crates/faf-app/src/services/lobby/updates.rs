@@ -42,14 +42,30 @@ pub(super) async fn handle_update<'a>(
         // nobody needed to see into a visible one.
         LobbyUpdate::Reconnecting => out.emit(LobbyEvent::Connecting),
         LobbyUpdate::Games(games) => {
-            let (preferences, player_name) = out.with_state(|state| {
+            let (preferences, player_name, friends) = out.with_state(|state| {
                 (
                     state.settings.notifications.clone(),
                     state.auth.player.as_ref().map(|player| player.name.clone()),
+                    state.social.friends.clone(),
                 )
             });
+            for signal in
+                game_notifications.friends_joined(&games, &friends, preferences.new_custom_games)
+            {
+                notify_game_signal(
+                    out,
+                    &preferences,
+                    signal,
+                    ctx.ports.process.supports_game_attention(),
+                );
+            }
             for signal in game_notifications.observe_open(&games, player_name.as_deref()) {
-                notify_game_signal(out, &preferences, signal);
+                notify_game_signal(
+                    out,
+                    &preferences,
+                    signal,
+                    ctx.ports.process.supports_game_attention(),
+                );
             }
             out.emit(LobbyEvent::GamesUpdated { games });
         }
@@ -63,7 +79,12 @@ pub(super) async fn handle_update<'a>(
             });
             for signal in game_notifications.observe_live(&games, &friends, player_name.as_deref())
             {
-                notify_game_signal(out, &preferences, signal);
+                notify_game_signal(
+                    out,
+                    &preferences,
+                    signal,
+                    ctx.ports.process.supports_game_attention(),
+                );
             }
             out.emit(LobbyEvent::LiveGamesUpdated { games })
         }
@@ -71,18 +92,36 @@ pub(super) async fn handle_update<'a>(
             // Only the two fields the signals need, and only when there is a
             // signal to work out: this runs on the lobby's hottest frame.
             if !upserted.is_empty() || !removed.is_empty() {
-                let (preferences, player_name) = out.with_state(|state| {
+                let (preferences, player_name, friends) = out.with_state(|state| {
                     (
                         state.settings.notifications.clone(),
                         state.auth.player.as_ref().map(|player| player.name.clone()),
+                        state.social.friends.clone(),
                     )
                 });
+                for signal in game_notifications.friends_joined(
+                    &upserted,
+                    &friends,
+                    preferences.new_custom_games,
+                ) {
+                    notify_game_signal(
+                        out,
+                        &preferences,
+                        signal,
+                        ctx.ports.process.supports_game_attention(),
+                    );
+                }
                 for signal in game_notifications.observe_open_delta(
                     &upserted,
                     &removed,
                     player_name.as_deref(),
                 ) {
-                    notify_game_signal(out, &preferences, signal);
+                    notify_game_signal(
+                        out,
+                        &preferences,
+                        signal,
+                        ctx.ports.process.supports_game_attention(),
+                    );
                 }
             }
             out.emit(LobbyEvent::GamesChanged { upserted, removed });
@@ -102,7 +141,12 @@ pub(super) async fn handle_update<'a>(
                     &friends,
                     player_name.as_deref(),
                 ) {
-                    notify_game_signal(out, &preferences, signal);
+                    notify_game_signal(
+                        out,
+                        &preferences,
+                        signal,
+                        ctx.ports.process.supports_game_attention(),
+                    );
                 }
             }
             out.emit(LobbyEvent::LiveGamesChanged { upserted, removed });
@@ -173,17 +217,6 @@ pub(super) async fn handle_update<'a>(
                     .map(|player| player.login.clone())
                     .collect::<Vec<_>>()
             });
-            for login in newly_online {
-                notifications::add_text(
-                    out,
-                    NotificationKind::FriendOnline,
-                    notifications::Text::new("notifications.msg.friendOnline")
-                        .with("login", &login),
-                    "Friend online",
-                    format!("{login} is now online."),
-                    None,
-                );
-            }
             let names_us = out.with_state(|state| {
                 state
                     .auth
@@ -192,6 +225,21 @@ pub(super) async fn handle_update<'a>(
                     .is_some_and(|me| players.iter().any(|player| player.login == me.name))
             });
             out.emit(SocialEvent::PlayersSeen { players });
+            for login in newly_online {
+                notifications::add_text(
+                    out,
+                    NotificationKind::FriendOnline,
+                    notifications::Text::new("notifications.msg.friendOnline")
+                        .with("login", &login),
+                    "Friend online",
+                    format!("{login} is now online."),
+                    Some(
+                        faf_domain::state::notifications::NotificationAction::OpenChat {
+                            channel: login.clone(),
+                        },
+                    ),
+                );
+            }
             // Our own `player_info` is what carries our country, and the
             // language channel is derived from it. It routinely arrives after
             // chat has connected, so this is the second half of that race.

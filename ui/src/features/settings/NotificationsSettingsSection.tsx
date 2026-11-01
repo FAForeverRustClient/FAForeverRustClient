@@ -20,6 +20,7 @@ import {
   soundFromOptionValue,
   soundOptionValue,
 } from "../notifications/notificationSound";
+import { DesktopNotificationSettings, EventDeliverySettings, MentionAtSetting, ToastDurationSetting } from "./NotificationDeliverySettings";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 import { NumberInput } from "../../design-system/NumberInput";
 import { MultiSelect } from "../../design-system/MultiSelect";
@@ -262,7 +263,7 @@ export function NotificationsSettingsSection() {
       {/* What the switch above covers. Off, only the handful of kinds somebody
           is waiting on leave the client; on, the whole notification stream is
           mirrored, which is what the client used to do unconditionally. */}
-      <SettingRow label={t("settings.notifications.desktopAllKinds")}>
+      <SettingRow label={t("settings.notifications.desktopAllKinds")} hint={t("settings.notifications.desktopAllKindsHint")}>
         <SettingsSwitch
           checked={preferences.desktopAllKinds}
           disabled={!preferences.enabled || !preferences.desktop}
@@ -270,6 +271,7 @@ export function NotificationsSettingsSection() {
           label={t("settings.notifications.desktopAllKinds")}
         />
       </SettingRow>
+      <DesktopNotificationSettings update={update} />
       {/* One choice over two switches (#644): sound and pop-up, pop-up only,
           or sound only. Turning both off is the switch at the top. */}
       <SettingRow label={t("settings.notifications.announce")} hint={t("settings.notifications.announceHint")}>
@@ -399,6 +401,7 @@ export function NotificationsSettingsSection() {
           ))}
         </select>
       </SettingRow>
+      <ToastDurationSetting update={update} />
       <SettingRow label={t("settings.notifications.whenFocused")}>
         <SettingsSwitch
           checked={preferences.notifyWhenFocused}
@@ -419,6 +422,7 @@ export function NotificationsSettingsSection() {
         <SoundChoice value={preferences.sounds.mention} disabled={mute || !preferences.mentions} what={t("settings.notifications.mentions")} onChange={(mention) => setSound({ mention })} custom={choosableSounds} onAdd={addSound} />
         <SettingsSwitch checked={preferences.mentions} disabled={!preferences.enabled} onChange={(mentions) => update({ mentions })} label={t("settings.notifications.mentions")} />
       </SettingRow>
+      <MentionAtSetting update={update} />
       <SettingRow label={t("settings.notifications.friendOnline")}>
         <SoundChoice value={preferences.sounds.friendOnline} disabled={mute || !preferences.friendOnline} what={t("settings.notifications.friendOnline")} onChange={(friendOnline) => setSound({ friendOnline })} custom={choosableSounds} onAdd={addSound} />
         <SettingsSwitch checked={preferences.friendOnline} disabled={!preferences.enabled} onChange={(friendOnline) => update({ friendOnline })} label={t("settings.notifications.friendOnline")} />
@@ -430,6 +434,10 @@ export function NotificationsSettingsSection() {
       <SettingRow label={t("settings.notifications.friendPlaying")}>
         <SoundChoice value={preferences.sounds.friendPlaying} disabled={mute || !preferences.friendPlaying} what={t("settings.notifications.friendPlaying")} onChange={(friendPlaying) => setSound({ friendPlaying })} custom={choosableSounds} onAdd={addSound} />
         <SettingsSwitch checked={preferences.friendPlaying} disabled={!preferences.enabled} onChange={(friendPlaying) => update({ friendPlaying })} label={t("settings.notifications.friendPlaying")} />
+      </SettingRow>
+      <SettingRow label={t("settings.notifications.friendJoinedGame")}>
+        <SoundChoice value={preferences.sounds.friendJoinedGame ?? "chime"} disabled={mute || !preferences.friendJoinedGame} what={t("settings.notifications.friendJoinedGame")} onChange={(friendJoinedGame) => setSound({ friendJoinedGame })} custom={choosableSounds} onAdd={addSound} />
+        <SettingsSwitch checked={preferences.friendJoinedGame ?? true} disabled={!preferences.enabled} onChange={(friendJoinedGame) => update({ friendJoinedGame })} label={t("settings.notifications.friendJoinedGame")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.newGames")}>
         <SoundChoice value={preferences.sounds.newCustomGame} disabled={mute || !preferences.newCustomGames} what={t("settings.notifications.newGames")} onChange={(newCustomGame) => setSound({ newCustomGame })} custom={choosableSounds} onAdd={addSound} />
@@ -512,6 +520,7 @@ export function NotificationsSettingsSection() {
       <SettingRow label={t("settings.notifications.otherSounds")} hint={t("settings.notifications.otherSoundsHint")}>
         <SoundChoice value={preferences.sounds.other} disabled={mute} what={t("settings.notifications.otherSounds")} onChange={(other) => setSound({ other })} custom={choosableSounds} onAdd={addSound} />
       </SettingRow>
+      <EventDeliverySettings update={update} />
     </>
   );
 }

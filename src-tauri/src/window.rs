@@ -63,7 +63,6 @@ pub(crate) fn main_window(app: &tauri::AppHandle) -> Option<tauri::WebviewWindow
 
 /// Whether `label` is the main window's. Only the crash recovery
 /// (`webview_recovery`, Windows only) has more than one.
-#[cfg(windows)]
 pub(crate) fn is_main(app: &tauri::AppHandle, label: &str) -> bool {
     current_label(app) == label
 }
@@ -82,6 +81,9 @@ fn trim_working_set() {
 /// Process-level window events: memory trimming on blur, and what closing
 /// does while a game is running ([`crate::exit`]).
 pub(crate) fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
+    if !is_main(window.app_handle(), window.label()) {
+        return;
+    }
     #[cfg(windows)]
     if matches!(event, tauri::WindowEvent::Focused(false)) {
         trim_working_set();

@@ -18,8 +18,8 @@
 
 use faf_domain::protocol::chat_input::{self, ChatInput};
 use faf_domain::state::{
-    auto_join_channels, mentions, read_marker_key, ChatCommand, ChatEvent, ChatMessage,
-    ChatMessageKind, ChatStatus, NotificationAction, NotificationKind, SettingsEvent, SocialEvent,
+    auto_join_channels, read_marker_key, ChatCommand, ChatEvent, ChatMessage, ChatMessageKind,
+    ChatStatus, NotificationAction, NotificationKind, SettingsEvent, SocialEvent,
 };
 
 use crate::ports::ChatUpdate;
@@ -216,6 +216,7 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
                 is_foe,
                 private_messages,
                 mentions_enabled,
+                mentioned,
             ) = out.with_state(|state| {
                 let key = read_marker_key(&state.chat.username, channel);
                 let quiet_history = state
@@ -241,6 +242,16 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
                     state.social.is_foe(&message.sender),
                     state.settings.notifications.private_messages,
                     state.settings.notifications.mentions,
+                    faf_domain::state::chat::addresses_user(
+                        message,
+                        state
+                            .chat
+                            .channel(channel)
+                            .map(|c| c.messages.as_slice())
+                            .unwrap_or(&[]),
+                        &state.chat.username,
+                        state.settings.notifications.mentions_require_at,
+                    ),
                 )
             });
             quiet_history = is_quiet_history;
@@ -260,7 +271,7 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
                 );
             if incoming && !quiet_history {
                 let private = !channel.starts_with('#');
-                let mentioned = !private && mentions(&message.content, &username);
+                let mentioned = !private && mentioned;
                 let hidden_foe = hide_foe_messages && is_foe;
                 let notify = !hidden_foe
                     && ((private && private_messages) || (mentioned && mentions_enabled));

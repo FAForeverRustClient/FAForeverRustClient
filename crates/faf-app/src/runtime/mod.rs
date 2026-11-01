@@ -659,6 +659,16 @@ impl App {
     }
 
     /// Includes offline games, lessons and tutorials, which have no lobby join.
+    pub fn game_is_focused(&self) -> bool {
+        self.process.game_is_focused()
+    }
+    pub fn focus_game(&self) -> Result<(), String> {
+        self.process.focus_game()
+    }
+    pub fn request_game_attention(&self) {
+        self.process.request_game_attention();
+    }
+
     pub fn game_running(&self) -> bool {
         self.process.game_running()
     }

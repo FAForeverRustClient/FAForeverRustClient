@@ -231,6 +231,7 @@ const allowedFeatureEdges = new Map([
   ["mods -> uploads", "the mod vault opens the uploads feature's dialog"],
   // A notification can deep-link to the settings section that governs it,
   // and the settings section can preview the notification's sound.
+  ["notifications -> lobby", "game alerts embed the lobby feature's preview and password dialogs, preserving its join workflow"],
   ["notifications -> settings", "a notification links to its settings section"],
   ["settings -> notifications", "the notifications section previews the sounds"],
   ["notifications -> chat", "a chat notification renders with chat's message formatter"],

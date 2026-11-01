@@ -10,7 +10,10 @@ import { applyEvent, clearSentCommands, seedStore, sentCommands } from "../../te
 import { failOnConsoleError } from "../../testing/consoleGuard";
 
 vi.mock("../../ipc/client");
-vi.mock("../../ipc/native", () => ({ native: { listNotificationSounds: () => Promise.resolve([]) } }));
+vi.mock("../../ipc/native", () => ({ native: {
+  listNotificationSounds: () => Promise.resolve([]),
+  notificationDisplays: () => Promise.resolve([]),
+} }));
 failOnConsoleError();
 
 async function mountNotifications() {
