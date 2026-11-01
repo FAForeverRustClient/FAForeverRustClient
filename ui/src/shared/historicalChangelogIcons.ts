@@ -143,7 +143,7 @@ export function historicalChangelogIllustrations(
 ): HistoricalCaptionIllustrations {
   if (!EARLY_PATCHES.has(releaseId)) return EMPTY;
   const illustrations = new Map<number, HistoricalCaptionIllustration>();
-  const parents: Array<{ level: number; text: string; unitTopic?: boolean }> = [];
+  const parents: Array<{ level: number; text: string; unitTopic?: boolean; label?: boolean }> = [];
   blocks.forEach((block, index) => {
     const text = block.type === "heading" ? block.payload.text
       : block.type === "paragraph" ? plainCaption(block.payload.spans) : undefined;
@@ -180,6 +180,36 @@ export function historicalChangelogIllustrations(
     if (icons.length) illustrations.set(index, { text, icons, ...(headingLevel !== undefined ? { headingLevel } : {}) });
     if (block.type === "heading") parents.push({ level: block.payload.level, text });
     else if (headingLevel !== undefined) parents.push({ level: headingLevel, text, unitTopic: Boolean(unitAfterGeneral) });
+    else if (!icons.length && block.type === "paragraph" && sectionLabel(block.payload.spans) && blocks[index + 1]?.type === "list") {
+      // 3613 heads its lists with bold "GAME" and "SERVER" paragraphs: section
+      // titles in all but markup, so they become headings and contents
+      // entries. A label after a label is its sibling.
+      const previous = parents[parents.length - 1];
+      const level = previous?.label ? previous.level : Math.min(6, (previous?.level ?? 1) + 1);
+      while (parents.length && parents[parents.length - 1].level >= level) parents.pop();
+      illustrations.set(index, { text, icons: [], headingLevel: level });
+      parents.push({ level, text, label: true });
+    }
   });
   return illustrations;
+}
+
+/** A short run of bold text alone in its paragraph, not a sentence. */
+function sectionLabel(spans: ChangelogSpan[]): boolean {
+  if (!spans.length || !spans.every(span => span.type === "strong")) return false;
+  const text = spans.map(span => span.payload).join("").trim();
+  return text.length > 0 && text.length <= 40 && !/[.!?]$/.test(text);
+}
+
+/**
+ * The early-note rules for the note on screen, only when it is the one bundled
+ * with the client: the note that ends in the client's own attribution. The
+ * backend prefers a published note over a bundled one with the same number,
+ * and that published note is drawn as published.
+ */
+export function bundledNoteIllustrations(
+  entry: { id: string; blocks: ChangelogBlock[] } | undefined,
+): HistoricalCaptionIllustrations {
+  if (!entry?.blocks.some(block => block.type === "provenance")) return EMPTY;
+  return historicalChangelogIllustrations(entry.id, entry.blocks);
 }

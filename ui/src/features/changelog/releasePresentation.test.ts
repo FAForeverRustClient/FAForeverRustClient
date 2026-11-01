@@ -17,6 +17,14 @@ describe("historical release presentation", () => {
     expect(releaseGroup(release("3612", "Historical FAF patch", "2012", "2012-03-05"))).toBe("2012");
   });
 
+  it("treats a branch the index adds later as a branch, not as an undated note", () => {
+    const added = release("fafexperimental", "FAF Experimental");
+    expect(isRollingRelease(added)).toBe(true);
+    expect(releaseGroup(added)).toBe("");
+    expect(isRollingRelease(release("legacy-3605", "Legacy notes"))).toBe(false);
+    expect(isRollingRelease(release("3837", "Game Patch", "2026", "2026-10-01"))).toBe(false);
+  });
+
   it("displays the original patch number without losing its distinct identity", () => {
     expect(releaseLabel("legacy-3605")).toBe("3605");
     expect(releaseLabel("3612")).toBe("3612");

@@ -1,7 +1,7 @@
 import type { DiscordPreferencesPatch } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
-import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { SettingRow, SettingsGroup, SettingsSwitch } from "./SettingControls";
 import { useTranslation } from "../../i18n/useTranslation";
 
 const save = (patch: DiscordPreferencesPatch) =>
@@ -16,7 +16,7 @@ export function DiscordSettingsSection() {
   const update = (patch: DiscordPreferencesPatch) => void save(patch);
 
   return (
-    <>
+    <SettingsGroup title={t("settings.section.discord.title")}>
       <SettingRow
         label={t("settings.discord.richPresence")}
         hint={t("settings.discord.richPresenceHint")}
@@ -38,6 +38,6 @@ export function DiscordSettingsSection() {
           label={t("settings.discord.disallowJoinsVia")}
         />
       </SettingRow>
-    </>
+    </SettingsGroup>
   );
 }

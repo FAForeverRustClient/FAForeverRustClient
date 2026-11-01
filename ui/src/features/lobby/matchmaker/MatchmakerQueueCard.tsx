@@ -36,7 +36,7 @@ function QueueRatingPlot({ graph }: { graph: QueueRatingGraph }) {
       aria-hidden
     >
       <line
-        className="matchmaker-queue-grid"
+        className="matchmaker-queue-plot-grid"
         x1={PLOT_PAD.left}
         x2={PLOT_WIDTH - PLOT_PAD.right}
         y1={base - usableHeight * 0.5}
@@ -258,9 +258,9 @@ export function MatchmakerQueueCard({
             and the one that decides whether to queue, how many of those waiting
             would actually match you, was whichever fragment landed last. */}
         <span className="matchmaker-queue-facts">
-          <span><Icon name="hourglass" size={14} /> {formatClockDuration(secondsUntilPop)}</span>
+          <span><Icon name="hourglass" size={16} /> {formatClockDuration(secondsUntilPop)}</span>
           <span className="matchmaker-queue-queued">
-            <Icon name="users" size={14} /> {t("lobby.matchmaker.queuedCount", { count: queue.numPlayers })}
+            <Icon name="users" size={16} /> {t("lobby.matchmaker.queuedCount", { count: queue.numPlayers })}
             {graph && (
               // Shown while the pointer is anywhere on the card, and anchored
               // here because this is the count it breaks down. Hover-only and
@@ -275,7 +275,7 @@ export function MatchmakerQueueCard({
               </span>
             )}
           </span>
-          <span><Icon name="play" size={14} /> {t("lobby.matchmaker.activeCount", { count: activeGames })}</span>
+          <span><Icon name="play" size={16} /> {t("lobby.matchmaker.activeCount", { count: activeGames })}</span>
           {/* Always a line, invisible while there is no answer. The answer
               needs your rating, which arrives after the tab has drawn, and a
               line added then made every card taller and pushed the page
@@ -285,7 +285,7 @@ export function MatchmakerQueueCard({
             title={inRange === null ? undefined : t("lobby.matchmaker.inRangeHint")}
             aria-hidden={inRange === null || undefined}
           >
-            <Icon name="check" size={14} /> {t("lobby.matchmaker.inRange", { count: inRange ?? 0 })}
+            <Icon name="check" size={16} /> {t("lobby.matchmaker.inRange", { count: inRange ?? 0 })}
           </span>
           {/* Only for the size, which is the one the note names. A card
               disabled because somebody else leads the party said "party too

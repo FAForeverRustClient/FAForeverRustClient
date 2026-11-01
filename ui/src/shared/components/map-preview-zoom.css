@@ -381,27 +381,6 @@
   white-space: nowrap;
 }
 
-.map-preview-frame-close {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  color: var(--color-muted);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.map-preview-frame-close:hover {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
-  border-color: var(--color-border);
-}
-
 /* The shared map preview dialog. Here rather than in maps.css because the
    lobby, the chat and the matchmaker open it too, and without the Maps tab
    having been visited its stylesheet had not loaded. Sized and laid out as

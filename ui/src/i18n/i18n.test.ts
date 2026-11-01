@@ -59,6 +59,31 @@ describe("catalogue integrity", () => {
     }
     expect(drift).toEqual([]);
   });
+
+  it("uses the English placeholders in every language and plural form", () => {
+    // Across all forms of a message, since plurals are where these slipped
+    // through: a placeholder the caller never passes is shown literally, as
+    // Russian's "{count}" in the join download dialog was, and one left out
+    // drops what the sentence is about, as the stream title in Links was.
+    // `count` alone may go unwritten, for a form that spells out "1".
+    const names = (message: unknown) => {
+      const forms = typeof message === "string" ? [message] : Object.values(message ?? {});
+      return new Set(forms.flatMap((form) => [...String(form).matchAll(/\{(\w+)\}/g)].map((match) => match[1])));
+    };
+    const drift: string[] = [];
+    for (const [code, catalogue] of Object.entries(CATALOGUES)) {
+      for (const [key, translated] of Object.entries(catalogue)) {
+        const source = names(en[key as keyof typeof en]);
+        const target = names(translated);
+        const missing = [...source].filter((name) => name !== "count" && !target.has(name));
+        const extra = [...target].filter((name) => !source.has(name));
+        if (missing.length > 0 || extra.length > 0) {
+          drift.push(`${code}:${key} -[${missing.join()}] +[${extra.join()}]`);
+        }
+      }
+    }
+    expect(drift).toEqual([]);
+  });
 });
 
 describe("translateIn", () => {

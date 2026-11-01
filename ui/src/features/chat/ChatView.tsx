@@ -13,6 +13,7 @@
 // event arrived.
 
 import { useForegroundInterval } from "../../shared/hooks/useForegroundInterval";
+import { openContacts } from "../../shared/contactsActions";
 import { sectionPanelProps } from "../../design-system/SectionTabs";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
@@ -218,10 +219,13 @@ export function ChatView() {
   // A typing notice expires on the reader's clock, so the view needs its own
   // tick: nothing arrives from the backend to say "that is no longer true".
   // One second is the coarsest interval that still retires a notice promptly.
-  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
-  const typists = active ? typistsAt(active, now, self) : [];
+  // The tick only redraws; the notices are checked against the time as the
+  // view is drawn. The tick sleeps through a game, and a notice checked against
+  // its last reading stayed up until the game ended.
+  const [, setTypingTick] = useState(() => Math.floor(Date.now() / 1000));
+  const typists = active ? typistsAt(active, Math.floor(Date.now() / 1000), self) : [];
   const anyTyping = (active?.typing?.length ?? 0) > 0;
-  useForegroundInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000, anyTyping);
+  useForegroundInterval(() => setTypingTick(Math.floor(Date.now() / 1000)), 1000, anyTyping);
 
   // The game time in a private conversation's panel advances on the reader's
   // clock, so the view supplies the tick. Half a minute, because the label is
@@ -343,32 +347,37 @@ export function ChatView() {
             );
           })()}
           <span className="spacer" />
-          {gameLinkNotice && <span className="chat-link-notice" role="status">{gameLinkNotice}</span>}
-          {/* A button that looks like one, as "More filters" does elsewhere:
-              as bare text with an icon it read as a label. */}
-          <Button
-            className="chat-search-button"
-            title={t("chat.search.shortcut")}
-            onClick={() => setSearchRequest((request) => request + 1)}
-          >
-            <Icon name="search" size={14} /> {t("chat.search.open")}
-          </Button>
-          <label className="chat-toggle">
-            <input
-              type="checkbox"
-              checked={chatPreferences.showJoinsParts}
-              onChange={(event) => ipc.send({
-                kind: "Settings",
-                command: {
-                  type: "patchChat",
-                  payload: {
-                    patch: { showJoinsParts: event.target.checked },
+          <div className="chat-head-controls">
+            <Button className="chat-head-button" onClick={openContacts}>
+              <Icon name="users" size={14} /> {t("contacts.title")}
+            </Button>
+            {gameLinkNotice && <span className="chat-link-notice" role="status">{gameLinkNotice}</span>}
+            {/* A button that looks like one, as "More filters" does elsewhere:
+                as bare text with an icon it read as a label. */}
+            <Button
+              className="chat-head-button"
+              title={t("chat.search.shortcut")}
+              onClick={() => setSearchRequest((request) => request + 1)}
+            >
+              <Icon name="search" size={14} /> {t("chat.search.open")}
+            </Button>
+            <label className="chat-toggle">
+              <input
+                type="checkbox"
+                checked={chatPreferences.showJoinsParts}
+                onChange={(event) => ipc.send({
+                  kind: "Settings",
+                  command: {
+                    type: "patchChat",
+                    payload: {
+                      patch: { showJoinsParts: event.target.checked },
+                    },
                   },
-                },
-              })}
-            />
-            {t("chat.joinsAndParts")}
-          </label>
+                })}
+              />
+              {t("chat.joinsAndParts")}
+            </label>
+          </div>
         </header>
 
         {active ? (

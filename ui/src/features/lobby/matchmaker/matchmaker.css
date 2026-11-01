@@ -770,9 +770,10 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 16px, the smallest size an icon stays legible at, in the muted text colour
+   without further dimming: the colour already places them below the values. */
 .matchmaker-queue-facts svg {
   flex: 0 0 auto;
-  opacity: 0.7;
 }
 
 /* Holds the line's height until the answer is known. See the card. */
@@ -1826,7 +1827,10 @@
   stroke-width: 1;
 }
 
-.matchmaker-queue-grid {
+/* Its own name, not the cards' `.matchmaker-queue-grid`: this rule used to
+   land on that container too, and a dash pattern is inherited, so every icon
+   on every queue card was drawn two units on, three off. */
+.matchmaker-queue-plot-grid {
   stroke: var(--color-border);
   stroke-width: 1;
   stroke-dasharray: 2 3;

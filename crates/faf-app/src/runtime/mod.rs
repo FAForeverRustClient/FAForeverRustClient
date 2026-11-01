@@ -659,6 +659,16 @@ impl App {
     }
 
     /// Includes offline games, lessons and tutorials, which have no lobby join.
+    pub fn game_is_focused(&self) -> bool {
+        self.process.game_is_focused()
+    }
+    pub fn focus_game(&self) -> Result<(), String> {
+        self.process.focus_game()
+    }
+    pub fn request_game_attention(&self) {
+        self.process.request_game_attention();
+    }
+
     pub fn game_running(&self) -> bool {
         self.process.game_running()
     }
@@ -749,6 +759,23 @@ impl AppLoop {
                 )),
                 _ => None,
             };
+            let unit_selection = match &command {
+                AppCommand::UnitHistory(faf_domain::state::UnitHistoryCommand::Select { id }) => {
+                    Some(services::unit_history::begin_selection(
+                        vec![id.clone()],
+                        &ctx,
+                        &sink,
+                    ))
+                }
+                AppCommand::UnitHistory(faf_domain::state::UnitHistoryCommand::SetSelection {
+                    ids,
+                }) => Some(services::unit_history::begin_selection(
+                    ids.clone(),
+                    &ctx,
+                    &sink,
+                )),
+                _ => None,
+            };
             async move {
                 let Some(mut turn) = turn else {
                     tracing::debug!("dropped a command whose kind is already running");
@@ -760,6 +787,8 @@ impl AppLoop {
                         services::replays::run_analysis(work, &ctx, &sink).await;
                     } else if let Some(work) = details {
                         services::replays::run_details(work, &ctx, &sink).await;
+                    } else if let Some(work) = unit_selection {
+                        services::unit_history::run_selection(work, &ctx, &sink).await;
                     } else if !matches!(
                         command,
                         AppCommand::Replays(faf_domain::state::ReplayCommand::LoadAnalysis { .. })

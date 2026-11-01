@@ -3,7 +3,7 @@ import { Button } from "../../design-system/Button";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { FOLDER_GROUPS, openFolderEntry, type FolderEntry } from "../../shared/gameFolders";
 import { plainError } from "../../shared/plainError";
-import { SettingRow } from "./SettingControls";
+import { SettingRow, SettingsGroup } from "./SettingControls";
 import { useTranslation } from "../../i18n/useTranslation";
 
 /**
@@ -26,7 +26,7 @@ export function FoldersSettingsSection() {
   };
 
   return (
-    <>
+    <SettingsGroup title={t("settings.section.folders.title")}>
       <SettingRow label={t("settings.folders.label")}>
         <div className="settings-diagnostic-actions">
           {clientFolders.map((entry) => (
@@ -48,6 +48,6 @@ export function FoldersSettingsSection() {
           {plainError(failure.reason)}
         </StatusNotice>
       )}
-    </>
+    </SettingsGroup>
   );
 }

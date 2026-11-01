@@ -1,14 +1,15 @@
 // The replay detail panel's map-facing parts: the hero across the top, and
 // the enlarged map preview it opens.
 
-import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
+import { Modal } from "../../design-system/Modal";
 import type { VaultReplay } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useTranslation } from "../../i18n/useTranslation";
 import { MapPreviewFrame } from "../../shared/components/MapPreviewZoom";
 import { onlineReplayLink } from "../../shared/replayLinks";
+import { useClipboardCopy } from "../../shared/hooks/useClipboardCopy";
 import { ReplayMapThumb } from "./ReplayCard";
 import type { ReplayMapPreparation } from "./useReplayMapPreparation";
 
@@ -37,21 +38,8 @@ export function ReplayDetailHero({
 }: HeroProps) {
   const { t } = useTranslation();
   const { effectiveMap, seed, thumbGenerateAction, isGeneratingThisMap, downloadMap } = map;
-  const [copied, setCopied] = useState(false);
-  const [copiedId, setCopiedId] = useState(false);
-
-  const copyLink = () =>
-    ipc.run(
-      navigator.clipboard
-        .writeText(onlineReplayLink(replay.uid))
-        .then(() => setCopied(true)),
-    );
-  const copyReplayId = () =>
-    ipc.run(
-      navigator.clipboard
-        .writeText(String(replay.uid))
-        .then(() => setCopiedId(true)),
-    );
+  const [copied, copyLink] = useClipboardCopy(onlineReplayLink(replay.uid));
+  const [copiedId, copyReplayId] = useClipboardCopy(String(replay.uid));
 
   return (
     <header className="replay-detail-hero">
@@ -121,7 +109,7 @@ export function ReplayDetailHero({
                 className="replay-card-icon-btn"
                 aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
                 title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-                onClick={copyReplayId}
+                onClick={() => ipc.run(copyReplayId())}
               >
                 <Icon name={copiedId ? "check" : "copy"} size={13} />
               </button>
@@ -130,7 +118,7 @@ export function ReplayDetailHero({
                 className="replay-card-icon-btn"
                 aria-label={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
                 title={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
-                onClick={copyLink}
+                onClick={() => ipc.run(copyLink())}
               >
                 <Icon name={copied ? "check" : "external"} size={13} />
               </button>
@@ -202,10 +190,8 @@ interface PreviewProps {
 }
 
 /**
- * The enlarged preview, in the panel's own markup rather than in a second
- * `Modal`. It covers the viewport the way a dialog would, and leaves the same
- * three ways out: the button, the scrim, and Escape (the panel's overlay
- * layer).
+ * The enlarged preview owns a nested Modal, keeping focus inside the map and
+ * restoring it to the replay's preview button when closed.
  */
 export function ReplayMapPreviewOverlay({
   mapThumbnailUrl,
@@ -218,51 +204,43 @@ export function ReplayMapPreviewOverlay({
 }: PreviewProps) {
   const { t } = useTranslation();
   return (
-    <div
-      className="replay-preview-scrim"
-      role="presentation"
-      onClick={onClose}
+    <Modal
+      className="replay-preview-overlay"
+      ariaLabel={t("maps.preview.enlarge", { name: mapLabel })}
+      onClose={onClose}
     >
-      <div
-        className="replay-preview-overlay"
-        role="dialog"
-        aria-label={t("maps.preview.enlarge", { name: mapLabel })}
-        onClick={(event) => event.stopPropagation()}
+      {/* The same frame the Play tab and the Maps tab open a map in, so
+          a preview looks like a preview wherever it was reached from.
+          The technical name under it is what the Play tab's preview has
+          too. */}
+      <MapPreviewFrame
+        title={mapLabel}
+        subtitle={cardTitle === mapLabel ? undefined : cardTitle}
+        footer={effectiveMap ? (
+          <div className="replay-preview-overlay-name">
+            <span>{t("lobby.browser.mapFullName")}</span>
+            <code>{effectiveMap}</code>
+            <button
+              type="button"
+              className="replay-card-icon-btn"
+              aria-label={t(copiedMapName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
+              title={t(copiedMapName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
+              onClick={onCopyMapName}
+            >
+              <Icon name={copiedMapName ? "check" : "copy"} size={13} />
+            </button>
+          </div>
+        ) : null}
       >
-        {/* The same frame the Play tab and the Maps tab open a map in, so
-            a preview looks like a preview wherever it was reached from.
-            The technical name under it is what the Play tab's preview has
-            too. */}
-        <MapPreviewFrame
-          title={mapLabel}
-          subtitle={cardTitle === mapLabel ? undefined : cardTitle}
-          onClose={onClose}
-          footer={effectiveMap ? (
-            <div className="replay-preview-overlay-name">
-              <span>{t("lobby.browser.mapFullName")}</span>
-              <code>{effectiveMap}</code>
-              <button
-                type="button"
-                className="replay-card-icon-btn"
-                aria-label={t(copiedMapName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
-                title={t(copiedMapName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
-                onClick={onCopyMapName}
-              >
-                <Icon name={copiedMapName ? "check" : "copy"} size={13} />
-              </button>
-            </div>
-          ) : null}
-        >
-          <ReplayMapThumb
-            url={mapThumbnailUrl}
-            mapName={effectiveMap}
-            className="replay-preview-overlay-image"
-            emptyClassName="replay-detail-thumb-empty"
-            iconSize={64}
-            large
-          />
-        </MapPreviewFrame>
-      </div>
-    </div>
+        <ReplayMapThumb
+          url={mapThumbnailUrl}
+          mapName={effectiveMap}
+          className="replay-preview-overlay-image"
+          emptyClassName="replay-detail-thumb-empty"
+          iconSize={64}
+          large
+        />
+      </MapPreviewFrame>
+    </Modal>
   );
 }

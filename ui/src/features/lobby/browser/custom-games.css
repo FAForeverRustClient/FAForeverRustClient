@@ -336,13 +336,14 @@
   object-fit: cover;
 }
 
-/* Top left, where every private game's lock sits (issue 598). */
+/* Top left, where every private game's lock sits (issue 598). The badge is
+   the theme's own ground, so the lock reads over any map in either theme. */
 .game-browser-thumb-lock {
   position: absolute;
   top: 2px;
   left: 2px;
-  background: rgba(0, 0, 0, 0.75);
-  color: var(--color-text-strong);
+  background: color-mix(in srgb, var(--color-bg) 80%, transparent);
+  color: var(--color-text);
   border-radius: 3px;
   padding: 2px;
   display: flex;
@@ -359,7 +360,7 @@
 }
 
 .game-browser-title {
-  color: var(--color-text-strong);
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 600;
   overflow: hidden;
@@ -503,7 +504,7 @@
   text-align: left;
   font-size: 13px;
   font-weight: 550;
-  color: var(--color-text-strong);
+  color: var(--color-text);
 }
 
 .game-browser-age-col {

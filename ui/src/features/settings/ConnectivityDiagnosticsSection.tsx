@@ -7,7 +7,7 @@
 // running adapter for its peers on a timer, and only while a game runs and
 // this page is the one open: nothing is polled from a page nobody is reading.
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
@@ -30,7 +30,7 @@ import { native } from "../../ipc/native";
 import { formatShortDateTime, formatTime } from "../../shared/format/dates";
 import { plainError } from "../../shared/plainError";
 import { useAppStore } from "../../store/store";
-import { SettingRow } from "./SettingControls";
+import { SettingRow, SettingsGroup } from "./SettingControls";
 import "./connectivity-check.css";
 
 /** How often the live view asks the adapter, as the Python client's dialog does. */
@@ -93,6 +93,12 @@ interface Phrased {
   detail: string;
   /** The title is an address, drawn in the monospace face. */
   address?: boolean;
+  /** The full installation path, available without crowding the result. */
+  path?: string;
+}
+
+function fileName(path: string): string {
+  return path.split(/[\\/]/).pop() || path;
 }
 
 // The reasons inside a finding stay as the probe reported them, unlike the
@@ -137,24 +143,28 @@ export function phraseFinding(finding: CheckFinding, t: Translate): Phrased {
       return {
         title: t("settings.connectivityCheck.javaRuntime.title"),
         detail: version
-          ? t("settings.connectivityCheck.javaRuntime.found", { version, path })
-          : t("settings.connectivityCheck.javaRuntime.unknownVersion", { path }),
+          ? t("settings.connectivityCheck.javaRuntime.found", { version, path: fileName(path) })
+          : t("settings.connectivityCheck.javaRuntime.unknownVersion", { path: fileName(path) }),
+        path,
       };
     }
     case "javaRuntimeTooOld":
       return {
         title: t("settings.connectivityCheck.javaRuntime.title"),
-        detail: t("settings.connectivityCheck.javaRuntime.tooOld", finding.payload),
+        detail: t("settings.connectivityCheck.javaRuntime.tooOld", { ...finding.payload, path: fileName(finding.payload.path) }),
+        path: finding.payload.path,
       };
     case "javaRuntimeMissing":
       return {
         title: t("settings.connectivityCheck.javaRuntime.title"),
-        detail: t("settings.connectivityCheck.javaRuntime.missing", finding.payload),
+        detail: t("settings.connectivityCheck.javaRuntime.missing", { ...finding.payload, path: fileName(finding.payload.path) }),
+        path: finding.payload.path,
       };
     case "javaAdapter":
       return {
         title: t("settings.connectivityCheck.javaAdapter.title"),
-        detail: t("settings.connectivityCheck.javaAdapter.found", finding.payload),
+        detail: t("settings.connectivityCheck.javaAdapter.found", { path: fileName(finding.payload.path) }),
+        path: finding.payload.path,
       };
     case "javaAdapterMissing":
       return {
@@ -164,7 +174,8 @@ export function phraseFinding(finding: CheckFinding, t: Translate): Phrased {
     case "pioneerAdapter":
       return {
         title: t("settings.connectivityCheck.pioneer.title"),
-        detail: t("settings.connectivityCheck.pioneer.found", finding.payload),
+        detail: t("settings.connectivityCheck.pioneer.found", { path: fileName(finding.payload.path) }),
+        path: finding.payload.path,
       };
     case "pioneerAdapterMissing":
       return {
@@ -286,80 +297,142 @@ function OutcomeMark({ outcome }: { outcome: CheckOutcome }) {
   );
 }
 
-/** The adapter's log, folded away until asked for: it is long and technical. */
+/** A quiet "show more" control at the end of a check line. */
+function LineToggle({ open, controls, label, onToggle }: {
+  open: boolean;
+  controls: string;
+  label: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="connectivity-check-toggle"
+      aria-expanded={open}
+      aria-controls={open ? controls : undefined}
+      onClick={onToggle}
+    >
+      <span>{label}</span>
+      <Icon name="chevronDown" size={12} className={open ? "is-open" : undefined} />
+    </button>
+  );
+}
+
+/**
+ * The full installation path behind a line that names only the file: asked
+ * for at the end of the line, shown under it, so a passing line stays one
+ * line.
+ */
+function InstallPath({ path }: { path: string }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  return (
+    <>
+      <div className="connectivity-check-actions">
+        <LineToggle
+          open={open}
+          controls={id}
+          label={open ? t("settings.connectivityCheck.hidePath") : t("settings.connectivityCheck.showPath")}
+          onToggle={() => setOpen((shown) => !shown)}
+        />
+      </div>
+      {open && <code id={id} className="connectivity-check-extra connectivity-check-path">{path}</code>}
+    </>
+  );
+}
+
+/**
+ * The adapter's log, folded away until asked for: it is long and technical.
+ * Its controls sit at the end of the line, the log itself under it.
+ */
 function AdapterLogBlock({ fileName, tail, truncated }: { fileName: string; tail: string; truncated: boolean }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
+  const id = useId();
   const openFolder = () => {
     setError("");
     void native.openLogFolder("ice").catch((reason: unknown) => setError(String(reason)));
   };
 
   return (
-    <div className="connectivity-check-log">
+    <>
       <div className="connectivity-check-actions">
-        <button
-          type="button"
-          className="connectivity-check-toggle"
-          aria-expanded={open}
-          onClick={() => setOpen((shown) => !shown)}
-        >
-          <Icon name="chevronRight" size={12} className={open ? "is-open" : undefined} />
-          <span>{open ? t("settings.connectivityCheck.log.hide") : t("settings.connectivityCheck.log.show")}</span>
-        </button>
-        <Button onClick={openFolder}>{t("settings.connectivityCheck.log.openFolder")}</Button>
-        {open && (
-          <Button onClick={() => void navigator.clipboard.writeText(tail).catch(() => undefined)}>
-            {t("settings.connectivityCheck.log.copy")}
-          </Button>
-        )}
+        <LineToggle
+          open={open}
+          controls={id}
+          label={open ? t("settings.connectivityCheck.log.hide") : t("settings.connectivityCheck.log.show")}
+          onToggle={() => setOpen((shown) => !shown)}
+        />
+        <Button className="connectivity-check-action" onClick={openFolder}>
+          {t("settings.connectivityCheck.log.openFolder")}
+        </Button>
       </div>
-      {open && (
-        <>
-          {truncated && <p className="connectivity-check-note">{t("settings.connectivityCheck.log.truncated")}</p>}
-          <pre
-            className="connectivity-check-log-text"
-            tabIndex={0}
-            aria-label={t("settings.connectivityCheck.log.contents", { file: fileName })}
-          >
-            {tail}
-          </pre>
-        </>
+      {(open || error) && (
+        <div className="connectivity-check-extra connectivity-check-log">
+          {open && (
+            <div id={id} className="connectivity-check-log-body">
+              <div className="connectivity-check-log-bar">
+                {truncated && <p className="connectivity-check-note">{t("settings.connectivityCheck.log.truncated")}</p>}
+                <Button
+                  className="connectivity-check-action"
+                  onClick={() => void navigator.clipboard.writeText(tail).catch(() => undefined)}
+                >
+                  {t("settings.connectivityCheck.log.copy")}
+                </Button>
+              </div>
+              <pre
+                className="connectivity-check-log-text"
+                tabIndex={0}
+                aria-label={t("settings.connectivityCheck.log.contents", { file: fileName })}
+              >
+                {tail}
+              </pre>
+            </div>
+          )}
+          {/* Opening the folder is an action, not a finding, so its failure is
+              worded like any other: plainly, with the shell's words on hover. */}
+          {error && (
+            <StatusNotice
+              tone="error"
+              className="connectivity-check-failure"
+              action={{ label: t("common.retry"), onClick: openFolder }}
+              detail={error}
+            >
+              {plainError(error)}
+            </StatusNotice>
+          )}
+        </div>
       )}
-      {/* Opening the folder is an action, not a finding, so its failure is
-          worded like any other: plainly, with the shell's words on hover. */}
-      {error && (
-        <StatusNotice
-          tone="error"
-          className="connectivity-check-failure"
-          action={{ label: t("common.retry"), onClick: openFolder }}
-          detail={error}
-        >
-          {plainError(error)}
-        </StatusNotice>
-      )}
-    </div>
+    </>
   );
 }
 
+// One line per finding: the mark, a short title and its sentence side by side,
+// and anything more (a path, the log) folded under it. An address is too long
+// for the title column, so it takes the line and its sentence goes under it.
 function CheckLine({ step }: { step: CheckStep }) {
   const { t } = useTranslation();
   const phrased = phraseFinding(step.finding, t);
   return (
-    <li className="connectivity-check-line" data-outcome={step.outcome}>
+    <li
+      className="connectivity-check-line"
+      data-outcome={step.outcome}
+      data-address={phrased.address || undefined}
+      data-log={step.finding.type === "adapterLog" || undefined}
+    >
       <OutcomeMark outcome={step.outcome} />
-      <div className="connectivity-check-copy">
-        <span className={`connectivity-check-title${phrased.address ? " is-address" : ""}`}>{phrased.title}</span>
-        <span className="connectivity-check-detail">{phrased.detail}</span>
-        {step.finding.type === "adapterLog" && (
-          <AdapterLogBlock
-            fileName={step.finding.payload.fileName}
-            tail={step.finding.payload.tail}
-            truncated={step.finding.payload.truncated}
-          />
-        )}
-      </div>
+      <span className={`connectivity-check-title${phrased.address ? " is-address" : ""}`}>{phrased.title}</span>
+      <span className="connectivity-check-detail">{phrased.detail}</span>
+      {phrased.path && phrased.path !== fileName(phrased.path) && <InstallPath path={phrased.path} />}
+      {step.finding.type === "adapterLog" && (
+        <AdapterLogBlock
+          fileName={step.finding.payload.fileName}
+          tail={step.finding.payload.tail}
+          truncated={step.finding.payload.truncated}
+        />
+      )}
     </li>
   );
 }
@@ -369,20 +442,23 @@ export function CheckResults({ check }: { check: ConnectivityCheck }) {
   const verdict: CheckOutcome = check.status.type === "finished" ? check.status.payload.verdict : "running";
   return (
     <div className="setting-block connectivity-check" aria-busy={verdict === "running"}>
-      <p className="connectivity-check-summary" data-outcome={verdict} role="status">
-        <OutcomeMark outcome={verdict} />
-        <span className="connectivity-check-verdict">{t(VERDICT[verdict])}</span>
-        {check.startedAt && (
-          <span className="connectivity-check-when">
-            {t("settings.connectivityCheck.startedAt", { time: formatTime(check.startedAt) })}
-          </span>
-        )}
-      </p>
-      <ul className="connectivity-check-lines">
-        {check.steps.map((step) => (
-          <CheckLine key={step.id} step={step} />
-        ))}
-      </ul>
+      {/* The verdict heads the lines it sums up, in one box with them. */}
+      <div className="connectivity-check-box">
+        <p className="connectivity-check-summary" data-outcome={verdict} role="status">
+          <OutcomeMark outcome={verdict} />
+          <span className="connectivity-check-verdict">{t(VERDICT[verdict])}</span>
+          {check.startedAt && (
+            <span className="connectivity-check-when">
+              {t("settings.connectivityCheck.startedAt", { time: formatTime(check.startedAt) })}
+            </span>
+          )}
+        </p>
+        <ul className="connectivity-check-lines">
+          {check.steps.map((step) => (
+            <CheckLine key={step.id} step={step} />
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
@@ -484,7 +560,7 @@ export function ConnectivityDiagnosticsSection() {
   useLiveRelayPolling(inGame && pageOpen);
 
   return (
-    <>
+    <SettingsGroup title={t("settings.section.troubleshooting.title")}>
       <SettingRow label={t("settings.connectivityCheck.label")}>
         <Button onClick={runConnectivityCheck} disabled={running}>
           {checkRunLabel(check, t)}
@@ -495,6 +571,6 @@ export function ConnectivityDiagnosticsSection() {
         {!inGame && <span className="muted">{t("settings.liveRelay.noGame")}</span>}
       </SettingRow>
       {inGame && <LiveRelay relay={relay} />}
-    </>
+    </SettingsGroup>
   );
 }

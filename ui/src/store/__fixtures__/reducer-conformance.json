@@ -3805,6 +3805,7 @@
             "entryStatus": {
               "type": "idle"
             },
+            "indexUnavailable": null,
             "releases": [],
             "search": {
               "failed": 0,
@@ -3847,6 +3848,7 @@
             "entryStatus": {
               "type": "idle"
             },
+            "indexUnavailable": null,
             "releases": [
               {
                 "date": "2026-08-14",
@@ -3892,6 +3894,7 @@
               },
               "type": "loading"
             },
+            "indexUnavailable": null,
             "releases": [
               {
                 "date": "2026-08-14",
@@ -3960,6 +3963,7 @@
             "entryStatus": {
               "type": "ready"
             },
+            "indexUnavailable": null,
             "releases": [
               {
                 "date": "2026-08-14",
@@ -4019,6 +4023,7 @@
               },
               "type": "failed"
             },
+            "indexUnavailable": null,
             "releases": [
               {
                 "date": "2026-08-14",
@@ -4041,6 +4046,205 @@
               "total": 0
             },
             "selected": "3837",
+            "status": {
+              "type": "ready"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "the bundled notes stand in for an unreadable index until the list is read",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "type": "loading"
+            },
+            "kind": "Changelog"
+          },
+          "expected": {
+            "entries": {},
+            "entryStatus": {
+              "type": "idle"
+            },
+            "indexUnavailable": null,
+            "releases": [],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 0,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
+            "selected": "",
+            "status": {
+              "type": "loading"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "releases": [
+                  {
+                    "date": "2014-11-28",
+                    "id": "3635",
+                    "kind": "Game Patch",
+                    "sourceUrl": "https://example.invalid/3635.md",
+                    "webUrl": "https://example.invalid/3635",
+                    "year": "2014"
+                  }
+                ]
+              },
+              "type": "loaded"
+            },
+            "kind": "Changelog"
+          },
+          "expected": {
+            "entries": {},
+            "entryStatus": {
+              "type": "idle"
+            },
+            "indexUnavailable": null,
+            "releases": [
+              {
+                "date": "2014-11-28",
+                "id": "3635",
+                "kind": "Game Patch",
+                "sourceUrl": "https://example.invalid/3635.md",
+                "webUrl": "https://example.invalid/3635",
+                "year": "2014"
+              }
+            ],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 0,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
+            "selected": "",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "reason": "could not reach the changelog"
+              },
+              "type": "indexUnavailable"
+            },
+            "kind": "Changelog"
+          },
+          "expected": {
+            "entries": {},
+            "entryStatus": {
+              "type": "idle"
+            },
+            "indexUnavailable": "could not reach the changelog",
+            "releases": [
+              {
+                "date": "2014-11-28",
+                "id": "3635",
+                "kind": "Game Patch",
+                "sourceUrl": "https://example.invalid/3635.md",
+                "webUrl": "https://example.invalid/3635",
+                "year": "2014"
+              }
+            ],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 0,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
+            "selected": "",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "releases": [
+                  {
+                    "date": "2014-11-28",
+                    "id": "3837",
+                    "kind": "Game Patch",
+                    "sourceUrl": "https://example.invalid/3837.md",
+                    "webUrl": "https://example.invalid/3837",
+                    "year": "2014"
+                  },
+                  {
+                    "date": "2014-11-28",
+                    "id": "3635",
+                    "kind": "Game Patch",
+                    "sourceUrl": "https://example.invalid/3635.md",
+                    "webUrl": "https://example.invalid/3635",
+                    "year": "2014"
+                  }
+                ]
+              },
+              "type": "loaded"
+            },
+            "kind": "Changelog"
+          },
+          "expected": {
+            "entries": {},
+            "entryStatus": {
+              "type": "idle"
+            },
+            "indexUnavailable": null,
+            "releases": [
+              {
+                "date": "2014-11-28",
+                "id": "3837",
+                "kind": "Game Patch",
+                "sourceUrl": "https://example.invalid/3837.md",
+                "webUrl": "https://example.invalid/3837",
+                "year": "2014"
+              },
+              {
+                "date": "2014-11-28",
+                "id": "3635",
+                "kind": "Game Patch",
+                "sourceUrl": "https://example.invalid/3635.md",
+                "webUrl": "https://example.invalid/3635",
+                "year": "2014"
+              }
+            ],
+            "search": {
+              "failed": 0,
+              "matches": [],
+              "query": "",
+              "requestId": 0,
+              "scanned": 0,
+              "status": {
+                "type": "idle"
+              },
+              "total": 0
+            },
+            "selected": "",
             "status": {
               "type": "ready"
             }
@@ -4076,6 +4280,7 @@
             "entryStatus": {
               "type": "ready"
             },
+            "indexUnavailable": null,
             "releases": [],
             "search": {
               "failed": 0,
@@ -4125,6 +4330,7 @@
             "entryStatus": {
               "type": "ready"
             },
+            "indexUnavailable": null,
             "releases": [],
             "search": {
               "failed": 0,
@@ -4183,6 +4389,7 @@
             "entryStatus": {
               "type": "ready"
             },
+            "indexUnavailable": null,
             "releases": [],
             "search": {
               "failed": 0,
@@ -4250,6 +4457,7 @@
             "entryStatus": {
               "type": "ready"
             },
+            "indexUnavailable": null,
             "releases": [],
             "search": {
               "failed": 0,
@@ -4317,6 +4525,7 @@
             "entryStatus": {
               "type": "ready"
             },
+            "indexUnavailable": null,
             "releases": [],
             "search": {
               "failed": 0,
@@ -4375,6 +4584,7 @@
             "entryStatus": {
               "type": "ready"
             },
+            "indexUnavailable": null,
             "releases": [],
             "search": {
               "failed": 0,
@@ -4433,6 +4643,7 @@
             "entryStatus": {
               "type": "ready"
             },
+            "indexUnavailable": null,
             "releases": [],
             "search": {
               "failed": 0,
@@ -4485,6 +4696,7 @@
             "entryStatus": {
               "type": "ready"
             },
+            "indexUnavailable": null,
             "releases": [],
             "search": {
               "failed": 1,
@@ -5199,9 +5411,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -5212,6 +5429,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -5224,6 +5442,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -5238,6 +5457,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -13377,6 +13597,7 @@
                             {
                               "change": null,
                               "children": [],
+                              "ordinal": null,
                               "spans": [
                                 {
                                   "payload": "New in 0.4.0.",
@@ -13410,6 +13631,7 @@
                             {
                               "change": null,
                               "children": [],
+                              "ordinal": null,
                               "spans": [
                                 {
                                   "payload": "New in 0.3.0.",
@@ -13455,6 +13677,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.4.0.",
@@ -13488,6 +13711,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.3.0.",
@@ -13546,6 +13770,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.4.0.",
@@ -13579,6 +13804,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.3.0.",
@@ -13640,6 +13866,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.4.0.",
@@ -13673,6 +13900,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.3.0.",
@@ -13723,6 +13951,7 @@
                             {
                               "change": null,
                               "children": [],
+                              "ordinal": null,
                               "spans": [
                                 {
                                   "payload": "New in 0.4.0.",
@@ -13768,6 +13997,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.4.0.",
@@ -13829,6 +14059,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.4.0.",
@@ -13887,6 +14118,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.4.0.",
@@ -47754,6 +47986,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [
               "Cid"
             ],
@@ -47787,6 +48024,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [
               "Cid"
             ],
@@ -47822,12 +48064,430 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [
               "Cid"
             ],
             "friends": [
               "Bob"
             ],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "contacts retain offline identities and manage unresolved accounts",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "open": true
+              },
+              "type": "contactsOpened"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [],
+              "open": true,
+              "refreshing": false
+            },
+            "foes": [],
+            "friends": [],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "foes": [],
+                "friends": [
+                  "Offline"
+                ]
+              },
+              "type": "relationsUpdated"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [],
+              "open": true,
+              "refreshing": false
+            },
+            "foes": [],
+            "friends": [
+              "Offline"
+            ],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "contacts": [
+                  {
+                    "login": "Offline",
+                    "playerId": 7,
+                    "relation": "friend"
+                  },
+                  {
+                    "login": null,
+                    "playerId": 99,
+                    "relation": "foe"
+                  }
+                ]
+              },
+              "type": "contactsUpdated"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [
+                {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "friend"
+                },
+                {
+                  "login": null,
+                  "playerId": 99,
+                  "relation": "foe"
+                }
+              ],
+              "open": true,
+              "refreshing": false
+            },
+            "foes": [],
+            "friends": [
+              "Offline"
+            ],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "refreshing": true
+              },
+              "type": "contactsRefreshing"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [
+                {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "friend"
+                },
+                {
+                  "login": null,
+                  "playerId": 99,
+                  "relation": "foe"
+                }
+              ],
+              "open": true,
+              "refreshing": true
+            },
+            "foes": [],
+            "friends": [
+              "Offline"
+            ],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "contact": {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "foe"
+                },
+                "member": true
+              },
+              "type": "contactSet"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [
+                {
+                  "login": null,
+                  "playerId": 99,
+                  "relation": "foe"
+                },
+                {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "foe"
+                }
+              ],
+              "open": true,
+              "refreshing": true
+            },
+            "foes": [
+              "Offline"
+            ],
+            "friends": [],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "contact": {
+                  "login": null,
+                  "playerId": 99,
+                  "relation": "foe"
+                },
+                "member": false
+              },
+              "type": "contactSet"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [
+                {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "foe"
+                }
+              ],
+              "open": true,
+              "refreshing": true
+            },
+            "foes": [
+              "Offline"
+            ],
+            "friends": [],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "refreshing": false
+              },
+              "type": "contactsRefreshing"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [
+                {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "foe"
+                }
+              ],
+              "open": true,
+              "refreshing": false
+            },
+            "foes": [
+              "Offline"
+            ],
+            "friends": [],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "foes": [
+                  "Offline"
+                ],
+                "friends": [
+                  "Resolved"
+                ]
+              },
+              "type": "relationsUpdated"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [
+                {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "foe"
+                }
+              ],
+              "open": true,
+              "refreshing": false
+            },
+            "foes": [
+              "Offline"
+            ],
+            "friends": [
+              "Resolved"
+            ],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "contacts": [
+                  {
+                    "login": "Offline",
+                    "playerId": 7,
+                    "relation": "foe"
+                  },
+                  {
+                    "login": "Resolved",
+                    "playerId": 99,
+                    "relation": "friend"
+                  }
+                ]
+              },
+              "type": "contactsUpdated"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [
+                {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "foe"
+                },
+                {
+                  "login": "Resolved",
+                  "playerId": 99,
+                  "relation": "friend"
+                }
+              ],
+              "open": true,
+              "refreshing": false
+            },
+            "foes": [
+              "Offline"
+            ],
+            "friends": [
+              "Resolved"
+            ],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "contact": {
+                  "login": null,
+                  "playerId": 99,
+                  "relation": "friend"
+                },
+                "member": false
+              },
+              "type": "contactSet"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [
+                {
+                  "login": "Offline",
+                  "playerId": 7,
+                  "relation": "foe"
+                }
+              ],
+              "open": true,
+              "refreshing": false
+            },
+            "foes": [
+              "Offline"
+            ],
+            "friends": [],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "cleared"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [],
+              "open": true,
+              "refreshing": false
+            },
+            "foes": [],
+            "friends": [],
+            "loginLookups": [],
+            "players": [],
+            "staff": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "open": false
+              },
+              "type": "contactsOpened"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
+            "foes": [],
+            "friends": [],
             "loginLookups": [],
             "players": [],
             "staff": []
@@ -64185,9 +64845,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -64198,6 +64863,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -64210,6 +64876,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -64224,6 +64891,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -64481,9 +65149,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -64494,6 +65167,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -64506,6 +65180,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -64520,6 +65195,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -64787,9 +65463,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -64800,6 +65481,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -64812,6 +65494,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -64826,6 +65509,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -65089,9 +65773,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -65102,6 +65791,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -65114,6 +65804,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -65128,6 +65819,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -65390,9 +66082,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -65403,6 +66100,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -65415,6 +66113,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -65429,6 +66128,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -65711,9 +66411,14 @@
               }
             ],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -65724,6 +66429,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -65736,6 +66442,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -65750,6 +66457,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -66022,9 +66730,14 @@
               }
             ],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -66035,6 +66748,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -66047,6 +66761,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -66061,6 +66776,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -66343,9 +67059,14 @@
               }
             ],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -66356,6 +67077,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -66368,6 +67090,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -66382,6 +67105,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -66664,9 +67388,14 @@
               }
             ],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -66677,6 +67406,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -66689,6 +67419,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -66703,6 +67434,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -67068,9 +67800,14 @@
               }
             ],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -67081,6 +67818,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -67093,6 +67831,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -67107,6 +67846,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -67434,9 +68174,14 @@
               }
             ],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -67447,6 +68192,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -67459,6 +68205,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -67473,6 +68220,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -67802,9 +68550,14 @@
               }
             ],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -67815,6 +68568,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -67827,6 +68581,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -67841,6 +68596,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -68336,9 +69092,14 @@
               }
             ],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -68349,6 +69110,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -68361,6 +69123,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -68375,6 +69138,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -83621,6 +84385,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [
               "Cid"
             ],
@@ -83665,6 +84434,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [
               "Cid"
             ],
@@ -83711,6 +84485,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [],
             "friends": [
               "Ada",
@@ -83756,6 +84535,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [],
             "friends": [
               "Ada",
@@ -83800,6 +84584,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [
               "Ada"
             ],
@@ -83845,6 +84634,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [
               "Ada"
             ],
@@ -83875,6 +84669,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [],
             "friends": [],
             "loginLookups": [],
@@ -83901,6 +84700,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [],
             "friends": [],
             "loginLookups": [],
@@ -83919,6 +84723,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [],
             "friends": [],
             "loginLookups": [],
@@ -83946,6 +84755,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [],
             "friends": [],
             "loginLookups": [
@@ -83970,6 +84784,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [],
             "friends": [],
             "loginLookups": [
@@ -83998,6 +84817,11 @@
             "kind": "Social"
           },
           "expected": {
+            "contacts": {
+              "entries": [],
+              "open": false,
+              "refreshing": false
+            },
             "foes": [],
             "friends": [],
             "loginLookups": [
@@ -84258,9 +85082,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -84271,6 +85100,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -84283,6 +85113,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -84297,6 +85128,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -84565,9 +85397,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -84578,6 +85415,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -84590,6 +85428,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -84604,6 +85443,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -84639,9 +85479,14 @@
             "event": {
               "payload": {
                 "preferences": {
+                  "delivery": {},
                   "desktop": true,
                   "desktopAllKinds": false,
+                  "desktopMonitor": null,
+                  "desktopPosition": "bottomRight",
+                  "desktopStyle": "popup",
                   "enabled": false,
+                  "friendJoinedGame": true,
                   "friendOffline": true,
                   "friendOnline": true,
                   "friendPlaying": true,
@@ -84652,6 +85497,7 @@
                   "mapPoolMutedQueues": [],
                   "matchFound": true,
                   "mentions": true,
+                  "mentionsRequireAt": false,
                   "newCustomGames": false,
                   "newCustomGamesFriendsOnly": true,
                   "notifyWhenFocused": false,
@@ -84664,6 +85510,7 @@
                   "sound": true,
                   "soundChoiceVersion": 2,
                   "sounds": {
+                    "friendJoinedGame": "chime",
                     "friendOffline": "chime",
                     "friendOnline": "chime",
                     "friendPlaying": "chime",
@@ -84678,6 +85525,7 @@
                     "reviewReminder": "chime"
                   },
                   "streamLive": true,
+                  "toastDurationSeconds": 5,
                   "toastPosition": "bottomLeft",
                   "volume": 70
                 }
@@ -84903,9 +85751,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": false,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -84916,6 +85769,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -84928,6 +85782,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -84942,6 +85797,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -85225,9 +86081,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": false,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -85238,6 +86099,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -85250,6 +86112,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -85264,6 +86127,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -85537,9 +86401,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": false,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -85550,6 +86419,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -85562,6 +86432,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -85576,6 +86447,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -85837,9 +86709,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": false,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -85850,6 +86727,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -85862,6 +86740,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -85876,6 +86755,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -86140,9 +87020,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": false,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -86153,6 +87038,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -86165,6 +87051,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -86179,6 +87066,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -86467,9 +87355,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": false,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -86480,6 +87373,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -86492,6 +87386,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -86506,6 +87401,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -86763,9 +87659,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": false,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -86776,6 +87677,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -86788,6 +87690,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -86802,6 +87705,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -87079,9 +87983,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": false,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -87092,6 +88001,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -87104,6 +88014,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -87118,6 +88029,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -87387,9 +88299,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": false,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -87400,6 +88317,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -87412,6 +88330,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -87426,6 +88345,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -87677,9 +88597,14 @@
                   "mapPoolsSeen": [],
                   "matchmakerVetoes": [],
                   "notifications": {
+                    "delivery": {},
                     "desktop": true,
                     "desktopAllKinds": false,
+                    "desktopMonitor": null,
+                    "desktopPosition": "bottomRight",
+                    "desktopStyle": "popup",
                     "enabled": true,
+                    "friendJoinedGame": true,
                     "friendOffline": true,
                     "friendOnline": true,
                     "friendPlaying": true,
@@ -87690,6 +88615,7 @@
                     "mapPoolMutedQueues": [],
                     "matchFound": true,
                     "mentions": true,
+                    "mentionsRequireAt": false,
                     "newCustomGames": false,
                     "newCustomGamesFriendsOnly": true,
                     "notifyWhenFocused": false,
@@ -87702,6 +88628,7 @@
                     "sound": true,
                     "soundChoiceVersion": 2,
                     "sounds": {
+                      "friendJoinedGame": "chime",
                       "friendOffline": "chime",
                       "friendOnline": "chime",
                       "friendPlaying": "chime",
@@ -87716,6 +88643,7 @@
                       "reviewReminder": "chime"
                     },
                     "streamLive": true,
+                    "toastDurationSeconds": 5,
                     "toastPosition": "bottomLeft",
                     "volume": 70
                   },
@@ -87967,9 +88895,14 @@
             "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
+              "delivery": {},
               "desktop": true,
               "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
               "enabled": true,
+              "friendJoinedGame": true,
               "friendOffline": true,
               "friendOnline": true,
               "friendPlaying": true,
@@ -87980,6 +88913,7 @@
               "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
+              "mentionsRequireAt": false,
               "newCustomGames": false,
               "newCustomGamesFriendsOnly": true,
               "notifyWhenFocused": false,
@@ -87992,6 +88926,7 @@
               "sound": true,
               "soundChoiceVersion": 2,
               "sounds": {
+                "friendJoinedGame": "chime",
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
@@ -88006,6 +88941,7 @@
                 "reviewReminder": "chime"
               },
               "streamLive": true,
+              "toastDurationSeconds": 5,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -96585,6 +97521,7 @@
             "entryStatus": {
               "type": "idle"
             },
+            "indexUnavailable": null,
             "releases": [],
             "search": {
               "failed": 0,
@@ -96627,6 +97564,7 @@
             "entryStatus": {
               "type": "idle"
             },
+            "indexUnavailable": null,
             "releases": [
               {
                 "date": "2026-08-14",
@@ -96672,6 +97610,7 @@
               },
               "type": "loading"
             },
+            "indexUnavailable": null,
             "releases": [
               {
                 "date": "2026-08-14",
@@ -96714,6 +97653,7 @@
               },
               "type": "loading"
             },
+            "indexUnavailable": null,
             "releases": [
               {
                 "date": "2026-08-14",
@@ -96759,6 +97699,7 @@
               },
               "type": "loading"
             },
+            "indexUnavailable": null,
             "releases": [
               {
                 "date": "2026-08-14",
@@ -128752,6 +129693,7 @@
       "entryStatus": {
         "type": "idle"
       },
+      "indexUnavailable": null,
       "releases": [],
       "search": {
         "failed": 0,
@@ -129586,9 +130528,14 @@
       "mapPoolsSeen": [],
       "matchmakerVetoes": [],
       "notifications": {
+        "delivery": {},
         "desktop": true,
         "desktopAllKinds": false,
+        "desktopMonitor": null,
+        "desktopPosition": "bottomRight",
+        "desktopStyle": "popup",
         "enabled": true,
+        "friendJoinedGame": true,
         "friendOffline": true,
         "friendOnline": true,
         "friendPlaying": true,
@@ -129599,6 +130546,7 @@
         "mapPoolMutedQueues": [],
         "matchFound": true,
         "mentions": true,
+        "mentionsRequireAt": false,
         "newCustomGames": false,
         "newCustomGamesFriendsOnly": true,
         "notifyWhenFocused": false,
@@ -129611,6 +130559,7 @@
         "sound": true,
         "soundChoiceVersion": 2,
         "sounds": {
+          "friendJoinedGame": "chime",
           "friendOffline": "chime",
           "friendOnline": "chime",
           "friendPlaying": "chime",
@@ -129625,6 +130574,7 @@
           "reviewReminder": "chime"
         },
         "streamLive": true,
+        "toastDurationSeconds": 5,
         "toastPosition": "bottomLeft",
         "volume": 70
       },
@@ -129655,6 +130605,11 @@
       }
     },
     "social": {
+      "contacts": {
+        "entries": [],
+        "open": false,
+        "refreshing": false
+      },
       "foes": [],
       "friends": [],
       "loginLookups": [],

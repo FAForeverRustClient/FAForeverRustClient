@@ -13,6 +13,15 @@ import {
 } from "@tauri-apps/plugin-notification";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
+/** Bounded presentation data for the independent desktop window. No actions or URLs. */
+export interface NotificationPopupCard {
+  id: string; title: string; body: string; actionLabel: string | null; tone: string; imageUrl?: string | null;
+}
+export interface NotificationPopupBatch {
+  revision: number; cards: NotificationPopupCard[]; durationSeconds: number;
+  theme: string; dismissLabel: string;
+}
+
 /** The installed game's pictures, as addresses an `<img>` loads. */
 export interface UnitIcons {
   /** By upper-case blueprint id. */
@@ -124,6 +133,31 @@ export interface MarkedMapPreview {
 }
 
 export const native = {
+  showNotificationPopup(cards: NotificationPopupCard[], dismissLabel: string, preview = false): Promise<void> {
+    return invoke("show_notification_popup", { cards, dismissLabel, preview });
+  },
+  notificationDisplays(): Promise<{ name: string; primary: boolean }[]> {
+    return invoke("notification_displays");
+  },
+  notificationPopupSnapshot(): Promise<NotificationPopupBatch> {
+    return invoke("notification_popup_snapshot");
+  },
+  onNotificationPopup(handler: (batch: NotificationPopupBatch) => void): Promise<() => void> {
+    return listen<NotificationPopupBatch>("notifications://popup", (event) => handler(event.payload));
+  },
+  notificationPopupSize(revision: number, height: number): Promise<void> {
+    return invoke("notification_popup_size", { revision, height });
+  },
+  notificationPopupInteract(id: string, interaction: "activate" | "dismiss" | "expire"): Promise<void> {
+    return invoke("notification_popup_interact", { id, interaction });
+  },
+  onNotificationInteraction(handler: (event: { id: string; interaction: "activate" | "dismiss" }) => void): Promise<() => void> {
+    return listen<{ id: string; interaction: "activate" | "dismiss" }>("notifications://interact", (event) => handler(event.payload));
+  },
+  gameNotificationAttention(activate = false): Promise<boolean> {
+    return invoke("game_notification_attention", { activate });
+  },
+
   openLogFolder(kind: LogKind): Promise<void> {
     return invoke("open_log_folder", { kind });
   },

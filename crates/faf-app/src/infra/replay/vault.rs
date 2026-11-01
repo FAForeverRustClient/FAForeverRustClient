@@ -15,6 +15,7 @@ use faf_domain::protocol::replay_query;
 use faf_domain::state::{
     sort_vault_replays, LocalReplay, ReplayQuery, ReplaySortField, VaultReplay,
 };
+use futures_util::{stream, StreamExt};
 use tokio::sync::Mutex;
 
 use crate::infra::jsonapi::{fetch_document, meta_page_i32, total_pages};
@@ -87,6 +88,7 @@ pub struct ReplayVault {
     /// It is a snapshot, deliberately: a game played while the user pages
     /// through the results appears on their next search, not underneath them.
     shared_games: std::sync::Mutex<Option<(ReplayQuery, Vec<i32>)>>,
+    shared_order: std::sync::Mutex<Option<SharedOrder>>,
     /// The rows a locally filtered search matched, and the search that produced
     /// them. Keyed the same way as `shared_games`, and there for the same
     /// reason: that scan reads up to `LOCAL_SCAN_PAGES` pages of vault, and
@@ -96,6 +98,12 @@ pub struct ReplayVault {
     /// `scanned` is how far into the vault the rows came from, so a later page
     /// that needs more of them knows whether scanning again could produce any.
     local_filtered: std::sync::Mutex<Option<(ReplayQuery, LocalScan)>>,
+}
+
+struct SharedOrder {
+    query: ReplayQuery,
+    membership: Vec<i32>,
+    ids: Vec<i32>,
 }
 
 impl ReplayVault {
@@ -108,6 +116,7 @@ impl ReplayVault {
             library,
             downloads: Mutex::new(()),
             shared_games: std::sync::Mutex::new(None),
+            shared_order: std::sync::Mutex::new(None),
             local_filtered: std::sync::Mutex::new(None),
         }
     }
@@ -198,7 +207,7 @@ const API_PAGE_SIZE: u32 = 100;
 /// score it examined the best-reviewed ones and matched others. Newest-first is
 /// the vault's own order, the one the unfiltered feed already uses, and the
 /// only one that means the same thing for every search.
-const SCAN_ORDER: &str = "-startTime";
+const SCAN_ORDER: &str = "-startTime,-id";
 
 /// How far a locally filtered search reads ahead.
 ///
@@ -299,7 +308,7 @@ fn matches_configured_route(
 /// The cache key for a shared-games search: everything except which slice of
 /// the answer is being displayed.
 /// One locally filtered scan: what it matched and how far it got.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 struct LocalScan {
     matched: Vec<VaultReplay>,
     /// How many API pages were read. Equal to [`LOCAL_SCAN_PAGES`] means there
@@ -308,6 +317,34 @@ struct LocalScan {
     /// The vault ran out before the ceiling did, so `matched` is every match
     /// there is and the totals derived from it are exact.
     exhausted: bool,
+    seen: HashSet<i32>,
+    cursor: Option<ScanCursor>,
+    /// Freeze the implicit date floor while paging through this scan.
+    fallback: Option<String>,
+}
+
+#[derive(Clone)]
+struct ScanCursor {
+    started: chrono::DateTime<chrono::FixedOffset>,
+    id: i32,
+}
+
+impl ScanCursor {
+    fn after(row: &VaultReplay) -> Option<Self> {
+        Some(Self {
+            started: chrono::DateTime::parse_from_rfc3339(&row.start_time).ok()?,
+            id: row.uid,
+        })
+    }
+
+    fn filter(&self) -> String {
+        // Canonicalizing the timestamp also excludes RSQL syntax from API text.
+        let started = self.started.to_rfc3339();
+        format!(
+            r#"(startTime=lt="{started}",(startTime=="{started}";id=lt="{}"))"#,
+            self.id
+        )
+    }
 }
 
 /// How many pages a locally filtered scan may promise.
@@ -339,6 +376,8 @@ fn shared_games_key(query: &ReplayQuery) -> ReplayQuery {
     ReplayQuery {
         page: 1,
         page_size: 0,
+        sort_by: ReplaySortField::default(),
+        sort_descending: true,
         ..query.clone()
     }
 }
@@ -473,7 +512,7 @@ impl ReplayVault {
             .filter(|(cached_key, _)| *cached_key == key)
             .map(|(_, ids)| ids.clone());
 
-        let shared = match cached {
+        let membership = match cached {
             Some(ids) => ids,
             None => {
                 let names = query.player_names();
@@ -497,32 +536,80 @@ impl ReplayVault {
                     // A name nobody answers to cannot share a game with anyone.
                     None => Vec::new(),
                     Some(per_name) => {
-                        let mut per_player = Vec::with_capacity(per_name.len());
-                        for player_ids in &per_name {
-                            let scan = std::time::Instant::now();
-                            let games = self.collect_game_ids(query, player_ids, token).await?;
-                            tracing::info!(
-                                accounts = player_ids.len(),
-                                games = games.len(),
-                                elapsed_ms = scan.elapsed().as_millis() as u64,
-                                "shared games: scanned one player"
-                            );
-                            per_player.push(games);
+                        let mut scans = stream::iter(per_name)
+                            .map(|player_ids| async move {
+                                let scan = std::time::Instant::now();
+                                let games =
+                                    self.collect_game_ids(query, &player_ids, token).await?;
+                                tracing::info!(
+                                    accounts = player_ids.len(),
+                                    games = games.len(),
+                                    elapsed_ms = scan.elapsed().as_millis() as u64,
+                                    "shared games: scanned one player"
+                                );
+                                Ok::<_, String>(games)
+                            })
+                            .buffered(2);
+                        let mut shared: Option<Vec<i32>> = None;
+                        while let Some(games) = scans.next().await {
+                            let games = games?;
+                            let next = match shared {
+                                Some(previous) => {
+                                    replay_query::intersect_game_ids(&[previous, games])
+                                }
+                                None => games,
+                            };
+                            let empty = next.is_empty();
+                            shared = Some(next);
+                            if empty {
+                                break;
+                            }
                         }
-                        let shared = replay_query::intersect_game_ids(&per_player);
-                        let ordered = self.sort_shared_games(query, shared, token).await?;
+                        let shared = shared.unwrap_or_default();
                         tracing::info!(
-                            shared = ordered.len(),
+                            shared = shared.len(),
                             elapsed_ms = started.elapsed().as_millis() as u64,
                             "shared games: search complete"
                         );
-                        ordered
+                        shared
                     }
                 };
                 *self
                     .shared_games
                     .lock()
                     .expect("shared games cache poisoned") = Some((key, ids.clone()));
+                ids
+            }
+        };
+
+        // Membership is independent of display order. Retain the ordered IDs
+        // separately so both paging and changing the sort avoid history scans.
+        let order_key = ReplayQuery {
+            page: 1,
+            page_size: 0,
+            ..query.clone()
+        };
+        let ordered = self
+            .shared_order
+            .lock()
+            .expect("shared order cache poisoned")
+            .as_ref()
+            .filter(|order| order.query == order_key && order.membership == membership)
+            .map(|order| order.ids.clone());
+        let shared = match ordered {
+            Some(ids) => ids,
+            None => {
+                let ids = self
+                    .sort_shared_games(query, membership.clone(), token)
+                    .await?;
+                *self
+                    .shared_order
+                    .lock()
+                    .expect("shared order cache poisoned") = Some(SharedOrder {
+                    query: order_key,
+                    membership,
+                    ids: ids.clone(),
+                });
                 ids
             }
         };
@@ -580,10 +667,9 @@ impl ReplayVault {
     /// scan stopped because it had enough, which is the one case where more is
     /// known to be waiting.
     ///
-    /// Scanning from page one is unavoidable, because the API knows nothing
-    /// about these filters and there is no cursor it could resume from. It is
-    /// therefore done once per search and cached, the same way the shared-games
-    /// intersection next to it is.
+    /// The scan retains its matches and the last (start time, id) read. Seeking
+    /// after that pair resumes without refetching earlier pages or shifting
+    /// offsets when a new game appears at the front of the vault.
     async fn search_locally_filtered(
         &self,
         query: &ReplayQuery,
@@ -600,28 +686,15 @@ impl ReplayVault {
             .expect("local filter cache poisoned")
             .as_ref()
             .filter(|(cached_key, _)| *cached_key == key)
-            // Usable when it already holds enough for this page, or when
-            // scanning again could not add to it. An order the client applies
-            // needs everything the scan can read: the highest rated game can
-            // be on its last page.
-            .filter(|(_, scan)| {
-                scan.exhausted
-                    || scan.scanned >= LOCAL_SCAN_PAGES
-                    || (!query.sort_by.sorts_locally() && scan.matched.len() >= needed)
-            })
             .map(|(_, scan)| scan.clone());
 
-        let scan = match cached {
-            Some(scan) => scan,
-            None => {
-                let scan = self.scan_locally_filtered(query, token, needed).await?;
-                *self
-                    .local_filtered
-                    .lock()
-                    .expect("local filter cache poisoned") = Some((key, scan.clone()));
-                scan
-            }
-        };
+        let scan = self
+            .scan_locally_filtered(query, token, needed, cached)
+            .await?;
+        *self
+            .local_filtered
+            .lock()
+            .expect("local filter cache poisoned") = Some((key, scan.clone()));
 
         let total = i32::try_from(scan.matched.len()).unwrap_or(i32::MAX);
         let total_pages = local_filter_total_pages(&scan, page, page_size);
@@ -653,20 +726,21 @@ impl ReplayVault {
         query: &ReplayQuery,
         token: &str,
         needed: usize,
+        previous: Option<LocalScan>,
     ) -> Result<LocalScan, String> {
-        let fallback = query.fallback_months().map(months_ago);
         let started = std::time::Instant::now();
-        let mut matched: Vec<VaultReplay> = Vec::new();
-        // The vault is live and this scan pages by offset, so a game that
-        // finishes between two of these requests pushes every later page down
-        // by one row and the row on the seam arrives twice. Rare, seconds-wide,
-        // and it would show as the same replay listed twice: cheap enough to
-        // rule out that anybody has to wonder about it.
-        let mut seen: HashSet<i32> = HashSet::new();
-        let mut scanned = 0;
-        let mut exhausted = false;
+        let mut scan = previous.unwrap_or_else(|| LocalScan {
+            fallback: query.fallback_months().map(months_ago),
+            ..LocalScan::default()
+        });
+        if scan.exhausted
+            || scan.scanned >= LOCAL_SCAN_PAGES
+            || (scan.matched.len() >= needed && !query.sort_by.sorts_locally())
+        {
+            return Ok(scan);
+        }
 
-        for scan_page in 1..=LOCAL_SCAN_PAGES {
+        for scan_page in scan.scanned + 1..=LOCAL_SCAN_PAGES {
             let mut url = url::Url::parse(&format!("{}/data/game", self.endpoints.api_base))
                 .map_err(|e| format!("invalid API base: {e}"))?;
             {
@@ -679,34 +753,47 @@ impl ReplayVault {
                     // `sort_vault_replays`.
                     .append_pair("sort", SCAN_ORDER)
                     .append_pair("page[size]", &API_PAGE_SIZE.to_string())
-                    .append_pair("page[number]", &scan_page.to_string())
+                    .append_pair(
+                        "page[number]",
+                        &if scan.cursor.is_some() { 1 } else { scan_page }.to_string(),
+                    )
                     .append_pair("include", VAULT_INCLUDE);
-                if let Some(filter) = replay_query::build_filter(query, fallback.as_deref(), None) {
-                    pairs.append_pair("filter", &filter);
+                let base = replay_query::build_filter(query, scan.fallback.as_deref(), None);
+                let cursor = scan.cursor.as_ref().map(ScanCursor::filter);
+                match (base, cursor) {
+                    (Some(base), Some(cursor)) => {
+                        pairs.append_pair("filter", &format!("({base});{cursor}"));
+                    }
+                    (Some(filter), None) | (None, Some(filter)) => {
+                        pairs.append_pair("filter", &filter);
+                    }
+                    (None, None) => {}
                 }
             }
 
             let doc = fetch_document(&self.http, url, token).await?;
             let rows = parse_vault_replays(&doc);
             let received = rows.len();
-            matched.extend(
+            let cursor = rows.last().and_then(ScanCursor::after);
+            scan.matched.extend(
                 retain_locally_matching(query, rows)
                     .into_iter()
-                    .filter(|replay| seen.insert(replay.uid)),
+                    .filter(|replay| scan.seen.insert(replay.uid)),
             );
-            scanned = scan_page;
+            scan.scanned = scan_page;
+            scan.cursor = cursor;
 
             // Only an *empty* page is the end of the results. A short one is
             // not: the API clamps `page[size]` to its own limit without saying
             // so, so "fewer than I asked for" is what every full page looks
             // like. See `API_PAGE_SIZE`.
             if received == 0 {
-                exhausted = true;
+                scan.exhausted = true;
                 break;
             }
             // Enough for the page, unless the order is the client's own: then
             // a row further in can still belong at the top.
-            if matched.len() >= needed && !query.sort_by.sorts_locally() {
+            if scan.matched.len() >= needed && !query.sort_by.sorts_locally() {
                 break;
             }
         }
@@ -716,19 +803,15 @@ impl ReplayVault {
         // seconds, and "how much vault for how many rows" is otherwise
         // unanswerable from a bug report.
         tracing::info!(
-            pages = scanned,
-            games = scanned as usize * API_PAGE_SIZE as usize,
-            matched = matched.len(),
-            exhausted,
+            pages = scan.scanned,
+            games = scan.scanned as usize * API_PAGE_SIZE as usize,
+            matched = scan.matched.len(),
+            exhausted = scan.exhausted,
             elapsed_ms = started.elapsed().as_millis() as u64,
             "locally filtered vault scan"
         );
 
-        Ok(LocalScan {
-            matched,
-            scanned,
-            exhausted,
-        })
+        Ok(scan)
     }
 
     /// The player ids behind each typed name, in the order they were typed.
@@ -1163,6 +1246,181 @@ Content-Length: {}
 
     use crate::infra::replay::test_support::replay_config;
 
+    async fn search_server(
+        count: usize,
+        reply: impl Fn(&url::Url) -> serde_json::Value + Send + 'static,
+    ) -> (String, tokio::task::JoinHandle<Vec<url::Url>>) {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let task = tokio::spawn(async move {
+            let mut requests = Vec::new();
+            for _ in 0..count {
+                let (mut socket, _) =
+                    tokio::time::timeout(std::time::Duration::from_secs(2), listener.accept())
+                        .await
+                        .unwrap()
+                        .unwrap();
+                let mut request = Vec::new();
+                while !request.windows(4).any(|part| part == b"\r\n\r\n") {
+                    let mut bytes = [0; 4096];
+                    let read = socket.read(&mut bytes).await.unwrap();
+                    assert!(read > 0 && request.len() < 16384);
+                    request.extend_from_slice(&bytes[..read]);
+                }
+                let text = String::from_utf8(request).unwrap();
+                let path = text
+                    .lines()
+                    .next()
+                    .unwrap()
+                    .split_whitespace()
+                    .nth(1)
+                    .unwrap();
+                let url = url::Url::parse(&format!("http://localhost{path}")).unwrap();
+                let body = reply(&url).to_string();
+                requests.push(url);
+                let response = format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
+                socket.write_all(response.as_bytes()).await.unwrap();
+            }
+            requests
+        });
+        (base, task)
+    }
+
+    fn search_rows(ids: impl IntoIterator<Item = i32>) -> serde_json::Value {
+        serde_json::json!({ "data": ids.into_iter().map(|id| serde_json::json!({
+            "type": "game", "id": id.to_string(), "attributes": {
+                "name": format!("Game {id}"), "startTime": "2026-10-30T12:00:00Z",
+                "endTime": "2026-10-30T13:00:00Z", "replayAvailable": true,
+            }
+        })).collect::<Vec<_>>() })
+    }
+
+    fn search_client(base: String) -> ReplayVault {
+        let mut config = replay_config();
+        config.api_base = base;
+        let tokens = TokenStore::new();
+        tokens.set("fixture-token");
+        let mut client = ReplayVault::new(&config, tokens, ReplayLibrary::shared());
+        client.http = reqwest::Client::builder()
+            .no_proxy()
+            .timeout(std::time::Duration::from_secs(2))
+            .build()
+            .unwrap();
+        client
+    }
+
+    #[tokio::test]
+    async fn search_efficiency_filtered_pages_resume_after_the_last_time_and_id() {
+        let (base, server) = search_server(2, |url| {
+            let query: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
+            assert_eq!(query["sort"], "-startTime,-id");
+            assert_eq!(query["page[number]"], "1");
+            if query
+                .get("filter")
+                .is_some_and(|filter| filter.contains("id=lt=\"151\""))
+            {
+                assert!(query["filter"].contains("startTime=lt="));
+                search_rows((101..=150).rev())
+            } else {
+                search_rows((151..=200).rev())
+            }
+        })
+        .await;
+        let client = search_client(base);
+        let query = ReplayQuery {
+            page_size: 50,
+            ..ReplayQuery::default()
+        };
+        let first = client
+            .search_locally_filtered(&query, "fixture-token")
+            .await
+            .unwrap();
+        assert_eq!(first.replays.len(), 50);
+        assert_eq!(first.replays[0].uid, 200);
+        let second = client
+            .search_locally_filtered(
+                &ReplayQuery {
+                    page: 2,
+                    ..query.clone()
+                },
+                "fixture-token",
+            )
+            .await
+            .unwrap();
+        assert_eq!(second.replays.len(), 50);
+        assert_eq!(second.replays[0].uid, 150);
+        assert_eq!(server.await.unwrap().len(), 2);
+        let cached = client
+            .search_locally_filtered(&query, "fixture-token")
+            .await
+            .unwrap();
+        assert_eq!(
+            cached.replays[0].uid, 200,
+            "going back uses cached rows without a request"
+        );
+    }
+
+    #[tokio::test]
+    async fn search_efficiency_sorting_shared_games_reuses_membership() {
+        let (base, server) = search_server(7, |url| {
+            let query: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
+            if url.path() == "/data/player" {
+                serde_json::json!({"data": [
+                    {"type":"player","id":"1","attributes":{"login":"First"}},
+                    {"type":"player","id":"2","attributes":{"login":"Second"}}
+                ]})
+            } else if query["filter"].contains("playerStats.player.id") {
+                if query["filter"].contains("id=lt=") {
+                    search_rows([])
+                } else {
+                    search_rows([9, 8])
+                }
+            } else if query["sort"].starts_with('-') {
+                search_rows([9, 8])
+            } else {
+                search_rows([8, 9])
+            }
+        })
+        .await;
+        let client = search_client(base);
+        let query = ReplayQuery {
+            player: "First, Second".into(),
+            exact_player: true,
+            sort_by: ReplaySortField::Id,
+            ..ReplayQuery::default()
+        };
+        assert_eq!(
+            client.search_vault(query.clone()).await.unwrap().replays[0].uid,
+            9
+        );
+        let reversed = ReplayQuery {
+            sort_descending: false,
+            ..query
+        };
+        assert_eq!(
+            client.search_vault(reversed).await.unwrap().replays[0].uid,
+            8
+        );
+        let requests = server.await.unwrap();
+        assert_eq!(
+            requests
+                .iter()
+                .filter(|url| url.path() == "/data/player")
+                .count(),
+            1
+        );
+        assert_eq!(
+            requests
+                .iter()
+                .filter(|url| url
+                    .query_pairs()
+                    .any(|(key, value)| key == "filter" && value.contains("playerStats.player.id")))
+                .count(),
+            4
+        );
+    }
+
     fn scan(matched: usize, scanned: u32, exhausted: bool) -> LocalScan {
         LocalScan {
             matched: vec![
@@ -1190,6 +1448,7 @@ Content-Length: {}
             ],
             scanned,
             exhausted,
+            ..LocalScan::default()
         }
     }
 

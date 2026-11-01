@@ -4292,6 +4292,34 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "the bundled notes stand in for an unreadable index until the list is read",
+            {
+                let release = |id: &str| faf_domain::protocol::changelog::ChangelogRelease {
+                    id: id.into(),
+                    kind: "Game Patch".into(),
+                    date: "2014-11-28".into(),
+                    year: "2014".into(),
+                    source_url: format!("https://example.invalid/{id}.md"),
+                    web_url: format!("https://example.invalid/{id}"),
+                };
+                vec![
+                    ChangelogEvent::Loading.into(),
+                    ChangelogEvent::Loaded {
+                        releases: vec![release("3635")],
+                    }
+                    .into(),
+                    ChangelogEvent::IndexUnavailable {
+                        reason: "could not reach the changelog".into(),
+                    }
+                    .into(),
+                    ChangelogEvent::Loaded {
+                        releases: vec![release("3837"), release("3635")],
+                    }
+                    .into(),
+                ]
+            },
+        ),
+        case(
             "archive progress preserves the selected note and ignores stale results after cancellation",
             {
                 use faf_domain::protocol::changelog::{ChangelogEntry, ChangelogSearchMatch};
@@ -6768,6 +6796,33 @@ fn cases() -> Vec<Case> {
             ],
         ),
         // ── maps / mods ──────────────────────────────────────────────────
+        case(
+            "contacts retain offline identities and manage unresolved accounts",
+            vec![
+                SocialEvent::ContactsOpened { open: true }.into(),
+                SocialEvent::RelationsUpdated { friends: vec!["Offline".into()], foes: vec![] }.into(),
+                SocialEvent::ContactsUpdated { contacts: vec![
+                    Contact { player_id: 7, login: Some("Offline".into()), relation: Relation::Friend },
+                    Contact { player_id: 99, login: None, relation: Relation::Foe },
+                ] }.into(),
+                SocialEvent::ContactsRefreshing { refreshing: true }.into(),
+                SocialEvent::ContactSet { contact: Contact {
+                    player_id: 7, login: Some("Offline".into()), relation: Relation::Foe,
+                }, member: true }.into(),
+                SocialEvent::ContactSet { contact: Contact {
+                    player_id: 99, login: None, relation: Relation::Foe,
+                }, member: false }.into(),
+                SocialEvent::ContactsRefreshing { refreshing: false }.into(),
+                SocialEvent::RelationsUpdated { friends: vec!["Resolved".into()], foes: vec!["Offline".into()] }.into(),
+                SocialEvent::ContactsUpdated { contacts: vec![
+                    Contact { player_id: 7, login: Some("Offline".into()), relation: Relation::Foe },
+                    Contact { player_id: 99, login: Some("Resolved".into()), relation: Relation::Friend },
+                ] }.into(),
+                SocialEvent::ContactSet { contact: Contact { player_id: 99, login: None, relation: Relation::Friend }, member: false }.into(),
+                SocialEvent::Cleared.into(),
+                SocialEvent::ContactsOpened { open: false }.into(),
+            ],
+        ),
         case(
             "maps load the vault and the installed list",
             vec![
@@ -9336,10 +9391,10 @@ fn transition_cases() -> Vec<Case> {
                 }
                 .into(),
                 SettingsEvent::NotificationsChanged {
-                    preferences: NotificationPreferences {
+                    preferences: Box::new(NotificationPreferences {
                         enabled: false,
                         ..NotificationPreferences::default()
-                    },
+                    }),
                 }
                 .into(),
                 SettingsEvent::ChatChanged {
@@ -9964,6 +10019,7 @@ fn client_release_notes(version: &str) -> ClientReleaseNotes {
             },
             ChangelogBlock::List {
                 items: vec![ChangelogListItem {
+                    ordinal: None,
                     spans: vec![ChangelogSpan::Text(format!("New in {version}."))],
                     change: None,
                     children: vec![],

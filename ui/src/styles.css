@@ -194,8 +194,8 @@ html select:not([multiple]):not([size]) {
    it takes the theme's colours. An indeterminate box shows a bar. `html` in
    front for weight over the feature stylesheets' `accent-color` rules, which
    now have nothing to colour. The native margins stay: labels everywhere
-   were spaced around them. */
-html input[type="checkbox"] {
+   were spaced around them. Switches keep their own hidden, full-size input. */
+html input[type="checkbox"]:not(:where(.switch-input)) {
   -webkit-appearance: none;
   appearance: none;
   display: inline-grid;
@@ -211,7 +211,7 @@ html input[type="checkbox"] {
   transition: background-color 120ms ease, border-color 120ms ease;
 }
 
-html input[type="checkbox"]::after {
+html input[type="checkbox"]:not(:where(.switch-input))::after {
   content: "";
   width: 10px;
   height: 10px;
@@ -223,33 +223,33 @@ html input[type="checkbox"]::after {
   transition: transform 120ms ease, opacity 120ms ease;
 }
 
-html input[type="checkbox"]:hover:not(:disabled) {
+html input[type="checkbox"]:not(:where(.switch-input)):hover:not(:disabled) {
   border-color: var(--color-muted);
 }
 
-html input[type="checkbox"]:checked,
-html input[type="checkbox"]:indeterminate {
+html input[type="checkbox"]:not(:where(.switch-input)):checked,
+html input[type="checkbox"]:not(:where(.switch-input)):indeterminate {
   background: var(--color-accent);
   border-color: var(--color-accent);
 }
 
-html input[type="checkbox"]:checked::after,
-html input[type="checkbox"]:indeterminate::after {
+html input[type="checkbox"]:not(:where(.switch-input)):checked::after,
+html input[type="checkbox"]:not(:where(.switch-input)):indeterminate::after {
   transform: none;
   opacity: 1;
 }
 
-html input[type="checkbox"]:indeterminate::after {
+html input[type="checkbox"]:not(:where(.switch-input)):indeterminate::after {
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M3 6h6'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M3 6h6'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
-html input[type="checkbox"]:focus-visible {
+html input[type="checkbox"]:not(:where(.switch-input)):focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
-html input[type="checkbox"]:disabled {
+html input[type="checkbox"]:not(:where(.switch-input)):disabled {
   opacity: 0.5;
   cursor: default;
 }

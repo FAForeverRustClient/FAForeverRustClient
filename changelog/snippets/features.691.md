@@ -1,0 +1,3 @@
+- Settings pages group their options under headings, with shorter rows and lined-up controls.
+- Notification sound pickers in Settings show a speaker mark.
+- Settings, Cache shows the space used in one line and lists cached game versions with their release dates.

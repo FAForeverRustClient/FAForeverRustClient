@@ -8,7 +8,24 @@ import {
   matchesFilterChoice,
   parseLiveFilters,
   prettyFeaturedMod,
+  replayDelayRemaining,
 } from "./liveReplayModel";
+
+describe("the live replay delay", () => {
+  const game = { launchedAt: 1_000_000 } as Game;
+  const started = 1_000_000 * 1000;
+
+  it("counts down the five minutes from the game's start", () => {
+    expect(replayDelayRemaining(game, started + 60_000)).toBe(240);
+    expect(replayDelayRemaining(game, started + 400_000)).toBe(0);
+  });
+
+  it("never promises more than the delay against a clock older than the start", () => {
+    // A tick that stopped before this game started, or a clock behind the
+    // server's: seven and a half minutes is not a wait the server imposes.
+    expect(replayDelayRemaining(game, started - 150_000)).toBe(300);
+  });
+});
 
 describe("live replay filter persistence", () => {
   it("accepts only expected fields with the expected primitive types", () => {

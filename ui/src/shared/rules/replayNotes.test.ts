@@ -11,6 +11,26 @@ import {
 } from "./replayNotes";
 
 describe("replay notes", () => {
+  it("reuses the note index and rebuilds it for a replaced immutable array", () => {
+    let reads = 0;
+    const original = { get replayId() { reads += 1; return 5; }, path: null, comment: "old", tags: [] };
+    const notes = [original];
+    expect(noteForReplay(notes, 5)).toBe(original);
+    const indexedReads = reads;
+    for (let index = 0; index < 100; index += 1) expect(noteForReplay(notes, index + 1)).toBe(index === 4 ? original : null);
+    expect(reads).toBe(indexedReads);
+    expect(noteForReplay([{ ...original, comment: "new" }], 5)?.comment).toBe("new");
+    expect(noteForReplay(notes, 5)?.comment).toBe("old");
+  });
+
+  it("keeps first-match semantics and gives a game ID precedence over its file path", () => {
+    const game = { replayId: 5, path: null, comment: "game", tags: [] };
+    const file = { replayId: 0, path: "archive/5.fafreplay", comment: "file", tags: [] };
+    const notes = [game, { ...game, comment: "duplicate" }, file];
+    expect(noteForReplay(notes, 5, file.path)).toBe(game);
+    expect(noteForReplay(notes, 0, file.path)).toBe(file);
+    expect(noteForReplay(notes, null, "archive/./5.fafreplay")).toBe(file);
+  });
   it("tidies tags, keeps each once and lets the last note for a replay win", () => {
     expect(normalizeReplayNotes([
       { replayId: 9, comment: " first ", tags: ["old"] },
@@ -42,6 +62,19 @@ describe("replay notes", () => {
 
   it("reads tags typed as one line", () => {
     expect(parseTagInput(" Lots finals, casts,, ")).toEqual(["Lots finals", "casts"]);
+  });
+
+  it("deduplicates tags after whitespace and length normalization, just as saving does", () => {
+    const prefix = "x".repeat(32);
+    const input = ` Lots  finals, LOTS FINALS, casts, ${prefix}a, ${prefix}b`;
+    const parsed = parseTagInput(input);
+    expect(parsed).toEqual(["Lots finals", "casts", prefix]);
+    expect(normalizeReplayNotes([{ replayId: 42, comment: "", tags: parsed }])[0].tags).toEqual(parsed);
+  });
+
+  it("keeps excess different tags visible to validation instead of silently dropping them", () => {
+    const tags = Array.from({ length: 11 }, (_, index) => `tag${index}`);
+    expect(parseTagInput(tags.join(","))).toEqual(tags);
   });
 
   it("finds a replay by any words of its comment or tags", () => {

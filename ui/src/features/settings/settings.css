@@ -236,37 +236,27 @@
   outline-offset: -2px;
 }
 
-.settings-section {
-  margin-top: 16px;
-  overflow: hidden;
+/* A page's rows come in groups (`SettingsGroup`): a short heading over one
+   surface that holds the rows, divided by hairlines. The space between two
+   groups is several times the space under a heading, so each heading reads as
+   belonging to the rows below it rather than to the group above. */
+.settings-group + .settings-group {
+  margin-top: 28px;
 }
 
-.settings-section:first-of-type {
-  margin-top: 0;
-}
-
-.settings-section-head {
-  padding: 16px 20px 14px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.settings-section-head p {
-  margin: 4px 0 0;
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.settings-section-body {
-  padding: 0 20px;
-}
-
-.settings-section-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+.settings-group-title {
+  margin: 0 0 var(--space-2);
   color: var(--color-text);
-  line-height: 1.3;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.settings-group-body {
+  padding: 0 var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
 }
 
 .setting-row {
@@ -274,8 +264,8 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 24px;
-  min-height: 70px;
-  padding: 14px 0;
+  min-height: 56px;
+  padding: 12px 0;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -297,7 +287,7 @@
 }
 
 .setting-block {
-  padding: 18px 0;
+  padding: 14px 0;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -313,14 +303,29 @@
   padding-top: 0;
 }
 
-.settings-section-body > :last-child,
-.settings-section-body > :last-child .settings-path-row:last-of-type {
+.settings-group-body > :last-child,
+.settings-group-body > :last-child .settings-path-row:last-of-type {
   border-bottom: 0;
 }
 
+/* Medium, not bold: thirty bold labels in a column all shout at once, and
+   the group headings above them would have nothing left to stand out with. */
 .setting-label {
   color: var(--color-text);
-  font-weight: 600;
+  font-weight: 500;
+}
+
+/* The hint under a label: one step smaller, and held to a short measure so
+   a long explanation wraps into a few readable lines instead of running the
+   width of the page. 18 px lines keep the row an even number of pixels tall
+   (see above). The same for the explanations in a block (a launch command,
+   the Steam note), which used to run the full width at body size. */
+.setting-copy > .muted,
+.setting-block > .muted,
+.settings-save-line > .muted {
+  max-width: 64ch;
+  font-size: 12px;
+  line-height: 18px;
 }
 
 /* What the current choice costs, under the hint: the warning colour and its
@@ -347,8 +352,34 @@
 /* The per-kind sound picker sits in the same row as the switch that turns the
    notification on, so it stays narrow enough to leave the switch where the eye
    already expects it. */
-.settings-sound-select {
-  max-width: 120px;
+/* Sized to its options, which are the same in every row, so every sound
+   dropdown comes out the same width without cutting off the longest name
+   ("Match found (FAF)", longer still in German). Capped for a long file name. */
+.settings-select.settings-sound-select {
+  width: auto;
+  min-width: 132px;
+  max-width: 220px;
+  padding-left: 30px;
+}
+
+/* The speaker mark inside the sound dropdown, drawn over its left padding. */
+.settings-sound-picker {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.settings-sound-picker > svg {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  color: var(--color-muted);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.settings-sound-picker.is-disabled > svg {
+  opacity: 0.45;
 }
 
 /* The added sound files. A list rather than a row of chips: the names are the
@@ -436,8 +467,34 @@
   padding: 0 10px;
 }
 
+/* `background-color`, not the shorthand: the dropdown's chevron is its
+   background image (see `styles.css`). */
+.settings-select:hover:not(:disabled),
+.settings-input:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+}
+
+/* Dimmed like the switch beside it. A dropdown that cannot be changed used to
+   look exactly like one that can, so a sound picker next to an event that is
+   switched off still read as live. */
+.settings-select:disabled,
+.settings-input:disabled,
+.settings-textarea:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .settings-select {
   min-width: 180px;
+}
+
+/* One width for the dropdowns in a row's control column, so their left edges
+   line up as well as their right ones: sized to their options, they started
+   wherever their longest option happened to put them. A minimum rather than a
+   width, so the rare long option (the ICE adapter's) is not cut off. */
+.setting-control > .settings-select:not(.settings-sound-select) {
+  min-width: 220px;
+  max-width: 100%;
 }
 
 .settings-textarea {
@@ -711,10 +768,6 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.settings-section-body .settings-path-row:first-child {
-  padding-top: 18px;
-}
-
 /* Browse and Reset sit together, and must not be squeezed by a long path. */
 .settings-path-actions {
   display: flex;
@@ -730,7 +783,7 @@
 }
 
 .settings-path-label {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .settings-path-value {
@@ -889,100 +942,86 @@
   resize: vertical;
 }
 
-.settings-cache-box {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin-top: 12px;
-  padding: 14px 16px;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-}
-
-.settings-cache-stats {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
+/* The cached builds as a list, one line each: the folder to open on the
+   left, when the build was released, its size on the right, and its release
+   notes at the end. It used to be a wrap of chips in a monospace face, whose
+   ragged right edge made the block look unfinished. */
 .settings-cache-versions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
+  flex-direction: column;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
 }
 
-.settings-cache-chip-container {
-  display: inline-flex;
-  align-items: stretch;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+.settings-cache-version {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.settings-cache-version-open {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto 72px;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 32px;
+  padding: 0 var(--space-2);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
   border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.settings-cache-version-open > svg {
+  color: var(--color-muted);
+}
+
+.settings-cache-version-open:hover,
+.settings-cache-version-link:hover {
+  background: var(--color-surface-hover);
+}
+
+.settings-cache-version-open:hover > svg,
+.settings-cache-version-link:hover {
+  color: var(--color-text);
+}
+
+.settings-cache-version-name {
   overflow: hidden;
-  transition: border-color 120ms ease;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.settings-cache-chip-container:hover {
-  border-color: var(--color-border-strong);
-}
-
-.settings-cache-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-text);
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease;
-  text-decoration: none;
-}
-
-.settings-cache-chip:hover {
-  background: var(--color-surface-hover);
-}
-
-.settings-cache-chip:focus-visible,
-.settings-cache-chip-ext:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: -1px;
-}
-
-.settings-cache-chip-folder-icon {
+.settings-cache-version-release,
+.settings-cache-version-size {
   color: var(--color-muted);
-  transition: color 120ms ease;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
-.settings-cache-chip:hover .settings-cache-chip-folder-icon {
-  color: var(--color-text);
+.settings-cache-version-size {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
-.settings-cache-chip-size {
-  color: var(--color-muted);
-}
-
-.settings-cache-chip-ext {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 7px;
+.settings-cache-version-link {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   color: var(--color-muted);
   background: transparent;
   border: 0;
-  border-left: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease;
-}
-
-.settings-cache-chip-ext:hover {
-  background: var(--color-surface-hover);
-  color: var(--color-text);
+  place-items: center;
 }
 
 .setting-experimental-badge {
@@ -1002,76 +1041,6 @@
   vertical-align: middle;
 }
 
-.settings-cache-doc-box {
-  margin: calc(var(--space-2) * -1) 0 var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.settings-cache-doc-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 0;
-  color: var(--color-text);
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  text-align: left;
-}
-
-.settings-cache-doc-toggle:hover {
-  color: var(--color-accent);
-}
-
-.settings-cache-doc-chevron {
-  flex: none;
-  color: var(--color-muted);
-  transition: transform 150ms ease, color 150ms ease;
-}
-
-.settings-cache-doc-chevron.expanded {
-  transform: rotate(90deg);
-}
-
-.settings-cache-doc-toggle:hover .settings-cache-doc-chevron {
-  color: var(--color-accent);
-}
-
-.settings-cache-doc-content {
-  margin-top: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--color-border);
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--color-muted);
-}
-
-.settings-cache-doc-content p {
-  margin: 0 0 var(--space-2);
-}
-
-.settings-cache-doc-list {
-  margin: 0;
-  padding-left: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.settings-cache-doc-list li {
-  color: var(--color-muted);
-}
-
-.settings-cache-doc-list strong {
-  color: var(--color-text);
-}
-
 @media (max-width: 700px) {
   .settings-heading {
     align-items: stretch;
@@ -1083,6 +1052,37 @@
     flex-basis: auto;
     width: 100%;
     margin: 0 0 16px;
+  }
+}
+
+/* Owned here so opening Chat cannot change Settings' narrow layout. */
+@media (max-width: 760px) {
+  .settings-group-body {
+    padding-right: var(--space-3);
+    padding-left: var(--space-3);
+  }
+
+  .setting-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .setting-control {
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .settings-select,
+  .setting-control > .settings-select:not(.settings-sound-select) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .settings-save-line,
+  .settings-path-row {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 
@@ -1100,7 +1100,28 @@
    above its trigger would say it a second time; it still names the trigger for
    a screen reader through its `aria-label`. */
 .settings-multi-select {
-  min-width: 180px;
+  min-width: 220px;
+}
+
+/* The picker's own field look is the vault filters' (darker, thinner); in a
+   settings row it takes the look of the dropdowns around it. */
+.settings-multi-select .multi-select-trigger {
+  min-height: 34px;
+  font-size: inherit;
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.settings-multi-select .multi-select-trigger:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+/* The vault filters show focus by lightening the field, which this field
+   already is; the ring every other settings control draws instead. */
+.settings-multi-select .multi-select-trigger:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
 }
 
 .settings-multi-select .multi-select > .search-panel-label {
@@ -1145,4 +1166,80 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   user-select: all;
+}
+
+/* Per-event notification delivery: a disclosure with the row's own label and
+   hint as its summary, opening onto one compact table rather than thirteen
+   full-height rows of three labelled switches each. */
+.notification-delivery {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.notification-delivery > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  min-height: 56px;
+  padding: 12px 0;
+  color: var(--color-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.notification-delivery > summary::-webkit-details-marker {
+  display: none;
+}
+
+.notification-delivery > summary:hover {
+  color: var(--color-text);
+}
+
+.notification-delivery > summary:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.notification-delivery[open] > summary > svg {
+  transform: rotate(180deg);
+}
+
+.notification-delivery-table {
+  width: 100%;
+  margin-bottom: var(--space-4);
+  border-collapse: collapse;
+}
+
+.notification-delivery-table th,
+.notification-delivery-table td {
+  height: 44px;
+  padding: 0 var(--space-2);
+  text-align: center;
+  border-top: 1px solid var(--color-border);
+}
+
+.notification-delivery-table thead th {
+  height: 32px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+  border-top: 0;
+}
+
+.notification-delivery-table th:first-child {
+  padding-left: 0;
+  text-align: left;
+}
+
+.notification-delivery-table tbody th {
+  color: var(--color-text);
+  font-weight: 400;
+}
+
+.notification-delivery-table td:last-child {
+  width: 1%;
+  padding-right: 0;
+  text-align: right;
+  white-space: nowrap;
 }

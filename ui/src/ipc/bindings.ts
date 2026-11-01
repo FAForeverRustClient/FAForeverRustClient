@@ -804,6 +804,17 @@ export type ChangelogBlock = { type: "heading"; payload: {
 	sourceUrl: string,
 	blocks: ChangelogBlock[],
 	unavailable: boolean,
+} } |
+/**
+ *  The client's own attribution under a note bundled from the archive:
+ *  where it came from, the evidence for its date, and that its spacing
+ *  was tidied. Data rather than prose, so the reader's language words it,
+ *  and never part of the note's text: the archive search skips it.
+ */
+{ type: "provenance"; payload: {
+	sourceUrl: string,
+	/**  Empty when the release date rests on no separate evidence. */
+	evidenceUrl: string,
 } };
 
 /**
@@ -856,6 +867,13 @@ export type ChangelogEvent = { type: "searchUpdated"; payload: {
 	releases: ChangelogRelease[],
 } } | { type: "loadFailed"; payload: {
 	reason: string,
+} } |
+/**
+ *  The release list could not be read and the bundled notes are shown in
+ *  its place. Follows the `Loaded` that put them there.
+ */
+{ type: "indexUnavailable"; payload: {
+	reason: string,
 } } | { type: "entryLoading"; payload: {
 	id: string,
 } } | { type: "entryLoaded"; payload: {
@@ -865,6 +883,8 @@ export type ChangelogEvent = { type: "searchUpdated"; payload: {
 } };
 
 export type ChangelogListItem = {
+	/**  The published number in an ordered list. Missing in old caches; null for bullets. */
+	ordinal?: number | null,
 	spans: ChangelogSpan[],
 	/**  Set instead of `spans` carrying the whole line when it is a value change. */
 	change: ChangelogChange | null,
@@ -953,6 +973,12 @@ export type ChangelogState = {
 	 */
 	entries: { [key in string]: ChangelogEntry },
 	entryStatus: ChangelogEntryStatus,
+	/**
+	 *  Why the current release list could not be read, while the tab shows
+	 *  only the notes bundled with the client (the early archive) instead of
+	 *  an error page. `None` once the list has been read.
+	 */
+	indexUnavailable?: string | null,
 };
 
 /**  Status of the index fetch. Mirrors the other list statuses in this crate. */
@@ -2119,6 +2145,19 @@ export type ConnectivityState = {
 /**  Which parts of the console the server lets this account use. */
 export type ConsoleRole = "admin" | "director" | "editor";
 
+/**  A relation keeps its stable account id even when its name cannot be loaded. */
+export type Contact = {
+	playerId: number,
+	login: string | null,
+	relation: Relation,
+};
+
+export type ContactsState = {
+	open: boolean,
+	entries: Contact[],
+	refreshing: boolean,
+};
+
 /**  A content submission, as the player edits it. */
 export type ContributionDraft = {
 	title: string,
@@ -2523,6 +2562,9 @@ export type DescImageAnswer = {
 	requestId: number,
 	url: string | null,
 };
+
+/**  Desktop delivery can use an independent client popup or the OS service. */
+export type DesktopNotificationStyle = "popup" | "system";
 
 /**
  *  A device-flow login in progress.
@@ -6471,7 +6513,13 @@ export type NewsPost = {
 
 export type NotificationAction = { type: "openChat"; payload: {
 	channel: string,
-} } | { type: "openMatchmaking" } | { type: "openCustomGames" } | { type: "acceptPartyInvite"; payload: {
+} } | { type: "openMatchmaking" } |
+/**  Return to the live game owned by this client. Never accepts a process id. */
+{ type: "focusGame" } | { type: "openGame"; payload: {
+	gameId: number,
+} } | { type: "openReview"; payload: {
+	target: ReviewTarget,
+} } | { type: "openCustomGames" } | { type: "acceptPartyInvite"; payload: {
 	playerId: number,
 } } | { type: "watchLive"; payload: {
 	target: LiveReplayTarget,
@@ -6508,6 +6556,29 @@ export type NotificationCommand = { type: "markRead"; payload: {
 	id: string,
 } } | { type: "clear" };
 
+/**  Per-event delivery limits; absent entries inherit the global switches. */
+export type NotificationDelivery = {
+	sound: boolean | null,
+	popup: boolean | null,
+	desktop: boolean | null,
+};
+
+/**  Only the delivery channels touched by one control. */
+export type NotificationDeliveryPatch = {
+	sound?: boolean | null,
+	popup?: boolean | null,
+	desktop?: boolean | null,
+};
+
+/**
+ *  Merge individual event/channel edits against the authoritative settings,
+ *  so quick edits do not replace one another with a stale renderer copy.
+ */
+export type NotificationDeliveryPatches = {
+	replace?: Partial<{ [key in NotificationKind]: NotificationDelivery }> | null,
+	events: Partial<{ [key in NotificationKind]: NotificationDeliveryPatch | null }>,
+};
+
 export type NotificationEvent = { type: "added"; payload: {
 	notification: ClientNotification,
 } } | { type: "read"; payload: {
@@ -6516,7 +6587,7 @@ export type NotificationEvent = { type: "added"; payload: {
 	id: string,
 } } | { type: "cleared" };
 
-export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "friendOnline" | "friendOffline" | "friendPlaying" | "newCustomGame" | "gameFull" | "gameLaunched" | "reviewReminder" |
+export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "friendOnline" | "friendOffline" | "friendPlaying" | "friendJoinedGame" | "newCustomGame" | "gameFull" | "gameLaunched" | "reviewReminder" |
 /**  A calendar event the player asked to be reminded about is coming up. */
 "eventReminder" | "replayAvailable" | "partyInvite" | "reportSubmitted" |
 /**  An operational message authored by the FAF lobby server. */
@@ -6640,12 +6711,19 @@ export type NotificationPreferences = {
 	notifyWhenFocused: boolean,
 	/**  Which corner a toast appears in. See [`ToastPosition`]. */
 	toastPosition: ToastPosition,
+	delivery: Partial<{ [key in NotificationKind]: NotificationDelivery }>,
+	mentionsRequireAt: boolean,
+	toastDurationSeconds: number,
+	desktopMonitor: string | null,
+	desktopPosition: ToastPosition,
+	desktopStyle: DesktopNotificationStyle,
 	matchFound: boolean,
 	privateMessages: boolean,
 	mentions: boolean,
 	friendOnline: boolean,
 	friendOffline: boolean,
 	friendPlaying: boolean,
+	friendJoinedGame: boolean,
 	newCustomGames: boolean,
 	newCustomGamesFriendsOnly: boolean,
 	gameFull: boolean,
@@ -6709,12 +6787,18 @@ export type NotificationPreferencesPatch = {
 	soundChoiceVersion?: number,
 	notifyWhenFocused?: boolean,
 	toastPosition?: ToastPosition,
+	desktopStyle?: DesktopNotificationStyle,
+	desktopPosition?: ToastPosition,
+	desktopMonitor?: string | null,
+	toastDurationSeconds?: number,
+	mentionsRequireAt?: boolean,
 	matchFound?: boolean,
 	privateMessages?: boolean,
 	mentions?: boolean,
 	friendOnline?: boolean,
 	friendOffline?: boolean,
 	friendPlaying?: boolean,
+	friendJoinedGame?: boolean,
 	newCustomGames?: boolean,
 	newCustomGamesFriendsOnly?: boolean,
 	gameFull?: boolean,
@@ -6728,6 +6812,7 @@ export type NotificationPreferencesPatch = {
 	repeatCooldownSeconds?: number,
 	mapPoolMutedQueues?: string[],
 	sounds?: NotificationSoundChoicesPatch,
+	delivery?: NotificationDeliveryPatches,
 };
 
 /**
@@ -6827,6 +6912,7 @@ export type NotificationSoundChoices = {
 	friendOnline: NotificationSound,
 	friendOffline: NotificationSound,
 	friendPlaying: NotificationSound,
+	friendJoinedGame: NotificationSound,
 	newCustomGame: NotificationSound,
 	gameFull: NotificationSound,
 	gameLaunched: NotificationSound,
@@ -6844,6 +6930,7 @@ export type NotificationSoundChoicesPatch = {
 	friendOnline?: NotificationSound,
 	friendOffline?: NotificationSound,
 	friendPlaying?: NotificationSound,
+	friendJoinedGame?: NotificationSound,
 	newCustomGame?: NotificationSound,
 	gameFull?: NotificationSound,
 	gameLaunched?: NotificationSound,
@@ -10105,7 +10192,12 @@ export type SettingsEvent = { type: "loaded"; payload: {
 	preferences: AppearancePreferences,
 } } | { type: "socialChanged"; payload: {
 	preferences: SocialPreferences,
-} } | { type: "notificationsChanged"; payload: {
+} } |
+/**
+ *  Notification delivery preferences carry a map and per-event sound choices.
+ *  Keep that allocation out of every unrelated settings event.
+ */
+{ type: "notificationsChanged"; payload: {
 	preferences: NotificationPreferences,
 } } |
 /**
@@ -10409,7 +10501,9 @@ export type SiteWrite =
 	apiKey: string,
 } };
 
-export type SocialCommand =
+export type SocialCommand = { type: "setContactsOpen"; payload: {
+	open: boolean,
+} } | { type: "resolveContacts" } |
 /**
  *  Add or remove a friend/foe.
  *
@@ -10433,7 +10527,16 @@ export type SocialCommand =
 	login: string,
 } };
 
-export type SocialEvent =
+export type SocialEvent = { type: "contactsUpdated"; payload: {
+	contacts: Contact[],
+} } | { type: "contactSet"; payload: {
+	contact: Contact,
+	member: boolean,
+} } | { type: "contactsOpened"; payload: {
+	open: boolean,
+} } | { type: "contactsRefreshing"; payload: {
+	refreshing: boolean,
+} } |
 /**  A full replacement of both relation lists (the lobby sends them together). */
 { type: "relationsUpdated"; payload: {
 	friends: string[],
@@ -10489,6 +10592,7 @@ export type SocialPreferences = {
 };
 
 export type SocialState = {
+	contacts?: ContactsState,
 	/**  Logins of players on our friends list, sorted. */
 	friends: string[],
 	/**  Logins of players on our foes list, sorted. */

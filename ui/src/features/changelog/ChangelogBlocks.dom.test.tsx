@@ -4,13 +4,13 @@ import { createRef } from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
-import type { ChangelogBlock } from "../../ipc/bindings";
-import { anchorFor, noteSections, NoteBlocks, NoteContentsColumn } from "./noteReader";
+import type { ChangelogBlock, ChangelogListItem } from "../../ipc/bindings";
+import { anchorFor, noteSections, NoteBlocks, NoteContentsColumn, showsContents } from "./noteReader";
 import { historicalChangelogIllustrations } from "../../shared/historicalChangelogIcons";
 import { failOnConsoleError } from "../../testing/consoleGuard";
 import { clearSentCommands, sentCommands } from "../../testing/mounted";
 import { en } from "../../i18n/catalog/en";
-import { ChangelogBlockView } from "../../shared/components/ChangelogBlocks";
+import { ChangelogBlockView, ChangelogListItems } from "../../shared/components/ChangelogBlocks";
 import { ChangelogIllustration } from "../../shared/components/ChangelogIllustration";
 
 const { openUrl } = vi.hoisted(() => ({ openUrl: vi.fn() }));
@@ -18,6 +18,38 @@ vi.mock("../../ipc/native", () => ({ native: { openUrl } }));
 vi.mock("../../shared/useUnitIcons", () => ({ useUnitIcons: () => ({ units: {}, strategic: {} }) }));
 vi.mock("../../ipc/client");
 failOnConsoleError();
+
+it("preserves numbered instructions, mixed nested lists and explicit number changes", () => {
+  const item = (text: string, ordinal?: number | null, children: ChangelogListItem[] = []): ChangelogListItem => ({
+    spans: [{ type: "text", payload: text }], change: null, ordinal, children,
+  });
+  const { container } = render(<ChangelogListItems anchorId="numbered-steps" items={[
+    item("Third", 3, [item("Bullet"), item("Zero", 0), item("Four", 4), item("Five", 5), item("Another bullet", null)]),
+    item("Eighth", 8), item("Ninth", 9),
+  ]} />);
+  const root = container.firstElementChild!;
+  expect(root.tagName).toBe("OL");
+  expect(root.id).toBe("numbered-steps");
+  expect(root.getAttribute("start")).toBe("3");
+  expect([...root.children].map(child => child.getAttribute("value"))).toEqual(["3", "8", "9"]);
+  const nested = [...root.children[0].querySelectorAll(":scope > .changelog-list")];
+  expect(nested.map(list => list.tagName)).toEqual(["UL", "OL", "UL"]);
+  expect(nested[1].getAttribute("start")).toBe("0");
+  expect([...nested[1].children].map(child => child.getAttribute("value"))).toEqual(["0", "4", "5"]);
+  expect(root.textContent).toBe("ThirdBulletZeroFourFiveAnother bulletEighthNinth");
+});
+
+it("keeps legacy list snapshots as bullets and anchors mixed root lists only once", () => {
+  const { container } = render(<ChangelogListItems anchorId="mixed-lists" items={[
+    { spans: [{ type: "text", payload: "Old snapshot" }], change: null, children: [] },
+    { ordinal: 1, spans: [{ type: "text", payload: "Step" }], change: null, children: [] },
+    { ordinal: null, spans: [{ type: "text", payload: "Bullet" }], change: null, children: [] },
+  ]} />);
+  expect([...container.children].map(list => list.tagName)).toEqual(["UL", "OL", "UL"]);
+  expect(container.querySelectorAll("#mixed-lists")).toHaveLength(1);
+  expect(container.querySelector("ul li")?.hasAttribute("value")).toBe(false);
+  expect(container.querySelector("ul")?.hasAttribute("start")).toBe(false);
+});
 
 it("uses the same unmarked naval picture in the article, historical caption and contents", () => {
   const source = "https://raw.githubusercontent.com/FAForever/patchnotes/0d01e845da4d72173492751d153771ee17a0f079/images/nukesub.png";
@@ -440,6 +472,31 @@ it("renders image-only historical headings and gives the contents entry the matc
   fireEvent.error(jump.querySelector("img")!);
   expect(jump.querySelector("img")?.classList.contains("is-missing")).toBe(true);
   expect(jump.textContent).toBe("Titan and Loyalist");
+});
+
+it("words a bundled note's attribution in the reader's language and drops an empty evidence link", () => {
+  const source = "https://web.archive.org/web/2015/http://wiki.faforever.com/index.php?title=3616";
+  const view = render(<ChangelogBlockView anchorId={anchorFor(0)} block={{ type: "provenance", payload: { sourceUrl: source, evidenceUrl: "" } }} />);
+  const footer = view.container.querySelector(".changelog-provenance")!;
+  expect(within(footer as HTMLElement).getByRole("button", { name: en["changelog.provenance.source"] })).toBeTruthy();
+  expect(within(footer as HTMLElement).queryByRole("button", { name: en["changelog.provenance.evidence"] })).toBeNull();
+  expect(footer.textContent).toContain(en["changelog.provenance.editorial"]);
+  view.rerender(<ChangelogBlockView anchorId={anchorFor(0)} block={{ type: "provenance", payload: { sourceUrl: source, evidenceUrl: "https://direct.faforever.com/2011/12/3609-patch-released/" } }} />);
+  expect(within(footer as HTMLElement).getByRole("button", { name: en["changelog.provenance.evidence"] })).toBeTruthy();
+});
+
+it("draws bold section labels as headings and lists them in the contents", () => {
+  const label = (text: string): ChangelogBlock => ({ type: "paragraph", payload: { spans: [{ type: "strong", payload: text }] } });
+  const list: ChangelogBlock = { type: "list", payload: { items: [{ spans: [{ type: "text", payload: "Fixed a desync." }], change: null, children: [] }] } };
+  const blocks = [label("GAME"), list, label("SERVER"), list];
+  const illustrations = historicalChangelogIllustrations("3613", blocks);
+  expect(noteSections(blocks, false, "", 0, illustrations).map(section => [section.text, section.depth])).toEqual([["GAME", 1], ["SERVER", 1]]);
+  render(<NoteBlocks blocks={blocks} illustrations={illustrations} />);
+  expect(screen.getByRole("heading", { level: 2, name: "GAME" })).toBeTruthy();
+  expect(screen.getByRole("heading", { level: 2, name: "SERVER" }).classList.contains("changelog-illustrated-caption")).toBe(false);
+  // One entry is not worth a contents column; two are.
+  expect(showsContents(noteSections(blocks.slice(0, 2), false, "", 0, illustrations))).toBe(false);
+  expect(showsContents(noteSections(blocks, false, "", 0, illustrations))).toBe(true);
 });
 
 it("keeps genuine blueprint tooltips and a readable heading when an image fails", () => {

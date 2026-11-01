@@ -688,3 +688,35 @@ async fn a_slow_note_never_replaces_a_cached_selection() {
         ChangelogEntryStatus::Ready
     );
 }
+
+/// Offline, the release list cannot be read, but the notes bundled with the
+/// client can: the tab lists and opens them, says the list is unavailable,
+/// and does not fall back to an error page.
+#[tokio::test]
+async fn an_unreadable_index_shows_the_bundled_notes_instead_of_an_error_page() {
+    // The offline stand-in: its index always fails, its bundled notes load.
+    let (app, app_loop) = App::new("test", fake_ports());
+    tokio::spawn(app_loop.run());
+    let harness = Harness {
+        app,
+        index_calls: Arc::new(AtomicU32::new(0)),
+        entry_calls: Arc::new(Mutex::new(HashMap::new())),
+    };
+    harness.load().await;
+
+    let changelog = harness.app.snapshot().changelog;
+    assert!(changelog.index_unavailable.is_some());
+    assert_eq!(changelog.releases.len(), 28);
+    // The newest dated bundled note opens, with the client's attribution last.
+    let newest = changelog
+        .releases
+        .iter()
+        .filter(|release| !release.date.is_empty())
+        .max_by(|left, right| left.date.cmp(&right.date))
+        .unwrap();
+    assert_eq!(changelog.selected, newest.id);
+    assert!(matches!(
+        changelog.selected_entry().unwrap().blocks.last(),
+        Some(ChangelogBlock::Provenance { .. })
+    ));
+}

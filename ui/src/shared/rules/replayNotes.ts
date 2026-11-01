@@ -85,6 +85,12 @@ export function normalizeReplayNotes(notes: readonly ReplayNote[]): ReplayNote[]
     .map(({ note }) => note);
 }
 
+// Store updates replace the immutable array, so each revision gets its own index.
+const noteIndexes = new WeakMap<readonly ReplayNote[], {
+  games: Map<number, ReplayNote>;
+  files: Map<string, ReplayNote>;
+}>();
+
 /**
  * The note on one replay: on its game when it has an id, otherwise on its
  * file, however that file's path is spelt. Twin of
@@ -101,14 +107,36 @@ export function noteForReplay(
 ): ReplayNote | null {
   const wanted = noteTarget(replayId, localPath);
   if (!wanted) return null;
-  return notes.find((entry) => wanted.path === null
-    ? entry.replayId === wanted.replayId
-    : entry.replayId <= 0 && entry.path === wanted.path) ?? null;
+  let index = noteIndexes.get(notes);
+  if (!index) {
+    index = { games: new Map(), files: new Map() };
+    for (const note of notes) {
+      // Preserve find's first-match behavior, including callers with duplicates.
+      if (note.replayId > 0) {
+        if (!index.games.has(note.replayId)) index.games.set(note.replayId, note);
+      } else if (note.path && !index.files.has(note.path)) {
+        index.files.set(note.path, note);
+      }
+    }
+    noteIndexes.set(notes, index);
+  }
+  return (wanted.path === null
+    ? index.games.get(wanted.replayId)
+    : index.files.get(wanted.path)) ?? null;
 }
 
-/** Tags typed as one comma-separated line. */
+/** Distinct, tidied tags, without dropping overflow the editor must explain. */
 export function parseTagInput(value: string): string[] {
-  return value.split(",").map(tidyTag).filter(Boolean);
+  const tags: string[] = [];
+  const known = new Set<string>();
+  for (const raw of value.split(",")) {
+    const tag = tidyTag(raw);
+    const key = tag.toLowerCase();
+    if (!tag || known.has(key)) continue;
+    known.add(key);
+    tags.push(tag);
+  }
+  return tags;
 }
 
 /**

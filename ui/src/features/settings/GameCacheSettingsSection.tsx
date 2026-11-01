@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { NumberInput } from "../../design-system/NumberInput";
@@ -6,9 +6,11 @@ import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
 import { formatBytes } from "../../shared/format/formatBytes";
+import { formatDate } from "../../shared/format/dates";
 import { useTranslation } from "../../i18n/useTranslation";
-import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { SettingRow, SettingsGroup, SettingsSwitch } from "./SettingControls";
 import type { GamePreferencesPatch } from "../../ipc/bindings";
+import { cachedVersionRelease, cachedVersionReleaseId } from "./cachedVersionRelease";
 
 /// Mirrors `faf_domain::state::settings::MAX_KEPT_GENERATED_MAPS`, so the
 /// input never offers a number the backend would quietly clamp.
@@ -21,7 +23,20 @@ export function GameCacheSettingsSection() {
   const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.game);
   const cacheInfo = useAppStore((state) => state.state.settings.cacheInfo);
-  const [showDoc, setShowDoc] = useState(false);
+  const releases = useAppStore((state) => state.state.changelog.releases);
+  const releaseStatus = useAppStore((state) => state.state.changelog.status.type);
+  const requestedDates = useRef(false);
+
+  // Reuse one index for every cached version, including when another reader
+  // already requested it. Missing/unverified dates do not cause retry loops.
+  useEffect(() => {
+    const numbered = cacheInfo?.versions.map(cachedVersionReleaseId).filter(id => id !== null) ?? [];
+    if (numbered.length === 0) return;
+    if (releaseStatus === "loading") { requestedDates.current = true; return; }
+    if (requestedDates.current || numbered.every(id => releases.some(release => release.id === id))) return;
+    requestedDates.current = true;
+    void ipc.send({ kind: "Changelog", command: { type: "load" } });
+  }, [cacheInfo?.versions, releases, releaseStatus]);
 
   const setKeepGeneratedMaps = (keepGeneratedMaps: boolean) => {
     void save({ keepGeneratedMaps });
@@ -46,6 +61,7 @@ export function GameCacheSettingsSection() {
   };
 
   const handleRefreshCache = () => {
+    requestedDates.current = false;
     void ipc.send({ kind: "Settings", command: { type: "refreshGameCache" } });
   };
 
@@ -68,187 +84,135 @@ export function GameCacheSettingsSection() {
 
   return (
     <>
-      {/* Keeping generated maps is a retention question about files on disk, so
-          it is filed with the rest of the disk the client spends rather than
-          beside the switch that generates them. Same slice of settings either
-          way: only the register it is drawn in has changed. */}
-      <SettingRow label={t("settings.game.keepGeneratedMaps")}>
-        <div className="settings-inline-pair">
-          <SettingsSwitch
-            checked={preferences.keepGeneratedMaps ?? false}
-            onChange={setKeepGeneratedMaps}
-            label={t("settings.game.keepGeneratedMaps")}
-          />
-          {/* How many, next to whether. Keeping everything is what filled a
-              system drive in the thread that asked for this, and keeping
-              nothing is already the switch beside it; zero means no limit
-              because that is the old behaviour and it stays reachable. */}
-          <NumberInput
-            className="number-input"
-            value={preferences.keepGeneratedMapsLimit ?? 0}
-            min={0}
-            max={MAX_KEPT_GENERATED_MAPS}
-            disabled={!(preferences.keepGeneratedMaps ?? false)}
-            aria-label={t("settings.game.keepGeneratedMapsLimit")}
-            title={t("settings.game.keepGeneratedMapsLimitHint")}
-            onChange={setKeepGeneratedMapsLimit}
-          />
-        </div>
-      </SettingRow>
-      <SettingRow label={t("settings.game.cacheLifetime")}>
-        <select
-          className="settings-select"
-          value={currentLifetime}
-          onChange={(event) => setCacheLifetime(Number(event.target.value))}
-          aria-label={t("settings.game.cacheLifetime")}
-        >
-          <option value={30}>{t("settings.game.cacheLifetime.default")}</option>
-          <option value={14}>{t("settings.game.cacheLifetime.days", { days: "14" })}</option>
-          <option value={60}>{t("settings.game.cacheLifetime.days", { days: "60" })}</option>
-          <option value={90}>{t("settings.game.cacheLifetime.days", { days: "90" })}</option>
-          <option value={0}>{t("settings.game.cacheLifetime.disabled")}</option>
-        </select>
-      </SettingRow>
-
-      <SettingRow
-        label={t("settings.game.cacheSizeAlert")}
-        hint={t("settings.game.cacheSizeAlertHint")}
-      >
-        <select
-          className="settings-select"
-          value={currentAlertGb}
-          onChange={(event) => setCacheSizeAlert(Number(event.target.value))}
-          aria-label={t("settings.game.cacheSizeAlert")}
-        >
-          <option value={10}>{t("settings.game.cacheSizeAlert.default")}</option>
-          <option value={5}>{t("settings.game.cacheSizeAlert.gb", { gb: "5" })}</option>
-          <option value={15}>{t("settings.game.cacheSizeAlert.gb", { gb: "15" })}</option>
-          <option value={20}>{t("settings.game.cacheSizeAlert.gb", { gb: "20" })}</option>
-          <option value={30}>{t("settings.game.cacheSizeAlert.gb", { gb: "30" })}</option>
-          <option value={0}>{t("settings.game.cacheSizeAlert.disabled")}</option>
-        </select>
-      </SettingRow>
-
-      <SettingRow
-        label={t("settings.game.cacheRollingBranches")}
-        badge={<span className="setting-experimental-badge">{t("settings.game.experimentalBadge")}</span>}
-        hint={t("settings.game.cacheRollingBranchesHint")}
-      >
-        <SettingsSwitch
-          checked={preferences.cacheRollingBranches ?? false}
-          onChange={(cacheRollingBranches) => void save({ cacheRollingBranches })}
-          label={t("settings.game.cacheRollingBranches")}
-        />
-      </SettingRow>
-
-      <div className="settings-cache-doc-box">
-        <button
-          type="button"
-          className="settings-cache-doc-toggle"
-          onClick={() => setShowDoc((prev) => !prev)}
-          aria-expanded={showDoc}
-        >
-          <svg
-            className={`settings-cache-doc-chevron${showDoc ? " expanded" : ""}`}
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+      <SettingsGroup>
+        {/* Keeping generated maps is a retention question about files on disk, so
+            it is filed with the rest of the disk the client spends rather than
+            beside the switch that generates them. Same slice of settings either
+            way: only the register it is drawn in has changed. */}
+        <SettingRow label={t("settings.game.keepGeneratedMaps")}>
+          <div className="settings-inline-pair">
+            <SettingsSwitch
+              checked={preferences.keepGeneratedMaps ?? false}
+              onChange={setKeepGeneratedMaps}
+              label={t("settings.game.keepGeneratedMaps")}
+            />
+            {/* How many, next to whether. Keeping everything is what filled a
+                system drive in the thread that asked for this, and keeping
+                nothing is already the switch beside it; zero means no limit
+                because that is the old behaviour and it stays reachable. */}
+            <NumberInput
+              className="number-input"
+              value={preferences.keepGeneratedMapsLimit ?? 0}
+              min={0}
+              max={MAX_KEPT_GENERATED_MAPS}
+              disabled={!(preferences.keepGeneratedMaps ?? false)}
+              aria-label={t("settings.game.keepGeneratedMapsLimit")}
+              title={t("settings.game.keepGeneratedMapsLimitHint")}
+              onChange={setKeepGeneratedMapsLimit}
+            />
+          </div>
+        </SettingRow>
+        <SettingRow label={t("settings.game.cacheLifetime")}>
+          <select
+            className="settings-select"
+            value={currentLifetime}
+            onChange={(event) => setCacheLifetime(Number(event.target.value))}
+            aria-label={t("settings.game.cacheLifetime")}
           >
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-          <span>{t("settings.game.cacheRollingBranchesDocTitle")}</span>
-        </button>
-        {showDoc && (
-          <div className="settings-cache-doc-content">
-            <p>{t("settings.game.cacheRollingBranchesDocOverview")}</p>
-            <ul className="settings-cache-doc-list">
-              <li>
-                <strong>{t("settings.game.cacheRollingBranchesDocHowTitle")}:</strong>{" "}
-                {t("settings.game.cacheRollingBranchesDocHowDesc")}
-              </li>
-              <li>
-                <strong>{t("settings.game.cacheRollingBranchesDocReplayTitle")}:</strong>{" "}
-                {t("settings.game.cacheRollingBranchesDocReplayDesc")}
-              </li>
-              <li>
-                <strong>{t("settings.game.cacheRollingBranchesDocStorageTitle")}:</strong>{" "}
-                {t("settings.game.cacheRollingBranchesDocStorageDesc")}
-              </li>
-            </ul>
-          </div>
-        )}
-      </div>
+            <option value={30}>{t("settings.game.cacheLifetime.default")}</option>
+            <option value={14}>{t("settings.game.cacheLifetime.days", { days: "14" })}</option>
+            <option value={60}>{t("settings.game.cacheLifetime.days", { days: "60" })}</option>
+            <option value={90}>{t("settings.game.cacheLifetime.days", { days: "90" })}</option>
+            <option value={0}>{t("settings.game.cacheLifetime.disabled")}</option>
+          </select>
+        </SettingRow>
 
-      <div className="setting-block">
-        <div className="setting-copy">
-          <span className="setting-label">{t("settings.game.cacheStorage")}</span>
-          <span className="muted">{t("settings.game.cacheStorageHint")}</span>
-        </div>
+        <SettingRow
+          label={t("settings.game.cacheSizeAlert")}
+          hint={t("settings.game.cacheSizeAlertHint")}
+        >
+          <select
+            className="settings-select"
+            value={currentAlertGb}
+            onChange={(event) => setCacheSizeAlert(Number(event.target.value))}
+            aria-label={t("settings.game.cacheSizeAlert")}
+          >
+            <option value={10}>{t("settings.game.cacheSizeAlert.default")}</option>
+            <option value={5}>{t("settings.game.cacheSizeAlert.gb", { gb: "5" })}</option>
+            <option value={15}>{t("settings.game.cacheSizeAlert.gb", { gb: "15" })}</option>
+            <option value={20}>{t("settings.game.cacheSizeAlert.gb", { gb: "20" })}</option>
+            <option value={30}>{t("settings.game.cacheSizeAlert.gb", { gb: "30" })}</option>
+            <option value={0}>{t("settings.game.cacheSizeAlert.disabled")}</option>
+          </select>
+        </SettingRow>
 
-        <div className="settings-cache-box">
-          <div className="settings-cache-stats">
-            <div>
-              <span className="setting-label">
-                {formatBytes(cacheInfo?.totalSizeBytes ?? 0)}
-              </span>
-              <span className="muted">
-                {" "}({cacheInfo?.totalFiles ?? 0} {t("settings.game.cacheFiles")})
-              </span>
-            </div>
-            <div className="settings-save-line" style={{ margin: 0 }}>
-              <Button onClick={handleOpenCacheFolder}>{t("settings.game.openCacheFolder")}</Button>
-              <Button onClick={handleRefreshCache}>{t("settings.game.refreshCache")}</Button>
-              <Button onClick={handleClearCache}>{t("settings.game.clearCache")}</Button>
-            </div>
-          </div>
+        <SettingRow
+          label={t("settings.game.cacheRollingBranches")}
+          badge={<span className="setting-experimental-badge">{t("settings.game.experimentalBadge")}</span>}
+          hint={t("settings.game.cacheRollingBranchesHint")}
+        >
+          <SettingsSwitch
+            checked={preferences.cacheRollingBranches ?? false}
+            onChange={(cacheRollingBranches) => void save({ cacheRollingBranches })}
+            label={t("settings.game.cacheRollingBranches")}
+          />
+        </SettingRow>
+      </SettingsGroup>
 
-          <div>
-            <div className="muted" style={{ fontSize: "11px", marginBottom: "4px" }}>
-              {t("settings.game.cachedVersions")}:
-            </div>
-            {cacheInfo?.versions && cacheInfo.versions.length > 0 ? (
-              <div className="settings-cache-versions">
-                {cacheInfo.versions.map((ver) => (
-                  <div key={ver.name} className="settings-cache-chip-container">
+      {/* What is on disk now, and the builds it holds. The total is the row's
+          label and its three actions sit where every row keeps its control. */}
+      <SettingsGroup title={t("settings.game.cacheStorage")}>
+        <SettingRow
+          label={t("settings.game.cacheUsed", { size: formatBytes(cacheInfo?.totalSizeBytes ?? 0) })}
+          hint={t("settings.game.cacheContents", { count: cacheInfo?.totalFiles ?? 0 })}
+        >
+          <Button onClick={handleOpenCacheFolder}>{t("settings.game.openCacheFolder")}</Button>
+          <Button onClick={handleRefreshCache}>{t("settings.game.refreshCache")}</Button>
+          <Button onClick={handleClearCache}>{t("settings.game.clearCache")}</Button>
+        </SettingRow>
+
+        <div className="setting-block">
+          <span className="setting-label">{t("settings.game.cachedVersions")}</span>
+          {cacheInfo?.versions && cacheInfo.versions.length > 0 ? (
+            <ul className="settings-cache-versions">
+              {cacheInfo.versions.map((ver) => {
+                const release = cachedVersionRelease(ver, releases);
+                const releaseInfo = release.kind === "dated"
+                  ? t("settings.game.cachedVersionReleased", { date: formatDate(release.date, "", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) })
+                  : t(release.kind === "development" ? "settings.game.cachedVersionDevelopment" : "settings.game.cachedVersionDateUnknown");
+                return (
+                  <li key={ver.name} className="settings-cache-version">
                     <button
                       type="button"
-                      className="settings-cache-chip"
+                      className="settings-cache-version-open"
                       onClick={() => void native.openVersionFolder(ver.name)}
                       title={t("settings.game.openLocalFolder", { name: ver.name })}
                     >
-                      <Icon name="folder" size={13} className="settings-cache-chip-folder-icon" />
-                      <span>{ver.name}</span>
-                      <span className="settings-cache-chip-size">
-                        ({formatBytes(ver.sizeBytes)})
-                      </span>
+                      <Icon name="folder" size={14} />
+                      <span className="settings-cache-version-name">{ver.name}</span>
+                      <span className="settings-cache-version-release">{releaseInfo}</span>
+                      <span className="settings-cache-version-size">{formatBytes(ver.sizeBytes)}</span>
                     </button>
                     {ver.url ? (
                       <button
                         type="button"
-                        className="settings-cache-chip-ext"
+                        className="settings-cache-version-link"
                         onClick={() => openVersionUrl(ver.url)}
                         title={t("settings.game.openReleaseNotes", { name: ver.name })}
                         aria-label={t("settings.game.openReleaseNotes", { name: ver.name })}
                       >
-                        <Icon name="external" size={12} />
+                        <Icon name="external" size={14} />
                       </button>
                     ) : null}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <span className="muted" style={{ fontSize: "11px" }}>
-                {t("settings.game.noCachedVersions")}
-              </span>
-            )}
-          </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <span className="muted">{t("settings.game.noCachedVersions")}</span>
+          )}
         </div>
-      </div>
+      </SettingsGroup>
     </>
   );
 }

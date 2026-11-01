@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum NotificationKind {
     MatchFound,
@@ -14,6 +14,7 @@ pub enum NotificationKind {
     FriendOnline,
     FriendOffline,
     FriendPlaying,
+    FriendJoinedGame,
     NewCustomGame,
     GameFull,
     GameLaunched,
@@ -139,6 +140,14 @@ pub enum NotificationAction {
         channel: String,
     },
     OpenMatchmaking,
+    /// Return to the live game owned by this client. Never accepts a process id.
+    FocusGame,
+    OpenGame {
+        game_id: i32,
+    },
+    OpenReview {
+        target: crate::state::ReviewTarget,
+    },
     OpenCustomGames,
     AcceptPartyInvite {
         player_id: i32,

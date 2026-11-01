@@ -373,11 +373,10 @@ export function ZoomableImage({ label, children, actions, overlay }: {
  * preview, the generator, the replay detail card -- and until this existed
  * each had built its own heading, which is how one of them ended up with a
  * title half the size of the others and no room for what it was a preview
- * *of*. The frame is deliberately not a `Modal`: the replay card is itself a
- * modal and stacking two means one Escape closes both, so that caller draws
- * its own scrim and passes `onClose` to get a close button here instead.
+ * *of*. The frame is content: its caller owns the `Modal`, and with it the
+ * close button, Escape and keyboard focus.
  */
-export function MapPreviewFrame({ kicker, title, subtitle, label, onClose, children, footer }: {
+export function MapPreviewFrame({ kicker, title, subtitle, label, children, footer }: {
   /// The small line above the title, saying what kind of thing this is.
   kicker?: ReactNode;
   title: string;
@@ -385,14 +384,10 @@ export function MapPreviewFrame({ kicker, title, subtitle, label, onClose, child
   subtitle?: ReactNode;
   /// What the zoom announces itself as. Defaults to the title.
   label?: string;
-  /// Given only by a caller drawing its own scrim; `Modal` brings its own
-  /// close button and a second one beside it reads as a mistake.
-  onClose?: () => void;
   children: ReactNode;
   /// Everything below the picture: the technical name, the facts, the actions.
   footer?: ReactNode;
 }) {
-  const { t } = useTranslation();
   return (
     <div className="map-preview-frame">
       <header className="map-preview-frame-head">
@@ -401,17 +396,6 @@ export function MapPreviewFrame({ kicker, title, subtitle, label, onClose, child
           <h2 title={title}>{title}</h2>
           {subtitle && <p>{subtitle}</p>}
         </div>
-        {onClose && (
-          <button
-            type="button"
-            className="map-preview-frame-close"
-            onClick={onClose}
-            title={t("common.close")}
-            aria-label={t("common.close")}
-          >
-            <Icon name="close" size={16} />
-          </button>
-        )}
       </header>
       <ZoomableImage label={label ?? title}>{children}</ZoomableImage>
       {footer}

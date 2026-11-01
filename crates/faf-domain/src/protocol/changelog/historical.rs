@@ -613,6 +613,7 @@ impl Enricher<'_> {
                 } else {
                     self.blocks.push(ChangelogBlock::List {
                         items: vec![ChangelogListItem {
+                            ordinal: item.ordinal,
                             spans: item.spans,
                             change: item.change,
                             children: Vec::new(),
@@ -702,7 +703,8 @@ fn enrich_with_associations(entry: &mut ChangelogEntry, associate_prose: bool) {
                 enricher.blocks.push(ChangelogBlock::Unit { name, units });
             }
             block @ (ChangelogBlock::HistoricalBalance { .. }
-            | ChangelogBlock::CodeBlock { .. }) => enricher.blocks.push(block),
+            | ChangelogBlock::CodeBlock { .. }
+            | ChangelogBlock::Provenance { .. }) => enricher.blocks.push(block),
         }
     }
     entry.blocks = enricher.blocks;
@@ -1115,7 +1117,7 @@ mod tests {
                 ChangelogBlock::List { items: content } => {
                     items(content, &mut text, &mut values, &mut links)
                 }
-                ChangelogBlock::HistoricalBalance { .. } => {}
+                ChangelogBlock::HistoricalBalance { .. } | ChangelogBlock::Provenance { .. } => {}
                 ChangelogBlock::CodeBlock { text: code } => text.push(code.clone()),
             }
         }
@@ -1295,6 +1297,7 @@ mod tests {
     #[test]
     fn historical_stat_associations_reject_ambiguous_or_different_changes() {
         let item = ChangelogListItem {
+            ordinal: None,
             spans: Vec::new(),
             children: Vec::new(),
             change: Some(ChangelogChange {
@@ -1516,12 +1519,14 @@ mod tests {
     #[test]
     fn historical_extreme_list_depth_is_left_as_written() {
         let mut item = ChangelogListItem {
+            ordinal: None,
             spans: vec![ChangelogSpan::Text("Titan".into())],
             change: None,
             children: Vec::new(),
         };
         for _ in 0..80 {
             item = ChangelogListItem {
+                ordinal: None,
                 spans: vec![ChangelogSpan::Text("Nested category".into())],
                 change: None,
                 children: vec![item],

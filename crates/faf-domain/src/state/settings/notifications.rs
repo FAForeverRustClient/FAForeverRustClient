@@ -22,6 +22,79 @@ pub enum ToastPosition {
     BottomRight,
 }
 
+/// Desktop delivery can use an independent client popup or the OS service.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum DesktopNotificationStyle {
+    #[default]
+    Popup,
+    System,
+}
+
+/// Per-event delivery limits; absent entries inherit the global switches.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationDelivery {
+    pub sound: Option<bool>,
+    pub popup: Option<bool>,
+    pub desktop: Option<bool>,
+}
+
+preference_patch! {
+    /// Only the delivery channels touched by one control.
+    NotificationDeliveryPatch for NotificationDelivery {
+        sound: Option<bool>, popup: Option<bool>, desktop: Option<bool>,
+    }
+}
+
+/// Merge individual event/channel edits against the authoritative settings,
+/// so quick edits do not replace one another with a stale renderer copy.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationDeliveryPatches {
+    #[serde(default)]
+    #[specta(optional)]
+    pub replace:
+        Option<std::collections::BTreeMap<crate::state::NotificationKind, NotificationDelivery>>,
+    pub events: std::collections::BTreeMap<
+        crate::state::NotificationKind,
+        Option<NotificationDeliveryPatch>,
+    >,
+}
+
+impl NotificationDeliveryPatches {
+    pub fn apply_to(
+        self,
+        mut base: std::collections::BTreeMap<crate::state::NotificationKind, NotificationDelivery>,
+    ) -> std::collections::BTreeMap<crate::state::NotificationKind, NotificationDelivery> {
+        if let Some(replace) = self.replace {
+            base = replace;
+        }
+        for (kind, patch) in self.events {
+            if let Some(patch) = patch {
+                let prior = base.remove(&kind).unwrap_or_default();
+                base.insert(kind, patch.apply_to(prior));
+            } else {
+                base.remove(&kind);
+            }
+        }
+        base
+    }
+}
+
+impl From<std::collections::BTreeMap<crate::state::NotificationKind, NotificationDelivery>>
+    for NotificationDeliveryPatches
+{
+    fn from(
+        base: std::collections::BTreeMap<crate::state::NotificationKind, NotificationDelivery>,
+    ) -> Self {
+        Self {
+            replace: Some(base),
+            events: Default::default(),
+        }
+    }
+}
+
 /// One of the tones the client ships with.
 ///
 /// Synthesised rather than sampled: every one of these is a couple of sine
@@ -115,6 +188,7 @@ pub struct NotificationSoundChoices {
     pub friend_online: NotificationSound,
     pub friend_offline: NotificationSound,
     pub friend_playing: NotificationSound,
+    pub friend_joined_game: NotificationSound,
     pub new_custom_game: NotificationSound,
     pub game_full: NotificationSound,
     pub game_launched: NotificationSound,
@@ -139,6 +213,7 @@ impl Default for NotificationSoundChoices {
             friend_online: NotificationSound::Chime,
             friend_offline: NotificationSound::Chime,
             friend_playing: NotificationSound::Chime,
+            friend_joined_game: NotificationSound::Chime,
             new_custom_game: NotificationSound::Chime,
             // The second graded default. A lobby that has just filled is about
             // to launch with or without the person looking at another screen,
@@ -174,6 +249,7 @@ impl<'de> Deserialize<'de> for NotificationSoundChoices {
             friend_online: Option<NotificationSound>,
             friend_offline: Option<NotificationSound>,
             friend_playing: Option<NotificationSound>,
+            friend_joined_game: Option<NotificationSound>,
             new_custom_game: Option<NotificationSound>,
             game_full: Option<NotificationSound>,
             game_launched: Option<NotificationSound>,
@@ -191,6 +267,9 @@ impl<'de> Deserialize<'de> for NotificationSoundChoices {
             friend_online: fields.friend_online.unwrap_or(defaults.friend_online),
             friend_offline: fields.friend_offline.unwrap_or(defaults.friend_offline),
             friend_playing: fields.friend_playing.unwrap_or(defaults.friend_playing),
+            friend_joined_game: fields
+                .friend_joined_game
+                .unwrap_or(defaults.friend_joined_game),
             new_custom_game: fields.new_custom_game.unwrap_or(defaults.new_custom_game),
             game_full: fields.game_full.unwrap_or(defaults.game_full),
             game_launched: fields.game_launched.unwrap_or(defaults.game_launched),
@@ -252,12 +331,22 @@ pub struct NotificationPreferences {
     pub notify_when_focused: bool,
     /// Which corner a toast appears in. See [`ToastPosition`].
     pub toast_position: ToastPosition,
+    pub delivery: std::collections::BTreeMap<
+        crate::state::notifications::NotificationKind,
+        NotificationDelivery,
+    >,
+    pub mentions_require_at: bool,
+    pub toast_duration_seconds: u16,
+    pub desktop_monitor: Option<String>,
+    pub desktop_position: ToastPosition,
+    pub desktop_style: DesktopNotificationStyle,
     pub match_found: bool,
     pub private_messages: bool,
     pub mentions: bool,
     pub friend_online: bool,
     pub friend_offline: bool,
     pub friend_playing: bool,
+    pub friend_joined_game: bool,
     pub new_custom_games: bool,
     pub new_custom_games_friends_only: bool,
     pub game_full: bool,
@@ -319,12 +408,19 @@ impl Default for NotificationPreferences {
             sound_choice_version: NOTIFICATION_SOUND_CHOICE_VERSION,
             notify_when_focused: false,
             toast_position: ToastPosition::BottomLeft,
+            delivery: Default::default(),
+            mentions_require_at: false,
+            toast_duration_seconds: 5,
+            desktop_monitor: None,
+            desktop_position: ToastPosition::BottomRight,
+            desktop_style: DesktopNotificationStyle::Popup,
             match_found: true,
             private_messages: true,
             mentions: true,
             friend_online: true,
             friend_offline: true,
             friend_playing: true,
+            friend_joined_game: true,
             new_custom_games: false,
             new_custom_games_friends_only: true,
             game_full: true,
@@ -363,12 +459,22 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             sound_choice_version: u8,
             notify_when_focused: bool,
             toast_position: ToastPosition,
+            delivery: std::collections::BTreeMap<
+                crate::state::notifications::NotificationKind,
+                NotificationDelivery,
+            >,
+            mentions_require_at: bool,
+            toast_duration_seconds: u16,
+            desktop_monitor: Option<String>,
+            desktop_position: ToastPosition,
+            desktop_style: DesktopNotificationStyle,
             match_found: bool,
             private_messages: bool,
             mentions: bool,
             friend_online: bool,
             friend_offline: bool,
             friend_playing: bool,
+            friend_joined_game: bool,
             new_custom_games: bool,
             new_custom_games_friends_only: bool,
             game_full: bool,
@@ -400,12 +506,19 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     sound_choice_version: 0,
                     notify_when_focused: defaults.notify_when_focused,
                     toast_position: defaults.toast_position,
+                    delivery: defaults.delivery,
+                    mentions_require_at: defaults.mentions_require_at,
+                    toast_duration_seconds: defaults.toast_duration_seconds,
+                    desktop_monitor: defaults.desktop_monitor,
+                    desktop_position: defaults.desktop_position,
+                    desktop_style: defaults.desktop_style,
                     match_found: defaults.match_found,
                     private_messages: defaults.private_messages,
                     mentions: defaults.mentions,
                     friend_online: defaults.friend_online,
                     friend_offline: defaults.friend_offline,
                     friend_playing: defaults.friend_playing,
+                    friend_joined_game: defaults.friend_joined_game,
                     new_custom_games: defaults.new_custom_games,
                     new_custom_games_friends_only: defaults.new_custom_games_friends_only,
                     game_full: defaults.game_full,
@@ -448,12 +561,19 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             sound_choice_version: NOTIFICATION_SOUND_CHOICE_VERSION,
             notify_when_focused: wire.notify_when_focused,
             toast_position: wire.toast_position,
+            delivery: wire.delivery,
+            mentions_require_at: wire.mentions_require_at,
+            toast_duration_seconds: wire.toast_duration_seconds,
+            desktop_monitor: wire.desktop_monitor,
+            desktop_position: wire.desktop_position,
+            desktop_style: wire.desktop_style,
             match_found: wire.match_found,
             private_messages: wire.private_messages,
             mentions: wire.mentions,
             friend_online: wire.friend_online,
             friend_offline: wire.friend_offline,
             friend_playing: wire.friend_playing,
+            friend_joined_game: wire.friend_joined_game,
             new_custom_games: wire.new_custom_games,
             new_custom_games_friends_only: wire.new_custom_games_friends_only,
             game_full: wire.game_full,
@@ -473,6 +593,10 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
 impl NotificationPreferences {
     pub(super) fn normalized(mut self) -> Self {
         self.volume = self.volume.min(100);
+        self.toast_duration_seconds = self.toast_duration_seconds.clamp(2, 60);
+        self.desktop_monitor = self
+            .desktop_monitor
+            .filter(|name| !name.is_empty() && name.len() <= 256);
         self.repeat_cooldown_seconds = self
             .repeat_cooldown_seconds
             .min(MAX_NOTIFICATION_REPEAT_COOLDOWN_SECONDS);
@@ -492,6 +616,7 @@ preference_patch! {
         friend_online: NotificationSound,
         friend_offline: NotificationSound,
         friend_playing: NotificationSound,
+        friend_joined_game: NotificationSound,
         new_custom_game: NotificationSound,
         game_full: NotificationSound,
         game_launched: NotificationSound,
@@ -513,12 +638,18 @@ preference_patch! {
         sound_choice_version: u8,
         notify_when_focused: bool,
         toast_position: ToastPosition,
+        desktop_style: DesktopNotificationStyle,
+        desktop_position: ToastPosition,
+        desktop_monitor: Option<String>,
+        toast_duration_seconds: u16,
+        mentions_require_at: bool,
         match_found: bool,
         private_messages: bool,
         mentions: bool,
         friend_online: bool,
         friend_offline: bool,
         friend_playing: bool,
+        friend_joined_game: bool,
         new_custom_games: bool,
         new_custom_games_friends_only: bool,
         game_full: bool,
@@ -534,6 +665,7 @@ preference_patch! {
     }
     nested {
         sounds: NotificationSoundChoicesPatch,
+        delivery: NotificationDeliveryPatches,
     }
 }
 
@@ -556,6 +688,7 @@ pub fn without_custom_sound(
         &mut next.friend_online,
         &mut next.friend_offline,
         &mut next.friend_playing,
+        &mut next.friend_joined_game,
         &mut next.new_custom_game,
         &mut next.game_full,
         &mut next.game_launched,
@@ -812,5 +945,65 @@ mod tests {
             &mut unchanged,
             refused
         ));
+    }
+}
+
+#[cfg(test)]
+mod desktop_tests {
+    use super::*;
+    #[test]
+    fn old_preferences_gain_popup_defaults_without_changing_saved_delivery() {
+        let stored = serde_json::json!({"desktop": false, "popup": false, "sound": false,
+            "toastPosition": "topLeft", "sounds": {"privateMessage": "silent"}});
+        let preferences: NotificationPreferences = serde_json::from_value(stored).unwrap();
+        assert!(!preferences.desktop && !preferences.popup && !preferences.sound);
+        assert_eq!(preferences.toast_position, ToastPosition::TopLeft);
+        assert_eq!(preferences.desktop_position, ToastPosition::BottomRight);
+        assert_eq!(preferences.desktop_style, DesktopNotificationStyle::Popup);
+        assert_eq!(preferences.toast_duration_seconds, 5);
+        assert!(preferences.delivery.is_empty());
+        assert_eq!(
+            preferences.sounds.private_message,
+            NotificationSound::Silent
+        );
+    }
+    #[test]
+    fn delivery_edits_merge_per_channel_and_reset_to_inherited_values() {
+        let first: NotificationPreferencesPatch = serde_json::from_value(
+            serde_json::json!({"delivery": {"events": {"friendOnline": {"sound": false}}}}),
+        )
+        .unwrap();
+        let second: NotificationPreferencesPatch = serde_json::from_value(
+            serde_json::json!({"delivery": {"events": {"friendOnline": {"popup": false}}}}),
+        )
+        .unwrap();
+        let preferences = second.apply_to(first.apply_to(NotificationPreferences::default()));
+        let delivery = &preferences.delivery[&crate::state::NotificationKind::FriendOnline];
+        assert_eq!(delivery.sound, Some(false));
+        assert_eq!(delivery.popup, Some(false));
+        assert_eq!(delivery.desktop, None);
+        let reset: NotificationPreferencesPatch = serde_json::from_value(
+            serde_json::json!({"delivery": {"events": {"friendOnline": null}}}),
+        )
+        .unwrap();
+        assert!(reset.apply_to(preferences).delivery.is_empty());
+    }
+
+    #[test]
+    fn desktop_duration_is_bounded_and_monitor_can_be_cleared() {
+        let preferences = NotificationPreferences {
+            toast_duration_seconds: 0,
+            desktop_monitor: Some("display".into()),
+            ..Default::default()
+        }
+        .normalized();
+        assert_eq!(preferences.toast_duration_seconds, 2);
+        let patch: NotificationPreferencesPatch = serde_json::from_value(
+            serde_json::json!({"desktopMonitor": null, "toastDurationSeconds": 65535}),
+        )
+        .unwrap();
+        let preferences = patch.apply_to(preferences).normalized();
+        assert!(preferences.desktop_monitor.is_none());
+        assert_eq!(preferences.toast_duration_seconds, 60);
     }
 }

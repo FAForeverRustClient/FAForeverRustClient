@@ -1,0 +1,1 @@
+- Lists with player menus, and the closed player card, no longer redraw whenever the lobby or the online player list changes.

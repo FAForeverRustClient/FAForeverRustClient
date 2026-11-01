@@ -3,7 +3,7 @@ import { ipc } from "../../../ipc/client";
 import type { Game, PartyState, Reaction } from "../../../ipc/bindings";
 import { useAppStore } from "../../../store/store";
 import { Composer } from "../../chat/messages/Composer";
-import { partyDraftKey } from "../../chat/messages/composerDrafts";
+import { partyDraftKey } from "../../../shared/chatDrafts";
 import { MessageList, type MessageReactionsMap } from "../../chat/messages/MessageList";
 import type { ChatGameLink } from "../../chat/messages/chatFormat";
 import { visibleChatMessages } from "../../chat/messages/messageFilters";

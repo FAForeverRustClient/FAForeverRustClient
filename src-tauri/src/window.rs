@@ -6,7 +6,9 @@ use std::sync::Mutex;
 
 use tauri::Manager;
 
-use crate::navigation::{is_internal_navigation, open_externally, NEWS_EXTERNAL_LINK_SCRIPT};
+use crate::navigation::{
+    is_internal_navigation, open_externally, NEWS_EXTERNAL_LINK_SCRIPT, UNIT_DATABASE_EMBED_SCRIPT,
+};
 
 /// The first main window's label.
 pub(crate) const MAIN_LABEL: &str = "main";
@@ -61,7 +63,6 @@ pub(crate) fn main_window(app: &tauri::AppHandle) -> Option<tauri::WebviewWindow
 
 /// Whether `label` is the main window's. Only the crash recovery
 /// (`webview_recovery`, Windows only) has more than one.
-#[cfg(windows)]
 pub(crate) fn is_main(app: &tauri::AppHandle, label: &str) -> bool {
     current_label(app) == label
 }
@@ -80,6 +81,9 @@ fn trim_working_set() {
 /// Process-level window events: memory trimming on blur, and what closing
 /// does while a game is running ([`crate::exit`]).
 pub(crate) fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
+    if !is_main(window.app_handle(), window.label()) {
+        return;
+    }
     #[cfg(windows)]
     if matches!(event, tauri::WindowEvent::Focused(false)) {
         trim_working_set();
@@ -239,6 +243,7 @@ pub(crate) fn build_main(
         // recovery shows it (`webview_recovery`).
         .focused(build == Build::First)
         .initialization_script_for_all_frames(NEWS_EXTERNAL_LINK_SCRIPT)
+        .initialization_script_for_all_frames(UNIT_DATABASE_EMBED_SCRIPT)
         // The only navigation hook. A plugin carrying a second copy of
         // this used to be registered as well, and never ran: Tauri asks
         // the builder closure first (`manager::webview::prepare_pending_webview`)

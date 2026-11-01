@@ -377,7 +377,12 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 ) {
                     tracing::info!("refused a notification sound that is being removed or is gone");
                 }
-                (SettingsEvent::NotificationsChanged { preferences }, ())
+                (
+                    SettingsEvent::NotificationsChanged {
+                        preferences: Box::new(preferences),
+                    },
+                    (),
+                )
             });
             persist(ctx, out).await;
         }
@@ -637,10 +642,10 @@ async fn remove_notification_sound(name: &str, ctx: &ServiceCtx, out: &EventSink
         let current = &settings.notifications;
         let cleared = domain::without_custom_sound(&current.sounds, name).map(|sounds| {
             SettingsEvent::NotificationsChanged {
-                preferences: faf_domain::state::NotificationPreferences {
+                preferences: Box::new(faf_domain::state::NotificationPreferences {
                     sounds,
                     ..current.clone()
-                },
+                }),
             }
         });
         (cleared, ())

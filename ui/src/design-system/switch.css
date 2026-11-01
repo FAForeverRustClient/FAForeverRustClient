@@ -32,7 +32,12 @@
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-pill);
   box-sizing: border-box;
+  pointer-events: none;
   transition: background 120ms ease, border-color 120ms ease;
+}
+
+.switch input:disabled {
+  cursor: not-allowed;
 }
 
 .switch-track span {

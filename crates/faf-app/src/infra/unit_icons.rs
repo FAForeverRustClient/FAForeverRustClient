@@ -21,6 +21,8 @@
 //! with every picture in the background, so even the first session spends
 //! the decoding only once. The folder notes which archives it was filled
 //! from, their sizes and times, and starts over when one of them changes.
+//! It keeps the pictures' names as well, so a later session does not read
+//! the archives' directories at all unless a picture is missing.
 //!
 //! A strategic icon is grey in the archive, and the game draws it in the
 //! player's colour. The page shows it in its faction's, drawn here exactly as
@@ -184,13 +186,32 @@ struct Entry {
     index: usize,
 }
 
-/// Where every picture is in the archives, and where the decoded ones go.
-struct Catalog {
-    archives: Vec<Mutex<zip::ZipArchive<BufReader<File>>>>,
+/// The archives, open, and where every picture is in them: what decoding a
+/// picture needs.
+struct Archives {
+    zips: Vec<Mutex<zip::ZipArchive<BufReader<File>>>>,
     /// Every copy of a picture, FAF's first: one that does not decode falls
     /// back to the base game's.
     units: BTreeMap<String, Vec<Entry>>,
     strategic: BTreeMap<String, Vec<Entry>>,
+}
+
+/// The pictures the install has, and where the decoded ones go.
+///
+/// Reading the archives' directories is most of a first ask: the base game's
+/// `textures.scd` is half a gigabyte, and listing it took seconds in a debug
+/// build, before the page could draw a single icon, even with every picture
+/// already decoded in the cache folder. So the names are kept in that folder
+/// beside the pictures, and a later session answers from them and opens the
+/// archives only when a picture is missing from the folder.
+struct Catalog {
+    /// The archives pictures are read from, the base game's first.
+    sources: Vec<PathBuf>,
+    /// Opened on first need, at most once.
+    archives: OnceLock<Archives>,
+    /// The names the page can ask for: upper-case unit ids, strategic icons.
+    units: Vec<String>,
+    strategic: Vec<String>,
     /// The folder of decoded pictures, when there is a cache folder.
     cache: Option<PathBuf>,
     /// The pictures no copy of which decodes, so they are not tried again.
@@ -231,8 +252,8 @@ pub fn unit_icons(game_path: &str) -> UnitIcons {
         }
     };
     UnitIcons {
-        units: catalog.units.keys().cloned().collect(),
-        strategic: catalog.strategic.keys().cloned().collect(),
+        units: catalog.units.clone(),
+        strategic: catalog.strategic.clone(),
     }
 }
 
@@ -261,30 +282,66 @@ pub(super) fn install_dir_of(game_path: &str) -> Option<PathBuf> {
 }
 
 fn read_catalog(base: Option<PathBuf>, faf: Option<PathBuf>, cache: Option<PathBuf>) -> Catalog {
-    let archives: Vec<PathBuf> = [base, faf].into_iter().flatten().collect();
-    let mut catalog = Catalog {
-        archives: Vec::new(),
-        units: BTreeMap::new(),
-        strategic: BTreeMap::new(),
-        cache: cache.filter(|folder| prepare_cache(folder, &archives)),
+    let sources: Vec<PathBuf> = [base, faf].into_iter().flatten().collect();
+    let cache = cache.filter(|folder| prepare_cache(folder, &sources));
+    // The folder is emptied whenever an archive changes, so names found in it
+    // are the archives' names.
+    if let Some((units, strategic)) = cache.as_deref().and_then(read_names) {
+        return Catalog {
+            sources,
+            archives: OnceLock::new(),
+            units,
+            strategic,
+            cache,
+            broken: Mutex::default(),
+        };
+    }
+    let archives = Archives::open(&sources);
+    let units: Vec<String> = archives.units.keys().cloned().collect();
+    let strategic: Vec<String> = archives.strategic.keys().cloned().collect();
+    if let Some(folder) = cache.as_deref() {
+        write_names(folder, &units, &strategic);
+    }
+    Catalog {
+        sources,
+        archives: OnceLock::from(archives),
+        units,
+        strategic,
+        cache,
         broken: Mutex::default(),
-    };
-    // The base game first, then FAF's copies in front of it.
-    for archive in archives {
-        if let Err(error) = catalog.add_archive(&archive) {
-            tracing::warn!(archive = %archive.display(), %error, "could not read unit icons");
+    }
+}
+
+/// The names file in the cache folder: a line per picture, `unit\tUEL0201` or
+/// `strategic\ticon_land1_directfire`.
+const NAMES_FILE: &str = "names.txt";
+
+fn read_names(folder: &Path) -> Option<(Vec<String>, Vec<String>)> {
+    let text = std::fs::read_to_string(folder.join(NAMES_FILE)).ok()?;
+    let (mut units, mut strategic) = (Vec::new(), Vec::new());
+    for line in text.lines() {
+        match line.split_once('\t')? {
+            ("unit", name) => units.push(name.to_owned()),
+            ("strategic", name) => strategic.push(name.to_owned()),
+            _ => return None,
         }
     }
-    for (one, other) in SHARED_ICONS {
-        for (missing, present) in [(one, other), (other, one)] {
-            if !catalog.units.contains_key(missing) {
-                if let Some(copies) = catalog.units.get(present).cloned() {
-                    catalog.units.insert(missing.to_owned(), copies);
-                }
-            }
-        }
+    Some((units, strategic))
+}
+
+fn write_names(folder: &Path, units: &[String], strategic: &[String]) {
+    let text: String = units
+        .iter()
+        .map(|name| format!("unit\t{name}\n"))
+        .chain(strategic.iter().map(|name| format!("strategic\t{name}\n")))
+        .collect();
+    // Written beside and moved in, so a session starting at the same time
+    // never reads half the list.
+    let file = folder.join(NAMES_FILE);
+    let partial = file.with_extension(format!("{:?}.part", std::thread::current().id()));
+    if std::fs::write(&partial, text).is_err() || std::fs::rename(&partial, &file).is_err() {
+        let _ = std::fs::remove_file(&partial);
     }
-    catalog
 }
 
 /// What the cache folder was filled from: each archive's path, size and time
@@ -341,11 +398,35 @@ fn cache_file(folder: &Path, picture: Picture) -> Option<PathBuf> {
     Some(folder.join(format!("{}.png", picture.address())))
 }
 
-impl Catalog {
+impl Archives {
+    fn open(sources: &[PathBuf]) -> Self {
+        let mut archives = Archives {
+            zips: Vec::new(),
+            units: BTreeMap::new(),
+            strategic: BTreeMap::new(),
+        };
+        // The base game first, then FAF's copies in front of it.
+        for archive in sources {
+            if let Err(error) = archives.add_archive(archive) {
+                tracing::warn!(archive = %archive.display(), %error, "could not read unit icons");
+            }
+        }
+        for (one, other) in SHARED_ICONS {
+            for (missing, present) in [(one, other), (other, one)] {
+                if !archives.units.contains_key(missing) {
+                    if let Some(copies) = archives.units.get(present).cloned() {
+                        archives.units.insert(missing.to_owned(), copies);
+                    }
+                }
+            }
+        }
+        archives
+    }
+
     fn add_archive(&mut self, archive: &Path) -> Result<(), String> {
         let file = File::open(archive).map_err(|e| e.to_string())?;
         let zip = zip::ZipArchive::new(BufReader::new(file)).map_err(|e| e.to_string())?;
-        let number = self.archives.len();
+        let number = self.zips.len();
         for index in 0..zip.len() {
             let Some(Ok(name)) = zip.name_for_index(index) else {
                 continue;
@@ -381,10 +462,31 @@ impl Catalog {
                 },
             );
         }
-        self.archives.push(Mutex::new(zip));
+        self.zips.push(Mutex::new(zip));
         Ok(())
     }
 
+    fn decode(&self, entry: Entry) -> Option<DecodedImage> {
+        // Only the read holds the archive: the decode runs beside the others.
+        let bytes = {
+            let mut archive = self
+                .zips
+                .get(entry.archive)?
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
+            let mut file = archive.by_index(entry.index).ok()?;
+            if file.size() > MAX_ICON_BYTES {
+                return None;
+            }
+            let mut bytes = Vec::new();
+            file.read_to_end(&mut bytes).ok()?;
+            bytes
+        };
+        decode_dds(&bytes).ok()
+    }
+}
+
+impl Catalog {
     fn png(&self, picture: Picture) -> Option<Vec<u8>> {
         let Picture { kind, key, faction } = picture;
         let file = self
@@ -403,14 +505,15 @@ impl Catalog {
         {
             return None;
         }
+        let archives = self.archives.get_or_init(|| Archives::open(&self.sources));
         let copies = match kind {
-            Kind::Unit => self.units.get(key),
-            Kind::Strategic => self.strategic.get(key),
+            Kind::Unit => archives.units.get(key),
+            Kind::Strategic => archives.strategic.get(key),
         };
         let Some(mut image) = copies
             .into_iter()
             .flatten()
-            .find_map(|entry| self.decode(*entry))
+            .find_map(|entry| archives.decode(*entry))
         else {
             self.broken
                 .lock()
@@ -439,13 +542,14 @@ impl Catalog {
             return;
         };
         // The units, then each strategic icon in each faction's colour: the
-        // grey ones the page never asks for.
-        let units = self.units.keys().map(|key| Picture {
+        // grey ones the page never asks for. A folder that has them all never
+        // opens the archives.
+        let units = self.units.iter().map(|key| Picture {
             kind: Kind::Unit,
             key,
             faction: None,
         });
-        let strategic = self.strategic.keys().flat_map(|key| {
+        let strategic = self.strategic.iter().flat_map(|key| {
             (0..FACTION_COLOURS.len()).map(move |index| Picture {
                 kind: Kind::Strategic,
                 key,
@@ -457,25 +561,6 @@ impl Catalog {
                 self.png(picture);
             }
         }
-    }
-
-    fn decode(&self, entry: Entry) -> Option<DecodedImage> {
-        // Only the read holds the archive: the decode runs beside the others.
-        let bytes = {
-            let mut archive = self
-                .archives
-                .get(entry.archive)?
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner);
-            let mut file = archive.by_index(entry.index).ok()?;
-            if file.size() > MAX_ICON_BYTES {
-                return None;
-            }
-            let mut bytes = Vec::new();
-            file.read_to_end(&mut bytes).ok()?;
-            bytes
-        };
-        decode_dds(&bytes).ok()
     }
 }
 
@@ -574,10 +659,7 @@ mod tests {
             png(Kind::Unit, "UAL0101").is_some(),
             "a copy in FAF's archive that does not decode falls back to the base game's"
         );
-        assert_eq!(
-            catalog.strategic.keys().collect::<Vec<_>>(),
-            ["icon_land1_directfire"]
-        );
+        assert_eq!(catalog.strategic, ["icon_land1_directfire"]);
         assert_eq!(png(Kind::Strategic, "icon_land1_directfire_over"), None);
     }
 
@@ -619,6 +701,55 @@ mod tests {
         let catalog = read_catalog(None, Some(faf), Some(cache.clone()));
         assert!(!file.exists());
         assert_eq!(catalog.png(unit("UEL0201")), Some(png));
+    }
+
+    #[test]
+    fn a_later_session_names_the_pictures_without_opening_the_archives() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = dir.path().join("unit-icons");
+        let faf = archive(
+            dir.path(),
+            "textures.nx2",
+            &[
+                (
+                    "textures/ui/common/icons/units/uel0201_icon.dds",
+                    dds_4x4_red(),
+                ),
+                (
+                    "textures/ui/common/icons/units/ZEB9501_icon.dds",
+                    dds_4x4_red(),
+                ),
+                (
+                    "textures/ui/common/game/strategicicons/icon_land1_directfire_rest.dds",
+                    dds_4x4_red(),
+                ),
+            ],
+        );
+        let first = read_catalog(None, Some(faf.clone()), Some(cache.clone()));
+        let (units, strategic) = (first.units.clone(), first.strategic.clone());
+        assert!(
+            units.iter().any(|unit| unit == "UEB0201"),
+            "shared pictures are named too"
+        );
+        first.fill_cache();
+        drop(first);
+
+        let later = read_catalog(None, Some(faf), Some(cache.clone()));
+        assert_eq!((&later.units, &later.strategic), (&units, &strategic));
+        later.fill_cache();
+        assert!(
+            later.archives.get().is_none(),
+            "a full folder never opens the archives"
+        );
+        assert!(later.png(unit("UEL0201")).is_some());
+        assert!(later.archives.get().is_none());
+
+        // A picture missing from the folder opens them, once, and is decoded.
+        std::fs::remove_file(cache.join("unit-UEL0201.png")).unwrap();
+        assert!(later
+            .png(unit("UEL0201"))
+            .is_some_and(|png| png.starts_with(b"\x89PNG")));
+        assert!(later.archives.get().is_some());
     }
 
     fn unit(key: &str) -> Picture<'_> {

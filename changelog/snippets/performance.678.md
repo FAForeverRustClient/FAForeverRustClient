@@ -1,0 +1,13 @@
+- Superseded map, mod, replay and rating searches stop when a new search starts.
+- Player search stops work for superseded queries.
+- Filtered online replay pages resume scanning where the previous page stopped.
+- Sorting shared-player replay results reuses the matching games.
+- Local replay note and tag searches avoid rescanning every note for each file.
+- Unit comparisons share a download limit.
+- Removing a unit from a comparison cancels its unfinished history download.
+- Shared-player replay searches read two player histories at once and stop when no shared games remain.
+- Calendar searches reuse the expanded event feed.
+- Chat search avoids reformatting message bodies without changed highlights.
+- Changelog searches scan the cache folder less often.
+- Unit comparisons reuse parsed unit and projectile archives.
+- Tournament polling pauses while the client is hidden or a game is running.

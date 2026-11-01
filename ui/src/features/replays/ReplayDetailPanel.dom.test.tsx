@@ -1,8 +1,7 @@
 // @vitest-environment happy-dom
 //
-// The replay panel's enlarged map preview is drawn in the panel's own markup
-// and registers its own overlay layer, so Escape has two things to close and
-// must close them one at a time, the preview first.
+// The replay panel's enlarged map preview is a nested Modal, so Escape must
+// close only the top dialog and leave the replay panel open.
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";

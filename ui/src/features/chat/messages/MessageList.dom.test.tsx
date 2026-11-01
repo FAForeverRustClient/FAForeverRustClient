@@ -4,7 +4,7 @@
 // every conversation. A conversation opened after a press must not take that
 // earlier press as its own and open its search with the caret in it.
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { initialState } from "../../../testing/mounted";
 import { MessageList } from "./MessageList";
@@ -33,20 +33,44 @@ describe("the conversation search", () => {
   });
 });
 
-it("skips rows for unrelated profiles and redraws them when relationships change", () => {
+it("updates relationship colors without reparsing unchanged message bodies", () => {
   const state = initialState();
   const messages: ChatMessage[] = [{ id: "one", sender: "Sender", content: "hello", kind: "message", timestamp: "2026-01-01T12:00:00Z" }];
   const users: never[] = [];
   const noop = () => {};
+  const preferences = { ...state.settings.chat, nameColors: { ...state.settings.chat.nameColors, friends: "#123456" } };
   const list = (social: typeof state.social) => <MessageList messages={messages} self="Self"
     emptyLabel="Empty" onNickClick={noop} onNickContextMenu={noop} showTimestamps use24HourTime
-    users={users} social={social} preferences={state.settings.chat} />;
+    users={users} social={social} preferences={preferences} />;
   const row = vi.spyOn(format, "renderBody");
   const view = render(list(state.social));
   row.mockClear();
   view.rerender(list({ ...state.social, players: [...state.social.players] }));
   expect(row).not.toHaveBeenCalled();
   view.rerender(list({ ...state.social, friends: [...state.social.friends, "Sender"] }));
-  expect(row).toHaveBeenCalledOnce();
+  expect(row).not.toHaveBeenCalled();
+  expect(view.container.querySelector<HTMLElement>(".chat-message-body")?.style.color).toBe("#123456");
+  row.mockRestore();
+});
+
+it("searches older messages while leaving nonmatching message bodies alone", () => {
+  const state = initialState();
+  const messages: ChatMessage[] = Array.from({ length: 200 }, (_, index) => ({
+    id: String(index), sender: "Sender", content: index === 0 ? "needle in an older message" : `ordinary ${index}`,
+    kind: "message", timestamp: "2026-01-01T12:00:00Z",
+  }));
+  const list = (searchRequest: number) => <MessageList messages={messages} self="Me" emptyLabel="Empty"
+    onNickClick={() => {}} onNickContextMenu={() => {}} showTimestamps={false} use24HourTime users={[]}
+    social={state.social} preferences={state.settings.chat} searchRequest={searchRequest} />;
+  const row = vi.spyOn(format, "renderBody");
+  const view = render(list(0));
+  view.rerender(list(1));
+  const input = view.getByRole("textbox");
+  fireEvent.change(input, { target: { value: "need" } });
+  row.mockClear();
+  fireEvent.change(input, { target: { value: "needle" } });
+  expect(row).toHaveBeenCalledTimes(1);
+  expect(view.container.querySelector(".chat-search-hit")?.textContent).toBe("needle");
+  expect(view.getByRole("log").textContent).toContain("ordinary 100");
   row.mockRestore();
 });

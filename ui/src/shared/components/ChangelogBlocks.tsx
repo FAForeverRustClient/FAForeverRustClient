@@ -60,27 +60,64 @@ export function ChangelogSpans({ spans }: { spans: ChangelogSpan[] }) {
   );
 }
 
-export function ChangelogListItems({ items, anchorId }: { items: ChangelogListItem[]; anchorId?: string }) {
+/** The client's attribution under a note bundled from the archive, worded in
+ * the reader's language: the backend sends only where it came from. */
+function ChangelogProvenance({ sourceUrl, evidenceUrl, anchorId }: {
+  sourceUrl: string; evidenceUrl: string; anchorId?: string;
+}) {
+  const { t } = useTranslation();
+  const link = (url: string, text: string) => (
+    <button type="button" className="changelog-link" title={changelogLinkTarget(url)} onClick={() => ipc.run(openChangelogLink(url))}>
+      {text}
+    </button>
+  );
   return (
-    <ul id={anchorId} className="changelog-list">
-      {items.map((item, index) => (
-        <li key={index}>
-          {item.change ? (
-            // A value change reads as a diff, the way the site styles it: the
-            // strike and the arrow say which is which before the colour does.
-            <span className="changelog-change">
-              <span className="changelog-change-label">{item.change.label}</span>
-              <span className="changelog-old">{item.change.old}</span>
-              <Icon name="arrowRight" size={12} />
-              <span className="changelog-new">{item.change.new}</span>
-            </span>
-          ) : (
-            <ChangelogSpans spans={item.spans} />
-          )}
-          {item.children.length > 0 && <ChangelogListItems items={item.children} />}
-        </li>
-      ))}
-    </ul>
+    <p id={anchorId} className="changelog-provenance">
+      {link(sourceUrl, t("changelog.provenance.source"))}
+      {evidenceUrl && <>{" · "}{link(evidenceUrl, t("changelog.provenance.evidence"))}</>}
+      <span className="changelog-provenance-note">{t("changelog.provenance.editorial")}</span>
+    </p>
+  );
+}
+
+export function ChangelogListItems({ items, anchorId }: { items: ChangelogListItem[]; anchorId?: string }) {
+  // Adjacent child lists can mix bullets and numbered instructions. Retain
+  // each item's published number, including explicit restarts and skipped values.
+  const groups: ChangelogListItem[][] = [];
+  for (const item of items) {
+    const previous = groups[groups.length - 1];
+    if (previous && (previous[0].ordinal != null) === (item.ordinal != null)) previous.push(item);
+    else groups.push([item]);
+  }
+  if (groups.length === 0) return <ul id={anchorId} className="changelog-list" />;
+  return (
+    <>
+      {groups.map((group, groupIndex) => {
+        const List = group[0].ordinal != null ? "ol" : "ul";
+        return (
+          <List key={groupIndex} id={groupIndex === 0 ? anchorId : undefined}
+            className="changelog-list" start={group[0].ordinal ?? undefined}>
+            {group.map((item, index) => (
+              <li key={index} value={item.ordinal ?? undefined}>
+                {item.change ? (
+                  // A value change reads as a diff, the way the site styles it: the
+                  // strike and the arrow say which is which before the colour does.
+                  <span className="changelog-change">
+                    <span className="changelog-change-label">{item.change.label}</span>
+                    <span className="changelog-old">{item.change.old}</span>
+                    <Icon name="arrowRight" size={12} />
+                    <span className="changelog-new">{item.change.new}</span>
+                  </span>
+                ) : (
+                  <ChangelogSpans spans={item.spans} />
+                )}
+                {item.children.length > 0 && <ChangelogListItems items={item.children} />}
+              </li>
+            ))}
+          </List>
+        );
+      })}
+    </>
   );
 }
 
@@ -188,11 +225,13 @@ export function ChangelogBlockView({ block, anchorId, headingOffset = 0, icons, 
       return <HistoricalBalance block={block} anchorId={anchorId} />;
     case "codeBlock":
       return <ChangelogCodeBlock key={block.payload.text} text={block.payload.text} anchorId={anchorId} />;
+    case "provenance":
+      return <ChangelogProvenance sourceUrl={block.payload.sourceUrl} evidenceUrl={block.payload.evidenceUrl} anchorId={anchorId} />;
     default: {
       if (captionHeadingLevel !== undefined) {
         const level = Math.min(Math.max(captionHeadingLevel + headingOffset, 2), 6);
         const Tag = `h${level}` as "h2" | "h3" | "h4" | "h5" | "h6";
-        return <Tag id={anchorId} className={`changelog-heading changelog-heading-${level} changelog-illustrated-caption`}>
+        return <Tag id={anchorId} className={`changelog-heading changelog-heading-${level}${illustrations ? " changelog-illustrated-caption" : ""}`}>
           {illustrations}<span><ChangelogSpans spans={block.payload.spans} /></span>
         </Tag>;
       }

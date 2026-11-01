@@ -1,7 +1,7 @@
 import type { AppearancePreferencesPatch, ChatPreferencesPatch, UiDensity } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
-import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { SettingRow, SettingsGroup, SettingsSwitch } from "./SettingControls";
 import { ChatNameColorSettings } from "./ChatNameColorSettings";
 import { ThemePicker } from "./ThemePicker";
 import { BackgroundSettings } from "./BackgroundSettings";
@@ -117,199 +117,207 @@ export function AppearanceSettingsSection() {
 
   return (
     <>
-      <div className="setting-block">
-        <span className="setting-label">{t("settings.appearance.theme")}</span>
-        <ThemePicker />
-      </div>
-      <BackgroundSettings />
-      <SettingRow label={t("settings.appearance.interfaceDensity")}>
-        <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.interfaceDensity")}>
-          {(["compact", "comfortable"] as UiDensity[]).map((density) => (
-            <button
-              type="button"
-              key={density}
-              className={preferences.density === density ? "is-active" : ""}
-              aria-pressed={preferences.density === density}
-              onClick={() => void save({ density })}
-            >
-              {t(density === "compact" ? "settings.appearance.compact" : "settings.appearance.comfortable")}
-            </button>
-          ))}
+      <SettingsGroup>
+        <div className="setting-block">
+          <span className="setting-label">{t("settings.appearance.theme")}</span>
+          <ThemePicker />
         </div>
-      </SettingRow>
-      <SettingRow label={t("settings.appearance.interfaceScale")}>
-        <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.interfaceScale")}>
-          {UI_SCALES.map((scale) => (
-            <button
-              type="button"
-              key={scale}
-              className={preferences.uiScale === scale ? "is-active" : ""}
-              aria-pressed={preferences.uiScale === scale}
-              onClick={() => void save({ uiScale: scale })}
-            >
-              {scale}%
-            </button>
-          ))}
-        </div>
-      </SettingRow>
-      <SettingRow
-        label={t("settings.appearance.tileColumns")}
-        hint={t("settings.appearance.tileColumnsHint")}
-        warning={
-          tilesSqueezed && tileWidth !== null
-            ? t("settings.appearance.tileColumnsSqueezed", {
-                width: Math.floor(tileWidth),
-                fits: comfortableTileColumns(tileGridWidth),
-              })
-            : undefined
-        }
-      >
-        <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.tileColumns")}>
-          {TILE_COLUMN_OPTIONS.map((option) => {
-            const isActive = (preferences.gameTileColumns ?? 0) === option.value;
-            return (
+        <BackgroundSettings />
+      </SettingsGroup>
+      <SettingsGroup title={t("settings.appearance.group.layout")}>
+        <SettingRow label={t("settings.appearance.interfaceDensity")}>
+          <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.interfaceDensity")}>
+            {(["compact", "comfortable"] as UiDensity[]).map((density) => (
               <button
                 type="button"
-                key={option.value}
-                className={isActive ? "is-active" : ""}
-                aria-pressed={isActive}
-                onClick={() => void save({ gameTileColumns: option.value })}
+                key={density}
+                className={preferences.density === density ? "is-active" : ""}
+                aria-pressed={preferences.density === density}
+                onClick={() => void save({ density })}
               >
-                {"labelKey" in option ? t(option.labelKey) : option.label}
+                {t(density === "compact" ? "settings.appearance.compact" : "settings.appearance.comfortable")}
               </button>
-            );
-          })}
-        </div>
-      </SettingRow>
-      <SettingRow label={t("settings.appearance.vaultPageSize")}>
-        <div
-          className="settings-segmented surface"
-          role="group"
-          aria-label={t("settings.appearance.vaultPageSize")}
+            ))}
+          </div>
+        </SettingRow>
+        <SettingRow label={t("settings.appearance.interfaceScale")}>
+          <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.interfaceScale")}>
+            {UI_SCALES.map((scale) => (
+              <button
+                type="button"
+                key={scale}
+                className={preferences.uiScale === scale ? "is-active" : ""}
+                aria-pressed={preferences.uiScale === scale}
+                onClick={() => void save({ uiScale: scale })}
+              >
+                {scale}%
+              </button>
+            ))}
+          </div>
+        </SettingRow>
+        <SettingRow
+          label={t("settings.appearance.tileColumns")}
+          hint={t("settings.appearance.tileColumnsHint")}
+          warning={
+            tilesSqueezed && tileWidth !== null
+              ? t("settings.appearance.tileColumnsSqueezed", {
+                  width: Math.floor(tileWidth),
+                  fits: comfortableTileColumns(tileGridWidth),
+                })
+              : undefined
+          }
         >
-          {VAULT_PAGE_SIZE_OPTIONS.map((size) => (
-            <button
-              type="button"
-              key={size}
-              className={activePageSize === size ? "is-active" : ""}
-              aria-pressed={activePageSize === size}
-              onClick={() => void saveVaultPageSize(size)}
-            >
-              {size}
-            </button>
-          ))}
-        </div>
-      </SettingRow>
-      <SettingRow label={t("settings.appearance.sidebarWidth")}>
-        <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.sidebarWidth")}>
-          {SIDEBAR_WIDTH_OPTIONS.map((option) => {
-            const isActive = preferences.sidebarWidth === option.value;
-            return (
+          <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.tileColumns")}>
+            {TILE_COLUMN_OPTIONS.map((option) => {
+              const isActive = (preferences.gameTileColumns ?? 0) === option.value;
+              return (
+                <button
+                  type="button"
+                  key={option.value}
+                  className={isActive ? "is-active" : ""}
+                  aria-pressed={isActive}
+                  onClick={() => void save({ gameTileColumns: option.value })}
+                >
+                  {"labelKey" in option ? t(option.labelKey) : option.label}
+                </button>
+              );
+            })}
+          </div>
+        </SettingRow>
+        <SettingRow label={t("settings.appearance.vaultPageSize")}>
+          <div
+            className="settings-segmented surface"
+            role="group"
+            aria-label={t("settings.appearance.vaultPageSize")}
+          >
+            {VAULT_PAGE_SIZE_OPTIONS.map((size) => (
               <button
                 type="button"
-                key={option.value}
-                className={isActive ? "is-active" : ""}
-                aria-pressed={isActive}
-                onClick={() => void save({ sidebarWidth: option.value })}
+                key={size}
+                className={activePageSize === size ? "is-active" : ""}
+                aria-pressed={activePageSize === size}
+                onClick={() => void saveVaultPageSize(size)}
               >
-                {t(option.labelKey)}
+                {size}
               </button>
-            );
-          })}
-        </div>
-      </SettingRow>
-      <SettingRow label={t("settings.appearance.replayFlags")}>
-        <SettingsSwitch
-          checked={preferences.replayFlags}
-          onChange={(replayFlags) => void save({ replayFlags })}
-          label={t("settings.appearance.replayFlags")}
-        />
-      </SettingRow>
-      <SettingRow
-        label={t("settings.appearance.hoverPanels")}
-        hint={t("settings.appearance.hoverPanelsHint")}
-      >
-        <SettingsSwitch
-          checked={preferences.hoverPanels}
-          onChange={(hoverPanels) => void save({ hoverPanels })}
+            ))}
+          </div>
+        </SettingRow>
+        <SettingRow label={t("settings.appearance.sidebarWidth")}>
+          <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.sidebarWidth")}>
+            {SIDEBAR_WIDTH_OPTIONS.map((option) => {
+              const isActive = preferences.sidebarWidth === option.value;
+              return (
+                <button
+                  type="button"
+                  key={option.value}
+                  className={isActive ? "is-active" : ""}
+                  aria-pressed={isActive}
+                  onClick={() => void save({ sidebarWidth: option.value })}
+                >
+                  {t(option.labelKey)}
+                </button>
+              );
+            })}
+          </div>
+        </SettingRow>
+        <SettingRow label={t("settings.appearance.replayFlags")}>
+          <SettingsSwitch
+            checked={preferences.replayFlags}
+            onChange={(replayFlags) => void save({ replayFlags })}
+            label={t("settings.appearance.replayFlags")}
+          />
+        </SettingRow>
+      </SettingsGroup>
+      <SettingsGroup title={t("settings.appearance.group.motion")}>
+        <SettingRow
           label={t("settings.appearance.hoverPanels")}
-        />
-      </SettingRow>
-      {preferences.hoverPanels && (
-        <>
-          <SettingRow label={t("settings.appearance.hoverOpenDelay")}>
-            <div
-              className="settings-segmented surface"
-              role="group"
-              aria-label={t("settings.appearance.hoverOpenDelay")}
-            >
-              {HOVER_OPEN_OPTIONS.map((option) => {
-                const isActive = preferences.hoverOpenDelayMs === option.value;
-                return (
-                  <button
-                    type="button"
-                    key={option.value}
-                    className={isActive ? "is-active" : ""}
-                    aria-pressed={isActive}
-                    onClick={() => void save({ hoverOpenDelayMs: option.value })}
-                  >
-                    {"labelKey" in option ? t(option.labelKey) : option.label}
-                  </button>
-                );
-              })}
-            </div>
-          </SettingRow>
-          <SettingRow label={t("settings.appearance.hoverCloseDelay")}>
-            <div
-              className="settings-segmented surface"
-              role="group"
-              aria-label={t("settings.appearance.hoverCloseDelay")}
-            >
-              {HOVER_CLOSE_OPTIONS.map((option) => {
-                const isActive = preferences.hoverCloseDelayMs === option.value;
-                return (
-                  <button
-                    type="button"
-                    key={option.value}
-                    className={isActive ? "is-active" : ""}
-                    aria-pressed={isActive}
-                    onClick={() => void save({ hoverCloseDelayMs: option.value })}
-                  >
-                    {"labelKey" in option ? t(option.labelKey) : option.label}
-                  </button>
-                );
-              })}
-            </div>
-          </SettingRow>
-        </>
-      )}
-      <SettingRow label={t("settings.appearance.reduceMotion")}>
-        <SettingsSwitch
-          checked={preferences.reduceMotion}
-          onChange={(reduceMotion) => void save({ reduceMotion })}
-          label={t("settings.appearance.reduceMotion")}
-        />
-      </SettingRow>
-      {/* The name colours, which are not a chat setting however they are
-          stored. `App` projects the friend and foe choices onto the document
-          root as `--color-friend` and `--color-foe`, and the only stylesheet
-          that consumes them is the lobby's: they paint the borders, badges and
-          player counts on the custom game tiles in the Play tab. Somebody who
-          recolours their friends is recolouring the client, and filing that
-          under Chat put it two registers away from what it visibly changes.
+          hint={t("settings.appearance.hoverPanelsHint")}
+        >
+          <SettingsSwitch
+            checked={preferences.hoverPanels}
+            onChange={(hoverPanels) => void save({ hoverPanels })}
+            label={t("settings.appearance.hoverPanels")}
+          />
+        </SettingRow>
+        {preferences.hoverPanels && (
+          <>
+            <SettingRow label={t("settings.appearance.hoverOpenDelay")}>
+              <div
+                className="settings-segmented surface"
+                role="group"
+                aria-label={t("settings.appearance.hoverOpenDelay")}
+              >
+                {HOVER_OPEN_OPTIONS.map((option) => {
+                  const isActive = preferences.hoverOpenDelayMs === option.value;
+                  return (
+                    <button
+                      type="button"
+                      key={option.value}
+                      className={isActive ? "is-active" : ""}
+                      aria-pressed={isActive}
+                      onClick={() => void save({ hoverOpenDelayMs: option.value })}
+                    >
+                      {"labelKey" in option ? t(option.labelKey) : option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </SettingRow>
+            <SettingRow label={t("settings.appearance.hoverCloseDelay")}>
+              <div
+                className="settings-segmented surface"
+                role="group"
+                aria-label={t("settings.appearance.hoverCloseDelay")}
+              >
+                {HOVER_CLOSE_OPTIONS.map((option) => {
+                  const isActive = preferences.hoverCloseDelayMs === option.value;
+                  return (
+                    <button
+                      type="button"
+                      key={option.value}
+                      className={isActive ? "is-active" : ""}
+                      aria-pressed={isActive}
+                      onClick={() => void save({ hoverCloseDelayMs: option.value })}
+                    >
+                      {"labelKey" in option ? t(option.labelKey) : option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </SettingRow>
+          </>
+        )}
+        <SettingRow label={t("settings.appearance.reduceMotion")}>
+          <SettingsSwitch
+            checked={preferences.reduceMotion}
+            onChange={(reduceMotion) => void save({ reduceMotion })}
+            label={t("settings.appearance.reduceMotion")}
+          />
+        </SettingRow>
+      </SettingsGroup>
+      <SettingsGroup title={t("settings.appearance.group.nameColors")}>
+        {/* The name colours, which are not a chat setting however they are
+            stored. `App` projects the friend and foe choices onto the document
+            root as `--color-friend` and `--color-foe`, and the only stylesheet
+            that consumes them is the lobby's: they paint the borders, badges and
+            player counts on the custom game tiles in the Play tab. Somebody who
+            recolours their friends is recolouring the client, and filing that
+            under Chat put it two registers away from what it visibly changes.
 
-          The generated-colour switch comes with them rather than staying
-          behind: it decides the colour of everyone the rules below do not
-          name, and splitting a rule from its fallback across two registers is
-          the arrangement this rewrite exists to end. */}
-      <SettingRow label={t("settings.chat.colorEveryName")}>
-        <SettingsSwitch
-          checked={chat.coloredNames}
-          onChange={(coloredNames) => void saveChat({ coloredNames })}
-          label={t("settings.chat.colorEveryName")}
-        />
-      </SettingRow>
-      <ChatNameColorSettings preferences={chat} onSave={(next) => void saveChat(next)} />
+            The generated-colour switch comes with them rather than staying
+            behind: it decides the colour of everyone the rules below do not
+            name, and splitting a rule from its fallback across two registers is
+            the arrangement this rewrite exists to end. */}
+        <SettingRow label={t("settings.chat.colorEveryName")}>
+          <SettingsSwitch
+            checked={chat.coloredNames}
+            onChange={(coloredNames) => void saveChat({ coloredNames })}
+            label={t("settings.chat.colorEveryName")}
+          />
+        </SettingRow>
+        <ChatNameColorSettings preferences={chat} onSave={(next) => void saveChat(next)} />
+      </SettingsGroup>
     </>
   );
 }

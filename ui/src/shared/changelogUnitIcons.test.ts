@@ -1,13 +1,38 @@
 import { describe, expect, it } from "vitest";
-import { changelogUnitIconId, changelogUnitIconUrl } from "./changelogUnitIcons";
+import { changelogUnitIconBackground, changelogUnitIconId, changelogUnitIconUrl } from "./changelogUnitIcons";
 
 const legacy = "https://raw.githubusercontent.com/FAForever/patchnotes/0d01e845da4d72173492751d153771ee17a0f079/images/";
 const clean = "https://faforever.github.io/fa/assets/icons/";
 
 describe("legacy changelog unit pictures", () => {
+  it.each([
+    ["UEB4301", "land"],
+    ["UEB0102", "air"],
+    ["UEB0103", "sea"],
+    ["UES0304", "sea"],
+    ["URL0401", "amph"],
+    ["UAL0001", "amph"],
+    ["UEL0203", "amph"],
+  ])("uses the blueprint's background for %s", (id, background) => {
+    expect(changelogUnitIconBackground(clean + id + "_icon.png")).toBe(background);
+  });
+
+  it("keeps the background tied to the original portrait", () => {
+    expect(changelogUnitIconBackground(legacy + "nukesub.png")).toBe("sea");
+    expect(changelogUnitIconBackground(clean + "ZZZ9999_icon.png")).toBeNull();
+    expect(changelogUnitIconBackground(legacy + "Enhancements/uef/teleport.png")).toBeNull();
+  });
+
   it("identifies local artwork from the picture rather than its caption", () => {
     expect(changelogUnitIconId(legacy + "nukesub.png")).toBe("UES0304");
     expect(changelogUnitIconId(clean + "UEL0303_icon.png")).toBe("UEL0303");
+  });
+
+  // Every unit with a recorded background must be reachable from its icon, or
+  // the record is dead weight and the unit falls back to web artwork.
+  it.each(["DALK003", "DELK002", "DRLK001", "DSLK004"])("identifies the T3 mobile anti-air unit %s", (id) => {
+    expect(changelogUnitIconId(clean + id + "_icon.png")).toBe(id);
+    expect(changelogUnitIconBackground(clean + id + "_icon.png")).toBe("land");
   });
 
   it.each([

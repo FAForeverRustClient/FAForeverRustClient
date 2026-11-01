@@ -20,6 +20,7 @@ import { useTranslation } from "../../i18n/useTranslation";
 import type { PathPreferences, PathPreferencesPatch } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { GamePathsSection } from "./GamePathsSection";
+import { SettingsGroup } from "./SettingControls";
 import { gameNeedsALaunchWrapper } from "../../shared/platform";
 
 /** The configurable directories, in the order the tab lists them. */
@@ -103,7 +104,7 @@ export function PathsSettingsSection() {
   const resolved = useAppStore((s) => s.state.install.resolved);
 
   return (
-    <div>
+    <SettingsGroup>
       {/* The executables first: nothing else here matters if the client
           cannot find a game to launch. */}
       <GamePathsSection />
@@ -144,6 +145,6 @@ export function PathsSettingsSection() {
           pick={() => native.selectDirectory(paths.winePrefix || resolved.winePrefix || undefined)}
         />
       )}
-    </div>
+    </SettingsGroup>
   );
 }

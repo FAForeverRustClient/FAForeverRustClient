@@ -19,7 +19,7 @@ const LOG_ISSUE_HELP: Record<LogIssue, string> = {
   soundDriver:
     "https://forum.faforever.com/topic/4084/solutions-for-snd-error-xact-invalid-arg-xact3dapply-failed",
 };
-import { SettingRow } from "./SettingControls";
+import { SettingRow, SettingsGroup } from "./SettingControls";
 import { useTranslation } from "../../i18n/useTranslation";
 
 /**
@@ -46,7 +46,7 @@ export function DiagnosticsSettingsSection() {
   };
 
   return (
-    <>
+    <SettingsGroup>
       <SettingRow label={t("settings.diagnostics.gameLogs")} hint={t("settings.diagnostics.gameLogsHint")}>
         <div className="settings-diagnostic-actions">
           <Button onClick={() => viewLatest("game")}>{t("settings.diagnostics.viewLatest")}</Button>
@@ -113,6 +113,6 @@ export function DiagnosticsSettingsSection() {
           </div>
         </Modal>
       )}
-    </>
+    </SettingsGroup>
   );
 }

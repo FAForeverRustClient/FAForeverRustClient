@@ -1,0 +1,4 @@
+- No visible changes: development builds unfold the year of a patch note opened from search again.
+- No visible changes: the translation check again flags untranslated sentences that end in a file name.
+- No visible changes: the early patch notes' unit and category icons apply only to the archived notes, never to a published note with the same number.
+- No visible changes: a new branch added to the patch list is refreshed like FAF Beta and FAF Develop rather than kept as an undated note.

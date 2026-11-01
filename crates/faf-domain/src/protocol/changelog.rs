@@ -72,16 +72,19 @@ pub struct ChangelogRelease {
 }
 
 impl ChangelogRelease {
-    /// Whether this is one of the two explicitly identified deployment branches.
-    /// An unknown historical date does not make a note a rolling branch.
+    /// Whether this is a deployment branch (today `fafbeta` and `fafdevelop`):
+    /// any release named by something other than a patch number, as the index
+    /// lists them. An unknown historical date does not make a note a rolling
+    /// branch, and the archive's legacy notes (`legacy-3605`) are not ones.
     ///
     /// Worth a name because the answer decides three separate things: which
     /// codec reads the note, whether the note may be cached at all, and whether
     /// the release is a candidate for "open on the newest patch". A dated post
     /// is finished the day it is published; a branch page is rewritten every
-    /// time something is deployed to that branch.
+    /// time something is deployed to that branch, so a branch the index adds
+    /// later must not be read and cached as a post.
     pub fn is_rolling(&self) -> bool {
-        matches!(self.id.as_str(), "fafbeta" | "fafdevelop")
+        !self.id.starts_with("legacy-") && !self.id.bytes().all(|byte| byte.is_ascii_digit())
     }
 }
 
@@ -132,6 +135,10 @@ pub struct ChangelogChange {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangelogListItem {
+    /// The published number in an ordered list. Missing in old caches; null for bullets.
+    #[serde(default)]
+    #[specta(optional)]
+    pub ordinal: Option<i32>,
     pub spans: Vec<ChangelogSpan>,
     /// Set instead of `spans` carrying the whole line when it is a value change.
     pub change: Option<ChangelogChange>,
@@ -172,6 +179,16 @@ pub enum ChangelogBlock {
         source_url: String,
         blocks: Vec<ChangelogBlock>,
         unavailable: bool,
+    },
+    /// The client's own attribution under a note bundled from the archive:
+    /// where it came from, the evidence for its date, and that its spacing
+    /// was tidied. Data rather than prose, so the reader's language words it,
+    /// and never part of the note's text: the archive search skips it.
+    #[serde(rename_all = "camelCase")]
+    Provenance {
+        source_url: String,
+        /// Empty when the release date rests on no separate evidence.
+        evidence_url: String,
     },
 }
 
@@ -434,7 +451,8 @@ pub fn parse_release_notes(markdown: &str, issue_base: &str) -> Vec<ChangelogBlo
             ChangelogBlock::Heading { .. }
             | ChangelogBlock::Unit { .. }
             | ChangelogBlock::CodeBlock { .. }
-            | ChangelogBlock::HistoricalBalance { .. } => {}
+            | ChangelogBlock::HistoricalBalance { .. }
+            | ChangelogBlock::Provenance { .. } => {}
         }
     }
     blocks
@@ -778,7 +796,17 @@ fn append_at_depth(
 }
 
 fn build_item(text: &str) -> ChangelogListItem {
+    // 3772 doubled the Markdown markers on five wall changes. Remove only
+    // extra markers before a complete stat change, never signs on its values.
+    let mut text = text;
+    while let Some(unmarked) = text.strip_prefix("- ") {
+        if parse_change(unmarked).is_none() {
+            break;
+        }
+        text = unmarked.trim_start();
+    }
     ChangelogListItem {
+        ordinal: None,
         change: parse_change(text),
         spans: parse_spans(text),
         children: Vec::new(),
@@ -1539,7 +1567,7 @@ fn parse_html_blocks(html: &str) -> Vec<ChangelogBlock> {
                 text: preformatted_html_text(element.inner),
             }),
             "ul" | "ol" => {
-                let items = parse_html_items(element.inner);
+                let items = parse_html_items(element.inner, list_ordinal(&element));
                 if !items.is_empty() {
                     blocks.push(ChangelogBlock::List { items });
                 }
@@ -1619,22 +1647,37 @@ fn unit_id_from_icon(src: &str) -> Option<String> {
     (!id.is_empty()).then(|| id.to_string())
 }
 
-fn parse_html_items(html: &str) -> Vec<ChangelogListItem> {
+fn list_ordinal(element: &Element<'_>) -> Option<i32> {
+    (element.name == "ol").then(|| {
+        attribute(element.open_tag, "start")
+            .and_then(|value| value.parse().ok())
+            .unwrap_or(1)
+    })
+}
+
+fn parse_html_items(html: &str, mut ordinal: Option<i32>) -> Vec<ChangelogListItem> {
     let mut items = Vec::new();
     let mut rest = html;
 
     while let Some(element) = next_element(rest) {
         if element.name == "li" {
             let own = own_content(element.inner);
+            if ordinal.is_some() {
+                ordinal = attribute(element.open_tag, "value")
+                    .and_then(|value| value.parse().ok())
+                    .or(ordinal);
+            }
             items.push(ChangelogListItem {
+                ordinal,
                 change: parse_html_change(&own),
                 spans: parse_html_spans(&own),
                 children: nested_items(element.inner),
             });
+            ordinal = ordinal.map(|value| value.saturating_add(1));
         } else if element.name == "ul" || element.name == "ol" {
             // Older pages sometimes close the category's li before its list.
             // Keep that following list under the preceding category.
-            let nested = parse_html_items(element.inner);
+            let nested = parse_html_items(element.inner, list_ordinal(&element));
             if let Some(previous) = items.last_mut() {
                 previous.children.extend(nested);
             } else {
@@ -1683,7 +1726,7 @@ fn nested_items(html: &str) -> Vec<ChangelogListItem> {
 
     while let Some(element) = next_element(rest) {
         if element.name == "ul" || element.name == "ol" {
-            items.extend(parse_html_items(element.inner));
+            items.extend(parse_html_items(element.inner, list_ordinal(&element)));
         }
         rest = element.after;
     }
@@ -1886,6 +1929,68 @@ fn decode_entities(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ordered_html_lists_keep_numbers_at_each_depth_and_explicit_restarts() {
+        let blocks = parse_html_blocks(
+            r#"<ol start="3"><li>Third<ul><li>Bullet</li></ul><ol start="0"><li>Zero</li><li value="4">Four</li><li>Five</li></ol></li><li value="8">Eighth</li><li>Ninth</li></ol>"#,
+        );
+        let [ChangelogBlock::List { items }] = blocks.as_slice() else {
+            panic!("{blocks:?}");
+        };
+        assert_eq!(
+            items.iter().map(|item| item.ordinal).collect::<Vec<_>>(),
+            [Some(3), Some(8), Some(9)]
+        );
+        assert_eq!(
+            items[0]
+                .children
+                .iter()
+                .map(|item| item.ordinal)
+                .collect::<Vec<_>>(),
+            [None, Some(0), Some(4), Some(5)]
+        );
+        let legacy: ChangelogListItem =
+            serde_json::from_str(r#"{"spans":[],"change":null,"children":[]}"#).unwrap();
+        assert_eq!(legacy.ordinal, None, "older snapshots remain readable");
+        let encoded = serde_json::to_string(&items[0]).unwrap();
+        assert_eq!(
+            serde_json::from_str::<ChangelogListItem>(&encoded).unwrap(),
+            items[0]
+        );
+    }
+
+    #[test]
+    fn doubled_wall_bullets_do_not_change_stat_values_or_literal_minus_signs() {
+        // Published 3772 wall changes, including the author's unknown old value X.
+        let blocks = parse_blocks("- - Health: X -> 500\n- - Health regeneration: X -> 0\n- - Build time: 20 -> 15\n- - Mass costs: 2 -> 3\n- - Energy costs: 10 -> 20\n- Energy drain: -5 -> -10\n- - Keep this literal prose");
+        let [ChangelogBlock::List { items }] = blocks.as_slice() else {
+            panic!("{blocks:?}");
+        };
+        assert_eq!(items.len(), 7);
+        for (item, (label, old, new)) in items.iter().zip([
+            ("Health", "X", "500"),
+            ("Health regeneration", "X", "0"),
+            ("Build time", "20", "15"),
+            ("Mass costs", "2", "3"),
+            ("Energy costs", "10", "20"),
+            ("Energy drain", "-5", "-10"),
+        ]) {
+            assert_eq!(
+                item.change,
+                Some(ChangelogChange {
+                    label: label.into(),
+                    old: old.into(),
+                    new: new.into()
+                })
+            );
+            assert!(item.ordinal.is_none());
+        }
+        assert_eq!(
+            items[6].spans,
+            [ChangelogSpan::Text("- Keep this literal prose".into())]
+        );
+    }
 
     #[test]
     fn markdown_headings_distinguish_issue_numbers_from_legacy_titles() {
@@ -2152,6 +2257,18 @@ mod tests {
         );
         assert_eq!(branch.source_url, branch.web_url);
         assert!(branch.is_rolling());
+        // A branch the index adds later is read and refreshed as a branch, not
+        // parsed as a post and cached; the archive's legacy notes are not ones.
+        let added = ChangelogRelease {
+            id: "fafexperimental".into(),
+            ..branch.clone()
+        };
+        assert!(added.is_rolling());
+        let legacy = ChangelogRelease {
+            id: "legacy-3605".into(),
+            ..branch.clone()
+        };
+        assert!(!legacy.is_rolling());
 
         let latest = &releases[1];
         assert_eq!(latest.id, "3837");
@@ -2454,9 +2571,11 @@ mod tests {
             );
         }
         let mut item = ChangelogListItem {
+            ordinal: None,
             spans: vec![ChangelogSpan::Text("Soul Ripper (URA0401)".into())],
             change: None,
             children: vec![ChangelogListItem {
+                ordinal: None,
                 spans: vec![ChangelogSpan::Text("Health: 1 -> 2".into())],
                 change: parse_change("Health: 1 -> 2"),
                 children: Vec::new(),
@@ -2464,6 +2583,7 @@ mod tests {
         };
         for _ in 0..40 {
             item = ChangelogListItem {
+                ordinal: None,
                 spans: vec![ChangelogSpan::Text("Group".into())],
                 change: None,
                 children: vec![item],

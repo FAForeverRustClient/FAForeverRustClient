@@ -245,6 +245,13 @@ export const MessageList = memo(function MessageList({
       .filter((message) => `${message.sender}\n${message.content}`.toLocaleLowerCase().includes(query))
       .map((message) => message.id);
   }, [messages, search]);
+  const highlightedIds = useMemo(() => {
+    const query = search.trim();
+    if (!searchOpen || !query) return new Set<string>();
+    const literal = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(literal, "i");
+    return new Set(messages.filter(message => pattern.test(message.content)).map(message => message.id));
+  }, [messages, search, searchOpen]);
   const normalizedMatch = matchingIds.length === 0 ? -1 : Math.min(activeMatch, matchingIds.length - 1);
   const activeMessageId = normalizedMatch >= 0 ? matchingIds[normalizedMatch] : null;
 
@@ -398,7 +405,7 @@ export const MessageList = memo(function MessageList({
               profile={profilesByName.get(message.sender.toLowerCase())}
               social={relations}
               preferences={preferences}
-              search={searchOpen ? search : ""}
+              search={highlightedIds.has(message.id) ? search : ""}
               activeSearchMatch={message.id === activeMessageId}
               registerRow={registerRow}
               onNickClick={onNickClick}
@@ -493,7 +500,9 @@ const Line = memo(function Line({
   const { t } = useTranslation();
   const time = withTime ? formatTime(message.timestamp, use24HourTime) : "";
   const fromSelf = !!self && message.sender === self;
-  const body = renderBody(message.content, self, search, onGameLink, pings, fromSelf);
+  const body = useMemo(() => renderBody(message.content, self, search, onGameLink, pings, fromSelf, t),
+    // The translation function changes with the locale, as do link tooltips.
+    [message.content, self, search, onGameLink, pings, fromSelf, t]);
   const nameStyle = resolvedNickStyle(message.sender, user, social, preferences, self);
   const extraActions = lineActions?.(message);
 

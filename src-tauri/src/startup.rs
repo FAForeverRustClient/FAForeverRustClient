@@ -309,6 +309,12 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
         loop {
             match events.recv().await {
                 Ok(event) => {
+                    if matches!(
+                        &event.event,
+                        AppEvent::Notifications(_) | AppEvent::Settings(_)
+                    ) {
+                        crate::notification_popup::refresh(&handle);
+                    }
                     #[cfg(windows)]
                     if matches!(
                         event.event,
@@ -334,7 +340,12 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
                         handle.request_restart();
                         return;
                     }
-                    let _ = handle.emit(
+                    let _ = handle.emit_to(
+                        tauri::EventTarget::webview_window(
+                            crate::window::main_window(&handle)
+                                .map(|w| w.label().to_string())
+                                .unwrap_or_else(|| "main".into()),
+                        ),
                         EVENT_CHANNEL,
                         FrontendMessage::Event {
                             revision: event.revision,
@@ -373,7 +384,12 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
                         return;
                     }
                     let bytes = serde_json::to_vec(&snapshot.state).map_or(0, |json| json.len());
-                    let _ = handle.emit(
+                    let _ = handle.emit_to(
+                        tauri::EventTarget::webview_window(
+                            crate::window::main_window(&handle)
+                                .map(|w| w.label().to_string())
+                                .unwrap_or_else(|| "main".into()),
+                        ),
                         EVENT_CHANNEL,
                         FrontendMessage::Snapshot {
                             revision: snapshot.revision,

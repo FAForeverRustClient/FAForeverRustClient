@@ -2,7 +2,7 @@ import type { IceAdapter, ConnectivityPreferencesPatch } from "../../ipc/binding
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { recordEntries } from "../../shared/records";
-import { SettingRow } from "./SettingControls";
+import { SettingRow, SettingsGroup } from "./SettingControls";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -36,7 +36,7 @@ export function ConnectivitySettingsSection() {
     void save({ ...next, selectionVersion: 2 });
 
   return (
-    <>
+    <SettingsGroup>
       <SettingRow
         label={t("settings.connectivity.connectivityAdapter")}
         hint={t("settings.connectivity.connectivityAdapterHint")}
@@ -71,6 +71,6 @@ export function ConnectivitySettingsSection() {
           ))}
         </select>
       </SettingRow>
-    </>
+    </SettingsGroup>
   );
 }

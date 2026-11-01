@@ -42,3 +42,24 @@ Contents thumbnails load as soon as their sources are available, including
 web fallbacks. Their requests do not depend on lazy-image visibility updates
 inside the independently scrolling navigation pane. Article pictures remain
 lazy-loaded so opening a long note does not request every body image at once.
+
+## Original unit backgrounds
+
+Installed unit portraits are transparent. The game draws a separate background
+chosen by the blueprint's `General.Icon` (`land`, `air`, `sea` or `amph`), as
+shown by `GetBackgroundTextures` in the pinned `construction.lua` referenced in
+`early-changelog-sources.md`. Identifiers are insufficient: air/naval factories
+use their production layer, while commanders and many land units use `amph`.
+
+`ui/src/shared/changelogUnitBackgrounds.json` records the choices for 381 public
+FAF icon identities from `gamedata/units.nx2`, with the archive's SHA-256 and
+source field. An absent `General.Icon` uses the game's land default. The
+amphibious PNG joins the existing three category textures from the same pinned
+FAF revision, preserving its original 64 by 64 RGBA pixels without changes.
+
+Only a local portrait with a verified background receives this layer, in both
+the article and contents. Web artwork already contains its background and
+does not receive a second layer. Unmapped identities retain the existing
+local-picture and web-fallback behavior without an invented background;
+enhancements, faction marks and category illustrations keep their existing
+appearance. These textures add no strategic badges or image downloads.

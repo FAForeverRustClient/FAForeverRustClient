@@ -1,0 +1,3 @@
+- Live replays no longer show more than five minutes left before they can be watched.
+- The tournament map-pick timer no longer jumps back up a second after each refresh.
+- "… is typing" in chat no longer stays up for a whole game after the other person stopped.

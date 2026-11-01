@@ -16,7 +16,10 @@
 // `@mentions` completed as they are typed, and a bell that pings the
 // organisers without anyone having to remember `!organizer`.
 
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { tournamentDraftKey } from "../../../shared/chatDrafts";
+import { useChatDraft } from "../../../shared/hooks/useChatDraft";
+import { useForegroundInterval } from "../../../shared/hooks/useForegroundInterval";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
@@ -88,23 +91,21 @@ export function ChatRoomView(props: ChatRoomViewProps) {
   const social = useAppStore((store) => store.state.social);
   const self = useAppStore((store) => store.state.auth.player?.name ?? "");
   const { openPlayerMenu, playerMenu, playerMenuTarget } = usePlayerMenu();
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft, session] = useChatDraft(tournamentDraftKey(event.id, roomId));
   const [reply, setReply] = useState<Reply | null>(null);
   const [mention, setMention] = useState<MentionQuery | null>(null);
   const [choice, setChoice] = useState(0);
   const input = useRef<HTMLInputElement>(null);
 
   // Poll while the room is on screen, and stop the moment it is not.
-  useEffect(() => {
-    const timer = window.setInterval(() => onRefresh(roomId), POLL_MS);
-    return () => window.clearInterval(timer);
-  }, [roomId, onRefresh]);
+  useForegroundInterval(() => onRefresh(roomId), POLL_MS);
 
-  // A room switch starts fresh: no half-written reply to another room's post.
-  useEffect(() => {
+  // Keep each room's text, but leave reply/mention anchors with their owner.
+  useLayoutEffect(() => {
     setReply(null);
     setMention(null);
-  }, [roomId]);
+    setChoice(0);
+  }, [event.id, roomId, session]);
 
   const candidates = mention === null ? [] : mentionCandidates(event, mention.query);
   const mayWrite = !event.chatLocked && !event.chatMutedMe;

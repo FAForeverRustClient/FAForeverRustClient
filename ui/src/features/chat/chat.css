@@ -244,6 +244,7 @@ html.is-resizing-chat-roster * {
 /* Conversation context and controls sit below the switcher. The channel name
    is not repeated here: the strip above is showing it. */
 .chat-head {
+  flex-wrap: wrap;
   flex: none;
   display: flex;
   min-height: 30px;
@@ -256,6 +257,15 @@ html.is-resizing-chat-roster * {
 
 .chat-head .spacer {
   flex: 1;
+}
+
+.chat-head-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 100%;
+  gap: var(--space-2);
 }
 
 .chat-topic {
@@ -294,8 +304,10 @@ html.is-resizing-chat-roster * {
   text-overflow: ellipsis;
 }
 
-/* The search, at the head's height so the row keeps its rhythm. */
-.chat-search-button {
+/* Every button in the head row (Contacts, Search, and the tournament chat's
+   Search), at the head's height so the row keeps its rhythm. A button added
+   without it is a size larger than its neighbours. */
+.chat-head-button {
   flex: none;
   min-height: 30px;
   height: 30px;
@@ -706,31 +718,6 @@ html.is-resizing-chat-roster * {
 }
 
 @media (max-width: 760px) {
-  .settings-section-head,
-  .settings-section-body {
-    padding-right: 14px;
-    padding-left: 14px;
-  }
-
-  .setting-row {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .setting-control {
-    justify-content: flex-start;
-  }
-
-  .settings-select {
-    width: 100%;
-  }
-
-  .settings-save-line,
-  .settings-path-row {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
   .chat-category-colors {
     grid-template-columns: 1fr;
   }

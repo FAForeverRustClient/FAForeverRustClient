@@ -162,16 +162,17 @@ pub use settings::{
     AppearancePreferences, BrowsingPreferences, CachedGameVersion, ChatNameColors, ChatPreferences,
     ConnectivityPreferences, CustomGameBrowserPreferences, CustomGameFilterConstraint,
     CustomGameFilterField, CustomGameFilterRule, CustomGameSort, CustomGameView, DebugPreferences,
-    DiscordPreferences, EventReminder, EventsPreferences, FilterMemory, GameCacheInfo,
-    GamePreferences, GeneralPreferences, HostGamePreferences, IceAdapter, LiveReplayFilters,
-    NotificationPreferences, NotificationSound, NotificationSoundChoices, PathPreferences,
-    PlayerNote, ReplayChatTransfers, ReplayNote, SearchPreset, SettingsCommand, SettingsEvent,
-    SettingsState, SocialPreferences, Theme, ToastPosition, UiDensity, UpdatePreferences,
-    WeekStart, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_RAIL_BELOW,
+    DesktopNotificationStyle, DiscordPreferences, EventReminder, EventsPreferences, FilterMemory,
+    GameCacheInfo, GamePreferences, GeneralPreferences, HostGamePreferences, IceAdapter,
+    LiveReplayFilters, NotificationDelivery, NotificationPreferences, NotificationSound,
+    NotificationSoundChoices, PathPreferences, PlayerNote, ReplayChatTransfers, ReplayNote,
+    SearchPreset, SettingsCommand, SettingsEvent, SettingsState, SocialPreferences, Theme,
+    ToastPosition, UiDensity, UpdatePreferences, WeekStart, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH,
+    SIDEBAR_RAIL_BELOW,
 };
 pub use social::{
-    LoginLookup, PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent,
-    SocialState, MAX_LOGIN_LOOKUPS,
+    Contact, ContactsState, LoginLookup, PlayerLobbyRating, PlayerProfile, Relation, SocialCommand,
+    SocialEvent, SocialState, MAX_LOGIN_LOOKUPS,
 };
 pub use streams::{
     LiveStream, StreamPlatform, StreamsCommand, StreamsEvent, StreamsState, StreamsStatus,

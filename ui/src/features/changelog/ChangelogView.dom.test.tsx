@@ -73,6 +73,25 @@ describe("Changelog failures, mounted", () => {
     expect(sentCommands()).toEqual([{ kind: "Changelog", command: { type: "load" } }]);
   });
 
+  it("lists the bundled notes under a notice when the current list cannot be read", async () => {
+    const user = userEvent.setup();
+    mountChangelog();
+    const early: ChangelogRelease = { ...patch, id: "3635", date: "2014-11-28", year: "2014" };
+    changelogEvent({ type: "loaded", payload: { releases: [early] } });
+    changelogEvent({ type: "indexUnavailable", payload: { reason: "could not reach the changelog" } });
+
+    // The list stays, the failure is said above it, and retrying asks again.
+    expect(screen.queryByText(en["changelog.failed.title"])).toBeNull();
+    expect(screen.getByText(en["changelog.indexUnavailable"])).toBeTruthy();
+    expect(within(screen.getByRole("navigation", { name: en["changelog.releases"] })).getByText("3635")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: en["changelog.retry"] }));
+    expect(sentCommands()).toEqual([{ kind: "Changelog", command: { type: "load" } }]);
+
+    // Once the list is read, the notice goes.
+    changelogEvent({ type: "loaded", payload: { releases: [patch, early] } });
+    expect(screen.queryByText(en["changelog.indexUnavailable"])).toBeNull();
+  });
+
   it("says a note that did not load in a notice whose button asks for that note again", async () => {
     const user = userEvent.setup();
     mountChangelog();

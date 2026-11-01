@@ -57,6 +57,25 @@ pub fn start(pid: u32, through: Option<&Path>) {
     }
 }
 
+/// Look up only this launcher's live game or a matching child of its wrapper.
+/// Merely announcing a notification never activates the window.
+pub fn game_attention(
+    pid: u32,
+    executable: &Path,
+    focus: bool,
+    flash: bool,
+) -> Result<bool, String> {
+    #[cfg(windows)]
+    {
+        system::game_attention(pid, executable, focus, flash)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (pid, executable, focus, flash);
+        Err("Game window activation is unavailable on this platform".into())
+    }
+}
+
 #[cfg(windows)]
 mod system {
     type Handle = isize;
@@ -136,6 +155,11 @@ mod system {
 
     #[link(name = "user32")]
     extern "system" {
+        fn GetForegroundWindow() -> Hwnd;
+        fn SetForegroundWindow(window: Hwnd) -> i32;
+        fn ShowWindow(window: Hwnd, command: i32) -> i32;
+        fn IsIconic(window: Hwnd) -> i32;
+        fn FlashWindowEx(info: *const FlashInfo) -> i32;
         fn EnumWindows(callback: extern "system" fn(Hwnd, isize) -> i32, param: isize) -> i32;
         fn GetWindowThreadProcessId(window: Hwnd, process_id: *mut u32) -> u32;
         fn IsWindowVisible(window: Hwnd) -> i32;
@@ -291,6 +315,64 @@ mod system {
             0
         } else {
             1
+        }
+    }
+
+    #[repr(C)]
+    struct FlashInfo {
+        size: u32,
+        window: Hwnd,
+        flags: u32,
+        count: u32,
+        timeout: u32,
+    }
+
+    pub(super) fn game_attention(
+        pid: u32,
+        executable: &std::path::Path,
+        focus: bool,
+        flash: bool,
+    ) -> Result<bool, String> {
+        let game = Game::open(pid).ok_or("The game process has ended")?;
+        if !game.still_running_after(0) {
+            return Err("The game process has ended".into());
+        }
+        let file = executable
+            .file_name()
+            .ok_or("The game executable is unavailable")?
+            .to_string_lossy()
+            .to_lowercase();
+        // A wrapper has a different filename; descendant discovery also works
+        // when the launcher process is the game itself.
+        let mut pids = games_below(pid, &file);
+        if all_processes()
+            .iter()
+            .any(|p| p.id == pid && p.file == file)
+        {
+            pids.push(pid);
+        }
+        let window = main_window(&pids).ok_or("The running game's window is unavailable")?;
+        // SAFETY: window belongs to the checked live launcher process tree.
+        unsafe {
+            let focused = GetForegroundWindow() == window;
+            if focus {
+                if IsIconic(window) != 0 {
+                    ShowWindow(window, 9);
+                }
+                if SetForegroundWindow(window) == 0 {
+                    return Err("Windows did not allow the game to take focus".into());
+                }
+            } else if flash && !focused {
+                let info = FlashInfo {
+                    size: std::mem::size_of::<FlashInfo>() as u32,
+                    window,
+                    flags: 3 | 12,
+                    count: 3,
+                    timeout: 0,
+                };
+                FlashWindowEx(&info);
+            }
+            Ok(focused)
         }
     }
 

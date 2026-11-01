@@ -1,0 +1,17 @@
+- Unit pictures in patch notes once again show their original in-game backgrounds.
+- On/off switches respond across the whole control and no longer show an extra checkbox.
+- The friends-only notification setting explains when new-game notifications need to be enabled.
+- Replay copy buttons restore their original icons two seconds after copying.
+- The FAF and Chat status menus show the connection's state as a heading above plain menu items.
+- The connection check fits a window without scrolling: one line per result, with paths and the log folded underneath.
+- Unit pictures in patch notes show a grey tile while they load instead of an empty frame.
+- The T3 mobile anti-air units show their game picture and background in patch notes.
+- Searching the patch notes no longer finds every early patch through the source line under it.
+- Early patch notes show their number as the title while they load, not an internal name.
+- Dates in the unit history no longer show a day early in timezones west of UTC.
+- Without an internet connection, the patch notes show the archived early patch notes that come with the client instead of an error page.
+- The source line under early patch notes is written in the client's language instead of English.
+- Early patch notes written one bullet at a time show those bullets as one list.
+- Bold section titles in early patch notes, such as GAME and SERVER in 3613, are headings in the note and its contents.
+- A patch note with only one section no longer shows a contents column beside it.
+- The Units support link opens its FAF forum post in your browser instead of the donation page.

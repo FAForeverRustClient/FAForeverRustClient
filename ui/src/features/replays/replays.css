@@ -434,7 +434,7 @@
 
 /* A private comment and tags on the replay (issue 324), in an overlay over
    the replay panel. Quiet on purpose: it is the reader's own index. */
-.replay-notes {
+.modal-panel.replay-notes {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -451,6 +451,8 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2);
+  /* Clear of the dialog's close button, as `.replay-detail-head` keeps it. */
+  padding-inline-end: 28px;
 }
 
 .replay-notes-head > div {
@@ -484,6 +486,16 @@
   font-weight: 600;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+}
+
+.replay-notes-tag-hint {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.replay-notes-tag-hint.is-error {
+  color: var(--color-error-text);
 }
 
 .replay-notes-tags {

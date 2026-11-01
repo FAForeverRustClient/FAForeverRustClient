@@ -1,0 +1,1 @@
+- Unit pictures in patch notes and the unit history appear seconds sooner on every start except the first after a game update.

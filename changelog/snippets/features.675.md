@@ -1,0 +1,2 @@
+- Cached game versions show their release date on hover when known.
+- Replay cards can show locally available replay files in Explorer.

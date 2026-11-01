@@ -1,0 +1,10 @@
+- Signing out or switching accounts clears unsent chat messages and the Up-arrow message history.
+- Tournament chat keeps a separate unsent message for each room and tournament.
+- Selecting text and releasing outside the replay notes editor no longer closes it.
+- Replay notes show the ten-tag limit before saving instead of silently dropping extra tags.
+- A map opened from a replay or game always shows in the map vault, whatever filters were set.
+- Settings keeps the same narrow-window layout whether or not Chat was opened first.
+- Sign-in controls remain reachable in short windows.
+- Replay notes, Insights, enlarged charts and map previews keep keyboard focus while open.
+- Matchmaker queue timers no longer show impossible times like 1:50, and keep counting during a replay while you search.
+- The icons beside matchmaker queue numbers are larger.
