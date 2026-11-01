@@ -352,10 +352,34 @@
 /* The per-kind sound picker sits in the same row as the switch that turns the
    notification on, so it stays narrow enough to leave the switch where the eye
    already expects it. */
+/* Sized to its options, which are the same in every row, so every sound
+   dropdown comes out the same width without cutting off the longest name
+   ("Match found (FAF)", longer still in German). Capped for a long file name. */
 .settings-select.settings-sound-select {
-  width: 120px;
-  min-width: 0;
-  max-width: 120px;
+  width: auto;
+  min-width: 132px;
+  max-width: 220px;
+  padding-left: 30px;
+}
+
+/* The speaker mark inside the sound dropdown, drawn over its left padding. */
+.settings-sound-picker {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.settings-sound-picker > svg {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  color: var(--color-muted);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.settings-sound-picker.is-disabled > svg {
+  opacity: 0.45;
 }
 
 /* The added sound files. A list rather than a row of chips: the names are the
@@ -441,6 +465,23 @@
 .settings-input {
   min-height: 34px;
   padding: 0 10px;
+}
+
+/* `background-color`, not the shorthand: the dropdown's chevron is its
+   background image (see `styles.css`). */
+.settings-select:hover:not(:disabled),
+.settings-input:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+}
+
+/* Dimmed like the switch beside it. A dropdown that cannot be changed used to
+   look exactly like one that can, so a sound picker next to an event that is
+   switched off still read as live. */
+.settings-select:disabled,
+.settings-input:disabled,
+.settings-textarea:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .settings-select {
@@ -901,98 +942,86 @@
   resize: vertical;
 }
 
-/* No box of its own: it sits in a settings group, which is the box, and a
-   panel inside a panel only adds a frame to look past. */
-.settings-cache-box {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin-top: 12px;
-}
-
-.settings-cache-stats {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
+/* The cached builds as a list, one line each: the folder to open on the
+   left, when the build was released, its size on the right, and its release
+   notes at the end. It used to be a wrap of chips in a monospace face, whose
+   ragged right edge made the block look unfinished. */
 .settings-cache-versions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
+  flex-direction: column;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
 }
 
-.settings-cache-chip-container {
-  display: inline-flex;
-  align-items: stretch;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+.settings-cache-version {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.settings-cache-version-open {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto 72px;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 32px;
+  padding: 0 var(--space-2);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
   border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.settings-cache-version-open > svg {
+  color: var(--color-muted);
+}
+
+.settings-cache-version-open:hover,
+.settings-cache-version-link:hover {
+  background: var(--color-surface-hover);
+}
+
+.settings-cache-version-open:hover > svg,
+.settings-cache-version-link:hover {
+  color: var(--color-text);
+}
+
+.settings-cache-version-name {
   overflow: hidden;
-  transition: border-color 120ms ease;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.settings-cache-chip-container:hover {
-  border-color: var(--color-border-strong);
-}
-
-.settings-cache-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-text);
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease;
-  text-decoration: none;
-}
-
-.settings-cache-chip:hover {
-  background: var(--color-surface-hover);
-}
-
-.settings-cache-chip:focus-visible,
-.settings-cache-chip-ext:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: -1px;
-}
-
-.settings-cache-chip-folder-icon {
+.settings-cache-version-release,
+.settings-cache-version-size {
   color: var(--color-muted);
-  transition: color 120ms ease;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
-.settings-cache-chip:hover .settings-cache-chip-folder-icon {
-  color: var(--color-text);
+.settings-cache-version-size {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
-.settings-cache-chip-size {
-  color: var(--color-muted);
-}
-
-.settings-cache-chip-ext {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 7px;
+.settings-cache-version-link {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   color: var(--color-muted);
   background: transparent;
   border: 0;
-  border-left: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease;
-}
-
-.settings-cache-chip-ext:hover {
-  background: var(--color-surface-hover);
-  color: var(--color-text);
+  place-items: center;
 }
 
 .setting-experimental-badge {
@@ -1010,74 +1039,6 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   vertical-align: middle;
-}
-
-/* Unboxed for the same reason as the cache box: a disclosure line under its
-   row, inside the group that already frames it. */
-.settings-cache-doc-box {
-  margin: calc(var(--space-2) * -1) 0 var(--space-3);
-}
-
-.settings-cache-doc-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 0;
-  color: var(--color-text);
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  text-align: left;
-}
-
-.settings-cache-doc-toggle:hover {
-  color: var(--color-accent);
-}
-
-.settings-cache-doc-chevron {
-  flex: none;
-  color: var(--color-muted);
-  transition: transform 150ms ease, color 150ms ease;
-}
-
-.settings-cache-doc-chevron.expanded {
-  transform: rotate(90deg);
-}
-
-.settings-cache-doc-toggle:hover .settings-cache-doc-chevron {
-  color: var(--color-accent);
-}
-
-.settings-cache-doc-content {
-  margin-top: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--color-border);
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--color-muted);
-}
-
-.settings-cache-doc-content p {
-  margin: 0 0 var(--space-2);
-}
-
-.settings-cache-doc-list {
-  margin: 0;
-  padding-left: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.settings-cache-doc-list li {
-  color: var(--color-muted);
-}
-
-.settings-cache-doc-list strong {
-  color: var(--color-text);
 }
 
 @media (max-width: 700px) {
@@ -1139,7 +1100,28 @@
    above its trigger would say it a second time; it still names the trigger for
    a screen reader through its `aria-label`. */
 .settings-multi-select {
-  min-width: 180px;
+  min-width: 220px;
+}
+
+/* The picker's own field look is the vault filters' (darker, thinner); in a
+   settings row it takes the look of the dropdowns around it. */
+.settings-multi-select .multi-select-trigger {
+  min-height: 34px;
+  font-size: inherit;
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.settings-multi-select .multi-select-trigger:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+/* The vault filters show focus by lightening the field, which this field
+   already is; the ring every other settings control draws instead. */
+.settings-multi-select .multi-select-trigger:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
 }
 
 .settings-multi-select .multi-select > .search-panel-label {

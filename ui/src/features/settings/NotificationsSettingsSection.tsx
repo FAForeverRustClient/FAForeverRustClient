@@ -114,39 +114,44 @@ function SoundChoice({
   // is set to, or the dropdown would silently read as the first entry and the
   // next save would write that instead.
   const missing = chosen !== null && !custom.includes(chosen);
+  // The speaker mark says what the dropdown picks: on its own beside the
+  // event's switch, "Chime" read as a second setting with no name.
   return (
-    <select
-      className="settings-select settings-sound-select"
-      value={soundOptionValue(value)}
-      disabled={disabled}
-      aria-label={t("settings.notifications.soundFor", { what })}
-      onChange={(event) => {
-        if (event.target.value === ADD_VALUE) {
-          onAdd();
-          return;
-        }
-        const sound = soundFromOptionValue(event.target.value);
-        onChange(sound);
-        playNotificationSound(sound, volume);
-      }}
-    >
-      {recordEntries(SOUNDS).map(([sound, label]) => (
-        <option key={sound} value={sound}>
-          {t(label)}
-        </option>
-      ))}
-      {missing && (
-        <option value={soundOptionValue(value)}>
-          {t("settings.notifications.sound.missing", { name: chosen })}
-        </option>
-      )}
-      {custom.map((name) => (
-        <option key={name} value={`custom:${name}`}>
-          {name}
-        </option>
-      ))}
-      <option value={ADD_VALUE}>{t("settings.notifications.sound.add")}</option>
-    </select>
+    <span className={`settings-sound-picker${disabled ? " is-disabled" : ""}`}>
+      <Icon name="volume" size={14} />
+      <select
+        className="settings-select settings-sound-select"
+        value={soundOptionValue(value)}
+        disabled={disabled}
+        aria-label={t("settings.notifications.soundFor", { what })}
+        onChange={(event) => {
+          if (event.target.value === ADD_VALUE) {
+            onAdd();
+            return;
+          }
+          const sound = soundFromOptionValue(event.target.value);
+          onChange(sound);
+          playNotificationSound(sound, volume);
+        }}
+      >
+        {recordEntries(SOUNDS).map(([sound, label]) => (
+          <option key={sound} value={sound}>
+            {t(label)}
+          </option>
+        ))}
+        {missing && (
+          <option value={soundOptionValue(value)}>
+            {t("settings.notifications.sound.missing", { name: chosen })}
+          </option>
+        )}
+        {custom.map((name) => (
+          <option key={name} value={`custom:${name}`}>
+            {name}
+          </option>
+        ))}
+        <option value={ADD_VALUE}>{t("settings.notifications.sound.add")}</option>
+      </select>
+    </span>
   );
 }
 
