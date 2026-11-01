@@ -1,0 +1,1 @@
+- No visible changes: the displayed rating is now computed in one place instead of six.
