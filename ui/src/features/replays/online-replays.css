@@ -1607,17 +1607,20 @@ button.vault-input {
    opened it. Sized like the map preview next door, and for the same reason:
    what it holds is a table, and a table wants the width of the dialog rather
    than the half column the old unfolded section gave it. */
-.replay-insights {
+.modal-panel.replay-insights {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   width: min(1480px, 96vw);
+  max-width: 1480px;
   /* A fixed height, not a maximum. What is on these tabs changes size as you
      use them -- the graph's read-out is as long as the orders in the minute
      under the pointer -- and a dialog sized to its contents grew and shrank
      under the cursor while it was being read. The panel is the size of the
      panel; the tab inside it scrolls. */
   height: 92vh;
+  max-height: 92vh;
+  overflow: hidden;
   padding: var(--space-4);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
@@ -1632,6 +1635,7 @@ button.vault-input {
   justify-content: space-between;
   gap: var(--space-3);
   margin-bottom: var(--space-3);
+  padding-inline-end: var(--space-5);
 }
 
 /* The tabs are the one thing in this dialog that must never be squeezed: a
@@ -2076,22 +2080,6 @@ input.replay-options-filter {
   color: var(--color-muted);
 }
 
-/* The enlarged map preview, opened from the detail thumbnail. Above the
-   modal's own backdrop (z-index 100), since it is drawn from inside the modal
-   and has to sit over it. The notes, insights and chart overlays share the
-   scrim. */
-.replay-preview-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 110;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4);
-  background: rgba(0, 0, 0, 0.68);
-  backdrop-filter: blur(4px);
-}
-
 /* Sized the way the Play tab's map preview is (`.game-preview-dialog`): led
    by the window's height, since the square map is what runs out of room
    first, less an allowance for everything that is not the map (the kicker,
@@ -2100,13 +2088,14 @@ input.replay-options-filter {
    576px, against stair-stepped coastlines from nearest-neighbour scaling;
    the zoom now draws pixels sharp only once zoomed in, so a large preview at
    rest is smooth. The scroll is only a backstop. */
-.replay-preview-overlay {
+.modal-panel.replay-preview-overlay {
   --preview-size-allowance: 180px;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   box-sizing: border-box;
   width: min(calc(92vh - var(--preview-size-allowance)), calc(100vw - 48px), 1040px);
+  max-width: 1040px;
   min-width: min(320px, calc(100vw - 48px));
   max-height: 92vh;
   overflow-y: auto;
@@ -2116,6 +2105,10 @@ input.replay-options-filter {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-popover);
+}
+
+.replay-preview-overlay .map-preview-frame-head {
+  padding-inline-end: var(--space-5);
 }
 
 /* The full technical name, the way the Play tab's preview shows it: this is
@@ -2569,13 +2562,16 @@ input.replay-options-filter {
 
 /* One chart, the size of the window. Same scrim and the same three ways out
    as the map preview and the panel behind it. */
-.replay-chart-zoom {
+.modal-panel.replay-chart-zoom {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   gap: var(--space-3);
   width: min(1600px, 96vw);
+  max-width: 1600px;
   height: 92vh;
+  max-height: 92vh;
+  overflow: hidden;
   padding: var(--space-4);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
@@ -2589,6 +2585,7 @@ input.replay-options-filter {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  padding-inline-end: var(--space-5);
 }
 
 .replay-chart-zoom-head h3 {

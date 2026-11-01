@@ -25,7 +25,6 @@ import type { Game, LiveReplayTracking } from "../../../ipc/bindings";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
-import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { ipc } from "../../../ipc/client";
 import { isGeneratedMap, mapPresentation, mapSize } from "../../../shared/mapPresentation";
 import { useAppStore } from "../../../store/store";
@@ -78,10 +77,6 @@ export function LiveReplayDetail({
     if (lookup) return;
     ipc.send({ kind: "Replays", command: { type: "lookUpOnline", payload: { uid: game.id } } });
   }, [game.id, lookup]);
-
-  // The preview is a layer of the overlay stack above this panel's `Modal`:
-  // one press steps back out of the picture instead of shutting the panel.
-  useOverlayLayer(enlarged, () => setEnlarged(false));
 
   // A generated map's size is in its name, and decoding the name is one
   // command for the one game this panel shows, as the lobby's own panel does.
@@ -334,65 +329,56 @@ export function LiveReplayDetail({
         </section>
       )}
 
-      {/* In this dialog's own markup rather than a second `Modal`. Three ways
-          out, as next door: the button, the scrim and Escape. */}
+      {/* The nested modal owns focus and closes before the live-game panel. */}
       {enlarged && (
-        <div
-          className="replay-preview-scrim"
-          role="presentation"
-          onClick={() => setEnlarged(false)}
+        <Modal
+          className="replay-preview-overlay"
+          ariaLabel={t("maps.preview.enlarge", { name: mapLabel })}
+          onClose={() => setEnlarged(false)}
         >
-          <div
-            className="replay-preview-overlay"
-            role="dialog"
-            aria-label={t("maps.preview.enlarge", { name: mapLabel })}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <MapPreviewFrame
-              title={mapLabel}
-              subtitle={title === mapLabel ? undefined : title}
-              onClose={() => setEnlarged(false)}
-              footer={game.map ? (
-                <div className="replay-preview-overlay-name">
-                  <span>{t("lobby.browser.mapFullName")}</span>
-                  <code>{game.map}</code>
-                  <button
-                    type="button"
-                    className="replay-card-icon-btn"
-                    aria-label={t(copiedMapName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
-                    title={t(copiedMapName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
-                    onClick={() => ipc.run(copyMapName())}
+          <MapPreviewFrame
+            title={mapLabel}
+            subtitle={title === mapLabel ? undefined : title}
+            footer={game.map ? (
+              <div className="replay-preview-overlay-name">
+                <span>{t("lobby.browser.mapFullName")}</span>
+                <code>{game.map}</code>
+                <button
+                  type="button"
+                  className="replay-card-icon-btn"
+                  aria-label={t(copiedMapName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
+                  title={t(copiedMapName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
+                  onClick={() => ipc.run(copyMapName())}
+                >
+                  <Icon name={copiedMapName ? "check" : "copy"} size={13} />
+                </button>
+                {(mapGen.canGenerate || mapGen.isGenerating) && (
+                  <Button
+                    className="replay-preview-overlay-generate"
+                    disabled={mapGen.isGenerating}
+                    onClick={mapGen.generate}
                   >
-                    <Icon name={copiedMapName ? "check" : "copy"} size={13} />
-                  </button>
-                  {(mapGen.canGenerate || mapGen.isGenerating) && (
-                    <Button
-                      className="replay-preview-overlay-generate"
-                      disabled={mapGen.isGenerating}
-                      onClick={mapGen.generate}
-                    >
-                      <Icon
-                        name={mapGen.isGenerating ? "refresh" : "plus"}
-                        size={13}
-                        className={mapGen.isGenerating ? "spin" : undefined}
-                      />
-                      {mapGen.generateLabel}
-                    </Button>
-                  )}
-                </div>
-              ) : null}
-            >
-              <ReplayMapThumb
-                url=""
-                mapName={game.map}
-                className="replay-preview-overlay-image"
-                emptyClassName="replay-detail-thumb-empty"
-                iconSize={64}
-                large
-              />
-            </MapPreviewFrame>
-          </div>
-        </div>
+                    <Icon
+                      name={mapGen.isGenerating ? "refresh" : "plus"}
+                      size={13}
+                      className={mapGen.isGenerating ? "spin" : undefined}
+                    />
+                    {mapGen.generateLabel}
+                  </Button>
+                )}
+              </div>
+            ) : null}
+          >
+            <ReplayMapThumb
+              url=""
+              mapName={game.map}
+              className="replay-preview-overlay-image"
+              emptyClassName="replay-detail-thumb-empty"
+              iconSize={64}
+              large
+            />
+          </MapPreviewFrame>
+        </Modal>
       )}
       {mapGen.isGenerating && mapGen.progress && (
         <div className="replay-generation-banner">

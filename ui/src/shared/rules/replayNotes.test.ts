@@ -64,6 +64,19 @@ describe("replay notes", () => {
     expect(parseTagInput(" Lots finals, casts,, ")).toEqual(["Lots finals", "casts"]);
   });
 
+  it("deduplicates tags after whitespace and length normalization, just as saving does", () => {
+    const prefix = "x".repeat(32);
+    const input = ` Lots  finals, LOTS FINALS, casts, ${prefix}a, ${prefix}b`;
+    const parsed = parseTagInput(input);
+    expect(parsed).toEqual(["Lots finals", "casts", prefix]);
+    expect(normalizeReplayNotes([{ replayId: 42, comment: "", tags: parsed }])[0].tags).toEqual(parsed);
+  });
+
+  it("keeps excess different tags visible to validation instead of silently dropping them", () => {
+    const tags = Array.from({ length: 11 }, (_, index) => `tag${index}`);
+    expect(parseTagInput(tags.join(","))).toEqual(tags);
+  });
+
   it("finds a replay by any words of its comment or tags", () => {
     const note = { replayId: 5, comment: "Great comeback on Setons", tags: ["Lots finals"] };
     expect(replayNoteMatches(note, "lots setons")).toBe(true);

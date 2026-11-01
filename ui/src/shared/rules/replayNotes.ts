@@ -125,9 +125,18 @@ export function noteForReplay(
     : index.files.get(wanted.path)) ?? null;
 }
 
-/** Tags typed as one comma-separated line. */
+/** Distinct, tidied tags, without dropping overflow the editor must explain. */
 export function parseTagInput(value: string): string[] {
-  return value.split(",").map(tidyTag).filter(Boolean);
+  const tags: string[] = [];
+  const known = new Set<string>();
+  for (const raw of value.split(",")) {
+    const tag = tidyTag(raw);
+    const key = tag.toLowerCase();
+    if (!tag || known.has(key)) continue;
+    known.add(key);
+    tags.push(tag);
+  }
+  return tags;
 }
 
 /**

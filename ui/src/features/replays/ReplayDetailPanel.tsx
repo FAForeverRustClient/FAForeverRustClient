@@ -10,7 +10,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Modal } from "../../design-system/Modal";
 import { StatusNotice } from "../../design-system/StatusNotice";
-import { useOverlayLayer } from "../../design-system/useOverlayLayer";
 import type { VaultReplay } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
@@ -145,11 +144,6 @@ export function ReplayDetailPanel({
   const notRated = isLocal
     ? localRatingNote(replay.uid, onlineLookup, detailTeams)
     : resultNote(validity, detailTeams);
-  // The enlarged preview is a layer of the overlay stack above this panel's
-  // `Modal`, so one press steps back out of the preview instead of shutting
-  // the whole panel.
-  useOverlayLayer(enlarged, () => setEnlarged(false));
-
   const competingTeams = detailTeams.filter((team) => !isObserverTeam(team.team)).length;
   const players = t("replays.detail.playerCount", { count: totalPlayers });
   // The lineup section's heading. "0 players" over the note that no lineup was
