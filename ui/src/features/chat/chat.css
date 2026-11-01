@@ -304,8 +304,10 @@ html.is-resizing-chat-roster * {
   text-overflow: ellipsis;
 }
 
-/* The search, at the head's height so the row keeps its rhythm. */
-.chat-search-button {
+/* Every button in the head row (Contacts, Search, and the tournament chat's
+   Search), at the head's height so the row keeps its rhythm. A button added
+   without it is a size larger than its neighbours. */
+.chat-head-button {
   flex: none;
   min-height: 30px;
   height: 30px;

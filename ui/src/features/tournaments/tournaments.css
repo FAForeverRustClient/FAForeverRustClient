@@ -7699,7 +7699,7 @@
 }
 
 /* The pin, at the head row's height as the Chat tab's Search
-   (`.chat-search-button`) is. Pressed, it is filled. */
+   (`.chat-head-button`) is. Pressed, it is filled. */
 .tournament-pin {
   flex: none;
   padding: 0 10px;

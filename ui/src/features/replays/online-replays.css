@@ -1635,7 +1635,8 @@ button.vault-input {
   justify-content: space-between;
   gap: var(--space-3);
   margin-bottom: var(--space-3);
-  padding-inline-end: var(--space-5);
+  /* Clear of the dialog's close button, as `.replay-detail-head` keeps it. */
+  padding-inline-end: 28px;
 }
 
 /* The tabs are the one thing in this dialog that must never be squeezed: a
@@ -2108,7 +2109,8 @@ input.replay-options-filter {
 }
 
 .replay-preview-overlay .map-preview-frame-head {
-  padding-inline-end: var(--space-5);
+  /* Clear of the dialog's close button, as `.replay-detail-head` keeps it. */
+  padding-inline-end: 28px;
 }
 
 /* The full technical name, the way the Play tab's preview shows it: this is
@@ -2585,7 +2587,8 @@ input.replay-options-filter {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding-inline-end: var(--space-5);
+  /* Clear of the dialog's close button, as `.replay-detail-head` keeps it. */
+  padding-inline-end: 28px;
 }
 
 .replay-chart-zoom-head h3 {

@@ -1149,7 +1149,7 @@
 .host-generate-btn:hover {
   background: rgba(75, 157, 232, 0.16);
   border-color: rgba(75, 157, 232, 0.6);
-  color: var(--color-text-strong);
+  color: var(--color-text);
 }
 
 .host-generate-btn-label {

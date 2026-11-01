@@ -348,12 +348,14 @@ export function ChatView() {
           })()}
           <span className="spacer" />
           <div className="chat-head-controls">
-            <Button onClick={openContacts}><Icon name="users" size={16} /> {t("contacts.title")}</Button>
+            <Button className="chat-head-button" onClick={openContacts}>
+              <Icon name="users" size={14} /> {t("contacts.title")}
+            </Button>
             {gameLinkNotice && <span className="chat-link-notice" role="status">{gameLinkNotice}</span>}
             {/* A button that looks like one, as "More filters" does elsewhere:
                 as bare text with an icon it read as a label. */}
             <Button
-              className="chat-search-button"
+              className="chat-head-button"
               title={t("chat.search.shortcut")}
               onClick={() => setSearchRequest((request) => request + 1)}
             >

@@ -170,16 +170,19 @@
   cursor: not-allowed;
 }
 
+/* The chosen option keeps a tint while the list is open. Declared before the
+   pointer and keyboard highlight so that highlight still shows on the chosen
+   option: both rules are equally specific, and the later one wins. */
+.select-option.is-selected {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  color: var(--color-text);
+  font-weight: 550;
+}
+
 .select-option:hover,
 .select-option.is-highlighted {
   background: var(--color-surface-hover);
-  color: var(--color-text-strong);
-}
-
-.select-option.is-selected {
-  background: var(--color-surface-selected);
-  color: var(--color-text-strong);
-  font-weight: 550;
+  color: var(--color-text);
 }
 
 .select-option:disabled {
