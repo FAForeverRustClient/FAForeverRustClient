@@ -883,6 +883,8 @@ export type ChangelogEvent = { type: "searchUpdated"; payload: {
 } };
 
 export type ChangelogListItem = {
+	/**  The published number in an ordered list. Missing in old caches; null for bullets. */
+	ordinal?: number | null,
 	spans: ChangelogSpan[],
 	/**  Set instead of `spans` carrying the whole line when it is a value change. */
 	change: ChangelogChange | null,

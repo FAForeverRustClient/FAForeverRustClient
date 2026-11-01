@@ -79,6 +79,15 @@ beside its source attribution, separate from the historical article.
 
 MediaWiki's leading-space `<pre>` convention was used for ordinary notes in 3605, 3615 and 3619, and the first importer also wrapped multiline paragraphs in 3616 as `<pre>`. These now become normal paragraphs or stat/bullet lists without rewritten wording, numbers, invented headings or descriptions. Explicit source-code blocks and blog preformatted blocks keep their code presentation. Regeneration continues to check the original source hashes.
 
+The reader also repairs explicit list markers without editing the pinned HTML.
+In 3615, leading dashes are removed from unit captions, an empty dash paragraph
+is omitted, and the complete T2 Gunship sentence joins the following balance
+bullets. In the cumulative legacy 3605 note, the inline bullet before the second
+Restorer change becomes a separate list item; arithmetic such as `71 * 2` stays
+literal. Ordered HTML lists retain their numbering at each nesting level,
+including 3626's Shift-G instructions and 3629's mobile anti-air explanation.
+These presentation repairs preserve the original words and gameplay values.
+
 Historical illustrations are presentation metadata in `ui/src/shared/historicalChangelogIcons.ts`. They preserve the archive's wording and block anchors while correcting presentation-only markup. Complete unit captions are matched to identities checked against the game's `LOC/US/strings_db.lua` at tag 3636; the original spelling remains visible. Faction-only captions under an explicit ACU/SCU heading identify that faction's commander, while broad captions such as "Aeon t2" receive the existing faction emblem. Ambiguous general headings keep their text presentation.
 
 Mixed wiki markup can write a faction label as a paragraph beside real faction headings: 3626's UEF belongs beside Cybran, Seraphim and Aeon under ACUs. A shared effective heading level makes these faction sections peers in both the body and contents, preserving the original blocks and anchors. Multi-faction group labels keep their portraits in the body, but the contents does not choose one faction's portrait to represent the group.

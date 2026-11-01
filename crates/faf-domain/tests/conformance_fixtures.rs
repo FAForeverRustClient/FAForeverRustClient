@@ -10019,6 +10019,7 @@ fn client_release_notes(version: &str) -> ClientReleaseNotes {
             },
             ChangelogBlock::List {
                 items: vec![ChangelogListItem {
+                    ordinal: None,
                     spans: vec![ChangelogSpan::Text(format!("New in {version}."))],
                     change: None,
                     children: vec![],

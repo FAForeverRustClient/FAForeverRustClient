@@ -13589,6 +13589,7 @@
                             {
                               "change": null,
                               "children": [],
+                              "ordinal": null,
                               "spans": [
                                 {
                                   "payload": "New in 0.4.0.",
@@ -13622,6 +13623,7 @@
                             {
                               "change": null,
                               "children": [],
+                              "ordinal": null,
                               "spans": [
                                 {
                                   "payload": "New in 0.3.0.",
@@ -13667,6 +13669,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.4.0.",
@@ -13700,6 +13703,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.3.0.",
@@ -13758,6 +13762,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.4.0.",
@@ -13791,6 +13796,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.3.0.",
@@ -13852,6 +13858,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.4.0.",
@@ -13885,6 +13892,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.3.0.",
@@ -13935,6 +13943,7 @@
                             {
                               "change": null,
                               "children": [],
+                              "ordinal": null,
                               "spans": [
                                 {
                                   "payload": "New in 0.4.0.",
@@ -13980,6 +13989,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.4.0.",
@@ -14041,6 +14051,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.4.0.",
@@ -14099,6 +14110,7 @@
                         {
                           "change": null,
                           "children": [],
+                          "ordinal": null,
                           "spans": [
                             {
                               "payload": "New in 0.4.0.",

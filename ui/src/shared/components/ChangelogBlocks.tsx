@@ -81,26 +81,43 @@ function ChangelogProvenance({ sourceUrl, evidenceUrl, anchorId }: {
 }
 
 export function ChangelogListItems({ items, anchorId }: { items: ChangelogListItem[]; anchorId?: string }) {
+  // Adjacent child lists can mix bullets and numbered instructions. Retain
+  // each item's published number, including explicit restarts and skipped values.
+  const groups: ChangelogListItem[][] = [];
+  for (const item of items) {
+    const previous = groups[groups.length - 1];
+    if (previous && (previous[0].ordinal != null) === (item.ordinal != null)) previous.push(item);
+    else groups.push([item]);
+  }
+  if (groups.length === 0) return <ul id={anchorId} className="changelog-list" />;
   return (
-    <ul id={anchorId} className="changelog-list">
-      {items.map((item, index) => (
-        <li key={index}>
-          {item.change ? (
-            // A value change reads as a diff, the way the site styles it: the
-            // strike and the arrow say which is which before the colour does.
-            <span className="changelog-change">
-              <span className="changelog-change-label">{item.change.label}</span>
-              <span className="changelog-old">{item.change.old}</span>
-              <Icon name="arrowRight" size={12} />
-              <span className="changelog-new">{item.change.new}</span>
-            </span>
-          ) : (
-            <ChangelogSpans spans={item.spans} />
-          )}
-          {item.children.length > 0 && <ChangelogListItems items={item.children} />}
-        </li>
-      ))}
-    </ul>
+    <>
+      {groups.map((group, groupIndex) => {
+        const List = group[0].ordinal != null ? "ol" : "ul";
+        return (
+          <List key={groupIndex} id={groupIndex === 0 ? anchorId : undefined}
+            className="changelog-list" start={group[0].ordinal ?? undefined}>
+            {group.map((item, index) => (
+              <li key={index} value={item.ordinal ?? undefined}>
+                {item.change ? (
+                  // A value change reads as a diff, the way the site styles it: the
+                  // strike and the arrow say which is which before the colour does.
+                  <span className="changelog-change">
+                    <span className="changelog-change-label">{item.change.label}</span>
+                    <span className="changelog-old">{item.change.old}</span>
+                    <Icon name="arrowRight" size={12} />
+                    <span className="changelog-new">{item.change.new}</span>
+                  </span>
+                ) : (
+                  <ChangelogSpans spans={item.spans} />
+                )}
+                {item.children.length > 0 && <ChangelogListItems items={item.children} />}
+              </li>
+            ))}
+          </List>
+        );
+      })}
+    </>
   );
 }
 
