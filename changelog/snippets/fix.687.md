@@ -1,0 +1,1 @@
+- Icons on matchmaker queue cards, including the map pool button, are drawn with solid lines instead of dashes.
