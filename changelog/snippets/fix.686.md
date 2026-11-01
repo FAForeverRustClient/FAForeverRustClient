@@ -1,0 +1,4 @@
+- Patch 3615 no longer shows stray dashes before unit captions or its gunship change.
+- The two Restorer changes in the legacy 3605 notes appear as separate bullets.
+- Patch 3772 no longer shows extra hyphens before wall statistics.
+- Numbered instructions in older patch notes keep their numbering, including in nested lists.
