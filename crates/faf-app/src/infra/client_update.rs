@@ -17,6 +17,13 @@
 //! - **The configured repository.** A download URL must start with this repo's
 //!   release-download prefix, so a compromised or mistaken API response cannot
 //!   redirect the installer to an arbitrary host.
+//! - **The published checksum.** GitHub records a SHA-256 for every release
+//!   asset (the `digest` field). A fresh download must match it before it is
+//!   kept, and a cached installer must match it again before it is reused, so
+//!   a corrupted, truncated or swapped file is never run. A release asset
+//!   without one is still downloaded, unverified, and is never reused from
+//!   the cache. This is integrity, not authenticity: whoever can publish a
+//!   release also sets its checksum.
 //! - **Nothing else.** There is *no signature check*. Anyone who can publish a
 //!   release to the configured repository can run code on every client that
 //!   accepts the update: which is true of the Java client too, and is the
@@ -40,6 +47,7 @@ use faf_domain::state::{
 };
 use serde_json::Value;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
@@ -128,6 +136,10 @@ pub struct GitHubUpdates {
     /// answer landed last was kept even when it was the older one. Now the
     /// notes wait for a read already on the way and take what it stored.
     reading: Arc<tokio::sync::Mutex<()>>,
+    /// The SHA-256 GitHub published for each release asset, by download URL,
+    /// from every release list read. The release a download is asked for came
+    /// from such a read, a check, so its checksum is here; see the module doc.
+    digests: Arc<Mutex<HashMap<String, [u8; 32]>>>,
 }
 
 impl GitHubUpdates {
@@ -140,6 +152,7 @@ impl GitHubUpdates {
             http: super::http::https_only_download_client(),
             notes: Arc::default(),
             reading: Arc::default(),
+            digests: Arc::default(),
         }
     }
 
@@ -234,6 +247,31 @@ impl GitHubUpdates {
         notes
     }
 
+    /// Keep the published checksum of every asset in a release list just read.
+    fn remember_digests(&self, releases: &[Value]) {
+        let found = releases
+            .iter()
+            .filter_map(|release| release.get("assets")?.as_array())
+            .flatten()
+            .filter_map(|asset| {
+                let url = asset.get("browser_download_url")?.as_str()?;
+                let digest = sha256_digest(asset.get("digest")?.as_str()?)?;
+                Some((url.to_string(), digest))
+            });
+        self.digests
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .extend(found);
+    }
+
+    fn published_digest(&self, download_url: &str) -> Option<[u8; 32]> {
+        self.digests
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(download_url)
+            .copied()
+    }
+
     async fn run_download(
         &self,
         release: &ClientRelease,
@@ -250,13 +288,25 @@ impl GitHubUpdates {
         }
 
         let target = self.installer_path(release)?;
-        self.run_download_to(release, progress, called_off, &target)
+        let expected = self.published_digest(&release.download_url);
+        if expected.is_none() {
+            tracing::warn!(
+                version = %release.version,
+                "the release asset has no published checksum, so the installer is not verified"
+            );
+        }
+        self.run_download_to(release, expected, progress, called_off, &target)
             .await
     }
 
+    /// Download `release` to `target`, or reuse the installer already there.
+    ///
+    /// `expected` is the asset's published SHA-256. A download that does not
+    /// match it is thrown away, and without it nothing cached is reused.
     async fn run_download_to(
         &self,
         release: &ClientRelease,
+        expected: Option<[u8; 32]>,
         progress: &mpsc::Sender<DownloadProgress>,
         called_off: &CancellationToken,
         target: &std::path::Path,
@@ -267,17 +317,22 @@ impl GitHubUpdates {
         tokio::fs::create_dir_all(directory)
             .await
             .map_err(|e| format!("could not create the download directory: {e}"))?;
-        // A completed target only arrives through our atomic rename below.
-        // Reuse its advertised, non-zero size instead of fetching it again.
-        if release.size_bytes > 0
-            && tokio::fs::symlink_metadata(target)
+        // A completed target only arrives through our atomic rename below, but
+        // a file of the right size is not proof of the right file: it used to
+        // be all this checked. The published checksum is. The size, when
+        // known, only saves hashing a file that cannot match.
+        if let Some(expected) = expected {
+            let plausible = tokio::fs::symlink_metadata(target)
                 .await
                 .is_ok_and(|metadata| {
-                    metadata.is_file() && metadata.len() == u64::from(release.size_bytes)
-                })
-        {
-            prune_installers(directory, target).await;
-            return Ok(target.to_string_lossy().into_owned());
+                    metadata.is_file()
+                        && (release.size_bytes == 0
+                            || metadata.len() == u64::from(release.size_bytes))
+                });
+            if plausible && file_sha256(target).await == Some(expected) {
+                prune_installers(directory, target).await;
+                return Ok(target.to_string_lossy().into_owned());
+            }
         }
         let partial = target.with_extension("partial");
         // Clean up a file left by a process kill before starting another
@@ -339,6 +394,8 @@ impl GitHubUpdates {
         // a 512 KiB step while it is not. Every chunk used to be a report, and
         // every report is an event the whole state is reduced by.
         let mut reported: Option<u64> = None;
+        // Hashed as it arrives, so checking it costs no second read.
+        let mut hasher = <sha2::Sha256 as sha2::Digest>::new();
         let mut stream = response.bytes_stream();
         use futures_util::StreamExt as _;
         use tokio::io::AsyncWriteExt as _;
@@ -371,6 +428,7 @@ impl GitHubUpdates {
                 file.write_all(&chunk)
                     .await
                     .map_err(|e| format!("could not write the installer: {e}"))?;
+                sha2::Digest::update(&mut hasher, &chunk);
                 let step = if total_bytes > 0 {
                     received.min(u64::from(total_bytes)) * 100 / u64::from(total_bytes)
                 } else {
@@ -397,6 +455,15 @@ impl GitHubUpdates {
             let _ = tokio::fs::remove_file(&partial).await;
             return Err(error);
         }
+        let received: [u8; 32] = sha2::Digest::finalize(hasher).into();
+        if expected.is_some_and(|expected| expected != received) {
+            // Never renamed into place, so it can neither run nor be reused.
+            let _ = tokio::fs::remove_file(&partial).await;
+            return Err(
+                "the downloaded installer does not match the checksum published with the release"
+                    .into(),
+            );
+        }
 
         if let Err(error) = tokio::fs::rename(&partial, target).await {
             let _ = tokio::fs::remove_file(&partial).await;
@@ -405,6 +472,44 @@ impl GitHubUpdates {
         prune_installers(directory, target).await;
         Ok(target.to_string_lossy().into_owned())
     }
+}
+
+/// GitHub's `digest` for a release asset: `sha256:` and 64 hex digits.
+fn sha256_digest(text: &str) -> Option<[u8; 32]> {
+    let hex = text.strip_prefix("sha256:")?;
+    // Checked first: `from_str_radix` would take a `+` sign in a pair.
+    if hex.len() != 64 || !hex.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return None;
+    }
+    let mut digest = [0_u8; 32];
+    for (index, byte) in digest.iter_mut().enumerate() {
+        *byte = u8::from_str_radix(&hex[index * 2..index * 2 + 2], 16).ok()?;
+    }
+    Some(digest)
+}
+
+/// The SHA-256 of a file, or `None` when it cannot be read. Off the async
+/// runtime: an installer is a couple of hundred megabytes.
+async fn file_sha256(path: &Path) -> Option<[u8; 32]> {
+    let path = path.to_path_buf();
+    tokio::task::spawn_blocking(move || {
+        use sha2::Digest as _;
+        use std::io::Read as _;
+        let mut file = std::fs::File::open(path).ok()?;
+        let mut hasher = sha2::Sha256::new();
+        let mut buffer = vec![0_u8; 1024 * 1024];
+        loop {
+            let read = file.read(&mut buffer).ok()?;
+            if read == 0 {
+                break;
+            }
+            hasher.update(&buffer[..read]);
+        }
+        Some(hasher.finalize().into())
+    })
+    .await
+    .ok()
+    .flatten()
 }
 
 /// Only our installer files are pruned; unrelated cache entries stay intact.
@@ -449,6 +554,7 @@ impl ClientUpdatePort for GitHubUpdates {
         let _reading = self.reading.lock().await;
         let releases = self.fetch_releases().await?;
         self.remember_notes(&releases);
+        self.remember_digests(&releases);
         Ok(pick_release(&releases, channel))
     }
 
@@ -463,6 +569,7 @@ impl ClientUpdatePort for GitHubUpdates {
             return Ok(notes);
         }
         let releases = self.fetch_releases().await?;
+        self.remember_digests(&releases);
         Ok(self.remember_notes(&releases))
     }
 
@@ -483,12 +590,14 @@ impl ClientUpdatePort for GitHubUpdates {
         let http = self.http.clone();
         let notes = self.notes.clone();
         let reading = self.reading.clone();
+        let digests = self.digests.clone();
         tokio::spawn(async move {
             let client = GitHubUpdates {
                 config,
                 http,
                 notes,
                 reading,
+                digests,
             };
             let outcome = client.run_download(&release, &tx, &called_off).await;
             // The sender goes only after the partial file did: see the port.
@@ -1164,28 +1273,130 @@ mod tests {
         let (tx, _rx) = mpsc::channel(4);
         let cancelled = CancellationToken::new();
         cancelled.cancel();
+        let whole = sha256_of(b"whole");
         // A cache hit succeeds even with the network path already cancelled.
         let path = client
-            .run_download_to(&release, &tx, &cancelled, &target)
+            .run_download_to(&release, Some(whole), &tx, &cancelled, &target)
             .await
             .unwrap();
         assert_eq!(std::path::Path::new(&path), target);
         assert!(!old.exists());
         assert!(unrelated.exists());
         assert!(subdirectory.is_dir());
-        for size_bytes in [4, 0] {
-            let wrong_size = ClientRelease {
-                size_bytes,
-                ..release.clone()
-            };
+        // An unknown size is no reason to fetch again: the checksum decides.
+        let unknown_size = ClientRelease {
+            size_bytes: 0,
+            ..release.clone()
+        };
+        assert!(client
+            .run_download_to(&unknown_size, Some(whole), &tx, &cancelled, &target)
+            .await
+            .is_ok());
+        // Each of these reaches for the network, which is called off.
+        let wrong_size = ClientRelease {
+            size_bytes: 4,
+            ..release.clone()
+        };
+        for (release, expected) in [
+            // The right size, the wrong file: what reusing by size alone ran.
+            (&release, Some(sha256_of(b"other"))),
+            // Nothing published to check it against.
+            (&release, None),
+            (&wrong_size, Some(whole)),
+        ] {
             assert_eq!(
                 client
-                    .run_download_to(&wrong_size, &tx, &cancelled, &target)
+                    .run_download_to(release, expected, &tx, &cancelled, &target)
                     .await
                     .unwrap_err(),
                 DOWNLOAD_CALLED_OFF
             );
         }
+        tokio::fs::remove_dir_all(directory).await.unwrap();
+    }
+
+    fn sha256_of(bytes: &[u8]) -> [u8; 32] {
+        <sha2::Sha256 as sha2::Digest>::digest(bytes).into()
+    }
+
+    #[test]
+    fn the_published_checksum_is_read_from_github_s_digest_field() {
+        let hex = "3cb5ab28094b8424415fe0818a40d4edbc089ebb5b593ef3b24a78ea16a9fb0e";
+        let digest = sha256_digest(&format!("sha256:{hex}")).expect("a digest");
+        assert_eq!(digest[0], 0x3c);
+        assert_eq!(digest[31], 0x0e);
+        for malformed in [
+            hex.to_string(),
+            format!("sha1:{hex}"),
+            format!("sha256:{}", &hex[..62]),
+            format!("sha256:{hex}00"),
+            format!("sha256:+{}", &hex[1..]),
+            format!("sha256:{}g", &hex[..63]),
+        ] {
+            assert_eq!(sha256_digest(&malformed), None, "{malformed}");
+        }
+
+        let client = GitHubUpdates::new(config());
+        let url = "https://github.com/Org/Repo/releases/download/v1.0.0/faf-client.exe";
+        client.remember_digests(&[serde_json::json!({
+            "tag_name": "v1.0.0",
+            "assets": [
+                { "browser_download_url": url, "digest": format!("sha256:{hex}") },
+                { "browser_download_url": "https://github.com/Org/Repo/old.exe" },
+            ],
+        })]);
+        assert_eq!(client.published_digest(url), Some(digest));
+        assert_eq!(
+            client.published_digest("https://github.com/Org/Repo/old.exe"),
+            None
+        );
+    }
+
+    #[tokio::test]
+    async fn a_download_is_kept_only_when_it_matches_the_published_checksum() {
+        let body = "an installer".to_string();
+        let (base, _) = serve_release_list(body.clone()).await;
+        let directory =
+            std::env::temp_dir().join(format!("faf-update-verify-{}", rand::random::<u64>()));
+        let target = directory.join("faf-client-1.0.0.exe");
+        let release = ClientRelease {
+            version: "1.0.0".into(),
+            download_url: format!("{base}/installer"),
+            ..Default::default()
+        };
+        // The local server is plain HTTP, which the shipped transport refuses.
+        let client = GitHubUpdates {
+            http: reqwest::Client::new(),
+            ..GitHubUpdates::new(config())
+        };
+        let (tx, _rx) = mpsc::channel(64);
+        let running = CancellationToken::new();
+
+        let error = client
+            .run_download_to(
+                &release,
+                Some(sha256_of(b"something else")),
+                &tx,
+                &running,
+                &target,
+            )
+            .await
+            .expect_err("a mismatch is refused");
+        assert!(error.contains("checksum"), "got: {error}");
+        assert!(!target.exists());
+        assert!(!target.with_extension("partial").exists());
+
+        let path = client
+            .run_download_to(
+                &release,
+                Some(sha256_of(body.as_bytes())),
+                &tx,
+                &running,
+                &target,
+            )
+            .await
+            .expect("a match is kept");
+        assert_eq!(tokio::fs::read(&path).await.unwrap(), body.as_bytes());
         tokio::fs::remove_dir_all(directory).await.unwrap();
     }
 
