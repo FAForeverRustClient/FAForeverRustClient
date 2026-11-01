@@ -9,15 +9,26 @@
 
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { StrictMode } from "react";
 import type { AppCommand, MapsEvent, MapVaultQuery, VaultMap } from "../../ipc/bindings";
 import { failOnConsoleError } from "../../testing/consoleGuard";
-import { applyEvent, clearSentCommands, sentCommands } from "../../testing/mounted";
+import { applyEvent, clearSentCommands, seedStore, sentCommands } from "../../testing/mounted";
+import { rememberFilter, resetFilterMemoryForTests } from "../../shared/filterMemory";
+import { hasMapVaultFocus, requestMapVaultFocus, takeMapVaultFocus } from "../../shared/mapVaultFocus";
+import { EMPTY_MAP_QUERY } from "../../shared/vaultQuery";
+import type { MapFilterState } from "./mapVaultFilters";
 import { MapsView } from "./MapsView";
 
 vi.mock("../../ipc/client");
 
 failOnConsoleError();
+
+beforeEach(resetFilterMemoryForTests);
+afterEach(() => {
+  resetFilterMemoryForTests();
+  takeMapVaultFocus();
+});
 
 function vaultMap(versionId: number, displayName: string, overrides: Partial<VaultMap> = {}): VaultMap {
   const folder = displayName.toLowerCase().replace(/\s+/g, "_");
@@ -176,5 +187,98 @@ describe("Map vault, mounted", () => {
     clearSentCommands();
     await user.dblClick(busy);
     expect(sentMaps("installMap")).toEqual([]);
+  });
+});
+
+describe("opening a specific map in the vault", () => {
+  const remembered: MapFilterState = {
+    search: "Old search",
+    author: "OtherMapper",
+    sort: "name",
+    ranked: "ranked",
+    installFilter: "installed",
+    createdAfter: "2026-01-01",
+    createdBefore: "2026-02-01",
+    showHidden: false,
+    minimumRating: 4,
+    maximumRating: 5,
+    minimumPlayers: 2,
+    maximumPlayers: 4,
+    width: 64,
+    height: 64,
+  };
+  const oldQuery: MapVaultQuery = {
+    ...EMPTY_MAP_QUERY,
+    search: remembered.search,
+    author: remembered.author,
+    ranked: true,
+    after: remembered.createdAfter,
+    before: remembered.createdBefore,
+    minRatingTenths: 40,
+    maxRatingTenths: 50,
+    minPlayers: 2,
+    maxPlayers: 4,
+    width: 64,
+    height: 64,
+    sortBy: "name",
+    sortDescending: false,
+    page: 7,
+  };
+  const lastSearch = () => {
+    const queries = sentCommands().flatMap(command =>
+      command.kind === "Maps" && command.command.type === "searchVault" ? [command.command.payload.query] : []);
+    return queries[queries.length - 1];
+  };
+
+  function restoreSearch(memory: "session" | "restart", saveFilters: boolean, downloaded = false) {
+    const savedFilters: Record<string, string> = memory === "restart" && saveFilters
+      ? { "maps.vault": JSON.stringify(remembered) }
+      : {};
+    seedStore(state => ({
+      ...state,
+      settings: {
+        ...state.settings,
+        general: { ...state.settings.general, filterMemory: memory },
+        browsing: {
+          ...state.settings.browsing,
+          mapVaultPreset: "all",
+          mapVaultSort: downloaded ? "downloaded" : "name",
+          rememberedFilters: savedFilters,
+        },
+      },
+      maps: { ...state.maps, browseQuery: downloaded ? EMPTY_MAP_QUERY : oldQuery },
+    }));
+    if (memory === "session" && saveFilters) rememberFilter("maps.vault", remembered);
+  }
+
+  it.each([
+    { memory: "session" as const, saved: true },
+    { memory: "restart" as const, saved: true },
+    { memory: "session" as const, saved: false },
+  ])("clears $memory filters (saved: $saved) and selects the requested map", ({ memory, saved }) => {
+    restoreSearch(memory, saved);
+    requestMapVaultFocus({ name: "Target Map", folderName: "target.v0001" });
+    render(<StrictMode><MapsView /></StrictMode>);
+    const query = lastSearch();
+    expect(query).toEqual({ ...EMPTY_MAP_QUERY, search: "Target Map", sortBy: "name", sortDescending: false });
+    const target = vaultMap(101, "Target Map", { folderName: "target.v0001", author: "NewMapper", ranked: false });
+    answerSearch(query, [vaultMap(100, "Another Map"), target]);
+    expect(cardOf("Target Map")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Target Map" })).toBeTruthy();
+    expect(hasMapVaultFocus()).toBe(false);
+  });
+
+  it("leaves the downloaded-only view when opening an uninstalled map", () => {
+    restoreSearch("session", false, true);
+    requestMapVaultFocus({ name: "Target Map", folderName: "target.v0001" });
+    render(<MapsView />);
+    const query = lastSearch();
+    expect(query).toEqual({ ...EMPTY_MAP_QUERY, search: "Target Map", sortBy: "name", sortDescending: false });
+  });
+
+  it("restores remembered filters during an ordinary return to the tab", () => {
+    restoreSearch("session", true);
+    render(<MapsView />);
+    expect(lastSearch()).toEqual(oldQuery);
   });
 });

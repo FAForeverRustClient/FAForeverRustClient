@@ -140,9 +140,10 @@ function VaultView({ busy }: { busy: boolean }) {
   // it, so coming back from another tab finds the search where it was left.
   // As long as the filter setting keeps it (#447): the copy remembered for
   // this tab, which also holds the install filter the query does not carry,
-  // then the query in state.
+  // then the query in state. A map opened elsewhere starts clean, so neither
+  // the saved form nor the previous server query can hide the requested map.
   const [restored] = useState(() =>
-    filterMemoryNow() === "never"
+    hasMapVaultFocus() || filterMemoryNow() === "never"
       ? null
       : rememberedFilter<MapFilterState | null>(MAP_VAULT_FILTERS, null, isFilterRecord)
         ?? mapFilterFromQuery(browseQuery, preset));
@@ -258,8 +259,11 @@ function VaultView({ busy }: { busy: boolean }) {
     setSelectedFolder(focused.folderName || null);
     // A preset that narrows the list (recommended, favourites, my uploads,
     // played) could hide the very map that was asked for, so it gives way to
-    // the whole vault. The sorting presets keep their order.
-    if (preset !== "all" && preset !== "rating" && preset !== "newest") choosePreset("all");
+    // the whole vault. Ordinary sorting presets keep their order; "Recently
+    // downloaded" also narrows to local maps, so it has to give way too.
+    if ((preset !== "all" && preset !== "rating" && preset !== "newest") || sort === "downloaded") {
+      choosePreset("all");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
