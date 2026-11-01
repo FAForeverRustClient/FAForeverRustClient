@@ -10,6 +10,10 @@ export function NotificationPopup() {
   // Why the last click did nothing, shown in the card it was made on: the
   // card stays when its action fails, and the window has no other surface.
   const [failure, setFailure] = useState<{ id: string; message: string } | null>(null);
+  // Artwork that did not load. Its card is drawn without the artwork column,
+  // not with an empty one: a hidden image gives up its grid cell, and the
+  // text would otherwise fall into the narrow column meant for the picture.
+  const [brokenArt, setBrokenArt] = useState<ReadonlySet<string>>(new Set());
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let disposed = false;
@@ -42,25 +46,28 @@ export function NotificationPopup() {
     });
   };
   return <div className="desktop-notification-stack" ref={root} aria-live="polite">
-    {batch?.cards.map((card) => <TimedToast key={card.id === "preview" ? `${card.id}-${batch.revision}` : card.id}
-      className={` desktop-notification${card.tone ? ` ${card.tone}` : ""}`} duration={batch.durationSeconds * 1000}
-      onExpire={() => interact(card.id, "expire")}>
-      <button className={`desktop-notification-main${card.imageUrl ? " has-art" : ""}`} type="button" onClick={() => interact(card.id, "activate")}>
-        {card.imageUrl && <img className="desktop-notification-art" src={card.imageUrl} alt="" draggable={false}
-          onError={(event) => { event.currentTarget.hidden = true; }} />}
-        <span className="desktop-notification-text">
-          <span className="desktop-notification-title">
-            <span className="desktop-notification-logo" aria-hidden="true" />
-            <strong>{card.title}</strong>
+    {batch?.cards.map((card) => {
+      const art = card.imageUrl && !brokenArt.has(card.imageUrl) ? card.imageUrl : null;
+      return <TimedToast key={card.id === "preview" ? `${card.id}-${batch.revision}` : card.id}
+        className={` desktop-notification${card.tone ? ` ${card.tone}` : ""}`} duration={batch.durationSeconds * 1000}
+        onExpire={() => interact(card.id, "expire")}>
+        <button className={`desktop-notification-main${art ? " has-art" : ""}`} type="button" onClick={() => interact(card.id, "activate")}>
+          {art && <img className="desktop-notification-art" src={art} alt="" draggable={false}
+            onError={() => setBrokenArt((current) => new Set(current).add(art))} />}
+          <span className="desktop-notification-text">
+            <span className="desktop-notification-title">
+              <span className="desktop-notification-logo" aria-hidden="true" />
+              <strong>{card.title}</strong>
+            </span>
+            <span className="desktop-notification-message">{card.body}</span>
+            {card.actionLabel && <span className="desktop-notification-action">{card.actionLabel}</span>}
+            {failure?.id === card.id && <span className="desktop-notification-error" role="alert">{failure.message}</span>}
           </span>
-          <span className="desktop-notification-message">{card.body}</span>
-          {card.actionLabel && <span className="desktop-notification-action">{card.actionLabel}</span>}
-          {failure?.id === card.id && <span className="desktop-notification-error" role="alert">{failure.message}</span>}
-        </span>
-      </button>
-      <button className="desktop-notification-dismiss" type="button" aria-label={batch.dismissLabel} onClick={() => interact(card.id, "dismiss")}>
-        <Icon name="close" size={14} />
-      </button>
-    </TimedToast>)}
+        </button>
+        <button className="desktop-notification-dismiss" type="button" aria-label={batch.dismissLabel} onClick={() => interact(card.id, "dismiss")}>
+          <Icon name="close" size={14} />
+        </button>
+      </TimedToast>;
+    })}
   </div>;
 }

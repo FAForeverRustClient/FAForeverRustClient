@@ -276,19 +276,23 @@ export function NotificationCenter() {
         gameFocused = await native.gameNotificationAttention().catch(() => false);
       }
       if (!focused && !gameFocused) void native.requestAttention().catch(() => undefined);
+      // The settings as they are now, not as they were when the batch arrived:
+      // the checks above wait on the shell, and a switch turned off meanwhile
+      // (sound muted, desktop off) must already hold for this batch.
       const currentState = useAppStore.getState().state;
+      const latest = currentState.settings.notifications;
       const visible = announcing.filter((item) => !(item.kind === "gameFull" && gameFocused)
-        && currentState.settings.notifications.enabled
+        && latest.enabled
         && currentState.notifications.items.some((n) => n.id === item.id && !n.read));
       // Sound admission is independent from popup delivery and focus.
       visible.forEach((item) => {
-        if (deliveryFor(item.kind, preferences).sound) {
-          playNotificationSound(soundForKind(item.kind, preferences.sounds), preferences.volume);
+        if (deliveryFor(item.kind, latest).sound) {
+          playNotificationSound(soundForKind(item.kind, latest.sounds), latest.volume);
         }
       });
-      const desktop = visible.filter((item) => deliveryFor(item.kind, preferences).desktop)
-        .filter(() => !focused || preferences.notifyWhenFocused);
-      const popupStyle = (preferences.desktopStyle ?? "popup") === "popup";
+      const desktop = visible.filter((item) => deliveryFor(item.kind, latest).desktop)
+        .filter(() => !focused || latest.notifyWhenFocused);
+      const popupStyle = (latest.desktopStyle ?? "popup") === "popup";
       const showInside = (candidates: ClientNotification[]) => {
         const current = useAppStore.getState().state;
         const inside = candidates.filter((item) => current.notifications.items.some((n) => n.id === item.id && !n.read)

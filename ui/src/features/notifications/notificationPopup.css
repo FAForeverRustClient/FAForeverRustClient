@@ -79,10 +79,6 @@ body {
   border-radius: var(--radius-sm);
 }
 
-.desktop-notification-art[hidden] {
-  display: none;
-}
-
 .desktop-notification-text {
   display: flex;
   flex-direction: column;

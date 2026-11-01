@@ -51,6 +51,17 @@ it("shows why an action failed inside the card that was clicked", async () => {
   const card = view.container.querySelector(".desktop-notification")!;
   expect(card.querySelector("[role=alert]")?.textContent).toContain("No running game is available");
 });
+it("drops the artwork column when the artwork fails to load", async () => {
+  bridge.snapshot.mockResolvedValue({ ...batch(1, "Ready"), cards: [{ id: "full", title: "Game full", body: "Ready", tone: "", actionLabel: null, imageUrl: "https://example.invalid/map.png" }] });
+  const view = render(<NotificationPopup />);
+  await act(async () => {});
+  const main = view.container.querySelector(".desktop-notification-main")!;
+  expect(main.classList.contains("has-art")).toBe(true);
+  fireEvent.error(main.querySelector("img")!);
+  expect(main.classList.contains("has-art")).toBe(false);
+  expect(main.querySelector("img")).toBeNull();
+  expect(main.firstElementChild?.classList.contains("desktop-notification-text")).toBe(true);
+});
 it("does not overwrite a newer live update with a delayed startup snapshot", async () => {
   let resolve!: (batch: NotificationPopupBatch) => void;
   bridge.snapshot.mockReturnValue(new Promise((done) => { resolve = done; }));

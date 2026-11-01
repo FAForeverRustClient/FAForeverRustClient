@@ -64,6 +64,23 @@ it("keeps game-full alerts quiet when the owned game is already foreground", asy
   expect(view.container.querySelector(".notification-toast")).toBeNull();
 });
 
+it("uses the sound setting as it is after the focus check, not before it", async () => {
+  let answer!: (focused: boolean) => void;
+  nativeMock.isWindowFocused.mockReturnValue(new Promise<boolean>((done) => { answer = done; }));
+  act(() => {
+    const current = useAppStore.getState().state;
+    useAppStore.getState().hydrate({ ...current, settings: { ...current.settings, notifications: { ...current.settings.notifications, sound: true } } });
+  });
+  render(<NotificationCenter />);
+  await act(async () => {});
+  act(() => {
+    const current = useAppStore.getState().state;
+    useAppStore.getState().hydrate({ ...current, settings: { ...current.settings, notifications: { ...current.settings.notifications, sound: false } } });
+  });
+  await act(async () => { answer(false); await Promise.resolve(); });
+  expect(playNotificationSound).not.toHaveBeenCalled();
+});
+
 it("does not announce stale cards after notifications are disabled during popup creation", async () => {
   let reject!: (error: Error) => void;
   nativeMock.showNotificationPopup.mockReturnValue(new Promise<void>((_resolve, fail) => { reject = fail; }));
