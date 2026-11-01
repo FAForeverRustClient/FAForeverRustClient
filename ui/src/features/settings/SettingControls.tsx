@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useId, useRef } from "react";
 import type { ReactNode } from "react";
 
 import { Icon } from "../../design-system/Icon";
@@ -86,25 +86,22 @@ export function useSettingsIndexEntry(...text: (ReactNode | undefined)[]): void 
   }, [section, key]);
 }
 
-export function SettingsSection({
-  id,
-  title,
-  description,
-  children,
-}: {
-  id: string;
-  title: string;
-  description: string;
-  children: ReactNode;
-}) {
-  useSettingsIndexEntry(title, description);
+/**
+ * A group of related rows on a settings page: a short heading over one
+ * surface that holds the rows, divided by hairlines.
+ *
+ * A page is read by finding the group first and the row second, so thirty
+ * settings become five or six things to look at rather than thirty. The first
+ * group of a page usually goes without a title: the page heading already says
+ * what it is about, and repeating it under itself would be noise.
+ */
+export function SettingsGroup({ title, children }: { title?: string; children: ReactNode }) {
+  useSettingsIndexEntry(title);
+  const id = useId();
   return (
-    <section className="settings-section surface-panel" id={id} aria-labelledby={`${id}-title`}>
-      <header className="settings-section-head">
-        <h3 className="settings-section-title" id={`${id}-title`}>{title}</h3>
-        <p className="muted">{description}</p>
-      </header>
-      <div className="settings-section-body">{children}</div>
+    <section className="settings-group" aria-labelledby={title ? id : undefined}>
+      {title && <h4 className="settings-group-title" id={id}>{title}</h4>}
+      <div className="settings-group-body">{children}</div>
     </section>
   );
 }

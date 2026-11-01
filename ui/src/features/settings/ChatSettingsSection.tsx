@@ -5,7 +5,7 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { useAppStore } from "../../store/store";
 import { setPlayerMuted } from "../../shared/preferenceCommands";
-import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { SettingRow, SettingsGroup, SettingsSwitch } from "./SettingControls";
 import { useTranslation } from "../../i18n/useTranslation";
 
 const save = (patch: ChatPreferencesPatch) =>
@@ -38,161 +38,165 @@ export function ChatSettingsSection() {
 
   return (
     <>
-      {/* Chat's own two, and the reason they stay here while the name colours
-          left: these reach nothing but the chat. The colours are projected onto
-          the document root and repaint the game tiles in the Play tab, so they
-          are a client-wide choice; a font size that changes one pane is a
-          setting of that pane. */}
-      <SettingRow label={t("settings.chat.fontSize")}>
-        <label className="settings-slider">
-          <input
-            type="range"
-            min={11}
-            max={22}
-            step={1}
-            value={preferences.fontSize || 13}
-            onChange={(event) => void save({ fontSize: Number(event.target.value) })}
-            aria-label={t("settings.chat.fontSize")}
+      <SettingsGroup>
+        {/* Chat's own two, and the reason they stay here while the name colours
+            left: these reach nothing but the chat. The colours are projected onto
+            the document root and repaint the game tiles in the Play tab, so they
+            are a client-wide choice; a font size that changes one pane is a
+            setting of that pane. */}
+        <SettingRow label={t("settings.chat.fontSize")}>
+          <label className="settings-slider">
+            <input
+              type="range"
+              min={11}
+              max={22}
+              step={1}
+              value={preferences.fontSize || 13}
+              onChange={(event) => void save({ fontSize: Number(event.target.value) })}
+              aria-label={t("settings.chat.fontSize")}
+            />
+            <span>{preferences.fontSize || 13} px</span>
+          </label>
+        </SettingRow>
+        <SettingRow label={t("settings.chat.senderWidth")} hint={t("settings.chat.senderWidthHint")}>
+          <label className="settings-slider">
+            <input
+              type="range"
+              min={64}
+              max={260}
+              step={4}
+              value={preferences.senderWidth || 116}
+              onChange={(event) => void save({ senderWidth: Number(event.target.value) })}
+              aria-label={t("settings.chat.senderWidth")}
+            />
+            <span>{preferences.senderWidth || 116} px</span>
+          </label>
+        </SettingRow>
+        <SettingRow label={t("settings.chat.messageTimestamps")}>
+          <SettingsSwitch
+            checked={preferences.showTimestamps}
+            onChange={(showTimestamps) => void save({ showTimestamps })}
+            label={t("settings.chat.messageTimestamps")}
           />
-          <span>{preferences.fontSize || 13} px</span>
-        </label>
-      </SettingRow>
-      <SettingRow label={t("settings.chat.senderWidth")} hint={t("settings.chat.senderWidthHint")}>
-        <label className="settings-slider">
-          <input
-            type="range"
-            min={64}
-            max={260}
-            step={4}
-            value={preferences.senderWidth || 116}
-            onChange={(event) => void save({ senderWidth: Number(event.target.value) })}
-            aria-label={t("settings.chat.senderWidth")}
+        </SettingRow>
+        <SettingRow label={t("settings.chat.24HourTime")}>
+          <SettingsSwitch
+            checked={preferences.use24HourTime}
+            disabled={!preferences.showTimestamps}
+            onChange={(use24HourTime) => void save({ use24HourTime })}
+            label={t("settings.chat.24HourTime")}
           />
-          <span>{preferences.senderWidth || 116} px</span>
-        </label>
-      </SettingRow>
-      <SettingRow label={t("settings.chat.messageTimestamps")}>
-        <SettingsSwitch
-          checked={preferences.showTimestamps}
-          onChange={(showTimestamps) => void save({ showTimestamps })}
-          label={t("settings.chat.messageTimestamps")}
-        />
-      </SettingRow>
-      <SettingRow label={t("settings.chat.24HourTime")}>
-        <SettingsSwitch
-          checked={preferences.use24HourTime}
-          disabled={!preferences.showTimestamps}
-          onChange={(use24HourTime) => void save({ use24HourTime })}
-          label={t("settings.chat.24HourTime")}
-        />
-      </SettingRow>
-      <SettingRow label={t("settings.chat.showJoinsParts")}>
-        <SettingsSwitch
-          checked={preferences.showJoinsParts}
-          onChange={(showJoinsParts) => void save({ showJoinsParts })}
-          label={t("settings.chat.showJoinsParts")}
-        />
-      </SettingRow>
-      <SettingRow label={t("settings.chat.hideFoeMessages")}>
-        <SettingsSwitch
-          checked={preferences.hideFoeMessages}
-          onChange={(hideFoeMessages) => void save({ hideFoeMessages })}
-          label={t("settings.chat.hideFoeMessages")}
-        />
-      </SettingRow>
-      <SettingRow label={t("settings.chat.joinMyLanguage")}>
-        <SettingsSwitch
-          checked={preferences.autoJoinLanguageChannel}
-          onChange={(autoJoinLanguageChannel) =>
-            void save({ autoJoinLanguageChannel })
-          }
-          label={t("settings.chat.joinMyLanguage")}
-        />
-      </SettingRow>
-      <SettingRow label={t("settings.chat.autoJoinNewbie")}>
-        <SettingsSwitch
-          checked={preferences.autoJoinNewbieChannel}
-          onChange={(autoJoinNewbieChannel) =>
-            void save({ autoJoinNewbieChannel })
-          }
-          label={t("settings.chat.autoJoinNewbie")}
-        />
-      </SettingRow>
-      {/* Nobody can be muted any more: the foe list and "Hide foe messages"
-          above do that job, as in both reference clients. The list stays for
-          as long as it holds somebody muted before that, so they can still be
-          let back in, and goes once it is empty. */}
-      {preferences.mutedPlayers.length > 0 && (
-        <div className="setting-block settings-muted-players">
-          <span className="setting-label">{t("settings.chat.mutedLabel")}</span>
-          <span className="muted">{t("settings.chat.mutedHint")}</span>
-          <div className="settings-chip-list" aria-label={t("settings.chat.mutedPlayers")}>
-            {preferences.mutedPlayers.map((player) => (
-              <span className="settings-chip surface" key={player.toLocaleLowerCase()}>
-                {player}
-                <button
-                  type="button"
-                  aria-label={t("settings.chat.unmutePlayer", { name: player })}
-                  title={t("settings.chat.unmutePlayer", { name: player })}
-                  onClick={() => setPlayerMuted(player, false)}
-                >
-                  <Icon name="close" size={12} />
-                </button>
-              </span>
-            ))}
+        </SettingRow>
+        <SettingRow label={t("settings.chat.showJoinsParts")}>
+          <SettingsSwitch
+            checked={preferences.showJoinsParts}
+            onChange={(showJoinsParts) => void save({ showJoinsParts })}
+            label={t("settings.chat.showJoinsParts")}
+          />
+        </SettingRow>
+        <SettingRow label={t("settings.chat.hideFoeMessages")}>
+          <SettingsSwitch
+            checked={preferences.hideFoeMessages}
+            onChange={(hideFoeMessages) => void save({ hideFoeMessages })}
+            label={t("settings.chat.hideFoeMessages")}
+          />
+        </SettingRow>
+        {/* Nobody can be muted any more: the foe list and "Hide foe messages"
+            above do that job, as in both reference clients. The list stays for
+            as long as it holds somebody muted before that, so they can still be
+            let back in, and goes once it is empty. */}
+        {preferences.mutedPlayers.length > 0 && (
+          <div className="setting-block settings-muted-players">
+            <span className="setting-label">{t("settings.chat.mutedLabel")}</span>
+            <span className="muted">{t("settings.chat.mutedHint")}</span>
+            <div className="settings-chip-list" aria-label={t("settings.chat.mutedPlayers")}>
+              {preferences.mutedPlayers.map((player) => (
+                <span className="settings-chip surface" key={player.toLocaleLowerCase()}>
+                  {player}
+                  <button
+                    type="button"
+                    aria-label={t("settings.chat.unmutePlayer", { name: player })}
+                    title={t("settings.chat.unmutePlayer", { name: player })}
+                    onClick={() => setPlayerMuted(player, false)}
+                  >
+                    <Icon name="close" size={12} />
+                  </button>
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-      <SettingRow label={t("settings.chat.visibleHistory")} hint={t("settings.chat.visibleHistoryHint")}>
-        <select
-          className="settings-select"
-          value={preferences.visibleMessageLimit}
-          onChange={(event) => void save({ visibleMessageLimit: Number(event.target.value) })}
-          aria-label={t("settings.chat.visibleChatHistory")}
-        >
-          {[100, 250, 500].map((count) => (
-            <option key={count} value={count}>
-              {t("settings.chat.visibleHistoryOption", { count })}
-            </option>
-          ))}
-        </select>
-      </SettingRow>
-      <div className="setting-block settings-channels">
-        <span className="setting-label">{t("settings.chat.autoJoinLabel")}</span>
-        <div className="settings-inline-form">
-          <input
-            className="settings-input"
-            value={channel}
-            onChange={(event) => setChannel(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                addChannel();
-              }
-            }}
-            placeholder={t("settings.chat.channel")}
-            aria-label={t("settings.chat.channelAutoJoin")}
-          />
-          <Button onClick={addChannel} disabled={!channel.trim()}>{t("settings.chat.add")}</Button>
-        </div>
-        {preferences.autoJoinChannels.length > 0 ? (
-          <div className="settings-chip-list" aria-label={t("settings.chat.autoJoinChannels")}>
-            {preferences.autoJoinChannels.map((item) => (
-              <span className="settings-chip surface" key={item}>
-                {item}
-                <button
-                  type="button"
-                  aria-label={t("settings.chat.removeChannel", { name: item })}
-                  title={t("settings.chat.removeChannel", { name: item })}
-                  onClick={() => setAutoJoinChannel(item, false)}
-                >
-                  <Icon name="close" size={12} />
-                </button>
-              </span>
+        )}
+        <SettingRow label={t("settings.chat.visibleHistory")} hint={t("settings.chat.visibleHistoryHint")}>
+          <select
+            className="settings-select"
+            value={preferences.visibleMessageLimit}
+            onChange={(event) => void save({ visibleMessageLimit: Number(event.target.value) })}
+            aria-label={t("settings.chat.visibleChatHistory")}
+          >
+            {[100, 250, 500].map((count) => (
+              <option key={count} value={count}>
+                {t("settings.chat.visibleHistoryOption", { count })}
+              </option>
             ))}
+          </select>
+        </SettingRow>
+      </SettingsGroup>
+      <SettingsGroup title={t("settings.chat.group.channels")}>
+        <SettingRow label={t("settings.chat.joinMyLanguage")}>
+          <SettingsSwitch
+            checked={preferences.autoJoinLanguageChannel}
+            onChange={(autoJoinLanguageChannel) =>
+              void save({ autoJoinLanguageChannel })
+            }
+            label={t("settings.chat.joinMyLanguage")}
+          />
+        </SettingRow>
+        <SettingRow label={t("settings.chat.autoJoinNewbie")}>
+          <SettingsSwitch
+            checked={preferences.autoJoinNewbieChannel}
+            onChange={(autoJoinNewbieChannel) =>
+              void save({ autoJoinNewbieChannel })
+            }
+            label={t("settings.chat.autoJoinNewbie")}
+          />
+        </SettingRow>
+        <div className="setting-block settings-channels">
+          <span className="setting-label">{t("settings.chat.autoJoinLabel")}</span>
+          <div className="settings-inline-form">
+            <input
+              className="settings-input"
+              value={channel}
+              onChange={(event) => setChannel(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  addChannel();
+                }
+              }}
+              placeholder={t("settings.chat.channel")}
+              aria-label={t("settings.chat.channelAutoJoin")}
+            />
+            <Button onClick={addChannel} disabled={!channel.trim()}>{t("settings.chat.add")}</Button>
           </div>
-        ) : <span className="settings-empty muted">{t("settings.chat.autoJoinEmpty")}</span>}
-      </div>
+          {preferences.autoJoinChannels.length > 0 ? (
+            <div className="settings-chip-list" aria-label={t("settings.chat.autoJoinChannels")}>
+              {preferences.autoJoinChannels.map((item) => (
+                <span className="settings-chip surface" key={item}>
+                  {item}
+                  <button
+                    type="button"
+                    aria-label={t("settings.chat.removeChannel", { name: item })}
+                    title={t("settings.chat.removeChannel", { name: item })}
+                    onClick={() => setAutoJoinChannel(item, false)}
+                  >
+                    <Icon name="close" size={12} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : <span className="settings-empty muted">{t("settings.chat.autoJoinEmpty")}</span>}
+        </div>
+      </SettingsGroup>
     </>
   );
 }

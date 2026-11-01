@@ -8,7 +8,7 @@ import { useAppStore } from "../../store/store";
 import { formatBytes } from "../../shared/format/formatBytes";
 import { formatDate } from "../../shared/format/dates";
 import { useTranslation } from "../../i18n/useTranslation";
-import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { SettingRow, SettingsGroup, SettingsSwitch } from "./SettingControls";
 import type { GamePreferencesPatch } from "../../ipc/bindings";
 import { cachedVersionRelease, cachedVersionReleaseId } from "./cachedVersionRelease";
 
@@ -84,7 +84,7 @@ export function GameCacheSettingsSection() {
   const currentAlertGb = preferences.cacheSizeAlertGb ?? 0;
 
   return (
-    <>
+    <SettingsGroup>
       {/* Keeping generated maps is a retention question about files on disk, so
           it is filed with the rest of the disk the client spends rather than
           beside the switch that generates them. Same slice of settings either
@@ -274,6 +274,6 @@ export function GameCacheSettingsSection() {
           </div>
         </div>
       </div>
-    </>
+    </SettingsGroup>
   );
 }

@@ -4,7 +4,7 @@ import { Button } from "../../design-system/Button";
 import { useAppStore } from "../../store/store";
 import { isUpdateBusy } from "../../store/reducers/clientUpdate";
 import { formatSize } from "../../shared/format/installerSize";
-import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { SettingRow, SettingsGroup, SettingsSwitch } from "./SettingControls";
 import { hourCycleOptions } from "../../shared/format/clock";
 import { clientIntlTag } from "../../shared/format/dates";
 import { plainError } from "../../shared/plainError";
@@ -26,7 +26,7 @@ export function UpdatesSettingsSection() {
   const update = useAppStore((s) => s.state.clientUpdate);
 
   return (
-    <>
+    <SettingsGroup title={t("settings.section.updates.title")}>
       <SettingRow label={t("settings.updates.checkUpdatesAt")}>
         <SettingsSwitch
           checked={preferences.automatic}
@@ -67,7 +67,7 @@ export function UpdatesSettingsSection() {
           </Button>
         </div>
       </SettingRow>
-    </>
+    </SettingsGroup>
   );
 }
 

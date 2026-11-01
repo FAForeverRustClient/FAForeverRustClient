@@ -8,7 +8,7 @@ import type {
 import { Button } from "../../design-system/Button";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
-import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { SettingRow, SettingsGroup, SettingsSwitch } from "./SettingControls";
 import { LOCALES, LOCALE_KEYS, type Locale } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { TABS } from "../nav/tabs";
@@ -50,7 +50,7 @@ export function GeneralSettingsSection() {
   const { t, locale, setLocale } = useTranslation();
 
   return (
-    <>
+    <SettingsGroup>
       <SettingRow label={t("settings.general.startPage.label")}>
         <select
           className="settings-select"
@@ -155,6 +155,6 @@ export function GeneralSettingsSection() {
           ))}
         </select>
       </SettingRow>
-    </>
+    </SettingsGroup>
   );
 }

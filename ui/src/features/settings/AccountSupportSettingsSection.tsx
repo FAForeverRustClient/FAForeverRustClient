@@ -3,7 +3,7 @@ import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { ACCOUNT_LINKS, openExternalUrl } from "../../shared/externalLinks";
-import { SettingRow } from "./SettingControls";
+import { SettingRow, SettingsGroup } from "./SettingControls";
 import { useTranslation } from "../../i18n/useTranslation";
 
 function ExternalAction({ href, children }: { href: string; children: string }) {
@@ -36,7 +36,7 @@ export function AccountSupportSettingsSection() {
     });
 
   return (
-    <>
+    <SettingsGroup>
       <SettingRow
         label={t("settings.account.session")}
         hint={
@@ -67,6 +67,6 @@ export function AccountSupportSettingsSection() {
           <ExternalAction href={ACCOUNT_LINKS.rules}>{t("settings.account.rules")}</ExternalAction>
         </div>
       </SettingRow>
-    </>
+    </SettingsGroup>
   );
 }
