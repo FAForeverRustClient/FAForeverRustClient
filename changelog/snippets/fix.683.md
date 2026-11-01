@@ -7,4 +7,4 @@
 - Sign-in controls remain reachable in short windows.
 - Replay notes, Insights, enlarged charts and map previews keep keyboard focus while open.
 - Matchmaker queue timers no longer show impossible times like 1:50, and keep counting during a replay while you search.
-- The icons beside matchmaker queue numbers are larger and no longer look dashed.
+- The icons beside matchmaker queue numbers are larger.
