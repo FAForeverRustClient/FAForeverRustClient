@@ -1,0 +1,14 @@
+- Desktop notifications can use the client's own popup, which never takes focus (Settings, Notifications, "Desktop notification style").
+- Choose the display and corner for desktop popups (Settings, Notifications, "Popup display" and "Desktop popup position").
+- Sound, in-client card and desktop notification can be set for each event (Settings, Notifications, "Delivery for individual events").
+- A notification card stays while the mouse is over it, and how long it stays is a setting.
+- A new notification when a friend joins a game, opening that game's preview.
+- Clicking a friend-online notification opens a private chat with them.
+- Clicking a friend-playing notification watches their game.
+- Clicking a new-game notification opens that game's preview.
+- Clicking the after-game reminder opens the game's reviews.
+- "Game full" on Windows brings the game back to the front, and stays quiet while it already is.
+- Mention notifications can be limited to @name mentions.
+- Error notifications offer "Open logs" and "Copy details".
+- The bell's counter turns red or orange while an unread error or warning is waiting.
+- "Push every notification" is now "Desktop notifications for every event", with an explanation.
