@@ -1,0 +1,5 @@
+- German, French, Spanish and Polish name the client's tabs correctly and fix grammar and spelling mistakes.
+- French addresses players consistently as "vous".
+- Polish uses the right word forms for counts of two or more.
+- In Russian, the join download dialog shows how many mods have an unknown size instead of "{count}".
+- Russian names the stream in the Links live list and the game in the join download dialog.
