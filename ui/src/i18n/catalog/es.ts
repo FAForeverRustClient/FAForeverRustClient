@@ -1429,7 +1429,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.game.cacheSizeAlert.default": "10 GB (predeterminado)",
   "settings.game.cacheSizeAlert.disabled": "Desactivado",
   "settings.game.cacheRollingBranches": "Almacenar en caché las ramas de desarrollo (FAF Develop y Beta)",
-  "settings.game.cacheRollingBranchesHint": "Guarda cada versión develop y beta jugada, para que sus repeticiones sigan funcionando. Los archivos compartidos se guardan una sola vez.",
+  "settings.game.cacheRollingBranchesHint": "Guarda cada versión develop y beta jugada, para que sus repeticiones sigan funcionando. Los archivos compartidos se guardan una sola vez. Desactivarlo no borra las versiones ya guardadas.",
   "settings.game.experimentalBadge": "Experimental",
   "settings.game.cacheStorage": "Caché de datos y versiones del juego",
   "settings.game.cacheUsed": "{size} en disco",

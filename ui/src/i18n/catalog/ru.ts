@@ -1504,7 +1504,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.game.cacheSizeAlert.default": "10 ГБ (по умолчанию)",
   "settings.game.cacheSizeAlert.disabled": "Отключено",
   "settings.game.cacheRollingBranches": "Кэшировать ветки разработки (FAF Develop и Beta)",
-  "settings.game.cacheRollingBranchesHint": "Сохранять сыгранные версии Develop и Beta, чтобы реплеи из них можно было открыть позже. Общие файлы хранятся один раз.",
+  "settings.game.cacheRollingBranchesHint": "Сохранять сыгранные версии Develop и Beta, чтобы реплеи из них можно было открыть позже. Общие файлы хранятся один раз. Выключение не удаляет уже сохранённые версии.",
   "settings.game.experimentalBadge": "Экспериментально",
   "settings.game.cacheStorage": "Кэш данных и версий игры",
   "settings.game.cacheUsed": "{size} на диске",
