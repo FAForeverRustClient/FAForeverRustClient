@@ -1,0 +1,2 @@
+- Dropdowns in Settings no longer look active while they cannot be changed.
+- The "Match found (FAF)" sound name is no longer cut off in Settings, Notifications.
