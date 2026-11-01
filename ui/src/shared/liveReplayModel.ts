@@ -65,10 +65,16 @@ export function gameStartedAt(game: Game): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+/**
+ * Seconds until a live game's replay can be watched, never more than the delay
+ * itself: a `now` older than the game's start (a clock that stopped ticking, or
+ * one behind the server's) would otherwise promise more than five minutes.
+ */
 export function replayDelayRemaining(game: Game, now: number): number {
   const started = gameStartedAt(game);
   if (!started) return 0;
-  return Math.max(0, Math.ceil(LIVE_REPLAY_DELAY_SECONDS - (now - started.getTime()) / 1000));
+  const remaining = Math.ceil(LIVE_REPLAY_DELAY_SECONDS - (now - started.getTime()) / 1000);
+  return Math.min(LIVE_REPLAY_DELAY_SECONDS, Math.max(0, remaining));
 }
 
 export function liveSortValue(game: Game, key: LiveSortKey): string | number {

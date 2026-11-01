@@ -79,13 +79,18 @@ export function LiveReplayCards(props: Props) {
   // scales timer work with the result count, and a game that is not waiting on
   // the replay delay gets a stable zero, so `memo` still skips it on the ticks
   // the waiting ones need.
+  //
+  // The wait is read from the time the grid is drawn; its tick only redraws.
+  // The tick stops while nothing is waiting and while a game or replay runs,
+  // and a game that started since was counted from that older instant.
   const [ageNow, setAgeNow] = useState(() => Date.now());
-  const [waitNow, setWaitNow] = useState(() => Date.now());
+  const [, setWaitTick] = useState(() => Date.now());
+  const waitNow = Date.now();
   const hasDelayedReplay = props.games.some(({ game }) => replayDelayRemaining(game, waitNow) > 0);
 
   useForegroundInterval(() => setAgeNow(Date.now()), 60_000, true);
 
-  useForegroundInterval(() => setWaitNow(Date.now()), 1000, hasDelayedReplay);
+  useForegroundInterval(() => setWaitTick(Date.now()), 1000, hasDelayedReplay);
 
   return (
     <div className="live-replay-card-wrap">
