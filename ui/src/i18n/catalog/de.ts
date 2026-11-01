@@ -1561,7 +1561,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.game.cacheSizeAlert.default": "10 GB (Standard)",
   "settings.game.cacheSizeAlert.disabled": "Deaktiviert",
   "settings.game.cacheRollingBranches": "Entwicklungszweige zwischenspeichern (FAF Develop & Beta)",
-  "settings.game.cacheRollingBranchesHint": "Behält jeden gespielten Develop- und Beta-Build, damit deren Replays abspielbar bleiben. Gemeinsame Dateien werden nur einmal gespeichert.",
+  "settings.game.cacheRollingBranchesHint": "Behält jeden gespielten Develop- und Beta-Build, damit deren Replays abspielbar bleiben. Gemeinsame Dateien werden nur einmal gespeichert. Beim Ausschalten werden bereits gespeicherte Builds nicht gelöscht.",
   "settings.game.experimentalBadge": "Experimentell",
   "settings.game.cacheStorage": "Spieldaten- & Versions-Cache",
   "settings.game.cacheUsed": "{size} belegt",

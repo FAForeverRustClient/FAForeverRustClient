@@ -1873,7 +1873,7 @@ export const en = {
   "settings.game.cacheSizeAlert.default": "10 GB (default)",
   "settings.game.cacheSizeAlert.disabled": "Disabled",
   "settings.game.cacheRollingBranches": "Cache development branches (FAF Develop & Beta)",
-  "settings.game.cacheRollingBranchesHint": "Keeps each develop and beta build you play, so their replays still play later. Files the builds share are stored once.",
+  "settings.game.cacheRollingBranchesHint": "Keeps each develop and beta build you play, so their replays still play later. Files the builds share are stored once. Turning it off deletes no build already stored.",
   "settings.game.experimentalBadge": "Experimental",
   "settings.game.cacheStorage": "Game data & version cache",
   "settings.game.cacheUsed": "{size} on disk",
