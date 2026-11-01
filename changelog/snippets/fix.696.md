@@ -1,0 +1,1 @@
+- Client updates are only installed when the downloaded installer matches the checksum published with the release.
