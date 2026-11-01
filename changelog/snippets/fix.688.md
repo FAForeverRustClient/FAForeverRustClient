@@ -1,0 +1,4 @@
+- The Contacts button in the Chat tab is the same size as the Search button beside it.
+- Dropdown lists highlight the selected option, and the keyboard highlight now shows on it too.
+- The lock on private games stays visible in the light theme.
+- Titles in replay notes, Insights, enlarged charts and map previews stay clear of the close button.
