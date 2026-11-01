@@ -75,7 +75,8 @@ export function JoinDownloadDialog() {
     ? t("lobby.joinDownload.sizeUnknown")
     : unknown === 0
       ? t("lobby.joinDownload.sizeTotal", { size: formatBytes(bytes) })
-      : t("lobby.joinDownload.sizePartial", { size: formatBytes(bytes), unknown });
+      // `count` picks the plural form; `unknown` is what the sentence names.
+      : t("lobby.joinDownload.sizePartial", { size: formatBytes(bytes), unknown, count: unknown });
 
   const cancel = () => {
     setRemember(false);
