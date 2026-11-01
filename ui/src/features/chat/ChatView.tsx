@@ -219,10 +219,13 @@ export function ChatView() {
   // A typing notice expires on the reader's clock, so the view needs its own
   // tick: nothing arrives from the backend to say "that is no longer true".
   // One second is the coarsest interval that still retires a notice promptly.
-  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
-  const typists = active ? typistsAt(active, now, self) : [];
+  // The tick only redraws; the notices are checked against the time as the
+  // view is drawn. The tick sleeps through a game, and a notice checked against
+  // its last reading stayed up until the game ended.
+  const [, setTypingTick] = useState(() => Math.floor(Date.now() / 1000));
+  const typists = active ? typistsAt(active, Math.floor(Date.now() / 1000), self) : [];
   const anyTyping = (active?.typing?.length ?? 0) > 0;
-  useForegroundInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000, anyTyping);
+  useForegroundInterval(() => setTypingTick(Math.floor(Date.now() / 1000)), 1000, anyTyping);
 
   // The game time in a private conversation's panel advances on the reader's
   // clock, so the view supplies the tick. Half a minute, because the label is

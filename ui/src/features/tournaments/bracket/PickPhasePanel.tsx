@@ -47,8 +47,11 @@ export function PickPhasePanel({ event, picks, busy, onAdmin, onRefresh }: PickP
   useForegroundInterval(() => setNow(Date.now()), 1_000, picks.open);
   useForegroundInterval(() => refresh.current(), POLL_MS, picks.open);
 
-  const left =
-    picks.secondsLeft === null ? null : Math.max(0, picks.secondsLeft - Math.floor((now - reading.at) / 1000));
+  // A new reading arrives after the last tick, so until the next one `now` is
+  // older than it. Unclamped, that elapsed time is negative and every poll put
+  // a second back on the clock.
+  const elapsed = Math.max(0, Math.floor((now - reading.at) / 1000));
+  const left = picks.secondsLeft === null ? null : Math.max(0, picks.secondsLeft - elapsed);
   useEffect(() => {
     // The service applies a lapsed turn when the event is read; read it once.
     if (left === 0 && picks.open && refreshedFor.current !== reading.at) {
