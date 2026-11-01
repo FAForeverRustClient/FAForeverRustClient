@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 
 use faf_domain::protocol::map_generator::is_generated_map;
+use faf_domain::protocol::rating::displayed_points;
 use faf_domain::state::{ReplayPlayer, ReplayTeam, VaultReplay};
 use serde_json::Value;
 
@@ -372,8 +373,9 @@ fn displayed_rating_before(attributes: &Value) -> Option<i32> {
 
 /// What one rating journal says this game did to the player's displayed rating.
 ///
-/// Both ends go through the same `mean - 3*deviation` rounding before they are
-/// subtracted, so the number matches what the two ratings would have read as,
+/// Both ends go through the same `mean - 3*deviation` truncation
+/// ([`displayed_points`]) before they are subtracted, so the number matches
+/// what the two ratings would have read as,
 /// rather than a rounded difference of unrounded means. `None` unless the
 /// journal carries an "after" side: an unrated or unresolved game has none, and
 /// reporting a change for it is exactly the bug this replaced. Mirrors Java's
@@ -400,17 +402,7 @@ fn displayed_rating_with_fields(
                 .or_else(|| value.as_str().and_then(|text| text.trim().parse().ok()))
         })
     };
-    let mean = numeric(mean_field)?;
-    let deviation = numeric(deviation_field)?;
-    let rating = mean - 3.0 * deviation;
-    // Truncated, not rounded. Both reference clients cast rather than round:
-    // Java's `RatingUtil.getRating` is `(int) (mean - 3f * deviation)` and the
-    // Python client's `rating_estimate` is `int(rating.displayed())`. Rounding
-    // put us a point above them for every rating whose fraction was over .5,
-    // and made a rating *change*, which subtracts two of these, disagree by one
-    // in either direction.
-    (rating.is_finite() && rating >= f64::from(i32::MIN) && rating <= f64::from(i32::MAX))
-        .then_some(rating as i32)
+    displayed_points(numeric(mean_field)?, numeric(deviation_field)?)
 }
 
 /// `game.relationships.reviewsSummary -> reviewsSummary.attributes`.
