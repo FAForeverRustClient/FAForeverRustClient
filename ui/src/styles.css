@@ -10,6 +10,9 @@
  */
 @import "./design-system/fonts.css";
 @import "./design-system/tokens.css";
+/* The one theme that is more than a token set: the Java client's header bar
+   and controls. Scoped to `[data-theme='javaClient']`. */
+@import "./design-system/themes/java-client.css";
 
 * {
   box-sizing: border-box;

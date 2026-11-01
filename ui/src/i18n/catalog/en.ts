@@ -276,6 +276,8 @@ export const en = {
   "gameFolders.title": "Game folders",
   "gameFolders.diagnostics": "Diagnostics",
   "nav.main": "Main navigation",
+  "nav.more": "More tabs",
+  "nav.menu": "Menu",
   "nav.content.aria": "{tab} content",
 
   // Application shell.
@@ -852,6 +854,26 @@ export const en = {
   "lobby.party.ofPlayers": "{count} of {max} players",
   "lobby.matchmaker.inRangeHint": "Players waiting in this queue who could be matched with you after a few minutes of waiting, not counting your own search.",
   "lobby.matchmaker.mapPool": "Map pool",
+  // The Java Client theme's matchmaker, worded as the Java client words it.
+  "lobby.matchmaker.java.playerTitle": "Playing matchmaking as:",
+  "lobby.matchmaker.java.partyTitle": "Your party:",
+  "lobby.matchmaker.java.invitePlayers": "Invite players",
+  "lobby.matchmaker.java.mapList": "Maplist",
+  "lobby.matchmaker.java.popTimer": "Matching in: {time}",
+  "lobby.matchmaker.java.inQueue": "In queue: {count}",
+  "lobby.matchmaker.java.activeGames": "Active games: {count}",
+  "lobby.matchmaker.java.searching": "Searching...",
+  "lobby.matchmaker.java.found": "Match found!",
+  "lobby.matchmaker.java.launching": "Match launching...",
+  "lobby.matchmaker.java.cancelled": "Match cancelled!",
+  "lobby.matchmaker.java.search": "Click here to start searching for a match",
+  "lobby.matchmaker.java.searchNoQueue": "Select one or more queues to play",
+  "lobby.matchmaker.java.searchInGame": "Can't join matchmaking while you are in a game",
+  "lobby.matchmaker.java.searchMemberInGame": "Can't join matchmaking while someone is in a game",
+  "lobby.matchmaker.java.searchInParty": "The party leader will start matchmaking",
+  "lobby.matchmaker.java.searchInQueue": "Your party is now searching for a game",
+  "lobby.matchmaker.java.fullShare": "Full Share",
+  "lobby.matchmaker.java.noShare": "No Share",
   // What a queue actually does to your game. The questions it answers are the
   // ones the maintainer says people ask: how am I matched, how far apart can we
   // be, and why has nothing started when people are clearly waiting.
