@@ -1331,7 +1331,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.group.community": "Freunde und Community",
   "settings.notifications.desktop": "Desktop-Benachrichtigungen",
   "settings.notifications.desktopAllKinds": "Desktop-Benachrichtigungen für alle Ereignisse",
-  "settings.notifications.desktopAllKindsHint": "Aus: Nur zeitkritische Ereignisse erscheinen auf dem Desktop, etwa eine gefundene Partie, eine Gruppeneinladung oder eine volle Partie. Einzelne Ereignisse lassen sich unter „Ausgabe für einzelne Ereignisse“ ändern.",
+  "settings.notifications.desktopAllKindsHint": "Aus: Nur zeitkritische Ereignisse erscheinen auf dem Desktop, etwa eine gefundene Partie, eine Gruppeneinladung, eine private Nachricht, eine Erwähnung oder eine volle Partie. Einzelne Ereignisse lassen sich unter „Ausgabe für einzelne Ereignisse“ ändern.",
   "settings.notifications.announce": "Benachrichtigungen ankündigen mit",
   "settings.notifications.announceHint": "So oder so landet jede Benachrichtigung auch im Verlauf unter der Glocke.",
   "settings.notifications.announce.soundAndPopup": "Ton und Pop-up",

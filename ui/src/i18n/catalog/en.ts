@@ -1631,7 +1631,7 @@ export const en = {
   "settings.notifications.group.community": "Friends and community",
   "settings.notifications.desktop": "Desktop notifications",
   "settings.notifications.desktopAllKinds": "Desktop notifications for every event",
-  "settings.notifications.desktopAllKindsHint": "Off: only time-sensitive events reach the desktop, such as a found match, a party invitation or a full game. Single events can be changed under “Delivery for individual events”.",
+  "settings.notifications.desktopAllKindsHint": "Off: only time-sensitive events reach the desktop, such as a found match, a party invitation, a private message, a mention or a full game. Single events can be changed under “Delivery for individual events”.",
   "settings.notifications.announce": "Announce notifications with",
   "settings.notifications.announceHint": "Either way, every notification also lands in the history under the bell.",
   "settings.notifications.announce.soundAndPopup": "Sound and pop-up",

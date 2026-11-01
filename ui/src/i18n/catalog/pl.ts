@@ -2979,7 +2979,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.details.ratingLockedTitle": "Gospodarz ograniczył ranking w tej poczekalni: {range}. Twój to {rating}.",
   "lobby.browser.footerCount": "Pokazano {shown} z {total} gier",
   "settings.notifications.desktopAllKinds": "Powiadomienia na pulpicie dla każdego zdarzenia",
-  "settings.notifications.desktopAllKindsHint": "Wyłączone: na pulpit trafiają tylko pilne zdarzenia, np. znaleziona gra, zaproszenie do drużyny lub pełna gra. Pojedyncze zdarzenia można zmienić w sekcji „Powiadomienia według zdarzeń”.",
+  "settings.notifications.desktopAllKindsHint": "Wyłączone: na pulpit trafiają tylko pilne zdarzenia, np. znaleziona gra, zaproszenie do drużyny, prywatna wiadomość, wzmianka lub pełna gra. Pojedyncze zdarzenia można zmienić w sekcji „Powiadomienia według zdarzeń”.",
   "settings.notifications.sound.silent": "Cisza",
   "settings.notifications.sound.soft": "Łagodny",
   "settings.notifications.sound.chime": "Dzwonek",
