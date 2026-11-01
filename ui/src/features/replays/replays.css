@@ -451,7 +451,8 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2);
-  padding-inline-end: var(--space-5);
+  /* Clear of the dialog's close button, as `.replay-detail-head` keeps it. */
+  padding-inline-end: 28px;
 }
 
 .replay-notes-head > div {

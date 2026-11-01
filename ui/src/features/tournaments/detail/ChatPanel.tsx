@@ -166,7 +166,7 @@ export const ChatPanel = memo(function ChatPanel({
               <span className="spacer" />
               {/* The Chat tab's own button, opening the log's find bar. */}
               <Button
-                className="chat-search-button"
+                className="chat-head-button"
                 title={t("chat.search.shortcut")}
                 onClick={() => setSearchRequest((request) => request + 1)}
               >
