@@ -18,7 +18,10 @@ test("documentation and snippets retain only the always-on workflow guards", () 
 test("UI changes skip Rust compilation but generated contracts are still verified", () => {
   assert.deepEqual(selectChecks(["docs/ci.md", "ui/src/App.tsx", "ui/public/icon.png"]), ui);
   assert.deepEqual(selectChecks(["ui/name\nwith newline.ts"]), ui);
-  assert.deepEqual(selectChecks(["ui/src/ipc/bindings.ts"]), { ...ui, bindings: true });
+  for (const generated of ["bindings.ts", "initialState.ts"]) {
+    assert.deepEqual(selectChecks([`ui/src/ipc/${generated}`]), { ...ui, bindings: true });
+  }
+  assert.deepEqual(selectChecks(["ui/src/ipc/client.ts"]), ui);
   for (const fixture of ["reducer-conformance.json", "reducer-conformance-orderings.json"]) {
     assert.deepEqual(selectChecks([`ui/src/store/__fixtures__/${fixture}`]), { ...ui, conformance: true });
   }

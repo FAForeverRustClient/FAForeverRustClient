@@ -128,10 +128,10 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 
 | Path | Meaning |
 |---|---|
-| `src/lib.rs` | `typescript_bindings()`: renders TS for `AppState`/`AppCommand`/`AppEvent` + all referenced types from the Rust code. |
-| `src/bin/export_bindings.rs` | Binary that writes the result to `ui/src/ipc/bindings.ts`. Run with: `pnpm run bindings`. |
+| `src/lib.rs` | `typescript_bindings()`: renders TS for `AppState`/`AppCommand`/`AppEvent` + all referenced types from the Rust code. `typescript_initial_state()`: renders `AppState::default()` as the store's initial state. |
+| `src/bin/export_bindings.rs` | Binary that writes the results to `ui/src/ipc/bindings.ts` and `ui/src/ipc/initialState.ts`. Run with: `pnpm run bindings`. |
 
-> **Important:** Run `pnpm run bindings` after every change to domain types.
+> **Important:** Run `pnpm run bindings` after every change to domain types or to a state `Default`.
 > Otherwise the frontend won't compile: that's by design to prevent type drift.
 
 ### `src-tauri/`: the Tauri shell (thin glue, no logic)
@@ -158,9 +158,9 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | `src/App.tsx` | **App root.** Single event subscription + startup handshake. Routes purely from state: logged in → `AppShell`, otherwise → `LoginView`. |
 | `src/ipc/client.ts` | **The only typed bridge** to the backend (`send` for event handlers, awaited `dispatch` for sequenced flows, plus `snapshot`/subscriptions). Rejected fire-and-forget bridge calls are reported to the shell; no component calls `invoke`/`listen` directly. |
 | `src/ipc/bindings.ts` | **GENERATED** from Rust. Do not edit manually. |
+| `src/ipc/initialState.ts` | **GENERATED** from `AppState::default()`: the state the store holds until the first snapshot arrives. Do not edit manually. |
 | `src/store/store.ts` | Zustand store; mirrors `AppState`. Write access only via `apply` (events) + `hydrate` (snapshot). |
 | `src/store/reducer.ts` | **Mirror reducer**: the dispatcher over `src/store/reducers/<slice>.ts`, one hand-written twin per Rust slice reducer. If you change a transition in `faf-domain/src/state/<slice>.rs`, change the twin; the conformance test (`src/store/reducer.conformance.test.ts`) replays a fixture recorded from the Rust reducer and fails when the two disagree. |
-| `src/store/store.ts` `INITIAL` | The frontend's copy of every slice's `Default`, used only until the first snapshot arrives. A new state field needs an entry here or the typecheck fails. |
 | `src/ipc/native.ts` | The second, narrower bridge: desktop capabilities that are not domain commands (open a folder, pick a file, exit). Its request and response types are written by hand and must mirror the `#[tauri::command]` in `src-tauri/src/commands.rs`; keep it small. |
 | `src/design-system/tokens.css` | **Theming contract.** Semantic CSS variables under `:root` (= `forgeDark`) + one `[data-theme="…"]` block per theme (`forgeLight`/`javaClient`/`pythonClient`). Components reference these only. |
 | `src/design-system/fonts.css` | The self-hosted `@font-face` declarations, imported from `styles.css`. A family no theme names is declared but never fetched. |
@@ -211,15 +211,15 @@ frontend half is where new contributors most often stop early.
 
 | I want to… | …then |
 |---|---|
-| **Add a state field or event to an existing slice** | Rust: the field, its `Default`, the event, the `reduce` arm and a unit test in `faf-domain/src/state/<slice>.rs`; a case in `faf-domain/tests/conformance_fixtures.rs` (a new event variant fails the test until it has one). Then `pnpm run bindings`. Frontend: the field in `INITIAL` in `ui/src/store/store.ts`; the arm in `ui/src/store/reducers/<slice>.ts`. Then `cargo test -p faf-domain --test conformance_fixtures` to regenerate the fixture, and `pnpm exec vitest run ui/src/store/reducer.conformance.test.ts` to prove the twin agrees. |
-| **Add a new slice** | All of the above, plus: `pub mod` in `faf-domain/src/state/mod.rs`; a variant in `events.rs` and `commands.rs`; the arm in `faf-domain/src/reducer.rs`; a new `ui/src/store/reducers/<slice>.ts` registered in `ui/src/store/reducer.ts`; the slice's defaults in `INITIAL`. |
+| **Add a state field or event to an existing slice** | Rust: the field, its `Default`, the event, the `reduce` arm and a unit test in `faf-domain/src/state/<slice>.rs`; a case in `faf-domain/tests/conformance_fixtures.rs` (a new event variant fails the test until it has one). Then `pnpm run bindings`, which also regenerates the store's initial state. Frontend: the arm in `ui/src/store/reducers/<slice>.ts`. Then `cargo test -p faf-domain --test conformance_fixtures` to regenerate the fixture, and `pnpm exec vitest run ui/src/store/reducer.conformance.test.ts` to prove the twin agrees. |
+| **Add a new slice** | All of the above, plus: `pub mod` in `faf-domain/src/state/mod.rs`; a variant in `events.rs` and `commands.rs`; the arm in `faf-domain/src/reducer.rs`; a new `ui/src/store/reducers/<slice>.ts` registered in `ui/src/store/reducer.ts`. |
 | **Add a backend capability** | Command + event(s) in the slice (row one); the service arm in `faf-app/src/services/<slice>.rs`; a dispatch arm in `runtime/mod.rs` for a new slice. If the command can be sent twice while the first is in flight, or can be answered out of order, it needs a guard on `ServiceCtx` (`SingleFlight`, `LatestRequest` or `SerialMutation`, see `runtime/policies.rs`): every command runs on its own task, so nothing is ordered unless you order it. An integration test in `faf-app/tests/<slice>.rs` with a scripted port. |
 | **Add an external system** | `Port` trait in `faf-app/src/ports/<name>.rs` and `pub mod` in `ports/mod.rs`; the real adapter in `infra/<name>.rs` with its fake at the bottom of the same file (or `<name>_fake.rs` when the fake is large); `pub mod` and `pub use` in `infra/mod.rs`; a field in `Ports` and an entry in `fake_ports()` and `ports_from_env()`. The map at the top of `infra/mod.rs` says which kind of adapter goes where. |
 | **Add a screen or tab** | Folder `ui/src/features/<name>/` with a `<Name>View.tsx` and its stylesheet; register it in `ui/src/features/nav/tabs.tsx` (the one place tabs are listed; `AppShell` reads that registry); add the `Tab` variant in `faf-domain/src/state/nav.rs` and `pnpm run bindings`; the label and description keys in `ui/src/i18n/catalog/en.ts` and `de.ts`. |
 | **Add something two features both need** | Put it in `ui/src/shared/` (by kind: `components/`, `hooks/`, `rules/`, `format/`, or the root), never in one feature for the other to import. `pnpm run architecture` fails the cross-feature import and says so. |
 | **Add a desktop capability that is not a domain command** | A `#[tauri::command]` in `src-tauri/src/commands.rs`, registered in `run()`; the typed call in `ui/src/ipc/native.ts` with the mirrored types. Before doing this, ask whether it is really not state: most things are, and belong in the loop. |
 | **Add or change a theme** | A `[data-theme="…"]` block in `tokens.css` + a `Theme` variant in `faf-domain/state/settings/appearance.rs`. No component changes; never hardcode a color in a component (CI rejects hex outside `tokens.css`). |
-| **Changed a cross-boundary type** | `pnpm run bindings`, and `cargo test -p faf-domain --test conformance_fixtures` if it is a state type or a default. Both are separate CI jobs and both drift silently until they run. |
+| **Changed a cross-boundary type or a state default** | `pnpm run bindings` (it rewrites both `ui/src/ipc/bindings.ts` and the store's initial state in `ui/src/ipc/initialState.ts`), and `cargo test -p faf-domain --test conformance_fixtures` if it is a state type or a default. Both are separate CI jobs and both drift silently until they run. |
 | **Added user-facing text** | A key in `ui/src/i18n/catalog/en.ts` (the source; a missing key is a compile error) and `de.ts`; `pnpm run i18n:check --list` lists literals that slipped through, and CI fails on any (`--max 0`). |
 
 **Never:** mutate state outside a reducer · do IO outside `infra/` · put logic in a component · write a cross-boundary type by hand (`ipc/native.ts` is the one deliberate exception) · import one feature from another.
@@ -232,7 +232,7 @@ Prerequisites: Rust (stable), Node 20+, pnpm (`corepack enable pnpm`), Tauri pre
 
 ```bash
 pnpm install           # Frontend deps (once)
-pnpm run bindings      # Regenerate ui/src/ipc/bindings.ts from Rust
+pnpm run bindings      # Regenerate ui/src/ipc/bindings.ts and initialState.ts from Rust
 pnpm run tauri dev     # Start the app (Vite + Tauri)
 
 cargo check -j 1       # Rust compiles (single-threaded: a full build lags the desktop)
@@ -312,11 +312,7 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings -D clippy::print_stderr
 ```
 
-Two generated files drift if you forget them, each with its own CI job:
-`pnpm run bindings` after changing a cross-boundary Rust type (the doc comments
-travel into the generated TypeScript too, so editing only a comment still
-counts), and `cargo test -p faf-domain --test conformance_fixtures` after
-changing a state type or a default.
+Generated files drift if you forget them, and each command has its own CI job: `pnpm run bindings` after changing a cross-boundary Rust type or a state default (it writes the bindings and the store's initial state; the doc comments travel into the generated TypeScript too, so editing only a comment still counts), and `cargo test -p faf-domain --test conformance_fixtures` after changing a state type or a default.
 
 ---
 

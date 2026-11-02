@@ -1,0 +1,1 @@
+- No visible changes: the client's starting state is now generated from the backend instead of copied by hand.

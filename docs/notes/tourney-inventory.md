@@ -672,8 +672,8 @@ From `/auth/faf/me`: everything but `discord` (`fafId`, `fafName`, `editor`,
   `ui/src/shared/rules/tourneyRules.ts` and are pinned by the conformance
   fixture. Swiss standings (1.2) should become "read `swissOrder`" rather than
   a third implementation of the server's tiebreak.
-- **The bindings.** Every new field is a domain type change: bindings,
-  fixture and `store.ts`'s `INITIAL`.
+- **The bindings.** Every new field is a domain type change: bindings
+  (which also regenerate the store's initial state) and fixture.
 - **No server work.** The client talks to the same server with a Bearer token,
   so replicating the website is client work only.
 

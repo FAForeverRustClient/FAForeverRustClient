@@ -3,26 +3,6 @@
 
 import type { ClanEvent, ClanIdentity, ClanState } from "../../ipc/bindings";
 
-const EMPTY_IDENTITY: ClanIdentity = {
-  playerId: 0,
-  login: "",
-  clanId: "",
-  clanName: "",
-  clanTag: "",
-  isLeader: false,
-};
-
-const EMPTY: ClanState = {
-  identity: EMPTY_IDENTITY,
-  status: { type: "idle" },
-  clan: null,
-  action: { type: "idle" },
-  candidates: [],
-  invitation: null,
-};
-
-export { EMPTY as EMPTY_CLAN_STATE };
-
 /** Twin of `ClanIdentity::in_a_clan`. */
 export const inAClan = (identity: ClanIdentity) => identity.clanId !== "";
 

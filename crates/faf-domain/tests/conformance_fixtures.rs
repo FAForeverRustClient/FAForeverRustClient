@@ -49,9 +49,9 @@ struct Step {
 
 #[derive(Serialize)]
 struct Fixture {
-    /// Rust's `AppState::default()`. The frontend's hand-written `INITIAL`
-    /// must equal this, or every session starts from a state the backend has
-    /// never been in.
+    /// Rust's `AppState::default()`. The frontend store's initial state,
+    /// generated into `ui/src/ipc/initialState.ts`, must equal this, or every
+    /// session starts from a state the backend has never been in.
     initial: AppState,
     cases: Vec<Case>,
     helpers: HelperFixture,

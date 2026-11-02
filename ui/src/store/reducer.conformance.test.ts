@@ -415,10 +415,11 @@ describe("the frontend reducer matches the Rust one", () => {
 
 describe("the store's initial state", () => {
   it("matches `AppState::default()` exactly", () => {
-    // The frontend's INITIAL is hand-maintained alongside every new slice. If
-    // it drifts, the client renders from a state the backend has never been
-    // in: until the first event for that slice arrives, which for a slice
-    // nobody touches may be never.
+    // The store starts from `ui/src/ipc/initialState.ts`, generated from
+    // `AppState::default()` by `pnpm run bindings`. If it drifts, the client
+    // renders from a state the backend has never been in: until the first
+    // event for that slice arrives, which for a slice nobody touches may be
+    // never.
     expect(useAppStore.getState().state).toEqual(initial);
   });
 });
