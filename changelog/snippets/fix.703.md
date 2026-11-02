@@ -1,0 +1,1 @@
+- Switching to an older client version and back no longer resets settings the newer version added, from this version on.
