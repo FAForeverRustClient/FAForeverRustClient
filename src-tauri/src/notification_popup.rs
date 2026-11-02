@@ -364,7 +364,7 @@ fn popup_window(app: &tauri::AppHandle) -> Result<tauri::WebviewWindow, String> 
         tauri::WebviewUrl::App("notifications.html".into()),
     )
     .title("FAForever notifications")
-    .inner_size(400.0, 160.0)
+    .inner_size(POPUP_WIDTH, 160.0)
     .decorations(false)
     // The cards draw their own frame. Without these, Windows gives an
     // undecorated window a one-pixel border of its own around the page,
@@ -517,6 +517,11 @@ pub(crate) fn notification_popup_painted(popups: tauri::State<'_, Popups>, revis
         .send_modify(|confirmed| confirmed.painted = confirmed.painted.max(revision));
 }
 
+/// The popup window's width in logical pixels, its cards' padding included.
+/// Wide enough for a card with map art to keep a message beside an action as
+/// long as "Start when replay ready".
+const POPUP_WIDTH: f64 = 440.0;
+
 /// Work-area coordinates include the taskbar exclusion and may be negative.
 ///
 /// The window sits flush with the work area's corner: the page pads its cards,
@@ -529,7 +534,7 @@ fn popup_bounds(
     position: ToastPosition,
     height: f64,
 ) -> (i32, i32, u32, u32) {
-    let width = ((400.0 * scale).round() as u32).min(size.0).max(1);
+    let width = ((POPUP_WIDTH * scale).round() as u32).min(size.0).max(1);
     let height = ((height.clamp(80.0, 900.0) * scale).ceil() as u32)
         .min(size.1)
         .max(1);
@@ -821,11 +826,11 @@ mod tests {
                 ToastPosition::BottomRight,
                 160.0
             ),
-            (-800, 1120, 800, 320)
+            (-880, 1120, 880, 320)
         );
         assert_eq!(
             popup_bounds((0, 30), (1920, 1010), 1.0, ToastPosition::TopLeft, 160.0),
-            (0, 30, 400, 160)
+            (0, 30, 440, 160)
         );
         let (x, y, w, h) = popup_bounds((0, 0), (320, 240), 2.0, ToastPosition::BottomRight, 900.0);
         assert!(x >= 0 && y >= 0 && x as u32 + w <= 320 && y as u32 + h <= 240);

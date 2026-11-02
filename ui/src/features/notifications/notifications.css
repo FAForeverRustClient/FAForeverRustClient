@@ -192,14 +192,14 @@
    for a click the whole card already performs, and the quietest was what
    somebody had actually said. */
 .notification-body {
-  flex: 1 1 150px;
+  flex: 1 1 140px;
   min-width: 0;
   color: var(--color-text);
 }
 
 /* The message with its action at the end of the line, where the message keeps
-   a readable width beside it. A long label ("Start when replay is ready")
-   wraps under the message instead, still at the right. */
+   a readable width beside it. A label too long for that wraps under the
+   message instead, still at the right. */
 .notification-message-row {
   display: flex;
   flex-wrap: wrap;
@@ -272,7 +272,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  width: min(360px, calc(100vw - 24px));
+  /* Room for a message beside an action as long as "Start when replay
+     ready". */
+  width: min(380px, calc(100vw - 24px));
   pointer-events: none;
 }
 
