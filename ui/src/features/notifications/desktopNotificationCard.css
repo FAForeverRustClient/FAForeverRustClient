@@ -88,7 +88,7 @@
 .desktop-notification.is-error .desktop-notification-logo { background: var(--color-error); }
 
 /* The message with its action at the end of the line, where the message keeps
-   a readable width beside it. A long label ("Start when the replay is ready")
+   a readable width beside it. A long label ("Start when replay is ready")
    wraps under the message instead, still at the right. */
 .desktop-notification-body {
   display: flex;
