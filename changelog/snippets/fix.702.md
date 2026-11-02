@@ -1,0 +1,1 @@
+- Cancel on a lesson launch, a Galactic War install or the Linux setup also stops a start still waiting behind other work.

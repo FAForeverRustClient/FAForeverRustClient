@@ -8,11 +8,12 @@
 //! for one, and a service that called another service's handler directly
 //! walked straight past it.
 //!
-//! [`policy`] names, for every command there is, the lane it waits in and
-//! whether it may run alongside its own kind. The match has no wildcard: a new
-//! command does not compile until somebody has decided. [`CommandAdmission`]
-//! enforces the decision, for commands from the webview and, through
-//! [`super::run_command`], for the ones a service starts itself.
+//! [`policy`] names, for every command there is, the lane it waits in, whether
+//! it may run alongside its own kind, and which half of a start/release
+//! [`Pair`] it is. The match has no wildcard: a new command does not compile
+//! until somebody has decided. [`CommandAdmission`] enforces the admission, for
+//! commands from the webview and, through [`super::run_command`], for the ones
+//! a service starts itself; the runtime's `ReleaseOrder` enforces the pairs.
 //!
 //! Two concerns stay with the services and are not in this table:
 //!
@@ -161,26 +162,138 @@ pub(crate) enum Admission {
     ServiceGuarded(ServiceGuard),
 }
 
+/// What both halves of a start/release pair act on.
+///
+/// Releases travel in the priority lane and starts in the ordinary one, so a
+/// release can overtake a start that was sent before it. Without the pair,
+/// "Play" then "Stop" under load ran the stop first, found nothing to stop,
+/// and then ran the start, leaving the player queued after they had pressed
+/// Stop. The runtime's `ReleaseOrder` drops a start that leaves its queue after
+/// a release of the same pair was dispatched.
+///
+/// Background work that can run for several items at once is keyed by the
+/// item, so calling off one map's install never drops another's.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum Pair {
+    /// Joining or hosting a game.
+    Join,
+    /// The lobby socket.
+    Lobby,
+    /// A matchmaker search, by queue name.
+    Matchmake(String),
+    /// The chat socket.
+    Chat,
+    /// Signing in.
+    Auth,
+    /// The guides' GitHub device-flow sign-in.
+    GuidesSignIn,
+    MapGenerator,
+    /// Starting a replay: from the vault, live, or from a file.
+    ReplayWatch,
+    LiveTracking,
+    /// A replay downloaded into the library, by uid.
+    ReplayDownload(i32),
+    /// A map install, by folder name in lower case: the cancel may come in any
+    /// letter case.
+    MapInstall(String),
+    /// A mod install or update, by uid.
+    ModInstall(String),
+    Upload,
+    ClientDownload,
+    /// The map catalogue load.
+    MapVault,
+    /// The mod catalogue load and "Check for updates", which share one
+    /// cancellation.
+    ModVault,
+    /// A catalogue lesson's launch.
+    LessonLaunch,
+    /// A tutorial's launch. Apart from [`Self::LessonLaunch`]: each has a
+    /// cancel of its own, which reaches only its own kind.
+    TutorialLaunch,
+    /// Galactic War's install, alone or as the first step of Play.
+    GalacticWarInstall,
+    /// Checking and setting up the Linux runtime.
+    LinuxRuntime,
+}
+
+/// Which half of a [`Pair`] a command is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum PairHalf {
+    /// Begins the work the pair's release calls off.
+    Start(Pair),
+    /// Calls the work off. A start of the same pair dispatched before it and
+    /// still waiting in the ordinary queue is dropped there, not run late.
+    Release(Pair),
+}
+
+/// Why a priority command is no pair's release.
+///
+/// The priority lane has no shorthand without a pair: a command takes it as a
+/// [`release`], or through [`unpaired_priority`] with one of these. Six cancels
+/// once took the lane with no pair, each overtaking its own start under load,
+/// finding nothing to stop, and letting the start run after it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Unpaired {
+    /// Navigation only changes what is on screen. It calls nothing off, so a
+    /// command it overtakes is not undone by running after it.
+    Navigation,
+    /// `Lobby::TerminateGame` ends the game process that runs now, whichever
+    /// command started it: a join or host, an offline game, a replay, a
+    /// tutorial, a lesson, Galactic War. It belongs to no one start.
+    RunningGame,
+    /// `Replays::CancelReads` is ordered against the reads it calls off by the
+    /// runtime's replay read slots (`ReleaseOrder`), keyed by replay and panel.
+    ReplayReads,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CommandPolicy {
     pub(crate) lane: Lane,
     pub(crate) admission: Admission,
+    pub(crate) pair: Option<PairHalf>,
+}
+
+impl CommandPolicy {
+    /// The same policy, as the start of `pair`.
+    fn starts(self, pair: Pair) -> Self {
+        Self {
+            pair: Some(PairHalf::Start(pair)),
+            ..self
+        }
+    }
 }
 
 const ORDINARY: CommandPolicy = CommandPolicy {
     lane: Lane::Ordinary,
     admission: Admission::Concurrent,
+    pair: None,
 };
 
-const PRIORITY: CommandPolicy = CommandPolicy {
-    lane: Lane::Priority,
-    admission: Admission::Concurrent,
-};
+/// A command that calls off the work `pair`'s start begins: in the priority
+/// lane, so it never waits behind that work, and the release of the pair, so
+/// a start it overtakes is dropped instead of run after it.
+fn release(pair: Pair) -> CommandPolicy {
+    CommandPolicy {
+        lane: Lane::Priority,
+        admission: Admission::Concurrent,
+        pair: Some(PairHalf::Release(pair)),
+    }
+}
+
+/// The priority lane for a command that releases no pair, with the reason.
+const fn unpaired_priority(_why: Unpaired) -> CommandPolicy {
+    CommandPolicy {
+        lane: Lane::Priority,
+        admission: Admission::Concurrent,
+        pair: None,
+    }
+}
 
 const fn single_flight(key: Key) -> CommandPolicy {
     CommandPolicy {
         lane: Lane::Ordinary,
         admission: Admission::SingleFlight(key),
+        pair: None,
     }
 }
 
@@ -188,6 +301,7 @@ const fn serial(key: Key) -> CommandPolicy {
     CommandPolicy {
         lane: Lane::Ordinary,
         admission: Admission::Serial(key),
+        pair: None,
     }
 }
 
@@ -195,6 +309,7 @@ const fn latest(key: Key) -> CommandPolicy {
     CommandPolicy {
         lane: Lane::Ordinary,
         admission: Admission::Latest(key),
+        pair: None,
     }
 }
 
@@ -202,6 +317,7 @@ const fn service_guarded(guard: ServiceGuard) -> CommandPolicy {
     CommandPolicy {
         lane: Lane::Ordinary,
         admission: Admission::ServiceGuarded(guard),
+        pair: None,
     }
 }
 
@@ -250,15 +366,21 @@ fn session(command: &SessionCommand) -> CommandPolicy {
 
 fn auth(command: &AuthCommand) -> CommandPolicy {
     match command {
-        AuthCommand::Login { .. } | AuthCommand::Restore => service_guarded(ServiceGuard::Login),
-        AuthCommand::CancelLogin => PRIORITY,
-        AuthCommand::PlayOffline
-        | AuthCommand::LaunchOfflineGame
-        | AuthCommand::LoginTest
-        | AuthCommand::LogoutTest => ORDINARY,
+        AuthCommand::Login { .. } | AuthCommand::Restore => {
+            service_guarded(ServiceGuard::Login).starts(Pair::Auth)
+        }
+        AuthCommand::CancelLogin => release(Pair::Auth),
+        AuthCommand::PlayOffline | AuthCommand::LaunchOfflineGame => ORDINARY,
+        AuthCommand::LoginTest => ORDINARY.starts(Pair::Auth),
+        // In the ordinary lane, behind the test sign-in it ends; still the
+        // release, so a test sign-in queued before it is dropped.
+        AuthCommand::LogoutTest => CommandPolicy {
+            pair: Some(PairHalf::Release(Pair::Auth)),
+            ..ORDINARY
+        },
         AuthCommand::Logout => CommandPolicy {
-            lane: Lane::Priority,
             admission: Admission::ServiceGuarded(ServiceGuard::Login),
+            ..release(Pair::Auth)
         },
     }
 }
@@ -273,7 +395,7 @@ fn nav(command: &NavCommand) -> CommandPolicy {
         | NavCommand::SelectChangelogSection { .. }
         | NavCommand::SelectChangelogClientRelease { .. }
         | NavCommand::OpenLink { .. }
-        | NavCommand::LinkShown { .. } => PRIORITY,
+        | NavCommand::LinkShown { .. } => unpaired_priority(Unpaired::Navigation),
     }
 }
 
@@ -287,7 +409,9 @@ fn notifications(command: &NotificationCommand) -> CommandPolicy {
 
 fn chat(command: &ChatCommand) -> CommandPolicy {
     match command {
-        ChatCommand::Connect { .. } => service_guarded(ServiceGuard::ChatConnection),
+        ChatCommand::Connect { .. } => {
+            service_guarded(ServiceGuard::ChatConnection).starts(Pair::Chat)
+        }
         ChatCommand::SendMessage { .. }
         | ChatCommand::JoinChannel { .. }
         | ChatCommand::LeaveChannel { .. }
@@ -296,7 +420,7 @@ fn chat(command: &ChatCommand) -> CommandPolicy {
         | ChatCommand::SetTyping { .. }
         | ChatCommand::React { .. }
         | ChatCommand::Unreact { .. } => ORDINARY,
-        ChatCommand::Disconnect => PRIORITY,
+        ChatCommand::Disconnect => release(Pair::Chat),
     }
 }
 
@@ -327,13 +451,19 @@ fn coop(command: &CoopCommand) -> CommandPolicy {
 
 fn lobby(command: &LobbyCommand) -> CommandPolicy {
     match command {
-        LobbyCommand::Matchmake { start: false, .. } => PRIORITY,
-        LobbyCommand::Connect => service_guarded(ServiceGuard::LobbyConnection),
-        LobbyCommand::Join { .. } => service_guarded(ServiceGuard::LobbyJoin),
-        LobbyCommand::Host { .. }
-        | LobbyCommand::PrepareHost { .. }
+        LobbyCommand::Matchmake {
+            queue_name,
+            start: false,
+        } => release(Pair::Matchmake(queue_name.clone())),
+        LobbyCommand::Matchmake {
+            queue_name,
+            start: true,
+        } => ORDINARY.starts(Pair::Matchmake(queue_name.clone())),
+        LobbyCommand::Connect => service_guarded(ServiceGuard::LobbyConnection).starts(Pair::Lobby),
+        LobbyCommand::Join { .. } => service_guarded(ServiceGuard::LobbyJoin).starts(Pair::Join),
+        LobbyCommand::Host { .. } => ORDINARY.starts(Pair::Join),
+        LobbyCommand::PrepareHost { .. }
         | LobbyCommand::ClearHostPrefill
-        | LobbyCommand::Matchmake { .. }
         | LobbyCommand::StartSearch { .. }
         | LobbyCommand::LeaveParty
         | LobbyCommand::KickPartyMember { .. }
@@ -344,10 +474,9 @@ fn lobby(command: &LobbyCommand) -> CommandPolicy {
         | LobbyCommand::SetPlayerVetoes { .. }
         | LobbyCommand::LoadAvatars
         | LobbyCommand::SelectAvatar { .. } => ORDINARY,
-        LobbyCommand::DeclineModReplacement
-        | LobbyCommand::CancelJoin
-        | LobbyCommand::TerminateGame
-        | LobbyCommand::Disconnect => PRIORITY,
+        LobbyCommand::DeclineModReplacement | LobbyCommand::CancelJoin => release(Pair::Join),
+        LobbyCommand::TerminateGame => unpaired_priority(Unpaired::RunningGame),
+        LobbyCommand::Disconnect => release(Pair::Lobby),
     }
 }
 
@@ -355,12 +484,12 @@ fn replays(command: &ReplayCommand) -> CommandPolicy {
     match command {
         ReplayCommand::SearchVault { .. } => latest(Key::ReplaySearch),
         ReplayCommand::WatchLive(..)
-        | ReplayCommand::TrackLive { .. }
         | ReplayCommand::OpenFile { .. }
-        | ReplayCommand::LoadFeaturedMods
+        | ReplayCommand::WatchVault { .. } => ORDINARY.starts(Pair::ReplayWatch),
+        ReplayCommand::TrackLive { .. } => ORDINARY.starts(Pair::LiveTracking),
+        ReplayCommand::DownloadVault { uid } => ORDINARY.starts(Pair::ReplayDownload(*uid)),
+        ReplayCommand::LoadFeaturedMods
         | ReplayCommand::LoadRecentMatchmaker
-        | ReplayCommand::WatchVault { .. }
-        | ReplayCommand::DownloadVault { .. }
         | ReplayCommand::LoadDetails { .. }
         | ReplayCommand::LoadAnalysis { .. }
         | ReplayCommand::LoadLocal { .. }
@@ -369,17 +498,17 @@ fn replays(command: &ReplayCommand) -> CommandPolicy {
         | ReplayCommand::ResolveSimMods { .. }
         | ReplayCommand::LookUpOnline { .. }
         | ReplayCommand::LookUpOnlineMany { .. } => ORDINARY,
-        ReplayCommand::CancelLiveTracking
-        | ReplayCommand::CancelWatch
-        | ReplayCommand::CancelDownload { .. }
-        | ReplayCommand::CancelReads { .. } => PRIORITY,
+        ReplayCommand::CancelLiveTracking => release(Pair::LiveTracking),
+        ReplayCommand::CancelWatch => release(Pair::ReplayWatch),
+        ReplayCommand::CancelDownload { uid } => release(Pair::ReplayDownload(*uid)),
+        ReplayCommand::CancelReads { .. } => unpaired_priority(Unpaired::ReplayReads),
     }
 }
 
 fn maps(command: &MapsCommand) -> CommandPolicy {
     match command {
-        MapsCommand::CancelVaultLoad => PRIORITY,
-        MapsCommand::LoadVault => single_flight(Key::MapVault),
+        MapsCommand::CancelVaultLoad => release(Pair::MapVault),
+        MapsCommand::LoadVault => single_flight(Key::MapVault).starts(Pair::MapVault),
         MapsCommand::SearchVault { .. } => latest(Key::MapSearch),
         MapsCommand::LoadInstalled
         | MapsCommand::ResolveVaultFolders { .. }
@@ -387,17 +516,23 @@ fn maps(command: &MapsCommand) -> CommandPolicy {
         | MapsCommand::LoadLocalPreviews { .. }
         | MapsCommand::LoadMatchmakerPools { .. }
         | MapsCommand::SetMapVersionHidden { .. } => ORDINARY,
-        MapsCommand::InstallMap { .. } | MapsCommand::UninstallMap { .. } => serial(Key::MapFiles),
+        MapsCommand::InstallMap { folder_name, .. } => {
+            serial(Key::MapFiles).starts(Pair::MapInstall(folder_name.to_ascii_lowercase()))
+        }
+        MapsCommand::UninstallMap { .. } => serial(Key::MapFiles),
         // Not under `MapFiles`: it has to reach the install holding that key.
-        MapsCommand::CancelInstall { .. } => PRIORITY,
+        MapsCommand::CancelInstall { folder_name } => {
+            release(Pair::MapInstall(folder_name.to_ascii_lowercase()))
+        }
     }
 }
 
 fn map_generator(command: &MapGeneratorCommand) -> CommandPolicy {
     match command {
-        MapGeneratorCommand::GenerateNamed { .. }
-        | MapGeneratorCommand::Generate { .. }
-        | MapGeneratorCommand::CleanUp => single_flight(Key::MapGenerator),
+        MapGeneratorCommand::GenerateNamed { .. } | MapGeneratorCommand::Generate { .. } => {
+            single_flight(Key::MapGenerator).starts(Pair::MapGenerator)
+        }
+        MapGeneratorCommand::CleanUp => single_flight(Key::MapGenerator),
         MapGeneratorCommand::LoadOptions { .. }
         | MapGeneratorCommand::SetOptions { .. }
         | MapGeneratorCommand::Validate { .. }
@@ -409,28 +544,29 @@ fn map_generator(command: &MapGeneratorCommand) -> CommandPolicy {
         | MapGeneratorCommand::LoadPresets
         | MapGeneratorCommand::RenamePreset { .. }
         | MapGeneratorCommand::DeletePreset { .. } => ORDINARY,
-        MapGeneratorCommand::Cancel => PRIORITY,
+        MapGeneratorCommand::Cancel => release(Pair::MapGenerator),
     }
 }
 
 fn mods(command: &ModsCommand) -> CommandPolicy {
     match command {
         ModsCommand::SearchVault { .. } => latest(Key::ModSearch),
-        ModsCommand::CancelVaultLoad => PRIORITY,
+        ModsCommand::CancelVaultLoad => release(Pair::ModVault),
         // A second load while one runs is dropped: every tab that shows mods
         // asks on mount, and queued they each ran a crawl of their own. A
         // manual check has its own key, so a running load cannot drop it; it
         // waits for that load in the service, then makes its own request.
-        ModsCommand::LoadVault => single_flight(Key::ModVault),
-        ModsCommand::ReloadVault => single_flight(Key::ModVaultCheck),
+        ModsCommand::LoadVault => single_flight(Key::ModVault).starts(Pair::ModVault),
+        ModsCommand::ReloadVault => single_flight(Key::ModVaultCheck).starts(Pair::ModVault),
         ModsCommand::LoadInstalled | ModsCommand::QueryDownloadSizes { .. } => ORDINARY,
-        ModsCommand::InstallMod { .. }
-        | ModsCommand::UpdateMod { .. }
-        | ModsCommand::UninstallMod { .. }
+        ModsCommand::InstallMod { uid, .. } | ModsCommand::UpdateMod { uid, .. } => {
+            serial(Key::ModFiles).starts(Pair::ModInstall(uid.clone()))
+        }
+        ModsCommand::UninstallMod { .. }
         | ModsCommand::ToggleMod { .. }
         | ModsCommand::SetActiveMods { .. } => serial(Key::ModFiles),
         // Not under `ModFiles`, for the same reason as the map vault's.
-        ModsCommand::CancelInstall { .. } => PRIORITY,
+        ModsCommand::CancelInstall { uid } => release(Pair::ModInstall(uid.clone())),
     }
 }
 
@@ -551,8 +687,10 @@ fn training(command: &TrainingCommand) -> CommandPolicy {
         TrainingCommand::Load => single_flight(Key::TrainingLoad),
         // A lesson starts a game in the slot a tutorial uses, so the two share
         // one key: one launch at a time, whichever kind it is.
-        TrainingCommand::LaunchLesson { .. } => single_flight(Key::TutorialLaunch),
-        TrainingCommand::CancelLessonLaunch => PRIORITY,
+        TrainingCommand::LaunchLesson { .. } => {
+            single_flight(Key::TutorialLaunch).starts(Pair::LessonLaunch)
+        }
+        TrainingCommand::CancelLessonLaunch => release(Pair::LessonLaunch),
         TrainingCommand::SetQuery { .. }
         | TrainingCommand::Select { .. }
         | TrainingCommand::ReadGuide { .. }
@@ -568,9 +706,11 @@ fn training(command: &TrainingCommand) -> CommandPolicy {
 
 fn tutorials(command: &TutorialsCommand) -> CommandPolicy {
     match command {
-        TutorialsCommand::CancelLaunch => PRIORITY,
+        TutorialsCommand::CancelLaunch => release(Pair::TutorialLaunch),
         TutorialsCommand::Load | TutorialsCommand::Select { .. } => ORDINARY,
-        TutorialsCommand::Launch { .. } => single_flight(Key::TutorialLaunch),
+        TutorialsCommand::Launch { .. } => {
+            single_flight(Key::TutorialLaunch).starts(Pair::TutorialLaunch)
+        }
     }
 }
 
@@ -598,23 +738,27 @@ fn uploads(command: &UploadsCommand) -> CommandPolicy {
         UploadsCommand::Open { .. } | UploadsCommand::Close | UploadsCommand::SetRanked { .. } => {
             ORDINARY
         }
-        UploadsCommand::Start => single_flight(Key::Upload),
-        UploadsCommand::Cancel => PRIORITY,
+        UploadsCommand::Start => single_flight(Key::Upload).starts(Pair::Upload),
+        UploadsCommand::Cancel => release(Pair::Upload),
     }
 }
 
 fn galactic_war(command: &GalacticWarCommand) -> CommandPolicy {
     match command {
-        GalacticWarCommand::CancelInstall => PRIORITY,
+        GalacticWarCommand::CancelInstall => release(Pair::GalacticWarInstall),
         GalacticWarCommand::Refresh | GalacticWarCommand::RefreshStatistics => ORDINARY,
-        GalacticWarCommand::Install | GalacticWarCommand::Play => single_flight(Key::GalacticWar),
+        // Play installs first when it has to, and a cancelled install stops
+        // its launch too, so a Play the cancel overtook must not run either.
+        GalacticWarCommand::Install | GalacticWarCommand::Play => {
+            single_flight(Key::GalacticWar).starts(Pair::GalacticWarInstall)
+        }
     }
 }
 
 fn linux_runtime(command: &LinuxRuntimeCommand) -> CommandPolicy {
     match command {
-        LinuxRuntimeCommand::Prepare => single_flight(Key::LinuxRuntime),
-        LinuxRuntimeCommand::Cancel => PRIORITY,
+        LinuxRuntimeCommand::Prepare => single_flight(Key::LinuxRuntime).starts(Pair::LinuxRuntime),
+        LinuxRuntimeCommand::Cancel => release(Pair::LinuxRuntime),
     }
 }
 
@@ -635,23 +779,26 @@ fn guides(command: &GuidesCommand) -> CommandPolicy {
         | GuidesCommand::SignOut
         | GuidesCommand::LoadQueue
         | GuidesCommand::Submit { .. } => ORDINARY,
-        GuidesCommand::SignIn => single_flight(Key::GuidesSignIn),
-        GuidesCommand::CancelSignIn => PRIORITY,
+        GuidesCommand::SignIn => single_flight(Key::GuidesSignIn).starts(Pair::GuidesSignIn),
+        GuidesCommand::CancelSignIn => release(Pair::GuidesSignIn),
         GuidesCommand::Accept { .. } | GuidesCommand::Reject { .. } => serial(Key::GuidesVerdict),
     }
 }
 
 fn client_update(command: &ClientUpdateCommand) -> CommandPolicy {
     match command {
-        ClientUpdateCommand::Check
-        | ClientUpdateCommand::Download
-        | ClientUpdateCommand::Install => single_flight(Key::ClientUpdate),
+        ClientUpdateCommand::Download => {
+            single_flight(Key::ClientUpdate).starts(Pair::ClientDownload)
+        }
+        ClientUpdateCommand::Check | ClientUpdateCommand::Install => {
+            single_flight(Key::ClientUpdate)
+        }
         ClientUpdateCommand::LoadNotes => single_flight(Key::ClientReleaseNotes),
         // `DismissWhatsNew` writes one settings field, under the settings
         // service's own locks (`ServiceGuard::Settings`).
         ClientUpdateCommand::Dismiss | ClientUpdateCommand::DismissWhatsNew => ORDINARY,
         // Outside `ClientUpdate`, which the download it stops is holding.
-        ClientUpdateCommand::CancelDownload => PRIORITY,
+        ClientUpdateCommand::CancelDownload => release(Pair::ClientDownload),
     }
 }
 
@@ -938,6 +1085,177 @@ mod tests {
             "starting a search is not a release"
         );
         assert_eq!(lane(SessionCommand::Hello.into()), Lane::Ordinary);
+    }
+
+    /// Both halves of every pair are in the table, under the same key: a pair
+    /// with only one half there drops nothing.
+    ///
+    /// `halves` has no wildcard, so a new pair does not compile until it names
+    /// a start and a release here (list it in `every_pair` too). The priority
+    /// lane has no shorthand without a pair (see [`Unpaired`]), so a new cancel
+    /// cannot take it unpaired by accident.
+    #[test]
+    fn every_pair_has_a_start_and_a_release_under_the_same_key() {
+        use faf_domain::state::{LiveReplayTarget, LiveReplayTrackingAction};
+
+        fn halves(pair: &Pair) -> (AppCommand, AppCommand) {
+            match pair {
+                Pair::Join => (
+                    LobbyCommand::Join {
+                        id: 42,
+                        password: None,
+                        replace_mods: false,
+                    }
+                    .into(),
+                    LobbyCommand::CancelJoin.into(),
+                ),
+                Pair::Lobby => (
+                    LobbyCommand::Connect.into(),
+                    LobbyCommand::Disconnect.into(),
+                ),
+                Pair::Matchmake(queue_name) => (
+                    LobbyCommand::Matchmake {
+                        queue_name: queue_name.clone(),
+                        start: true,
+                    }
+                    .into(),
+                    LobbyCommand::Matchmake {
+                        queue_name: queue_name.clone(),
+                        start: false,
+                    }
+                    .into(),
+                ),
+                Pair::Chat => (
+                    ChatCommand::Connect {
+                        username: "player".into(),
+                    }
+                    .into(),
+                    ChatCommand::Disconnect.into(),
+                ),
+                Pair::Auth => (
+                    AuthCommand::LoginTest.into(),
+                    AuthCommand::CancelLogin.into(),
+                ),
+                Pair::GuidesSignIn => (
+                    GuidesCommand::SignIn.into(),
+                    GuidesCommand::CancelSignIn.into(),
+                ),
+                Pair::MapGenerator => (
+                    MapGeneratorCommand::GenerateNamed {
+                        map_name: "neroxis_map_generator_1.0.0_abc".into(),
+                    }
+                    .into(),
+                    MapGeneratorCommand::Cancel.into(),
+                ),
+                Pair::ReplayWatch => (
+                    ReplayCommand::WatchVault { uid: 7 }.into(),
+                    ReplayCommand::CancelWatch.into(),
+                ),
+                Pair::LiveTracking => (
+                    ReplayCommand::TrackLive {
+                        target: LiveReplayTarget {
+                            uid: 7,
+                            mod_name: "faf".into(),
+                            map: "scmp_009".into(),
+                        },
+                        action: LiveReplayTrackingAction::Notify,
+                    }
+                    .into(),
+                    ReplayCommand::CancelLiveTracking.into(),
+                ),
+                Pair::ReplayDownload(uid) => (
+                    ReplayCommand::DownloadVault { uid: *uid }.into(),
+                    ReplayCommand::CancelDownload { uid: *uid }.into(),
+                ),
+                // The cancel may name the folder in another letter case.
+                Pair::MapInstall(_) => (
+                    MapsCommand::InstallMap {
+                        folder_name: "Setons_Clutch".into(),
+                        download_url: "https://example.invalid/setons_clutch.zip".into(),
+                    }
+                    .into(),
+                    MapsCommand::CancelInstall {
+                        folder_name: "SETONS_CLUTCH".into(),
+                    }
+                    .into(),
+                ),
+                Pair::ModInstall(uid) => (
+                    ModsCommand::InstallMod {
+                        uid: uid.clone(),
+                        download_url: "https://example.invalid/mod.zip".into(),
+                    }
+                    .into(),
+                    ModsCommand::CancelInstall { uid: uid.clone() }.into(),
+                ),
+                Pair::Upload => (UploadsCommand::Start.into(), UploadsCommand::Cancel.into()),
+                Pair::ClientDownload => (
+                    ClientUpdateCommand::Download.into(),
+                    ClientUpdateCommand::CancelDownload.into(),
+                ),
+                Pair::MapVault => (
+                    MapsCommand::LoadVault.into(),
+                    MapsCommand::CancelVaultLoad.into(),
+                ),
+                Pair::ModVault => (
+                    ModsCommand::ReloadVault.into(),
+                    ModsCommand::CancelVaultLoad.into(),
+                ),
+                Pair::LessonLaunch => (
+                    TrainingCommand::LaunchLesson {
+                        resource_id: "lesson-1".into(),
+                    }
+                    .into(),
+                    TrainingCommand::CancelLessonLaunch.into(),
+                ),
+                Pair::TutorialLaunch => (
+                    TutorialsCommand::Launch { tutorial_id: 7 }.into(),
+                    TutorialsCommand::CancelLaunch.into(),
+                ),
+                Pair::GalacticWarInstall => (
+                    GalacticWarCommand::Play.into(),
+                    GalacticWarCommand::CancelInstall.into(),
+                ),
+                Pair::LinuxRuntime => (
+                    LinuxRuntimeCommand::Prepare.into(),
+                    LinuxRuntimeCommand::Cancel.into(),
+                ),
+            }
+        }
+
+        let every_pair = [
+            Pair::Join,
+            Pair::Lobby,
+            Pair::Matchmake("ladder1v1".into()),
+            Pair::Chat,
+            Pair::Auth,
+            Pair::GuidesSignIn,
+            Pair::MapGenerator,
+            Pair::ReplayWatch,
+            Pair::LiveTracking,
+            Pair::ReplayDownload(7),
+            Pair::MapInstall("setons_clutch".into()),
+            Pair::ModInstall("mod-uid".into()),
+            Pair::Upload,
+            Pair::ClientDownload,
+            Pair::MapVault,
+            Pair::ModVault,
+            Pair::LessonLaunch,
+            Pair::TutorialLaunch,
+            Pair::GalacticWarInstall,
+            Pair::LinuxRuntime,
+        ];
+        for pair in every_pair {
+            let (start, release) = halves(&pair);
+            let (start, release) = (policy(&start), policy(&release));
+            assert_eq!(start.pair, Some(PairHalf::Start(pair.clone())));
+            assert_eq!(start.lane, Lane::Ordinary, "{pair:?}: a start waits");
+            assert_eq!(release.pair, Some(PairHalf::Release(pair.clone())));
+            assert_eq!(
+                release.lane,
+                Lane::Priority,
+                "{pair:?}: a release overtakes"
+            );
+        }
     }
 
     #[test]

@@ -12,23 +12,11 @@ Every command waits in one of two queues, each with its own concurrency limit.
 
 - **Ordinary**: everything not listed below. 64 commands run at once, 64 more
   wait; once both are full, `dispatch` waits and `try_dispatch` reports it.
-- **Priority**: releases and navigation. Checked first, with its own slots, so
-  it never waits behind ordinary work.
-  `Nav::*`, `Lobby::{CancelJoin, DeclineModReplacement, TerminateGame,
-  Disconnect}`, `Lobby::Matchmake { start: false }`, `Chat::Disconnect`,
-  `Replays::{CancelWatch, CancelLiveTracking, CancelDownload, CancelReads}`,
-  `Maps::CancelInstall`, `Mods::CancelInstall`, `Uploads::Cancel`,
-  `ClientUpdate::CancelDownload`, `MapGenerator::Cancel`,
-  `Guides::CancelSignIn`, `Auth::{CancelLogin, Logout}`.
-  Pinned by `command_contracts::a_priority_command_is_not_held_up_by_a_saturated_ordinary_lane`.
+- **Priority**: releases and navigation. Checked first, with its own slots, so it never waits behind ordinary work. `Nav::*`, `Lobby::{CancelJoin, DeclineModReplacement, TerminateGame, Disconnect}`, `Lobby::Matchmake { start: false }`, `Chat::Disconnect`, `Replays::{CancelWatch, CancelLiveTracking, CancelDownload, CancelReads}`, `Maps::{CancelInstall, CancelVaultLoad}`, `Mods::{CancelInstall, CancelVaultLoad}`, `Uploads::Cancel`, `ClientUpdate::CancelDownload`, `MapGenerator::Cancel`, `Guides::CancelSignIn`, `Auth::{CancelLogin, Logout}`, `Training::CancelLessonLaunch`, `Tutorials::CancelLaunch`, `GalacticWar::CancelInstall`, `LinuxRuntime::Cancel`. Pinned by `command_contracts::a_priority_command_is_not_held_up_by_a_saturated_ordinary_lane`.
 
-Because a release can overtake its start, a start that leaves the ordinary queue
-after a release of the same pair was dispatched is dropped instead of run
-(`runtime::ReleaseOrder`; unit test `a_start_overtaken_by_its_release_is_dropped`
-in `runtime/mod.rs`). The background-work pairs are keyed by the item, so a
-cancel only drops a queued start of the same item: `map-install:<folder>`,
-`mod-install:<uid>` (install and update), `replay-download:<uid>`,
-`replay-read:<read key>` (details and analysis), `upload`, `client-download`.
+Because a release can overtake its start, a start that leaves the ordinary queue after a release of the same pair was dispatched is dropped instead of run (`runtime::ReleaseOrder`; unit test `a_start_overtaken_by_its_release_is_dropped` in `runtime/mod.rs`). Which half of which pair a command is belongs to its entry in the policy table (`command_policy::Pair`), so the table's exhaustive match covers it. Every priority command is either the release of a pair or names why it is none (`command_policy::Unpaired`): navigation, which calls nothing off; `Lobby::TerminateGame`, which ends whichever game runs and belongs to no one start; and `Replays::CancelReads`, which the runtime's replay read slots order against the reads of the same replay and panel. There is no priority entry without one of the two, and `command_policy::every_pair_has_a_start_and_a_release_under_the_same_key` checks that each pair has both halves.
+
+The background-work pairs are keyed by the item, so a cancel only drops a queued start of the same item: `MapInstall` (by folder, in any letter case), `ModInstall` (install and update, by uid), `ReplayDownload` (by uid). The other background pairs have one item each: `Upload`, `ClientDownload`, `MapVault`, `ModVault` (the load and "Check for updates"), `LessonLaunch`, `TutorialLaunch`, `GalacticWarInstall` (`Install`, and `Play`, which installs first when it has to), `LinuxRuntime`. Each of these last six is pinned by a `runtime/mod.rs` unit test named `a_*_overtaken_by_its_cancel_is_dropped`.
 
 ## Background work and its cancel
 
@@ -58,18 +46,10 @@ failure: the state goes back to idle and nothing is announced.
 
 Not stopped yet, each with its reason:
 
-- A tutorial launch's update has no cancel: `Tutorials::Launch` has no
-  counterpart command, and the lesson view that would send one is not mounted
-  (see `TutorialsView.tsx`). It still goes to the end, through the same install
-  lease as everything else.
 - A generated map behind a join is made by the generator, which `CancelJoin`
   does not reach; the join's updater is never started for it.
-- The vault catalogue crawls (`MapVault`, `ModVault`) report no pages and have no
-  cancel: the catalogue is a shared index nine views read, so a crawl stopped for
-  one view would only start again for the next.
-- Galactic War's install reports bytes but has no cancel (a detached task in the
-  adapter); the replay launch's generated-map rebuild runs on the generator's own
-  detached task, which `CancelWatch` does not reach.
+- The vault catalogue crawls (`MapVault`, `ModVault`) report their pages and can be called off (`Maps::CancelVaultLoad`, `Mods::CancelVaultLoad`), but no view offers it: the status bar leaves the catalogues out (issue 603). They are read in the background on every start for the names, sizes and pictures other views look up, nobody waits on them, and a crawl stopped for one view would only start again for the next.
+- The replay launch's generated-map rebuild runs on the generator's own detached task, which `CancelWatch` does not reach.
 
 ## Keys and service guards
 

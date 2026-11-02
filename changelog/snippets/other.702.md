@@ -1,0 +1,1 @@
+- No visible changes: each cancel's pairing with the work it stops now lives in the client's command table.
