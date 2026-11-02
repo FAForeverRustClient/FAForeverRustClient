@@ -23,7 +23,7 @@ mod command_policy;
 mod policies;
 pub use cancellation::CancellationSlot;
 pub(crate) use command_policy::{end_turn, expect_admitted, Key};
-use command_policy::{CommandAdmission, Lane};
+use command_policy::{CommandAdmission, Lane, Pair, PairHalf};
 pub use policies::{
     AutoReconnect, CancelTicket, Cancellable, LatestRequest, LoadedFromDisk, LobbyOperation,
     LobbyOperations, NewestAnswer, RunningGame, SerialMutation, SingleFlight,
@@ -240,102 +240,17 @@ struct QueuedCommand {
     queued_at: std::time::Instant,
 }
 
-/// Which half of a start/stop pair a command is, and what the pair acts on.
-#[derive(Debug, PartialEq, Eq)]
-enum PairHalf {
-    Start(String),
-    Release(String),
-}
-
-/// The pair a command belongs to, if any.
-///
-/// Releases travel in the urgent queue (see [`is_urgent`]) and starts in the
-/// ordinary one, so a release can overtake a start that was sent before it.
-/// Without this, "Play" then "Stop" under load ran the stop first and the
-/// start last, leaving the player queued after they had pressed Stop. The key
-/// names what both halves act on, so only a release of the same thing counts.
-fn pair_of(command: &AppCommand) -> Option<PairHalf> {
-    use faf_domain::state::{
-        AuthCommand, ChatCommand, ClientUpdateCommand, GuidesCommand, LobbyCommand,
-        MapGeneratorCommand, MapsCommand, ModsCommand, ReplayCommand, UploadsCommand,
-    };
-    let start = |key: &str| Some(PairHalf::Start(key.to_owned()));
-    let release = |key: &str| Some(PairHalf::Release(key.to_owned()));
-    match command {
-        AppCommand::Lobby(LobbyCommand::Join { .. } | LobbyCommand::Host { .. }) => start("join"),
-        AppCommand::Lobby(LobbyCommand::CancelJoin | LobbyCommand::DeclineModReplacement) => {
-            release("join")
-        }
-        AppCommand::Lobby(LobbyCommand::Connect) => start("lobby"),
-        AppCommand::Lobby(LobbyCommand::Disconnect) => release("lobby"),
-        AppCommand::Lobby(LobbyCommand::Matchmake {
-            queue_name,
-            start: true,
-        }) => Some(PairHalf::Start(format!("matchmake:{queue_name}"))),
-        AppCommand::Lobby(LobbyCommand::Matchmake {
-            queue_name,
-            start: false,
-        }) => Some(PairHalf::Release(format!("matchmake:{queue_name}"))),
-        AppCommand::Chat(ChatCommand::Connect { .. }) => start("chat"),
-        AppCommand::Chat(ChatCommand::Disconnect) => release("chat"),
-        AppCommand::Auth(
-            AuthCommand::Login { .. } | AuthCommand::LoginTest | AuthCommand::Restore,
-        ) => start("auth"),
-        AppCommand::Auth(
-            AuthCommand::CancelLogin | AuthCommand::Logout | AuthCommand::LogoutTest,
-        ) => release("auth"),
-        AppCommand::Guides(GuidesCommand::SignIn) => start("guides"),
-        AppCommand::Guides(GuidesCommand::CancelSignIn) => release("guides"),
-        AppCommand::MapGenerator(
-            MapGeneratorCommand::Generate { .. } | MapGeneratorCommand::GenerateNamed { .. },
-        ) => start("map-generator"),
-        AppCommand::MapGenerator(MapGeneratorCommand::Cancel) => release("map-generator"),
-        AppCommand::Replays(
-            ReplayCommand::WatchVault { .. }
-            | ReplayCommand::WatchLive { .. }
-            | ReplayCommand::OpenFile { .. },
-        ) => start("replay-watch"),
-        AppCommand::Replays(ReplayCommand::CancelWatch) => release("replay-watch"),
-        AppCommand::Replays(ReplayCommand::TrackLive { .. }) => start("live-tracking"),
-        AppCommand::Replays(ReplayCommand::CancelLiveTracking) => release("live-tracking"),
-        // The background work the status bar can stop. Each key names the one
-        // item, so calling off one map's install never drops another's.
-        AppCommand::Replays(ReplayCommand::DownloadVault { uid }) => {
-            start(&format!("replay-download:{uid}"))
-        }
-        AppCommand::Replays(ReplayCommand::CancelDownload { uid }) => {
-            release(&format!("replay-download:{uid}"))
-        }
-        AppCommand::Maps(MapsCommand::InstallMap { folder_name, .. }) => {
-            start(&format!("map-install:{}", folder_name.to_ascii_lowercase()))
-        }
-        AppCommand::Maps(MapsCommand::CancelInstall { folder_name }) => {
-            release(&format!("map-install:{}", folder_name.to_ascii_lowercase()))
-        }
-        AppCommand::Mods(
-            ModsCommand::InstallMod { uid, .. } | ModsCommand::UpdateMod { uid, .. },
-        ) => start(&format!("mod-install:{uid}")),
-        AppCommand::Mods(ModsCommand::CancelInstall { uid }) => {
-            release(&format!("mod-install:{uid}"))
-        }
-        AppCommand::Uploads(UploadsCommand::Start) => start("upload"),
-        AppCommand::Uploads(UploadsCommand::Cancel) => release("upload"),
-        AppCommand::ClientUpdate(ClientUpdateCommand::Download) => start("client-download"),
-        AppCommand::ClientUpdate(ClientUpdateCommand::CancelDownload) => release("client-download"),
-        _ => None,
-    }
-}
-
 /// Dispatch order, so a start that a later release overtook is dropped.
 ///
 /// Every command is stamped as it is dispatched; a release also records its
 /// stamp against its pair. When a start finally leaves the ordinary queue, a
 /// release of the same pair stamped after it means the user called it off
-/// before it ever ran, and running it now would undo that.
+/// before it ever ran, and running it now would undo that. Which half of which
+/// pair a command is comes from its policy: see [`command_policy::Pair`].
 #[derive(Debug, Default)]
 struct ReleaseOrder {
     next: AtomicU64,
-    released: std::sync::Mutex<std::collections::HashMap<String, u64>>,
+    released: std::sync::Mutex<std::collections::HashMap<Pair, u64>>,
     analysis: std::sync::Mutex<Option<QueuedRead>>,
     details: std::sync::Mutex<Option<QueuedRead>>,
 }
@@ -407,11 +322,11 @@ impl ReleaseOrder {
                 }
             }
         }
-        if let Some(PairHalf::Release(key)) = pair_of(command) {
+        if let Some(PairHalf::Release(pair)) = command_policy::policy(command).pair {
             self.released
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .insert(key, seq);
+                .insert(pair, seq);
         }
         seq
     }
@@ -433,13 +348,13 @@ impl ReleaseOrder {
                 .as_ref()
                 .is_none_or(|current| current.seq != seq || current.cancelled);
         }
-        let Some(PairHalf::Start(key)) = pair_of(command) else {
+        let Some(PairHalf::Start(pair)) = command_policy::policy(command).pair else {
             return false;
         };
         self.released
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .get(&key)
+            .get(&pair)
             .is_some_and(|&released| released > seq)
     }
 }
@@ -1388,6 +1303,200 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
+    }
+
+    /// A cancel admitted on the priority lane while its start still waits
+    /// behind a saturated ordinary lane: the start must not run after it, and
+    /// a start sent after the cancel still runs. Each command is routed by its
+    /// own policy, so a start or cancel in the wrong lane fails here too.
+    async fn assert_a_start_overtaken_by_its_cancel_is_dropped(
+        start: AppCommand,
+        cancel: AppCommand,
+    ) {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::time::Duration;
+
+        assert!(!is_urgent(&start), "{start:?} waits in the ordinary lane");
+        assert!(is_urgent(&cancel), "{cancel:?} takes the priority lane");
+
+        let order = Arc::new(ReleaseOrder::default());
+        let queued = |command: AppCommand, completion| QueuedCommand {
+            queued_at: std::time::Instant::now(),
+            seq: order.stamp(&command),
+            command,
+            completion,
+        };
+        let (ordinary_tx, ordinary_rx) = mpsc::channel::<QueuedCommand>(4);
+        let (urgent_tx, urgent_rx) = mpsc::channel::<QueuedCommand>(4);
+        let starts = Arc::new(AtomicUsize::new(0));
+        let gate = Arc::new(Semaphore::new(0));
+        let handle = {
+            let (starts, gate) = (starts.clone(), gate.clone());
+            move |command: AppCommand| {
+                let (starts, gate) = (starts.clone(), gate.clone());
+                async move {
+                    match command {
+                        // The work holding the only ordinary slot.
+                        AppCommand::Session(_) => drop(gate.acquire().await),
+                        command if !is_urgent(&command) => {
+                            starts.fetch_add(1, Ordering::SeqCst);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        };
+        let limits = Limits {
+            ordinary: 1,
+            urgent: 1,
+        };
+        let driver = tokio::spawn(drive(ordinary_rx, urgent_rx, order.clone(), limits, handle));
+
+        ordinary_tx
+            .send(queued(SessionCommand::Hello.into(), None))
+            .await
+            .unwrap();
+        let (started, start_done) = oneshot::channel();
+        ordinary_tx
+            .send(queued(start.clone(), Some(started)))
+            .await
+            .unwrap();
+        let (cancelled, cancel_done) = oneshot::channel();
+        urgent_tx
+            .send(queued(cancel, Some(cancelled)))
+            .await
+            .unwrap();
+        tokio::time::timeout(Duration::from_secs(5), cancel_done)
+            .await
+            .expect("the cancel runs while its start waits behind saturated work")
+            .unwrap();
+
+        gate.add_permits(1);
+        tokio::time::timeout(Duration::from_secs(5), start_done)
+            .await
+            .expect("the dropped start still answers its caller")
+            .unwrap();
+        assert_eq!(
+            starts.load(Ordering::SeqCst),
+            0,
+            "{start:?} ran after the cancel that overtook it"
+        );
+
+        let (restarted, restart_done) = oneshot::channel();
+        ordinary_tx
+            .send(queued(start.clone(), Some(restarted)))
+            .await
+            .unwrap();
+        tokio::time::timeout(Duration::from_secs(5), restart_done)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            starts.load(Ordering::SeqCst),
+            1,
+            "{start:?} sent after the cancel runs"
+        );
+
+        drop(ordinary_tx);
+        drop(urgent_tx);
+        tokio::time::timeout(Duration::from_secs(5), driver)
+            .await
+            .unwrap()
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_map_catalogue_load_overtaken_by_its_cancel_is_dropped() {
+        use faf_domain::state::MapsCommand;
+        assert_a_start_overtaken_by_its_cancel_is_dropped(
+            MapsCommand::LoadVault.into(),
+            MapsCommand::CancelVaultLoad.into(),
+        )
+        .await;
+    }
+
+    /// The load and "Check for updates" share the catalogue's one
+    /// cancellation, so the cancel drops either.
+    #[tokio::test]
+    async fn a_mod_catalogue_load_or_check_overtaken_by_its_cancel_is_dropped() {
+        use faf_domain::state::ModsCommand;
+        for start in [ModsCommand::LoadVault, ModsCommand::ReloadVault] {
+            assert_a_start_overtaken_by_its_cancel_is_dropped(
+                start.into(),
+                ModsCommand::CancelVaultLoad.into(),
+            )
+            .await;
+        }
+    }
+
+    #[tokio::test]
+    async fn a_lesson_launch_overtaken_by_its_cancel_is_dropped() {
+        use faf_domain::state::TrainingCommand;
+        assert_a_start_overtaken_by_its_cancel_is_dropped(
+            TrainingCommand::LaunchLesson {
+                resource_id: "lesson-1".into(),
+            }
+            .into(),
+            TrainingCommand::CancelLessonLaunch.into(),
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn a_tutorial_launch_overtaken_by_its_cancel_is_dropped() {
+        use faf_domain::state::TutorialsCommand;
+        assert_a_start_overtaken_by_its_cancel_is_dropped(
+            TutorialsCommand::Launch { tutorial_id: 7 }.into(),
+            TutorialsCommand::CancelLaunch.into(),
+        )
+        .await;
+    }
+
+    /// Play installs first when it has to, so the install's cancel drops a
+    /// queued Play as well as a queued Install.
+    #[tokio::test]
+    async fn a_galactic_war_install_or_play_overtaken_by_its_cancel_is_dropped() {
+        use faf_domain::state::GalacticWarCommand;
+        for start in [GalacticWarCommand::Install, GalacticWarCommand::Play] {
+            assert_a_start_overtaken_by_its_cancel_is_dropped(
+                start.into(),
+                GalacticWarCommand::CancelInstall.into(),
+            )
+            .await;
+        }
+    }
+
+    #[tokio::test]
+    async fn a_linux_runtime_setup_overtaken_by_its_cancel_is_dropped() {
+        use faf_domain::state::LinuxRuntimeCommand;
+        assert_a_start_overtaken_by_its_cancel_is_dropped(
+            LinuxRuntimeCommand::Prepare.into(),
+            LinuxRuntimeCommand::Cancel.into(),
+        )
+        .await;
+    }
+
+    /// A lesson and a tutorial take turns in one game slot, but each has a
+    /// cancel of its own: one never drops the other's queued launch.
+    #[test]
+    fn a_launch_cancel_drops_only_its_own_kind_of_launch() {
+        use faf_domain::state::{TrainingCommand, TutorialsCommand};
+
+        let order = ReleaseOrder::default();
+        let lesson: AppCommand = TrainingCommand::LaunchLesson {
+            resource_id: "lesson-1".into(),
+        }
+        .into();
+        let tutorial: AppCommand = TutorialsCommand::Launch { tutorial_id: 7 }.into();
+        let (lesson_seq, tutorial_seq) = (order.stamp(&lesson), order.stamp(&tutorial));
+        order.stamp(&TutorialsCommand::CancelLaunch.into());
+        assert!(order.superseded(&tutorial, tutorial_seq));
+        assert!(
+            !order.superseded(&lesson, lesson_seq),
+            "a tutorial's cancel left a lesson's launch alone"
+        );
+        order.stamp(&TrainingCommand::CancelLessonLaunch.into());
+        assert!(order.superseded(&lesson, lesson_seq));
     }
 
     #[test]
