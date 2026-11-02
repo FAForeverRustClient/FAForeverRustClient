@@ -15,6 +15,7 @@ import { plainError } from "../../shared/plainError";
 import { placementLabel, seasonLabel } from "../../shared/leagueNames";
 import { leaderboardLabel } from "../../shared/playerRatings";
 import { factionRecords } from "./PlayerStatistics";
+import { RecoverableImage } from "../../shared/components/RecoverableImage";
 
 function displayDate(value: string): string {
   return formatDate(value, t("common.notAvailable"));
@@ -92,7 +93,7 @@ ${t("playerCard.queues.leagueTitle", {
   })}`;
   if (!placement.imageUrl) return <span className="player-queue-league is-text" title={title}>{tier}</span>;
   return (
-    <img
+    <RecoverableImage
       className="player-queue-league"
       src={placement.imageUrl}
       alt={tier}
@@ -102,7 +103,7 @@ ${t("playerCard.queues.leagueTitle", {
       loading="lazy"
       decoding="async"
       draggable={false}
-      onError={(event) => { event.currentTarget.hidden = true; }}
+      whenBroken="remove"
     />
   );
 }
