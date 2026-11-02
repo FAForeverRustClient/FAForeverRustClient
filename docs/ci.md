@@ -10,6 +10,7 @@ Expensive checks are selected by `scripts/ci-changes.mjs`:
 | Changed files | Expensive checks |
 | --- | --- |
 | Only `README.md`, Markdown under `docs/` or `changelog/` | None |
+| `docs/CONCURRENCY.md`, whose generated tables a Rust test checks | Rust |
 | Only `ui/` plus the documentation above | Frontend typecheck, lint, tests and build |
 | Generated `ui/src/ipc/bindings.ts` or `ui/src/ipc/initialState.ts` | Frontend plus bindings regeneration |
 | Reducer conformance JSON fixtures | Frontend plus Rust fixture regeneration |

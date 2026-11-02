@@ -1,0 +1,2 @@
+- No visible changes: concurrency tables are generated from command policies and checked for drift.
+- No visible changes: architecture documentation reflects current IPC generation, routing and admission rules.

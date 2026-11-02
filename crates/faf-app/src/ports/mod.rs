@@ -2,7 +2,8 @@
 //!
 //! Each external system becomes a trait here, implemented in [`crate::infra`]
 //! and mocked in tests. Services depend on these traits, never on concrete IO.
-//! See ARCHITECTURE.md §5 for the full Port table.
+//! The `Ports` bundle below is the canonical list; ARCHITECTURE.md §5 explains
+//! the boundary and points here instead of maintaining a second table.
 
 pub mod auth;
 pub mod catalogue;

@@ -15,6 +15,11 @@ test("documentation and snippets retain only the always-on workflow guards", () 
   assert.deepEqual(selectChecks(["README.md", "docs/ci.md", "changelog/snippets/fix.667.md"]), docs);
 });
 
+test("the concurrency doc runs the Rust test that checks its generated tables", () => {
+  assert.deepEqual(selectChecks(["docs/CONCURRENCY.md"]), { ...docs, rust: true });
+  assert.deepEqual(selectChecks(["docs/ci.md", "docs/CONCURRENCY.md", "ui/src/App.tsx"]), { ...ui, rust: true });
+});
+
 test("UI changes skip Rust compilation but generated contracts are still verified", () => {
   assert.deepEqual(selectChecks(["docs/ci.md", "ui/src/App.tsx", "ui/public/icon.png"]), ui);
   assert.deepEqual(selectChecks(["ui/name\nwith newline.ts"]), ui);

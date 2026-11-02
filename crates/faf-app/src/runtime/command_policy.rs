@@ -17,9 +17,9 @@
 //!
 //! Two concerns stay with the services and are not in this table:
 //!
-//! - **Stale answers.** A search whose answer arrives after a newer search was
-//!   asked must not land. That is about responses, not admission, and the
-//!   services keep their [`super::LatestRequest`] generations for it.
+//! - **Stale answers.** Latest admission drops an older future, but concurrent
+//!   reads and effects that outlive their caller still need response/commit
+//!   ordering. Services keep their [`super::LatestRequest`] generations for it.
 //! - **Guards over part of a command.** A few commands hold a guard across only
 //!   some of their work, or across a connection that outlives them. Those are
 //!   named here as [`Admission::ServiceGuarded`], with the reason on
@@ -1040,6 +1040,446 @@ impl Drop for Turn {
             }
             _ => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod documentation {
+    use super::*;
+    use std::collections::{BTreeMap, BTreeSet};
+
+    const START: &str = "<!-- BEGIN GENERATED COMMAND POLICY -->";
+    const END: &str = "<!-- END GENERATED COMMAND POLICY -->";
+    const REGENERATE: &str =
+        "cargo test -p faf-app --lib regenerate_concurrency_tables -- --ignored";
+
+    #[derive(Debug, Default, PartialEq, Eq)]
+    struct Description {
+        lane: String,
+        admission: String,
+        key: Option<String>,
+        guard: Option<String>,
+        pair: Option<(String, String)>,
+    }
+
+    struct Row {
+        command: String,
+        policy: Description,
+    }
+
+    // Inspect the exhaustive match, not a second catalogue of example commands.
+    // Like conformance_fixtures::declared_variants, this deliberately accepts a
+    // small source grammar. Unsupported syntax fails instead of omitting rows.
+    fn compact(source: &str) -> String {
+        source.chars().filter(|c| !c.is_whitespace()).collect()
+    }
+
+    fn identifier(source: &str) -> &str {
+        source
+            .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+            .next()
+            .unwrap()
+    }
+
+    fn closing(source: &str) -> usize {
+        let mut depth = 0;
+        for (index, byte) in source.bytes().enumerate() {
+            match byte {
+                b'{' | b'(' | b'[' => depth += 1,
+                b'}' | b')' | b']' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return index;
+                    }
+                }
+                _ => {}
+            }
+        }
+        panic!("Unbalanced policy source; update the documentation renderer");
+    }
+
+    fn top_level(source: &str, separator: char) -> Vec<&str> {
+        let mut depth = 0;
+        let mut start = 0;
+        let mut parts = Vec::new();
+        for (index, character) in source.char_indices() {
+            match character {
+                '{' | '(' | '[' => depth += 1,
+                '}' | ')' | ']' => depth -= 1,
+                _ => {}
+            }
+            if depth == 0 && character == separator {
+                parts.push(source[start..index].trim());
+                start = index + character.len_utf8();
+            }
+        }
+        parts.push(source[start..].trim());
+        parts
+    }
+
+    fn enum_variants(source: &str, name: &str) -> Vec<String> {
+        let declaration = format!("enum {name} {{");
+        let body = source.split_once(&declaration).unwrap().1;
+        let end = closing(&format!("{{{body}")) - 1;
+        top_level(&body[..end], ',')
+            .into_iter()
+            .filter(|part| !part.is_empty())
+            .map(|part| identifier(part).to_owned())
+            .collect()
+    }
+
+    fn argument<'a>(source: &'a str, call: &str) -> Option<&'a str> {
+        let rest = source.split_once(call)?.1;
+        Some(&rest[..closing(&format!("({rest}")) - 1])
+    }
+
+    fn describe(expression: &str) -> Description {
+        let expression = expression.trim().trim_end_matches(';');
+        if expression.starts_with('{') {
+            return describe(&expression[1..closing(expression)]);
+        }
+        let expression = compact(expression);
+        if let Some(body) = expression.strip_prefix("CommandPolicy{") {
+            let fields = top_level(&body[..body.len() - 1], ',');
+            let mut result = fields
+                .iter()
+                .find_map(|field| field.strip_prefix(".."))
+                .map(describe)
+                .unwrap_or_default();
+            for field in fields {
+                if field.is_empty() || field.starts_with("..") {
+                    continue;
+                }
+                if let Some(value) = field.strip_prefix("lane:Lane::") {
+                    result.lane = identifier(value).into();
+                } else if let Some(value) = field.strip_prefix("admission:Admission::") {
+                    result.admission = identifier(value).into();
+                    result.guard = argument(value, "ServiceGuarded(ServiceGuard::")
+                        .map(|s| identifier(s).into());
+                    result.key = argument(value, &format!("{}(Key::", result.admission))
+                        .map(|s| identifier(s).into());
+                } else if let Some(value) = field.strip_prefix("pair:") {
+                    result.pair = argument(value, "PairHalf::Release(Pair::")
+                        .map(|s| ("Release".into(), identifier(s).into()));
+                    assert!(
+                        value == "None" || result.pair.is_some(),
+                        "Unsupported pair field: {value}"
+                    );
+                } else {
+                    panic!("Unsupported policy field: {field}");
+                }
+            }
+            return result;
+        }
+        let base = expression.split(".starts(").next().unwrap();
+        if base != "ORDINARY" {
+            let open = base.find('(').expect("Expected policy helper call");
+            assert_eq!(
+                open + closing(&base[open..]) + 1,
+                base.len(),
+                "Unsupported policy expression: {expression}"
+            );
+        }
+        if let Some((_, suffix)) = expression.split_once(".starts(") {
+            assert_eq!(
+                closing(&format!("({suffix}")),
+                suffix.len(),
+                "Unsupported policy method chain: {expression}"
+            );
+        }
+        let mut result = Description {
+            lane: "Ordinary".into(),
+            admission: "Concurrent".into(),
+            ..Default::default()
+        };
+        if expression.starts_with("release(") || expression.starts_with("unpaired_priority(") {
+            result.lane = "Priority".into();
+            result.pair = argument(&expression, "release(Pair::")
+                .map(|s| ("Release".into(), identifier(s).into()));
+        } else if expression.starts_with("single_flight(")
+            || expression.starts_with("serial(")
+            || expression.starts_with("latest(")
+        {
+            result.admission = if expression.starts_with("single_flight(") {
+                "SingleFlight"
+            } else if expression.starts_with("serial(") {
+                "Serial"
+            } else {
+                "Latest"
+            }
+            .into();
+            result.key = expression
+                .split_once("Key::")
+                .map(|(_, key)| identifier(key).into());
+            assert!(result.key.is_some(), "Missing key in {expression}");
+        } else if expression.starts_with("service_guarded(") {
+            result.admission = "ServiceGuarded".into();
+            result.guard = expression
+                .split_once("ServiceGuard::")
+                .map(|(_, guard)| identifier(guard).into());
+            assert!(result.guard.is_some(), "Missing guard in {expression}");
+        } else {
+            assert!(
+                base == "ORDINARY",
+                "Unsupported policy expression: {expression}"
+            );
+        }
+        if let Some(pair) = argument(&expression, ".starts(Pair::") {
+            result.pair = Some(("Start".into(), identifier(pair).into()));
+        }
+        result
+    }
+
+    fn match_arms(body: &str) -> Vec<(&str, &str)> {
+        let rest = body
+            .strip_prefix("match command {")
+            .expect("Policy functions must exhaustively match command");
+        let mut rest = rest[..closing(&format!("{{{rest}")) - 1].trim();
+        let mut arms = Vec::new();
+        while !rest.is_empty() {
+            let (pattern, expression) = rest.split_once("=>").expect("Policy match arm");
+            let expression = expression.trim_start();
+            let end = if expression.starts_with('{') {
+                closing(expression) + 1
+            } else {
+                top_level(expression, ',')[0].len()
+            };
+            arms.push((pattern.trim(), expression[..end].trim()));
+            rest = expression[end..]
+                .trim_start()
+                .trim_start_matches(',')
+                .trim_start();
+        }
+        arms
+    }
+
+    fn rows(source: &str) -> Vec<Row> {
+        let mut functions = BTreeMap::new();
+        for function in source.split("fn ").skip(1) {
+            let (signature, body) = function.split_once('{').unwrap();
+            if signature.contains("command: &")
+                && signature.trim_end().ends_with("-> CommandPolicy")
+            {
+                let end = closing(&format!("{{{body}")) - 1;
+                functions.insert(identifier(signature), body[..end].trim());
+            }
+        }
+        fn walk(functions: &BTreeMap<&str, &str>, name: &str, prefix: &str, output: &mut Vec<Row>) {
+            for (patterns, expression) in match_arms(functions[name]) {
+                for pattern in top_level(patterns, '|') {
+                    let (_, variant) = pattern.split_once("::").unwrap();
+                    let mut command = format!("{prefix}{}", identifier(variant));
+                    if variant.contains("start:") {
+                        command.push_str(if compact(variant).contains("start:false") {
+                            " { start: false }"
+                        } else {
+                            " { start: true }"
+                        });
+                    }
+                    let delegate = identifier(expression);
+                    if functions.contains_key(delegate) {
+                        walk(functions, delegate, &format!("{command}::"), output);
+                    } else {
+                        output.push(Row {
+                            command,
+                            policy: describe(expression),
+                        });
+                    }
+                }
+            }
+        }
+        let mut output = Vec::new();
+        walk(&functions, "policy", "", &mut output);
+        let commands: BTreeSet<_> = output.iter().map(|row| &row.command).collect();
+        assert_eq!(
+            commands.len(),
+            output.len(),
+            "Ambiguous policy patterns need explicit documentation labels"
+        );
+        output
+    }
+
+    fn command_list<'a>(rows: impl Iterator<Item = &'a Row>) -> String {
+        let names: BTreeSet<_> = rows.map(|row| format!("`{}`", row.command)).collect();
+        if names.is_empty() {
+            "None".into()
+        } else {
+            names.into_iter().collect::<Vec<_>>().join(", ")
+        }
+    }
+
+    fn render() -> String {
+        // Scope the small source reader to declarations and exhaustive policy
+        // matches, before admission machinery and this test module.
+        let source = include_str!("command_policy.rs")
+            .split("tokio::task_local!")
+            .next()
+            .unwrap();
+        let source = source
+            .lines()
+            .map(|line| line.split("//").next().unwrap())
+            .collect::<Vec<_>>()
+            .join("\n");
+        let rows = rows(&source);
+        let mut output = format!("{START}\n\nGenerated from `command_policy.rs`. Regenerate with `{REGENERATE}`. Counts refer to exhaustive match patterns; `Tourney::Write` covers every tournament write.\n\n### Lanes\n\n| Lane | Policy patterns |\n|---|---|\n");
+        for lane in enum_variants(&source, "Lane") {
+            output.push_str(&format!(
+                "| `{lane}` | {} |\n",
+                rows.iter().filter(|row| row.policy.lane == lane).count()
+            ));
+        }
+        output.push_str("\n### Priority commands\n\n");
+        let groups: BTreeSet<_> = rows
+            .iter()
+            .filter(|row| row.policy.lane == "Priority")
+            .map(|row| row.command.split("::").next().unwrap())
+            .collect();
+        for group in groups {
+            output.push_str(&format!(
+                "- {}\n",
+                command_list(rows.iter().filter(|row| row.policy.lane == "Priority"
+                    && row.command.starts_with(&format!("{group}::"))))
+            ));
+        }
+        output.push_str("\n### Admission kinds\n\n| Admission | Policy patterns |\n|---|---|\n");
+        for admission in enum_variants(&source, "Admission") {
+            output.push_str(&format!(
+                "| `{admission}` | {} |\n",
+                rows.iter()
+                    .filter(|row| row.policy.admission == admission)
+                    .count()
+            ));
+        }
+        output.push_str("\n### Keys\n\n| Key | Admission | Commands |\n|---|---|---|\n");
+        for key in enum_variants(&source, "Key") {
+            let admissions: BTreeSet<_> = rows
+                .iter()
+                .filter(|row| row.policy.key.as_ref() == Some(&key))
+                .map(|row| format!("`{}`", row.policy.admission))
+                .collect();
+            output.push_str(&format!(
+                "| `{key}` | {} | {} |\n",
+                admissions.into_iter().collect::<Vec<_>>().join(", "),
+                command_list(
+                    rows.iter()
+                        .filter(|row| row.policy.key.as_ref() == Some(&key))
+                )
+            ));
+        }
+        output.push_str("\n### Service guards\n\n| Guard | Commands |\n|---|---|\n");
+        for guard in enum_variants(&source, "ServiceGuard") {
+            output.push_str(&format!(
+                "| `{guard}` | {} |\n",
+                command_list(
+                    rows.iter()
+                        .filter(|row| row.policy.guard.as_ref() == Some(&guard))
+                )
+            ));
+        }
+        output.push_str("\n### Start/release pairs\n\n`Auth::LogoutTest` releases its pair in the ordinary lane; the other releases below use priority. Payload-dependent pair keys remain defined by the policy expressions and the cancellation prose above.\n\n| Pair | Starts | Releases |\n|---|---|---|\n");
+        for pair in enum_variants(&source, "Pair") {
+            let half =
+                |half: &str| {
+                    command_list(rows.iter().filter(|row| {
+                        row.policy.pair.as_ref() == Some(&(half.into(), pair.clone()))
+                    }))
+                };
+            output.push_str(&format!(
+                "| `{pair}` | {} | {} |\n",
+                half("Start"),
+                half("Release")
+            ));
+        }
+        output.push_str(&format!("\n{END}"));
+        output
+    }
+
+    fn document() -> (std::path::PathBuf, String) {
+        let path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/CONCURRENCY.md");
+        let text = std::fs::read_to_string(&path)
+            .unwrap()
+            .replace("\r\n", "\n");
+        (path, text)
+    }
+
+    #[test]
+    fn policy_documentation_understands_the_runtime_helpers() {
+        fn actual(policy: CommandPolicy) -> Description {
+            let mut result = Description {
+                lane: format!("{:?}", policy.lane),
+                ..Default::default()
+            };
+            match policy.admission {
+                Admission::Concurrent => result.admission = "Concurrent".into(),
+                Admission::SingleFlight(key) => {
+                    result.admission = "SingleFlight".into();
+                    result.key = Some(format!("{key:?}"));
+                }
+                Admission::Serial(key) => {
+                    result.admission = "Serial".into();
+                    result.key = Some(format!("{key:?}"));
+                }
+                Admission::Latest(key) => {
+                    result.admission = "Latest".into();
+                    result.key = Some(format!("{key:?}"));
+                }
+                Admission::ServiceGuarded(guard) => {
+                    result.admission = "ServiceGuarded".into();
+                    result.guard = Some(format!("{guard:?}"));
+                }
+            }
+            result.pair = policy.pair.map(|half| match half {
+                PairHalf::Start(pair) => ("Start".into(), identifier(&format!("{pair:?}")).into()),
+                PairHalf::Release(pair) => {
+                    ("Release".into(), identifier(&format!("{pair:?}")).into())
+                }
+            });
+            result
+        }
+        for (expression, policy) in [
+            ("ORDINARY", ORDINARY),
+            ("single_flight(Key::Contacts)", single_flight(Key::Contacts)),
+            ("serial(Key::Contacts)", serial(Key::Contacts)),
+            ("latest(Key::Contacts)", latest(Key::Contacts)),
+            ("service_guarded(ServiceGuard::Login)", service_guarded(ServiceGuard::Login)),
+            ("release(Pair::Auth)", release(Pair::Auth)),
+            ("unpaired_priority(Unpaired::Navigation)", unpaired_priority(Unpaired::Navigation)),
+            ("ORDINARY.starts(Pair::Auth)", ORDINARY.starts(Pair::Auth)),
+            ("CommandPolicy { pair: Some(PairHalf::Release(Pair::Auth)), ..ORDINARY }", super::policy(&AuthCommand::LogoutTest.into())),
+            ("CommandPolicy { admission: Admission::ServiceGuarded(ServiceGuard::Login), ..release(Pair::Auth) }", super::policy(&AuthCommand::Logout.into())),
+        ] {
+            assert_eq!(describe(expression), actual(policy), "Documentation no longer matches runtime helper {expression}; update the renderer and run {REGENERATE}");
+        }
+    }
+
+    #[test]
+    fn concurrency_tables_match_the_command_policy() {
+        let (_, text) = document();
+        let (_, generated) = text
+            .split_once(START)
+            .expect("Missing generated policy start marker");
+        let (generated, _) = generated
+            .split_once(END)
+            .expect("Missing generated policy end marker");
+        assert_eq!(
+            format!("{START}{generated}{END}"),
+            render(),
+            "Concurrency tables are stale. Regenerate with: {REGENERATE}"
+        );
+    }
+
+    #[test]
+    #[ignore = "writes the generated policy tables in docs/CONCURRENCY.md"]
+    fn regenerate_concurrency_tables() {
+        let (path, text) = document();
+        let (before, rest) = text
+            .split_once(START)
+            .expect("Missing generated policy start marker");
+        let (_, after) = rest
+            .split_once(END)
+            .expect("Missing generated policy end marker");
+        std::fs::write(path, format!("{before}{}{after}", render())).unwrap();
     }
 }
 
