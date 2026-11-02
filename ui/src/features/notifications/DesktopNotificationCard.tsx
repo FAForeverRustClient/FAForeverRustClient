@@ -17,8 +17,10 @@ export function DesktopNotificationCard({ card, duration, dismissLabel, onIntera
       {art && <img className="desktop-notification-art" src={art} alt="" draggable={false} onError={() => setBrokenArt(art)} />}
       <span className="desktop-notification-text">
         <span className="desktop-notification-title"><span className="desktop-notification-logo" aria-hidden="true" /><strong>{card.title}</strong></span>
-        <span className="desktop-notification-message">{card.body}</span>
-        {card.actionLabel && <span className="desktop-notification-action">{card.actionLabel}</span>}
+        <span className="desktop-notification-body">
+          <span className="desktop-notification-message">{card.body}</span>
+          {card.actionLabel && <span className="desktop-notification-action">{card.actionLabel}</span>}
+        </span>
         {failure && <span className="desktop-notification-error" role="alert">{failure}</span>}
       </span>
     </button>

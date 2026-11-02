@@ -87,7 +87,19 @@
 .desktop-notification.is-warning .desktop-notification-logo { background: var(--color-warn); }
 .desktop-notification.is-error .desktop-notification-logo { background: var(--color-error); }
 
+/* The message with its action at the end of the line, where the message keeps
+   a readable width beside it. A long label ("Start when the replay is ready")
+   wraps under the message instead, still at the right. */
+.desktop-notification-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
 .desktop-notification-message {
+  flex: 1 1 150px;
+  min-width: 0;
   max-height: 7.5em;
   /* No scrollbar gutter: a message almost always fits in a few lines, and a
      reserved strip would narrow every card for the rare one that does not. */
@@ -98,8 +110,8 @@
 }
 
 .desktop-notification-action {
-  align-self: flex-start;
-  margin-top: var(--space-1);
+  flex: none;
+  margin-left: auto;
   padding: 4px 10px;
   font-size: 12px;
   font-weight: 600;
