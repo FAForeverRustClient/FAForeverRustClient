@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import type { DesktopNotificationStyle, NotificationKind, NotificationPreferences, NotificationPreferencesPatch, ToastPosition } from "../../ipc/bindings";
 import { native } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
@@ -8,6 +8,8 @@ import { Icon } from "../../design-system/Icon";
 import { SettingRow, SettingsSwitch, useSettingsIndexEntry } from "./SettingControls";
 import { NumberInput } from "../../design-system/NumberInput";
 import { deliveryFor } from "../notifications/notificationDelivery";
+
+const NotificationTestDialog = lazy(() => import("../notifications/NotificationTestDialog").then((module) => ({ default: module.NotificationTestDialog })));
 
 type Update = (patch: NotificationPreferencesPatch) => void;
 
@@ -46,23 +48,10 @@ export function DesktopNotificationSettings({ update }: { update: Update }) {
   const { t } = useTranslation();
   const preferences = usePreferences();
   const [displays, setDisplays] = useState<{ name: string; primary: boolean }[]>([]);
-  const [error, setError] = useState("");
+  const [testOpen, setTestOpen] = useState(false);
   useEffect(() => { void native.notificationDisplays().then(setDisplays, () => setDisplays([])); }, []);
   const style = preferences.desktopStyle ?? "popup";
   const numbered = (number: string) => t("settings.notifications.displayNumber", { number });
-  const preview = async () => {
-    setError("");
-    try {
-      if (style === "system") {
-        if (!await native.ensureNotificationPermission()) throw new Error(t("settings.notifications.permissionDenied"));
-        native.sendNotification(t("notifications.msg.matchFound.title"), t("settings.notifications.previewBody"));
-      } else {
-        await native.showNotificationPopup([{
-          id: "preview", title: t("notifications.msg.matchFound.title"), body: t("settings.notifications.previewBody"), actionLabel: null, tone: "",
-        }], t("notifications.popup.dismiss"), true);
-      }
-    } catch (reason) { setError(String(reason)); }
-  };
   return <>
     <SettingRow label={t("settings.notifications.desktopStyle")} hint={t("settings.notifications.desktopStyleHint")}>
       <select className="settings-select" value={style} disabled={desktopOff(preferences)}
@@ -70,9 +59,9 @@ export function DesktopNotificationSettings({ update }: { update: Update }) {
         <option value="popup">{t("settings.notifications.desktopStyle.popup")}</option>
         <option value="system">{t("settings.notifications.desktopStyle.system")}</option>
       </select>
-      <button className="btn-ghost" type="button" disabled={desktopOff(preferences)} onClick={() => void preview()}>{t("settings.notifications.preview")}</button>
+      <button className="btn-ghost" type="button" onClick={() => setTestOpen(true)}>{t("notifications.test.open")}</button>
     </SettingRow>
-    {error && <p role="alert" className="settings-inline-error">{error}</p>}
+    {testOpen && <Suspense fallback={null}><NotificationTestDialog onClose={() => setTestOpen(false)} /></Suspense>}
     {style === "popup" && <>
       <SettingRow label={t("settings.notifications.desktopMonitor")}>
         <select className="settings-select" aria-label={t("settings.notifications.desktopMonitor")}

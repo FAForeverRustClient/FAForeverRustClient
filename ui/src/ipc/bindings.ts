@@ -6759,6 +6759,8 @@ export type NotificationPopupBatch = {
 	revision: number,
 	cards: NotificationPopupCard[],
 	durationSeconds: number,
+	/**  Only local test cards may opt out of expiry; live cards keep their timer. */
+	heldPreviewIds: string[],
 	theme: Theme,
 	dismissLabel: string,
 };

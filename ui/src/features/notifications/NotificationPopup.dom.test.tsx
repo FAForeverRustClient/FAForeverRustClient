@@ -20,11 +20,11 @@ vi.mock("../../ipc/native", () => ({ native: {
   notificationPopupInteract: bridge.interact,
 } }));
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 const batch = (revision: number, body: string): NotificationPopupBatch => ({ revision,
   cards: [{ id: "match", title: "Match found", body, tone: "", actionLabel: null }],
-  theme: "forgeDark", dismissLabel: "Dismiss notification", durationSeconds: 60,
+  theme: "forgeDark", dismissLabel: "Dismiss notification", durationSeconds: 60, heldPreviewIds: [],
 });
 beforeEach(() => {
   vi.clearAllMocks();
@@ -71,4 +71,30 @@ it("does not overwrite a newer live update with a delayed startup snapshot", asy
   await act(async () => { resolve(batch(1, "Old snapshot")); await Promise.resolve(); });
   expect(view.container.textContent).toContain("New arrival");
   expect(view.container.textContent).not.toContain("Old snapshot");
+});
+
+it("keeps a held test card visible without pausing a live card's expiry", async () => {
+  vi.useFakeTimers();
+  const next = batch(1, "Real match");
+  next.cards.push({ ...next.cards[0], id: "preview:test:0", title: "Test match" });
+  next.heldPreviewIds = ["preview:test:0"];
+  bridge.snapshot.mockResolvedValue(next);
+  render(<NotificationPopup />);
+  await act(async () => {});
+  await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
+  expect(bridge.interact).toHaveBeenCalledWith("match", "expire");
+  expect(bridge.interact).not.toHaveBeenCalledWith("preview:test:0", "expire");
+});
+
+it("applies a longer duration to a desktop card that is already visible", async () => {
+  vi.useFakeTimers();
+  bridge.snapshot.mockResolvedValue({ ...batch(1, "Ready"), durationSeconds: 5 });
+  render(<NotificationPopup />);
+  await act(async () => {});
+  await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+  act(() => { bridge.listener?.({ ...batch(2, "Ready"), durationSeconds: 15 }); });
+  await act(async () => { await vi.advanceTimersByTimeAsync(14999); });
+  expect(bridge.interact).not.toHaveBeenCalled();
+  await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+  expect(bridge.interact).toHaveBeenCalledWith("match", "expire");
 });

@@ -28,7 +28,7 @@ beforeEach(() => {
     ...state.settings.notifications, desktopStyle: "popup", sound: false,
   } }, notifications: { items: [{ id: "match", kind: "matchFound", title: "Match found", body: "A match is ready", action: { type: "openMatchmaking" }, text: null, read: false, createdAt: new Date().toISOString() }] } }));
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 it("shows a desktop popup in the background without a duplicate in-client or system popup", async () => {
   const view = render(<NotificationCenter />);
   await act(async () => {});
@@ -94,4 +94,52 @@ it("does not announce stale cards after notifications are disabled during popup 
   expect(nativeMock.ensureNotificationPermission).not.toHaveBeenCalled();
   expect(nativeMock.sendNotification).not.toHaveBeenCalled();
   expect(view.container.querySelector(".notification-toast")).toBeNull();
+});
+
+it("queues in-client bursts and gives the next card the full configured display duration", async () => {
+  vi.useFakeTimers();
+  seedStore((state) => ({ ...state, settings: { ...state.settings, notifications: {
+    ...state.settings.notifications, desktop: false, popup: true, enabled: true,
+    toastDurationSeconds: 12, repeatCooldownSeconds: 0,
+  } }, notifications: { items: Array.from({ length: 5 }, (_,index) => ({
+    ...state.notifications.items[0], id: `message-${index}`, title: `Message ${index}`,
+  })) } }));
+  const view = render(<NotificationCenter />);
+  await act(async () => {});
+  expect(view.container.querySelectorAll(".notification-toast")).toHaveLength(3);
+  expect(view.container.textContent).not.toContain("Message 3");
+  await act(async () => { await vi.advanceTimersByTimeAsync(11999); });
+  expect(view.container.textContent).toContain("Message 0");
+  await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+  expect(view.container.querySelectorAll(".notification-toast")).toHaveLength(2);
+  expect(view.container.textContent).toContain("Message 3");
+  expect(view.container.textContent).toContain("Message 4");
+  await act(async () => { await vi.advanceTimersByTimeAsync(11999); });
+  expect(view.container.querySelectorAll(".notification-toast")).toHaveLength(2);
+  await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+  expect(view.container.querySelector(".notification-toast")).toBeNull();
+});
+
+it("shows an urgent match immediately while preserving the displaced in-client card", async () => {
+  vi.useFakeTimers();
+  seedStore((state) => ({ ...state, settings: { ...state.settings, notifications: {
+    ...state.settings.notifications, desktop: false, popup: true, enabled: true,
+    toastDurationSeconds: 12, repeatCooldownSeconds: 0,
+  } }, notifications: { items: Array.from({ length: 3 }, (_,index) => ({
+    ...state.notifications.items[0], id: `message-${index}`, title: `Message ${index}`, kind: "friendOnline",
+  })) } }));
+  const view = render(<NotificationCenter />);
+  await act(async () => {});
+  act(() => {
+    const state = useAppStore.getState().state;
+    useAppStore.getState().hydrate({ ...state, notifications: { items: [{
+      ...state.notifications.items[0], id: "urgent", title: "Urgent match", kind: "matchFound",
+    }, ...state.notifications.items] } });
+  });
+  await act(async () => {});
+  expect(view.container.querySelectorAll(".notification-toast")).toHaveLength(3);
+  expect(view.container.textContent).toContain("Urgent match");
+  expect(view.container.textContent).not.toContain("Message 2");
+  await act(async () => { await vi.advanceTimersByTimeAsync(12000); });
+  expect(view.container.textContent).toContain("Message 2");
 });

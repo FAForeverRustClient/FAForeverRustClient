@@ -99,6 +99,8 @@ pub struct NotificationPopupBatch {
     pub revision: u64,
     pub cards: Vec<NotificationPopupCard>,
     pub duration_seconds: u16,
+    /// Only local test cards may opt out of expiry; live cards keep their timer.
+    pub held_preview_ids: Vec<String>,
     pub theme: Theme,
     pub dismiss_label: String,
 }
