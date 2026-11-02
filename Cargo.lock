@@ -1207,6 +1207,7 @@ name = "faf-ipc"
 version = "0.9.5"
 dependencies = [
  "faf-domain",
+ "serde",
  "serde_json",
  "specta",
  "specta-serde",
@@ -1219,6 +1220,7 @@ version = "0.9.5"
 dependencies = [
  "faf-app",
  "faf-domain",
+ "faf-ipc",
  "serde",
  "serde_json",
  "tauri",

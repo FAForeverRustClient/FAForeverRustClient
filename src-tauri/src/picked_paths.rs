@@ -33,7 +33,7 @@ use faf_domain::state::{
     UploadsCommand,
 };
 use faf_domain::AppCommand;
-use serde::Deserialize;
+use faf_ipc::shell::PickRequest;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 
 /// How long a pick stays good for. Long enough for an upload dialog left open
@@ -80,28 +80,6 @@ impl PickedPaths {
 
 fn refusal(path: &str) -> String {
     format!("{path} was not chosen in a file dialog of this client")
-}
-
-/// One filter of the dialog, as the page describes it.
-#[derive(Deserialize)]
-pub(crate) struct PickFilter {
-    name: String,
-    extensions: Vec<String>,
-}
-
-/// What the page asks the dialog to look like. Nothing in it decides what may
-/// be picked: that is the player, in the dialog.
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct PickRequest {
-    #[serde(default)]
-    title: Option<String>,
-    #[serde(default)]
-    filters: Vec<PickFilter>,
-    #[serde(default)]
-    directory: bool,
-    #[serde(default)]
-    default_path: Option<String>,
 }
 
 /// Open the native file or folder dialog and return what the player picked,

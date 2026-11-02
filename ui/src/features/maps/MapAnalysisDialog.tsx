@@ -110,9 +110,11 @@ export function MapAnalysisDialog({ folderName, title, onClose }: { folderName: 
               {view === "reclaim" ? (
                 <>
                   <p>
+                    {/* A null is a NaN or an infinity in Rust, which serde
+                        writes as null: 0, as `Math.round` always made of it. */}
                     {t("maps.analysis.reclaimTotals", {
-                      mass: formatNumber(Math.round(analysis.reclaim.mass)),
-                      energy: formatNumber(Math.round(analysis.reclaim.energy)),
+                      mass: formatNumber(Math.round(analysis.reclaim.mass ?? 0)),
+                      energy: formatNumber(Math.round(analysis.reclaim.energy ?? 0)),
                     })}
                   </p>
                   <p className="muted">
@@ -130,7 +132,7 @@ export function MapAnalysisDialog({ folderName, title, onClose }: { folderName: 
                     <p>
                       {t("maps.analysis.regions", {
                         count: layer.regions,
-                        share: Math.round(layer.reachable * 100),
+                        share: Math.round((layer.reachable ?? 0) * 100),
                       })}
                     </p>
                     <p className="muted">

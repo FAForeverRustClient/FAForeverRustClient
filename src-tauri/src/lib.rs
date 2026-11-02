@@ -16,8 +16,6 @@
 use std::sync::Arc;
 
 use faf_app::App;
-use faf_domain::{AppEvent, AppState};
-use serde::Serialize;
 use tauri::Manager;
 
 mod commands;
@@ -32,18 +30,10 @@ mod tray;
 mod webview_recovery;
 mod window;
 
-/// The channel the backend emits state deltas on. The frontend listens here.
+/// The channel the backend emits state deltas on, as
+/// [`FrontendMessage`](faf_ipc::shell::FrontendMessage)s. The frontend listens
+/// here.
 const EVENT_CHANNEL: &str = "app://event";
-
-/// One ordered shell-to-webview stream. Recovery snapshots deliberately use
-/// the same channel as deltas so the webview cannot observe a post-recovery
-/// event and then roll itself back to an older snapshot from another channel.
-#[derive(Clone, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase")]
-enum FrontendMessage {
-    Event { revision: u64, event: Box<AppEvent> },
-    Snapshot { revision: u64, state: Box<AppState> },
-}
 
 /// Managed state: the shared application core.
 struct Core(Arc<App>);

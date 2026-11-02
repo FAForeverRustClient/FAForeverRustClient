@@ -8,10 +8,11 @@ use faf_domain::state::{
     AuthCommand, NavCommand, ReplayCommand, SessionCommand, SettingsCommand, SettingsEvent, Tab,
 };
 use faf_domain::{AppCommand, AppEvent};
+use faf_ipc::shell::FrontendMessage;
 use tauri::{Emitter, Manager};
 use tokio::sync::broadcast::error::RecvError;
 
-use crate::{Core, FrontendMessage, EVENT_CHANNEL};
+use crate::{Core, EVENT_CHANNEL};
 
 /// Wait until the startup settings have been read: their `Loaded` event, or
 /// the end of the whole load where events were missed. `false` when the load

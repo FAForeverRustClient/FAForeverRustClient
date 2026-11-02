@@ -2644,6 +2644,9 @@ export type DraftPick = {
 	atIndex: number,
 };
 
+/**  Why a [`TourneyDraft`] is not submittable. */
+export type DraftRejection = "nameRequired" | "teamSizeOutOfRange" | "ratingRangeInverted" | "ratingGateWithoutRating" | "signupWindowInverted";
+
 /**
  *  How an event was stopped before its final, where it was (`earlyFinish`).
  *
@@ -3090,6 +3093,13 @@ export type ForumPost = {
 	 */
 	url: string,
 };
+
+/**
+ *  One ordered shell-to-webview stream. Recovery snapshots deliberately use
+ *  the same channel as deltas so the webview cannot observe a post-recovery
+ *  event and then roll itself back to an older snapshot from another channel.
+ */
+export type FrontendMessage = { kind: "event"; revision: number; event: AppEvent } | { kind: "snapshot"; revision: number; state: AppState };
 
 /**  Counts that outlive the current season. */
 export type GalacticWarAlltime = {
@@ -5104,6 +5114,41 @@ export type LocalReplayTeam = {
 };
 
 /**
+ *  A problem recognised in a game log.
+ *
+ *  An enum rather than a message, so the UI owns the wording and its
+ *  translation, and so a new detection cannot silently change what an existing
+ *  one says.
+ */
+export type LogIssue =
+/**
+ *  The game was minimized or Alt+Tabbed out of fullscreen, which the engine
+ *  tolerates poorly and is a routine cause of crashes.
+ */
+"gameMinimized" |
+/**
+ *  XACT sound failures, usually caused by OS sound settings or third-party
+ *  audio software rather than by the game.
+ */
+"soundDriver";
+
+/**  The newest file of one log folder, for the diagnostics page. */
+export type LogPreview = {
+	fileName: string,
+	/**  The newest 512 KiB of the file. */
+	content: string,
+	/**
+	 *  Known problems recognised in this log (see
+	 *  [`faf_domain::protocol::log_analysis`]). Analysed in the shell rather
+	 *  than in the frontend so the whole file is scanned: `content` is
+	 *  truncated, and the trace that explains a crash is routinely older than
+	 *  what it keeps, so an issue can be reported that the excerpt does not
+	 *  contain.
+	 */
+	issues: LogIssue[],
+};
+
+/**
  *  What the API said about a login nobody online answers to.
  *
  *  The user menu opens on names from replays, results and leaderboards, most
@@ -5114,6 +5159,22 @@ export type LocalReplayTeam = {
 export type LoginLookup = {
 	login: string,
 	id: number | null,
+};
+
+/**
+ *  What the map dialog draws: an installed map's pathing regions per layer
+ *  and its reclaim, over its preview.
+ */
+export type MapAnalysis = {
+	/**  The `.scmap`'s preview, the picture the layers are drawn over. */
+	preview: string,
+	/**  In ogrids. */
+	width: number,
+	height: number,
+	hasWater: boolean,
+	/**  Land first; hover, amphibious and naval only on a map with water. */
+	layers: MapLayerPicture[],
+	reclaim: ReclaimPicture,
 };
 
 /**  A map being added to or edited in a tournament's own map database. */
@@ -5354,6 +5415,20 @@ export type MapInstallStatus = { type: "idle" } | { type: "installing"; payload:
 } } | { type: "failed"; payload: {
 	reason: string,
 } };
+
+/**  One pathing layer of a [`MapAnalysis`]. */
+export type MapLayerPicture = {
+	layer: NavLayer,
+	/**  Regions the layer is divided into after culling. */
+	regions: number,
+	/**  The share of the map, from 0 to 1, units of the layer can reach. */
+	reachable: number | null,
+	/**
+	 *  `data:image/png;base64,...`: each region its own colour, where the
+	 *  layer cannot go dark, the size of the map.
+	 */
+	image: string,
+};
 
 /**
  *  Status of a list fetch (vault or installed): separate from
@@ -5738,6 +5813,23 @@ export type MapsState = {
 	 *  either side infers.
 	 */
 	localPreviewOrder: string[],
+};
+
+/**  A map's clean picture and its markers, in map units. */
+export type MarkedMapPreview = {
+	/**
+	 *  The `.scmap`'s own preview, as `data:image/png;base64,...`. It covers the
+	 *  whole map, `width` by `height`, including any area outside the playable
+	 *  one.
+	 */
+	image: string,
+	/**  The map's extent in map units, from the scenario's `size`. */
+	width: number | null,
+	height: number | null,
+	/**  `[x, z]` of each marker: across, then down the picture. */
+	mass: ([(number | null), (number | null)])[],
+	hydro: ([(number | null), (number | null)])[],
+	spawns: ([(number | null), (number | null)])[],
 };
 
 /**
@@ -6470,6 +6562,8 @@ export type NavEvent = { type: "tabSelected"; payload: {
 	id: number,
 } };
 
+export type NavLayer = "land" | "hover" | "amphibious" | "naval";
+
 export type NavState = {
 	activeTab: Tab,
 	/**
@@ -6579,6 +6673,12 @@ export type NotificationDeliveryPatches = {
 	events: Partial<{ [key in NotificationKind]: NotificationDeliveryPatch | null }>,
 };
 
+/**  A display the popup can be placed on, by the name the settings keep. */
+export type NotificationDisplay = {
+	name: string,
+	primary: boolean,
+};
+
 export type NotificationEvent = { type: "added"; payload: {
 	notification: ClientNotification,
 } } | { type: "read"; payload: {
@@ -6653,6 +6753,28 @@ export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "fr
  *  before it back. Said once, so the change is not a mystery.
  */
 "avatarRestored" | "error";
+
+/**  What the popup window shows: at most three cards, newest first. */
+export type NotificationPopupBatch = {
+	revision: number,
+	cards: NotificationPopupCard[],
+	durationSeconds: number,
+	theme: Theme,
+	dismissLabel: string,
+};
+
+/**
+ *  One card of the desktop notification popup: bounded presentation data for
+ *  an existing notification id. No actions or URLs.
+ */
+export type NotificationPopupCard = {
+	id: string,
+	title: string,
+	body: string,
+	actionLabel: string | null,
+	tone: string,
+	imageUrl?: string | null,
+};
 
 export type NotificationPreferences = {
 	enabled: boolean,
@@ -7157,6 +7279,12 @@ export type PendingSummary = {
 	newProposals: number | null,
 };
 
+/**  One filter of the dialog, as the page describes it. */
+export type PickFilter = {
+	name: string,
+	extensions: string[],
+};
+
 /**  One line of a pick phase's log. */
 export type PickLogEntry = {
 	by: string,
@@ -7223,6 +7351,20 @@ export type PickPhase = {
 	records: TeamRecord[],
 	/**  The pairs drawn for everyone else, once built. */
 	drawn: ([string, string])[],
+};
+
+/**
+ *  What the page asks a file dialog to look like. Nothing in it decides what
+ *  may be picked: that is the player, in the dialog the shell opens, so a path
+ *  the page sends back later can be checked against what was picked.
+ */
+export type PickRequest = {
+	title?: string | null,
+	filters?: PickFilter[],
+	/**  Pick a folder rather than a file. */
+	directory?: boolean,
+	/**  Where the dialog starts: a folder, or a file to preselect. */
+	defaultPath?: string | null,
 };
 
 /**
@@ -8422,6 +8564,17 @@ export type Reaction = {
 	 *  spec has no retraction, so a repeat is a duplicate, not a toggle.
 	 */
 	senders: string[],
+};
+
+/**  The reclaim of a [`MapAnalysis`]. */
+export type ReclaimPicture = {
+	mass: number | null,
+	energy: number | null,
+	props: number,
+	/**  Props whose blueprint was found and so counted. */
+	valued: number,
+	/**  Where the mass is: brighter where there is more. */
+	image: string,
 };
 
 /**
@@ -13975,6 +14128,17 @@ export type UnitHistoryStatus =
 } };
 
 /**
+ *  The pictures the installed game has, by the names the page asks for them
+ *  on the shell's `unit-icon` scheme.
+ */
+export type UnitIconNames = {
+	/**  Upper-case blueprint ids. */
+	units: string[],
+	/**  Lower-case strategic icon names, `icon_land1_directfire`. */
+	strategic: string[],
+};
+
+/**
  *  Where a unit moves, which is how the picker sorts a faction's units:
  *  land, then air, then naval, then what does not move.
  */
@@ -14558,6 +14722,16 @@ export type VaultStatus = { type: "idle" } | { type: "loading" } | { type: "read
 	reason: string,
 } };
 
+/**
+ *  The page's hydration snapshot, and the last event revision it contains:
+ *  the runtime's own `faf_app::VersionedSnapshot`, as the `snapshot` command
+ *  answers with it.
+ */
+export type VersionedSnapshot = {
+	revision: number,
+	state: AppState,
+};
+
 /**  One ban or pick that has been made. */
 export type VetoChoice = {
 	/**  The map id, which is a key into the event's own map database. */
@@ -14618,6 +14792,19 @@ export type VetoTeamA =
 export type WeaponStat = "dps" | "damage" | "damageRadius" | "range" | "minRange" |
 /**  Shots per second, as the game fires them: whole ticks between shots. */
 "rateOfFire" | "salvoSize" | "salvoDelay" | "dotPulses" | "dotTime";
+
+/**
+ *  Which rendering engine the client actually ended up in.
+ *
+ *  Facts only. Which release is new enough is deliberately a frontend
+ *  decision, because the features at stake are the ones its stylesheets use.
+ */
+export type WebviewEngine = {
+	/**  `windows`, `macos`, `linux`, or `other`. */
+	platform: string,
+	/**  WebKitGTK `major.minor.micro`; only Linux has a version worth reporting. */
+	webkitVersion: string | null,
+};
 
 /**
  *  Which day a calendar week starts on.
