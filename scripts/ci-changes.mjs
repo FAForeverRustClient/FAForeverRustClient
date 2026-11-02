@@ -13,6 +13,12 @@ export function selectChecks(paths) {
 
   const checks = { rust: false, frontend: false, bindings: false, conformance: false };
   for (const path of paths) {
+    // A faf-app unit test compares this file's generated tables with the
+    // command policy, so an edit to it alone still has to run that test.
+    if (path === "docs/CONCURRENCY.md") {
+      checks.rust = true;
+      continue;
+    }
     // Match directories explicitly: Markdown fixtures in crates/ are build inputs.
     if (path === "README.md" || /^(?:docs|changelog)\/.*\.md$/.test(path)) continue;
 

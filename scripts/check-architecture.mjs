@@ -193,7 +193,7 @@ for (const path of await sourceFiles(resolve(root, "ui/src"), new Set([".ts", ".
   }
   if (/\.toLocale(?:Date|Time)?String\(\s*(?:\)|undefined|\[\])/.test(source)
       || /new\s+Intl\.(?:DateTimeFormat|NumberFormat)\(\s*(?:\)|undefined)/.test(source)) {
-    report(path, "inherits the operating-system locale; keep formatting explicitly English until localization exists");
+    report(path, "inherits the operating-system locale; use an explicit locale from the selected client language or a shared formatting helper");
   }
 }
 
