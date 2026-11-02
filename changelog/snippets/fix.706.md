@@ -1,0 +1,2 @@
+- Saving a map generator preset no longer stores folders or extra arguments you did not pick.
+- Deleting a local replay no longer touches network paths you did not pick.
