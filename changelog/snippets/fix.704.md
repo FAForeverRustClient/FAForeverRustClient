@@ -2,6 +2,7 @@
 - Found-match, full-game and party-invitation alerts appear immediately, keeping displaced popups queued.
 - Simultaneous notifications no longer compete to create the desktop popup window.
 - Desktop popups no longer stop appearing for the rest of a session once their window stops drawing.
+- View game on a notification opens a proper dialog instead of an unstyled panel in the sidebar.
 - The shared popup duration control appears near the top of Settings, Notifications.
 - Changing popup duration in Settings, Notifications also updates visible desktop popups.
 - Settings, Notifications explains new custom-game alerts and keeps the friends-only description visible.
