@@ -649,7 +649,17 @@
 .matchmaker-queue-card {
   position: relative;
   min-width: 0;
+  /* For the narrow layout at the end of this block. */
+  container-type: inline-size;
   background: var(--color-surface-raised);
+}
+
+/* Containment makes every card its own stacking context, which would leave the
+   rating breakdown that hangs outside the card under the cards drawn after it.
+   The hovered card is lifted instead: 1, the sticky search bar's level, which
+   comes later in the page and so still covers a card scrolled under it. */
+.matchmaker-queue-card:hover {
+  z-index: 1;
 }
 
 /* Which queues you are about to search is the tab's most consequential state,
@@ -815,6 +825,22 @@
   min-height: 32px;
   padding: 5px 10px;
   font-size: 12px;
+}
+
+/* A card too narrow for the facts beside the button: the corner kept clear for
+   it left about 60 px of a 196 px card, and "6 in your range" broke onto three
+   lines. Here the facts take the full width and the button gets a row of its
+   own under them, 32 px plus the gap. Measured in all six languages, side by
+   side needs up to 284 px: the longest fact line is Russian's 139 px and the
+   widest button Spanish's 150 px. 300 leaves room for two-digit counts. */
+@container (max-width: 300px) {
+  .matchmaker-queue-facts {
+    padding-right: 0;
+  }
+
+  .matchmaker-queue-select {
+    padding-bottom: calc(14px + 32px + 10px);
+  }
 }
 
 .matchmaker-queue-note {
@@ -2011,6 +2037,14 @@
    one. */
 .matchmaker-recent-opponent-link {
   cursor: pointer;
+}
+
+/* The ring a `<button>` gets (styles.css), on the inline name that stands in
+   for one. */
+.matchmaker-recent-opponent-link:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .matchmaker-recent-opponent-link:hover .matchmaker-recent-opponent,

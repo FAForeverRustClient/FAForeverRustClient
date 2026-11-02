@@ -25,6 +25,7 @@ import {
   noteHoverPanelClosed,
   noteHoverPanelOpen,
 } from "../../../shared/hoverPanels";
+import { RecoverableImage } from "../../../shared/components/RecoverableImage";
 
 /** Roughly the tallest the card gets, so the clamp below leaves room for it. */
 const CARD_HEIGHT_PX = 240;
@@ -55,7 +56,7 @@ export function PlayerRatingCard({
           />
         ) : null}
         {profile?.country ? (
-          <img
+          <RecoverableImage
             className="chat-flag"
             src={flagSrc(profile.country)}
             alt={countryOf(profile.country)}
@@ -63,7 +64,6 @@ export function PlayerRatingCard({
             height={16}
             decoding="async"
             draggable={false}
-            onError={(event) => { event.currentTarget.style.visibility = "hidden"; }}
           />
         ) : null}
         <strong>{displayName}</strong>

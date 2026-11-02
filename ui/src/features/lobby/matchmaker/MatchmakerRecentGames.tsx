@@ -9,7 +9,7 @@
 // replaces whatever the Replays tab was showing. Drawn as a table like the
 // live-replay one, with the same draggable, remembered column widths.
 
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { ResizeHandle } from "../../../design-system/ResizeHandle";
@@ -302,9 +302,10 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
                       as well as a right one (#539). Inline rather than a
                       `<button>`, which Chromium always draws inline-block:
                       a team game's list of names would be clipped instead
-                      of ending in an ellipsis. */}
+                      of ending in an ellipsis. So the button's part is
+                      written out: a tab stop, its role, Enter and Space. */}
                   {side.opponents.map((name, index) => {
-                    const openMenu = (event: MouseEvent) => {
+                    const openMenu = (event: MouseEvent | KeyboardEvent) => {
                       setMenuGame(game.uid);
                       openPlayerMenu(name, event);
                     };
@@ -313,8 +314,14 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
                         {index > 0 && ", "}
                         <span
                           className="matchmaker-recent-opponent-link"
+                          role="button"
+                          tabIndex={0}
+                          aria-haspopup="menu"
                           onClick={openMenu}
                           onContextMenu={openMenu}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") openMenu(event);
+                          }}
                         >
                           <PlayerName
                             name={name}

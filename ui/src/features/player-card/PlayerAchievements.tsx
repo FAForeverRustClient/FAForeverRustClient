@@ -3,6 +3,7 @@ import type { PlayerAchievement } from "../../ipc/bindings";
 import { formatDate } from "../../shared/format/dates";
 import { formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import { RecoverableImage } from "../../shared/components/RecoverableImage";
 
 function AchievementCard({ achievement }: { achievement: PlayerAchievement }) {
   const { t } = useTranslation();
@@ -14,7 +15,7 @@ function AchievementCard({ achievement }: { achievement: PlayerAchievement }) {
   return (
     <article className={`player-achievement surface-panel${unlocked ? " is-unlocked" : ""}`}>
       {icon
-        ? <img src={icon} alt="" loading="lazy" onError={(event) => { event.currentTarget.hidden = true; }} />
+        ? <RecoverableImage src={icon} alt="" loading="lazy" whenBroken="remove" />
         : <div className="player-achievement-placeholder" aria-hidden>★</div>}
       <div className="player-achievement-body">
         <header><h4>{achievement.name}</h4><span>{achievement.experiencePoints} XP</span></header>

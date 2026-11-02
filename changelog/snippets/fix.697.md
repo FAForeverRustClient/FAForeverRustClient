@@ -1,0 +1,5 @@
+- Matchmaker queue cards show each fact on one line, with the map pool button below them on narrow cards.
+- The Neroxis badge no longer covers "Generate map" in the host dialog.
+- Opponent names in matchmaker recent results can be reached and opened with the keyboard.
+- A player menu opened from the keyboard appears beside the name instead of at the top of the window.
+- Flags, avatars, league badges and achievement icons show again once a broken image is replaced.

@@ -9,6 +9,7 @@ import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/components/nameColors";
 import { ClanManagement, LeaveClanAction } from "./ClanManagement";
+import { RecoverableImage } from "../../shared/components/RecoverableImage";
 
 function displayDate(value: string): string {
   return formatDate(value, t("common.notAvailable"));
@@ -143,16 +144,13 @@ export function PlayerClanView({
                   name keeps its place either way. */}
               <span className="player-clan-member-name">
                 {member.avatarUrl && (
-                  <img
+                  <RecoverableImage
                     className="player-clan-member-avatar"
                     src={member.avatarUrl}
                     alt=""
                     loading="lazy"
                     decoding="async"
                     draggable={false}
-                    onError={(event) => {
-                      event.currentTarget.style.visibility = "hidden";
-                    }}
                   />
                 )}
                 <strong><PlayerName name={member.login} /></strong>
