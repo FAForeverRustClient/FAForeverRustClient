@@ -1,0 +1,1 @@
+- No visible changes: the default map, mod, replay and training searches now come from the backend's defaults instead of copies.
