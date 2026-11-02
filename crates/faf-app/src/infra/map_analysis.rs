@@ -13,11 +13,11 @@ use std::io::Read;
 use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};
 
+use faf_domain::native::{MapAnalysis, MapLayerPicture, ReclaimPicture};
 use faf_domain::protocol::blueprint::parse_blueprint;
 use faf_domain::protocol::map_reclaim::{prop_key, prop_value, summarize_reclaim, PropValue};
-use faf_domain::protocol::navigation::{self, Area, NavGrid, NavLayer, Resource};
+use faf_domain::protocol::navigation::{self, Area, NavGrid, Resource};
 use faf_domain::protocol::scmap::parse_scmap;
-use serde::Serialize;
 
 /// The largest `.scmap` read. An 81 km map is a few hundred megabytes; more
 /// is not a map.
@@ -27,45 +27,6 @@ const MAX_PROP_BYTES: u64 = 256 * 1024;
 /// The pictures are at most this many pixels a side: one per ogrid up to a
 /// 20 km map, and every second or fourth ogrid on larger ones.
 const MAX_PICTURE_SIDE: u32 = 1024;
-
-/// What the map dialog draws.
-#[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MapAnalysis {
-    /// The `.scmap`'s preview, the picture the layers are drawn over.
-    pub preview: String,
-    /// In ogrids.
-    pub width: u32,
-    pub height: u32,
-    pub has_water: bool,
-    pub layers: Vec<LayerPicture>,
-    pub reclaim: ReclaimPicture,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LayerPicture {
-    pub layer: NavLayer,
-    /// Regions the layer is divided into after culling.
-    pub regions: usize,
-    /// The share of the map, from 0 to 1, units of the layer can reach.
-    pub reachable: f32,
-    /// `data:image/png;base64,...`: each region its own colour, where the
-    /// layer cannot go dark, the size of the map.
-    pub image: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ReclaimPicture {
-    pub mass: f64,
-    pub energy: f64,
-    pub props: usize,
-    /// Props whose blueprint was found and so counted.
-    pub valued: usize,
-    /// Where the mass is: brighter where there is more.
-    pub image: String,
-}
 
 /// The installed map `folder_name`, for the game install at `game_path`
 /// (whose `env` archives hold the props' values).
@@ -155,7 +116,7 @@ fn first_area(save: &str) -> Option<Area> {
 
 /// A layer as a picture: every region in its own colour, half transparent so
 /// the map shows through, and the ogrids the layer cannot reach dark.
-fn picture_of(grid: &NavGrid) -> LayerPicture {
+fn picture_of(grid: &NavGrid) -> MapLayerPicture {
     let step = grid
         .width
         .max(grid.height)
@@ -170,7 +131,7 @@ fn picture_of(grid: &NavGrid) -> LayerPicture {
         }
     }
     let reachable = grid.cells.iter().filter(|cell| **cell != 0).count();
-    LayerPicture {
+    MapLayerPicture {
         layer: grid.layer,
         regions: grid.regions.len(),
         reachable: reachable as f32 / grid.cells.len().max(1) as f32,

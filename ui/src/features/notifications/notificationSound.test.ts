@@ -1,16 +1,23 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { NotificationKind, NotificationSound, NotificationSoundChoices } from "../../ipc/bindings";
 import type { ToneSound } from "./notificationSound";
 import {
   customSoundName,
+  forgetCustomSounds,
   isSampleSound,
   notificationTonePlan,
+  playNotificationSound,
   soundForKind,
   soundFromOptionValue,
   soundOptionValue,
   tonePeakGain,
   tonePlanDuration,
 } from "./notificationSound";
+
+const { readNotificationSound } = vi.hoisted(() => ({
+  readNotificationSound: vi.fn<(name: string) => Promise<ArrayBuffer>>(),
+}));
+vi.mock("../../ipc/native", () => ({ native: { readNotificationSound } }));
 
 // The shipped tones only. A custom sound is a file rather than a plan, so it
 // has nothing for the tests below to measure.
@@ -184,5 +191,38 @@ describe("a sound the player added", () => {
     // The option value is `custom:<name>` and a name may contain a colon on
     // any filesystem that allows one, so only the first is a separator.
     expect(soundFromOptionValue("custom:a:b.wav")).toEqual({ custom: "a:b.wav" });
+  });
+
+  describe("when it plays", () => {
+    afterEach(() => {
+      forgetCustomSounds();
+      vi.unstubAllGlobals();
+    });
+
+    it("decodes the bytes in the buffer the shell sent them in", async () => {
+      // Raw bytes rather than JSON: the shell answers with an `ArrayBuffer`,
+      // which `decodeAudioData` takes as it is. A copy through a number array
+      // is what this replaced.
+      const bytes = new Uint8Array([0x4f, 0x67, 0x67, 0x53]).buffer;
+      readNotificationSound.mockResolvedValue(bytes);
+      const decodeAudioData = vi.fn<(buffer: ArrayBuffer) => Promise<AudioBuffer>>(
+        () => Promise.resolve({} as AudioBuffer),
+      );
+      const node = () => ({ connect: vi.fn(), start: vi.fn(), gain: { setValueAtTime: vi.fn() } });
+      vi.stubGlobal("AudioContext", class {
+        state = "running";
+        currentTime = 0;
+        destination = {};
+        decodeAudioData = decodeAudioData;
+        createBufferSource = node;
+        createGain = node;
+      });
+
+      playNotificationSound({ custom: "horn.wav" }, 50);
+
+      await vi.waitFor(() => expect(decodeAudioData).toHaveBeenCalledOnce());
+      expect(decodeAudioData.mock.calls[0][0]).toBe(bytes);
+      expect(readNotificationSound).toHaveBeenCalledWith("horn.wav");
+    });
   });
 });

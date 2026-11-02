@@ -12,27 +12,14 @@
 //! * [`webview_engine`], [`exit_app`] and [`page_ready`] are facts about, and
 //!   control over, the shell process itself.
 
-use faf_app::VersionedSnapshot;
+use faf_domain::native::{MapAnalysis, MarkedMapPreview, UnitIconNames};
 use faf_domain::AppCommand;
-use serde::Serialize;
+use faf_ipc::shell::{LogPreview, VersionedSnapshot, WebviewEngine};
 use tauri::Manager;
 use tauri_plugin_opener::OpenerExt;
 
 use crate::picked_paths::{admit, PickedPaths};
 use crate::Core;
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct LogPreview {
-    file_name: String,
-    content: String,
-    /// Known problems recognised in this log (see
-    /// [`faf_domain::protocol::log_analysis`]). Analysed here rather than in the
-    /// frontend so the whole file is scanned: the preview below is truncated to
-    /// the newest 512 KiB, and the trace that explains a crash is routinely
-    /// older than that.
-    issues: Vec<faf_domain::protocol::log_analysis::LogIssue>,
-}
 
 pub(crate) fn log_directory(
     kind: &str,
@@ -134,11 +121,17 @@ pub(crate) async fn list_notification_sounds() -> Result<Vec<String>, String> {
 /// Read here rather than handed over as a file:// URL: the webview's asset
 /// protocol would need the whole data directory opened up to reach one file,
 /// and this is a couple of hundred kilobytes read once and cached by the page.
+///
+/// Handed over as raw bytes, an `ArrayBuffer` on the page, for the reason
+/// [`read_background_image`] gives: as a `Vec<u8>` it went through JSON as an
+/// array of numbers, about four characters a byte.
 #[tauri::command]
-pub(crate) async fn read_notification_sound(name: String) -> Result<Vec<u8>, String> {
+pub(crate) async fn read_notification_sound(name: String) -> Result<tauri::ipc::Response, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let path = faf_app::infra::notification_sounds::sound_path(&name)?;
-        std::fs::read(&path).map_err(|error| format!("could not read {}: {error}", path.display()))
+        std::fs::read(&path)
+            .map(tauri::ipc::Response::new)
+            .map_err(|error| format!("could not read {}: {error}", path.display()))
     })
     .await
     .map_err(|_| "file worker stopped".to_string())?
@@ -186,7 +179,7 @@ pub(crate) async fn read_background_image(name: String) -> Result<tauri::ipc::Re
 #[tauri::command]
 pub(crate) async fn read_marked_map_preview(
     folder_name: String,
-) -> Result<faf_app::infra::map_markers::MarkedMapPreview, String> {
+) -> Result<MarkedMapPreview, String> {
     tauri::async_runtime::spawn_blocking(move || {
         faf_app::infra::map_markers::marked_map_preview(&folder_name)
     })
@@ -374,7 +367,8 @@ pub(crate) fn report_event_cost(
 #[tauri::command]
 pub(crate) fn snapshot(core: tauri::State<'_, Core>) -> VersionedSnapshot {
     let started = std::time::Instant::now();
-    let snapshot = core.0.versioned_snapshot();
+    let faf_app::VersionedSnapshot { revision, state } = core.0.versioned_snapshot();
+    let snapshot = VersionedSnapshot { revision, state };
     let copy_seconds = started.elapsed().as_secs_f32();
     let bytes = serde_json::to_vec(&snapshot).map_or(0, |json| json.len());
     tracing::info!(bytes, copy_seconds, "webview hydration snapshot");
@@ -385,9 +379,7 @@ pub(crate) fn snapshot(core: tauri::State<'_, Core>) -> VersionedSnapshot {
 /// game has a picture for (see `faf_app::infra::unit_icons`). The pictures
 /// themselves come one at a time through [`UNIT_ICON_SCHEME`].
 #[tauri::command]
-pub(crate) async fn unit_icons(
-    core: tauri::State<'_, Core>,
-) -> Result<faf_app::infra::unit_icons::UnitIcons, String> {
+pub(crate) async fn unit_icons(core: tauri::State<'_, Core>) -> Result<UnitIconNames, String> {
     let game_path = core.0.with_state(|state| state.settings.game_path.clone());
     tauri::async_runtime::spawn_blocking(move || faf_app::infra::unit_icons::unit_icons(&game_path))
         .await
@@ -435,7 +427,7 @@ pub(crate) fn unit_icon_request<R: tauri::Runtime>(
 pub(crate) async fn map_analysis(
     core: tauri::State<'_, Core>,
     folder_name: String,
-) -> Result<faf_app::infra::map_analysis::MapAnalysis, String> {
+) -> Result<MapAnalysis, String> {
     let game_path = core.0.with_state(|state| state.settings.game_path.clone());
     tauri::async_runtime::spawn_blocking(move || {
         faf_app::infra::map_analysis::map_analysis(&folder_name, &game_path)
@@ -464,22 +456,6 @@ pub(crate) fn page_ready(app: tauri::AppHandle) {
 #[tauri::command]
 pub(crate) fn page_gone(app: tauri::AppHandle) {
     crate::exit::page_gone(&app);
-}
-
-/// Which rendering engine the client actually ended up in.
-///
-/// Only Linux reports a version, because only Linux can surprise us: Windows
-/// and macOS roll their webview forward with the operating system, while a GTK
-/// build renders in whatever WebKitGTK the distribution happens to ship. An
-/// old-stable release there can predate the CSS this client is written in.
-///
-/// Facts only. Which release is new enough is deliberately a frontend
-/// decision, because the features at stake are the ones its stylesheets use.
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct WebviewEngine {
-    pub(crate) platform: &'static str,
-    pub(crate) webkit_version: Option<String>,
 }
 
 /// The three accessors are public webkit2gtk C API and the library is already
@@ -525,6 +501,11 @@ pub(crate) fn platform_name() -> &'static str {
 /// Report the rendering engine so the frontend can warn about one too old for
 /// its own stylesheets, and so a bug report carries the version without asking
 /// the reporter to run `pkg-config` first.
+///
+/// Only Linux reports a version, because only Linux can surprise us: Windows
+/// and macOS roll their webview forward with the operating system, while a GTK
+/// build renders in whatever WebKitGTK the distribution happens to ship. An
+/// old-stable release there can predate the CSS this client is written in.
 #[tauri::command]
 pub(crate) fn webview_engine() -> WebviewEngine {
     WebviewEngine {

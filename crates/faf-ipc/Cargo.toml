@@ -1,6 +1,6 @@
 [package]
 name = "faf-ipc"
-description = "IPC contract: generates TypeScript bindings for AppState/AppCommand/AppEvent. The anti-drift boundary."
+description = "IPC contract: the shell's own wire types, and the TypeScript bindings for them and AppState/AppCommand/AppEvent. The anti-drift boundary."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,6 +10,7 @@ publish = false
 
 [dependencies]
 faf-domain = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
 specta = { version = "=2.0.0-rc.25", features = ["derive"] }
 specta-serde = "0.0.12"

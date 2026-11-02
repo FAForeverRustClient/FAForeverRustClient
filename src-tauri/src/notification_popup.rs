@@ -1,37 +1,16 @@
 //! A single, non-activating desktop popup. It receives presentation data for
 //! existing notification ids, never the app snapshot or arbitrary actions.
-use faf_domain::state::{DesktopNotificationStyle, NotificationAction, Theme, ToastPosition};
-use serde::{Deserialize, Serialize};
+use faf_domain::state::{DesktopNotificationStyle, NotificationAction, ToastPosition};
+use faf_ipc::shell::{NotificationDisplay, NotificationPopupBatch, NotificationPopupCard};
+use serde::Serialize;
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
 
 pub(crate) const LABEL: &str = "notification-popup";
 const UPDATE: &str = "notifications://popup";
 
-#[derive(Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct PopupCard {
-    id: String,
-    title: String,
-    body: String,
-    action_label: Option<String>,
-    tone: String,
-    #[serde(default)]
-    image_url: Option<String>,
-}
-
-#[derive(Clone, Default, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct PopupBatch {
-    revision: u64,
-    cards: Vec<PopupCard>,
-    duration_seconds: u16,
-    theme: Theme,
-    dismiss_label: String,
-}
-
 pub(crate) struct Popups {
-    batch: Mutex<PopupBatch>,
+    batch: Mutex<NotificationPopupBatch>,
     shown: tokio::sync::watch::Sender<u64>,
 }
 
@@ -39,7 +18,7 @@ impl Default for Popups {
     fn default() -> Self {
         let (shown, _) = tokio::sync::watch::channel(0);
         Self {
-            batch: Mutex::new(PopupBatch::default()),
+            batch: Mutex::new(NotificationPopupBatch::default()),
             shown,
         }
     }
@@ -56,15 +35,10 @@ pub(crate) fn allowed(label: &str, command: &str, main: bool) -> bool {
         ))
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct Display {
-    name: String,
-    primary: bool,
-}
-
 #[tauri::command]
-pub(crate) fn notification_displays(app: tauri::AppHandle) -> Result<Vec<Display>, String> {
+pub(crate) fn notification_displays(
+    app: tauri::AppHandle,
+) -> Result<Vec<NotificationDisplay>, String> {
     let window = crate::window::main_window(&app).ok_or("Client window unavailable")?;
     let primary = window.primary_monitor().map_err(|e| e.to_string())?;
     Ok(window
@@ -72,7 +46,7 @@ pub(crate) fn notification_displays(app: tauri::AppHandle) -> Result<Vec<Display
         .map_err(|e| e.to_string())?
         .iter()
         .filter_map(|monitor| {
-            monitor.name().map(|name| Display {
+            monitor.name().map(|name| NotificationDisplay {
                 name: name.clone(),
                 primary: primary.as_ref().is_some_and(|p| p.name() == Some(name)),
             })
@@ -83,7 +57,7 @@ pub(crate) fn notification_displays(app: tauri::AppHandle) -> Result<Vec<Display
 #[tauri::command]
 pub(crate) async fn show_notification_popup(
     app: tauri::AppHandle,
-    cards: Vec<PopupCard>,
+    cards: Vec<NotificationPopupCard>,
     dismiss_label: String,
     preview: bool,
 ) -> Result<(), String> {
@@ -218,7 +192,9 @@ pub(crate) async fn show_notification_popup(
 }
 
 #[tauri::command]
-pub(crate) fn notification_popup_snapshot(popups: tauri::State<'_, Popups>) -> PopupBatch {
+pub(crate) fn notification_popup_snapshot(
+    popups: tauri::State<'_, Popups>,
+) -> NotificationPopupBatch {
     popups.batch.lock().unwrap().clone()
 }
 

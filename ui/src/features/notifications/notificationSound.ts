@@ -278,8 +278,7 @@ const SCHEDULE_LEAD_SECONDS = 0.02;
 export function playNotificationSound(sound: NotificationSound, volume: number) {
   const custom = customSoundName(sound);
   if (custom !== null) {
-    playFile(`custom:${custom}`, () => native.readNotificationSound(custom)
-      .then((bytes) => new Uint8Array(bytes).buffer), volume);
+    playFile(`custom:${custom}`, () => native.readNotificationSound(custom), volume);
     return;
   }
   if (isSampleSound(sound)) {
