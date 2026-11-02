@@ -32,7 +32,18 @@ export function NotificationPopup() {
     const observer = new ResizeObserver(size);
     observer.observe(element);
     size();
-    return () => observer.disconnect();
+    // The size report proves layout, and layout runs whether or not anything
+    // is drawn: a webview that had stopped drawing kept reporting it while
+    // its transparent window showed nothing. Chromium runs animation frames
+    // only for a page it draws, so two of them after this commit prove the
+    // cards reached the screen.
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => void native.notificationPopupPainted(batch.revision).catch(() => undefined));
+    });
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
   }, [batch]);
   const interact = (id: string, interaction: "activate" | "dismiss" | "expire") => {
     if (interaction === "activate") setFailure(null);

@@ -77,6 +77,9 @@ export const native = {
   notificationPopupSize(revision: number, height: number): Promise<void> {
     return invoke("notification_popup_size", { revision, height });
   },
+  notificationPopupPainted(revision: number): Promise<void> {
+    return invoke("notification_popup_painted", { revision });
+  },
   notificationPopupInteract(id: string, interaction: "activate" | "dismiss" | "expire"): Promise<void> {
     return invoke("notification_popup_interact", { id, interaction });
   },

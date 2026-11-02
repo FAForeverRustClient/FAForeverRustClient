@@ -9,6 +9,7 @@ const bridge = vi.hoisted(() => ({
   listener: null as ((batch: NotificationPopupBatch) => void) | null,
   snapshot: vi.fn<() => Promise<NotificationPopupBatch>>(),
   size: vi.fn(() => Promise.resolve()),
+  painted: vi.fn(() => Promise.resolve()),
   interact: vi.fn(() => Promise.resolve()),
 }));
 vi.mock("../../ipc/native", () => ({ native: {
@@ -17,6 +18,7 @@ vi.mock("../../ipc/native", () => ({ native: {
   },
   notificationPopupSnapshot: bridge.snapshot,
   notificationPopupSize: bridge.size,
+  notificationPopupPainted: bridge.painted,
   notificationPopupInteract: bridge.interact,
 } }));
 
@@ -61,6 +63,20 @@ it("drops the artwork column when the artwork fails to load", async () => {
   expect(main.classList.contains("has-art")).toBe(false);
   expect(main.querySelector("img")).toBeNull();
   expect(main.firstElementChild?.classList.contains("desktop-notification-text")).toBe(true);
+});
+it("reports a batch as drawn only after two animation frames, separately from its size", async () => {
+  const frames: FrameRequestCallback[] = [];
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => frames.push(callback));
+  vi.stubGlobal("cancelAnimationFrame", () => {});
+  render(<NotificationPopup />);
+  await act(async () => {});
+  // Layout alone is reported at once; a page that is not drawn never gets further.
+  expect(bridge.size).toHaveBeenCalledWith(1, expect.any(Number));
+  expect(bridge.painted).not.toHaveBeenCalled();
+  act(() => { frames.shift()!(0); });
+  expect(bridge.painted).not.toHaveBeenCalled();
+  act(() => { frames.shift()!(16); });
+  expect(bridge.painted).toHaveBeenCalledWith(1);
 });
 it("does not overwrite a newer live update with a delayed startup snapshot", async () => {
   let resolve!: (batch: NotificationPopupBatch) => void;

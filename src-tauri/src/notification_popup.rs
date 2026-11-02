@@ -142,19 +142,39 @@ impl PopupQueue {
     }
 }
 
+/// What the popup page has confirmed about the batches it was sent.
+///
+/// `shown` follows its size report, after which the shell shows the window.
+/// `painted` follows two animation frames after the cards were laid out.
+/// Layout runs whether or not Chromium draws the page, so a webview that had
+/// stopped drawing kept confirming batches nobody could see, and every popup
+/// after it went to a window that stayed transparent. Chromium runs animation
+/// frames only for a page it is drawing.
+#[derive(Clone, Copy, Default)]
+struct Confirmed {
+    shown: u64,
+    painted: u64,
+}
+
+impl Confirmed {
+    fn on_screen(self, revision: u64) -> bool {
+        self.shown >= revision && self.painted >= revision
+    }
+}
+
 pub(crate) struct Popups {
     queue: Mutex<PopupQueue>,
     delivery: tokio::sync::Mutex<()>,
-    shown: tokio::sync::watch::Sender<u64>,
+    confirmed: tokio::sync::watch::Sender<Confirmed>,
 }
 
 impl Default for Popups {
     fn default() -> Self {
-        let (shown, _) = tokio::sync::watch::channel(0);
+        let (confirmed, _) = tokio::sync::watch::channel(Confirmed::default());
         Self {
             queue: Mutex::new(PopupQueue::default()),
             delivery: tokio::sync::Mutex::new(()),
-            shown,
+            confirmed,
         }
     }
 }
@@ -167,6 +187,7 @@ pub(crate) fn allowed(label: &str, command: &str, main: bool) -> bool {
             "notification_popup_snapshot"
                 | "notification_popup_interact"
                 | "notification_popup_size"
+                | "notification_popup_painted"
         ))
 }
 
@@ -284,43 +305,7 @@ pub(crate) async fn show_notification_popup(
         return Err("Notification popup content is too large".into());
     }
     let requested_ids: Vec<_> = cards.iter().map(|card| card.id.clone()).collect();
-    let window = if let Some(window) = app.get_webview_window(LABEL) {
-        tracing::debug!("reusing desktop popup window");
-        window
-    } else {
-        tracing::debug!("creating desktop popup window");
-        tauri::WebviewWindowBuilder::new(
-            &app,
-            LABEL,
-            tauri::WebviewUrl::App("notifications.html".into()),
-        )
-        .title("FAForever notifications")
-        .inner_size(400.0, 160.0)
-        .decorations(false)
-        // The cards draw their own frame. Without these, Windows gives an
-        // undecorated window a one-pixel border of its own around the page,
-        // which read as a second frame around every card.
-        .transparent(true)
-        .shadow(false)
-        .resizable(false)
-        .always_on_top(true)
-        .skip_taskbar(true)
-        // WS_EX_NOACTIVATE on Windows: showing or clicking this window
-        // must not interrupt game input. Actions explicitly choose focus.
-        .focused(false)
-        .focusable(false)
-        .visible(false)
-        .on_navigation(|url| {
-            matches!(url.host_str(), Some("localhost" | "tauri.localhost"))
-                && matches!(url.scheme(), "tauri" | "http" | "https")
-                && url.path() == "/notifications.html"
-        })
-        .build()
-        .map_err(|e| {
-            tracing::warn!(error = %e, "desktop popup window creation failed");
-            e.to_string()
-        })?
-    };
+    let mut window = popup_window(&app)?;
     tracing::debug!("desktop popup window ready");
     {
         let mut queue = popups.queue.lock().unwrap();
@@ -332,43 +317,133 @@ pub(crate) async fn show_notification_popup(
         batch.duration_seconds = preferences.toast_duration_seconds;
         batch.theme = theme;
         batch.dismiss_label = dismiss_label;
-        batch.revision = batch.revision.wrapping_add(1);
     }
-    // A successful build alone does not prove the page loaded or was shown.
-    // Wait for its size/show acknowledgement before suppressing the OS fallback.
-    let batch = popups.queue.lock().unwrap().visible.clone();
-    let mut shown = popups.shown.subscribe();
-    if let Err(error) = window.emit(UPDATE, &batch) {
-        for id in requested_ids {
-            let _ = notification_popup_interact(app.clone(), id, "expire".into());
+    let mut displayed = display(&app, &window).await;
+    // A page that has stopped drawing does not start again in that window, so
+    // it gets one fresh window. Not while the game is in front: a missing
+    // frame then usually means the game covers the corner, and building
+    // webviews during a match costs more than the client popup is worth.
+    if let Err(failure) = &displayed {
+        if !core.game_is_focused() {
+            tracing::warn!(%failure, "desktop popup not on screen; recreating its window");
+            displayed = match replace_window(&app, window).await {
+                Ok(fresh) => {
+                    window = fresh;
+                    display(&app, &window).await
+                }
+                Err(error) => Err(error),
+            };
         }
-        let _ = window.close();
-        return Err(error.to_string());
     }
-    let displayed = tokio::time::timeout(std::time::Duration::from_secs(3), async {
-        loop {
-            if *shown.borrow() >= batch.revision {
-                return Ok::<(), String>(());
-            }
-            shown.changed().await.map_err(|e| e.to_string())?;
-        }
-    })
-    .await;
-    if !matches!(displayed, Ok(Ok(()))) {
-        tracing::warn!(
-            revision = batch.revision,
-            "desktop popup display acknowledgement timed out"
-        );
+    if let Err(failure) = displayed {
+        tracing::warn!(%failure, "desktop popup not on screen");
         // Do not let a late page load display the same cards after fallback.
         for id in requested_ids {
             let _ = notification_popup_interact(app.clone(), id, "expire".into());
         }
-        // Recreate an unresponsive page on the next attempt, rather than
-        // keeping a hidden broken window for the rest of this session.
-        let _ = window.close();
+        // Recreate the page on the next attempt, rather than keeping a broken
+        // window for the rest of this session.
+        if let Some(window) = app.get_webview_window(LABEL) {
+            let _ = window.destroy();
+        }
         return Err("The desktop notification window could not be displayed".into());
     }
     Ok(())
+}
+
+/// The popup window, built hidden on first use.
+fn popup_window(app: &tauri::AppHandle) -> Result<tauri::WebviewWindow, String> {
+    if let Some(window) = app.get_webview_window(LABEL) {
+        tracing::debug!("reusing desktop popup window");
+        return Ok(window);
+    }
+    tracing::debug!("creating desktop popup window");
+    tauri::WebviewWindowBuilder::new(
+        app,
+        LABEL,
+        tauri::WebviewUrl::App("notifications.html".into()),
+    )
+    .title("FAForever notifications")
+    .inner_size(400.0, 160.0)
+    .decorations(false)
+    // The cards draw their own frame. Without these, Windows gives an
+    // undecorated window a one-pixel border of its own around the page,
+    // which read as a second frame around every card.
+    .transparent(true)
+    .shadow(false)
+    .resizable(false)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    // WS_EX_NOACTIVATE on Windows: showing or clicking this window
+    // must not interrupt game input. Actions explicitly choose focus.
+    .focused(false)
+    .focusable(false)
+    .visible(false)
+    .on_navigation(|url| {
+        matches!(url.host_str(), Some("localhost" | "tauri.localhost"))
+            && matches!(url.scheme(), "tauri" | "http" | "https")
+            && url.path() == "/notifications.html"
+    })
+    .build()
+    .map_err(|e| {
+        tracing::warn!(error = %e, "desktop popup window creation failed");
+        e.to_string()
+    })
+}
+
+/// Destroy the popup window and build a new one around a fresh page.
+///
+/// The label is fixed, since the popup's capability names it, so the new
+/// window can only be built once the old one has left the window list.
+async fn replace_window(
+    app: &tauri::AppHandle,
+    old: tauri::WebviewWindow,
+) -> Result<tauri::WebviewWindow, String> {
+    old.destroy().map_err(|e| e.to_string())?;
+    drop(old);
+    for _ in 0..20 {
+        if app.get_webview_window(LABEL).is_none() {
+            return popup_window(app);
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+    Err("The previous desktop notification window did not close".into())
+}
+
+/// Send the current stack to the page and wait until it is on screen.
+///
+/// Every attempt gets a new revision, so a confirmation from a page that was
+/// replaced cannot vouch for the one that replaced it.
+async fn display(app: &tauri::AppHandle, window: &tauri::WebviewWindow) -> Result<(), String> {
+    let popups = app.state::<Popups>();
+    let batch = {
+        let mut queue = popups.queue.lock().unwrap();
+        let batch = &mut queue.visible;
+        batch.revision = batch.revision.wrapping_add(1);
+        batch.clone()
+    };
+    // A successful build alone does not prove the page loaded, was shown or
+    // was drawn. Wait for both confirmations before suppressing the OS
+    // fallback.
+    let mut confirmed = popups.confirmed.subscribe();
+    window.emit(UPDATE, &batch).map_err(|e| e.to_string())?;
+    let waited = tokio::time::timeout(std::time::Duration::from_secs(3), async {
+        loop {
+            if confirmed.borrow().on_screen(batch.revision) {
+                return Ok::<(), String>(());
+            }
+            confirmed.changed().await.map_err(|e| e.to_string())?;
+        }
+    })
+    .await;
+    match waited {
+        Ok(result) => result,
+        Err(_) if confirmed.borrow().shown >= batch.revision => Err(format!(
+            "revision {} was laid out and shown but never drawn",
+            batch.revision
+        )),
+        Err(_) => Err(format!("revision {} was never laid out", batch.revision)),
+    }
 }
 
 #[tauri::command]
@@ -426,8 +501,20 @@ pub(crate) fn notification_popup_size(
         .map_err(|e| e.to_string())?;
     window.show().map_err(|e| e.to_string())?;
     tracing::debug!(revision, "desktop popup shown");
-    popups.shown.send_replace(revision);
+    popups
+        .confirmed
+        .send_modify(|confirmed| confirmed.shown = confirmed.shown.max(revision));
     Ok(())
+}
+
+/// The page drew `revision`: two animation frames ran after its cards were
+/// laid out, and Chromium runs those only for a page it is drawing.
+#[tauri::command]
+pub(crate) fn notification_popup_painted(popups: tauri::State<'_, Popups>, revision: u64) {
+    tracing::debug!(revision, "desktop popup drawn");
+    popups
+        .confirmed
+        .send_modify(|confirmed| confirmed.painted = confirmed.painted.max(revision));
 }
 
 /// Work-area coordinates include the taskbar exclusion and may be negative.
@@ -700,6 +787,17 @@ mod tests {
         assert!(queue.pending.is_empty());
     }
     #[test]
+    fn a_batch_is_on_screen_only_once_the_page_has_drawn_it() {
+        let confirmed = |shown, painted| Confirmed { shown, painted };
+        // Laid out and shown, but no frame: the transparent window shows nothing.
+        assert!(!confirmed(4, 3).on_screen(4));
+        assert!(!confirmed(3, 4).on_screen(4));
+        assert!(confirmed(4, 4).on_screen(4));
+        // A later batch vouches for an earlier one, never the other way round.
+        assert!(confirmed(6, 6).on_screen(4));
+        assert!(!confirmed(4, 4).on_screen(5));
+    }
+    #[test]
     fn preview_ids_are_bounded_and_separate_from_real_notifications() {
         assert!(is_preview("preview"));
         assert!(is_preview("preview:run-1:2"));
@@ -749,6 +847,7 @@ mod tests {
             assert!(!allowed(LABEL, command, false));
         }
         assert!(allowed(LABEL, "notification_popup_snapshot", false));
+        assert!(allowed(LABEL, "notification_popup_painted", false));
         assert!(allowed("main-2", "snapshot", true));
         assert!(!allowed("unknown", "notification_popup_snapshot", false));
     }
