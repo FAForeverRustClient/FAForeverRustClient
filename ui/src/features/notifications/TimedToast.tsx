@@ -22,8 +22,8 @@ export class ToastDeadline {
   }
 }
 
-export function TimedToast({ duration, onExpire, className = "", children }: {
-  duration: number; onExpire: () => void; className?: string; children: ReactNode;
+export function TimedToast({ duration, onExpire, className = "", baseClassName = "notification-toast", children }: {
+  duration: number; onExpire: () => void; className?: string; baseClassName?: string; children: ReactNode;
 }) {
   const expire = useRef(onExpire);
   expire.current = onExpire;
@@ -31,6 +31,7 @@ export function TimedToast({ duration, onExpire, className = "", children }: {
   const hovered = useRef(false);
   const focused = useRef(false);
   useEffect(() => {
+    if (duration <= 0) return;
     const timer = new ToastDeadline(duration, () => expire.current());
     deadline.current = timer;
     if (!hovered.current && !focused.current) timer.resume();
@@ -40,7 +41,7 @@ export function TimedToast({ duration, onExpire, className = "", children }: {
     if (hovered.current || focused.current) deadline.current?.pause();
     else deadline.current?.resume();
   };
-  return <article className={`notification-toast${className}`}
+  return <article className={`${baseClassName}${className}`}
     onPointerEnter={() => { hovered.current = true; update(); }}
     onPointerLeave={() => { hovered.current = false; update(); }}
     onFocusCapture={() => { focused.current = true; update(); }}

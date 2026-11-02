@@ -275,6 +275,7 @@ export function NotificationsSettingsSection() {
             ))}
           </select>
         </SettingRow>
+        <ToastDurationSetting update={update} />
         <SettingRow
           label={t("settings.notifications.repeatCooldown")}
           hint={t("settings.notifications.repeatCooldownHint")}
@@ -428,7 +429,6 @@ export function NotificationsSettingsSection() {
             ))}
           </select>
         </SettingRow>
-        <ToastDurationSetting update={update} />
       </SettingsGroup>
       <SettingsGroup title={t("settings.notifications.group.games")}>
         <SettingRow label={t("settings.notifications.matchFound")}>
@@ -486,12 +486,12 @@ export function NotificationsSettingsSection() {
           <SoundChoice value={preferences.sounds.reviewReminder} disabled={mute || !preferences.reviewReminder} what={t("settings.notifications.reviewReminder")} onChange={(reviewReminder) => setSound({ reviewReminder })} custom={choosableSounds} onAdd={addSound} />
           <SettingsSwitch checked={preferences.reviewReminder} disabled={!preferences.enabled} onChange={(reviewReminder) => update({ reviewReminder })} label={t("settings.notifications.reviewReminder")} />
         </SettingRow>
-        <SettingRow label={t("settings.notifications.newGames")}>
+        <SettingRow label={t("settings.notifications.newGames")} hint={t("settings.notifications.newGamesHint")}>
           <SoundChoice value={preferences.sounds.newCustomGame} disabled={mute || !preferences.newCustomGames} what={t("settings.notifications.newGames")} onChange={(newCustomGame) => setSound({ newCustomGame })} custom={choosableSounds} onAdd={addSound} />
           <SettingsSwitch checked={preferences.newCustomGames} disabled={!preferences.enabled} onChange={(newCustomGames) => update({ newCustomGames })} label={t("settings.notifications.newGames")} />
         </SettingRow>
         <SettingRow label={t("settings.notifications.friendsGamesOnly")}
-          hint={!preferences.newCustomGames ? t("settings.notifications.friendsGamesOnlyHint") : undefined}>
+          hint={t("settings.notifications.friendsGamesOnlyHint")}>
           <SettingsSwitch checked={preferences.newCustomGamesFriendsOnly} disabled={!preferences.enabled || !preferences.newCustomGames} onChange={(newCustomGamesFriendsOnly) => update({ newCustomGamesFriendsOnly })} label={t("settings.notifications.friendsGamesOnly")} />
         </SettingRow>
         {/* A switch without a sound picker of its own: a finished map plays the

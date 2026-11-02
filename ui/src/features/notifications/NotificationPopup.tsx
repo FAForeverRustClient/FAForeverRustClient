@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { native, type NotificationPopupBatch } from "../../ipc/native";
-import { Icon } from "../../design-system/Icon";
-import { TimedToast } from "./TimedToast";
+import { DesktopNotificationCard } from "./DesktopNotificationCard";
 import "./notificationPopup.css";
 
 /** This entry deliberately does not hydrate AppState or mount the client shell. */
@@ -10,10 +9,6 @@ export function NotificationPopup() {
   // Why the last click did nothing, shown in the card it was made on: the
   // card stays when its action fails, and the window has no other surface.
   const [failure, setFailure] = useState<{ id: string; message: string } | null>(null);
-  // Artwork that did not load. Its card is drawn without the artwork column,
-  // not with an empty one: a hidden image gives up its grid cell, and the
-  // text would otherwise fall into the narrow column meant for the picture.
-  const [brokenArt, setBrokenArt] = useState<ReadonlySet<string>>(new Set());
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let disposed = false;
@@ -37,7 +32,18 @@ export function NotificationPopup() {
     const observer = new ResizeObserver(size);
     observer.observe(element);
     size();
-    return () => observer.disconnect();
+    // The size report proves layout, and layout runs whether or not anything
+    // is drawn: a webview that had stopped drawing kept reporting it while
+    // its transparent window showed nothing. Chromium runs animation frames
+    // only for a page it draws, so two of them after this commit prove the
+    // cards reached the screen.
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => void native.notificationPopupPainted(batch.revision).catch(() => undefined));
+    });
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
   }, [batch]);
   const interact = (id: string, interaction: "activate" | "dismiss" | "expire") => {
     if (interaction === "activate") setFailure(null);
@@ -46,28 +52,11 @@ export function NotificationPopup() {
     });
   };
   return <div className="desktop-notification-stack" ref={root} aria-live="polite">
-    {batch?.cards.map((card) => {
-      const art = card.imageUrl && !brokenArt.has(card.imageUrl) ? card.imageUrl : null;
-      return <TimedToast key={card.id === "preview" ? `${card.id}-${batch.revision}` : card.id}
-        className={` desktop-notification${card.tone ? ` ${card.tone}` : ""}`} duration={batch.durationSeconds * 1000}
-        onExpire={() => interact(card.id, "expire")}>
-        <button className={`desktop-notification-main${art ? " has-art" : ""}`} type="button" onClick={() => interact(card.id, "activate")}>
-          {art && <img className="desktop-notification-art" src={art} alt="" draggable={false}
-            onError={() => setBrokenArt((current) => new Set(current).add(art))} />}
-          <span className="desktop-notification-text">
-            <span className="desktop-notification-title">
-              <span className="desktop-notification-logo" aria-hidden="true" />
-              <strong>{card.title}</strong>
-            </span>
-            <span className="desktop-notification-message">{card.body}</span>
-            {card.actionLabel && <span className="desktop-notification-action">{card.actionLabel}</span>}
-            {failure?.id === card.id && <span className="desktop-notification-error" role="alert">{failure.message}</span>}
-          </span>
-        </button>
-        <button className="desktop-notification-dismiss" type="button" aria-label={batch.dismissLabel} onClick={() => interact(card.id, "dismiss")}>
-          <Icon name="close" size={14} />
-        </button>
-      </TimedToast>;
-    })}
+    {batch?.cards.map((card) => <DesktopNotificationCard
+      key={card.id}
+      card={card} duration={batch.heldPreviewIds.includes(card.id) ? 0 : batch.durationSeconds * 1000} dismissLabel={batch.dismissLabel}
+      onInteract={(interaction) => interact(card.id, interaction)}
+      failure={failure?.id === card.id ? failure.message : undefined}
+    />)}
   </div>;
 }

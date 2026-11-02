@@ -62,8 +62,8 @@ export type LogKind = "game" | "client" | "ice";
 export type ClientFolder = "maps" | "mods" | "replays" | "vault" | "gameCache" | "gamePrefs";
 
 export const native = {
-  showNotificationPopup(cards: NotificationPopupCard[], dismissLabel: string, preview = false): Promise<void> {
-    return invoke("show_notification_popup", { cards, dismissLabel, preview });
+  showNotificationPopup(cards: NotificationPopupCard[], dismissLabel: string, preview = false, holdPreview = false): Promise<void> {
+    return invoke("show_notification_popup", { cards, dismissLabel, preview, holdPreview });
   },
   notificationDisplays(): Promise<NotificationDisplay[]> {
     return invoke("notification_displays");
@@ -77,11 +77,14 @@ export const native = {
   notificationPopupSize(revision: number, height: number): Promise<void> {
     return invoke("notification_popup_size", { revision, height });
   },
+  notificationPopupPainted(revision: number): Promise<void> {
+    return invoke("notification_popup_painted", { revision });
+  },
   notificationPopupInteract(id: string, interaction: "activate" | "dismiss" | "expire"): Promise<void> {
     return invoke("notification_popup_interact", { id, interaction });
   },
-  onNotificationInteraction(handler: (event: { id: string; interaction: "activate" | "dismiss" }) => void): Promise<() => void> {
-    return listen<{ id: string; interaction: "activate" | "dismiss" }>("notifications://interact", (event) => handler(event.payload));
+  onNotificationInteraction(handler: (event: { id: string; interaction: "activate" | "dismiss" | "expire" }) => void): Promise<() => void> {
+    return listen<{ id: string; interaction: "activate" | "dismiss" | "expire" }>("notifications://interact", (event) => handler(event.payload));
   },
   gameNotificationAttention(activate = false): Promise<boolean> {
     return invoke("game_notification_attention", { activate });
