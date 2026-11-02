@@ -21,6 +21,8 @@ import { displayedRating, gameLeaderboard, ratingGateBlocks } from "../../../sha
 import { toggleFavoriteMap, useIsFavoriteMap } from "../../../shared/favoriteMaps";
 import { SaveGeneratorPresetForm } from "../../../shared/components/SaveGeneratorPresetForm";
 import { GeneratorFactsStrip } from "../../../shared/components/GeneratorFactsStrip";
+// After the components above, so these rules still follow the map zoom's.
+import "./game-preview-dialog.css";
 
 export const GamePreviewDialog = memo(function GamePreviewDialog({
   game,

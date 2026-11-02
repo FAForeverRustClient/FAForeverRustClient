@@ -15,8 +15,12 @@ export default function NotificationGameDialog({ id, onClose }: { id: number; on
   if (!game) return <Modal onClose={onClose}><p>{t("chat.gameLink.unavailable")}</p></Modal>;
   if (needsPassword) return <PrivateGameDialog game={game} password={password} onPassword={setPassword}
     onCancel={() => setNeedsPassword(false)} onSubmit={() => { void joinGame(game.id, password); onClose(); }} />;
-  return <GamePreviewDialog game={game} vault={vault} onClose={onClose} onJoin={() => {
-    if (game.passwordProtected) setNeedsPassword(true);
-    else { void joinGame(game.id); onClose(); }
-  }} />;
+  // The same panel the Play tab puts it in. Without it the dialog rendered in
+  // place, inside the notification centre at the foot of the sidebar.
+  return <Modal className="game-preview-modal" onClose={onClose}>
+    <GamePreviewDialog game={game} vault={vault} onClose={onClose} onJoin={() => {
+      if (game.passwordProtected) setNeedsPassword(true);
+      else { void joinGame(game.id); onClose(); }
+    }} />
+  </Modal>;
 }
