@@ -1,0 +1,7 @@
+- Notification bursts no longer discard older popups when three cards are already visible.
+- Found-match, full-game and party-invitation alerts appear immediately, keeping displaced popups queued.
+- Simultaneous notifications no longer compete to create the desktop popup window.
+- Desktop popups no longer stop appearing for the rest of a session once their window stops drawing.
+- The shared popup duration control appears near the top of Settings, Notifications.
+- Changing popup duration in Settings, Notifications also updates visible desktop popups.
+- Settings, Notifications explains new custom-game alerts and keeps the friends-only description visible.
