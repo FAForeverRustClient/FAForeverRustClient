@@ -1,0 +1,1 @@
+- No visible changes: the backend recovers from an interrupted state update instead of failing at every later one.

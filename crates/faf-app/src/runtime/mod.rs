@@ -8,7 +8,7 @@
 //! keeps the runtime free of any hard dependency on a particular executor.
 
 use std::sync::atomic::AtomicU64;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use faf_domain::{AppCommand, AppEvent, AppState};
 use serde::Serialize;
@@ -100,7 +100,8 @@ pub struct VersionedEvent {
     pub event: AppEvent,
 }
 
-/// An authoritative state snapshot and the last event revision it contains.
+/// An authoritative state snapshot and its revision, including any recovery
+/// revision reserved after an interrupted reduction.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VersionedSnapshot {
@@ -110,6 +111,59 @@ pub struct VersionedSnapshot {
 
 /// A reduction this slow, under the write lock, is worth a log line.
 const SLOW_REDUCE: std::time::Duration = std::time::Duration::from_millis(25);
+
+/// Clear poison while holding the recovered exclusive guard, so one incident
+/// is logged once instead of every later access reporting it again.
+fn lock_runtime<'a, T>(lock: &'a Mutex<T>, name: &'static str) -> MutexGuard<'a, T> {
+    lock.lock().unwrap_or_else(|poison| {
+        let guard = poison.into_inner();
+        lock.clear_poison();
+        tracing::error!(
+            lock = name,
+            "recovered a poisoned runtime mutex; the interrupted operation may be incomplete"
+        );
+        guard
+    })
+}
+
+fn write_state<'a>(
+    state: &'a RwLock<AppState>,
+    revision: &AtomicU64,
+) -> RwLockWriteGuard<'a, AppState> {
+    state.write().unwrap_or_else(|poison| {
+        let guard = poison.into_inner();
+        // Reduction mutates in place and may have panicked before the normal
+        // revision bump or broadcast. There is no rollback. Reserve one
+        // unpublished revision under the write guard: an existing mirror must
+        // resnapshot rather than apply the next delta to its older state.
+        let recovery_revision = revision
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            .wrapping_add(1);
+        state.clear_poison();
+        tracing::error!(
+            recovery_revision,
+            "recovered poisoned application state; a partial reduction requires frontend snapshot recovery"
+        );
+        guard
+    })
+}
+
+fn read_state<'a>(
+    state: &'a RwLock<AppState>,
+    revision: &AtomicU64,
+) -> RwLockReadGuard<'a, AppState> {
+    loop {
+        match state.read() {
+            Ok(guard) => return guard,
+            Err(poison) => drop(poison.into_inner()),
+        }
+        // A reader can be first after a panic. Release its read guard before
+        // recovering under an exclusive guard, then acquire a fresh snapshot
+        // boundary. Competing recoverers reserve only one revision per poison.
+        // Readers never take send_order, preserving the existing lock order.
+        drop(write_state(state, revision));
+    }
+}
 
 impl EventSink {
     /// Reduce an event into the authoritative state and broadcast it.
@@ -133,15 +187,16 @@ impl EventSink {
     /// is dropped, so a `with_state` reader is no longer blocked behind two
     /// channel sends. That was the review's point, and this is the version of
     /// it that does not reorder revisions.
+    ///
+    /// Recovering a poisoned state guard reserves an unpublished revision
+    /// under that same guard. The next delivered event deliberately skips it
+    /// so an older frontend mirror resnapshots the possibly partial state.
     pub fn emit(&self, event: impl Into<AppEvent>) {
         let event = event.into();
-        let _delivery = self
-            .send_order
-            .lock()
-            .expect("event delivery lock poisoned");
+        let _delivery = lock_runtime(&self.send_order, "event delivery");
         let started = std::time::Instant::now();
         let revision = {
-            let mut guard = self.state.write().expect("app state lock poisoned");
+            let mut guard = write_state(&self.state, &self.revision);
             faf_domain::reduce(&mut guard, &event);
             self.revision
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
@@ -177,7 +232,7 @@ impl EventSink {
     /// `App::versioned_snapshot`, not through the sink.
     #[cfg(test)]
     pub fn snapshot(&self) -> AppState {
-        self.state.read().expect("app state lock poisoned").clone()
+        read_state(&self.state, &self.revision).clone()
     }
 
     /// Read a projection of the authoritative state without cloning unrelated
@@ -187,7 +242,7 @@ impl EventSink {
     /// Prefer this for service decisions and persistence of a single slice;
     /// [`Self::snapshot`] remains appropriate at IPC hydration boundaries.
     pub fn with_state<T>(&self, read: impl FnOnce(&AppState) -> T) -> T {
-        let state = self.state.read().expect("app state lock poisoned");
+        let state = read_state(&self.state, &self.revision);
         read(&state)
     }
 
@@ -286,9 +341,7 @@ impl ReleaseOrder {
                     request_id,
                 }) => {
                     for slot in [&self.analysis, &self.details] {
-                        let mut read = slot
-                            .lock()
-                            .unwrap_or_else(std::sync::PoisonError::into_inner);
+                        let mut read = lock_runtime(slot, "replay read slot");
                         if let Some(current) = read.as_mut().filter(|current| {
                             current.seq < seq
                                 && faf_domain::state::replay_read_key(
@@ -308,9 +361,7 @@ impl ReleaseOrder {
                 _ => None,
             };
             if let Some((slot, uid, path, request_id, cancelled)) = read {
-                let mut current = slot
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                let mut current = lock_runtime(slot, "replay read slot");
                 if current.as_ref().is_none_or(|current| current.seq < seq) {
                     *current = Some(QueuedRead {
                         seq,
@@ -323,10 +374,7 @@ impl ReleaseOrder {
             }
         }
         if let Some(PairHalf::Release(pair)) = command_policy::policy(command).pair {
-            self.released
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .insert(pair, seq);
+            lock_runtime(&self.released, "released command pairs").insert(pair, seq);
         }
         seq
     }
@@ -342,18 +390,14 @@ impl ReleaseOrder {
             _ => None,
         };
         if let Some(slot) = read_slot {
-            return slot
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
+            return lock_runtime(slot, "replay read slot")
                 .as_ref()
                 .is_none_or(|current| current.seq != seq || current.cancelled);
         }
         let Some(PairHalf::Start(pair)) = command_policy::policy(command).pair else {
             return false;
         };
-        self.released
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
+        lock_runtime(&self.released, "released command pairs")
             .get(&pair)
             .is_some_and(|&released| released > seq)
     }
@@ -515,7 +559,7 @@ impl App {
     /// exercise the subscribe-and-snapshot boundary itself.
     #[cfg(test)]
     pub fn subscribe_with_snapshot(&self) -> (broadcast::Receiver<AppEvent>, AppState) {
-        let guard = self.state.read().expect("app state lock poisoned");
+        let guard = read_state(&self.state, &self.revision);
         let events = self.event_tx.subscribe();
         let snapshot = guard.clone();
         (events, snapshot)
@@ -528,7 +572,7 @@ impl App {
     pub fn subscribe_versioned_with_snapshot(
         &self,
     ) -> (broadcast::Receiver<VersionedEvent>, VersionedSnapshot) {
-        let guard = self.state.read().expect("app state lock poisoned");
+        let guard = read_state(&self.state, &self.revision);
         let events = self.versioned_event_tx.subscribe();
         let snapshot = VersionedSnapshot {
             revision: self.revision.load(std::sync::atomic::Ordering::Relaxed),
@@ -539,7 +583,7 @@ impl App {
 
     /// A revisioned snapshot for initial frontend hydration.
     pub fn versioned_snapshot(&self) -> VersionedSnapshot {
-        let guard = self.state.read().expect("app state lock poisoned");
+        let guard = read_state(&self.state, &self.revision);
         VersionedSnapshot {
             revision: self.revision.load(std::sync::atomic::Ordering::Relaxed),
             state: guard.clone(),
@@ -548,7 +592,7 @@ impl App {
 
     /// A consistent snapshot of current state (for initial frontend hydration).
     pub fn snapshot(&self) -> AppState {
-        self.state.read().expect("app state lock poisoned").clone()
+        read_state(&self.state, &self.revision).clone()
     }
 
     /// Read one projection of the state without cloning the rest of it.
@@ -561,7 +605,7 @@ impl App {
     /// The closure runs under the read lock, so it must copy out what it needs
     /// and must not block or do IO.
     pub fn with_state<T>(&self, read: impl FnOnce(&AppState) -> T) -> T {
-        let state = self.state.read().expect("app state lock poisoned");
+        let state = read_state(&self.state, &self.revision);
         read(&state)
     }
 
@@ -840,9 +884,7 @@ struct RunningCommands {
 
 impl Running {
     fn lock(&self) -> std::sync::MutexGuard<'_, RunningCommands> {
-        self.0
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
+        lock_runtime(&self.0, "running command registry")
     }
 
     fn start(&self, name: String) -> u64 {
@@ -1698,3 +1740,6 @@ mod tests {
 
 #[cfg(test)]
 mod client_update_tests;
+
+#[cfg(test)]
+mod poison_tests;
