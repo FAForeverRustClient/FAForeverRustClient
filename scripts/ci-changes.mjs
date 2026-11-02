@@ -18,7 +18,8 @@ export function selectChecks(paths) {
 
     if (path.startsWith("ui/")) {
       checks.frontend = true;
-      if (path === "ui/src/ipc/bindings.ts") checks.bindings = true;
+      // Both files `export-bindings` writes; the drift job regenerates both.
+      if (/^ui\/src\/ipc\/(?:bindings|initialState)\.ts$/.test(path)) checks.bindings = true;
       if (/^ui\/src\/store\/__fixtures__\/reducer-conformance(?:-orderings)?\.json$/.test(path)) {
         checks.conformance = true;
       }

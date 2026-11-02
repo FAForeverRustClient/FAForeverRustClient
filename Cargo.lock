@@ -1207,6 +1207,7 @@ name = "faf-ipc"
 version = "0.9.5"
 dependencies = [
  "faf-domain",
+ "serde_json",
  "specta",
  "specta-serde",
  "specta-typescript",

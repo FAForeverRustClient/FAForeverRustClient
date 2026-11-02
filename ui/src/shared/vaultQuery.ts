@@ -3,9 +3,9 @@ import type { MapVaultQuery, ModVaultQuery } from "../ipc/bindings";
 /**
  * The unfiltered first page, matching `MapVaultQuery::default()` in the domain.
  *
- * These two must stay identical: the conformance fixture compares the store's
- * initial state against `AppState::default()` field by field, so a drift here
- * fails that test rather than shipping.
+ * These two must stay identical: `emptyQueries.test.ts` compares them with the
+ * initial state generated from `AppState::default()`, so a drift here fails
+ * that test rather than shipping.
  */
 export const EMPTY_MAP_QUERY: MapVaultQuery = {
   search: "",
