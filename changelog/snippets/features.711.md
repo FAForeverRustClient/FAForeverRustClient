@@ -1,0 +1,1 @@
+- The chat shows a line with the day (Today, Yesterday or the date) where one day's messages end and the next day's begin.
