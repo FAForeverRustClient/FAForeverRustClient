@@ -226,7 +226,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "notifications.action.openCustomGames": "Открыть игры",
   "notifications.action.acceptPartyInvite": "Принять приглашение",
   "notifications.action.watchLive": "Смотреть реплей",
-  "notifications.action.watchLiveWhenReady": "Запустить, когда реплей будет готов",
+  "notifications.action.watchLiveWhenReady": "Запустить, когда готов",
   "notifications.action.openSettings": "Открыть настройки",
 
   "notifications.dismiss": "Закрыть: {title}",

@@ -19,8 +19,10 @@ export function NotificationCard({ item, artwork, history = false, use24HourTime
   const content = <>
     <button className={history ? "notification-content" : undefined} type="button" onClick={onActivate}>
       {history ? <span className="notification-item-head">{title}<time dateTime={item.createdAt}>{formatTime(item.createdAt, "", use24HourTime)}</time></span> : title}
-      <span className="notification-body" title={notificationBodyDetail(item) ?? undefined}>{renderFormattedText(notificationBody(item))}</span>
-      {actionContent(item.action)}
+      <span className="notification-message-row">
+        <span className="notification-body" title={notificationBodyDetail(item) ?? undefined}>{renderFormattedText(notificationBody(item))}</span>
+        {actionContent(item.action)}
+      </span>
     </button>
     <button className="notification-dismiss" type="button" onClick={onDismiss} aria-label={t("notifications.dismiss", { title: notificationTitle(item) })}><Icon name="close" size={12} /></button>
     {recovery}

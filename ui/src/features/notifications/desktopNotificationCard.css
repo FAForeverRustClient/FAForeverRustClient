@@ -19,7 +19,7 @@
   column-gap: var(--space-3);
   align-items: start;
   width: 100%;
-  padding: var(--space-3) 40px var(--space-3) var(--space-3);
+  padding: var(--space-3);
   color: inherit;
   font: inherit;
   text-align: left;
@@ -56,11 +56,14 @@
   min-width: 0;
 }
 
+/* Only the title line shares its height with the close button; the lines under
+   it pass below the button and use the card's full width. */
 .desktop-notification-title {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
+  padding-right: 28px;
 }
 
 .desktop-notification-title strong {
@@ -87,7 +90,19 @@
 .desktop-notification.is-warning .desktop-notification-logo { background: var(--color-warn); }
 .desktop-notification.is-error .desktop-notification-logo { background: var(--color-error); }
 
+/* The message with its action at the end of the line, where the message keeps
+   a readable width beside it. A label too long for that wraps under the
+   message instead, still at the right. */
+.desktop-notification-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
 .desktop-notification-message {
+  flex: 1 1 140px;
+  min-width: 0;
   max-height: 7.5em;
   /* No scrollbar gutter: a message almost always fits in a few lines, and a
      reserved strip would narrow every card for the rare one that does not. */
@@ -98,8 +113,8 @@
 }
 
 .desktop-notification-action {
-  align-self: flex-start;
-  margin-top: var(--space-1);
+  flex: none;
+  margin-left: auto;
   padding: 4px 10px;
   font-size: 12px;
   font-weight: 600;

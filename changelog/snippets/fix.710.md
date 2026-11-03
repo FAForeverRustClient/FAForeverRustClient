@@ -1,0 +1,3 @@
+- A friend hosting a game raises one notification instead of also announcing them as joining it.
+- Notification buttons such as View game sit beside the message instead of below it, on slightly wider desktop popups and toasts.
+- The button for watching a friend's game once its replay is ready has a shorter label in every language.

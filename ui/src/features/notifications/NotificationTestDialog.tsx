@@ -155,7 +155,7 @@ export function NotificationTestDialog({ onClose }: { onClose: () => void }) {
     <div className="notification-test-surfaces" role="group" aria-label={t("notifications.test.gallery")}>
       {SURFACES.map((value) => <button className="btn-ghost" key={value} type="button" aria-pressed={surface === value} onClick={() => setSurface(value)}>{t(`notifications.test.surface.${value}`)}</button>)}
     </div>
-    <div className="notification-test-gallery">
+    <div className={`notification-test-gallery is-${surface}`}>
       {gallery.filter(({ item }) => !hidden.includes(item.id)).map(({ item, artwork }) => surface === "desktop"
         ? <DesktopNotificationCard key={`${item.id}-${kind}-${scenario}`} card={popupCard(item, artwork)} dismissLabel={t("notifications.popup.dismiss")}
           duration={hold ? 0 : preferences.toastDurationSeconds * 1000} onInteract={(interaction) => galleryInteraction(item.id, interaction)} />
