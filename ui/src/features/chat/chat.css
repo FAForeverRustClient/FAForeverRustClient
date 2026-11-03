@@ -414,7 +414,7 @@ html.is-resizing-chat-roster * {
   outline-offset: 1px;
 }
 
-/* Where the log moves on to another day (#708): a rule across the log with
+/* Where the log moves on to another day (issue 708): a rule across the log with
    the day in its middle, quieter than any message. */
 .chat-day-divider {
   display: flex;

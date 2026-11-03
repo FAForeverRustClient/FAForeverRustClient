@@ -1105,7 +1105,7 @@
 }
 
 /* One line of whole tags. What does not fit is folded into a "+N" tag by
-   `FittingChips`, which lists every tag on hover (#680): a tag that wrapped
+   `FittingChips`, which lists every tag on hover (issue 680): a tag that wrapped
    onto a second line, which the height left out, was gone without a trace.
    The clip is only a backstop for the moment before the measurement. */
 .game-tile-flags {
