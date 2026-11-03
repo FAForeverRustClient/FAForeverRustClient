@@ -11,6 +11,7 @@ import { EMOJI_PATTERN, emojiName } from "./emoji";
 import { openHttpsUrl, optionalHttpsUrl, validateHttpsUrl } from "../../../shared/externalLinks";
 import { openLink } from "../../../shared/deepLinks";
 import { hourCycleOptions } from "../../../shared/format/clock";
+import { formatDate } from "../../../shared/format/dates";
 import { findPlayer, isModerator, playersByNickname } from "../../../store/reducer";
 import { t, type MessageKey } from "../../../i18n";
 
@@ -458,6 +459,43 @@ export function showsTime(
   if (previous === undefined) return true;
   const time = formatTime(timestamp, use24HourTime);
   return time !== "" && time !== formatTime(previous, use24HourTime);
+}
+
+/**
+ * The local calendar day of a moment, as `YYYY-MM-DD`; "" when it does not
+ * parse. Local because the divider says "Yesterday" about the reader's own
+ * yesterday, not the server's.
+ */
+export function dayKey(value: string | number | Date): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * Whether a message opens a new day in the log and gets a divider above it
+ * (#708). A client left open, or asleep, for days kept a scrollback whose
+ * times read as today's. The first line of the log has one only when it is
+ * not from `today`: a divider saying "Today" over a fresh session says
+ * nothing.
+ */
+export function startsNewDay(timestamp: string, previous: string | undefined, today: string): boolean {
+  const day = dayKey(timestamp);
+  if (day === "") return false;
+  if (previous === undefined) return day !== today;
+  const before = dayKey(previous);
+  return before !== "" && before !== day;
+}
+
+/** What a day divider says: today, yesterday, or the weekday and the date. */
+export function dayLabel(timestamp: string, today: string): string {
+  const day = dayKey(timestamp);
+  if (day === today) return t("chat.day.today");
+  const [year, month, date] = today.split("-").map(Number);
+  if (day === dayKey(new Date(year, month - 1, date - 1))) return t("chat.day.yesterday");
+  return formatDate(timestamp, "", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 }
 
 /**

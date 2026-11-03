@@ -10,13 +10,13 @@
 //    bottom. Reading history is not interrupted by new traffic; a "jump to
 //    latest" affordance appears instead.
 
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { ChatMessage, ChatPreferences, ChatUser, PlayerProfile, Reaction, SocialState } from "../../../ipc/bindings";
 import { MessageReactions } from "./MessageReactions";
 import { Icon } from "../../../design-system/Icon";
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { overlayStack } from "../../../design-system/overlayStack";
-import { formatTime, renderBody, resolvedNickStyle } from "./chatFormat";
+import { dayKey, dayLabel, formatTime, renderBody, resolvedNickStyle, startsNewDay } from "./chatFormat";
 import type { ChatGameLink, PingIndex } from "./chatFormat";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { formatDateTime } from "../../../shared/format/dates";
@@ -201,6 +201,11 @@ export const MessageList = memo(function MessageList({
   const timeLabels = useMemo(() => displayedMessages.map((message) =>
     showTimestamps ? formatTime(message.timestamp, use24HourTime) : ""),
     [displayedMessages, showTimestamps, use24HourTime]);
+  // Which lines open a new day and get a divider above them (#708).
+  const today = useToday();
+  const dayStarts = useMemo(() => displayedMessages.map((message, i) =>
+    startsNewDay(message.timestamp, displayedMessages[i - 1]?.timestamp, today)),
+    [displayedMessages, today]);
   const hasOlder = !isFiltered && displayedMessages.length < messages.length;
 
   // Set in the same update that prepends the older rows, so the log is already
@@ -394,34 +399,42 @@ export const MessageList = memo(function MessageList({
           <p className="muted chat-empty">{emptyLabel}</p>
         ) : (
           displayedMessages.map((message, i) => (
-            <Line
-              key={message.id}
-              message={message}
-              self={self}
-              withTime={showTimestamps && (i === 0 || (timeLabels[i] !== "" && timeLabels[i] !== timeLabels[i - 1]))}
-              use24HourTime={use24HourTime}
-              continued={continuesPrevious(message, displayedMessages[i - 1])}
-              user={usersByName.get(message.sender.toLowerCase())}
-              profile={profilesByName.get(message.sender.toLowerCase())}
-              social={relations}
-              preferences={preferences}
-              search={highlightedIds.has(message.id) ? search : ""}
-              activeSearchMatch={message.id === activeMessageId}
-              registerRow={registerRow}
-              onNickClick={onNickClick}
-              onNickContextMenu={onNickContextMenu}
-              menuOpen={menuTarget === message.sender}
-              pings={pings}
-              onGameLink={onGameLink}
-              reactions={reactions[message.msgid ?? ""] ?? EMPTY_REACTIONS}
-              reactable={reactable}
-              onReact={onReact ?? noReact}
-              onUnreact={onUnreact}
-              onReply={onReply}
-              quoted={message.replyTo ? findByMsgid?.(message.replyTo) : undefined}
-              lineActions={lineActions}
-              announcement={isAnnouncement?.(message) ?? false}
-            />
+            <Fragment key={message.id}>
+              {dayStarts[i] && (
+                <div className="chat-day-divider" role="separator">
+                  <span>{dayLabel(message.timestamp, today)}</span>
+                </div>
+              )}
+              {/* A new day stamps its first line and names its sender again:
+                  21:05 yesterday and 21:05 today are not the same minute. */}
+              <Line
+                message={message}
+                self={self}
+                withTime={showTimestamps && (i === 0 || dayStarts[i] || (timeLabels[i] !== "" && timeLabels[i] !== timeLabels[i - 1]))}
+                use24HourTime={use24HourTime}
+                continued={!dayStarts[i] && continuesPrevious(message, displayedMessages[i - 1])}
+                user={usersByName.get(message.sender.toLowerCase())}
+                profile={profilesByName.get(message.sender.toLowerCase())}
+                social={relations}
+                preferences={preferences}
+                search={highlightedIds.has(message.id) ? search : ""}
+                activeSearchMatch={message.id === activeMessageId}
+                registerRow={registerRow}
+                onNickClick={onNickClick}
+                onNickContextMenu={onNickContextMenu}
+                menuOpen={menuTarget === message.sender}
+                pings={pings}
+                onGameLink={onGameLink}
+                reactions={reactions[message.msgid ?? ""] ?? EMPTY_REACTIONS}
+                reactable={reactable}
+                onReact={onReact ?? noReact}
+                onUnreact={onUnreact}
+                onReply={onReply}
+                quoted={message.replyTo ? findByMsgid?.(message.replyTo) : undefined}
+                lineActions={lineActions}
+                announcement={isAnnouncement?.(message) ?? false}
+              />
+            </Fragment>
           ))
         )}
       </div>
@@ -434,6 +447,30 @@ export const MessageList = memo(function MessageList({
     </div>
   );
 });
+
+/**
+ * Today's calendar day, moved on at local midnight: a client left open over
+ * night would otherwise keep calling yesterday "Today". Read again whenever
+ * the window comes back as well, because a machine woken from sleep need not
+ * count the time it slept towards a timer.
+ */
+function useToday(): string {
+  const [today, setToday] = useState(() => dayKey(new Date()));
+  useEffect(() => {
+    const refresh = () => setToday(dayKey(new Date()));
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const timer = window.setTimeout(refresh, midnight.getTime() - now.getTime() + 1_000);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [today]);
+  return today;
+}
 
 const Line = memo(function Line({
   message,

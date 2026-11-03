@@ -357,6 +357,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "chat.search.next": "Nächster Treffer",
   "chat.search.close": "Suche schließen",
   "chat.loadOlder": "Ältere Nachrichten laden ({count} verbleibend)",
+  "chat.day.today": "Heute",
+  "chat.day.yesterday": "Gestern",
   "maps.generate.copyName": "Kartennamen kopieren",
   "mods.installed.sort.state": "Aktivierungsstatus",
   "lobby.mapPool.loading": "Aktuelle Kartenpools werden geladen…",

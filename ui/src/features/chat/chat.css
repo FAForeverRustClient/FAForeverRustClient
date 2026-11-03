@@ -414,6 +414,26 @@ html.is-resizing-chat-roster * {
   outline-offset: 1px;
 }
 
+/* Where the log moves on to another day (#708): a rule across the log with
+   the day in its middle, quieter than any message. */
+.chat-day-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-2);
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chat-day-divider::before,
+.chat-day-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--color-border);
+}
+
 /* A browser's find bar: a small box over the log's top right corner, clear of
    the scrollbar and above the message action toolbars (z-index 10). A match
    is scrolled to the middle of the log, so the box never covers it. */

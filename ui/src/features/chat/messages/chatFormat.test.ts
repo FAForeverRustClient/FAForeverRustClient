@@ -5,10 +5,13 @@ import type { PlayerProfile, SocialState } from "../../../ipc/bindings";
 import {
   USER_CATEGORY_ORDER,
   categoryOf,
+  dayKey,
+  dayLabel,
   ownClanTag,
   parseChatGameLink,
   renderBody,
   renderFormattedText,
+  startsNewDay,
   stripHtmlTags,
 } from "./chatFormat";
 
@@ -222,5 +225,37 @@ describe("which roster group a nickname lands in", () => {
 
   it("still sinks a nickname with no FAF account to the IRC group", () => {
     expect(groupOf("faf-bot")).toBe("ircOnly");
+  });
+});
+
+describe("chat day dividers (#708)", () => {
+  // Local wall-clock moments, so the test means the same in every time zone.
+  const at = (day: number, hour: number) => new Date(2026, 10, day, hour, 30).toISOString();
+  const today = dayKey(new Date(2026, 10, 3, 12));
+
+  it("divides the log where the day changes, not where the hour does", () => {
+    expect(startsNewDay(at(3, 9), at(3, 8), today)).toBe(false);
+    expect(startsNewDay(at(3, 0), at(2, 23), today)).toBe(true);
+  });
+
+  it("puts a divider over the first line only when it is not from today", () => {
+    expect(startsNewDay(at(3, 9), undefined, today)).toBe(false);
+    expect(startsNewDay(at(1, 9), undefined, today)).toBe(true);
+  });
+
+  it("never divides at a timestamp it cannot read", () => {
+    expect(startsNewDay("", at(2, 9), today)).toBe(false);
+    expect(startsNewDay(at(3, 9), "", today)).toBe(false);
+  });
+
+  it("names today and yesterday, and dates the days before", () => {
+    expect(dayLabel(at(3, 9), today)).toBe("Today");
+    expect(dayLabel(at(2, 9), today)).toBe("Yesterday");
+    expect(dayLabel(at(1, 9), today)).toContain("2026");
+  });
+
+  it("counts yesterday back across a month boundary", () => {
+    const first = dayKey(new Date(2026, 11, 1, 12));
+    expect(dayLabel(new Date(2026, 10, 30, 20).toISOString(), first)).toBe("Yesterday");
   });
 });

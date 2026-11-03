@@ -412,6 +412,8 @@ export const en = {
   "chat.search.next": "Next match",
   "chat.search.close": "Close search",
   "chat.loadOlder": "Load earlier messages ({count} remaining)",
+  "chat.day.today": "Today",
+  "chat.day.yesterday": "Yesterday",
   "maps.generate.copyName": "Copy map name",
   "mods.installed.sort.state": "Active state",
   "lobby.mapPool.loading": "Loading the current map pools…",

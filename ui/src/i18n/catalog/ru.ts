@@ -3166,6 +3166,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "chat.roster.view.reset": "Сбросить",
   "chat.message.openConversation": "Написать {name}",
   "chat.loadOlder": "Загрузить более ранние сообщения (осталось {count})",
+  "chat.day.today": "Сегодня",
+  "chat.day.yesterday": "Вчера",
   "maps.generate.copyName": "Скопировать название карты",
   "mods.installed.sort.state": "Состояние",
   "lobby.mapPool.loading": "Загрузка текущих пулов карт…",

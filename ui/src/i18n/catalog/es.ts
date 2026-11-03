@@ -2609,6 +2609,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "chat.roster.view.reset": "Restablecer",
   "chat.message.openConversation": "Escribir a {name}",
   "chat.loadOlder": "Cargar mensajes anteriores (quedan {count})",
+  "chat.day.today": "Hoy",
+  "chat.day.yesterday": "Ayer",
   "maps.generate.copyName": "Copiar el nombre del mapa",
   "mods.installed.sort.state": "Estado de activación",
   "lobby.mapPool.loading": "Cargando los conjuntos de mapas actuales…",
