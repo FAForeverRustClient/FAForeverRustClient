@@ -110,10 +110,11 @@ describe("GameTile", () => {
     expect(range?.classList.contains("is-enforced")).toBe(true);
   });
 
+  // The friend set holds lowercased names, as the store builds it.
   it("tags what the game is before who is in it, and folds what does not fit into a count (#680)", () => {
     const { container } = mountTile(
       { ratingMin: 800, ratingMax: 3000, teams: { "1": ["Sui"], "2": ["Ada"] }, simMods: { roguelike: "Roguelike Mode" } },
-      new Set(["Ada"]),
+      new Set(["ada"]),
     );
     const tags = Array.from(container.querySelectorAll(".game-tile-flags > [data-chip] > i"), (tag) => tag.className);
     expect(tags[0]).toContain("game-rating-range");
