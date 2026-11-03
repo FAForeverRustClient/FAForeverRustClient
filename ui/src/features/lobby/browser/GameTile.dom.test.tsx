@@ -39,13 +39,13 @@ function game(changes: Partial<Game> = {}): Game {
   };
 }
 
-function mountTile(changes: Partial<Game> = {}) {
+function mountTile(changes: Partial<Game> = {}, friendSet: ReadonlySet<string> = new Set()) {
   const { container } = render(
     <GameTile
       game={game(changes)}
       vault={[]}
       vaultMods={[]}
-      friendSet={new Set()}
+      friendSet={friendSet}
       selected={false}
       now={Date.now()}
       onSelect={() => {}}
@@ -96,17 +96,30 @@ describe("GameTile", () => {
   });
 
   it("tags the featured mod only when it is not the tab's own", () => {
-    expect(mountTile().part(".game-tile-flags")?.childElementCount).toBe(0);
-    expect(mountTile({ id: 3, modName: "coop" }).part(".game-tile-flags")?.childElementCount).toBe(0);
-    expect(mountTile({ id: 4, modName: "fafbeta" }).part(".game-tile-flags")?.textContent).toBe("FAF Beta Balance");
+    expect(mountTile().part(".game-tile-flags")).toBeNull();
+    expect(mountTile({ id: 3, modName: "coop" }).part(".game-tile-flags")).toBeNull();
+    expect(mountTile({ id: 4, modName: "fafbeta" }).part(".game-tile-flags > [data-chip]")?.textContent).toBe("FAF Beta Balance");
   });
 
   it("puts the rating range first among the tags, where the line's clipping cannot take it", () => {
     const { part } = mountTile({ ratingMin: 1600, ratingMax: 3200, enforceRatingRange: true, modName: "fafbeta" });
     expect(part(".game-tile-stats .game-rating-range")).toBeNull();
-    const range = part(".game-tile-flags > :first-child");
+    const range = part(".game-tile-flags > [data-chip]:first-child > *");
     expect(range?.classList.contains("game-rating-range")).toBe(true);
     expect(range?.textContent).toBe("1600-3200");
     expect(range?.classList.contains("is-enforced")).toBe(true);
+  });
+
+  it("tags what the game is before who is in it, and folds what does not fit into a count (#680)", () => {
+    const { container } = mountTile(
+      { ratingMin: 800, ratingMax: 3000, teams: { "1": ["Sui"], "2": ["Ada"] }, simMods: { roguelike: "Roguelike Mode" } },
+      new Set(["Ada"]),
+    );
+    const tags = Array.from(container.querySelectorAll(".game-tile-flags > [data-chip] > i"), (tag) => tag.className);
+    expect(tags[0]).toContain("game-rating-range");
+    expect(tags.indexOf("modded")).toBeGreaterThan(0);
+    expect(tags.indexOf("modded")).toBeLessThan(tags.indexOf("friend"));
+    // The "+N" tag is there to take over once the line is too narrow.
+    expect(container.querySelector(".game-tile-flags > i.more")).not.toBeNull();
   });
 });

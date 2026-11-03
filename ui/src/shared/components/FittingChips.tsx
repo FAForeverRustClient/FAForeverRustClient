@@ -7,7 +7,7 @@
 // it is measured: on mount, whenever the chips change, and whenever the
 // container is resized.
 
-import { Children, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Children, useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { t } from "../../i18n";
 
 /** The chip's label for the tooltip: its own title if it has one, its text otherwise. */
@@ -19,15 +19,22 @@ function chipLabel(chip: Element): string {
 export function FittingChips({
   className,
   moreClassName,
+  as = "div",
   children,
 }: {
   className: string;
   /** Extra classes for the "+N more" chip, so it is drawn like the others. */
   moreClassName?: string;
+  /** A `span` inside a button, where a `div` is not allowed. */
+  as?: "div" | "span";
   children: ReactNode;
 }) {
   const items = Children.toArray(children);
-  const container = useRef<HTMLDivElement>(null);
+  const container = useRef<HTMLElement | null>(null);
+  // A callback, so one ref serves either element.
+  const setContainer = useCallback((node: HTMLElement | null) => {
+    container.current = node;
+  }, []);
   const more = useRef<HTMLElement>(null);
   const [shown, setShown] = useState(items.length);
   const [labels, setLabels] = useState("");
@@ -72,8 +79,9 @@ export function FittingChips({
   }, [count]);
 
   const hidden = count - shown;
+  const Container = as;
   return (
-    <div className={className} ref={container}>
+    <Container className={className} ref={setContainer}>
       {items.map((item, index) => (
         <span key={index} data-chip style={index < shown ? undefined : { display: "none" }}>
           {item}
@@ -88,6 +96,6 @@ export function FittingChips({
       >
         {t("lobby.browser.moreTags", { count: Math.max(hidden, 1) })}
       </i>
-    </div>
+    </Container>
   );
 }
