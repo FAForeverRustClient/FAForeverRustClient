@@ -28,7 +28,7 @@ export const NOTIFICATION_SAMPLES = {
   mapGenerated: { title: "notifications.msg.mapReady.title", enabled: "mapGenerated", image: "map" },
   gameCacheAlert: { title: "notifications.msg.gameCacheAlert.title", action: settings },
   gameInstall: { title: "notifications.msg.linuxRuntimeMissing.title", action: settings },
-  clientUpdate: { title: "notifications.msg.clientUpdate.title", body: "notifications.msg.clientUpdate.body", action: settings },
+  clientUpdate: { title: "notifications.msg.clientUpdate.title", body: "notifications.msg.clientUpdate.body", action: { type: "updateClient" } },
   streamLive: { title: "settings.notifications.streamLive", enabled: "streamLive", action: { type: "openStream", payload: { url: "https://www.twitch.tv/faflive" } } },
   queueOpponent: { title: "notifications.msg.queueOpponent.title", body: "notifications.msg.queueOpponent.body", action: { type: "openMatchmaking" } },
   mapPoolReleased: { title: "notifications.msg.newMapPool.title", body: "notifications.msg.newMapPool.body", action: { type: "openMatchmaking" } },

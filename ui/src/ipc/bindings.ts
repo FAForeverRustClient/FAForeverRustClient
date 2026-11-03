@@ -6642,7 +6642,13 @@ export type NotificationAction = { type: "openChat"; payload: {
  */
 { type: "openStream"; payload: {
 	url: string,
-} };
+} } |
+/**
+ *  Download the client release on offer and install it (#682), or install
+ *  it straight away when it is already downloaded. Opening Settings, as
+ *  this notice used to, landed on a page with no download button on it.
+ */
+{ type: "updateClient" };
 
 export type NotificationCommand = { type: "markRead"; payload: {
 	id: string,

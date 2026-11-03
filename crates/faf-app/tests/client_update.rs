@@ -561,6 +561,20 @@ async fn a_required_update_is_announced_even_when_announcements_are_off() {
     .await;
     for _ in 0..300 {
         if announced(&h.app) {
+            // Its click downloads and installs (#682). It opened Settings,
+            // on a page with no download button.
+            let notice = h
+                .app
+                .snapshot()
+                .notifications
+                .items
+                .into_iter()
+                .find(|item| item.kind == faf_domain::state::NotificationKind::ClientUpdate)
+                .expect("announced");
+            assert_eq!(
+                notice.action,
+                Some(faf_domain::state::NotificationAction::UpdateClient)
+            );
             return;
         }
         tokio::time::sleep(Duration::from_millis(10)).await;
