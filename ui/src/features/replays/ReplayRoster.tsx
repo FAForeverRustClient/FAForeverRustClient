@@ -9,6 +9,7 @@ import { outcomeLabel, parseOutcome, teamOutcome, type OutcomeKind } from "../..
 import { ReplayPlayerFlag } from "./ReplayPlayerFlag";
 import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/components/nameColors";
+import { RecoverableImage } from "../../shared/components/RecoverableImage";
 
 // Team 1 is the FAF server's "no team" bucket. Calling that "No team" reads as
 // missing data; for a game where it holds everyone it is simply a free-for-all,
@@ -496,15 +497,12 @@ function ReplayPlayerAvatar({
   return (
     <span className="replay-player-avatar" aria-hidden="true">
       {url && (
-        <img
+        <RecoverableImage
           src={url}
           alt=""
           loading="lazy"
           decoding="async"
           draggable={false}
-          onError={(event) => {
-            event.currentTarget.style.visibility = "hidden";
-          }}
         />
       )}
     </span>

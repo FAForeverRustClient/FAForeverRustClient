@@ -1,52 +1,17 @@
 import type { MapVaultQuery, ModVaultQuery } from "../ipc/bindings";
+import { INITIAL_STATE } from "../ipc/initialState";
 
 /**
- * The unfiltered first page, matching `MapVaultQuery::default()` in the domain.
+ * The unfiltered first page of the map vault, highest rated first.
  *
- * These two must stay identical: the conformance fixture compares the store's
- * initial state against `AppState::default()` field by field, so a drift here
- * fails that test rather than shipping.
+ * Read from the generated initial state rather than written out here: the
+ * slice's `browseQuery` starts as `MapVaultQuery::default()`, so a change to
+ * that default reaches the filters with the next `pnpm run bindings`.
  */
-export const EMPTY_MAP_QUERY: MapVaultQuery = {
-  search: "",
-  author: "",
-  authorId: null,
-  includeHidden: false,
-  ranked: null,
-  recommended: false,
-  minRatingTenths: null,
-  maxRatingTenths: null,
-  minPlayers: null,
-  maxPlayers: null,
-  width: 0,
-  height: 0,
-  after: "",
-  before: "",
-  sortBy: "rating",
-  sortDescending: true,
-  page: 1,
-  pageSize: 36,
-};
+export const EMPTY_MAP_QUERY: MapVaultQuery = INITIAL_STATE.maps.browseQuery;
 
-export const EMPTY_MOD_QUERY: ModVaultQuery = {
-  search: "",
-  exactName: false,
-  searchDescriptions: false,
-  author: "",
-  uploaderId: null,
-  modType: "",
-  ranked: null,
-  recommended: false,
-  minRatingTenths: null,
-  maxRatingTenths: null,
-  dateFieldUpdated: true,
-  after: "",
-  before: "",
-  sortBy: "rating",
-  sortDescending: true,
-  page: 1,
-  pageSize: 36,
-};
+/** The mod vault's counterpart: `ModVaultQuery::default()`, read the same way. */
+export const EMPTY_MOD_QUERY: ModVaultQuery = INITIAL_STATE.mods.browseQuery;
 
 /**
  * Whether a page count reported for one search answers the search being asked

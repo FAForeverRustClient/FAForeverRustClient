@@ -36,6 +36,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
+use faf_domain::protocol::rating::{displayed_points, whole_points};
 use faf_domain::state::{
     AvailableAvatar, Game, GameLaunch, HostGameConfig, MatchmakerQueue, MatchmakingState,
     PartyMember, PartyState, PlayerLobbyRating, PlayerProfile, PlayerVeto, RatingRange, Relation,
@@ -1641,7 +1642,7 @@ fn average_game_rating(
 
 /// Store the conservative displayed global rating from a lobby `player_info`
 /// entry. FAF sends TrueSkill `[mean, deviation]`; the displayed value is
-/// `mean - 3 * deviation`, unclamped: see [`displayed_rating`].
+/// `mean - 3 * deviation`, unclamped: see [`faf_domain::protocol::rating`].
 /// Read the channel list out of a `social` message.
 ///
 /// The server has used both `autojoin` and `channels` for this field, so both
@@ -1863,8 +1864,8 @@ impl PlayerDirectory {
                     .and_then(|rating| {
                         Some(vec![PlayerLobbyRating {
                             leaderboard: "global".into(),
-                            rating: scalar_rating(rating)?,
-                            mean: finite_i32(rating)?,
+                            rating: whole_points(rating)?,
+                            mean: whole_points(rating)?,
                             deviation: 0,
                             games_played: 0,
                         }])
@@ -2123,38 +2124,6 @@ fn update_player_ratings(ratings: &mut PlayerRatings, player: &Value) {
     }
 }
 
-/// The displayed rating for a TrueSkill `[mean, deviation]` pair.
-///
-/// `mean - 3 * deviation`, truncated toward zero, and deliberately **not**
-/// clamped at zero. A new or long-idle account has a deviation large enough to
-/// put this below zero, and that is a real number the player has: the server's
-/// own `displayed()` does not clamp it, the FAF website prints it, and both
-/// reference clients cast the subtraction straight to an integer.
-///
-/// This client used to clamp, and only here: the profile card and the replay
-/// parser never did. So the same player read as -137 on their own profile and
-/// 0 in every lobby list, which is the report.
-///
-/// Truncated rather than rounded for the reason already written down in
-/// `infra::replay`: Java's `RatingUtil.getRating` is `(int) (mean - 3f * dev)`
-/// and the Python client's `rating_estimate` is `int(rating.displayed())`.
-/// Rounding put us a point above them for every fraction over .5.
-fn displayed_rating(mean: f64, deviation: f64) -> Option<i32> {
-    finite_i32(mean - 3.0 * deviation)
-}
-
-/// An already-displayed rating the server sent as a scalar, in the same shape.
-fn scalar_rating(value: f64) -> Option<i32> {
-    finite_i32(value)
-}
-
-/// `as i32` saturates rather than failing, so a malformed payload would arrive
-/// as `i32::MAX` and be shown as a rating. Rejected instead.
-fn finite_i32(value: f64) -> Option<i32> {
-    (value.is_finite() && value >= f64::from(i32::MIN) && value <= f64::from(i32::MAX))
-        .then_some(value as i32)
-}
-
 fn player_rating_estimate(player: &Value) -> Option<i32> {
     player
         .get("ratings")
@@ -2164,13 +2133,13 @@ fn player_rating_estimate(player: &Value) -> Option<i32> {
         .and_then(|rating| {
             let mean = rating.first().and_then(Value::as_f64)?;
             let deviation = rating.get(1).and_then(Value::as_f64)?;
-            displayed_rating(mean, deviation)
+            displayed_points(mean, deviation)
         })
         .or_else(|| {
             player
                 .get("global_rating")
                 .and_then(value_as_f64)
-                .and_then(scalar_rating)
+                .and_then(whole_points)
         })
 }
 
@@ -2197,9 +2166,9 @@ fn player_lobby_ratings(player: &Value) -> Option<Vec<PlayerLobbyRating>> {
                 .max(0);
             Some(PlayerLobbyRating {
                 leaderboard: leaderboard.clone(),
-                rating: displayed_rating(mean, deviation)?,
-                mean: finite_i32(mean.round())?,
-                deviation: finite_i32(deviation.round())?,
+                rating: displayed_points(mean, deviation)?,
+                mean: whole_points(mean.round())?,
+                deviation: whole_points(deviation.round())?,
                 games_played,
             })
         })
@@ -3378,16 +3347,6 @@ mod tests {
         .expect("a ratings table");
 
         assert_eq!(ratings[0].rating, -137);
-    }
-
-    #[test]
-    fn a_displayed_rating_is_truncated_towards_zero_like_both_reference_clients() {
-        // Java casts, Python takes `int()`, and `infra::replay` already wrote
-        // this rule down for the same number read out of a replay header.
-        assert_eq!(displayed_rating(1_500.5, 0.0), Some(1_500));
-        assert_eq!(displayed_rating(-1_500.5, 0.0), Some(-1_500));
-        assert_eq!(displayed_rating(f64::NAN, 0.0), None);
-        assert_eq!(displayed_rating(f64::INFINITY, 0.0), None);
     }
 
     #[test]

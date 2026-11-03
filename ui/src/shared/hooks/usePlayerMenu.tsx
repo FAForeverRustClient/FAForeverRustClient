@@ -13,7 +13,7 @@
 // which is a no-op for a caller already there and the whole point for one that
 // isn't.
 
-import { useCallback, useState, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import { ipc } from "../../ipc/client";
 import type { Game } from "../../ipc/bindings";
 import { findPlayer } from "../../store/reducer";
@@ -38,8 +38,25 @@ export interface PlayerMenuContext {
   gameId?: number;
 }
 
-/** Open the menu for `nickname`, beside the element it was opened from. */
-export type PlayerMenuOpener = (nickname: string, event: MouseEvent, context?: PlayerMenuContext) => void;
+/**
+ * Open the menu for `nickname`, beside the element it was opened from, by a
+ * pointer or by a key.
+ */
+export type PlayerMenuOpener = (
+  nickname: string,
+  event: MouseEvent | KeyboardEvent,
+  context?: PlayerMenuContext,
+) => void;
+
+/**
+ * Where a menu opened by `event` starts: the pointer, or the top left of the
+ * name when there is no pointer. A key has none, and Enter on a button arrives
+ * as a click at (0, 0), which put the menu at the top of the window.
+ */
+function menuPoint(event: MouseEvent | KeyboardEvent, name: DOMRect): { x: number; y: number } {
+  const keyboard = !("clientX" in event) || (event.detail === 0 && event.clientX === 0 && event.clientY === 0);
+  return keyboard ? { x: name.left, y: name.top } : { x: event.clientX, y: event.clientY };
+}
 
 /**
  * `opener` with the game a lineup belongs to attached, so a report opened from
@@ -114,12 +131,12 @@ export function usePlayerMenu(options: PlayerMenuOptions = {}): {
     event.preventDefault();
     setMenuContext(context ?? {});
     const social = useAppStore.getState().state.social;
-    const { left, right, top, bottom } = event.currentTarget.getBoundingClientRect();
+    const name = event.currentTarget.getBoundingClientRect();
+    const { left, right, top, bottom } = name;
     setMenu({
       nickname,
       profile: findPlayer(social, nickname),
-      x: event.clientX,
-      y: event.clientY,
+      ...menuPoint(event, name),
       anchor: { left, right, top, bottom },
     });
     // Somebody offline: the online list has no id for them, and friend, foe,

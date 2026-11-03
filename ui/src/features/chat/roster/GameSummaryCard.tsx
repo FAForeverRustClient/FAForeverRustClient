@@ -32,6 +32,7 @@ import {
 } from "./gameSummary";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { RecoverableImage } from "../../../shared/components/RecoverableImage";
 
 export const STATUS_LABEL = {
   hosting: "chat.presence.hosting",
@@ -305,7 +306,7 @@ export function GameSummaryCard({
                         </span>
                       )}
                       {player.country ? (
-                        <img
+                        <RecoverableImage
                           src={flagSrc(player.country)}
                           alt={countryOf(player.country)}
                           title={countryOf(player.country)}
@@ -313,7 +314,6 @@ export function GameSummaryCard({
                           height={16}
                           decoding="async"
                           draggable={false}
-                          onError={(event) => { event.currentTarget.style.visibility = "hidden"; }}
                         />
                       ) : <span className="chat-game-flag-placeholder" />}
                       <GameSummaryPlayerName

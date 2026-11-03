@@ -17,30 +17,13 @@
 
 use std::path::{Path, PathBuf};
 
+use faf_domain::native::MarkedMapPreview;
 use faf_domain::state::is_safe_folder_name;
-use serde::Serialize;
 
 /// Refuse a save or scenario file larger than this. The largest save file in a
 /// real maps folder of 436 maps is a few megabytes; a corrupt one should not
 /// be read into memory whole.
 const MAX_LUA_BYTES: u64 = 32 * 1024 * 1024;
-
-/// A map's clean picture and its markers, in map units.
-#[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MarkedMapPreview {
-    /// The `.scmap`'s own preview, as `data:image/png;base64,...`. It covers the
-    /// whole map, `width` by `height`, including any area outside the playable
-    /// one.
-    pub image: String,
-    /// The map's extent in map units, from the scenario's `size`.
-    pub width: f32,
-    pub height: f32,
-    /// `[x, z]` of each marker: across, then down the picture.
-    pub mass: Vec<[f32; 2]>,
-    pub hydro: Vec<[f32; 2]>,
-    pub spawns: Vec<[f32; 2]>,
-}
 
 /// Where each kind of marker is, as read from a `_save.lua`.
 #[derive(Debug, Default, Clone, PartialEq)]

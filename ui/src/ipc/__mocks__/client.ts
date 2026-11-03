@@ -6,8 +6,7 @@
 // for and then answer it the way the backend does, with an event applied to
 // the store.
 
-import type { AppCommand } from "../bindings";
-import type { VersionedSnapshot } from "../client";
+import type { AppCommand, VersionedSnapshot } from "../bindings";
 import { recordCommand } from "../../testing/sentCommands";
 
 export const ipc = {

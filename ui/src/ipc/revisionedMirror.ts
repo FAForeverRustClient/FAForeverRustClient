@@ -1,5 +1,4 @@
-import type { AppEvent, AppState } from "./bindings";
-import type { FrontendMessage, VersionedSnapshot } from "./client";
+import type { AppEvent, AppState, FrontendMessage, VersionedSnapshot } from "./bindings";
 
 /**
  * How long a recovery snapshot has to settle before another one is asked for.

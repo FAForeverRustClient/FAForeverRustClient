@@ -1,0 +1,2 @@
+- No visible changes: the data the client window exchanges with the desktop app is now described once, in the backend, instead of copied by hand.
+- No visible changes: custom notification sounds reach the window as raw bytes instead of as a list of numbers.

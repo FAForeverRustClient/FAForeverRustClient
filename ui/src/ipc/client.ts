@@ -4,18 +4,9 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type { AppCommand, AppEvent, AppState } from "./bindings";
+import type { AppCommand, FrontendMessage, VersionedSnapshot } from "./bindings";
 
 const EVENT_CHANNEL = "app://event";
-
-export type FrontendMessage =
-  | { kind: "event"; revision: number; event: AppEvent }
-  | { kind: "snapshot"; revision: number; state: AppState };
-
-export interface VersionedSnapshot {
-  revision: number;
-  state: AppState;
-}
 
 type CommandErrorHandler = (message: string) => void;
 

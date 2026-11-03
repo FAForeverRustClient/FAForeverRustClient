@@ -15,6 +15,8 @@ describe("which notifications leave the client", () => {
       "eventReminder",
       "gameFull",
       "queueOpponent",
+      "privateMessage",
+      "mention",
     ];
     for (const kind of expiring) {
       expect(raisesOsNotification(kind)).toBe(true);
@@ -31,8 +33,6 @@ describe("which notifications leave the client", () => {
       "gameCacheAlert",
       "gameInstall",
       "clientUpdate",
-      "privateMessage",
-      "mention",
       "friendOnline",
       "friendOffline",
       "friendPlaying",

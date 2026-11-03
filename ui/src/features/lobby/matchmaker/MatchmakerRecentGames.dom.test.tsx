@@ -170,6 +170,28 @@ describe("MatchmakerRecentGames", () => {
     expect(markedName()).toBeNull();
     expect(team.classList.contains("is-menu-open")).toBe(false);
   });
+
+  it("opens an opponent's player menu from the keyboard", async () => {
+    const user = userEvent.setup();
+    mount([game, teamGame], { type: "ready" });
+    const team = rowOf(4343);
+    const carl = within(team).getByRole("button", { name: "Carl" });
+    expect(carl.getAttribute("aria-haspopup")).toBe("menu");
+
+    // Reached with Tab like any other control in the row, not only by mouse.
+    carl.focus();
+    expect(document.activeElement).toBe(carl);
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("menu")).toBeTruthy();
+    expect(markedName()).toBe(within(team).getByText("Carl"));
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).toBeNull();
+
+    within(team).getByRole("button", { name: "Bob" }).focus();
+    await user.keyboard(" ");
+    expect(markedName()).toBe(within(team).getByText("Bob"));
+  });
 });
 
 describe("MatchmakerRecentGames column dividers", () => {

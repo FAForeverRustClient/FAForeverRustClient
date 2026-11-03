@@ -97,8 +97,8 @@ Three consequences, all of them good:
 - **Rust.** `publish = false` blocks crates.io, not a path or git dependency, so
   no crate here has to be restructured or released. Cargo resolves the vendored
   workspace exactly as it resolves it in place.
-- **Bindings cannot drift.** The mobile repo does not copy `bindings.ts`; it
-  *generates* it, running `cargo run -p faf-ipc --bin export-bindings` against
+- **Bindings cannot drift.** The mobile repo does not copy `bindings.ts` or
+  `initialState.ts`; it *generates* them, running `cargo run -p faf-ipc --bin export-bindings` against
   the same pinned checkout it compiles against. The drift gate that CI runs here
   is the same gate there, for the same reason.
 - **Shared frontend.** `design-system`, `store`, `i18n` and `shared` are aliased

@@ -54,9 +54,9 @@ answer, and `docs/PROJECT_GUIDE.md` maps them:
 - **six languages** (`en`, `de`, `fr`, `ru`, `es`, `pl`): a missing translation falls back to
   English, and a missing key is a compile error. See `ui/src/i18n/`.
 
-**CI** (`.github/workflows/ci.yml`) runs tests, clippy, frontend linting,
-typecheck, build, a bindings-drift check (fails if `ui/src/ipc/bindings.ts` is
-stale), and a tokens-only guardrail (fails if any component CSS hardcodes a
+**CI** (`.github/workflows/ci.yml`) runs tests and clippy on Linux and Windows, frontend linting,
+typecheck, build, a bindings-drift check (fails if `ui/src/ipc/bindings.ts` or `ui/src/ipc/initialState.ts`
+is stale), and a tokens-only guardrail (fails if any component CSS hardcodes a
 hex color instead of a token).
 
 Env toggles for local dev:
@@ -115,7 +115,7 @@ version pinned by `package.json`.
 
 ```bash
 pnpm install                # frontend deps
-pnpm run bindings           # regenerate ui/src/ipc/bindings.ts from Rust
+pnpm run bindings           # regenerate ui/src/ipc/bindings.ts and initialState.ts from Rust
 pnpm run tauri dev          # run the app (Vite + Tauri)
 ```
 
@@ -148,7 +148,7 @@ When you add anything, follow [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §8
 - New capability → a **command + event(s)** + a **service** in `faf-app/services/`.
 - New external system → a **`Port` trait** + an **`infra` impl** + a mock.
 - New screen → a **`features/<tab>/`** folder; container selects + dispatches, view uses primitives.
-- After changing cross-boundary types, run `pnpm run bindings`.
+- After changing cross-boundary types or a state default, run `pnpm run bindings`.
 
 Never: mutate state outside a reducer; do IO outside `infra`; put logic in a component;
 hand-write a cross-boundary type.

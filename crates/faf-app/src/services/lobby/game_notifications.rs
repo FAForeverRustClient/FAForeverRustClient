@@ -228,10 +228,12 @@ fn match_reach(deviation: f64, expansion: f64) -> f64 {
 impl GameNotificationTracker {
     /// Friends who are in a lobby they were not in at the last update.
     ///
-    /// A friend hosting a lobby the client has not seen before is also its
-    /// host. When `hosts_announced` (new-game alerts are on) that lobby gets
-    /// its own "hosted" notice, so the host is left out here rather than
-    /// announced twice.
+    /// A friend hosting a lobby is also in it. When `hosts_announced`
+    /// (new-game alerts are on) that lobby gets its own "hosted" notice, so
+    /// the host is left out here rather than announced twice. Whether this is
+    /// the lobby's first sight does not matter: the server usually lists a new
+    /// lobby before its host has taken a seat, and the host turns up in the
+    /// teams one update later, which is still hosting and not joining.
     pub(super) fn friends_joined(
         &self,
         games: &[Game],
@@ -253,7 +255,7 @@ impl GameNotificationTracker {
                 let old = index.get(&game.id);
                 let mut logins = Vec::new();
                 for login in participants(game) {
-                    let hosting = old.is_none() && login.eq_ignore_ascii_case(&game.host);
+                    let hosting = login.eq_ignore_ascii_case(&game.host);
                     if contains_name(friends, login)
                         && !contains_name(&logins, login)
                         && !(hosting && hosts_announced)
@@ -734,6 +736,49 @@ mod tests {
                 .friends_joined(std::slice::from_ref(&hosted), &friends, false)
                 .len(),
             1
+        );
+    }
+
+    #[test]
+    fn a_friend_taking_a_seat_in_their_new_lobby_is_announced_once() {
+        // The server lists a new lobby before its host has picked a team, so
+        // the host turns up in the teams one update later.
+        let friends = vec!["Friend".into()];
+        let unseated = game(2, "Friend", &[], 1, 4);
+        let seated = game(2, "Friend", &["Friend"], 1, 4);
+        for hosts_announced in [true, false] {
+            let mut tracker = GameNotificationTracker::default();
+            tracker.observe_open(&[], None);
+            assert!(tracker
+                .friends_joined(std::slice::from_ref(&unseated), &friends, hosts_announced)
+                .is_empty());
+            assert!(matches!(
+                &tracker.observe_open_delta(std::slice::from_ref(&unseated), &[], None)[..],
+                [GameNotificationSignal::NewGame(game)] if game.id == 2
+            ));
+            // New-game alerts on: the "hosted" notice above was the one. Off:
+            // the friend-joined notice is.
+            assert_eq!(
+                tracker
+                    .friends_joined(std::slice::from_ref(&seated), &friends, hosts_announced)
+                    .len(),
+                usize::from(!hosts_announced)
+            );
+        }
+    }
+
+    #[test]
+    fn a_friend_joining_a_friends_lobby_is_still_announced() {
+        let mut tracker = GameNotificationTracker::default();
+        let friends = vec!["Friend".into(), "Other".into()];
+        tracker.observe_open(&[game(2, "Friend", &["Friend"], 1, 4)], None);
+        let signals = tracker.friends_joined(
+            &[game(2, "Friend", &["Friend", "Other"], 2, 4)],
+            &friends,
+            true,
+        );
+        assert!(
+            matches!(&signals[..], [GameNotificationSignal::FriendsJoinedGame { logins, .. }] if logins.as_slice() == ["Other"])
         );
     }
 

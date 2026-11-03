@@ -36,6 +36,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 time = "0.3"
 faf-domain = { workspace = true }
 faf-app = { workspace = true }
+# The types that cross to the page and only the shell builds (`faf_ipc::shell`),
+# defined there so the bindings export can see them.
+faf-ipc = { workspace = true }
 tauri-plugin-window-state = "2"
 
 # The WebView2 bindings Tauri's own `wry` already builds, at the versions it

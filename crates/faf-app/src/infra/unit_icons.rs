@@ -34,18 +34,8 @@ use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
+use faf_domain::native::UnitIconNames;
 use faf_domain::protocol::dds::{decode_dds, DecodedImage};
-use serde::Serialize;
-
-/// The pictures the installed game has, by the names the page asks for them.
-#[derive(Debug, Clone, Default, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UnitIcons {
-    /// Upper-case blueprint ids.
-    pub units: Vec<String>,
-    /// Lower-case strategic icon names, `icon_land1_directfire`.
-    pub strategic: Vec<String>,
-}
 
 /// Units that have no icon of their own and show another's, as the FAF unit
 /// database (FAForever/etfreeman-db, `vite-plugin-spritesmith.js`) does: a
@@ -228,7 +218,7 @@ fn held() -> &'static Mutex<Held> {
 
 /// The pictures of the install whose executable is `game_path`, read once
 /// per install and kept for the session.
-pub fn unit_icons(game_path: &str) -> UnitIcons {
+pub fn unit_icons(game_path: &str) -> UnitIconNames {
     let mut held = held().lock().unwrap_or_else(PoisonError::into_inner);
     let catalog = match held.as_ref() {
         Some((path, catalog)) if path == game_path => catalog.clone(),
@@ -251,7 +241,7 @@ pub fn unit_icons(game_path: &str) -> UnitIcons {
             catalog
         }
     };
-    UnitIcons {
+    UnitIconNames {
         units: catalog.units.clone(),
         strategic: catalog.strategic.clone(),
     }

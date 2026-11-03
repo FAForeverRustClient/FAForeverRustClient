@@ -48,20 +48,23 @@ export interface MarkerPlacement {
  * Where each icon goes on a picture `width` by `height` pixels, centred on its
  * marker, in drawing order. Markers are in map units over the whole map, which
  * the picture covers whole, so each axis scales on its own.
+ *
+ * A null is a NaN or an infinity in Rust, which serde writes as null. It is
+ * read as 0, which is what the arithmetic always made of it.
  */
 export function markerPlacements(
   preview: Pick<MarkedMapPreview, "width" | "height" | "mass" | "hydro" | "spawns">,
   width: number,
   height: number,
 ): MarkerPlacement[] {
-  const scaleX = width / preview.width;
-  const scaleY = height / preview.height;
-  const place = (kind: MarkerKind) => ([x, z]: [number, number]): MarkerPlacement => {
+  const scaleX = width / (preview.width ?? 0);
+  const scaleY = height / (preview.height ?? 0);
+  const place = (kind: MarkerKind) => ([x, z]: [number | null, number | null]): MarkerPlacement => {
     const size = ICON_SIZE[kind];
     return {
       kind,
-      x: x * scaleX - size.width / 2,
-      y: z * scaleY - size.height / 2,
+      x: (x ?? 0) * scaleX - size.width / 2,
+      y: (z ?? 0) * scaleY - size.height / 2,
       width: size.width,
       height: size.height,
     };

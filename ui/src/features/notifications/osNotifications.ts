@@ -19,6 +19,8 @@ const EXPIRING: readonly NotificationKind[] = [
   "eventReminder",
   "gameFull",
   "queueOpponent",
+  "privateMessage",
+  "mention",
 ];
 
 export function raisesOsNotification(kind: NotificationKind): boolean {

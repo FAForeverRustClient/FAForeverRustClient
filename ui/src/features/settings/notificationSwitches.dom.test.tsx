@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 import { NotificationsSettingsSection } from "./NotificationsSettingsSection";
@@ -50,12 +50,13 @@ it.each([
   expect(sentCommands()).toEqual([{ kind: "Settings", command: { type: "patchNotifications", payload: { patch: { [field]: false } } } }]);
 });
 
-it("explains and enables the friends-only setting when new-game notifications are enabled", async () => {
+it("keeps the new-game and friends-only descriptions visible when notifications are enabled", async () => {
   await mountNotifications();
   const user = userEvent.setup();
   const friendsOnly = screen.getByRole<HTMLInputElement>("checkbox", { name: en["settings.notifications.friendsGamesOnly"] });
   expect(friendsOnly.checked).toBe(true);
   expect(friendsOnly.disabled).toBe(true);
+  expect(screen.getByText(en["settings.notifications.newGamesHint"])).toBeTruthy();
   expect(screen.getByText(en["settings.notifications.friendsGamesOnlyHint"])).toBeTruthy();
   await user.click(friendsOnly);
   expect(sentCommands()).toHaveLength(0);
@@ -64,8 +65,24 @@ it("explains and enables the friends-only setting when new-game notifications ar
     ...useAppStore.getState().state.settings.notifications, newCustomGames: true,
   } } } });
   expect(friendsOnly.disabled).toBe(false);
-  expect(screen.queryByText(en["settings.notifications.friendsGamesOnlyHint"])).toBeNull();
+  expect(screen.getByText(en["settings.notifications.newGamesHint"])).toBeTruthy();
+  expect(screen.getByText(en["settings.notifications.friendsGamesOnlyHint"])).toBeTruthy();
   clearSentCommands();
   await user.click(friendsOnly);
   expect(sentCommands()).toEqual([{ kind: "Settings", command: { type: "patchNotifications", payload: { patch: { newCustomGamesFriendsOnly: false } } } }]);
+});
+
+it("offers one shared popup duration control and saves a longer display time", async () => {
+  await mountNotifications();
+  const duration = screen.getByRole<HTMLInputElement>("spinbutton", { name: en["settings.notifications.duration"] });
+  expect(duration.min).toBe("2");
+  expect(duration.max).toBe("60");
+  expect(screen.getByText(en["settings.notifications.durationHint"])).toBeTruthy();
+  fireEvent.change(duration, { target: { value: "15" } });
+  expect(sentCommands()).toEqual([{ kind: "Settings", command: { type: "patchNotifications", payload: { patch: { toastDurationSeconds: 15 } } } }]);
+  applyEvent({ kind: "Settings", event: { type: "notificationsChanged", payload: { preferences: {
+    ...useAppStore.getState().state.settings.notifications, toastDurationSeconds: 15,
+  } } } });
+  fireEvent.blur(duration);
+  expect(duration.value).toBe("15");
 });

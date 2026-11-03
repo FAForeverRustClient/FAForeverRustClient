@@ -1135,11 +1135,15 @@
   min-height: 8px;
 }
 
+/* The label and the badge share the line, centred together. The badge used to
+   be pinned to the right edge over a centred label, and in the narrow map
+   column at 1280 px the two ran into each other. */
 .host-generate-btn {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
+  container-type: inline-size;
   border-color: rgba(75, 157, 232, 0.35);
   background: rgba(75, 157, 232, 0.08);
   color: var(--color-text);
@@ -1154,9 +1158,16 @@
 
 .host-generate-btn-label {
   display: inline-flex;
+  min-width: 0;
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+
+.host-generate-btn-label > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .host-generate-btn-label svg {
@@ -1164,8 +1175,7 @@
 }
 
 .host-badge-neroxis {
-  position: absolute;
-  right: 8px;
+  flex: 0 0 auto;
   font-size: 11px;
   font-weight: 600;
   padding: 1px 6px;
@@ -1173,6 +1183,15 @@
   background: rgba(75, 157, 232, 0.15);
   border: 1px solid rgba(75, 157, 232, 0.35);
   color: var(--color-faction-uef);
+}
+
+/* Too narrow for both: the label goes first, and the button's tooltip still
+   names Neroxis. 205 px of content is the longest label (Russian, 145 px), the
+   gap and the 52 px badge. */
+@container (max-width: 205px) {
+  .host-badge-neroxis {
+    display: none;
+  }
 }
 
 .password-dialog { text-align: center; }

@@ -12,15 +12,31 @@ import {
   sendNotification,
 } from "@tauri-apps/plugin-notification";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import type {
+  LogPreview,
+  MapAnalysis,
+  MarkedMapPreview,
+  NotificationDisplay,
+  NotificationPopupBatch,
+  NotificationPopupCard,
+  PickRequest,
+  UnitIconNames,
+  WebviewEngine,
+} from "./bindings";
 
-/** Bounded presentation data for the independent desktop window. No actions or URLs. */
-export interface NotificationPopupCard {
-  id: string; title: string; body: string; actionLabel: string | null; tone: string; imageUrl?: string | null;
-}
-export interface NotificationPopupBatch {
-  revision: number; cards: NotificationPopupCard[]; durationSeconds: number;
-  theme: string; dismissLabel: string;
-}
+// What the shell's commands take and answer with, generated from the Rust
+// definitions like the rest of `bindings.ts`, and handed on from here so
+// feature code keeps one import for the native boundary.
+export type {
+  LogIssue,
+  LogPreview,
+  MapAnalysis,
+  MapLayerPicture,
+  MarkedMapPreview,
+  NotificationPopupBatch,
+  NotificationPopupCard,
+  WebviewEngine,
+} from "./bindings";
 
 /** The installed game's pictures, as addresses an `<img>` loads. */
 export interface UnitIcons {
@@ -36,60 +52,8 @@ export interface UnitIcons {
 /** The factions the shell draws strategic icons for (`FACTION_COLOURS`). */
 const ICON_FACTIONS = ["uef", "aeon", "cybran", "seraphim"];
 
-/** What `unit_icons` answers with. Mirrors the shell's `UnitIcons`. */
-interface UnitIconNames {
-  units: string[];
-  strategic: string[];
-}
-
 /** The shell's `UNIT_ICON_SCHEME`, which serves one picture per request. */
 const UNIT_ICON_SCHEME = "unit-icon";
-
-/** One pathing layer of `map_analysis`. Mirrors the shell's `LayerPicture`. */
-export interface MapLayerPicture {
-  layer: "land" | "hover" | "amphibious" | "naval";
-  /** Regions after the game culls the small empty ones. */
-  regions: number;
-  /** From 0 to 1, the share of the map units of the layer can reach. */
-  reachable: number;
-  /** `data:image/png`, the size of the map: a colour per region, dark where they cannot go. */
-  image: string;
-}
-
-/** What `map_analysis` answers with. Mirrors the shell's `MapAnalysis`. */
-export interface MapAnalysis {
-  /** The `.scmap`'s own preview, the picture the layers are drawn over. */
-  preview: string;
-  /** In ogrids. */
-  width: number;
-  height: number;
-  hasWater: boolean;
-  /** Land first; hover, amphibious and naval only on a map with water. */
-  layers: MapLayerPicture[];
-  reclaim: {
-    mass: number;
-    energy: number;
-    props: number;
-    /** Props whose blueprint was found and so counted. */
-    valued: number;
-    /** `data:image/png`: brighter where there is more mass. */
-    image: string;
-  };
-}
-
-/**
- * What a file dialog looks like. Mirrors `PickRequest` in the shell's
- * `picked_paths`: the dialog opens there, so a path the page sends back later
- * can be checked against what the player actually picked.
- */
-export interface PickOptions {
-  title?: string;
-  filters?: { name: string; extensions: string[] }[];
-  /** Pick a folder rather than a file. */
-  directory?: boolean;
-  /** Where the dialog starts: a folder, or a file to preselect. */
-  defaultPath?: string;
-}
 
 /** Mirrors the arms of `log_directory` in the Tauri shell. `ice` is the adapters' own log folder. */
 export type LogKind = "game" | "client" | "ice";
@@ -97,46 +61,11 @@ export type LogKind = "game" | "client" | "ice";
 /** Mirrors the arms of `faf_app::infra::client_folder`. */
 export type ClientFolder = "maps" | "mods" | "replays" | "vault" | "gameCache" | "gamePrefs";
 
-/** Mirrors `faf_domain::protocol::log_analysis::LogIssue`. */
-export type LogIssue = "gameMinimized" | "soundDriver";
-
-export interface LogPreview {
-  fileName: string;
-  content: string;
-  /**
-   * Known problems found in the log. Detected in the backend over the *whole*
-   * file; `content` is only the newest 512 KiB, so an issue can be reported
-   * that the visible excerpt does not contain.
-   */
-  issues: LogIssue[];
-}
-
-/** Mirrors `WebviewEngine` in the Tauri shell. */
-export interface WebviewEngine {
-  /** `windows`, `macos`, `linux`, or `other`. */
-  platform: string;
-  /** WebKitGTK `major.minor.micro`; only Linux has a version worth reporting. */
-  webkitVersion: string | null;
-}
-
-/** Mirrors `faf_app::infra::map_markers::MarkedMapPreview`. */
-export interface MarkedMapPreview {
-  /** The `.scmap`'s own picture, with nothing drawn on it, as a data URL. */
-  image: string;
-  /** The map's extent in map units, which `image` covers whole. */
-  width: number;
-  height: number;
-  /** `[x, z]` of each marker in map units: across, then down the picture. */
-  mass: [number, number][];
-  hydro: [number, number][];
-  spawns: [number, number][];
-}
-
 export const native = {
-  showNotificationPopup(cards: NotificationPopupCard[], dismissLabel: string, preview = false): Promise<void> {
-    return invoke("show_notification_popup", { cards, dismissLabel, preview });
+  showNotificationPopup(cards: NotificationPopupCard[], dismissLabel: string, preview = false, holdPreview = false): Promise<void> {
+    return invoke("show_notification_popup", { cards, dismissLabel, preview, holdPreview });
   },
-  notificationDisplays(): Promise<{ name: string; primary: boolean }[]> {
+  notificationDisplays(): Promise<NotificationDisplay[]> {
     return invoke("notification_displays");
   },
   notificationPopupSnapshot(): Promise<NotificationPopupBatch> {
@@ -148,11 +77,14 @@ export const native = {
   notificationPopupSize(revision: number, height: number): Promise<void> {
     return invoke("notification_popup_size", { revision, height });
   },
+  notificationPopupPainted(revision: number): Promise<void> {
+    return invoke("notification_popup_painted", { revision });
+  },
   notificationPopupInteract(id: string, interaction: "activate" | "dismiss" | "expire"): Promise<void> {
     return invoke("notification_popup_interact", { id, interaction });
   },
-  onNotificationInteraction(handler: (event: { id: string; interaction: "activate" | "dismiss" }) => void): Promise<() => void> {
-    return listen<{ id: string; interaction: "activate" | "dismiss" }>("notifications://interact", (event) => handler(event.payload));
+  onNotificationInteraction(handler: (event: { id: string; interaction: "activate" | "dismiss" | "expire" }) => void): Promise<() => void> {
+    return listen<{ id: string; interaction: "activate" | "dismiss" | "expire" }>("notifications://interact", (event) => handler(event.payload));
   },
   gameNotificationAttention(activate = false): Promise<boolean> {
     return invoke("game_notification_attention", { activate });
@@ -231,9 +163,13 @@ export const native = {
     return invoke<MapAnalysis>("map_analysis", { folderName });
   },
 
-  /** One stored sound's bytes, for the page to decode. */
-  readNotificationSound(name: string): Promise<number[]> {
-    return invoke<number[]>("read_notification_sound", { name });
+  /**
+   * One stored sound's bytes, for the page to decode. Raw, not JSON, as for
+   * the background, and a buffer of its own on every call, which
+   * `decodeAudioData` needs: it takes the buffer it decodes.
+   */
+  readNotificationSound(name: string): Promise<ArrayBuffer> {
+    return invoke<ArrayBuffer>("read_notification_sound", { name });
   },
 
   // No "remove a sound" here: removal is the backend's
@@ -276,7 +212,7 @@ export const native = {
    * Let the player pick a file (or, with `directory`, a folder). Null when
    * they cancelled. The only way to get a path the backend will accept.
    */
-  selectFile(options: PickOptions): Promise<string | null> {
+  selectFile(options: PickRequest): Promise<string | null> {
     return invoke<string | null>("pick_path", { request: options });
   },
 

@@ -28,12 +28,9 @@ use faf_domain::protocol::map_generator::split_command_line;
 use faf_domain::state::settings::{
     GamePreferences, GamePreferencesPatch, PathPreferences, PathPreferencesPatch,
 };
-use faf_domain::state::{
-    GeneratorOptions, MapGeneratorCommand, ReplayCommand, SettingsCommand, SettingsState,
-    UploadsCommand,
-};
+use faf_domain::state::{GeneratorOptions, SettingsState};
 use faf_domain::AppCommand;
-use serde::Deserialize;
+use faf_ipc::shell::PickRequest;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 
 /// How long a pick stays good for. Long enough for an upload dialog left open
@@ -80,28 +77,6 @@ impl PickedPaths {
 
 fn refusal(path: &str) -> String {
     format!("{path} was not chosen in a file dialog of this client")
-}
-
-/// One filter of the dialog, as the page describes it.
-#[derive(Deserialize)]
-pub(crate) struct PickFilter {
-    name: String,
-    extensions: Vec<String>,
-}
-
-/// What the page asks the dialog to look like. Nothing in it decides what may
-/// be picked: that is the player, in the dialog.
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct PickRequest {
-    #[serde(default)]
-    title: Option<String>,
-    #[serde(default)]
-    filters: Vec<PickFilter>,
-    #[serde(default)]
-    directory: bool,
-    #[serde(default)]
-    default_path: Option<String>,
 }
 
 /// Open the native file or folder dialog and return what the player picked,
@@ -203,6 +178,10 @@ fn start_of(start: &str) -> (Option<PathBuf>, Option<String>) {
     (existing.map(Path::to_path_buf), None)
 }
 
+mod policy;
+
+use policy::{path_rule, PathRule};
+
 /// Refuse a command that names a path the player did not pick, and ask before
 /// one that changes what the game is started through.
 ///
@@ -216,52 +195,38 @@ pub(crate) async fn admit(
     settings: impl FnOnce() -> SettingsState,
     window: &tauri::Window,
 ) -> Result<(), String> {
-    match command {
-        AppCommand::Settings(SettingsCommand::SetGamePath { path }) => {
-            admit_path(picked, path, &settings().game_path)
-        }
-        AppCommand::Settings(SettingsCommand::SetReplayGamePath { path }) => {
-            admit_path(picked, path, &settings().replay_game_path)
-        }
-        AppCommand::Settings(SettingsCommand::PatchPaths { patch }) => {
-            admit_paths(picked, patch, &settings().paths)
-        }
-        // Where the map generator writes: the output and preview folders, and
-        // the raw arguments that replace every other option. The saved
-        // recipe is the "already stored" value, so a folder picked in an
-        // earlier session keeps working.
-        AppCommand::Settings(SettingsCommand::SetMapGenerator { preferences }) => {
-            admit_generator(picked, preferences, &settings().map_generator)
-        }
-        AppCommand::MapGenerator(
-            MapGeneratorCommand::Generate { options }
-            | MapGeneratorCommand::SetOptions { options }
-            | MapGeneratorCommand::Preflight { options },
-        ) => admit_generator(picked, options, &settings().map_generator),
-        AppCommand::Settings(SettingsCommand::PatchGame { patch }) => {
-            match launch_change(patch, &settings().game) {
-                Some(change) => confirm_launch_change(window, change).await,
-                None => Ok(()),
-            }
-        }
-        AppCommand::Replays(ReplayCommand::OpenFile { path }) => {
-            admit_local_replay(picked, path).await
-        }
-        AppCommand::Replays(
-            ReplayCommand::LoadDetails {
-                local_path: Some(path),
-                ..
-            }
-            | ReplayCommand::LoadAnalysis {
-                local_path: Some(path),
-                ..
-            },
-        ) => admit_replay_read(picked, path),
-        AppCommand::Uploads(UploadsCommand::Open { request }) => match &request.source_path {
+    admit_with_confirmation(command, picked, settings, |change| {
+        confirm_launch_change(window, change)
+    })
+    .await
+}
+
+async fn admit_with_confirmation<F, C>(
+    command: &AppCommand,
+    picked: &PickedPaths,
+    settings: impl FnOnce() -> SettingsState,
+    confirm: F,
+) -> Result<(), String>
+where
+    F: FnOnce(LaunchChange) -> C,
+    C: std::future::Future<Output = Result<(), String>>,
+{
+    match path_rule(command) {
+        PathRule::NoSelection => Ok(()),
+        PathRule::GamePath(path) => admit_path(picked, path, &settings().game_path),
+        PathRule::ReplayGamePath(path) => admit_path(picked, path, &settings().replay_game_path),
+        PathRule::Paths(patch) => admit_paths(picked, patch, &settings().paths),
+        PathRule::Generator(options) => admit_generator(picked, options, &settings().map_generator),
+        PathRule::Launch(patch) => match launch_change(patch, &settings().game) {
+            Some(change) => confirm(change).await,
+            None => Ok(()),
+        },
+        PathRule::ReplayFile(path) => admit_local_replay(picked, path).await,
+        PathRule::ReplayRead(path) => admit_replay_read(picked, path),
+        PathRule::Upload(path) => match path {
             Some(path) => picked.require(path),
             None => Ok(()),
         },
-        _ => Ok(()),
     }
 }
 
@@ -330,16 +295,39 @@ fn admit_paths(
     patch: &PathPreferencesPatch,
     current: &PathPreferences,
 ) -> Result<(), String> {
+    // New path fields must be reviewed here, not silently ignored.
+    let PathPreferencesPatch {
+        vault_dir,
+        maps_dir,
+        mods_dir,
+        replays_dir,
+        game_prefs_path,
+        map_generator_dir,
+        java_path,
+        wine_prefix,
+        original_game_dir,
+    } = patch;
+    let PathPreferences {
+        vault_dir: stored_vault_dir,
+        maps_dir: stored_maps_dir,
+        mods_dir: stored_mods_dir,
+        replays_dir: stored_replays_dir,
+        game_prefs_path: stored_game_prefs_path,
+        map_generator_dir: stored_map_generator_dir,
+        java_path: stored_java_path,
+        wine_prefix: stored_wine_prefix,
+        original_game_dir: stored_original_game_dir,
+    } = current;
     let fields = [
-        (&patch.vault_dir, &current.vault_dir),
-        (&patch.maps_dir, &current.maps_dir),
-        (&patch.mods_dir, &current.mods_dir),
-        (&patch.replays_dir, &current.replays_dir),
-        (&patch.game_prefs_path, &current.game_prefs_path),
-        (&patch.map_generator_dir, &current.map_generator_dir),
-        (&patch.java_path, &current.java_path),
-        (&patch.wine_prefix, &current.wine_prefix),
-        (&patch.original_game_dir, &current.original_game_dir),
+        (vault_dir, stored_vault_dir),
+        (maps_dir, stored_maps_dir),
+        (mods_dir, stored_mods_dir),
+        (replays_dir, stored_replays_dir),
+        (game_prefs_path, stored_game_prefs_path),
+        (map_generator_dir, stored_map_generator_dir),
+        (java_path, stored_java_path),
+        (wine_prefix, stored_wine_prefix),
+        (original_game_dir, stored_original_game_dir),
     ];
     for (changed, current) in fields {
         if let Some(path) = changed {
@@ -358,9 +346,42 @@ fn admit_generator(
     options: &GeneratorOptions,
     stored: &GeneratorOptions,
 ) -> Result<(), String> {
-    admit_path(picked, &options.output_path, &stored.output_path)?;
-    admit_path(picked, &options.preview_path, &stored.preview_path)?;
-    match raw_argument_folder_flag(&options.command_line_args) {
+    // A new option must make an explicit path-admission decision too.
+    let GeneratorOptions {
+        version: _,
+        spawn_count: _,
+        num_teams: _,
+        map_size: _,
+        seed: _,
+        generation_type: _,
+        symmetry: _,
+        symmetries: _,
+        style: _,
+        styles: _,
+        terrain_style: _,
+        terrain_styles: _,
+        texture_style: _,
+        texture_styles: _,
+        resource_style: _,
+        resource_styles: _,
+        prop_style: _,
+        prop_styles: _,
+        reclaim_density: _,
+        reclaim_density_min: _,
+        reclaim_density_max: _,
+        resource_density: _,
+        resource_density_min: _,
+        resource_density_max: _,
+        num_to_generate: _,
+        debug: _,
+        visualize: _,
+        preview_path,
+        output_path,
+        command_line_args,
+    } = options;
+    admit_path(picked, output_path, &stored.output_path)?;
+    admit_path(picked, preview_path, &stored.preview_path)?;
+    match raw_argument_folder_flag(command_line_args) {
         Some(flag) => Err(format!(
             "{flag} is not accepted in the raw arguments: choose the output folder with its button"
         )),
@@ -402,14 +423,29 @@ struct LaunchChange {
 /// saved again unchanged, or a stray space, asks nothing. Clearing either one
 /// asks nothing either: it can only take a program out of the launch.
 fn launch_change(patch: &GamePreferencesPatch, current: &GamePreferences) -> Option<LaunchChange> {
-    let wrapper = patch
-        .launch_wrapper
+    let GamePreferencesPatch {
+        additional_arguments,
+        launch_wrapper,
+        auto_generate_maps: _,
+        confirm_downloads_before_joining: _,
+        show_join_progress: _,
+        show_replay_progress: _,
+        cache_lifetime_days: _,
+        cache_size_alert_gb: _,
+        cache_rolling_branches: _,
+        pipe_live_replay: _,
+        keep_generated_maps: _,
+        keep_generated_maps_limit: _,
+        map_generator_instances: _,
+        steam_presence: _,
+        borderless_window: _,
+    } = patch;
+    let wrapper = launch_wrapper
         .as_deref()
         .map(str::trim)
         .filter(|wrapper| !wrapper.is_empty() && *wrapper != current.launch_wrapper.trim())
         .map(str::to_owned);
-    let arguments = patch
-        .additional_arguments
+    let arguments = additional_arguments
         .as_ref()
         .map(|arguments| {
             arguments
@@ -479,6 +515,305 @@ async fn confirm_launch_change(window: &tauri::Window, change: LaunchChange) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use faf_domain::state::{MapGeneratorCommand, ReplayCommand, SettingsCommand, UploadsCommand};
+
+    async fn check(
+        command: &AppCommand,
+        picked: &PickedPaths,
+        settings: SettingsState,
+    ) -> Result<(), String> {
+        admit_with_confirmation(
+            command,
+            picked,
+            || settings,
+            |_| std::future::ready(Err("unexpected launch confirmation".into())),
+        )
+        .await
+    }
+
+    #[test]
+    fn the_path_policy_has_no_default_rest_or_unexamined_command_patterns() {
+        let source = include_str!("picked_paths/policy.rs");
+        let source = source
+            .split_once("pub(super) fn path_rule(")
+            .unwrap()
+            .1
+            .split_once("fn upload_path(")
+            .unwrap()
+            .0;
+        let source: String = source
+            .lines()
+            .map(|line| line.split("//").next().unwrap())
+            .collect::<String>()
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect();
+        assert!(
+            !source.contains("_=>"),
+            "A catch-all would let new commands bypass admission"
+        );
+        assert!(
+            !source.contains(".."),
+            "Rest patterns would silently ignore new payload fields"
+        );
+        for namespace in ["AppCommand::", "TourneyCommand::"] {
+            for command in source.split(namespace).skip(1) {
+                let arguments = command.split_once('(').unwrap().1;
+                assert!(
+                    !arguments.starts_with('_'),
+                    "Every nested command needs a decision: {namespace}{command}"
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn all_generator_execution_and_persistence_commands_admit_the_same_paths() {
+        let options = GeneratorOptions {
+            output_path: "selected-output".into(),
+            preview_path: "selected-preview".into(),
+            ..Default::default()
+        };
+        let commands: Vec<AppCommand> = vec![
+            SettingsCommand::SetMapGenerator {
+                preferences: Box::new(options.clone()),
+            }
+            .into(),
+            MapGeneratorCommand::Generate {
+                options: options.clone(),
+            }
+            .into(),
+            MapGeneratorCommand::SetOptions {
+                options: options.clone(),
+            }
+            .into(),
+            MapGeneratorCommand::Preflight {
+                options: options.clone(),
+            }
+            .into(),
+            MapGeneratorCommand::SavePreset {
+                name: "example".into(),
+                options: options.clone(),
+                request_id: 7,
+            }
+            .into(),
+        ];
+        let picked = PickedPaths::default();
+        for command in &commands {
+            assert_eq!(path_rule(command), PathRule::Generator(&options));
+            assert!(check(command, &picked, SettingsState::default())
+                .await
+                .is_err());
+        }
+        picked.remember(&options.output_path);
+        for command in &commands {
+            assert!(check(command, &picked, SettingsState::default())
+                .await
+                .is_err());
+        }
+        picked.remember(&options.preview_path);
+        for command in &commands {
+            assert!(check(command, &picked, SettingsState::default())
+                .await
+                .is_ok());
+        }
+        let stored = SettingsState {
+            map_generator: options,
+            ..Default::default()
+        };
+        for command in &commands {
+            assert!(check(command, &PickedPaths::default(), stored.clone())
+                .await
+                .is_ok());
+        }
+    }
+
+    #[tokio::test]
+    async fn saving_a_preset_cannot_smuggle_folder_flags_or_argument_files_into_settings() {
+        for arguments in [
+            "--out-\"path\" unpicked",
+            "--folder-path=unpicked",
+            "--PREVIEW-PATH unpicked",
+            "@unpicked-arguments",
+        ] {
+            let command = MapGeneratorCommand::SavePreset {
+                name: "example".into(),
+                options: GeneratorOptions {
+                    command_line_args: arguments.into(),
+                    ..Default::default()
+                },
+                request_id: 0,
+            }
+            .into();
+            assert!(
+                check(&command, &PickedPaths::default(), SettingsState::default())
+                    .await
+                    .is_err(),
+                "{arguments}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn replay_deletion_checks_remote_paths_before_the_backend_can_resolve_them() {
+        let picked = PickedPaths::default();
+        for path in [
+            r"\\unpicked.invalid\share\example.fafreplay",
+            "//unpicked.invalid/share/example.fafreplay",
+            r"\\?\UNC\unpicked.invalid\share\example.fafreplay",
+        ] {
+            let command = ReplayCommand::DeleteLocal { path: path.into() }.into();
+            assert_eq!(path_rule(&command), PathRule::ReplayRead(path));
+            assert_eq!(
+                check(&command, &picked, SettingsState::default())
+                    .await
+                    .is_err(),
+                cfg!(windows)
+            );
+            picked.remember(path);
+            assert!(check(&command, &picked, SettingsState::default())
+                .await
+                .is_ok());
+        }
+        let local = ReplayCommand::DeleteLocal {
+            path: "local-library/example.fafreplay".into(),
+        }
+        .into();
+        // The backend still enforces the canonical replay-library boundary.
+        assert!(check(&local, &picked, SettingsState::default())
+            .await
+            .is_ok());
+    }
+
+    #[tokio::test]
+    async fn upload_sources_still_require_a_pick_and_empty_requests_need_none() {
+        let picked = PickedPaths::default();
+        let request = faf_domain::state::UploadRequest {
+            kind: faf_domain::state::UploadKind::Map,
+            folder_name: "example.v0001".into(),
+            display_name: "Example".into(),
+            ranked: false,
+            source_path: Some("selected-map".into()),
+            rename_to: String::new(),
+        };
+        let command = UploadsCommand::Open {
+            request: request.clone(),
+        }
+        .into();
+        assert!(check(&command, &picked, SettingsState::default())
+            .await
+            .is_err());
+        picked.remember("selected-map");
+        assert!(check(&command, &picked, SettingsState::default())
+            .await
+            .is_ok());
+        let command = UploadsCommand::Open {
+            request: faf_domain::state::UploadRequest {
+                source_path: None,
+                ..request
+            },
+        }
+        .into();
+        assert!(
+            check(&command, &PickedPaths::default(), SettingsState::default())
+                .await
+                .is_ok()
+        );
+    }
+
+    #[tokio::test]
+    async fn launch_changes_still_need_confirmation_and_declining_is_propagated() {
+        let command = SettingsCommand::PatchGame {
+            patch: Box::new(GamePreferencesPatch {
+                launch_wrapper: Some("example-wrapper".into()),
+                additional_arguments: Some(vec!["/nomovie".into()]),
+                ..Default::default()
+            }),
+        }
+        .into();
+        let confirmed = std::cell::Cell::new(false);
+        let result = admit_with_confirmation(
+            &command,
+            &PickedPaths::default(),
+            SettingsState::default,
+            |change| {
+                confirmed.set(true);
+                assert_eq!(change.wrapper.as_deref(), Some("example-wrapper"));
+                assert_eq!(change.arguments, Some(vec!["/nomovie".into()]));
+                std::future::ready(Err("declined".into()))
+            },
+        )
+        .await;
+        assert!(confirmed.get());
+        assert_eq!(result, Err("declined".into()));
+        let reset = SettingsCommand::PatchGame {
+            patch: Box::new(GamePreferencesPatch {
+                launch_wrapper: Some(String::new()),
+                additional_arguments: Some(Vec::new()),
+                ..Default::default()
+            }),
+        }
+        .into();
+        assert!(
+            check(&reset, &PickedPaths::default(), SettingsState::default())
+                .await
+                .is_ok()
+        );
+    }
+
+    #[tokio::test]
+    async fn pure_validation_and_replay_metadata_do_not_trigger_filesystem_admission() {
+        let commands: Vec<AppCommand> = vec![
+            MapGeneratorCommand::Validate {
+                options: GeneratorOptions {
+                    output_path: "unpicked".into(),
+                    ..Default::default()
+                },
+            }
+            .into(),
+            ReplayCommand::CancelReads {
+                uid: 0,
+                local_path: Some("unpicked".into()),
+                request_id: None,
+            }
+            .into(),
+            SettingsCommand::SetReplayNote {
+                replay_id: 0,
+                local_path: Some("unpicked".into()),
+                comment: "Example".into(),
+                tags: Vec::new(),
+            }
+            .into(),
+            faf_domain::state::TrainingCommand::OpenReview {
+                replay_uid: None,
+                local_path: Some("unpicked".into()),
+            }
+            .into(),
+            ReplayCommand::LoadDetails {
+                uid: 7,
+                local_path: None,
+                request_id: None,
+            }
+            .into(),
+            ReplayCommand::LoadAnalysis {
+                uid: 7,
+                local_path: None,
+                request_id: None,
+            }
+            .into(),
+        ];
+        for command in commands {
+            assert_eq!(path_rule(&command), PathRule::NoSelection);
+            assert!(admit_with_confirmation(
+                &command,
+                &PickedPaths::default(),
+                || panic!("metadata needs no settings"),
+                |_| std::future::ready(Err("unexpected confirmation".into()))
+            )
+            .await
+            .is_ok());
+        }
+    }
 
     #[test]
     fn generator_raw_arguments_may_not_name_a_folder() {

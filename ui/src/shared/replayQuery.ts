@@ -1,43 +1,14 @@
 import type { ReplayQuery } from "../ipc/bindings";
+import { INITIAL_STATE } from "../ipc/initialState";
 
-/** Mirrors `ReplayQuery::default`: the shared unfiltered, newest-first query. */
-export const EMPTY_REPLAY_QUERY: ReplayQuery = {
-  player: "",
-  // Mirrors `ReplayQuery::default`: exact, so searching "Deli" does not return
-  // Delio's games. The search form's checkbox widens it again.
-  exactPlayer: true,
-  map: "",
-  mapAuthor: "",
-  title: "",
-  replayId: "",
-  // Never typed: a list fills this to ask about the games it is showing.
-  replayIds: [],
-  host: "",
-  featuredMods: [],
-  leaderboards: [],
-  factions: [],
-  victoryConditions: [],
-  minRating: null,
-  maxRating: null,
-  minReviewScore: null,
-  maxReviewScore: null,
-  minDurationMinutes: null,
-  maxDurationMinutes: null,
-  mapMinPlayers: null,
-  mapMaxPlayers: null,
-  minPlayers: null,
-  maxPlayers: null,
-  mapMinSizeKm: null,
-  mapMaxSizeKm: null,
-  rankedMapOnly: false,
-  after: "",
-  before: "",
-  onlyRanked: false,
-  sortBy: "startTime",
-  sortDescending: true,
-  page: 1,
-  pageSize: 50,
-};
+/**
+ * The shared unfiltered, newest-first query, with an exact player match.
+ *
+ * Read from the generated initial state rather than written out here: the
+ * slice's `vaultQuery` starts as `ReplayQuery::default()`, so a change to that
+ * default reaches the search form with the next `pnpm run bindings`.
+ */
+export const EMPTY_REPLAY_QUERY: ReplayQuery = INITIAL_STATE.replays.vaultQuery;
 
 /**
  * The bound that means "no bound", predating FAF itself.

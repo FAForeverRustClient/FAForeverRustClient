@@ -14,6 +14,7 @@ import { useTranslation } from "../../i18n/useTranslation";
 import { leaderboardLabel } from "../../shared/playerRatings";
 import { useRememberedFilter } from "../../shared/filterMemory";
 import { divisionLabel, isGrandmaster, seasonLabel, tierLabel } from "../../shared/leagueNames";
+import { RecoverableImage } from "../../shared/components/RecoverableImage";
 
 /**
  * Rows the season table draws at a time. The whole season is loaded, so the
@@ -341,7 +342,7 @@ function MyLeagueCard({ entry, placementGames }: { entry: LeaderboardEntry | nul
       <div className="leaderboard-own-card-main">
         <div className="leaderboard-own-badge" aria-hidden={divisionImageUrl ? undefined : true}>
           {divisionImageUrl
-            ? <img className="leaderboard-own-division-icon" src={divisionImageUrl} alt={tier ?? ""} width={80} height={52} decoding="async" onError={(event) => { event.currentTarget.hidden = true; }} />
+            ? <RecoverableImage className="leaderboard-own-division-icon" src={divisionImageUrl} alt={tier ?? ""} width={80} height={52} decoding="async" whenBroken="remove" />
             : <div className="leaderboard-own-placeholder"><Icon name="leaderboard" size={24} /></div>}
         </div>
         <div className="leaderboard-own-body">

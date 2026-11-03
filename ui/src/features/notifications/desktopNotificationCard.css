@@ -1,0 +1,168 @@
+.desktop-notification {
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  position: relative;
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  animation: desktop-notification-in 160ms ease-out;
+}
+
+/* The whole card is the click target, as in the client; only the close
+   button, laid over its top right corner, does something else. */
+.desktop-notification-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: var(--space-3);
+  align-items: start;
+  width: 100%;
+  padding: var(--space-3);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.desktop-notification-main.has-art {
+  grid-template-columns: 40px minmax(0, 1fr);
+}
+
+.desktop-notification-main:hover {
+  background: var(--color-surface-hover);
+}
+
+.desktop-notification-main:focus-visible,
+.desktop-notification-dismiss:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.desktop-notification-art {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.desktop-notification-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/* Only the title line shares its height with the close button; the lines under
+   it pass below the button and use the card's full width. */
+.desktop-notification-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-right: 28px;
+}
+
+.desktop-notification-title strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Where the card comes from, since it sits over other programs. The client's
+   mark, drawn in the text colour rather than its own white so it works on
+   either theme; a card that reports a problem tints it with that status. */
+.desktop-notification-logo {
+  flex: none;
+  width: 21px;
+  height: 11px;
+  background: var(--color-muted);
+  mask: url("/assets/faflogo.svg") center / contain no-repeat;
+}
+
+.desktop-notification.is-server .desktop-notification-logo { background: var(--color-ok); }
+.desktop-notification.is-warning .desktop-notification-logo { background: var(--color-warn); }
+.desktop-notification.is-error .desktop-notification-logo { background: var(--color-error); }
+
+/* The message with its action at the end of the line, where the message keeps
+   a readable width beside it. A label too long for that wraps under the
+   message instead, still at the right. */
+.desktop-notification-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.desktop-notification-message {
+  flex: 1 1 140px;
+  min-width: 0;
+  max-height: 7.5em;
+  /* No scrollbar gutter: a message almost always fits in a few lines, and a
+     reserved strip would narrow every card for the rare one that does not. */
+  overflow-y: auto;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.desktop-notification-action {
+  flex: none;
+  margin-left: auto;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.desktop-notification-main:hover .desktop-notification-action {
+  border-color: var(--color-muted);
+}
+
+.desktop-notification-error {
+  color: var(--color-error-text);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.desktop-notification-dismiss {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: grid;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--color-subtle);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  place-items: center;
+}
+
+.desktop-notification-dismiss:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+@keyframes desktop-notification-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desktop-notification {
+    animation: none;
+  }
+}

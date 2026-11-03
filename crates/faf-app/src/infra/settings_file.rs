@@ -6,6 +6,11 @@
 //! nothing (and the caller runs on defaults), a damaged one yields everything
 //! in it that can still be read, and write failures are swallowed (logged to
 //! the dev console).
+//!
+//! Each document carries a schema version, and the steps that bring an older
+//! one up to date are [`MIGRATIONS`]. A save keeps whatever the document it
+//! replaces holds that this build does not read, so a move to an older build
+//! and back costs nothing the older build left alone.
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -182,13 +187,23 @@ fn salvage(bytes: &[u8]) -> (Option<SettingsState>, Vec<String>) {
         Ok(stored) if stored.is_object() => stored,
         _ => return (None, vec!["".into()]),
     };
-    let Ok(mut accepted) = serde_json::to_value(SettingsState::default()) else {
-        return (None, vec!["".into()]);
-    };
+    match salvaged(&migrated(stored)) {
+        Some((accepted, dropped)) => (
+            Some(serde_json::from_value(accepted).unwrap_or_default()),
+            dropped,
+        ),
+        None => (None, vec!["".into()]),
+    }
+}
+
+/// What [`salvage`] keeps of a migrated document, as a document: the defaults
+/// with every stored value adopted that still parses, and the pointers of the
+/// values that did not.
+fn salvaged(stored: &Value) -> Option<(Value, Vec<String>)> {
+    let mut accepted = serde_json::to_value(SettingsState::default()).ok()?;
     let mut dropped = Vec::new();
-    adopt(&mut accepted, "", &migrated(stored), &mut dropped);
-    let settings = serde_json::from_value(accepted).unwrap_or_default();
-    (Some(settings), dropped)
+    adopt(&mut accepted, "", stored, &mut dropped);
+    Some((accepted, dropped))
 }
 
 fn adopt(accepted: &mut Value, pointer: &str, stored: &Value, dropped: &mut Vec<String>) {
@@ -212,7 +227,7 @@ fn adopt(accepted: &mut Value, pointer: &str, stored: &Value, dropped: &mut Vec<
     }
 }
 
-/// Read a settings document, migrating renamed values on the way in.
+/// Read a settings document, migrating it on the way in.
 ///
 /// The migration step is not a nicety. A value that fails to parse is only
 /// salvaged around ([`read_document`]): the value itself is lost, and a
@@ -223,13 +238,80 @@ fn parse(bytes: &[u8]) -> Result<SettingsState, serde_json::Error> {
     serde_json::from_value(migrated(document))
 }
 
-/// Rewrite values whose spelling changed between client versions.
-fn migrated(mut document: serde_json::Value) -> serde_json::Value {
-    // Two tabs have been renamed so far. `Tab::Tutorials` became `Tab::Training`
-    // when the tutorials tab grew into the training hub, and `Tab::Contribution`
-    // became `Tab::Links` when the repository list grew into the link directory.
-    // `general.startPage` is the one place a `Tab` is persisted, so this is the
-    // whole of both renames' migration.
+/// The key a settings document keeps its schema version under.
+///
+/// Not a field of [`SettingsState`]: the version belongs to the file, not to
+/// the state the UI mirrors, so it is taken off on the way in ([`migrated`])
+/// and put back on the way out ([`document_to_write`]), and the IPC contract
+/// never sees it.
+const VERSION_KEY: &str = "schemaVersion";
+
+/// One step in how settings are stored: rewrites a document of one version
+/// into the next.
+type Migration = fn(&mut Value);
+
+/// Every change to how settings are stored that an older document has to be
+/// translated through, oldest first: `MIGRATIONS[n]` takes a version `n`
+/// document to version `n + 1`. A document without a version was written
+/// before there were versions, and is version 0.
+///
+/// Only a change that would otherwise lose a value needs a step here. A new
+/// setting does not, nor does a new group: a missing value reads as its
+/// default. A rename or a move does. Append, never reorder or remove, since a
+/// document's version is how many of these it has already been through.
+///
+/// A step moves a value rather than copying it. Whatever it leaves under the
+/// old name is a key this build does not read, and those are carried over on
+/// every save ([`unread_keys`]).
+const MIGRATIONS: &[Migration] = &[rename_start_pages];
+
+/// The version of a document this build writes: every step in [`MIGRATIONS`]
+/// applied.
+const SCHEMA_VERSION: u64 = MIGRATIONS.len() as u64;
+
+/// The version a stored document was written at.
+///
+/// Missing in a document written before there were versions, which makes it
+/// version 0, the oldest. A version that is not a whole number, which only a
+/// hand edit produces, is read the same way.
+fn stored_version(document: &Value) -> u64 {
+    document
+        .get(VERSION_KEY)
+        .and_then(Value::as_u64)
+        .unwrap_or(0)
+}
+
+/// Bring a stored document up to this build's version, and take the version
+/// off it, since [`SettingsState`] has none.
+///
+/// A document from a newer build than this one has no steps left to run and
+/// is read as it is, as far as this build understands it. Saving it again
+/// keeps its version ([`document_to_write`]): writing this build's lower one
+/// would have the newer build run its own steps a second time, over values
+/// they have already moved.
+fn migrated(document: Value) -> Value {
+    migrated_through(document, MIGRATIONS)
+}
+
+fn migrated_through(mut document: Value, migrations: &[Migration]) -> Value {
+    let version = stored_version(&document);
+    if let Some(members) = document.as_object_mut() {
+        members.remove(VERSION_KEY);
+    }
+    let applied = usize::try_from(version).unwrap_or(usize::MAX);
+    for migration in migrations.iter().skip(applied) {
+        migration(&mut document);
+    }
+    document
+}
+
+/// Version 0 to 1: two tabs renamed.
+fn rename_start_pages(document: &mut Value) {
+    // `Tab::Tutorials` became `Tab::Training` when the tutorials tab grew into
+    // the training hub, and `Tab::Contribution` became `Tab::Links` when the
+    // repository list grew into the link directory. `general.startPage` is the
+    // one place a `Tab` is persisted, so this is the whole of both renames'
+    // migration.
     if let Some(start_page) = document.pointer_mut("/general/startPage") {
         let renamed = match start_page.as_str() {
             Some("tutorials") => Some("training"),
@@ -237,10 +319,126 @@ fn migrated(mut document: serde_json::Value) -> serde_json::Value {
             _ => None,
         };
         if let Some(name) = renamed {
-            *start_page = serde_json::Value::String(name.into());
+            *start_page = Value::String(name.into());
         }
     }
-    document
+}
+
+/// The document to write for `settings`, already serialized, in place of the
+/// stored one, `replaced`.
+///
+/// A newer build may have stored settings this one has no field for, inside
+/// a group or as a group of their own. Reading ignores them, so a document
+/// written from the state alone would delete them, and a player who tries an
+/// older build (the prerelease channel and the development builds make that
+/// an ordinary move) would come back to find the newer build's settings
+/// reset. So every key the stored document has and this build does not read
+/// is written back where it was, and the version stays the stored one when
+/// that is newer than this build's.
+///
+/// Builds older than the first to do this still drop both.
+fn document_to_write(mut settings: Value, replaced: Option<&[u8]>) -> Value {
+    let (version, unread) = replaced.map(unread_part).unwrap_or_default();
+    for (path, value) in unread {
+        let Some((key, parent)) = path.split_last() else {
+            continue;
+        };
+        // A group, or a map entry, that is gone from the settings takes what
+        // was unread in it along: carried over on its own, an entry the
+        // player removed would come back.
+        if let Some(Value::Object(parent)) = member_mut(&mut settings, parent) {
+            parent.entry(key.clone()).or_insert(value);
+        }
+    }
+    if let Value::Object(members) = &mut settings {
+        members.insert(VERSION_KEY.into(), SCHEMA_VERSION.max(version).into());
+    }
+    settings
+}
+
+/// A stored document's version, and every key in it this build does not
+/// read, by its path, with its value.
+///
+/// A document that does not parse is looked at as far as it is salvaged
+/// ([`salvaged`]): a value this build could not read is lost to the save, as
+/// it is to the load, but an unknown key beside it is not.
+fn unread_part(stored: &[u8]) -> (u64, Vec<(Vec<String>, Value)>) {
+    let Ok(document) = serde_json::from_slice::<Value>(stored) else {
+        return (0, Vec::new());
+    };
+    let version = stored_version(&document);
+    let document = migrated(document);
+    let readable = match serde_json::from_value::<SettingsState>(document.clone()) {
+        Ok(settings) => Some((document, settings)),
+        Err(_) => salvaged(&document).and_then(|(accepted, _)| {
+            let settings = serde_json::from_value(accepted.clone()).ok()?;
+            Some((accepted, settings))
+        }),
+    };
+    match readable {
+        Some((document, settings)) => (version, unread_keys(&document, &settings)),
+        None => (version, Vec::new()),
+    }
+}
+
+/// Every key in `document` that this build does not read, by its path, with
+/// its value. `settings` is what this build reads from `document`.
+///
+/// A key is unread when what the settings serialize to has no key there, and
+/// taking it out of the document changes nothing about the settings read
+/// from it. The first half finds it. The second keeps out a key this build
+/// reads without writing it back, such as a value it translates from an
+/// older spelling, which carried over would be read again on every load, and
+/// a map entry this build would spell differently.
+///
+/// Arrays are not looked into: once a list has changed, nothing says which
+/// of its elements an unread key belonged to.
+fn unread_keys(document: &Value, settings: &SettingsState) -> Vec<(Vec<String>, Value)> {
+    let Ok(written) = serde_json::to_value(settings) else {
+        return Vec::new();
+    };
+    let mut unread = Vec::new();
+    let mut groups = vec![Vec::<String>::new()];
+    while let Some(group) = groups.pop() {
+        let (Some(Value::Object(stored_members)), Some(Value::Object(written_members))) =
+            (member(document, &group), member(&written, &group))
+        else {
+            continue;
+        };
+        for (key, value) in stored_members {
+            let mut path = group.clone();
+            path.push(key.clone());
+            match written_members.get(key) {
+                Some(Value::Object(_)) if value.is_object() => groups.push(path),
+                Some(_) => {}
+                None if reads_the_same_without(document, &path, settings) => {
+                    unread.push((path, value.clone()));
+                }
+                None => {}
+            }
+        }
+    }
+    unread
+}
+
+/// Whether `document` without the key at `path` still reads as `settings`.
+fn reads_the_same_without(document: &Value, path: &[String], settings: &SettingsState) -> bool {
+    let Some((key, parent)) = path.split_last() else {
+        return false;
+    };
+    let mut without = document.clone();
+    if let Some(Value::Object(members)) = member_mut(&mut without, parent) {
+        members.remove(key);
+    }
+    serde_json::from_value::<SettingsState>(without).is_ok_and(|read| read == *settings)
+}
+
+fn member<'a>(value: &'a Value, path: &[String]) -> Option<&'a Value> {
+    path.iter().try_fold(value, |value, key| value.get(key))
+}
+
+fn member_mut<'a>(value: &'a mut Value, path: &[String]) -> Option<&'a mut Value> {
+    path.iter().try_fold(value, |value, key| value.get_mut(key))
 }
 
 #[async_trait]
@@ -306,18 +504,29 @@ impl SettingsPort for FileSettings {
         // player's settings. Whatever path produced it, it is never what the
         // player asked for, so it is not written, and the caller hears that
         // nothing was saved.
+        let on_disk = tokio::fs::read(&self.path).await;
         if is_pristine(settings)
-            && tokio::fs::read(&self.path)
-                .await
-                .is_ok_and(|bytes| parse(&bytes).is_ok_and(|stored| !is_pristine(&stored)))
+            && on_disk
+                .as_ref()
+                .is_ok_and(|bytes| parse(bytes).is_ok_and(|stored| !is_pristine(&stored)))
         {
             return Err(format!(
                 "not replacing the configured settings in {} with defaults",
                 self.path.display()
             ));
         }
-        let bytes = serde_json::to_vec_pretty(settings)
+        let serialized = serde_json::to_value(settings)
             .map_err(|error| format!("could not serialize settings: {error}"))?;
+        // What this save replaces, for what it holds that this build does not
+        // read (`document_to_write`). A missing file was answered from the
+        // last good copy at load, so that copy is what is being replaced then.
+        let replaced = match on_disk {
+            Ok(bytes) => Some(bytes),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                tokio::fs::read(last_good_path(&self.path)).await.ok()
+            }
+            Err(_) => None,
+        };
         let parent = parent_directory(&self.path);
         tokio::fs::create_dir_all(parent).await.map_err(|error| {
             format!(
@@ -327,9 +536,15 @@ impl SettingsPort for FileSettings {
         })?;
 
         let path = self.path.clone();
-        match tokio::task::spawn_blocking(move || write_atomically(&path, &bytes)).await {
-            Ok(Ok(())) => Ok(()),
-            Ok(Err(error)) => Err(format!("could not write {}: {error}", self.path.display())),
+        let write = tokio::task::spawn_blocking(move || {
+            let document = document_to_write(serialized, replaced.as_deref());
+            let bytes = serde_json::to_vec_pretty(&document)
+                .map_err(|error| format!("could not serialize settings: {error}"))?;
+            write_atomically(&path, &bytes)
+                .map_err(|error| format!("could not write {}: {error}", path.display()))
+        });
+        match write.await {
+            Ok(result) => result,
             Err(error) => Err(format!("the settings writer task failed: {error}")),
         }
     }
@@ -435,6 +650,241 @@ mod tests {
         let document =
             migrated(serde_json::from_str(r#"{"general":{"startPage":"somethingElse"}}"#).unwrap());
         assert!(serde_json::from_value::<SettingsState>(document).is_err());
+    }
+
+    /// Each step runs once, in order, starting from the version the document
+    /// was written at; a document from a newer build has none left to run.
+    #[test]
+    fn migrations_run_in_order_from_the_stored_version() {
+        fn record(document: &mut Value, step: u64) {
+            document
+                .as_object_mut()
+                .expect("a settings object")
+                .entry("applied")
+                .or_insert_with(|| Value::Array(Vec::new()))
+                .as_array_mut()
+                .expect("the steps applied so far")
+                .push(step.into());
+        }
+        let steps: [Migration; 3] = [
+            |document| record(document, 0),
+            |document| record(document, 1),
+            |document| record(document, 2),
+        ];
+        let applied = |stored: &str| {
+            let document = migrated_through(serde_json::from_str(stored).unwrap(), &steps);
+            assert!(
+                document.get(VERSION_KEY).is_none(),
+                "the version is the file's, not the state's"
+            );
+            document["applied"].clone()
+        };
+
+        assert_eq!(applied("{}"), serde_json::json!([0, 1, 2]));
+        assert_eq!(
+            applied(r#"{"schemaVersion":0}"#),
+            serde_json::json!([0, 1, 2])
+        );
+        assert_eq!(applied(r#"{"schemaVersion":1}"#), serde_json::json!([1, 2]));
+        assert_eq!(applied(r#"{"schemaVersion":3}"#), Value::Null);
+        assert_eq!(applied(r#"{"schemaVersion":9}"#), Value::Null);
+        assert_eq!(
+            applied(r#"{"schemaVersion":"1"}"#),
+            serde_json::json!([0, 1, 2]),
+            "a version that is not a number is no version"
+        );
+    }
+
+    fn stored_document(path: &Path) -> Value {
+        serde_json::from_slice(&std::fs::read(path).expect("read the settings file"))
+            .expect("the settings file is JSON")
+    }
+
+    #[tokio::test]
+    async fn a_file_without_a_version_is_saved_migrated_and_at_this_version() {
+        let dir = tempfile::tempdir().expect("temporary settings directory");
+        let path = dir.path().join("settings.json");
+        std::fs::write(
+            &path,
+            br#"{"theme":"pythonClient","general":{"startPage":"tutorials"}}"#,
+        )
+        .expect("seed a settings file from before there were versions");
+        let store = FileSettings::at(&path);
+
+        let loaded = store.load().await.expect("an older file is still found");
+        store.save(&loaded).await.expect("save it again");
+
+        let stored = stored_document(&path);
+        assert_eq!(stored[VERSION_KEY], SCHEMA_VERSION);
+        assert_eq!(stored["general"]["startPage"], "training");
+        assert_eq!(stored["theme"], "pythonClient");
+    }
+
+    /// The reset a player moving between builds would see: settings a newer
+    /// build added, deleted by the first save of an older one.
+    #[tokio::test]
+    async fn keys_a_newer_build_added_survive_a_read_and_a_save() {
+        let dir = tempfile::tempdir().expect("temporary settings directory");
+        let path = dir.path().join("settings.json");
+        std::fs::write(
+            &path,
+            br##"{
+                "schemaVersion": 1,
+                "theme": "pythonClient",
+                "aNewerGroup": { "list": [1, 2], "on": true },
+                "general": { "autoLogin": false, "aNewerSwitch": true },
+                "chat": { "nameColors": { "aNewerColour": "#123456" } }
+            }"##,
+        )
+        .expect("seed a file a newer build wrote");
+        let store = FileSettings::at(&path);
+
+        let mut settings = store.load().await.expect("the file is read");
+        settings.theme = Theme::JavaClient;
+        store.save(&settings).await.expect("save a change");
+        // And again, from what that save wrote.
+        let settings = store.load().await.expect("the saved file is read");
+        store.save(&settings).await.expect("save once more");
+
+        let stored = stored_document(&path);
+        assert_eq!(stored["theme"], "javaClient", "the change is saved");
+        assert_eq!(stored["general"]["autoLogin"], false);
+        assert_eq!(
+            stored["aNewerGroup"],
+            serde_json::json!({ "list": [1, 2], "on": true })
+        );
+        assert_eq!(stored["general"]["aNewerSwitch"], true);
+        assert_eq!(stored["chat"]["nameColors"]["aNewerColour"], "#123456");
+    }
+
+    #[tokio::test]
+    async fn a_file_from_a_newer_build_keeps_its_version() {
+        let dir = tempfile::tempdir().expect("temporary settings directory");
+        let path = dir.path().join("settings.json");
+        let newer = SCHEMA_VERSION + 3;
+        std::fs::write(
+            &path,
+            format!(r#"{{"schemaVersion":{newer},"theme":"pythonClient"}}"#),
+        )
+        .expect("seed a file a newer build wrote");
+        let store = FileSettings::at(&path);
+
+        let loaded = store.load().await.expect("the file is read");
+        assert_eq!(
+            loaded.theme,
+            Theme::PythonClient,
+            "as far as it is understood"
+        );
+        store.save(&loaded).await.expect("save it again");
+
+        assert_eq!(stored_document(&path)[VERSION_KEY], newer);
+    }
+
+    /// A map's entries are the player's, not a newer build's: one they
+    /// removed is not carried over as if this build had not read it.
+    #[tokio::test]
+    async fn a_removed_map_entry_stays_removed() {
+        let dir = tempfile::tempdir().expect("temporary settings directory");
+        let path = dir.path().join("settings.json");
+        std::fs::write(
+            &path,
+            br##"{
+                "schemaVersion": 1,
+                "theme": "pythonClient",
+                "chat": {
+                    "nameColors": { "players": { "Aurora": "#ff0000" } },
+                    "readMarkers": { "#aeolus": "2026-01-01T00:00:00Z" }
+                }
+            }"##,
+        )
+        .expect("seed a file with map entries");
+        let store = FileSettings::at(&path);
+
+        let mut settings = store.load().await.expect("the file is read");
+        assert_eq!(settings.chat.name_colors.players.len(), 1);
+        settings.chat.name_colors.players.clear();
+        settings.chat.read_markers.clear();
+        store.save(&settings).await.expect("save the removal");
+
+        let stored = stored_document(&path);
+        assert_eq!(
+            stored["chat"]["nameColors"]["players"],
+            serde_json::json!({})
+        );
+        assert_eq!(stored["chat"]["readMarkers"], serde_json::json!({}));
+    }
+
+    /// No setting is read today without being written back under the same
+    /// name, so this is the check alone: a key that changes what is read is
+    /// never counted as unread, whatever the settings serialize to.
+    #[test]
+    fn a_key_that_changes_what_is_read_is_not_unread() {
+        let document = serde_json::json!({ "theme": "pythonClient", "aNewerKey": 1 });
+        let settings: SettingsState =
+            serde_json::from_value(document.clone()).expect("the document parses");
+        assert!(!reads_the_same_without(
+            &document,
+            &["theme".into()],
+            &settings
+        ));
+        assert!(reads_the_same_without(
+            &document,
+            &["aNewerKey".into()],
+            &settings
+        ));
+    }
+
+    #[tokio::test]
+    async fn unread_keys_survive_beside_a_value_that_could_not_be_read() {
+        let dir = tempfile::tempdir().expect("temporary settings directory");
+        let path = dir.path().join("settings.json");
+        std::fs::write(
+            &path,
+            br#"{
+                "theme": "pythonClient",
+                "aNewerGroup": 1,
+                "general": { "startPage": "somethingElse", "aNewerSwitch": true }
+            }"#,
+        )
+        .expect("seed a partly unreadable file");
+        let store = FileSettings::at(&path);
+
+        let loaded = store.load().await.expect("a partly readable file is read");
+        store.save(&loaded).await.expect("save it again");
+
+        let stored = stored_document(&path);
+        assert_eq!(stored["theme"], "pythonClient");
+        assert_eq!(stored["aNewerGroup"], 1);
+        assert_eq!(stored["general"]["aNewerSwitch"], true);
+        assert_eq!(
+            stored["general"]["startPage"], "news",
+            "the value that could not be read is not"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_file_restored_from_the_last_good_copy_keeps_its_unread_keys() {
+        let dir = tempfile::tempdir().expect("temporary settings directory");
+        let path = dir.path().join("settings.json");
+        std::fs::write(
+            &path,
+            br#"{"schemaVersion":1,"theme":"pythonClient","aNewerGroup":{"on":true}}"#,
+        )
+        .expect("seed a file a newer build wrote");
+        let store = FileSettings::at(&path);
+        store.load().await.expect("a clean read keeps the copy");
+        std::fs::remove_file(&path).expect("lose the settings file");
+
+        let restored = store.load().await.expect("restored from the copy");
+        store
+            .save(&restored)
+            .await
+            .expect("save the restored settings");
+
+        assert_eq!(
+            stored_document(&path)["aNewerGroup"],
+            serde_json::json!({ "on": true })
+        );
     }
 
     fn unreadable_copies(dir: &Path) -> Vec<Vec<u8>> {

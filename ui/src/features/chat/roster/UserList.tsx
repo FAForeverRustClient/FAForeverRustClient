@@ -49,6 +49,7 @@ import { PlayerNoteMark } from "../../../shared/components/PlayerNoteMark";
 import { DEFAULT_ROSTER_VIEW, readRosterView, shapeRoster, showsRating } from "./rosterSort";
 import { RosterViewMenu } from "./RosterViewMenu";
 import { displayedRating } from "../../../shared/playerRatings";
+import { RecoverableImage } from "../../../shared/components/RecoverableImage";
 
 interface Props {
   users: ChatUser[];
@@ -421,7 +422,7 @@ const RosterRow = memo(function RosterRow({
             ) : null}
           </span>
           {profile?.country ? (
-            <img
+            <RecoverableImage
               className="chat-flag"
               src={flagSrc(profile.country)}
               alt={countryOf(profile.country)}
@@ -430,9 +431,6 @@ const RosterRow = memo(function RosterRow({
               height={16}
               decoding="async"
               draggable={false}
-              onError={(e) => {
-                e.currentTarget.style.visibility = "hidden";
-              }}
             />
           ) : null}
           <span

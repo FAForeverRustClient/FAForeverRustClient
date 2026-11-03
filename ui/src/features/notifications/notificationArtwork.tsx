@@ -1,5 +1,6 @@
 import type { AppState, ClientNotification } from "../../ipc/bindings";
 import { mapPresentation } from "../../shared/mapPresentation";
+import { RecoverableImage } from "../../shared/components/RecoverableImage";
 
 /** Use the same already-announced avatar/map artwork as the regular lists. */
 export function notificationArtwork(item: ClientNotification, state: AppState): string | null {
@@ -21,6 +22,6 @@ export function notificationArtwork(item: ClientNotification, state: AppState): 
 }
 
 export function NotificationArtwork({ url }: { url: string | null }) {
-  return url ? <img className="notification-artwork" src={url} alt="" decoding="async" draggable={false}
-    onError={(event) => { event.currentTarget.hidden = true; }} /> : null;
+  return url ? <RecoverableImage className="notification-artwork" src={url} alt="" decoding="async" draggable={false}
+    whenBroken="remove" /> : null;
 }

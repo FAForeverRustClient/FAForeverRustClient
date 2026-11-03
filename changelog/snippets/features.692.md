@@ -1,0 +1,1 @@
+- The hint for Settings, Cache, "Cache development branches" now says turning it off deletes no stored build.

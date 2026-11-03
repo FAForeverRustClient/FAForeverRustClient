@@ -17,6 +17,7 @@ import type {
   BracketSide,
   ChatRoom,
   Competition,
+  DraftRejection,
   FfaReport,
   MapDraft,
   MapPool,
@@ -45,18 +46,9 @@ import type {
   VaultMap,
 } from "../../ipc/bindings";
 
-/**
- * Why the server would refuse a draft.
- *
- * Spelled out rather than imported: `DraftRejection` never reaches `AppState`,
- * so specta does not put it in the generated bindings.
- */
-export type DraftRejection =
-  | "nameRequired"
-  | "teamSizeOutOfRange"
-  | "ratingRangeInverted"
-  | "ratingGateWithoutRating"
-  | "signupWindowInverted";
+// Why the server would refuse a draft, as the rule below returns it. Generated
+// though it never reaches `AppState`: `faf-ipc` registers it by name.
+export type { DraftRejection };
 
 /**
  * Twin of `TourneyDraft::rejection`: the reasons the server would refuse.
