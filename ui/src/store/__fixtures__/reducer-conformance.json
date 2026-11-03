@@ -82242,6 +82242,7 @@
               "payload": {
                 "append": false,
                 "query": {
+                  "latestGames": null,
                   "leaderboard": "global",
                   "leaderboardId": 1,
                   "page": 1,
@@ -82264,6 +82265,7 @@
             "historyMaximum": null,
             "historyPage": 0,
             "historyQuery": {
+              "latestGames": null,
               "leaderboard": "global",
               "leaderboardId": 1,
               "page": 1,
@@ -82323,6 +82325,7 @@
                   "totalPages": 2
                 },
                 "query": {
+                  "latestGames": null,
                   "leaderboard": "global",
                   "leaderboardId": 1,
                   "page": 1,
@@ -82363,6 +82366,7 @@
             },
             "historyPage": 1,
             "historyQuery": {
+              "latestGames": null,
               "leaderboard": "global",
               "leaderboardId": 1,
               "page": 1,
@@ -82392,6 +82396,7 @@
               "payload": {
                 "append": true,
                 "query": {
+                  "latestGames": null,
                   "leaderboard": "global",
                   "leaderboardId": 1,
                   "page": 1,
@@ -82432,6 +82437,7 @@
             },
             "historyPage": 1,
             "historyQuery": {
+              "latestGames": null,
               "leaderboard": "global",
               "leaderboardId": 1,
               "page": 1,
@@ -82480,6 +82486,7 @@
                   "totalPages": 0
                 },
                 "query": {
+                  "latestGames": null,
                   "leaderboard": "global",
                   "leaderboardId": 1,
                   "page": 1,
@@ -82526,6 +82533,7 @@
             },
             "historyPage": 2,
             "historyQuery": {
+              "latestGames": null,
               "leaderboard": "global",
               "leaderboardId": 1,
               "page": 1,
@@ -82555,6 +82563,7 @@
               "payload": {
                 "append": true,
                 "query": {
+                  "latestGames": null,
                   "leaderboard": "global",
                   "leaderboardId": 1,
                   "page": 1,
@@ -82601,6 +82610,7 @@
             },
             "historyPage": 2,
             "historyQuery": {
+              "latestGames": null,
               "leaderboard": "global",
               "leaderboardId": 1,
               "page": 1,
@@ -82668,6 +82678,7 @@
             },
             "historyPage": 2,
             "historyQuery": {
+              "latestGames": null,
               "leaderboard": "global",
               "leaderboardId": 1,
               "page": 1,
@@ -82733,6 +82744,7 @@
               "payload": {
                 "append": false,
                 "query": {
+                  "latestGames": null,
                   "leaderboard": "global",
                   "leaderboardId": 1,
                   "page": 1,
@@ -82755,6 +82767,7 @@
             "historyMaximum": null,
             "historyPage": 0,
             "historyQuery": {
+              "latestGames": null,
               "leaderboard": "global",
               "leaderboardId": 1,
               "page": 1,

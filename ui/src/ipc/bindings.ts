@@ -8498,6 +8498,12 @@ export type RatingHistoryQuery = {
 	period: RatingHistoryPeriod,
 	page: number,
 	pageSize: number,
+	/**
+	 *  Only the newest this many games of the period, or all of it when
+	 *  `None` (#709). The API pages newest first, so the load stops after the
+	 *  pages that hold them instead of reading the whole history to keep 100.
+	 */
+	latestGames?: number | null,
 };
 
 /**  Which FAF rating decides seeding, and whether one is used at all. */

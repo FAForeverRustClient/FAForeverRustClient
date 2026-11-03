@@ -9912,6 +9912,7 @@ fn history_query(player_id: i32) -> RatingHistoryQuery {
         period: RatingHistoryPeriod::All,
         page: 1,
         page_size: 1_000,
+        latest_games: None,
     }
 }
 

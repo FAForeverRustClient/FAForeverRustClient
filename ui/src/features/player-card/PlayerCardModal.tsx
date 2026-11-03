@@ -279,11 +279,13 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
   const [period, setPeriod] = useState<RatingHistoryPeriod>("month");
   const [showMaximum, setShowMaximum] = useState(true);
   // By date or by game (#645). By game the period dropdown becomes a count of
-  // the latest games, which needs the whole history to count back from: the
-  // API can be asked for a stretch of time, not for the last N games.
+  // the latest games. The API pages the history newest first, so "Last 100"
+  // loads the first page and stops (#709): it used to load the whole history
+  // and cut 100 off its end.
   const [axis, setAxis] = useState<HistoryAxis>("date");
   const [gameCount, setGameCount] = useState(100);
   const loadedPeriod: RatingHistoryPeriod = axis === "games" ? "all" : period;
+  const latestGames = axis === "games" && gameCount > 0 ? gameCount : null;
   const playerId = state.profile?.playerId ?? 0;
   const query = (page: number) => ({
     playerId,
@@ -292,6 +294,7 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
     period: loadedPeriod,
     page,
     pageSize: 10_000,
+    latestGames,
   });
   // One command, and it loads every page of the chosen period. The dropdown is
   // the only control over how much history is on screen.
@@ -313,19 +316,24 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
             period: loadedPeriod,
             page: 1,
             pageSize: 10_000,
+            latestGames,
           },
         },
       },
     });
-  }, [loadedPeriod, playerId, rating.leaderboardId, rating.technicalName]);
+  }, [loadedPeriod, latestGames, playerId, rating.leaderboardId, rating.technicalName]);
 
-  // By game, the latest `gameCount` of the whole history, numbered from the
-  // player's first game in this queue.
+  // By game, the latest `gameCount`, numbered from the player's first game in
+  // this queue. Only those are loaded now, so the count to number back from is
+  // the queue's game count, the one the summary below shows, rather than the
+  // length of a history that is no longer all there.
   const shown = useMemo(
-    () => (axis === "games" && gameCount > 0 ? state.history.slice(-gameCount) : state.history),
-    [axis, gameCount, state.history],
+    () => (latestGames !== null ? state.history.slice(-latestGames) : state.history),
+    [latestGames, state.history],
   );
-  const firstGame = state.history.length - shown.length + 1;
+  const firstGame = latestGames !== null
+    ? Math.max(1, rating.gamesPlayed - shown.length + 1)
+    : 1;
 
   const loadedMaximum = useMemo(() => state.history.reduce<number | null>((best, point) => {
     const value = Number(point.rating);

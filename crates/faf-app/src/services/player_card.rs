@@ -77,10 +77,20 @@ pub async fn handle(command: PlayerCardCommand, ctx: &ServiceCtx, out: &EventSin
         PlayerCardCommand::LoadHistory { mut query } => {
             let generation = ctx.player_card.history_generation.begin();
             query.page = query.page.max(1);
-            query.page_size = query.page_size.clamp(100, 10_000);
-            // Every page of the period, in order. `append` is the page number
-            // rather than a flag from the caller: the first page replaces
-            // whatever the last period left behind, and the rest add to it.
+            query.latest_games = query.latest_games.filter(|count| *count > 0);
+            // The newest N games are the first pages, newest first, in pages of
+            // the API's own size: a larger page asked for 10,000 rows to keep
+            // 100 (#709), and a page the server shortens to 100 would leave the
+            // page numbers counting in steps it never takes.
+            query.page_size = match query.latest_games {
+                Some(_) => 100,
+                None => query.page_size.clamp(100, 10_000),
+            };
+            let mut loaded = 0usize;
+            // Every page of the period, in order, or as many as hold the newest
+            // `latest_games`. `append` is the page number rather than a flag
+            // from the caller: the first page replaces whatever the last period
+            // left behind, and the rest add to it.
             loop {
                 if !ctx.player_card.history_generation.is_current(generation) {
                     return;
@@ -97,12 +107,16 @@ pub async fn handle(command: PlayerCardCommand, ctx: &ServiceCtx, out: &EventSin
                 match result {
                     Ok(page) => {
                         let last_page = page.total_pages.max(1);
+                        loaded += page.points.len();
                         out.emit(PlayerCardEvent::HistoryLoaded {
                             query: query.clone(),
                             page,
                             append,
                         });
-                        if query.page >= last_page {
+                        let enough = query
+                            .latest_games
+                            .is_some_and(|count| loaded >= count as usize);
+                        if query.page >= last_page || enough {
                             break;
                         }
                         query.page += 1;
