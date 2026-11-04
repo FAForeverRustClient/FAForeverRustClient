@@ -189,12 +189,12 @@
   border-radius: var(--radius-md);
 }
 
-/* The input inside draws no ring of its own, so the field draws it, solid like
-   the pagination's jump box rather than the faint glow it used to be. */
+/* The input inside draws no ring of its own, so the field draws it: the solid
+   accent border every search field uses, with a soft halo instead of the 2 px
+   white frame it had, which read as heavy on a field clicked into. */
 .settings-search-field:focus-within {
   border-color: var(--color-accent);
-  outline: 2px solid var(--color-accent);
-  outline-offset: -1px;
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
 .settings-search-field input {

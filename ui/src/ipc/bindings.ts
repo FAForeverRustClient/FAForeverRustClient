@@ -6850,6 +6850,13 @@ export type NotificationPreferences = {
 	friendOffline: boolean,
 	friendPlaying: boolean,
 	friendJoinedGame: boolean,
+	/**
+	 *  Whether a friend's game is announced once its live replay can be
+	 *  watched, five minutes after it started. A switch of its own, so somebody
+	 *  can hear that a friend started without being told again later, or the
+	 *  reverse.
+	 */
+	friendReplayReady: boolean,
 	newCustomGames: boolean,
 	newCustomGamesFriendsOnly: boolean,
 	gameFull: boolean,
@@ -6925,6 +6932,7 @@ export type NotificationPreferencesPatch = {
 	friendOffline?: boolean,
 	friendPlaying?: boolean,
 	friendJoinedGame?: boolean,
+	friendReplayReady?: boolean,
 	newCustomGames?: boolean,
 	newCustomGamesFriendsOnly?: boolean,
 	gameFull?: boolean,

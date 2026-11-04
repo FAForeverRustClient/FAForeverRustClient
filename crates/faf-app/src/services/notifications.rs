@@ -20,6 +20,20 @@ pub async fn handle(cmd: NotificationCommand, _ctx: &ServiceCtx, out: &EventSink
     }
 }
 
+/// Whether a notification already offers to watch this live game.
+///
+/// A friend's game is announced when its live replay can be watched, and a
+/// "tell me when ready" the player asked for on the same game ends at the same
+/// second, in either order. Whichever finishes second leaves it to the first.
+pub(crate) fn announces_watch(state: &faf_domain::AppState, game_id: i32) -> bool {
+    state.notifications.items.iter().any(|item| {
+        matches!(
+            &item.action,
+            Some(NotificationAction::WatchLive { target }) if target.uid == game_id
+        )
+    })
+}
+
 pub fn add(
     out: &EventSink,
     kind: NotificationKind,

@@ -551,6 +551,12 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             out.emit(ReplayEvent::LiveTrackingCleared);
 
             match action {
+                // A friend's game may have been announced as watchable at this
+                // very second; one offer to watch it is enough.
+                LiveReplayTrackingAction::Notify
+                    if out.with_state(|state| {
+                        notifications::announces_watch(state, tracking.target.uid)
+                    }) => {}
                 LiveReplayTrackingAction::Notify => notifications::add_text(
                     out,
                     NotificationKind::ReplayAvailable,

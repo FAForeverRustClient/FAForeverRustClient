@@ -779,7 +779,7 @@ button.player-avatar-tile:disabled {
 
 .player-card-lookup-field:focus-within {
   border-color: var(--color-accent);
-  outline: 2px solid var(--color-accent-glow);
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
 .player-card-lookup-icon {
