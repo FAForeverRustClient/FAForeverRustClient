@@ -250,6 +250,17 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   place-items: center;
+  /* On hover or keyboard focus only, like the desktop card's: always shown, it
+     sat above the action and read as the thing to do with the entry. */
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.notification-item:hover .notification-dismiss,
+.notification-item:focus-within .notification-dismiss,
+.notification-toast:hover .notification-dismiss,
+.notification-toast:focus-within .notification-dismiss {
+  opacity: 1;
 }
 
 .notification-dismiss:hover {

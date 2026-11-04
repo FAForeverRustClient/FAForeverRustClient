@@ -153,6 +153,17 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   place-items: center;
+  /* Shown while the pointer is on the card or the keyboard is in it, as the
+     system's own notifications do. Always there, it sat in the corner above
+     the action and drew the eye away from it, as if closing were the thing to
+     do with the card. */
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.desktop-notification:hover .desktop-notification-dismiss,
+.desktop-notification:focus-within .desktop-notification-dismiss {
+  opacity: 1;
 }
 
 .desktop-notification-dismiss:hover {
@@ -170,5 +181,9 @@
 @media (prefers-reduced-motion: reduce) {
   .desktop-notification {
     animation: none;
+  }
+
+  .desktop-notification-dismiss {
+    transition: none;
   }
 }
