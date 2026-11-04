@@ -1,0 +1,2 @@
+- Queued desktop popups respect changes to which events may appear on the desktop.
+- All notification history entries remain reachable in short windows.
