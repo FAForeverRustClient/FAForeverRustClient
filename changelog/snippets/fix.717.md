@@ -1,0 +1,2 @@
+- A game's card shows its time to the second and counts up while open.
+- Clicking into a field shows a thin accent edge instead of a heavy white frame.
