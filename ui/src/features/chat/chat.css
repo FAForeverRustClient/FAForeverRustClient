@@ -460,8 +460,7 @@ html.is-resizing-chat-roster * {
 
 .chat-find-field:focus-within {
   border-color: var(--color-accent);
-  outline: 2px solid var(--color-accent);
-  outline-offset: -1px;
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
 .chat-find-field input {
@@ -1234,8 +1233,7 @@ html.is-resizing-chat-roster * {
 
 .chat-roster-search-field:focus-within {
   border-color: var(--color-accent);
-  outline: 2px solid var(--color-accent);
-  outline-offset: -1px;
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
 .chat-roster-search-field input {
