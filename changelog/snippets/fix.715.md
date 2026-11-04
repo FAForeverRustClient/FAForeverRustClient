@@ -1,0 +1,2 @@
+- A friend joining a game is announced with their name as the title and the game as the message.
+- Opening the bell marks every notification read; new entries keep their dot until the panel closes.

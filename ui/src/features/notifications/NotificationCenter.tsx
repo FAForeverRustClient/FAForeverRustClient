@@ -109,6 +109,10 @@ export function NotificationCenter() {
   // rather than reading it once: flipping the switch redraws the cards (#425).
   const use24HourTime = useClockPreference();
   const [open, setOpen] = useState(false);
+  // What was unread when the bell was opened. Opening it marks everything
+  // read, so the count goes, but these keep their dot while the panel is
+  // open: the reader still sees which entries are the new ones.
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set());
   const [gamePreviewId, setGamePreviewId] = useState<number | null>(null);
   const [toastIds, setToastIds] = useState<string[]>([]);
   const processed = useRef(new Set<string>());
@@ -135,6 +139,16 @@ export function NotificationCenter() {
     hideToast(item.id);
     ipc.run(runAction(item, setGamePreviewId));
   }, [hideToast]);
+  const toggleOpen = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const unreadIds = items.filter((item) => !item.read).map((item) => item.id);
+    setFresh(new Set(unreadIds));
+    unreadIds.forEach(markRead);
+    setOpen(true);
+  };
   const clearAll = useCallback(() => {
     setToastIds([]);
     ipc.send({ kind: "Notifications", command: { type: "clear" } });
@@ -230,7 +244,7 @@ export function NotificationCenter() {
         aria-label={unread ? t("notifications.unread", { count: unread }) : t("notifications.title")}
         aria-expanded={open}
         title={t("notifications.title")}
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggleOpen}
       >
         <Icon name="bell" size={16} />
         {unread > 0 && <span className={`notification-badge${items.some((item) => !item.read && item.kind === "error") ? " is-error" : items.some((item) => !item.read && ["serverWarning", "gameCacheAlert"].includes(item.kind)) ? " is-warning" : ""}`}>{unread > 99 ? "99+" : unread}</span>}
@@ -250,7 +264,7 @@ export function NotificationCenter() {
             {items.length === 0 ? (
               <p className="notification-empty muted">{t("notifications.empty")}</p>
             ) : items.map((item) => (
-              <NotificationCard key={item.id} item={item} artwork={notificationArtwork(item, useAppStore.getState().state)}
+              <NotificationCard key={item.id} item={fresh.has(item.id) ? { ...item, read: false } : item} artwork={notificationArtwork(item, useAppStore.getState().state)}
                 history use24HourTime={use24HourTime} onActivate={() => handleAction(item)}
                 onDismiss={() => { hideToast(item.id); dismiss(item.id); }}
                 recovery={item.kind === "error" ? <NotificationRecovery item={item} /> : undefined} />

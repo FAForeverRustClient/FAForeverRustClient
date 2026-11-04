@@ -569,14 +569,13 @@ pub(super) fn notify_game_signal(
         GameNotificationSignal::FriendsJoinedGame { logins, game }
             if preferences.friend_joined_game =>
         {
+            // Who joined is the news, so it leads; the game is the message.
+            // "Friend joined a game" over "Alice joined 2v2" said it twice.
             let players = logins.join(", ");
-            let (key, title) = if logins.len() == 1 {
-                ("notifications.msg.friendJoinedGame", "Friend joined a game")
+            let key = if logins.len() == 1 {
+                "notifications.msg.friendJoinedGame"
             } else {
-                (
-                    "notifications.msg.friendsJoinedGame",
-                    "Friends joined a game",
-                )
+                "notifications.msg.friendsJoinedGame"
             };
             notifications::add_text(
                 out,
@@ -584,8 +583,8 @@ pub(super) fn notify_game_signal(
                 notifications::Text::new(key)
                     .with("players", &players)
                     .with("game", &game.title),
-                title,
-                format!("{players} joined {}.", game.title),
+                format!("{players} joined a game"),
+                game.title.clone(),
                 Some(NotificationAction::OpenGame { game_id: game.id }),
             );
         }
