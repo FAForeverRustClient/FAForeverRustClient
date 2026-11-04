@@ -1,2 +1,3 @@
 - A notification's close button appears when you point at the card, so its action stands out.
 - The icons on a game card's Watch live and Join buttons sit level with their labels.
+- Notifications in the bell and in-client toasts show their picture beside the text, with the time level with the title.
