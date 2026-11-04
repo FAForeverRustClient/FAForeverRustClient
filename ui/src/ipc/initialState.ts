@@ -884,6 +884,7 @@ export const INITIAL_STATE: AppState = {
       "friendOffline": true,
       "friendPlaying": true,
       "friendJoinedGame": true,
+      "friendReplayReady": true,
       "newCustomGames": false,
       "newCustomGamesFriendsOnly": true,
       "gameFull": true,

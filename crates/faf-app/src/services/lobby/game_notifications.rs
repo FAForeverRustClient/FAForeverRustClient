@@ -7,9 +7,10 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use faf_domain::state::{
-    Game, MatchmakerQueue, NotificationAction, NotificationKind, NotificationPreferences,
-    PlayerLobbyRating,
+    live_replay_delay_remaining, Game, LiveReplayTarget, MatchmakerQueue, NotificationAction,
+    NotificationKind, NotificationPreferences, PlayerLobbyRating, ReplayLaunch, ReplayStatus,
 };
+use faf_domain::AppState;
 
 use crate::runtime::EventSink;
 use crate::services::notifications;
@@ -453,41 +454,28 @@ impl GameNotificationTracker {
     }
 }
 
-fn format_friends_playing(logins: &[String], game_title: &str) -> (&'static str, String) {
+/// Who started playing, as the title: the names lead and the game is the
+/// message. "Friend started playing" over "Alice started playing 1v1 Gap."
+/// said it twice. Up to three names are listed; more name two and count the
+/// rest.
+fn friends_playing_title(logins: &[String]) -> String {
     match logins {
-        [] => (
-            "Friend started playing",
-            format!("A friend started playing {game_title}."),
-        ),
-        [single] => (
-            "Friend started playing",
-            format!("{single} started playing {game_title}."),
-        ),
-        [first, second] => (
-            "Friends started playing",
-            format!("{first} and {second} started playing {game_title}."),
-        ),
-        [first, second, third] => (
-            "Friends started playing",
-            format!("{first}, {second}, and {third} started playing {game_title}."),
-        ),
+        [] => "A friend started playing".to_owned(),
+        [single] => format!("{single} started playing"),
+        [first, second] => format!("{first} and {second} started playing"),
+        [first, second, third] => format!("{first}, {second}, and {third} started playing"),
+        // Four or more, so at least two others: three are named in full above.
         [first, second, rest @ ..] => {
-            let count = rest.len();
-            let other_friends = if count == 1 {
-                "1 other friend".to_string()
-            } else {
-                format!("{count} other friends")
-            };
-            (
-                "Friends started playing",
-                format!("{first}, {second}, and {other_friends} started playing {game_title}."),
+            format!(
+                "{first}, {second}, and {} other friends started playing",
+                rest.len()
             )
         }
     }
 }
 
-/// The catalog form of `format_friends_playing` (#458): up to three names are
-/// listed, more than that name two and count the rest.
+/// The catalog form of `friends_playing_title` (#458), with the game for the
+/// message.
 fn friends_playing_text(logins: &[String], game_title: &str) -> notifications::Text {
     let text = match logins {
         [] => notifications::Text::new("notifications.msg.friendsPlayingSomeone"),
@@ -548,23 +536,22 @@ pub(super) fn notify_game_signal(
                 NotificationAction::OpenGame { game_id: game.id }
             }),
         ),
-        GameNotificationSignal::FriendsPlaying { logins, game } if preferences.friend_playing => {
-            let (title, message) = format_friends_playing(&logins, &game.title);
-            let text = friends_playing_text(&logins, &game.title);
-            notifications::add_text(
-                out,
-                NotificationKind::FriendPlaying,
-                text,
-                title,
-                message,
-                Some(NotificationAction::WatchLiveWhenReady {
-                    target: faf_domain::state::replays::LiveReplayTarget {
-                        uid: game.id,
-                        mod_name: game.mod_name.clone(),
-                        map: game.map.clone(),
-                    },
-                }),
-            );
+        GameNotificationSignal::FriendsPlaying { logins, game } => {
+            if preferences.friend_playing {
+                notifications::add_text(
+                    out,
+                    NotificationKind::FriendPlaying,
+                    friends_playing_text(&logins, &game.title),
+                    friends_playing_title(&logins),
+                    game.title.clone(),
+                    Some(NotificationAction::WatchLiveWhenReady {
+                        target: live_target(&game),
+                    }),
+                );
+            }
+            if preferences.friend_replay_ready {
+                schedule_friend_replay_ready(out, &game);
+            }
         }
         GameNotificationSignal::FriendsJoinedGame { logins, game }
             if preferences.friend_joined_game =>
@@ -607,6 +594,117 @@ pub(super) fn notify_game_signal(
         }
         _ => {}
     }
+}
+
+fn live_target(game: &Game) -> LiveReplayTarget {
+    LiveReplayTarget {
+        uid: game.id,
+        mod_name: game.mod_name.clone(),
+        map: game.map.clone(),
+    }
+}
+
+/// Announce a friend's game once its live replay can be watched.
+///
+/// The replay server holds a live game back for five minutes, so "started
+/// playing" is too early to watch it, and the Watch it offers can only wait.
+/// This waits for the player instead and says when the stream is there, with a
+/// Watch that starts it at once. Whether to say so is decided when the wait
+/// ends, from the state as it is then: see [`friend_replay_ready`].
+fn schedule_friend_replay_ready(out: &EventSink, game: &Game) {
+    let Some(launched_at) = game.launched_at else {
+        return;
+    };
+    let waiting = live_replay_delay_remaining(Some(launched_at), crate::services::now_seconds());
+    // Already watchable: the started-playing alert's Watch starts it straight
+    // away, and a second alert at the same moment would only repeat it.
+    if waiting == 0 {
+        return;
+    }
+    let out = out.clone();
+    let game_id = game.id;
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(u64::from(waiting))).await;
+        let Some(ready) = out.with_state(|state| friend_replay_ready(state, game_id)) else {
+            return;
+        };
+        let players = ready.logins.join(", ");
+        notifications::add_text(
+            &out,
+            NotificationKind::ReplayAvailable,
+            notifications::Text::new("notifications.msg.friendReplayReady")
+                .with("players", &players)
+                .with("game", &ready.title),
+            format!("Watch {players} live"),
+            ready.title,
+            Some(NotificationAction::WatchLive {
+                target: ready.target,
+            }),
+        );
+    });
+}
+
+#[derive(Debug, PartialEq)]
+struct FriendReplayReady {
+    logins: Vec<String>,
+    title: String,
+    target: LiveReplayTarget,
+}
+
+/// What to announce when the wait for `game_id` ends, if anything.
+///
+/// Nothing when the switch was turned off in the meantime, the game has ended
+/// (or the lobby went away with it), no friend is left in it, it is the
+/// player's own game, or the player already has it: asked to be told or to
+/// have it started when ready, which announces itself, or is opening or
+/// watching it.
+fn friend_replay_ready(state: &AppState, game_id: i32) -> Option<FriendReplayReady> {
+    if !state.settings.notifications.friend_replay_ready {
+        return None;
+    }
+    let game = state
+        .lobby
+        .live_games
+        .iter()
+        .find(|game| game.id == game_id)?;
+    if state
+        .auth
+        .player
+        .as_ref()
+        .is_some_and(|player| game_has_player(game, &player.name))
+    {
+        return None;
+    }
+    let replays = &state.replays;
+    let has_it = replays
+        .live_tracking
+        .as_ref()
+        .is_some_and(|tracking| tracking.target.uid == game_id)
+        || match &replays.status {
+            ReplayStatus::Connecting {
+                launch: ReplayLaunch::Live { target },
+            } => target.uid == game_id,
+            ReplayStatus::Playing { uid } => *uid == Some(game_id),
+            _ => false,
+        }
+        || notifications::announces_watch(state, game_id);
+    if has_it {
+        return None;
+    }
+    let mut logins = Vec::new();
+    for login in participants(game) {
+        if contains_name(&state.social.friends, login) && !contains_name(&logins, login) {
+            logins.push(login.to_owned());
+        }
+    }
+    if logins.is_empty() {
+        return None;
+    }
+    Some(FriendReplayReady {
+        logins,
+        title: game.title.clone(),
+        target: live_target(game),
+    })
 }
 
 fn indexed_games(games: &[Game]) -> HashMap<i32, Game> {
@@ -1060,35 +1158,130 @@ mod tests {
         assert_eq!(logins, &["Friend1", "Friend2", "Friend3"]);
     }
 
+    /// A live game of friends "Alice" and "Bob" with a stranger, watched by "Me".
+    fn replay_state() -> AppState {
+        let mut state = AppState::default();
+        state.social.friends = vec!["Alice".into(), "Bob".into()];
+        state.auth.player = Some(faf_domain::state::Player {
+            id: 1,
+            name: "Me".into(),
+            roles: Vec::new(),
+        });
+        state.lobby.live_games = vec![game(7, "Alice", &["Alice", "Stranger", "BOB"], 3, 4)];
+        state
+    }
+
     #[test]
-    fn format_friends_playing_messages() {
-        let (title1, msg1) = format_friends_playing(&["Alice".into()], "1.7k+");
-        assert_eq!(title1, "Friend started playing");
-        assert_eq!(msg1, "Alice started playing 1.7k+.");
+    fn a_friends_replay_is_announced_with_the_friends_still_in_it() {
+        let ready = friend_replay_ready(&replay_state(), 7).expect("announced");
+        assert_eq!(ready.logins, ["Alice", "BOB"]);
+        assert_eq!(ready.title, "Game 7");
+        assert_eq!(ready.target.uid, 7);
+    }
 
-        let (title2, msg2) = format_friends_playing(&["Alice".into(), "Bob".into()], "1.7k+");
-        assert_eq!(title2, "Friends started playing");
-        assert_eq!(msg2, "Alice and Bob started playing 1.7k+.");
+    #[test]
+    fn a_friends_replay_is_not_announced_once_it_no_longer_applies() {
+        let quiet = |change: &dyn Fn(&mut AppState)| {
+            let mut state = replay_state();
+            change(&mut state);
+            friend_replay_ready(&state, 7).is_none()
+        };
+        assert!(quiet(
+            &|s| s.settings.notifications.friend_replay_ready = false
+        ));
+        assert!(quiet(&|s| s.lobby.live_games.clear()), "the game ended");
+        assert!(quiet(&|s| s.social.friends.clear()), "no friend left in it");
+        assert!(
+            quiet(&|s| s.lobby.live_games[0]
+                .teams
+                .get_mut("1")
+                .unwrap()
+                .push("me".into())),
+            "the player's own game"
+        );
+        assert!(
+            quiet(&|s| {
+                s.replays.live_tracking = Some(faf_domain::state::LiveReplayTracking {
+                    target: live_target(&s.lobby.live_games[0]),
+                    title: "Game 7".into(),
+                    action: faf_domain::state::LiveReplayTrackingAction::Notify,
+                    ready_at: 0,
+                })
+            }),
+            "already asked to be told"
+        );
+        assert!(
+            quiet(&|s| s.replays.status = ReplayStatus::Playing { uid: Some(7) }),
+            "already watching it"
+        );
+        assert!(
+            quiet(&|s| {
+                s.replays.status = ReplayStatus::Connecting {
+                    launch: ReplayLaunch::Live {
+                        target: live_target(&s.lobby.live_games[0]),
+                    },
+                }
+            }),
+            "already opening it"
+        );
+        assert!(
+            quiet(&|s| {
+                s.notifications
+                    .items
+                    .push(faf_domain::state::ClientNotification {
+                        id: "ready".into(),
+                        kind: NotificationKind::ReplayAvailable,
+                        title: "Live replay ready".into(),
+                        body: String::new(),
+                        created_at: String::new(),
+                        read: true,
+                        action: Some(NotificationAction::WatchLive {
+                            target: live_target(&s.lobby.live_games[0]),
+                        }),
+                        text: None,
+                    })
+            }),
+            "a notification already offers to watch it"
+        );
+        // Another game being watched does not count.
+        assert!(!quiet(
+            &|s| s.replays.status = ReplayStatus::Playing { uid: Some(8) }
+        ));
+    }
 
-        let (title3, msg3) =
-            format_friends_playing(&["Alice".into(), "Bob".into(), "Charlie".into()], "1.7k+");
-        assert_eq!(title3, "Friends started playing");
-        assert_eq!(msg3, "Alice, Bob, and Charlie started playing 1.7k+.");
-
-        let (title5, msg5) = format_friends_playing(
-            &[
+    #[test]
+    fn friends_playing_titles_name_who_started() {
+        assert_eq!(friends_playing_title(&[]), "A friend started playing");
+        assert_eq!(
+            friends_playing_title(&["Alice".into()]),
+            "Alice started playing"
+        );
+        assert_eq!(
+            friends_playing_title(&["Alice".into(), "Bob".into()]),
+            "Alice and Bob started playing"
+        );
+        assert_eq!(
+            friends_playing_title(&["Alice".into(), "Bob".into(), "Charlie".into()]),
+            "Alice, Bob, and Charlie started playing"
+        );
+        assert_eq!(
+            friends_playing_title(&[
+                "Doni-".into(),
+                "Terarii".into(),
+                "VindexNoob".into(),
+                "KnownSniper".into(),
+            ]),
+            "Doni-, Terarii, and 2 other friends started playing"
+        );
+        assert_eq!(
+            friends_playing_title(&[
                 "Doni-".into(),
                 "Terarii".into(),
                 "VindexNoob".into(),
                 "KnownSniper".into(),
                 "Resistance".into(),
-            ],
-            "1.7k+",
-        );
-        assert_eq!(title5, "Friends started playing");
-        assert_eq!(
-            msg5,
-            "Doni-, Terarii, and 3 other friends started playing 1.7k+."
+            ]),
+            "Doni-, Terarii, and 3 other friends started playing"
         );
     }
 
