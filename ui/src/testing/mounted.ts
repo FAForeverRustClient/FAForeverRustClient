@@ -3,8 +3,8 @@
 // top) with the IPC boundary mocked (`vi.mock(".../ipc/client")`).
 //
 // The store is seeded the way the app seeds it, by hydrating a snapshot, and
-// answered the way the backend answers, by applying an event through the same
-// root reducer. After each test the tree is unmounted, the store is put back
+// answered with the window's generated authoritative-update/delta contract.
+// After each test the tree is unmounted, the store is put back
 // to the state it started in and the recorded commands are cleared, so the
 // tests in a file do not see each other.
 //
@@ -14,7 +14,7 @@
 
 import { act, cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
-import type { AppEvent, AppState } from "../ipc/bindings";
+import type { FrontendUpdate, AppState } from "../ipc/bindings";
 import { useAppStore } from "../store/store";
 import { clearSentCommands } from "./sentCommands";
 
@@ -42,10 +42,10 @@ export function seedStore(build: (state: AppState) => AppState): void {
 }
 
 /**
- * Apply one backend event through the root reducer, inside `act` so whatever
+ * Apply one backend window update through the root router, inside `act` so whatever
  * subscribed to the store has redrawn by the time this returns.
  */
-export function applyEvent(event: AppEvent): void {
+export function applyEvent(event: FrontendUpdate): void {
   act(() => {
     useAppStore.getState().apply(event);
   });

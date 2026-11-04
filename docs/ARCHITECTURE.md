@@ -30,7 +30,7 @@ The entire client is a single, unidirectional data-flow loop. State lives in Rus
 
 1. **State changes only inside a pure reducer**, by applying an `Event`. Nothing else mutates `AppState`.
 2. **Services never mutate state.** They perform side effects (IO) and *emit events*.
-3. **The same `Event` that updates Rust state is serialized to the frontend.** The frontend reducer is a mirror. Both consume the same ordered delta stream; conformance tests check that their hand-written reducers interpret covered scenarios identically (§3.6).
+3. **The window receives revisioned `FrontendUpdate` values captured from Rust.** Smaller slices use authoritative replacements; settings use authoritative preference-group assignments. Explicitly listed data-heavy slices retain compact event deltas, whose frontend reducers are pinned by conformance tests (§3.6).
 4. **Domain decisions belong in Rust.** Tabs select state and dispatch commands; presentation state stays local. Latency-sensitive per-keystroke rules may have frontend twins pinned by conformance fixtures.
 5. **Command results return as events, not as `invoke` return values.** Direct native returns are reserved for snapshots and scoped desktop facilities such as file dialogs, notifications and window focus, centralized in `ui/src/ipc`.
 
@@ -172,7 +172,7 @@ commands in (mpsc) ──▶ Dispatcher routes to Service
                               └─▶ broadcast event to src-tauri ──▶ emit("app://event")
 ```
 
-The reduce step and the frontend-emit step consume the **same event value**, so backend state and frontend store see identical inputs in the same order. That does not make them identical: the frontend applies events with hand-written TypeScript twins of the Rust reducers, and only the conformance fixture (§3.6) checks that the two interpret an event the same way. Variants the fixture baselines as uncovered are unchecked.
+The ordinary backend subscriber stream remains `AppEvent`. For the window, `EventSink::emit` captures an authoritative `FrontendUpdate` under the same state guard as reduction and revision assignment. Reading the slice later in the shell would mislabel newer state with an older revision. Data-heavy slices instead retain their original event, which the shell moves into a compact update without duplicating its payload. `faf-domain/src/frontend.rs` exhaustively decides which path every event uses; adding a state slice or event requires an explicit decision. See [State updates](STATE_UPDATES.md) for the current boundary and payload tradeoffs.
 
 Which commands may run together is declared in one table,
 `faf-app/runtime/command_policy.rs`. For every command it names a lane
@@ -207,7 +207,7 @@ owner's context, so a cross-domain dependency is visible where it is used.
 
 ### 3.6 Frontend mirror
 
-The hand-written immutable event router is `ui/src/store/reducer.ts`, with slice reducers under `ui/src/store/reducers/`. `ui/src/App.tsx` assembles `RevisionedMirror`, connects its hydrate/apply callbacks to `useAppStore`, subscribes through `ipc.onMessage`, and requests the initial snapshot after subscription. `ui/src/ipc/client.ts` owns the single `app://event` listener carrying generated `FrontendMessage` values.
+The immutable update router is `ui/src/store/reducer.ts`. It assigns Rust-produced state for migrated slices and applies preference-group assignments without normalizing them again. Only explicitly retained compact deltas reach slice reducers under `ui/src/store/reducers/`. Rust exports their names as `DELTA_EVENT_KINDS`, and the architecture check rejects replica reducers outside that list. `ui/src/App.tsx` assembles `RevisionedMirror`, connects its hydrate/apply callbacks to `useAppStore`, subscribes through `ipc.onMessage`, and requests the initial snapshot after subscription. `ui/src/ipc/client.ts` owns the single `app://event` listener carrying generated `FrontendMessage` values.
 
 One ordinary delta subscription and one reducer keep the slices mirrored. A separate,
 normally idle snapshot channel repairs the mirror if the bounded backend broadcast
@@ -229,7 +229,7 @@ until a captured live snapshot has been measured at realistic event rates.
 
 The owned exporter in `crates/faf-ipc` uses plain `specta`, `specta-serde` and `specta-typescript`. `cargo run -p faf-ipc --bin export-bindings` writes `ui/src/ipc/bindings.ts` from `AppCommand`, `AppEvent`, `AppState` and registered domain/shell DTOs, including the native bridge and snapshot envelope types. The same export writes `ui/src/ipc/initialState.ts` from `AppState::default()`. CI checks generated output for drift. There is no `tauri-specta` integration.
 
-Type generation does not generate behaviour. Frontend reducers and selected latency-sensitive rule helpers remain hand-written twins, pinned for covered scenarios by Rust-produced conformance fixtures. UI-owned presentation types and local draft state remain hand-written too. An added Rust field updates the generated contract; it does not prove that both implementations handle the new field correctly.
+Type generation does not generate behaviour. The remaining compact-delta reducers and selected latency-sensitive rule helpers are hand-written twins, pinned for covered scenarios by Rust-produced conformance fixtures. Migrated slices instead receive the result of Rust's behavior directly. UI-owned presentation types and local draft state remain hand-written. Conformance scenarios exercise every event variant; generated ordering tests continue to exercise the slices that still have replica reducers.
 
 ---
 

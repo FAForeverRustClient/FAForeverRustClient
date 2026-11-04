@@ -1,4 +1,4 @@
-import type { AppEvent, AppState, FrontendMessage, VersionedSnapshot } from "./bindings";
+import type { FrontendUpdate, AppState, FrontendMessage, VersionedSnapshot } from "./bindings";
 
 /**
  * How long a recovery snapshot has to settle before another one is asked for.
@@ -62,7 +62,7 @@ export function recoveryRetryDelay(failures: number): number {
  */
 export class RevisionedMirror {
   private revision: number | null = null;
-  private pending = new Map<number, AppEvent>();
+  private pending = new Map<number, FrontendUpdate>();
   /** The newest revision dropped from `pending` unapplied, if any was. */
   private lostThrough: number | null = null;
   private recoveryInFlight = false;
@@ -73,7 +73,7 @@ export class RevisionedMirror {
 
   constructor(
     private readonly hydrate: (state: AppState) => void,
-    private readonly apply: (event: AppEvent) => void,
+    private readonly apply: (event: FrontendUpdate) => void,
     private readonly resnapshot?: () => Promise<VersionedSnapshot>,
     private readonly onRecoveryError?: (error: unknown) => void,
   ) {}
@@ -136,7 +136,7 @@ export class RevisionedMirror {
    * are waiting they are all let go and remembered only as "lost up to here",
    * which counts as a gap until a snapshot at least that new has landed.
    */
-  private hold(revision: number, event: AppEvent): void {
+  private hold(revision: number, event: FrontendUpdate): void {
     this.pending.set(revision, event);
     if (this.pending.size <= MAX_PENDING_EVENTS) return;
     for (const held of this.pending.keys()) {

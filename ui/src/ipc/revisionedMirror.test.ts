@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AppEvent, AppState } from "./bindings";
+import type { FrontendUpdate, AppState } from "./bindings";
 import {
   MAX_PENDING_EVENTS,
   RECOVERY_MAX_ATTEMPTS,
@@ -7,8 +7,8 @@ import {
   recoveryRetryDelay,
 } from "./revisionedMirror";
 
-const connecting: AppEvent = { kind: "Session", event: { type: "connecting" } };
-const disconnected: AppEvent = { kind: "Session", event: { type: "disconnected" } };
+const connecting: FrontendUpdate = { kind: "Session", event: { status: "connecting", backendVersion: "", offlineAuth: false } };
+const disconnected: FrontendUpdate = { kind: "Session", event: { status: "disconnected", backendVersion: "", offlineAuth: false } };
 const snapshotState = {} as AppState;
 
 describe("RevisionedMirror", () => {
@@ -153,7 +153,7 @@ describe("RevisionedMirror recovery", () => {
   type Answer = { revision: number } | Error;
 
   function harness(answers: Answer[]) {
-    const applied: AppEvent[] = [];
+    const applied: FrontendUpdate[] = [];
     const errors: unknown[] = [];
     const resnapshot = vi.fn(() => {
       const answer = answers.shift() ?? new Error("no scripted answer");

@@ -597,6 +597,24 @@
               "type": "idle"
             },
             "tutorials": []
+          },
+          "update": {
+            "event": {
+              "categories": [],
+              "launch": {
+                "payload": {
+                  "detail": "Preparing",
+                  "tutorialId": 7
+                },
+                "type": "preparing"
+              },
+              "selectedId": null,
+              "status": {
+                "type": "idle"
+              },
+              "tutorials": []
+            },
+            "kind": "Tutorials"
           }
         },
         {
@@ -616,6 +634,20 @@
               "type": "idle"
             },
             "tutorials": []
+          },
+          "update": {
+            "event": {
+              "categories": [],
+              "launch": {
+                "type": "idle"
+              },
+              "selectedId": null,
+              "status": {
+                "type": "idle"
+              },
+              "tutorials": []
+            },
+            "kind": "Tutorials"
           }
         }
       ]
@@ -637,6 +669,17 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "announced": [],
+              "available": true,
+              "live": [],
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Streams"
           }
         }
       ]
@@ -658,6 +701,17 @@
             "status": {
               "type": "checking"
             }
+          },
+          "update": {
+            "event": {
+              "announced": [],
+              "available": false,
+              "live": [],
+              "status": {
+                "type": "checking"
+              }
+            },
+            "kind": "Streams"
           }
         },
         {
@@ -699,6 +753,28 @@
             "status": {
               "type": "ready"
             }
+          },
+          "update": {
+            "event": {
+              "announced": [],
+              "available": false,
+              "live": [
+                {
+                  "channel": "faflive",
+                  "displayName": "FAFLive",
+                  "id": "twitch:1",
+                  "platform": "twitch",
+                  "startedAt": "2026-09-11T18:02:00Z",
+                  "title": "Setons Summer Slam: Grand Final",
+                  "url": "https://www.twitch.tv/faflive",
+                  "viewers": 412
+                }
+              ],
+              "status": {
+                "type": "ready"
+              }
+            },
+            "kind": "Streams"
           }
         },
         {
@@ -733,6 +809,30 @@
             "status": {
               "type": "ready"
             }
+          },
+          "update": {
+            "event": {
+              "announced": [
+                "twitch:1"
+              ],
+              "available": false,
+              "live": [
+                {
+                  "channel": "faflive",
+                  "displayName": "FAFLive",
+                  "id": "twitch:1",
+                  "platform": "twitch",
+                  "startedAt": "2026-09-11T18:02:00Z",
+                  "title": "Setons Summer Slam: Grand Final",
+                  "url": "https://www.twitch.tv/faflive",
+                  "viewers": 412
+                }
+              ],
+              "status": {
+                "type": "ready"
+              }
+            },
+            "kind": "Streams"
           }
         },
         {
@@ -776,6 +876,30 @@
             "status": {
               "type": "ready"
             }
+          },
+          "update": {
+            "event": {
+              "announced": [
+                "twitch:1"
+              ],
+              "available": false,
+              "live": [
+                {
+                  "channel": "faflive",
+                  "displayName": "FAFLive",
+                  "id": "twitch:1",
+                  "platform": "twitch",
+                  "startedAt": "2026-09-11T18:02:00Z",
+                  "title": "Setons Summer Slam: Grand Final",
+                  "url": "https://www.twitch.tv/faflive",
+                  "viewers": 412
+                }
+              ],
+              "status": {
+                "type": "ready"
+              }
+            },
+            "kind": "Streams"
           }
         },
         {
@@ -797,6 +921,19 @@
             "status": {
               "type": "ready"
             }
+          },
+          "update": {
+            "event": {
+              "announced": [
+                "twitch:1"
+              ],
+              "available": false,
+              "live": [],
+              "status": {
+                "type": "ready"
+              }
+            },
+            "kind": "Streams"
           }
         }
       ]
@@ -843,6 +980,28 @@
             "status": {
               "type": "ready"
             }
+          },
+          "update": {
+            "event": {
+              "announced": [],
+              "available": false,
+              "live": [
+                {
+                  "channel": "faflive",
+                  "displayName": "FAFLive",
+                  "id": "twitch:1",
+                  "platform": "twitch",
+                  "startedAt": "2026-09-11T18:02:00Z",
+                  "title": "Setons Summer Slam: Grand Final",
+                  "url": "https://www.twitch.tv/faflive",
+                  "viewers": 412
+                }
+              ],
+              "status": {
+                "type": "ready"
+              }
+            },
+            "kind": "Streams"
           }
         },
         {
@@ -876,6 +1035,31 @@
               },
               "type": "failed"
             }
+          },
+          "update": {
+            "event": {
+              "announced": [],
+              "available": false,
+              "live": [
+                {
+                  "channel": "faflive",
+                  "displayName": "FAFLive",
+                  "id": "twitch:1",
+                  "platform": "twitch",
+                  "startedAt": "2026-09-11T18:02:00Z",
+                  "title": "Setons Summer Slam: Grand Final",
+                  "url": "https://www.twitch.tv/faflive",
+                  "viewers": 412
+                }
+              ],
+              "status": {
+                "payload": {
+                  "reason": "Twitch responded with 503 Service Unavailable"
+                },
+                "type": "failed"
+              }
+            },
+            "kind": "Streams"
           }
         }
       ]
@@ -904,6 +1088,21 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:00:00+00:00",
+                "status": {
+                  "type": "running"
+                },
+                "steps": []
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -951,6 +1150,34 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:00:00+00:00",
+                "status": {
+                  "type": "running"
+                },
+                "steps": [
+                  {
+                    "finding": {
+                      "payload": {
+                        "forced": null,
+                        "host": "java",
+                        "join": "dynamic"
+                      },
+                      "type": "adapterSelection"
+                    },
+                    "id": "selection",
+                    "outcome": "info"
+                  }
+                ]
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -1008,6 +1235,45 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:00:00+00:00",
+                "status": {
+                  "type": "running"
+                },
+                "steps": [
+                  {
+                    "finding": {
+                      "payload": {
+                        "forced": null,
+                        "host": "java",
+                        "join": "dynamic"
+                      },
+                      "type": "adapterSelection"
+                    },
+                    "id": "selection",
+                    "outcome": "info"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "path": "/opt/jre/bin/java",
+                        "version": "25.0.3"
+                      },
+                      "type": "javaRuntime"
+                    },
+                    "id": "javaRuntime",
+                    "outcome": "pass"
+                  }
+                ]
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -1082,6 +1348,59 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:00:00+00:00",
+                "status": {
+                  "type": "running"
+                },
+                "steps": [
+                  {
+                    "finding": {
+                      "payload": {
+                        "forced": null,
+                        "host": "java",
+                        "join": "dynamic"
+                      },
+                      "type": "adapterSelection"
+                    },
+                    "id": "selection",
+                    "outcome": "info"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "path": "/opt/jre/bin/java",
+                        "version": "25.0.3"
+                      },
+                      "type": "javaRuntime"
+                    },
+                    "id": "javaRuntime",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "count": 3,
+                        "regions": [
+                          "Europe",
+                          "North America"
+                        ]
+                      },
+                      "type": "relayList"
+                    },
+                    "id": "relayList",
+                    "outcome": "pass"
+                  }
+                ]
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -1164,6 +1483,70 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:00:00+00:00",
+                "status": {
+                  "type": "running"
+                },
+                "steps": [
+                  {
+                    "finding": {
+                      "payload": {
+                        "forced": null,
+                        "host": "java",
+                        "join": "dynamic"
+                      },
+                      "type": "adapterSelection"
+                    },
+                    "id": "selection",
+                    "outcome": "info"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "path": "/opt/jre/bin/java",
+                        "version": "25.0.3"
+                      },
+                      "type": "javaRuntime"
+                    },
+                    "id": "javaRuntime",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "count": 3,
+                        "regions": [
+                          "Europe",
+                          "North America"
+                        ]
+                      },
+                      "type": "relayList"
+                    },
+                    "id": "relayList",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "count": 1,
+                        "gameId": 4242
+                      },
+                      "type": "relayAddresses"
+                    },
+                    "id": "relayAddresses",
+                    "outcome": "info"
+                  }
+                ]
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -1257,6 +1640,81 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:00:00+00:00",
+                "status": {
+                  "type": "running"
+                },
+                "steps": [
+                  {
+                    "finding": {
+                      "payload": {
+                        "forced": null,
+                        "host": "java",
+                        "join": "dynamic"
+                      },
+                      "type": "adapterSelection"
+                    },
+                    "id": "selection",
+                    "outcome": "info"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "path": "/opt/jre/bin/java",
+                        "version": "25.0.3"
+                      },
+                      "type": "javaRuntime"
+                    },
+                    "id": "javaRuntime",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "count": 3,
+                        "regions": [
+                          "Europe",
+                          "North America"
+                        ]
+                      },
+                      "type": "relayList"
+                    },
+                    "id": "relayList",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "count": 1,
+                        "gameId": 4242
+                      },
+                      "type": "relayAddresses"
+                    },
+                    "id": "relayAddresses",
+                    "outcome": "info"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "transport": "udp",
+                        "url": "stun:eu.relay.example.org"
+                      },
+                      "type": "serverProbing"
+                    },
+                    "id": "server:0",
+                    "outcome": "running"
+                  }
+                ]
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -1354,6 +1812,83 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:00:00+00:00",
+                "status": {
+                  "type": "running"
+                },
+                "steps": [
+                  {
+                    "finding": {
+                      "payload": {
+                        "forced": null,
+                        "host": "java",
+                        "join": "dynamic"
+                      },
+                      "type": "adapterSelection"
+                    },
+                    "id": "selection",
+                    "outcome": "info"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "path": "/opt/jre/bin/java",
+                        "version": "25.0.3"
+                      },
+                      "type": "javaRuntime"
+                    },
+                    "id": "javaRuntime",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "count": 3,
+                        "regions": [
+                          "Europe",
+                          "North America"
+                        ]
+                      },
+                      "type": "relayList"
+                    },
+                    "id": "relayList",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "count": 1,
+                        "gameId": 4242
+                      },
+                      "type": "relayAddresses"
+                    },
+                    "id": "relayAddresses",
+                    "outcome": "info"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "publicAddress": "203.0.113.7:51234",
+                        "roundTripMs": 23,
+                        "transport": "udp",
+                        "url": "stun:eu.relay.example.org"
+                      },
+                      "type": "serverReachable"
+                    },
+                    "id": "server:0",
+                    "outcome": "pass"
+                  }
+                ]
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -1462,6 +1997,95 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:00:00+00:00",
+                "status": {
+                  "type": "running"
+                },
+                "steps": [
+                  {
+                    "finding": {
+                      "payload": {
+                        "forced": null,
+                        "host": "java",
+                        "join": "dynamic"
+                      },
+                      "type": "adapterSelection"
+                    },
+                    "id": "selection",
+                    "outcome": "info"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "path": "/opt/jre/bin/java",
+                        "version": "25.0.3"
+                      },
+                      "type": "javaRuntime"
+                    },
+                    "id": "javaRuntime",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "count": 3,
+                        "regions": [
+                          "Europe",
+                          "North America"
+                        ]
+                      },
+                      "type": "relayList"
+                    },
+                    "id": "relayList",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "count": 1,
+                        "gameId": 4242
+                      },
+                      "type": "relayAddresses"
+                    },
+                    "id": "relayAddresses",
+                    "outcome": "info"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "publicAddress": "203.0.113.7:51234",
+                        "roundTripMs": 23,
+                        "transport": "udp",
+                        "url": "stun:eu.relay.example.org"
+                      },
+                      "type": "serverReachable"
+                    },
+                    "id": "server:0",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "answered": 1,
+                        "total": 1,
+                        "udpBlocked": false
+                      },
+                      "type": "reachability"
+                    },
+                    "id": "reachability",
+                    "outcome": "pass"
+                  }
+                ]
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -1584,6 +2208,108 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:00:00+00:00",
+                "status": {
+                  "type": "running"
+                },
+                "steps": [
+                  {
+                    "finding": {
+                      "payload": {
+                        "forced": null,
+                        "host": "java",
+                        "join": "dynamic"
+                      },
+                      "type": "adapterSelection"
+                    },
+                    "id": "selection",
+                    "outcome": "info"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "path": "/opt/jre/bin/java",
+                        "version": "25.0.3"
+                      },
+                      "type": "javaRuntime"
+                    },
+                    "id": "javaRuntime",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "count": 3,
+                        "regions": [
+                          "Europe",
+                          "North America"
+                        ]
+                      },
+                      "type": "relayList"
+                    },
+                    "id": "relayList",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "count": 1,
+                        "gameId": 4242
+                      },
+                      "type": "relayAddresses"
+                    },
+                    "id": "relayAddresses",
+                    "outcome": "info"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "publicAddress": "203.0.113.7:51234",
+                        "roundTripMs": 23,
+                        "transport": "udp",
+                        "url": "stun:eu.relay.example.org"
+                      },
+                      "type": "serverReachable"
+                    },
+                    "id": "server:0",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "answered": 1,
+                        "total": 1,
+                        "udpBlocked": false
+                      },
+                      "type": "reachability"
+                    },
+                    "id": "reachability",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "fileName": "ice-adapter.log",
+                        "modifiedAt": "2026-10-08T17:59:00+00:00",
+                        "tail": "INFO connected",
+                        "truncated": true
+                      },
+                      "type": "adapterLog"
+                    },
+                    "id": "adapterLog",
+                    "outcome": "info"
+                  }
+                ]
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -1697,6 +2423,111 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:00:00+00:00",
+                "status": {
+                  "payload": {
+                    "verdict": "pass"
+                  },
+                  "type": "finished"
+                },
+                "steps": [
+                  {
+                    "finding": {
+                      "payload": {
+                        "forced": null,
+                        "host": "java",
+                        "join": "dynamic"
+                      },
+                      "type": "adapterSelection"
+                    },
+                    "id": "selection",
+                    "outcome": "info"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "path": "/opt/jre/bin/java",
+                        "version": "25.0.3"
+                      },
+                      "type": "javaRuntime"
+                    },
+                    "id": "javaRuntime",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "count": 3,
+                        "regions": [
+                          "Europe",
+                          "North America"
+                        ]
+                      },
+                      "type": "relayList"
+                    },
+                    "id": "relayList",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "count": 1,
+                        "gameId": 4242
+                      },
+                      "type": "relayAddresses"
+                    },
+                    "id": "relayAddresses",
+                    "outcome": "info"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "publicAddress": "203.0.113.7:51234",
+                        "roundTripMs": 23,
+                        "transport": "udp",
+                        "url": "stun:eu.relay.example.org"
+                      },
+                      "type": "serverReachable"
+                    },
+                    "id": "server:0",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "answered": 1,
+                        "total": 1,
+                        "udpBlocked": false
+                      },
+                      "type": "reachability"
+                    },
+                    "id": "reachability",
+                    "outcome": "pass"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "fileName": "ice-adapter.log",
+                        "modifiedAt": "2026-10-08T17:59:00+00:00",
+                        "tail": "INFO connected",
+                        "truncated": true
+                      },
+                      "type": "adapterLog"
+                    },
+                    "id": "adapterLog",
+                    "outcome": "info"
+                  }
+                ]
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         }
       ]
@@ -1731,6 +2562,21 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "",
+                "status": {
+                  "type": "idle"
+                },
+                "steps": []
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -1754,6 +2600,21 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:00:00+00:00",
+                "status": {
+                  "type": "running"
+                },
+                "steps": []
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -1791,6 +2652,29 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:00:00+00:00",
+                "status": {
+                  "type": "running"
+                },
+                "steps": [
+                  {
+                    "finding": {
+                      "type": "noRelayAddresses"
+                    },
+                    "id": "relayAddresses",
+                    "outcome": "warn"
+                  }
+                ]
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -1855,6 +2739,46 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:00:00+00:00",
+                "status": {
+                  "type": "running"
+                },
+                "steps": [
+                  {
+                    "finding": {
+                      "type": "noRelayAddresses"
+                    },
+                    "id": "relayAddresses",
+                    "outcome": "warn"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "failure": {
+                          "payload": {
+                            "waitedMs": 3000
+                          },
+                          "type": "timeout"
+                        },
+                        "transport": "tcp",
+                        "url": "turn:us.relay.example.org?transport=tcp"
+                      },
+                      "type": "serverUnreachable"
+                    },
+                    "id": "server:1",
+                    "outcome": "warn"
+                  }
+                ]
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -1906,6 +2830,49 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:00:00+00:00",
+                "status": {
+                  "payload": {
+                    "verdict": "warn"
+                  },
+                  "type": "finished"
+                },
+                "steps": [
+                  {
+                    "finding": {
+                      "type": "noRelayAddresses"
+                    },
+                    "id": "relayAddresses",
+                    "outcome": "warn"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "failure": {
+                          "payload": {
+                            "waitedMs": 3000
+                          },
+                          "type": "timeout"
+                        },
+                        "transport": "tcp",
+                        "url": "turn:us.relay.example.org?transport=tcp"
+                      },
+                      "type": "serverUnreachable"
+                    },
+                    "id": "server:1",
+                    "outcome": "warn"
+                  }
+                ]
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -1963,6 +2930,49 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:00:00+00:00",
+                "status": {
+                  "payload": {
+                    "verdict": "warn"
+                  },
+                  "type": "finished"
+                },
+                "steps": [
+                  {
+                    "finding": {
+                      "type": "noRelayAddresses"
+                    },
+                    "id": "relayAddresses",
+                    "outcome": "warn"
+                  },
+                  {
+                    "finding": {
+                      "payload": {
+                        "failure": {
+                          "payload": {
+                            "waitedMs": 3000
+                          },
+                          "type": "timeout"
+                        },
+                        "transport": "tcp",
+                        "url": "turn:us.relay.example.org?transport=tcp"
+                      },
+                      "type": "serverUnreachable"
+                    },
+                    "id": "server:1",
+                    "outcome": "warn"
+                  }
+                ]
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -1986,6 +2996,21 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:05:00+00:00",
+                "status": {
+                  "type": "running"
+                },
+                "steps": []
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -2029,6 +3054,32 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:05:00+00:00",
+                "status": {
+                  "type": "running"
+                },
+                "steps": [
+                  {
+                    "finding": {
+                      "payload": {
+                        "required": true
+                      },
+                      "type": "pioneerAdapterMissing"
+                    },
+                    "id": "pioneerAdapter",
+                    "outcome": "fail"
+                  }
+                ]
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -2066,6 +3117,35 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "2026-10-08T18:05:00+00:00",
+                "status": {
+                  "payload": {
+                    "verdict": "fail"
+                  },
+                  "type": "finished"
+                },
+                "steps": [
+                  {
+                    "finding": {
+                      "payload": {
+                        "required": true
+                      },
+                      "type": "pioneerAdapterMissing"
+                    },
+                    "id": "pioneerAdapter",
+                    "outcome": "fail"
+                  }
+                ]
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         }
       ]
@@ -2130,6 +3210,38 @@
               },
               "type": "live"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "",
+                "status": {
+                  "type": "idle"
+                },
+                "steps": []
+              },
+              "relay": {
+                "payload": {
+                  "snapshot": {
+                    "adapterVersion": "3.3.9",
+                    "gameConnected": true,
+                    "gameState": "Lobby",
+                    "peers": [
+                      {
+                        "connected": true,
+                        "localCandidate": "srflx",
+                        "login": "Critren",
+                        "playerId": 436001,
+                        "remoteCandidate": "relay",
+                        "state": "connected"
+                      }
+                    ]
+                  }
+                },
+                "type": "live"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -2161,6 +3273,24 @@
               },
               "type": "unavailable"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "",
+                "status": {
+                  "type": "idle"
+                },
+                "steps": []
+              },
+              "relay": {
+                "payload": {
+                  "reason": "the adapter did not answer `status` within 3 seconds"
+                },
+                "type": "unavailable"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -2192,6 +3322,24 @@
               },
               "type": "unsupported"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "",
+                "status": {
+                  "type": "idle"
+                },
+                "steps": []
+              },
+              "relay": {
+                "payload": {
+                  "adapter": "go"
+                },
+                "type": "unsupported"
+              }
+            },
+            "kind": "Connectivity"
           }
         },
         {
@@ -2217,6 +3365,21 @@
             "relay": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "check": {
+                "startedAt": "",
+                "status": {
+                  "type": "idle"
+                },
+                "steps": []
+              },
+              "relay": {
+                "type": "idle"
+              }
+            },
+            "kind": "Connectivity"
           }
         }
       ]
@@ -5486,6 +6649,24 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "events",
+              "value": {
+                "reminders": [
+                  {
+                    "leadMinutes": 60,
+                    "notified": false,
+                    "occurrenceId": "catalogue:cgn-42@2026-03-14",
+                    "startsAt": 1773514800,
+                    "title": "Community Game Night 42"
+                  }
+                ],
+                "weekStart": "sunday"
+              }
+            },
+            "kind": "Settings"
           }
         }
       ]
@@ -5504,6 +6685,14 @@
             "backendVersion": "",
             "offlineAuth": false,
             "status": "connecting"
+          },
+          "update": {
+            "event": {
+              "backendVersion": "",
+              "offlineAuth": false,
+              "status": "connecting"
+            },
+            "kind": "Session"
           }
         },
         {
@@ -5521,6 +6710,14 @@
             "backendVersion": "1.2.3",
             "offlineAuth": false,
             "status": "connected"
+          },
+          "update": {
+            "event": {
+              "backendVersion": "1.2.3",
+              "offlineAuth": false,
+              "status": "connected"
+            },
+            "kind": "Session"
           }
         }
       ]
@@ -5543,6 +6740,14 @@
             "backendVersion": "1.2.3",
             "offlineAuth": true,
             "status": "connected"
+          },
+          "update": {
+            "event": {
+              "backendVersion": "1.2.3",
+              "offlineAuth": true,
+              "status": "connected"
+            },
+            "kind": "Session"
           }
         },
         {
@@ -5556,6 +6761,14 @@
             "backendVersion": "",
             "offlineAuth": true,
             "status": "disconnected"
+          },
+          "update": {
+            "event": {
+              "backendVersion": "",
+              "offlineAuth": true,
+              "status": "disconnected"
+            },
+            "kind": "Session"
           }
         },
         {
@@ -5569,6 +6782,14 @@
             "backendVersion": "",
             "offlineAuth": true,
             "status": "connecting"
+          },
+          "update": {
+            "event": {
+              "backendVersion": "",
+              "offlineAuth": true,
+              "status": "connecting"
+            },
+            "kind": "Session"
           }
         }
       ]
@@ -5589,6 +6810,16 @@
             "player": null,
             "signInLink": null,
             "status": "loggingIn"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "account",
+              "player": null,
+              "signInLink": null,
+              "status": "loggingIn"
+            },
+            "kind": "Auth"
           }
         },
         {
@@ -5615,6 +6846,20 @@
             },
             "signInLink": null,
             "status": "loggedIn"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "account",
+              "player": {
+                "id": 7,
+                "name": "Ada",
+                "roles": []
+              },
+              "signInLink": null,
+              "status": "loggedIn"
+            },
+            "kind": "Auth"
           }
         },
         {
@@ -5630,6 +6875,16 @@
             "player": null,
             "signInLink": null,
             "status": "loggedOut"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "account",
+              "player": null,
+              "signInLink": null,
+              "status": "loggedOut"
+            },
+            "kind": "Auth"
           }
         }
       ]
@@ -5650,6 +6905,16 @@
             "player": null,
             "signInLink": null,
             "status": "loggingIn"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "account",
+              "player": null,
+              "signInLink": null,
+              "status": "loggingIn"
+            },
+            "kind": "Auth"
           }
         },
         {
@@ -5668,6 +6933,16 @@
             "player": null,
             "signInLink": null,
             "status": "failed"
+          },
+          "update": {
+            "event": {
+              "error": "the server did not answer",
+              "mode": "account",
+              "player": null,
+              "signInLink": null,
+              "status": "failed"
+            },
+            "kind": "Auth"
           }
         },
         {
@@ -5683,6 +6958,16 @@
             "player": null,
             "signInLink": null,
             "status": "loggedIn"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "offline",
+              "player": null,
+              "signInLink": null,
+              "status": "loggedIn"
+            },
+            "kind": "Auth"
           }
         },
         {
@@ -5698,6 +6983,16 @@
             "player": null,
             "signInLink": null,
             "status": "loggedOut"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "account",
+              "player": null,
+              "signInLink": null,
+              "status": "loggedOut"
+            },
+            "kind": "Auth"
           }
         }
       ]
@@ -5718,6 +7013,16 @@
             "player": null,
             "signInLink": null,
             "status": "loggingIn"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "account",
+              "player": null,
+              "signInLink": null,
+              "status": "loggingIn"
+            },
+            "kind": "Auth"
           }
         },
         {
@@ -5744,6 +7049,20 @@
             },
             "signInLink": null,
             "status": "loggedIn"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "account",
+              "player": {
+                "id": 7,
+                "name": "Ada",
+                "roles": []
+              },
+              "signInLink": null,
+              "status": "loggedIn"
+            },
+            "kind": "Auth"
           }
         },
         {
@@ -5762,6 +7081,16 @@
             "player": null,
             "signInLink": null,
             "status": "loggedIn"
+          },
+          "update": {
+            "event": {
+              "error": "You are banned from FAF forever.",
+              "mode": "offline",
+              "player": null,
+              "signInLink": null,
+              "status": "loggedIn"
+            },
+            "kind": "Auth"
           }
         },
         {
@@ -5777,6 +7106,16 @@
             "player": null,
             "signInLink": null,
             "status": "loggedOut"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "account",
+              "player": null,
+              "signInLink": null,
+              "status": "loggedOut"
+            },
+            "kind": "Auth"
           }
         }
       ]
@@ -5800,6 +7139,16 @@
             "player": null,
             "signInLink": null,
             "status": "loggedOut"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "account",
+              "player": null,
+              "signInLink": null,
+              "status": "loggedOut"
+            },
+            "kind": "Auth"
           }
         },
         {
@@ -5815,6 +7164,16 @@
             "player": null,
             "signInLink": null,
             "status": "loggingIn"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "account",
+              "player": null,
+              "signInLink": null,
+              "status": "loggingIn"
+            },
+            "kind": "Auth"
           }
         },
         {
@@ -5833,6 +7192,16 @@
             "player": null,
             "signInLink": "https://hydra.example/oauth2/auth?state=x",
             "status": "loggingIn"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "account",
+              "player": null,
+              "signInLink": "https://hydra.example/oauth2/auth?state=x",
+              "status": "loggingIn"
+            },
+            "kind": "Auth"
           }
         },
         {
@@ -5851,6 +7220,16 @@
             "player": null,
             "signInLink": null,
             "status": "failed"
+          },
+          "update": {
+            "event": {
+              "error": "Login timed out waiting for the browser.",
+              "mode": "account",
+              "player": null,
+              "signInLink": null,
+              "status": "failed"
+            },
+            "kind": "Auth"
           }
         }
       ]
@@ -5871,6 +7250,16 @@
             "player": null,
             "signInLink": null,
             "status": "loggingIn"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "account",
+              "player": null,
+              "signInLink": null,
+              "status": "loggingIn"
+            },
+            "kind": "Auth"
           }
         },
         {
@@ -5889,6 +7278,16 @@
             "player": null,
             "signInLink": null,
             "status": "failed"
+          },
+          "update": {
+            "event": {
+              "error": "bad state",
+              "mode": "account",
+              "player": null,
+              "signInLink": null,
+              "status": "failed"
+            },
+            "kind": "Auth"
           }
         }
       ]
@@ -5915,6 +7314,19 @@
             "modsSection": "vault",
             "replaysSection": "online",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "play",
+              "changelogClientVersion": null,
+              "changelogSection": "game",
+              "linkRequest": null,
+              "mapsSection": "vault",
+              "modsSection": "vault",
+              "replaysSection": "online",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         },
         {
@@ -5936,6 +7348,19 @@
             "modsSection": "vault",
             "replaysSection": "online",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "training",
+              "changelogClientVersion": null,
+              "changelogSection": "game",
+              "linkRequest": null,
+              "mapsSection": "vault",
+              "modsSection": "vault",
+              "replaysSection": "online",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         }
       ]
@@ -5962,6 +7387,19 @@
             "modsSection": "vault",
             "replaysSection": "online",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "maps",
+              "changelogClientVersion": null,
+              "changelogSection": "game",
+              "linkRequest": null,
+              "mapsSection": "vault",
+              "modsSection": "vault",
+              "replaysSection": "online",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         },
         {
@@ -5983,6 +7421,19 @@
             "modsSection": "vault",
             "replaysSection": "online",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "maps",
+              "changelogClientVersion": null,
+              "changelogSection": "game",
+              "linkRequest": null,
+              "mapsSection": "installed",
+              "modsSection": "vault",
+              "replaysSection": "online",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         },
         {
@@ -6004,6 +7455,19 @@
             "modsSection": "installed",
             "replaysSection": "online",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "maps",
+              "changelogClientVersion": null,
+              "changelogSection": "game",
+              "linkRequest": null,
+              "mapsSection": "installed",
+              "modsSection": "installed",
+              "replaysSection": "online",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         },
         {
@@ -6025,6 +7489,19 @@
             "modsSection": "installed",
             "replaysSection": "live",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "maps",
+              "changelogClientVersion": null,
+              "changelogSection": "game",
+              "linkRequest": null,
+              "mapsSection": "installed",
+              "modsSection": "installed",
+              "replaysSection": "live",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         },
         {
@@ -6046,6 +7523,19 @@
             "modsSection": "installed",
             "replaysSection": "live",
             "settingsSection": "connectivity"
+          },
+          "update": {
+            "event": {
+              "activeTab": "maps",
+              "changelogClientVersion": null,
+              "changelogSection": "game",
+              "linkRequest": null,
+              "mapsSection": "installed",
+              "modsSection": "installed",
+              "replaysSection": "live",
+              "settingsSection": "connectivity"
+            },
+            "kind": "Nav"
           }
         },
         {
@@ -6067,6 +7557,19 @@
             "modsSection": "installed",
             "replaysSection": "live",
             "settingsSection": "connectivity"
+          },
+          "update": {
+            "event": {
+              "activeTab": "chat",
+              "changelogClientVersion": null,
+              "changelogSection": "game",
+              "linkRequest": null,
+              "mapsSection": "installed",
+              "modsSection": "installed",
+              "replaysSection": "live",
+              "settingsSection": "connectivity"
+            },
+            "kind": "Nav"
           }
         }
       ]
@@ -6093,6 +7596,19 @@
             "modsSection": "vault",
             "replaysSection": "online",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "changelog",
+              "changelogClientVersion": null,
+              "changelogSection": "game",
+              "linkRequest": null,
+              "mapsSection": "vault",
+              "modsSection": "vault",
+              "replaysSection": "online",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         },
         {
@@ -6114,6 +7630,19 @@
             "modsSection": "vault",
             "replaysSection": "online",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "changelog",
+              "changelogClientVersion": null,
+              "changelogSection": "client",
+              "linkRequest": null,
+              "mapsSection": "vault",
+              "modsSection": "vault",
+              "replaysSection": "online",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         },
         {
@@ -6135,6 +7664,19 @@
             "modsSection": "vault",
             "replaysSection": "online",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "changelog",
+              "changelogClientVersion": null,
+              "changelogSection": "units",
+              "linkRequest": null,
+              "mapsSection": "vault",
+              "modsSection": "vault",
+              "replaysSection": "online",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         },
         {
@@ -6156,6 +7698,19 @@
             "modsSection": "vault",
             "replaysSection": "online",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "changelog",
+              "changelogClientVersion": null,
+              "changelogSection": "game",
+              "linkRequest": null,
+              "mapsSection": "vault",
+              "modsSection": "vault",
+              "replaysSection": "online",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         },
         {
@@ -6177,6 +7732,19 @@
             "modsSection": "vault",
             "replaysSection": "online",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "changelog",
+              "changelogClientVersion": "0.4.0",
+              "changelogSection": "client",
+              "linkRequest": null,
+              "mapsSection": "vault",
+              "modsSection": "vault",
+              "replaysSection": "online",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         },
         {
@@ -6198,6 +7766,19 @@
             "modsSection": "vault",
             "replaysSection": "online",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "changelog",
+              "changelogClientVersion": "0.4.0",
+              "changelogSection": "game",
+              "linkRequest": null,
+              "mapsSection": "vault",
+              "modsSection": "vault",
+              "replaysSection": "online",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         },
         {
@@ -6219,6 +7800,19 @@
             "modsSection": "vault",
             "replaysSection": "online",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "changelog",
+              "changelogClientVersion": "0.3.0",
+              "changelogSection": "client",
+              "linkRequest": null,
+              "mapsSection": "vault",
+              "modsSection": "vault",
+              "replaysSection": "online",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         }
       ]
@@ -6261,6 +7855,27 @@
             "modsSection": "vault",
             "replaysSection": "online",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "news",
+              "changelogClientVersion": null,
+              "changelogSection": "game",
+              "linkRequest": {
+                "id": 1,
+                "link": {
+                  "payload": {
+                    "folderName": "setons_clutch.v0004"
+                  },
+                  "type": "map"
+                }
+              },
+              "mapsSection": "vault",
+              "modsSection": "vault",
+              "replaysSection": "online",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         },
         {
@@ -6298,6 +7913,27 @@
             "modsSection": "vault",
             "replaysSection": "online",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "news",
+              "changelogClientVersion": null,
+              "changelogSection": "game",
+              "linkRequest": {
+                "id": 2,
+                "link": {
+                  "payload": {
+                    "id": "UEL0201"
+                  },
+                  "type": "unit"
+                }
+              },
+              "mapsSection": "vault",
+              "modsSection": "vault",
+              "replaysSection": "online",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         },
         {
@@ -6327,6 +7963,27 @@
             "modsSection": "vault",
             "replaysSection": "online",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "news",
+              "changelogClientVersion": null,
+              "changelogSection": "game",
+              "linkRequest": {
+                "id": 2,
+                "link": {
+                  "payload": {
+                    "id": "UEL0201"
+                  },
+                  "type": "unit"
+                }
+              },
+              "mapsSection": "vault",
+              "modsSection": "vault",
+              "replaysSection": "online",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         },
         {
@@ -6348,6 +8005,19 @@
             "modsSection": "vault",
             "replaysSection": "online",
             "settingsSection": "general"
+          },
+          "update": {
+            "event": {
+              "activeTab": "news",
+              "changelogClientVersion": null,
+              "changelogSection": "game",
+              "linkRequest": null,
+              "mapsSection": "vault",
+              "modsSection": "vault",
+              "replaysSection": "online",
+              "settingsSection": "general"
+            },
+            "kind": "Nav"
           }
         }
       ]
@@ -6394,6 +8064,26 @@
               "vaultDir": "D:/faf/vault",
               "winePrefix": ""
             }
+          },
+          "update": {
+            "event": {
+              "checked": true,
+              "gamePending": false,
+              "gameReady": true,
+              "replayPending": true,
+              "replayReady": false,
+              "resolved": {
+                "gamePrefsPath": "C:/Users/ada/AppData/Local/Gas Powered Games/Supreme Commander Forged Alliance/game.prefs",
+                "javaPath": "java",
+                "mapGeneratorDir": "C:/Users/ada/AppData/Roaming/faf/map_generator",
+                "mapsDir": "D:/faf/vault/maps",
+                "modsDir": "D:/faf/vault/mods",
+                "replaysDir": "C:/ProgramData/FAForever/replays",
+                "vaultDir": "D:/faf/vault",
+                "winePrefix": ""
+              }
+            },
+            "kind": "Install"
           }
         }
       ]
@@ -11998,6 +13688,31 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "payload": {
+                  "action": "creating"
+                },
+                "type": "working"
+              },
+              "candidates": [],
+              "clan": null,
+              "identity": {
+                "clanId": "",
+                "clanName": "",
+                "clanTag": "",
+                "isLeader": false,
+                "login": "",
+                "playerId": 0
+              },
+              "invitation": null,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Clan"
           }
         },
         {
@@ -12031,6 +13746,31 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "payload": {
+                  "action": "creating"
+                },
+                "type": "succeeded"
+              },
+              "candidates": [],
+              "clan": null,
+              "identity": {
+                "clanId": "",
+                "clanName": "",
+                "clanTag": "",
+                "isLeader": false,
+                "login": "",
+                "playerId": 0
+              },
+              "invitation": null,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Clan"
           }
         },
         {
@@ -12069,6 +13809,28 @@
             "status": {
               "type": "ready"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "type": "idle"
+              },
+              "candidates": [],
+              "clan": null,
+              "identity": {
+                "clanId": "42",
+                "clanName": "Brotherhood",
+                "clanTag": "BRO",
+                "isLeader": true,
+                "login": "Ada",
+                "playerId": 7
+              },
+              "invitation": null,
+              "status": {
+                "type": "ready"
+              }
+            },
+            "kind": "Clan"
           }
         }
       ]
@@ -12107,6 +13869,31 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "payload": {
+                  "action": "creating"
+                },
+                "type": "working"
+              },
+              "candidates": [],
+              "clan": null,
+              "identity": {
+                "clanId": "",
+                "clanName": "",
+                "clanTag": "",
+                "isLeader": false,
+                "login": "",
+                "playerId": 0
+              },
+              "invitation": null,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Clan"
           }
         },
         {
@@ -12144,6 +13931,33 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "payload": {
+                  "action": "creating",
+                  "kind": "rejected",
+                  "reason": "the clan name Brotherhood is already taken"
+                },
+                "type": "failed"
+              },
+              "candidates": [],
+              "clan": null,
+              "identity": {
+                "clanId": "",
+                "clanName": "",
+                "clanTag": "",
+                "isLeader": false,
+                "login": "",
+                "playerId": 0
+              },
+              "invitation": null,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Clan"
           }
         },
         {
@@ -12187,6 +14001,33 @@
             "status": {
               "type": "ready"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "payload": {
+                  "action": "creating",
+                  "kind": "rejected",
+                  "reason": "the clan name Brotherhood is already taken"
+                },
+                "type": "failed"
+              },
+              "candidates": [],
+              "clan": null,
+              "identity": {
+                "clanId": "",
+                "clanName": "",
+                "clanTag": "",
+                "isLeader": false,
+                "login": "",
+                "playerId": 0
+              },
+              "invitation": null,
+              "status": {
+                "type": "ready"
+              }
+            },
+            "kind": "Clan"
           }
         }
       ]
@@ -12230,6 +14071,28 @@
             "status": {
               "type": "ready"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "type": "idle"
+              },
+              "candidates": [],
+              "clan": null,
+              "identity": {
+                "clanId": "42",
+                "clanName": "Brotherhood",
+                "clanTag": "BRO",
+                "isLeader": true,
+                "login": "Ada",
+                "playerId": 7
+              },
+              "invitation": null,
+              "status": {
+                "type": "ready"
+              }
+            },
+            "kind": "Clan"
           }
         },
         {
@@ -12278,6 +14141,37 @@
             "status": {
               "type": "ready"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "type": "idle"
+              },
+              "candidates": [
+                {
+                  "avatarUrl": "",
+                  "country": "de",
+                  "globalRating": 1200,
+                  "id": 9,
+                  "ladderRating": null,
+                  "login": "Recruit"
+                }
+              ],
+              "clan": null,
+              "identity": {
+                "clanId": "42",
+                "clanName": "Brotherhood",
+                "clanTag": "BRO",
+                "isLeader": true,
+                "login": "Ada",
+                "playerId": 7
+              },
+              "invitation": null,
+              "status": {
+                "type": "ready"
+              }
+            },
+            "kind": "Clan"
           }
         },
         {
@@ -12316,6 +14210,32 @@
             "status": {
               "type": "ready"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "type": "idle"
+              },
+              "candidates": [],
+              "clan": null,
+              "identity": {
+                "clanId": "42",
+                "clanName": "Brotherhood",
+                "clanTag": "BRO",
+                "isLeader": true,
+                "login": "Ada",
+                "playerId": 7
+              },
+              "invitation": {
+                "login": "Recruit",
+                "playerId": 9,
+                "token": "jwt"
+              },
+              "status": {
+                "type": "ready"
+              }
+            },
+            "kind": "Clan"
           }
         },
         {
@@ -12354,6 +14274,28 @@
             "status": {
               "type": "ready"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "type": "idle"
+              },
+              "candidates": [],
+              "clan": null,
+              "identity": {
+                "clanId": "",
+                "clanName": "",
+                "clanTag": "",
+                "isLeader": false,
+                "login": "",
+                "playerId": 0
+              },
+              "invitation": null,
+              "status": {
+                "type": "ready"
+              }
+            },
+            "kind": "Clan"
           }
         }
       ]
@@ -12399,6 +14341,34 @@
               "kind": "map",
               "name": "Seton's"
             }
+          },
+          "update": {
+            "event": {
+              "reviews": [],
+              "status": {
+                "type": "idle"
+              },
+              "submit": {
+                "type": "idle"
+              },
+              "summary": {
+                "averageTenths": 0,
+                "counts": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "total": 0
+              },
+              "target": {
+                "id": 42,
+                "kind": "map",
+                "name": "Seton's"
+              }
+            },
+            "kind": "Reviews"
           }
         },
         {
@@ -12432,6 +14402,34 @@
               "kind": "map",
               "name": "Seton's"
             }
+          },
+          "update": {
+            "event": {
+              "reviews": [],
+              "status": {
+                "type": "loading"
+              },
+              "submit": {
+                "type": "idle"
+              },
+              "summary": {
+                "averageTenths": 0,
+                "counts": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "total": 0
+              },
+              "target": {
+                "id": 42,
+                "kind": "map",
+                "name": "Seton's"
+              }
+            },
+            "kind": "Reviews"
           }
         },
         {
@@ -12503,6 +14501,49 @@
               "kind": "map",
               "name": "Seton's"
             }
+          },
+          "update": {
+            "event": {
+              "reviews": [
+                {
+                  "id": 1,
+                  "player": "Bob",
+                  "score": 5,
+                  "text": "Great",
+                  "version": "3"
+                },
+                {
+                  "id": 2,
+                  "player": "Cid",
+                  "score": 2,
+                  "text": "Meh",
+                  "version": "2"
+                }
+              ],
+              "status": {
+                "type": "ready"
+              },
+              "submit": {
+                "type": "idle"
+              },
+              "summary": {
+                "averageTenths": 35,
+                "counts": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  1
+                ],
+                "total": 2
+              },
+              "target": {
+                "id": 42,
+                "kind": "map",
+                "name": "Seton's"
+              }
+            },
+            "kind": "Reviews"
           }
         },
         {
@@ -12551,6 +14592,49 @@
               "kind": "map",
               "name": "Seton's"
             }
+          },
+          "update": {
+            "event": {
+              "reviews": [
+                {
+                  "id": 1,
+                  "player": "Bob",
+                  "score": 5,
+                  "text": "Great",
+                  "version": "3"
+                },
+                {
+                  "id": 2,
+                  "player": "Cid",
+                  "score": 2,
+                  "text": "Meh",
+                  "version": "2"
+                }
+              ],
+              "status": {
+                "type": "ready"
+              },
+              "submit": {
+                "type": "saving"
+              },
+              "summary": {
+                "averageTenths": 35,
+                "counts": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  1
+                ],
+                "total": 2
+              },
+              "target": {
+                "id": 42,
+                "kind": "map",
+                "name": "Seton's"
+              }
+            },
+            "kind": "Reviews"
           }
         },
         {
@@ -12603,6 +14687,42 @@
               "kind": "map",
               "name": "Seton's"
             }
+          },
+          "update": {
+            "event": {
+              "reviews": [
+                {
+                  "id": 1,
+                  "player": "Bob",
+                  "score": 5,
+                  "text": "Great",
+                  "version": "3"
+                }
+              ],
+              "status": {
+                "type": "ready"
+              },
+              "submit": {
+                "type": "saved"
+              },
+              "summary": {
+                "averageTenths": 50,
+                "counts": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "total": 1
+              },
+              "target": {
+                "id": 42,
+                "kind": "map",
+                "name": "Seton's"
+              }
+            },
+            "kind": "Reviews"
           }
         }
       ]
@@ -40846,6 +42966,20 @@
               "type": "loading"
             },
             "tutorials": []
+          },
+          "update": {
+            "event": {
+              "categories": [],
+              "launch": {
+                "type": "idle"
+              },
+              "selectedId": null,
+              "status": {
+                "type": "loading"
+              },
+              "tutorials": []
+            },
+            "kind": "Tutorials"
           }
         },
         {
@@ -40929,6 +43063,50 @@
                 "title": "Lesson 8"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "categories": [
+                {
+                  "id": 1,
+                  "name": "Basics"
+                }
+              ],
+              "launch": {
+                "type": "idle"
+              },
+              "selectedId": 7,
+              "status": {
+                "type": "ready"
+              },
+              "tutorials": [
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 7,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_7",
+                  "ordinal": 7,
+                  "technicalName": "tut_7",
+                  "title": "Lesson 7"
+                },
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 8,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_8",
+                  "ordinal": 8,
+                  "technicalName": "tut_8",
+                  "title": "Lesson 8"
+                }
+              ]
+            },
+            "kind": "Tutorials"
           }
         },
         {
@@ -40981,6 +43159,50 @@
                 "title": "Lesson 8"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "categories": [
+                {
+                  "id": 1,
+                  "name": "Basics"
+                }
+              ],
+              "launch": {
+                "type": "idle"
+              },
+              "selectedId": 8,
+              "status": {
+                "type": "ready"
+              },
+              "tutorials": [
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 7,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_7",
+                  "ordinal": 7,
+                  "technicalName": "tut_7",
+                  "title": "Lesson 7"
+                },
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 8,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_8",
+                  "ordinal": 8,
+                  "technicalName": "tut_8",
+                  "title": "Lesson 8"
+                }
+              ]
+            },
+            "kind": "Tutorials"
           }
         },
         {
@@ -41038,6 +43260,54 @@
                 "title": "Lesson 8"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "categories": [
+                {
+                  "id": 1,
+                  "name": "Basics"
+                }
+              ],
+              "launch": {
+                "payload": {
+                  "detail": "Updating tutorials",
+                  "tutorialId": 8
+                },
+                "type": "preparing"
+              },
+              "selectedId": 8,
+              "status": {
+                "type": "ready"
+              },
+              "tutorials": [
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 7,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_7",
+                  "ordinal": 7,
+                  "technicalName": "tut_7",
+                  "title": "Lesson 7"
+                },
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 8,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_8",
+                  "ordinal": 8,
+                  "technicalName": "tut_8",
+                  "title": "Lesson 8"
+                }
+              ]
+            },
+            "kind": "Tutorials"
           }
         },
         {
@@ -41093,6 +43363,53 @@
                 "title": "Lesson 8"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "categories": [
+                {
+                  "id": 1,
+                  "name": "Basics"
+                }
+              ],
+              "launch": {
+                "payload": {
+                  "tutorialId": 8
+                },
+                "type": "launched"
+              },
+              "selectedId": 8,
+              "status": {
+                "type": "ready"
+              },
+              "tutorials": [
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 7,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_7",
+                  "ordinal": 7,
+                  "technicalName": "tut_7",
+                  "title": "Lesson 7"
+                },
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 8,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_8",
+                  "ordinal": 8,
+                  "technicalName": "tut_8",
+                  "title": "Lesson 8"
+                }
+              ]
+            },
+            "kind": "Tutorials"
           }
         }
       ]
@@ -47949,6 +50266,23 @@
                 "title": "Hello"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "items": [
+                {
+                  "action": null,
+                  "body": "World",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n1",
+                  "kind": "mention",
+                  "read": false,
+                  "text": null,
+                  "title": "Hello"
+                }
+              ]
+            },
+            "kind": "Notifications"
           }
         },
         {
@@ -47963,6 +50297,12 @@
           },
           "expected": {
             "items": []
+          },
+          "update": {
+            "event": {
+              "items": []
+            },
+            "kind": "Notifications"
           }
         }
       ]
@@ -63697,6 +66037,24 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -63720,6 +66078,24 @@
             "status": {
               "type": "submitting"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "type": "submitting"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -63743,6 +66119,24 @@
             "status": {
               "type": "submitted"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "type": "submitted"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -63766,6 +66160,24 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "",
+              "open": false,
+              "playerId": null,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         }
       ]
@@ -63797,6 +66209,24 @@
               "type": "idle"
             },
             "versions": null
+          },
+          "update": {
+            "event": {
+              "belowMinimum": false,
+              "installedVersion": "v2026.03.01.1",
+              "playerFaction": {
+                "type": "unknown"
+              },
+              "statistics": null,
+              "statisticsStatus": {
+                "type": "idle"
+              },
+              "status": {
+                "type": "idle"
+              },
+              "versions": null
+            },
+            "kind": "GalacticWar"
           }
         },
         {
@@ -63825,6 +66255,24 @@
               "type": "checkingVersion"
             },
             "versions": null
+          },
+          "update": {
+            "event": {
+              "belowMinimum": false,
+              "installedVersion": "v2026.03.01.1",
+              "playerFaction": {
+                "type": "unknown"
+              },
+              "statistics": null,
+              "statisticsStatus": {
+                "type": "idle"
+              },
+              "status": {
+                "type": "checkingVersion"
+              },
+              "versions": null
+            },
+            "kind": "GalacticWar"
           }
         },
         {
@@ -63857,6 +66305,27 @@
               "latestVersion": null,
               "requiredVersion": "v2026.04.04.1"
             }
+          },
+          "update": {
+            "event": {
+              "belowMinimum": false,
+              "installedVersion": "v2026.03.01.1",
+              "playerFaction": {
+                "type": "unknown"
+              },
+              "statistics": null,
+              "statisticsStatus": {
+                "type": "idle"
+              },
+              "status": {
+                "type": "checkingVersion"
+              },
+              "versions": {
+                "latestVersion": null,
+                "requiredVersion": "v2026.04.04.1"
+              }
+            },
+            "kind": "GalacticWar"
           }
         },
         {
@@ -63886,6 +66355,27 @@
               "latestVersion": null,
               "requiredVersion": "v2026.04.04.1"
             }
+          },
+          "update": {
+            "event": {
+              "belowMinimum": true,
+              "installedVersion": "v2026.03.01.1",
+              "playerFaction": {
+                "type": "unknown"
+              },
+              "statistics": null,
+              "statisticsStatus": {
+                "type": "idle"
+              },
+              "status": {
+                "type": "checkingVersion"
+              },
+              "versions": {
+                "latestVersion": null,
+                "requiredVersion": "v2026.04.04.1"
+              }
+            },
+            "kind": "GalacticWar"
           }
         },
         {
@@ -63927,6 +66417,32 @@
               "latestVersion": null,
               "requiredVersion": "v2026.04.04.1"
             }
+          },
+          "update": {
+            "event": {
+              "belowMinimum": true,
+              "installedVersion": "v2026.03.01.1",
+              "playerFaction": {
+                "type": "unknown"
+              },
+              "statistics": null,
+              "statisticsStatus": {
+                "type": "idle"
+              },
+              "status": {
+                "payload": {
+                  "downloadedBytes": 12000000,
+                  "totalBytes": 46340472,
+                  "version": "v2026.04.04.1"
+                },
+                "type": "downloading"
+              },
+              "versions": {
+                "latestVersion": null,
+                "requiredVersion": "v2026.04.04.1"
+              }
+            },
+            "kind": "GalacticWar"
           }
         },
         {
@@ -63964,6 +66480,30 @@
               "latestVersion": null,
               "requiredVersion": "v2026.04.04.1"
             }
+          },
+          "update": {
+            "event": {
+              "belowMinimum": true,
+              "installedVersion": "v2026.03.01.1",
+              "playerFaction": {
+                "type": "unknown"
+              },
+              "statistics": null,
+              "statisticsStatus": {
+                "type": "idle"
+              },
+              "status": {
+                "payload": {
+                  "version": "v2026.04.04.1"
+                },
+                "type": "installing"
+              },
+              "versions": {
+                "latestVersion": null,
+                "requiredVersion": "v2026.04.04.1"
+              }
+            },
+            "kind": "GalacticWar"
           }
         },
         {
@@ -63996,6 +66536,30 @@
               "latestVersion": null,
               "requiredVersion": "v2026.04.04.1"
             }
+          },
+          "update": {
+            "event": {
+              "belowMinimum": true,
+              "installedVersion": "v2026.04.04.1",
+              "playerFaction": {
+                "type": "unknown"
+              },
+              "statistics": null,
+              "statisticsStatus": {
+                "type": "idle"
+              },
+              "status": {
+                "payload": {
+                  "version": "v2026.04.04.1"
+                },
+                "type": "installing"
+              },
+              "versions": {
+                "latestVersion": null,
+                "requiredVersion": "v2026.04.04.1"
+              }
+            },
+            "kind": "GalacticWar"
           }
         },
         {
@@ -64028,6 +66592,30 @@
               "latestVersion": null,
               "requiredVersion": "v2026.04.04.1"
             }
+          },
+          "update": {
+            "event": {
+              "belowMinimum": false,
+              "installedVersion": "v2026.04.04.1",
+              "playerFaction": {
+                "type": "unknown"
+              },
+              "statistics": null,
+              "statisticsStatus": {
+                "type": "idle"
+              },
+              "status": {
+                "payload": {
+                  "version": "v2026.04.04.1"
+                },
+                "type": "installing"
+              },
+              "versions": {
+                "latestVersion": null,
+                "requiredVersion": "v2026.04.04.1"
+              }
+            },
+            "kind": "GalacticWar"
           }
         },
         {
@@ -64059,6 +66647,27 @@
               "latestVersion": null,
               "requiredVersion": "v2026.04.04.1"
             }
+          },
+          "update": {
+            "event": {
+              "belowMinimum": false,
+              "installedVersion": "v2026.04.04.1",
+              "playerFaction": {
+                "type": "unknown"
+              },
+              "statistics": null,
+              "statisticsStatus": {
+                "type": "idle"
+              },
+              "status": {
+                "type": "running"
+              },
+              "versions": {
+                "latestVersion": null,
+                "requiredVersion": "v2026.04.04.1"
+              }
+            },
+            "kind": "GalacticWar"
           }
         },
         {
@@ -64090,6 +66699,27 @@
               "latestVersion": null,
               "requiredVersion": "v2026.04.04.1"
             }
+          },
+          "update": {
+            "event": {
+              "belowMinimum": false,
+              "installedVersion": "v2026.04.04.1",
+              "playerFaction": {
+                "type": "unknown"
+              },
+              "statistics": null,
+              "statisticsStatus": {
+                "type": "loading"
+              },
+              "status": {
+                "type": "running"
+              },
+              "versions": {
+                "latestVersion": null,
+                "requiredVersion": "v2026.04.04.1"
+              }
+            },
+            "kind": "GalacticWar"
           }
         },
         {
@@ -64175,6 +66805,55 @@
               "latestVersion": null,
               "requiredVersion": "v2026.04.04.1"
             }
+          },
+          "update": {
+            "event": {
+              "belowMinimum": false,
+              "installedVersion": "v2026.04.04.1",
+              "playerFaction": {
+                "type": "unknown"
+              },
+              "statistics": {
+                "alltime": {
+                  "numPlayers": 82
+                },
+                "factions": [
+                  {
+                    "id": 0,
+                    "longName": "United Earth Federation",
+                    "name": "UEF",
+                    "numAliveAvatars": 0,
+                    "numAvatars": 0,
+                    "numOnlineAvatars": 0,
+                    "numPlanets": 254
+                  }
+                ],
+                "season": {
+                  "name": "Testing Season 4",
+                  "numActiveAttacks": 0,
+                  "numActiveBattles": 0,
+                  "numAliveAvatars": 0,
+                  "numAvatars": 0,
+                  "numBattles": 28,
+                  "numFactions": 4,
+                  "numOnlinePlayers": 4,
+                  "numPlanets": 1000,
+                  "numPlayers": 16,
+                  "startedAt": "2026-03-15 22:55:15"
+                }
+              },
+              "statisticsStatus": {
+                "type": "loaded"
+              },
+              "status": {
+                "type": "running"
+              },
+              "versions": {
+                "latestVersion": null,
+                "requiredVersion": "v2026.04.04.1"
+              }
+            },
+            "kind": "GalacticWar"
           }
         },
         {
@@ -64240,6 +66919,58 @@
               "latestVersion": null,
               "requiredVersion": "v2026.04.04.1"
             }
+          },
+          "update": {
+            "event": {
+              "belowMinimum": false,
+              "installedVersion": "v2026.04.04.1",
+              "playerFaction": {
+                "type": "unknown"
+              },
+              "statistics": {
+                "alltime": {
+                  "numPlayers": 82
+                },
+                "factions": [
+                  {
+                    "id": 0,
+                    "longName": "United Earth Federation",
+                    "name": "UEF",
+                    "numAliveAvatars": 0,
+                    "numAvatars": 0,
+                    "numOnlineAvatars": 0,
+                    "numPlanets": 254
+                  }
+                ],
+                "season": {
+                  "name": "Testing Season 4",
+                  "numActiveAttacks": 0,
+                  "numActiveBattles": 0,
+                  "numAliveAvatars": 0,
+                  "numAvatars": 0,
+                  "numBattles": 28,
+                  "numFactions": 4,
+                  "numOnlinePlayers": 4,
+                  "numPlanets": 1000,
+                  "numPlayers": 16,
+                  "startedAt": "2026-03-15 22:55:15"
+                }
+              },
+              "statisticsStatus": {
+                "payload": {
+                  "reason": "gateway unreachable"
+                },
+                "type": "failed"
+              },
+              "status": {
+                "type": "running"
+              },
+              "versions": {
+                "latestVersion": null,
+                "requiredVersion": "v2026.04.04.1"
+              }
+            },
+            "kind": "GalacticWar"
           }
         }
       ]
@@ -64273,6 +67004,24 @@
               "type": "idle"
             },
             "versions": null
+          },
+          "update": {
+            "event": {
+              "belowMinimum": false,
+              "installedVersion": null,
+              "playerFaction": {
+                "type": "loading"
+              },
+              "statistics": null,
+              "statisticsStatus": {
+                "type": "idle"
+              },
+              "status": {
+                "type": "idle"
+              },
+              "versions": null
+            },
+            "kind": "GalacticWar"
           }
         },
         {
@@ -64315,6 +67064,31 @@
               "type": "idle"
             },
             "versions": null
+          },
+          "update": {
+            "event": {
+              "belowMinimum": false,
+              "installedVersion": null,
+              "playerFaction": {
+                "payload": {
+                  "faction": {
+                    "id": 1,
+                    "longName": "United Earth Federation",
+                    "name": "UEF"
+                  }
+                },
+                "type": "loaded"
+              },
+              "statistics": null,
+              "statisticsStatus": {
+                "type": "idle"
+              },
+              "status": {
+                "type": "idle"
+              },
+              "versions": null
+            },
+            "kind": "GalacticWar"
           }
         },
         {
@@ -64349,6 +67123,27 @@
               "type": "idle"
             },
             "versions": null
+          },
+          "update": {
+            "event": {
+              "belowMinimum": false,
+              "installedVersion": null,
+              "playerFaction": {
+                "payload": {
+                  "faction": null
+                },
+                "type": "loaded"
+              },
+              "statistics": null,
+              "statisticsStatus": {
+                "type": "idle"
+              },
+              "status": {
+                "type": "idle"
+              },
+              "versions": null
+            },
+            "kind": "GalacticWar"
           }
         },
         {
@@ -64383,6 +67178,27 @@
               "type": "idle"
             },
             "versions": null
+          },
+          "update": {
+            "event": {
+              "belowMinimum": false,
+              "installedVersion": null,
+              "playerFaction": {
+                "payload": {
+                  "reason": "the Galactic War gateway did not accept your sign-in (401)"
+                },
+                "type": "failed"
+              },
+              "statistics": null,
+              "statisticsStatus": {
+                "type": "idle"
+              },
+              "status": {
+                "type": "idle"
+              },
+              "versions": null
+            },
+            "kind": "GalacticWar"
           }
         }
       ]
@@ -64406,6 +67222,14 @@
             "status": {
               "type": "checking"
             }
+          },
+          "update": {
+            "event": {
+              "status": {
+                "type": "checking"
+              }
+            },
+            "kind": "LinuxRuntime"
           }
         },
         {
@@ -64438,6 +67262,21 @@
               },
               "type": "missing"
             }
+          },
+          "update": {
+            "event": {
+              "status": {
+                "payload": {
+                  "distribution": "debian",
+                  "prerequisites": [
+                    "userNamespaces",
+                    "vulkan32"
+                  ]
+                },
+                "type": "missing"
+              }
+            },
+            "kind": "LinuxRuntime"
           }
         },
         {
@@ -64466,6 +67305,19 @@
               },
               "type": "downloading"
             }
+          },
+          "update": {
+            "event": {
+              "status": {
+                "payload": {
+                  "component": "proton",
+                  "downloadedBytes": 1048576,
+                  "totalBytes": 516611656
+                },
+                "type": "downloading"
+              }
+            },
+            "kind": "LinuxRuntime"
           }
         },
         {
@@ -64500,6 +67352,22 @@
               },
               "type": "installing"
             }
+          },
+          "update": {
+            "event": {
+              "status": {
+                "payload": {
+                  "step": {
+                    "payload": {
+                      "component": "steamRuntime"
+                    },
+                    "type": "unpacking"
+                  }
+                },
+                "type": "installing"
+              }
+            },
+            "kind": "LinuxRuntime"
           }
         },
         {
@@ -64528,6 +67396,19 @@
               },
               "type": "installing"
             }
+          },
+          "update": {
+            "event": {
+              "status": {
+                "payload": {
+                  "step": {
+                    "type": "installingDirectX"
+                  }
+                },
+                "type": "installing"
+              }
+            },
+            "kind": "LinuxRuntime"
           }
         },
         {
@@ -64546,6 +67427,14 @@
             "status": {
               "type": "ready"
             }
+          },
+          "update": {
+            "event": {
+              "status": {
+                "type": "ready"
+              }
+            },
+            "kind": "LinuxRuntime"
           }
         }
       ]
@@ -64575,6 +67464,17 @@
               },
               "type": "failed"
             }
+          },
+          "update": {
+            "event": {
+              "status": {
+                "payload": {
+                  "reason": "GE-Proton10-34.tar.gz did not match its checksum"
+                },
+                "type": "failed"
+              }
+            },
+            "kind": "LinuxRuntime"
           }
         },
         {
@@ -64593,6 +67493,14 @@
             "status": {
               "type": "checking"
             }
+          },
+          "update": {
+            "event": {
+              "status": {
+                "type": "checking"
+              }
+            },
+            "kind": "LinuxRuntime"
           }
         },
         {
@@ -64611,6 +67519,14 @@
             "status": {
               "type": "notNeeded"
             }
+          },
+          "update": {
+            "event": {
+              "status": {
+                "type": "notNeeded"
+              }
+            },
+            "kind": "LinuxRuntime"
           }
         }
       ]
@@ -64920,6 +67836,13 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "theme",
+              "value": "forgeLight"
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -65224,6 +68147,13 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "gamePath",
+              "value": "C:/games/FA/bin/ForgedAlliance.exe"
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -65538,6 +68468,23 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "paths",
+              "value": {
+                "gamePrefsPath": "",
+                "javaPath": "",
+                "mapGeneratorDir": "",
+                "mapsDir": "D:/faf/vault/maps",
+                "modsDir": "",
+                "originalGameDir": "D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance",
+                "replaysDir": "D:/faf/replays",
+                "vaultDir": "D:/faf/vault",
+                "winePrefix": "/home/player/.wine"
+              }
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -65848,6 +68795,15 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "keptGeneratedMaps",
+              "value": [
+                "neroxis_map_generator_1.15.2_keepme"
+              ]
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -66157,6 +69113,16 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "keptGeneratedMaps",
+              "value": [
+                "neroxis_map_generator_1.15.2_keepme",
+                "neroxis_map_generator_1.15.2_alsokeep"
+              ]
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -66486,6 +69452,24 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "matchmakerVetoes",
+              "value": [
+                {
+                  "mapPoolMapVersionId": 91,
+                  "matchmakerQueueMapPoolId": 4,
+                  "vetoTokensApplied": 2
+                },
+                {
+                  "mapPoolMapVersionId": 92,
+                  "matchmakerQueueMapPoolId": 4,
+                  "vetoTokensApplied": 1
+                }
+              ]
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -66805,6 +69789,19 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "matchmakerVetoes",
+              "value": [
+                {
+                  "mapPoolMapVersionId": 91,
+                  "matchmakerQueueMapPoolId": 4,
+                  "vetoTokensApplied": 1
+                }
+              ]
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -67134,6 +70131,21 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "mapPoolsSeen",
+              "value": [
+                {
+                  "assignments": [
+                    91,
+                    92
+                  ],
+                  "queueName": "ladder1v1"
+                }
+              ]
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -67463,6 +70475,17 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "avatarHistory",
+              "value": [
+                "https://example.test/cup.png",
+                "https://example.test/veteran.png",
+                ""
+              ]
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -67921,6 +70944,62 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "social",
+              "value": {
+                "playerNotes": [
+                  {
+                    "login": "Ada",
+                    "note": "Map specialist",
+                    "playerId": 7
+                  },
+                  {
+                    "login": "Aurora",
+                    "note": "Reliable teammate",
+                    "playerId": 42
+                  }
+                ],
+                "replayNotes": [
+                  {
+                    "comment": "Comeback",
+                    "path": null,
+                    "replayId": 9,
+                    "tags": []
+                  },
+                  {
+                    "comment": "",
+                    "path": null,
+                    "replayId": 12,
+                    "tags": [
+                      "Lots finals"
+                    ]
+                  },
+                  {
+                    "comment": "a game's",
+                    "path": null,
+                    "replayId": 44,
+                    "tags": []
+                  },
+                  {
+                    "comment": "",
+                    "path": "/home/ada/Replays/Zed.fafreplay",
+                    "replayId": 0,
+                    "tags": [
+                      "practice"
+                    ]
+                  },
+                  {
+                    "comment": "vs two hard AIs",
+                    "path": "c:/replays/skirmish.fafreplay",
+                    "replayId": 0,
+                    "tags": []
+                  }
+                ]
+              }
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -68295,6 +71374,16 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "discord",
+              "value": {
+                "disallowJoins": true,
+                "enabled": false
+              }
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -68671,6 +71760,18 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "debug",
+              "value": {
+                "iceAdapterConsoleWindow": true,
+                "iceAdapterDebugWindow": true,
+                "iceAdapterInfoWindow": false,
+                "mapGeneratorWindow": true
+              }
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -69213,6 +72314,137 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "browsing",
+              "value": {
+                "coopBoardColumns": [],
+                "customGamesBrowser": {
+                  "allowRules": [],
+                  "applyFilters": true,
+                  "columnOrder": [],
+                  "columnWidths": [
+                    320,
+                    180,
+                    90,
+                    110,
+                    80
+                  ],
+                  "detailHidden": false,
+                  "detailWidth": 360,
+                  "hideFoes": false,
+                  "hideModded": true,
+                  "hidePrivate": true,
+                  "hideUnranked": false,
+                  "rules": [
+                    {
+                      "constraint": "contains",
+                      "field": "host",
+                      "value": "noisy"
+                    }
+                  ],
+                  "sort": "age",
+                  "sortReversed": true
+                },
+                "customGamesView": "list",
+                "favoriteMaps": [
+                  "adaptive_tabula.v0006"
+                ],
+                "favoriteMods": [
+                  "eco_graph"
+                ],
+                "hostCoop": {
+                  "enforceRatingRange": false,
+                  "featuredMod": "coop",
+                  "map": "SCCA_Coop_A03.v0023",
+                  "password": "",
+                  "passwordEnabled": false,
+                  "ratingMax": 1500,
+                  "ratingMin": 800,
+                  "title": "Operation Ivy",
+                  "visibility": "public"
+                },
+                "hostGame": {
+                  "enforceRatingRange": true,
+                  "featuredMod": "faf",
+                  "map": "scmp_009",
+                  "password": " secret ",
+                  "passwordEnabled": true,
+                  "ratingMax": 1700,
+                  "ratingMin": 700,
+                  "title": "Friday game",
+                  "visibility": "friends"
+                },
+                "leaderboardIncludeFormerNames": false,
+                "leaderboardRatingColumns": [
+                  "games",
+                  "updated"
+                ],
+                "legacyStorageMigrated": true,
+                "liveReplayColumns": [
+                  120,
+                  200
+                ],
+                "liveReplayFilters": {
+                  "activePlayers": "4",
+                  "featuredMod": "faf",
+                  "friendsOnly": true,
+                  "gameType": "matchmaker",
+                  "hideModded": true,
+                  "hideSinglePlayer": false,
+                  "hideUnranked": true,
+                  "maxPlayers": "",
+                  "search": "tournament"
+                },
+                "liveReplayOrder": [],
+                "liveReplayView": "tiles",
+                "mapVaultPreset": "recommended",
+                "mapVaultSort": "newest",
+                "matchmakerChatWidth": 420,
+                "matchmakerFactions": [
+                  "Cybran"
+                ],
+                "matchmakerInviteColumns": [],
+                "matchmakerInviteOrder": [],
+                "matchmakerRecentColumns": [],
+                "matchmakerRecentOrder": [],
+                "matchmakerUnselectedQueues": [
+                  "ladder_1v1"
+                ],
+                "modPresets": [],
+                "modVaultPreset": "recommended",
+                "modVaultSort": "rating",
+                "rememberedFilters": {
+                  "installedMods": "{\"search\":\"ui\"}"
+                },
+                "replayChatChannel": "",
+                "replayChatTransfers": "show",
+                "replayListColumns": [
+                  64,
+                  240,
+                  150
+                ],
+                "replayListOrder": [],
+                "replayVaultPlayer": "",
+                "replaysView": "list",
+                "searchPresets": [
+                  {
+                    "list": "replays.online",
+                    "name": "Gap 1800+",
+                    "query": "{\"map\":\"Dual Gap\"}"
+                  },
+                  {
+                    "list": "replays.local",
+                    "name": "Gap 1800+",
+                    "query": "{\"map\":\"Local Gap\"}"
+                  }
+                ],
+                "vaultPageSize": 48,
+                "whitelistedHosts": []
+              }
+            },
+            "kind": "Settings"
           }
         }
       ]
@@ -82808,6 +86040,24 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -82831,6 +86081,24 @@
             "status": {
               "type": "submitting"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "type": "submitting"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -82860,6 +86128,27 @@
               },
               "type": "failed"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "payload": {
+                  "reason": "the game id does not exist"
+                },
+                "type": "failed"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -82886,6 +86175,27 @@
               },
               "type": "failed"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "loading"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "payload": {
+                  "reason": "the game id does not exist"
+                },
+                "type": "failed"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -82943,6 +86253,41 @@
               },
               "type": "failed"
             }
+          },
+          "update": {
+            "event": {
+              "history": [
+                {
+                  "attachedLog": "===== GAME LOG EXCERPT =====",
+                  "createTime": "2026-08-10T18:30:00Z",
+                  "description": "Abusive chat",
+                  "gameId": null,
+                  "id": 8,
+                  "moderator": "",
+                  "moderatorNotice": "",
+                  "offenders": [
+                    "Bob"
+                  ],
+                  "status": "OPEN"
+                }
+              ],
+              "historyStatus": {
+                "type": "ready"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "payload": {
+                  "reason": "the game id does not exist"
+                },
+                "type": "failed"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -82984,6 +86329,38 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [
+                {
+                  "attachedLog": "===== GAME LOG EXCERPT =====",
+                  "createTime": "2026-08-10T18:30:00Z",
+                  "description": "Abusive chat",
+                  "gameId": null,
+                  "id": 8,
+                  "moderator": "",
+                  "moderatorNotice": "",
+                  "offenders": [
+                    "Bob"
+                  ],
+                  "status": "OPEN"
+                }
+              ],
+              "historyStatus": {
+                "type": "ready"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "Cid",
+              "open": true,
+              "playerId": 9,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83021,6 +86398,38 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [
+                {
+                  "attachedLog": "===== GAME LOG EXCERPT =====",
+                  "createTime": "2026-08-10T18:30:00Z",
+                  "description": "Abusive chat",
+                  "gameId": null,
+                  "id": 8,
+                  "moderator": "",
+                  "moderatorNotice": "",
+                  "offenders": [
+                    "Bob"
+                  ],
+                  "status": "OPEN"
+                }
+              ],
+              "historyStatus": {
+                "type": "loading"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "Cid",
+              "open": true,
+              "playerId": 9,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83064,6 +86473,41 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [
+                {
+                  "attachedLog": "===== GAME LOG EXCERPT =====",
+                  "createTime": "2026-08-10T18:30:00Z",
+                  "description": "Abusive chat",
+                  "gameId": null,
+                  "id": 8,
+                  "moderator": "",
+                  "moderatorNotice": "",
+                  "offenders": [
+                    "Bob"
+                  ],
+                  "status": "OPEN"
+                }
+              ],
+              "historyStatus": {
+                "payload": {
+                  "reason": "offline"
+                },
+                "type": "failed"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "Cid",
+              "open": true,
+              "playerId": 9,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83087,6 +86531,24 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "",
+              "open": false,
+              "playerId": null,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         }
       ]
@@ -83119,6 +86581,24 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83148,6 +86628,27 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "payload": {
+                  "gameId": 42
+                },
+                "type": "preparing"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83193,6 +86694,35 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "payload": {
+                  "excerpt": {
+                    "block": "===== GAME LOG EXCERPT (attached by the reporter's client) =====\nwarning: Desync detected\n===== END OF GAME LOG EXCERPT =====",
+                    "fileName": "game-42-1700000000-1.log",
+                    "keptLines": 52,
+                    "logGameId": 42,
+                    "redactions": 3,
+                    "requestedGameId": 42,
+                    "totalLines": 5321
+                  }
+                },
+                "type": "ready"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83222,6 +86752,27 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "payload": {
+                  "gameId": 43
+                },
+                "type": "preparing"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83251,6 +86802,27 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "payload": {
+                  "gameId": 43
+                },
+                "type": "unavailable"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83280,6 +86852,27 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "payload": {
+                  "gameId": null
+                },
+                "type": "preparing"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83311,6 +86904,28 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "payload": {
+                  "gameId": null,
+                  "reason": "access denied"
+                },
+                "type": "failed"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83356,6 +86971,35 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "payload": {
+                  "excerpt": {
+                    "block": "===== GAME LOG EXCERPT (attached by the reporter's client) =====\nwarning: Desync detected\n===== END OF GAME LOG EXCERPT =====",
+                    "fileName": "game-42-1700000000-1.log",
+                    "keptLines": 52,
+                    "logGameId": 41,
+                    "redactions": 3,
+                    "requestedGameId": null,
+                    "totalLines": 5321
+                  }
+                },
+                "type": "ready"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83390,6 +87034,35 @@
             "status": {
               "type": "submitting"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "payload": {
+                  "excerpt": {
+                    "block": "===== GAME LOG EXCERPT (attached by the reporter's client) =====\nwarning: Desync detected\n===== END OF GAME LOG EXCERPT =====",
+                    "fileName": "game-42-1700000000-1.log",
+                    "keptLines": 52,
+                    "logGameId": 41,
+                    "redactions": 3,
+                    "requestedGameId": null,
+                    "totalLines": 5321
+                  }
+                },
+                "type": "ready"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "type": "submitting"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83430,6 +87103,38 @@
               },
               "type": "failed"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "payload": {
+                  "excerpt": {
+                    "block": "===== GAME LOG EXCERPT (attached by the reporter's client) =====\nwarning: Desync detected\n===== END OF GAME LOG EXCERPT =====",
+                    "fileName": "game-42-1700000000-1.log",
+                    "keptLines": 52,
+                    "logGameId": 41,
+                    "redactions": 3,
+                    "requestedGameId": null,
+                    "totalLines": 5321
+                  }
+                },
+                "type": "ready"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "payload": {
+                  "reason": "the game id does not exist"
+                },
+                "type": "failed"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83456,6 +87161,27 @@
               },
               "type": "failed"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "payload": {
+                  "reason": "the game id does not exist"
+                },
+                "type": "failed"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83504,6 +87230,38 @@
               },
               "type": "failed"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "payload": {
+                  "excerpt": {
+                    "block": "===== GAME LOG EXCERPT (attached by the reporter's client) =====\nwarning: Desync detected\n===== END OF GAME LOG EXCERPT =====",
+                    "fileName": "game-42-1700000000-1.log",
+                    "keptLines": 52,
+                    "logGameId": 41,
+                    "redactions": 3,
+                    "requestedGameId": null,
+                    "totalLines": 5321
+                  }
+                },
+                "type": "ready"
+              },
+              "login": "Bob",
+              "open": true,
+              "playerId": 7,
+              "status": {
+                "payload": {
+                  "reason": "the game id does not exist"
+                },
+                "type": "failed"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83531,6 +87289,24 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "Cid",
+              "open": true,
+              "playerId": 9,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83576,6 +87352,35 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "payload": {
+                  "excerpt": {
+                    "block": "===== GAME LOG EXCERPT (attached by the reporter's client) =====\nwarning: Desync detected\n===== END OF GAME LOG EXCERPT =====",
+                    "fileName": "game-42-1700000000-1.log",
+                    "keptLines": 52,
+                    "logGameId": 42,
+                    "redactions": 3,
+                    "requestedGameId": 42,
+                    "totalLines": 5321
+                  }
+                },
+                "type": "ready"
+              },
+              "login": "Cid",
+              "open": true,
+              "playerId": 9,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         },
         {
@@ -83599,6 +87404,24 @@
             "status": {
               "type": "idle"
             }
+          },
+          "update": {
+            "event": {
+              "history": [],
+              "historyStatus": {
+                "type": "idle"
+              },
+              "logAttachment": {
+                "type": "off"
+              },
+              "login": "",
+              "open": false,
+              "playerId": null,
+              "status": {
+                "type": "idle"
+              }
+            },
+            "kind": "Reporting"
           }
         }
       ]
@@ -83644,6 +87467,34 @@
               "kind": "map",
               "name": "Seton's Clutch"
             }
+          },
+          "update": {
+            "event": {
+              "reviews": [],
+              "status": {
+                "type": "idle"
+              },
+              "submit": {
+                "type": "idle"
+              },
+              "summary": {
+                "averageTenths": 0,
+                "counts": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "total": 0
+              },
+              "target": {
+                "id": 42,
+                "kind": "map",
+                "name": "Seton's Clutch"
+              }
+            },
+            "kind": "Reviews"
           }
         },
         {
@@ -83677,6 +87528,34 @@
               "kind": "map",
               "name": "Seton's Clutch"
             }
+          },
+          "update": {
+            "event": {
+              "reviews": [],
+              "status": {
+                "type": "loading"
+              },
+              "submit": {
+                "type": "idle"
+              },
+              "summary": {
+                "averageTenths": 0,
+                "counts": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "total": 0
+              },
+              "target": {
+                "id": 42,
+                "kind": "map",
+                "name": "Seton's Clutch"
+              }
+            },
+            "kind": "Reviews"
           }
         },
         {
@@ -83717,6 +87596,34 @@
               "kind": "map",
               "name": "Setons Clutch"
             }
+          },
+          "update": {
+            "event": {
+              "reviews": [],
+              "status": {
+                "type": "idle"
+              },
+              "submit": {
+                "type": "idle"
+              },
+              "summary": {
+                "averageTenths": 0,
+                "counts": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "total": 0
+              },
+              "target": {
+                "id": 42,
+                "kind": "map",
+                "name": "Setons Clutch"
+              }
+            },
+            "kind": "Reviews"
           }
         },
         {
@@ -83750,6 +87657,34 @@
               "kind": "map",
               "name": "Setons Clutch"
             }
+          },
+          "update": {
+            "event": {
+              "reviews": [],
+              "status": {
+                "type": "loading"
+              },
+              "submit": {
+                "type": "idle"
+              },
+              "summary": {
+                "averageTenths": 0,
+                "counts": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "total": 0
+              },
+              "target": {
+                "id": 42,
+                "kind": "map",
+                "name": "Setons Clutch"
+              }
+            },
+            "kind": "Reviews"
           }
         },
         {
@@ -83799,6 +87734,34 @@
               "kind": "map",
               "name": "Setons Clutch"
             }
+          },
+          "update": {
+            "event": {
+              "reviews": [],
+              "status": {
+                "type": "loading"
+              },
+              "submit": {
+                "type": "idle"
+              },
+              "summary": {
+                "averageTenths": 0,
+                "counts": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "total": 0
+              },
+              "target": {
+                "id": 42,
+                "kind": "map",
+                "name": "Setons Clutch"
+              }
+            },
+            "kind": "Reviews"
           }
         },
         {
@@ -83838,6 +87801,37 @@
               "kind": "map",
               "name": "Setons Clutch"
             }
+          },
+          "update": {
+            "event": {
+              "reviews": [],
+              "status": {
+                "payload": {
+                  "reason": "503"
+                },
+                "type": "failed"
+              },
+              "submit": {
+                "type": "idle"
+              },
+              "summary": {
+                "averageTenths": 0,
+                "counts": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "total": 0
+              },
+              "target": {
+                "id": 42,
+                "kind": "map",
+                "name": "Setons Clutch"
+              }
+            },
+            "kind": "Reviews"
           }
         },
         {
@@ -83871,6 +87865,34 @@
               "kind": "map",
               "name": "Setons Clutch"
             }
+          },
+          "update": {
+            "event": {
+              "reviews": [],
+              "status": {
+                "type": "loading"
+              },
+              "submit": {
+                "type": "idle"
+              },
+              "summary": {
+                "averageTenths": 0,
+                "counts": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "total": 0
+              },
+              "target": {
+                "id": 42,
+                "kind": "map",
+                "name": "Setons Clutch"
+              }
+            },
+            "kind": "Reviews"
           }
         },
         {
@@ -83942,6 +87964,49 @@
               "kind": "map",
               "name": "Setons Clutch"
             }
+          },
+          "update": {
+            "event": {
+              "reviews": [
+                {
+                  "id": 1,
+                  "player": "Bob",
+                  "score": 5,
+                  "text": "",
+                  "version": "1"
+                },
+                {
+                  "id": 2,
+                  "player": "Cid",
+                  "score": 2,
+                  "text": "",
+                  "version": "1"
+                }
+              ],
+              "status": {
+                "type": "ready"
+              },
+              "submit": {
+                "type": "idle"
+              },
+              "summary": {
+                "averageTenths": 35,
+                "counts": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  1
+                ],
+                "total": 2
+              },
+              "target": {
+                "id": 42,
+                "kind": "map",
+                "name": "Setons Clutch"
+              }
+            },
+            "kind": "Reviews"
           }
         },
         {
@@ -83990,6 +88055,49 @@
               "kind": "map",
               "name": "Setons Clutch"
             }
+          },
+          "update": {
+            "event": {
+              "reviews": [
+                {
+                  "id": 1,
+                  "player": "Bob",
+                  "score": 5,
+                  "text": "",
+                  "version": "1"
+                },
+                {
+                  "id": 2,
+                  "player": "Cid",
+                  "score": 2,
+                  "text": "",
+                  "version": "1"
+                }
+              ],
+              "status": {
+                "type": "ready"
+              },
+              "submit": {
+                "type": "saving"
+              },
+              "summary": {
+                "averageTenths": 35,
+                "counts": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  1
+                ],
+                "total": 2
+              },
+              "target": {
+                "id": 42,
+                "kind": "map",
+                "name": "Setons Clutch"
+              }
+            },
+            "kind": "Reviews"
           }
         },
         {
@@ -84044,6 +88152,52 @@
               "kind": "map",
               "name": "Setons Clutch"
             }
+          },
+          "update": {
+            "event": {
+              "reviews": [
+                {
+                  "id": 1,
+                  "player": "Bob",
+                  "score": 5,
+                  "text": "",
+                  "version": "1"
+                },
+                {
+                  "id": 2,
+                  "player": "Cid",
+                  "score": 2,
+                  "text": "",
+                  "version": "1"
+                }
+              ],
+              "status": {
+                "type": "ready"
+              },
+              "submit": {
+                "payload": {
+                  "reason": "you have not played this map"
+                },
+                "type": "failed"
+              },
+              "summary": {
+                "averageTenths": 35,
+                "counts": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  1
+                ],
+                "total": 2
+              },
+              "target": {
+                "id": 42,
+                "kind": "map",
+                "name": "Setons Clutch"
+              }
+            },
+            "kind": "Reviews"
           }
         },
         {
@@ -84073,6 +88227,30 @@
               "total": 0
             },
             "target": null
+          },
+          "update": {
+            "event": {
+              "reviews": [],
+              "status": {
+                "type": "idle"
+              },
+              "submit": {
+                "type": "idle"
+              },
+              "summary": {
+                "averageTenths": 0,
+                "counts": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "total": 0
+              },
+              "target": null
+            },
+            "kind": "Reviews"
           }
         },
         {
@@ -84118,6 +88296,30 @@
               "total": 0
             },
             "target": null
+          },
+          "update": {
+            "event": {
+              "reviews": [],
+              "status": {
+                "type": "idle"
+              },
+              "submit": {
+                "type": "idle"
+              },
+              "summary": {
+                "averageTenths": 0,
+                "counts": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "total": 0
+              },
+              "target": null
+            },
+            "kind": "Reviews"
           }
         }
       ]
@@ -84157,6 +88359,23 @@
                 "title": "Notification n1"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "items": [
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n1",
+                  "kind": "mention",
+                  "read": false,
+                  "text": null,
+                  "title": "Notification n1"
+                }
+              ]
+            },
+            "kind": "Notifications"
           }
         },
         {
@@ -84201,6 +88420,33 @@
                 "title": "Notification n1"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "items": [
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n2",
+                  "kind": "friendOnline",
+                  "read": false,
+                  "text": null,
+                  "title": "Notification n2"
+                },
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n1",
+                  "kind": "mention",
+                  "read": false,
+                  "text": null,
+                  "title": "Notification n1"
+                }
+              ]
+            },
+            "kind": "Notifications"
           }
         },
         {
@@ -84236,6 +88482,33 @@
                 "title": "Notification n1"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "items": [
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n2",
+                  "kind": "friendOnline",
+                  "read": false,
+                  "text": null,
+                  "title": "Notification n2"
+                },
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n1",
+                  "kind": "mention",
+                  "read": true,
+                  "text": null,
+                  "title": "Notification n1"
+                }
+              ]
+            },
+            "kind": "Notifications"
           }
         },
         {
@@ -84271,6 +88544,33 @@
                 "title": "Notification n1"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "items": [
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n2",
+                  "kind": "friendOnline",
+                  "read": false,
+                  "text": null,
+                  "title": "Notification n2"
+                },
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n1",
+                  "kind": "mention",
+                  "read": true,
+                  "text": null,
+                  "title": "Notification n1"
+                }
+              ]
+            },
+            "kind": "Notifications"
           }
         },
         {
@@ -84315,6 +88615,33 @@
                 "title": "Notification n2"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "items": [
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n1",
+                  "kind": "mention",
+                  "read": false,
+                  "text": null,
+                  "title": "Notification n1"
+                },
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n2",
+                  "kind": "friendOnline",
+                  "read": false,
+                  "text": null,
+                  "title": "Notification n2"
+                }
+              ]
+            },
+            "kind": "Notifications"
           }
         },
         {
@@ -84350,6 +88677,33 @@
                 "title": "Notification n2"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "items": [
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n1",
+                  "kind": "mention",
+                  "read": false,
+                  "text": null,
+                  "title": "Notification n1"
+                },
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n2",
+                  "kind": "friendOnline",
+                  "read": true,
+                  "text": null,
+                  "title": "Notification n2"
+                }
+              ]
+            },
+            "kind": "Notifications"
           }
         },
         {
@@ -84361,6 +88715,12 @@
           },
           "expected": {
             "items": []
+          },
+          "update": {
+            "event": {
+              "items": []
+            },
+            "kind": "Notifications"
           }
         }
       ]
@@ -85157,6 +89517,25 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "appearance",
+              "value": {
+                "backgroundDim": 60,
+                "backgroundImage": "",
+                "density": "compact",
+                "gameTileColumns": 6,
+                "hoverCloseDelayMs": 2000,
+                "hoverOpenDelayMs": 2000,
+                "hoverPanels": false,
+                "reduceMotion": true,
+                "replayFlags": true,
+                "sidebarWidth": 64,
+                "uiScale": 200
+              }
+            },
+            "kind": "Settings"
           }
         }
       ]
@@ -85472,6 +89851,19 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "general",
+              "value": {
+                "autoLogin": false,
+                "filterMemory": "restart",
+                "keepRunningDuringGame": false,
+                "rememberTypedEntries": true,
+                "startPage": "play"
+              }
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -85826,6 +90218,63 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "notifications",
+              "value": {
+                "delivery": {},
+                "desktop": true,
+                "desktopAllKinds": false,
+                "desktopMonitor": null,
+                "desktopPosition": "bottomRight",
+                "desktopStyle": "popup",
+                "enabled": false,
+                "friendJoinedGame": true,
+                "friendOffline": true,
+                "friendOnline": true,
+                "friendPlaying": true,
+                "gameFull": true,
+                "gameLaunched": true,
+                "historyLifetimeSeconds": 0,
+                "mapGenerated": true,
+                "mapPoolMutedQueues": [],
+                "matchFound": true,
+                "mentions": true,
+                "mentionsRequireAt": false,
+                "newCustomGames": false,
+                "newCustomGamesFriendsOnly": true,
+                "notifyWhenFocused": false,
+                "partyInvites": true,
+                "popup": true,
+                "privateMessages": true,
+                "queueOpponentQueues": [],
+                "repeatCooldownSeconds": 2,
+                "reviewReminder": true,
+                "sound": true,
+                "soundChoiceVersion": 2,
+                "sounds": {
+                  "friendJoinedGame": "chime",
+                  "friendOffline": "chime",
+                  "friendOnline": "chime",
+                  "friendPlaying": "chime",
+                  "gameFull": "alert",
+                  "gameLaunched": "chime",
+                  "matchFound": "fafMatch",
+                  "mention": "chime",
+                  "newCustomGame": "chime",
+                  "other": "chime",
+                  "partyInvite": "chime",
+                  "privateMessage": "chime",
+                  "reviewReminder": "chime"
+                },
+                "streamLive": true,
+                "toastDurationSeconds": 5,
+                "toastPosition": "bottomLeft",
+                "volume": 70
+              }
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -86156,6 +90605,39 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "chat",
+              "value": {
+                "autoJoinChannels": [],
+                "autoJoinLanguageChannel": true,
+                "autoJoinNewbieChannel": true,
+                "coloredNames": false,
+                "fontSize": 15,
+                "hiddenRosterCategories": [],
+                "hideFoeMessages": true,
+                "mutedPlayers": [],
+                "nameColors": {
+                  "admins": "#ba55d3",
+                  "foes": "#dc143c",
+                  "friends": "#87cefa",
+                  "moderators": "#32cd32",
+                  "pings": "#ff8c00",
+                  "players": {},
+                  "selfColor": "#ffdd00"
+                },
+                "newbieChannelGameThreshold": 50,
+                "readMarkers": {},
+                "rosterWidth": 280,
+                "senderWidth": 116,
+                "showJoinsParts": false,
+                "showTimestamps": false,
+                "use24HourTime": true,
+                "visibleMessageLimit": 500
+              }
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -86476,6 +90958,29 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "game",
+              "value": {
+                "additionalArguments": [],
+                "autoGenerateMaps": true,
+                "borderlessWindow": false,
+                "cacheLifetimeDays": 30,
+                "cacheRollingBranches": false,
+                "cacheSizeAlertGb": null,
+                "confirmDownloadsBeforeJoining": true,
+                "keepGeneratedMaps": false,
+                "keepGeneratedMapsLimit": 0,
+                "launchWrapper": "gamemoderun",
+                "mapGeneratorInstances": 0,
+                "pipeLiveReplay": false,
+                "showJoinProgress": true,
+                "showReplayProgress": true,
+                "steamPresence": false
+              }
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -86784,6 +91289,17 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "connectivity",
+              "value": {
+                "adapter": "go",
+                "hostAdapter": "java",
+                "selectionVersion": 2
+              }
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -87095,6 +91611,20 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "updates",
+              "value": {
+                "automatic": false,
+                "backgroundDownload": false,
+                "channelChoiceVersion": 1,
+                "lastSeenVersion": "0.4.0",
+                "preRelease": true,
+                "showWhatsNew": true
+              }
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -87430,6 +91960,44 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "mapGenerator",
+              "value": {
+                "commandLineArgs": "",
+                "debug": false,
+                "generationType": "casual",
+                "mapSize": 512,
+                "numTeams": 2,
+                "numToGenerate": null,
+                "outputPath": "",
+                "previewPath": "",
+                "propStyle": "",
+                "propStyles": [],
+                "reclaimDensity": null,
+                "reclaimDensityMax": null,
+                "reclaimDensityMin": null,
+                "resourceDensity": null,
+                "resourceDensityMax": null,
+                "resourceDensityMin": null,
+                "resourceStyle": "",
+                "resourceStyles": [],
+                "seed": "",
+                "spawnCount": 6,
+                "style": "",
+                "styles": [],
+                "symmetries": [],
+                "symmetry": "",
+                "terrainStyle": "",
+                "terrainStyles": [],
+                "textureStyle": "",
+                "textureStyles": [],
+                "version": "1.22.1",
+                "visualize": false
+              }
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -87734,6 +92302,13 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "replayGamePath",
+              "value": "D:/FA-replay/bin/ForgedAlliance.exe"
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -88058,6 +92633,25 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "cacheInfo",
+              "value": {
+                "totalFiles": 3,
+                "totalSizeBytes": 1500000000.0,
+                "versions": [
+                  {
+                    "fileCount": 3,
+                    "name": "faf",
+                    "sizeBytes": 1500000000.0,
+                    "url": null,
+                    "version": 3810
+                  }
+                ]
+              }
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -88374,6 +92968,15 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "keptGeneratedMaps",
+              "value": [
+                "neroxis_map_generator_1.22.1_keep"
+              ]
+            },
+            "kind": "Settings"
           }
         },
         {
@@ -88970,6 +93573,305 @@
               "preRelease": true,
               "showWhatsNew": true
             }
+          },
+          "update": {
+            "event": {
+              "field": "all",
+              "value": {
+                "appearance": {
+                  "backgroundDim": 60,
+                  "backgroundImage": "",
+                  "density": "comfortable",
+                  "gameTileColumns": 0,
+                  "hoverCloseDelayMs": 160,
+                  "hoverOpenDelayMs": 500,
+                  "hoverPanels": true,
+                  "reduceMotion": false,
+                  "replayFlags": false,
+                  "sidebarWidth": 224,
+                  "uiScale": 100
+                },
+                "avatarHistory": [],
+                "browsing": {
+                  "coopBoardColumns": [],
+                  "customGamesBrowser": {
+                    "allowRules": [],
+                    "applyFilters": false,
+                    "columnOrder": [],
+                    "columnWidths": [],
+                    "detailHidden": false,
+                    "detailWidth": 0,
+                    "hideFoes": false,
+                    "hideModded": false,
+                    "hidePrivate": false,
+                    "hideUnranked": false,
+                    "rules": [],
+                    "sort": "players",
+                    "sortReversed": false
+                  },
+                  "customGamesView": "tiles",
+                  "favoriteMaps": [],
+                  "favoriteMods": [],
+                  "hostCoop": {
+                    "enforceRatingRange": false,
+                    "featuredMod": "faf",
+                    "map": "",
+                    "password": "",
+                    "passwordEnabled": false,
+                    "ratingMax": 1500,
+                    "ratingMin": 800,
+                    "title": "",
+                    "visibility": "public"
+                  },
+                  "hostGame": {
+                    "enforceRatingRange": false,
+                    "featuredMod": "faf",
+                    "map": "",
+                    "password": "",
+                    "passwordEnabled": false,
+                    "ratingMax": 1500,
+                    "ratingMin": 800,
+                    "title": "",
+                    "visibility": "public"
+                  },
+                  "leaderboardIncludeFormerNames": false,
+                  "leaderboardRatingColumns": [
+                    "games",
+                    "updated"
+                  ],
+                  "legacyStorageMigrated": false,
+                  "liveReplayColumns": [],
+                  "liveReplayFilters": {
+                    "activePlayers": "",
+                    "featuredMod": "",
+                    "friendsOnly": false,
+                    "gameType": "",
+                    "hideModded": false,
+                    "hideSinglePlayer": false,
+                    "hideUnranked": false,
+                    "maxPlayers": "",
+                    "search": ""
+                  },
+                  "liveReplayOrder": [],
+                  "liveReplayView": "list",
+                  "mapVaultPreset": "recommended",
+                  "mapVaultSort": "",
+                  "matchmakerChatWidth": 0,
+                  "matchmakerFactions": [
+                    "UEF",
+                    "Aeon",
+                    "Cybran",
+                    "Seraphim"
+                  ],
+                  "matchmakerInviteColumns": [],
+                  "matchmakerInviteOrder": [],
+                  "matchmakerRecentColumns": [],
+                  "matchmakerRecentOrder": [],
+                  "matchmakerUnselectedQueues": [],
+                  "modPresets": [],
+                  "modVaultPreset": "recommended",
+                  "modVaultSort": "",
+                  "rememberedFilters": {},
+                  "replayChatChannel": "",
+                  "replayChatTransfers": "show",
+                  "replayListColumns": [],
+                  "replayListOrder": [],
+                  "replayVaultPlayer": "",
+                  "replaysView": "tiles",
+                  "searchPresets": [],
+                  "vaultPageSize": 0,
+                  "whitelistedHosts": []
+                },
+                "cacheInfo": {
+                  "totalFiles": 0,
+                  "totalSizeBytes": 0.0,
+                  "versions": []
+                },
+                "chat": {
+                  "autoJoinChannels": [],
+                  "autoJoinLanguageChannel": true,
+                  "autoJoinNewbieChannel": true,
+                  "coloredNames": false,
+                  "fontSize": 13,
+                  "hiddenRosterCategories": [],
+                  "hideFoeMessages": true,
+                  "mutedPlayers": [],
+                  "nameColors": {
+                    "admins": "#ba55d3",
+                    "foes": "#dc143c",
+                    "friends": "#87cefa",
+                    "moderators": "#32cd32",
+                    "pings": "#ff8c00",
+                    "players": {},
+                    "selfColor": "#ffdd00"
+                  },
+                  "newbieChannelGameThreshold": 50,
+                  "readMarkers": {},
+                  "rosterWidth": 280,
+                  "senderWidth": 116,
+                  "showJoinsParts": false,
+                  "showTimestamps": true,
+                  "use24HourTime": true,
+                  "visibleMessageLimit": 500
+                },
+                "connectivity": {
+                  "adapter": "dynamic",
+                  "hostAdapter": "java",
+                  "selectionVersion": 2
+                },
+                "debug": {
+                  "iceAdapterConsoleWindow": false,
+                  "iceAdapterDebugWindow": false,
+                  "iceAdapterInfoWindow": false,
+                  "mapGeneratorWindow": false
+                },
+                "discord": {
+                  "disallowJoins": false,
+                  "enabled": true
+                },
+                "events": {
+                  "reminders": [],
+                  "weekStart": "monday"
+                },
+                "game": {
+                  "additionalArguments": [],
+                  "autoGenerateMaps": true,
+                  "borderlessWindow": false,
+                  "cacheLifetimeDays": 30,
+                  "cacheRollingBranches": false,
+                  "cacheSizeAlertGb": 10,
+                  "confirmDownloadsBeforeJoining": true,
+                  "keepGeneratedMaps": false,
+                  "keepGeneratedMapsLimit": 0,
+                  "launchWrapper": "",
+                  "mapGeneratorInstances": 0,
+                  "pipeLiveReplay": false,
+                  "showJoinProgress": true,
+                  "showReplayProgress": true,
+                  "steamPresence": false
+                },
+                "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
+                "general": {
+                  "autoLogin": true,
+                  "filterMemory": "session",
+                  "keepRunningDuringGame": true,
+                  "rememberTypedEntries": false,
+                  "startPage": "news"
+                },
+                "keptGeneratedMaps": [],
+                "mapGenerator": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [],
+                  "symmetries": [],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
+                "mapPoolsSeen": [],
+                "matchmakerVetoes": [],
+                "notifications": {
+                  "delivery": {},
+                  "desktop": true,
+                  "desktopAllKinds": false,
+                  "desktopMonitor": null,
+                  "desktopPosition": "bottomRight",
+                  "desktopStyle": "popup",
+                  "enabled": true,
+                  "friendJoinedGame": true,
+                  "friendOffline": true,
+                  "friendOnline": true,
+                  "friendPlaying": true,
+                  "gameFull": true,
+                  "gameLaunched": true,
+                  "historyLifetimeSeconds": 0,
+                  "mapGenerated": true,
+                  "mapPoolMutedQueues": [],
+                  "matchFound": true,
+                  "mentions": true,
+                  "mentionsRequireAt": false,
+                  "newCustomGames": false,
+                  "newCustomGamesFriendsOnly": true,
+                  "notifyWhenFocused": false,
+                  "partyInvites": true,
+                  "popup": true,
+                  "privateMessages": true,
+                  "queueOpponentQueues": [],
+                  "repeatCooldownSeconds": 2,
+                  "reviewReminder": true,
+                  "sound": true,
+                  "soundChoiceVersion": 2,
+                  "sounds": {
+                    "friendJoinedGame": "chime",
+                    "friendOffline": "chime",
+                    "friendOnline": "chime",
+                    "friendPlaying": "chime",
+                    "gameFull": "alert",
+                    "gameLaunched": "chime",
+                    "matchFound": "fafMatch",
+                    "mention": "chime",
+                    "newCustomGame": "chime",
+                    "other": "chime",
+                    "partyInvite": "chime",
+                    "privateMessage": "chime",
+                    "reviewReminder": "chime"
+                  },
+                  "streamLive": true,
+                  "toastDurationSeconds": 5,
+                  "toastPosition": "bottomLeft",
+                  "volume": 70
+                },
+                "paths": {
+                  "gamePrefsPath": "",
+                  "javaPath": "",
+                  "mapGeneratorDir": "",
+                  "mapsDir": "",
+                  "modsDir": "",
+                  "originalGameDir": "",
+                  "replaysDir": "",
+                  "vaultDir": "",
+                  "winePrefix": ""
+                },
+                "replayGamePath": "",
+                "social": {
+                  "playerNotes": [],
+                  "replayNotes": []
+                },
+                "theme": "javaClient",
+                "updates": {
+                  "automatic": true,
+                  "backgroundDownload": false,
+                  "channelChoiceVersion": 1,
+                  "lastSeenVersion": null,
+                  "preRelease": true,
+                  "showWhatsNew": true
+                }
+              }
+            },
+            "kind": "Settings"
           }
         }
       ]
@@ -96953,6 +101855,45 @@
                 "title": "Lesson 8"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "categories": [],
+              "launch": {
+                "type": "idle"
+              },
+              "selectedId": 7,
+              "status": {
+                "type": "ready"
+              },
+              "tutorials": [
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 7,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_7",
+                  "ordinal": 7,
+                  "technicalName": "tut_7",
+                  "title": "Lesson 7"
+                },
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 8,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_8",
+                  "ordinal": 8,
+                  "technicalName": "tut_8",
+                  "title": "Lesson 8"
+                }
+              ]
+            },
+            "kind": "Tutorials"
           }
         },
         {
@@ -97000,6 +101941,45 @@
                 "title": "Lesson 8"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "categories": [],
+              "launch": {
+                "type": "idle"
+              },
+              "selectedId": 8,
+              "status": {
+                "type": "ready"
+              },
+              "tutorials": [
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 7,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_7",
+                  "ordinal": 7,
+                  "technicalName": "tut_7",
+                  "title": "Lesson 7"
+                },
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 8,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_8",
+                  "ordinal": 8,
+                  "technicalName": "tut_8",
+                  "title": "Lesson 8"
+                }
+              ]
+            },
+            "kind": "Tutorials"
           }
         },
         {
@@ -97052,6 +102032,49 @@
                 "title": "Lesson 8"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "categories": [],
+              "launch": {
+                "payload": {
+                  "detail": "Updating tutorials",
+                  "tutorialId": 8
+                },
+                "type": "preparing"
+              },
+              "selectedId": 8,
+              "status": {
+                "type": "ready"
+              },
+              "tutorials": [
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 7,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_7",
+                  "ordinal": 7,
+                  "technicalName": "tut_7",
+                  "title": "Lesson 7"
+                },
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 8,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_8",
+                  "ordinal": 8,
+                  "technicalName": "tut_8",
+                  "title": "Lesson 8"
+                }
+              ]
+            },
+            "kind": "Tutorials"
           }
         },
         {
@@ -97104,6 +102127,49 @@
                 "title": "Lesson 8"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "categories": [],
+              "launch": {
+                "payload": {
+                  "reason": "the map could not be staged",
+                  "tutorialId": 8
+                },
+                "type": "failed"
+              },
+              "selectedId": 8,
+              "status": {
+                "type": "ready"
+              },
+              "tutorials": [
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 7,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_7",
+                  "ordinal": 7,
+                  "technicalName": "tut_7",
+                  "title": "Lesson 7"
+                },
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 8,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_8",
+                  "ordinal": 8,
+                  "technicalName": "tut_8",
+                  "title": "Lesson 8"
+                }
+              ]
+            },
+            "kind": "Tutorials"
           }
         },
         {
@@ -97152,6 +102218,49 @@
                 "title": "Lesson 8"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "categories": [],
+              "launch": {
+                "payload": {
+                  "reason": "the map could not be staged",
+                  "tutorialId": 8
+                },
+                "type": "failed"
+              },
+              "selectedId": 8,
+              "status": {
+                "type": "loading"
+              },
+              "tutorials": [
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 7,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_7",
+                  "ordinal": 7,
+                  "technicalName": "tut_7",
+                  "title": "Lesson 7"
+                },
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 8,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_8",
+                  "ordinal": 8,
+                  "technicalName": "tut_8",
+                  "title": "Lesson 8"
+                }
+              ]
+            },
+            "kind": "Tutorials"
           }
         },
         {
@@ -97206,6 +102315,52 @@
                 "title": "Lesson 8"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "categories": [],
+              "launch": {
+                "payload": {
+                  "reason": "the map could not be staged",
+                  "tutorialId": 8
+                },
+                "type": "failed"
+              },
+              "selectedId": 8,
+              "status": {
+                "payload": {
+                  "reason": "503"
+                },
+                "type": "failed"
+              },
+              "tutorials": [
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 7,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_7",
+                  "ordinal": 7,
+                  "technicalName": "tut_7",
+                  "title": "Lesson 7"
+                },
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 8,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_8",
+                  "ordinal": 8,
+                  "technicalName": "tut_8",
+                  "title": "Lesson 8"
+                }
+              ]
+            },
+            "kind": "Tutorials"
           }
         },
         {
@@ -97259,6 +102414,37 @@
                 "title": "Lesson 7"
               }
             ]
+          },
+          "update": {
+            "event": {
+              "categories": [],
+              "launch": {
+                "payload": {
+                  "reason": "the map could not be staged",
+                  "tutorialId": 8
+                },
+                "type": "failed"
+              },
+              "selectedId": 7,
+              "status": {
+                "type": "ready"
+              },
+              "tutorials": [
+                {
+                  "categoryId": 1,
+                  "description": "",
+                  "id": 7,
+                  "imageUrl": "",
+                  "launchable": true,
+                  "linkUrl": "",
+                  "mapFolderName": "scmp_tut_7",
+                  "ordinal": 7,
+                  "technicalName": "tut_7",
+                  "title": "Lesson 7"
+                }
+              ]
+            },
+            "kind": "Tutorials"
           }
         }
       ]
@@ -97291,6 +102477,28 @@
             "status": {
               "type": "loading"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "type": "idle"
+              },
+              "candidates": [],
+              "clan": null,
+              "identity": {
+                "clanId": "",
+                "clanName": "",
+                "clanTag": "",
+                "isLeader": false,
+                "login": "",
+                "playerId": 0
+              },
+              "invitation": null,
+              "status": {
+                "type": "loading"
+              }
+            },
+            "kind": "Clan"
           }
         },
         {
@@ -97329,6 +102537,28 @@
             "status": {
               "type": "ready"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "type": "idle"
+              },
+              "candidates": [],
+              "clan": null,
+              "identity": {
+                "clanId": "42",
+                "clanName": "Brotherhood",
+                "clanTag": "BRO",
+                "isLeader": true,
+                "login": "Ada",
+                "playerId": 7
+              },
+              "invitation": null,
+              "status": {
+                "type": "ready"
+              }
+            },
+            "kind": "Clan"
           }
         },
         {
@@ -97377,6 +102607,37 @@
             "status": {
               "type": "ready"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "type": "idle"
+              },
+              "candidates": [
+                {
+                  "avatarUrl": "",
+                  "country": "de",
+                  "globalRating": 1200,
+                  "id": 9,
+                  "ladderRating": null,
+                  "login": "Recruit"
+                }
+              ],
+              "clan": null,
+              "identity": {
+                "clanId": "42",
+                "clanName": "Brotherhood",
+                "clanTag": "BRO",
+                "isLeader": true,
+                "login": "Ada",
+                "playerId": 7
+              },
+              "invitation": null,
+              "status": {
+                "type": "ready"
+              }
+            },
+            "kind": "Clan"
           }
         },
         {
@@ -97415,6 +102676,32 @@
             "status": {
               "type": "ready"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "type": "idle"
+              },
+              "candidates": [],
+              "clan": null,
+              "identity": {
+                "clanId": "42",
+                "clanName": "Brotherhood",
+                "clanTag": "BRO",
+                "isLeader": true,
+                "login": "Ada",
+                "playerId": 7
+              },
+              "invitation": {
+                "login": "Recruit",
+                "playerId": 9,
+                "token": "jwt"
+              },
+              "status": {
+                "type": "ready"
+              }
+            },
+            "kind": "Clan"
           }
         },
         {
@@ -97442,6 +102729,28 @@
             "status": {
               "type": "ready"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "type": "idle"
+              },
+              "candidates": [],
+              "clan": null,
+              "identity": {
+                "clanId": "42",
+                "clanName": "Brotherhood",
+                "clanTag": "BRO",
+                "isLeader": true,
+                "login": "Ada",
+                "playerId": 7
+              },
+              "invitation": null,
+              "status": {
+                "type": "ready"
+              }
+            },
+            "kind": "Clan"
           }
         },
         {
@@ -97469,6 +102778,28 @@
             "status": {
               "type": "loading"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "type": "idle"
+              },
+              "candidates": [],
+              "clan": null,
+              "identity": {
+                "clanId": "42",
+                "clanName": "Brotherhood",
+                "clanTag": "BRO",
+                "isLeader": true,
+                "login": "Ada",
+                "playerId": 7
+              },
+              "invitation": null,
+              "status": {
+                "type": "loading"
+              }
+            },
+            "kind": "Clan"
           }
         },
         {
@@ -97502,6 +102833,31 @@
               },
               "type": "failed"
             }
+          },
+          "update": {
+            "event": {
+              "action": {
+                "type": "idle"
+              },
+              "candidates": [],
+              "clan": null,
+              "identity": {
+                "clanId": "42",
+                "clanName": "Brotherhood",
+                "clanTag": "BRO",
+                "isLeader": true,
+                "login": "Ada",
+                "playerId": 7
+              },
+              "invitation": null,
+              "status": {
+                "payload": {
+                  "reason": "offline"
+                },
+                "type": "failed"
+              }
+            },
+            "kind": "Clan"
           }
         }
       ]
@@ -97759,6 +103115,20 @@
             },
             "signInLink": null,
             "status": "loggedIn"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "test",
+              "player": {
+                "id": 7,
+                "name": "Ada",
+                "roles": []
+              },
+              "signInLink": null,
+              "status": "loggedIn"
+            },
+            "kind": "Auth"
           }
         },
         {
@@ -97778,6 +103148,20 @@
             },
             "signInLink": null,
             "status": "loggingIn"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "test",
+              "player": {
+                "id": 7,
+                "name": "Ada",
+                "roles": []
+              },
+              "signInLink": null,
+              "status": "loggingIn"
+            },
+            "kind": "Auth"
           }
         },
         {
@@ -97796,6 +103180,16 @@
             "player": null,
             "signInLink": null,
             "status": "failed"
+          },
+          "update": {
+            "event": {
+              "error": "the test server refused the token",
+              "mode": "test",
+              "player": null,
+              "signInLink": null,
+              "status": "failed"
+            },
+            "kind": "Auth"
           }
         },
         {
@@ -97822,6 +103216,20 @@
             },
             "signInLink": null,
             "status": "loggedIn"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "test",
+              "player": {
+                "id": 7,
+                "name": "Ada",
+                "roles": []
+              },
+              "signInLink": null,
+              "status": "loggedIn"
+            },
+            "kind": "Auth"
           }
         },
         {
@@ -97837,6 +103245,16 @@
             "player": null,
             "signInLink": null,
             "status": "loggedOut"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "account",
+              "player": null,
+              "signInLink": null,
+              "status": "loggedOut"
+            },
+            "kind": "Auth"
           }
         }
       ]
@@ -100506,116 +105924,6 @@
         "expected": "uid:77",
         "localPath": "C:\\Replays\\..\\77.fafreplay",
         "uid": 77
-      }
-    ],
-    "reviewSummaries": [
-      {
-        "expected": {
-          "averageTenths": 0,
-          "counts": [
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          "total": 0
-        },
-        "reviews": []
-      },
-      {
-        "expected": {
-          "averageTenths": 35,
-          "counts": [
-            0,
-            1,
-            0,
-            0,
-            1
-          ],
-          "total": 2
-        },
-        "reviews": [
-          {
-            "id": 1,
-            "player": "Ada",
-            "score": 5,
-            "text": "",
-            "version": "1"
-          },
-          {
-            "id": 2,
-            "player": "Bob",
-            "score": 2,
-            "text": "",
-            "version": "1"
-          }
-        ]
-      },
-      {
-        "expected": {
-          "averageTenths": 17,
-          "counts": [
-            1,
-            2,
-            0,
-            0,
-            0
-          ],
-          "total": 3
-        },
-        "reviews": [
-          {
-            "id": 3,
-            "player": "Ada",
-            "score": 1,
-            "text": "",
-            "version": "1"
-          },
-          {
-            "id": 4,
-            "player": "Bob",
-            "score": 2,
-            "text": "",
-            "version": "1"
-          },
-          {
-            "id": 5,
-            "player": "Cid",
-            "score": 2,
-            "text": "",
-            "version": "1"
-          }
-        ]
-      },
-      {
-        "expected": {
-          "averageTenths": 40,
-          "counts": [
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          "total": 2
-        },
-        "reviews": [
-          {
-            "id": 6,
-            "player": "Ada",
-            "score": -1,
-            "text": "",
-            "version": "1"
-          },
-          {
-            "id": 7,
-            "player": "Bob",
-            "score": 9,
-            "text": "",
-            "version": "1"
-          }
-        ]
       }
     ],
     "tourneyBracketConfigs": [

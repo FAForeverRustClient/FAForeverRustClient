@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { useAppStore } from "../store/store";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
@@ -220,7 +221,7 @@ describe("Escape ownership in real overlays", () => {
     await user.keyboard("{Escape}");
     expect(sentCommands()).toContainEqual({ kind: "Reviews", command: { type: "close" } });
     expect(onClose).not.toHaveBeenCalled();
-    applyEvent({ kind: "Reviews", event: { type: "closed" } });
+    applyEvent({ kind: "Reviews", event: { ...useAppStore.getState().state.reviews, target: null, reviews: [], summary: { total: 0, averageTenths: 0, counts: [0, 0, 0, 0, 0] }, status: { type: "idle" }, submit: { type: "idle" } } });
     await user.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalledTimes(1);
   });

@@ -41,9 +41,9 @@ it.each([
   expect(input.checked).toBe(false);
   await user.click(input);
   expect(sentCommands()).toEqual([{ kind: "Settings", command: { type: "patchNotifications", payload: { patch: { [field]: true } } } }]);
-  applyEvent({ kind: "Settings", event: { type: "notificationsChanged", payload: { preferences: {
+  applyEvent({ kind: "Settings", event: { field: "notifications", value: {
     ...useAppStore.getState().state.settings.notifications, [field]: true,
-  } } } });
+  } } });
   expect(input.checked).toBe(true);
   clearSentCommands();
   await user.click(input);
@@ -61,9 +61,9 @@ it("keeps the new-game and friends-only descriptions visible when notifications 
   await user.click(friendsOnly);
   expect(sentCommands()).toHaveLength(0);
   await user.click(screen.getByRole("checkbox", { name: en["settings.notifications.newGames"] }));
-  applyEvent({ kind: "Settings", event: { type: "notificationsChanged", payload: { preferences: {
+  applyEvent({ kind: "Settings", event: { field: "notifications", value: {
     ...useAppStore.getState().state.settings.notifications, newCustomGames: true,
-  } } } });
+  } } });
   expect(friendsOnly.disabled).toBe(false);
   expect(screen.getByText(en["settings.notifications.newGamesHint"])).toBeTruthy();
   expect(screen.getByText(en["settings.notifications.friendsGamesOnlyHint"])).toBeTruthy();
@@ -80,9 +80,9 @@ it("offers one shared popup duration control and saves a longer display time", a
   expect(screen.getByText(en["settings.notifications.durationHint"])).toBeTruthy();
   fireEvent.change(duration, { target: { value: "15" } });
   expect(sentCommands()).toEqual([{ kind: "Settings", command: { type: "patchNotifications", payload: { patch: { toastDurationSeconds: 15 } } } }]);
-  applyEvent({ kind: "Settings", event: { type: "notificationsChanged", payload: { preferences: {
+  applyEvent({ kind: "Settings", event: { field: "notifications", value: {
     ...useAppStore.getState().state.settings.notifications, toastDurationSeconds: 15,
-  } } } });
+  } } });
   fireEvent.blur(duration);
   expect(duration.value).toBe("15");
 });

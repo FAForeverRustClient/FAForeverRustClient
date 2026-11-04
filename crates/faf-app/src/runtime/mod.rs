@@ -73,8 +73,9 @@ pub struct ServiceCtx {
 /// The sink a service emits events into.
 ///
 /// `emit` is the single chokepoint where state changes: it reduces the event into
-/// the authoritative state and then broadcasts the *same* event to subscribers
-/// (the Tauri shell, which forwards it to the frontend).
+/// the authoritative state and broadcasts the event to backend subscribers.
+/// Window replacements are captured under the reduction guard; large slices
+/// keep compact deltas, moved into their window message by the shell.
 #[derive(Clone)]
 pub struct EventSink {
     state: Arc<RwLock<AppState>>,
@@ -98,6 +99,9 @@ pub struct EventSink {
 pub struct VersionedEvent {
     pub revision: u64,
     pub event: AppEvent,
+    /// `None` means the original event is an explicitly retained compact delta.
+    /// A replacement is captured here, never by reading state later in the shell.
+    pub update: Option<faf_domain::frontend::FrontendUpdate>,
 }
 
 /// An authoritative state snapshot and its revision, including any recovery
@@ -195,12 +199,15 @@ impl EventSink {
         let event = event.into();
         let _delivery = lock_runtime(&self.send_order, "event delivery");
         let started = std::time::Instant::now();
-        let revision = {
+        let (revision, update) = {
             let mut guard = write_state(&self.state, &self.revision);
             faf_domain::reduce(&mut guard, &event);
-            self.revision
+            let update = faf_domain::frontend::FrontendUpdate::capture(&guard, &event);
+            let revision = self
+                .revision
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-                .wrapping_add(1)
+                .wrapping_add(1);
+            (revision, update)
         };
         // Every reader and every other emitter waits for this, so a reducer
         // that has become expensive at a populated catalogue should say so.
@@ -219,7 +226,11 @@ impl EventSink {
         if self.tx.receiver_count() > 0 {
             let _ = self.tx.send(event.clone());
         }
-        let _ = self.versioned_tx.send(VersionedEvent { revision, event });
+        let _ = self.versioned_tx.send(VersionedEvent {
+            revision,
+            event,
+            update,
+        });
     }
 
     /// A snapshot of the authoritative state, for a test that wants to read
@@ -1723,6 +1734,32 @@ mod tests {
         let snapshot = app.versioned_snapshot();
         assert_eq!(snapshot.revision, event.revision);
         assert_eq!(snapshot.state.session.status, ConnectionStatus::Connecting);
+    }
+
+    #[tokio::test]
+    async fn window_replacements_capture_the_state_at_their_own_revision() {
+        use faf_domain::frontend::FrontendUpdate;
+        let (app, app_loop) = App::new("test", crate::infra::fake_ports());
+        let (mut events, _) = app.subscribe_versioned_with_snapshot();
+        app_loop.sink.emit(SessionEvent::Connecting);
+        app_loop.sink.emit(SessionEvent::BackendReady {
+            version: "1.2.3".into(),
+            offline_auth: true,
+        });
+        let first = events.recv().await.unwrap();
+        let second = events.recv().await.unwrap();
+        assert_eq!(second.revision, first.revision + 1);
+        let Some(FrontendUpdate::Session(first_state)) = first.update else {
+            panic!("first replacement")
+        };
+        let Some(FrontendUpdate::Session(second_state)) = second.update else {
+            panic!("second replacement")
+        };
+        assert_eq!(first_state.status, ConnectionStatus::Connecting);
+        assert_eq!(second_state.status, ConnectionStatus::Connected);
+        assert_eq!(second_state.backend_version, "1.2.3");
+        assert!(second_state.offline_auth);
+        assert!(!first_state.offline_auth);
     }
 
     #[tokio::test]

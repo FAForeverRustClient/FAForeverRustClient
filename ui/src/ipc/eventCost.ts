@@ -8,7 +8,6 @@
 // line when the window was expensive, naming the slowest event, so a session
 // leaves numbers behind instead of an impression.
 
-import type { AppEvent } from "./bindings";
 import { ipc } from "./client";
 
 /** How long a window runs from its first event before it is added up and judged. */
@@ -27,7 +26,7 @@ let slowestName = "";
 let timer: ReturnType<typeof setTimeout> | null = null;
 
 /** `Lobby:gamesUpdated`: the slice and the event, never the payload. */
-export function eventName(event: AppEvent): string {
+export function eventName(event: { kind: string; event?: unknown }): string {
   const inner = (event as { event?: unknown }).event;
   const type = inner && typeof inner === "object" && "type" in inner
     ? String(inner.type)
@@ -36,7 +35,7 @@ export function eventName(event: AppEvent): string {
 }
 
 /** Apply `event` with `apply`, timing it. */
-export function measureEventApply(event: AppEvent, apply: (event: AppEvent) => void): void {
+export function measureEventApply<T extends { kind: string }>(event: T, apply: (event: T) => void): void {
   const started = performance.now();
   apply(event);
   const spent = performance.now() - started;
