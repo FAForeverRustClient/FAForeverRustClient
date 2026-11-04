@@ -154,8 +154,8 @@
 .notification-content,
 .notification-toast > button:first-child {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  align-items: flex-start;
+  gap: 10px;
   min-width: 0;
   padding: 12px 4px 12px 22px;
   color: var(--color-muted);
@@ -166,6 +166,15 @@
   background: transparent;
   border: 0;
   cursor: pointer;
+}
+
+/* Title, time and message, beside the picture when there is one. */
+.notification-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
 }
 
 .notification-content:hover {
@@ -186,8 +195,10 @@
 }
 
 .notification-content time {
+  flex: none;
   color: var(--color-subtle);
   font-size: 12px;
+  white-space: nowrap;
 }
 
 /* The message itself, which is the reason the notification exists. It used to
@@ -336,6 +347,6 @@
 .notification-badge.is-error { background: var(--color-surface); color: var(--color-error-text); border: 1px solid var(--color-error); }
 .notification-badge.is-warning { background: var(--color-surface); color: var(--color-warn-text); border: 1px solid var(--color-warn); }
 .notification-recovery { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 0 var(--space-3) var(--space-3) 22px; grid-column: 1 / -1; }
-.notification-title { display: inline-flex; gap: var(--space-2); align-items: center; min-width: 0; }
+.notification-title { min-width: 0; overflow-wrap: anywhere; }
 .notification-artwork { flex: none; width: 36px; height: 36px; object-fit: contain; border-radius: var(--radius-sm); }
 .notification-artwork[hidden] { display: none; }

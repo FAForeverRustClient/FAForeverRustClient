@@ -15,13 +15,19 @@ export function NotificationCard({ item, artwork, history = false, use24HourTime
   item: ClientNotification; artwork: string | null; history?: boolean; use24HourTime?: boolean;
   duration?: number; onActivate: () => void; onDismiss: () => void; onExpire?: () => void; recovery?: ReactNode;
 }) {
-  const title = <span className="notification-title"><NotificationArtwork url={artwork} /><strong>{notificationTitle(item)}</strong></span>;
+  // The picture is a column of its own beside the text. Inside the title's
+  // line it made that line 36 px tall, which pushed the time to its foot and
+  // left the message under the picture rather than beside it.
+  const title = <strong className="notification-title">{notificationTitle(item)}</strong>;
   const content = <>
     <button className={history ? "notification-content" : undefined} type="button" onClick={onActivate}>
-      {history ? <span className="notification-item-head">{title}<time dateTime={item.createdAt}>{formatTime(item.createdAt, "", use24HourTime)}</time></span> : title}
-      <span className="notification-message-row">
-        <span className="notification-body" title={notificationBodyDetail(item) ?? undefined}>{renderFormattedText(notificationBody(item))}</span>
-        {actionContent(item.action)}
+      <NotificationArtwork url={artwork} />
+      <span className="notification-text">
+        {history ? <span className="notification-item-head">{title}<time dateTime={item.createdAt}>{formatTime(item.createdAt, "", use24HourTime)}</time></span> : title}
+        <span className="notification-message-row">
+          <span className="notification-body" title={notificationBodyDetail(item) ?? undefined}>{renderFormattedText(notificationBody(item))}</span>
+          {actionContent(item.action)}
+        </span>
       </span>
     </button>
     <button className="notification-dismiss" type="button" onClick={onDismiss} aria-label={t("notifications.dismiss", { title: notificationTitle(item) })}><Icon name="close" size={12} /></button>
