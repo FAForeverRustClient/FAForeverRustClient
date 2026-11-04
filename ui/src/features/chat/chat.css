@@ -1622,6 +1622,15 @@ img.chat-game-map {
   transition: background-color 120ms ease, border-color 120ms ease;
 }
 
+/* Level with the letters rather than the line. "Watch live" and "Join" have
+   no descenders, so their letters sit a pixel below the middle of a line that
+   keeps room for some, and the icon, centred on the line, read as floating
+   above its label. */
+.chat-game-popover-action svg {
+  position: relative;
+  top: 1px;
+}
+
 .chat-game-popover-action:hover {
   background: color-mix(in srgb, var(--color-text) 8%, var(--color-surface-hover));
 }
