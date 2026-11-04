@@ -106,11 +106,16 @@ export function gameElapsedSeconds(
   presence: GamePresence,
   nowSeconds = Math.floor(Date.now() / 1000),
 ): number | null {
+  const started = gameStartedSeconds(presence);
+  return started === null ? null : Math.max(0, nowSeconds - started);
+}
+
+/** When the clock `gameElapsedSeconds` reads started, in epoch seconds. */
+export function gameStartedSeconds(presence: GamePresence): number | null {
   const started = presence.status === "hosting" || presence.status === "lobbying"
     ? hostedAtSeconds(presence.game.hostedAt)
     : presence.game.launchedAt;
-  if (started === null || started === undefined || started <= 0) return null;
-  return Math.max(0, nowSeconds - started);
+  return started === null || started === undefined || started <= 0 ? null : started;
 }
 
 /** `hostedAt` is an ISO instant, unlike `launchedAt`, which is already epoch. */

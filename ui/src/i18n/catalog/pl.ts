@@ -382,6 +382,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
 
   "common.unknown": "Nieznane",
   "duration.hoursMinutes": "{hours} godz. {minutes} min",
+  "duration.hoursMinutesSeconds": "{hours} godz. {minutes} min {seconds} s",
   "duration.minutesSeconds": "{minutes} min {seconds} s",
   "duration.minutes": "{minutes} min",
   "duration.days": "{days} d",

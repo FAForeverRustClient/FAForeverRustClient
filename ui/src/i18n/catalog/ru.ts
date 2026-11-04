@@ -388,6 +388,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
 
   "common.unknown": "Неизвестно",
   "duration.hoursMinutes": "{hours} ч {minutes} мин",
+  "duration.hoursMinutesSeconds": "{hours} ч {minutes} мин {seconds} с",
   "duration.minutesSeconds": "{minutes} мин {seconds} с",
   "duration.minutes": "{minutes} мин",
   "duration.days": "{days} д",

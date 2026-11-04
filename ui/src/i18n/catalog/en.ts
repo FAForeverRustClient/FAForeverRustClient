@@ -3683,6 +3683,7 @@ export const en = {
 
   "common.unknown": "Unknown",
   "duration.hoursMinutes": "{hours}h {minutes}m",
+  "duration.hoursMinutesSeconds": "{hours}h {minutes}m {seconds}s",
   "duration.minutesSeconds": "{minutes}m {seconds}s",
   "duration.minutes": "{minutes}m",
   "duration.days": "{days}d",

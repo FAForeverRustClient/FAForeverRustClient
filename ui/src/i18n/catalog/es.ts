@@ -380,6 +380,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
 
   "common.unknown": "Desconocido",
   "duration.hoursMinutes": "{hours} h {minutes} min",
+  "duration.hoursMinutesSeconds": "{hours} h {minutes} min {seconds} s",
   "duration.minutesSeconds": "{minutes} min {seconds} s",
   "duration.minutes": "{minutes} min",
   "duration.days": "{days} d",
