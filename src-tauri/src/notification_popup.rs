@@ -1,7 +1,8 @@
 //! A single, non-activating desktop popup. It receives presentation data for
 //! existing notification ids, never the app snapshot or arbitrary actions.
 use faf_domain::state::{
-    DesktopNotificationStyle, NotificationAction, NotificationKind, ToastPosition,
+    DesktopNotificationStyle, NotificationAction, NotificationKind, NotificationPreferences,
+    NotificationState, ToastPosition,
 };
 use faf_ipc::shell::{NotificationDisplay, NotificationPopupBatch, NotificationPopupCard};
 use serde::Serialize;
@@ -140,6 +141,50 @@ impl PopupQueue {
                 .map(|card| card.id.clone())
                 .collect::<Vec<_>>()
     }
+
+    fn refresh(
+        &mut self,
+        eligible_ids: &[String],
+        duration: u16,
+    ) -> Option<NotificationPopupBatch> {
+        let removed = self.retain(|card| is_preview(&card.id) || eligible_ids.contains(&card.id));
+        let duration_changed = self.visible.duration_seconds != duration;
+        self.visible.duration_seconds = duration;
+        if !removed && !duration_changed {
+            return None;
+        }
+        self.visible.revision = self.visible.revision.wrapping_add(1);
+        Some(self.visible.clone())
+    }
+}
+
+/// Admission and queue refresh use the same effective desktop preferences.
+/// An absent per-event choice inherits the default list, not an unconditional opt-in.
+fn popup_notification_ids(
+    notifications: &NotificationState,
+    preferences: &NotificationPreferences,
+) -> Vec<String> {
+    if !preferences.enabled
+        || !preferences.desktop
+        || preferences.desktop_style != DesktopNotificationStyle::Popup
+    {
+        return Vec::new();
+    }
+    notifications
+        .items
+        .iter()
+        .filter(|notification| {
+            !notification.read
+                && preferences
+                    .delivery
+                    .get(&notification.kind)
+                    .and_then(|delivery| delivery.desktop)
+                    .unwrap_or_else(|| {
+                        preferences.desktop_all_kinds || notification.kind.raises_os_notification()
+                    })
+        })
+        .map(|notification| notification.id.clone())
+        .collect()
 }
 
 /// What the popup page has confirmed about the batches it was sent.
@@ -228,24 +273,14 @@ pub(crate) async fn show_notification_popup(
     }
     let core = app.state::<crate::Core>().0.clone();
     let (preferences, theme, valid, immediate) = core.with_state(|state| {
+        let eligible_ids =
+            popup_notification_ids(&state.notifications, &state.settings.notifications);
         (
             state.settings.notifications.clone(),
             state.settings.theme,
             cards
                 .iter()
-                .filter(|card| {
-                    state.notifications.items.iter().any(|n| {
-                        n.id == card.id
-                            && !n.read
-                            && state
-                                .settings
-                                .notifications
-                                .delivery
-                                .get(&n.kind)
-                                .and_then(|delivery| delivery.desktop)
-                                != Some(false)
-                    })
-                })
+                .filter(|card| eligible_ids.contains(&card.id))
                 .cloned()
                 .collect::<Vec<_>>(),
             state
@@ -646,40 +681,15 @@ pub(crate) fn refresh(app: &tauri::AppHandle) {
     let Some(popups) = app.try_state::<Popups>() else {
         return;
     };
-    let (enabled, ids, duration) = app.state::<crate::Core>().0.with_state(|s| {
+    let (ids, duration) = app.state::<crate::Core>().0.with_state(|s| {
         (
-            s.settings.notifications.enabled
-                && s.settings.notifications.desktop
-                && s.settings.notifications.desktop_style == DesktopNotificationStyle::Popup,
-            s.notifications
-                .items
-                .iter()
-                .filter(|n| {
-                    !n.read
-                        && s.settings
-                            .notifications
-                            .delivery
-                            .get(&n.kind)
-                            .and_then(|delivery| delivery.desktop)
-                            != Some(false)
-                })
-                .map(|n| n.id.clone())
-                .collect::<Vec<_>>(),
+            popup_notification_ids(&s.notifications, &s.settings.notifications),
             s.settings.notifications.toast_duration_seconds,
         )
     });
     let changed = {
         let mut queue = popups.queue.lock().unwrap();
-        let removed = queue.retain(|c| is_preview(&c.id) || (enabled && ids.contains(&c.id)));
-        let duration_changed = queue.visible.duration_seconds != duration;
-        queue.visible.duration_seconds = duration;
-        if !removed && !duration_changed {
-            None
-        } else {
-            let batch = &mut queue.visible;
-            batch.revision = batch.revision.wrapping_add(1);
-            Some(batch.clone())
-        }
+        queue.refresh(&ids, duration)
     };
     if let (Some(batch), Some(window)) = (changed, app.get_webview_window(LABEL)) {
         let _ = window.emit(UPDATE, &batch);
@@ -692,6 +702,8 @@ pub(crate) fn refresh(app: &tauri::AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use faf_domain::state::{ClientNotification, NotificationDelivery};
+
     fn card(id: &str) -> NotificationPopupCard {
         NotificationPopupCard {
             id: id.into(),
@@ -710,6 +722,164 @@ mod tests {
             .map(|card| card.id.as_str())
             .collect()
     }
+
+    fn notice(id: &str, kind: NotificationKind) -> ClientNotification {
+        ClientNotification {
+            id: id.into(),
+            kind,
+            title: "Example".into(),
+            body: "Example".into(),
+            created_at: "2026-01-01T00:00:00Z".into(),
+            read: false,
+            action: None,
+            text: None,
+        }
+    }
+
+    #[test]
+    fn narrowing_desktop_delivery_prunes_visible_and_pending_inherited_alerts() {
+        let notifications = NotificationState {
+            items: vec![
+                notice("friend-visible", NotificationKind::FriendOnline),
+                notice("match-visible", NotificationKind::MatchFound),
+                notice("opted-visible", NotificationKind::FriendJoinedGame),
+                notice("friend-pending", NotificationKind::FriendOnline),
+                notice("match-pending", NotificationKind::MatchFound),
+                notice("opted-pending", NotificationKind::FriendJoinedGame),
+                notice("muted-pending", NotificationKind::GameFull),
+            ],
+        };
+        let mut preferences = NotificationPreferences {
+            desktop_all_kinds: true,
+            ..Default::default()
+        };
+        let mut queue = PopupQueue::default();
+        queue
+            .enqueue(
+                popup_notification_ids(&notifications, &preferences)
+                    .iter()
+                    .map(|id| card(id))
+                    .collect(),
+                false,
+            )
+            .unwrap();
+        assert_eq!(
+            ids(&queue),
+            ["friend-visible", "match-visible", "opted-visible"]
+        );
+
+        preferences.desktop_all_kinds = false;
+        preferences.delivery.insert(
+            NotificationKind::FriendJoinedGame,
+            NotificationDelivery {
+                desktop: Some(true),
+                ..Default::default()
+            },
+        );
+        preferences.delivery.insert(
+            NotificationKind::GameFull,
+            NotificationDelivery {
+                desktop: Some(false),
+                ..Default::default()
+            },
+        );
+        let batch = queue
+            .refresh(
+                &popup_notification_ids(&notifications, &preferences),
+                preferences.toast_duration_seconds,
+            )
+            .unwrap();
+        assert_eq!(batch.cards.len(), VISIBLE_CARDS);
+        assert_eq!(
+            ids(&queue),
+            ["match-visible", "opted-visible", "match-pending"]
+        );
+        assert_eq!(queue.pending.len(), 1);
+        assert_eq!(queue.pending[0].card.id, "opted-pending");
+        queue.remove("match-visible");
+        assert_eq!(
+            ids(&queue),
+            ["opted-visible", "match-pending", "opted-pending"]
+        );
+        // Delivery changes remove popup copies, not the notification history.
+        assert_eq!(notifications.items.len(), 7);
+        assert!(notifications.items.iter().all(|item| !item.read));
+    }
+
+    #[test]
+    fn narrowing_desktop_delivery_prunes_pending_only_alerts_without_resending_visible_cards() {
+        let notifications = NotificationState {
+            items: vec![
+                notice("match", NotificationKind::MatchFound),
+                notice("full", NotificationKind::GameFull),
+                notice("invite", NotificationKind::PartyInvite),
+                notice("friend", NotificationKind::FriendOnline),
+            ],
+        };
+        let mut preferences = NotificationPreferences {
+            desktop_all_kinds: true,
+            ..Default::default()
+        };
+        let mut queue = PopupQueue::default();
+        queue.visible.duration_seconds = preferences.toast_duration_seconds;
+        queue
+            .enqueue(
+                notifications
+                    .items
+                    .iter()
+                    .map(|item| card(&item.id))
+                    .collect(),
+                false,
+            )
+            .unwrap();
+        preferences.desktop_all_kinds = false;
+        assert!(queue
+            .refresh(
+                &popup_notification_ids(&notifications, &preferences),
+                preferences.toast_duration_seconds,
+            )
+            .is_none());
+        assert!(queue.pending.is_empty());
+        queue.remove("match");
+        assert_eq!(ids(&queue), ["full", "invite"]);
+    }
+
+    #[test]
+    fn popup_refresh_honors_global_switches_and_style_without_removing_inspection_previews() {
+        let notifications = NotificationState {
+            items: vec![notice("match", NotificationKind::MatchFound)],
+        };
+        for preferences in [
+            NotificationPreferences {
+                enabled: false,
+                ..Default::default()
+            },
+            NotificationPreferences {
+                desktop: false,
+                ..Default::default()
+            },
+            NotificationPreferences {
+                desktop_style: DesktopNotificationStyle::System,
+                ..Default::default()
+            },
+        ] {
+            let mut queue = PopupQueue::default();
+            queue.enqueue(vec![card("match")], false).unwrap();
+            queue
+                .enqueue(vec![card("preview:inspection")], true)
+                .unwrap();
+            assert!(queue
+                .refresh(
+                    &popup_notification_ids(&notifications, &preferences),
+                    preferences.toast_duration_seconds,
+                )
+                .is_some());
+            assert_eq!(ids(&queue), ["preview:inspection"]);
+            assert_eq!(queue.visible.held_preview_ids, ["preview:inspection"]);
+            assert!(queue.pending.is_empty());
+        }
+    }
+
     #[test]
     fn popup_bursts_wait_for_space_without_replacing_visible_cards() {
         let mut queue = PopupQueue::default();
