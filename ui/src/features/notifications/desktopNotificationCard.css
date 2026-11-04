@@ -60,19 +60,23 @@
    it pass below the button and use the card's full width. */
 .desktop-notification-title {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2);
   min-width: 0;
   padding-right: 28px;
 }
 
+/* Up to two lines: a title can lead with a player's name ("JaggedAppliance
+   ist einem Spiel beigetreten"), and one line cut that short mid-word. */
 .desktop-notification-title strong {
+  display: -webkit-box;
   overflow: hidden;
   font-size: 14px;
   font-weight: 600;
   line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 /* Where the card comes from, since it sits over other programs. The client's
@@ -82,6 +86,8 @@
   flex: none;
   width: 21px;
   height: 11px;
+  /* Centred on the title's first line (14 px at 1.35). */
+  margin-top: 4px;
   background: var(--color-muted);
   mask: url("/assets/faflogo.svg") center / contain no-repeat;
 }
