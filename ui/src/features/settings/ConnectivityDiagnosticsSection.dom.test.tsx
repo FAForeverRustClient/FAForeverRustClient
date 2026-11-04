@@ -5,6 +5,7 @@
 // outcome as each arrives, a failed line says what failed, and the live relay
 // view asks the adapter only while a game runs and this page is open.
 
+import { useAppStore } from "../../store/store";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -18,14 +19,11 @@ vi.mock("../../ipc/client");
 failOnConsoleError();
 
 function report(step: CheckStep): void {
-  applyEvent({ kind: "Connectivity", event: { type: "stepReported", payload: { step } } });
+  applyEvent({ kind: "Connectivity", event: { ...useAppStore.getState().state.connectivity, check: { ...useAppStore.getState().state.connectivity.check, steps: [...useAppStore.getState().state.connectivity.check.steps.filter((held) => held.id !== step.id), step] } } });
 }
 
 function startCheck(): void {
-  applyEvent({
-    kind: "Connectivity",
-    event: { type: "checkStarted", payload: { startedAt: "2026-10-08T18:00:00+00:00" } },
-  });
+  applyEvent({ kind: "Connectivity", event: { ...useAppStore.getState().state.connectivity, check: { status: { type: "running" }, steps: [], startedAt: "2026-10-08T18:00:00+00:00" } } });
 }
 
 /** The list item a line's title is in. */
@@ -82,7 +80,7 @@ describe("ConnectivityDiagnosticsSection", () => {
       outcome: "warn",
       finding: { type: "relayListNeedsSignIn" },
     });
-    applyEvent({ kind: "Connectivity", event: { type: "checkFinished", payload: { verdict: "warn" } } });
+    applyEvent({ kind: "Connectivity", event: { ...useAppStore.getState().state.connectivity, check: { ...useAppStore.getState().state.connectivity.check, status: { type: "finished", payload: { verdict: "warn" } } } } });
 
     const server = lineOf("stun:eu.relay.example.org");
     expect(within(server).getByRole("img", { name: "Passed" })).toBeTruthy();
@@ -123,7 +121,7 @@ describe("ConnectivityDiagnosticsSection", () => {
       outcome: "warn",
       finding: { type: "noRelayAddresses" },
     });
-    applyEvent({ kind: "Connectivity", event: { type: "checkFinished", payload: { verdict: "fail" } } });
+    applyEvent({ kind: "Connectivity", event: { ...useAppStore.getState().state.connectivity, check: { ...useAppStore.getState().state.connectivity.check, status: { type: "finished", payload: { verdict: "fail" } } } } });
 
     const runtime = lineOf("Java runtime");
     expect(runtime.dataset.outcome).toBe("fail");
@@ -177,12 +175,7 @@ describe("ConnectivityDiagnosticsSection", () => {
     expect(sentCommands()).toEqual([{ kind: "Connectivity", command: { type: "refreshRelayStatus" } }]);
     expect(screen.getByText("Asking the adapter…")).toBeTruthy();
 
-    applyEvent({
-      kind: "Connectivity",
-      event: {
-        type: "relayStatusUpdated",
-        payload: {
-          status: {
+    applyEvent({ kind: "Connectivity", event: { ...useAppStore.getState().state.connectivity, relay: {
             type: "live",
             payload: {
               snapshot: {
@@ -209,10 +202,7 @@ describe("ConnectivityDiagnosticsSection", () => {
                 ],
               },
             },
-          },
-        },
-      },
-    });
+          } } });
 
     const critren = screen.getByText("Critren").closest("tr");
     expect(critren).not.toBeNull();

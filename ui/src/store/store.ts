@@ -5,7 +5,7 @@
 // `pnpm run bindings` generates into `ui/src/ipc/initialState.ts`.
 
 import { create } from "zustand";
-import type { AppEvent, AppState, AuthState } from "../ipc/bindings";
+import type { FrontendUpdate, AppState, AuthState } from "../ipc/bindings";
 import { INITIAL_STATE } from "../ipc/initialState";
 import { clearDrafts } from "../shared/chatDrafts";
 import { applyEvent } from "./reducer";
@@ -15,7 +15,7 @@ interface AppStore {
   /** True only after the authoritative Rust snapshot has replaced defaults. */
   hydrated: boolean;
   /** Apply a backend event (the only state-changing path, mirrors the backend). */
-  apply: (event: AppEvent) => void;
+  apply: (event: FrontendUpdate) => void;
   /** Replace state with a backend snapshot (initial hydration). */
   hydrate: (state: AppState) => void;
 }

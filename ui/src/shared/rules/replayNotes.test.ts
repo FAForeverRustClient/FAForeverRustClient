@@ -3,7 +3,6 @@ import {
   allReplayTags,
   gameReplayNotes,
   hasAnyTag,
-  normalizeReplayNotes,
   noteForReplay,
   parseTagInput,
   replayIdsTagged,
@@ -31,35 +30,6 @@ describe("replay notes", () => {
     expect(noteForReplay(notes, 0, file.path)).toBe(file);
     expect(noteForReplay(notes, null, "archive/./5.fafreplay")).toBe(file);
   });
-  it("tidies tags, keeps each once and lets the last note for a replay win", () => {
-    expect(normalizeReplayNotes([
-      { replayId: 9, comment: " first ", tags: ["old"] },
-      { replayId: 12, comment: "", tags: [" Lots  finals ", "LOTS FINALS", " "] },
-      { replayId: 9, comment: "  Comeback  ", tags: [] },
-      { replayId: 30, comment: " ", tags: [] },
-      { replayId: 0, comment: "no game", tags: [] },
-    ])).toEqual([
-      { replayId: 9, path: null, comment: "Comeback", tags: [] },
-      { replayId: 12, path: null, comment: "", tags: ["Lots finals"] },
-    ]);
-  });
-
-  it("keeps a note on a file without a game id under its normalised path", () => {
-    expect(normalizeReplayNotes([
-      { replayId: 0, path: "C:\\Replays\\Skirmish.fafreplay", comment: "first", tags: [] },
-      { replayId: 12, path: "C:/Replays/12.fafreplay", comment: "a game", tags: [] },
-      { replayId: -1, path: "c:/replays/./skirmish.fafreplay", comment: " again ", tags: [] },
-      { replayId: 0, path: "/home/ada/Zed.fafreplay", comment: "", tags: ["ai"] },
-      { replayId: 0, path: "", comment: "nowhere", tags: [] },
-    ])).toEqual([
-      // Games first, and a game's note never keeps a path.
-      { replayId: 12, path: null, comment: "a game", tags: [] },
-      // Then files by path; one file written two ways is one note, the later winning.
-      { replayId: 0, path: "/home/ada/Zed.fafreplay", comment: "", tags: ["ai"] },
-      { replayId: 0, path: "c:/replays/skirmish.fafreplay", comment: "again", tags: [] },
-    ]);
-  });
-
   it("reads tags typed as one line", () => {
     expect(parseTagInput(" Lots finals, casts,, ")).toEqual(["Lots finals", "casts"]);
   });
@@ -69,7 +39,6 @@ describe("replay notes", () => {
     const input = ` Lots  finals, LOTS FINALS, casts, ${prefix}a, ${prefix}b`;
     const parsed = parseTagInput(input);
     expect(parsed).toEqual(["Lots finals", "casts", prefix]);
-    expect(normalizeReplayNotes([{ replayId: 42, comment: "", tags: parsed }])[0].tags).toEqual(parsed);
   });
 
   it("keeps excess different tags visible to validation instead of silently dropping them", () => {

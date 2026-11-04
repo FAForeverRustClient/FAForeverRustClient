@@ -229,10 +229,7 @@ describe("A file opened through another spelling of its library path", () => {
 
 describe("A note on a file without a game id", () => {
   const settingsChanged = (replayNotes: ReplayNote[]) =>
-    applyEvent({
-      kind: "Settings",
-      event: { type: "socialChanged", payload: { preferences: { playerNotes: [], replayNotes } } },
-    });
+    applyEvent({ kind: "Settings", event: { field: "social", value: { playerNotes: [], replayNotes } } });
 
   it("is written on the file and shown again on it, however its path is spelt", async () => {
     const user = userEvent.setup();

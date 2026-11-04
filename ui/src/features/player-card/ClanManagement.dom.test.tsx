@@ -6,10 +6,11 @@
 // server's own sentence, which is written for a player, and rewords only a
 // transport failure. Both keep the reason as it was sent on hover.
 
+import { useAppStore } from "../../store/store";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { ClanEvent, ClanIdentity } from "../../ipc/bindings";
+import type { ClanState, ClanIdentity } from "../../ipc/bindings";
 import { en } from "../../i18n/catalog/en";
 import { failOnConsoleError } from "../../testing/consoleGuard";
 import { applyEvent, clearSentCommands, sentCommands } from "../../testing/mounted";
@@ -19,7 +20,7 @@ vi.mock("../../ipc/client");
 
 failOnConsoleError();
 
-const clanEvent = (event: ClanEvent) => applyEvent({ kind: "Clan", event });
+const clanState = (event: Partial<ClanState>) => applyEvent({ kind: "Clan", event: { ...useAppStore.getState().state.clan, ...event } });
 
 /** An account in no clan: the tab offers to found one or to join one. */
 const clanless: ClanIdentity = {
@@ -43,8 +44,8 @@ describe("Clan management failures, mounted", () => {
     const user = userEvent.setup();
     mountClan();
     const reason = "request could not be completed: error sending request for url (https://api.faforever.com/clans/me)";
-    clanEvent({ type: "loading" });
-    clanEvent({ type: "loadFailed", payload: { reason } });
+    clanState({ status: { type: "loading" } });
+    clanState({ status: { type: "failed", payload: { reason: reason } } });
 
     const alert = screen.getByRole("alert");
     expect(within(alert).getByText(en["errors.cause.offline"]).getAttribute("title")).toBe(reason);
@@ -53,8 +54,8 @@ describe("Clan management failures, mounted", () => {
     await user.click(within(alert).getByRole("button", { name: en["common.retry"] }));
     expect(sentCommands()).toEqual([{ kind: "Clan", command: { type: "load" } }]);
 
-    clanEvent({ type: "loading" });
-    clanEvent({ type: "loaded", payload: { identity: clanless, clan: null } });
+    clanState({ status: { type: "loading" } });
+    clanState({ identity: clanless, clan: null, status: { type: "ready" } });
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.getByText(en["clan.create.title"])).toBeTruthy();
   });
@@ -62,10 +63,10 @@ describe("Clan management failures, mounted", () => {
   it("keeps the server's own sentence for a refused write, and can be dismissed", async () => {
     const user = userEvent.setup();
     mountClan();
-    clanEvent({ type: "loaded", payload: { identity: clanless, clan: null } });
+    clanState({ identity: clanless, clan: null, status: { type: "ready" } });
     const reason = "the clan tag BRO is already taken";
-    clanEvent({ type: "actionStarted", payload: { action: "creating" } });
-    clanEvent({ type: "actionFailed", payload: { action: "creating", reason, kind: "rejected" } });
+    clanState({ action: { type: "working", payload: { action: "creating" } } });
+    clanState({ action: { type: "failed", payload: { action: "creating", reason: reason, kind: "rejected" } } });
 
     const alert = screen.getByRole("alert");
     expect(within(alert).getByText("The clan tag BRO is already taken.").getAttribute("title")).toBe(reason);
@@ -76,9 +77,9 @@ describe("Clan management failures, mounted", () => {
 
   it("rewords a write that never reached the server", () => {
     mountClan();
-    clanEvent({ type: "loaded", payload: { identity: clanless, clan: null } });
+    clanState({ identity: clanless, clan: null, status: { type: "ready" } });
     const reason = "The request to FAF services timed out. Check your connection and try again.";
-    clanEvent({ type: "actionFailed", payload: { action: "joining", reason, kind: "offline" } });
+    clanState({ action: { type: "failed", payload: { action: "joining", reason: reason, kind: "offline" } } });
 
     const alert = screen.getByRole("alert");
     expect(within(alert).getByText(en["errors.cause.timeout"]).getAttribute("title")).toBe(reason);

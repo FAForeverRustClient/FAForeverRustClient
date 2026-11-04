@@ -341,6 +341,22 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
                         handle.request_restart();
                         return;
                     }
+                    let revision = event.revision;
+                    // The conformance cases keep the two halves of the policy
+                    // in step, so this is not expected. If it ever happens the
+                    // window misses one revision, sees the gap and recovers it
+                    // from a snapshot, rather than this task panicking and the
+                    // window receiving nothing more for the rest of the session.
+                    let Some(update) = event
+                        .update
+                        .or_else(|| faf_domain::frontend::FrontendUpdate::from_delta(event.event))
+                    else {
+                        tracing::error!(
+                            revision,
+                            "event has neither a captured replacement nor a compact delta"
+                        );
+                        continue;
+                    };
                     let _ = handle.emit_to(
                         tauri::EventTarget::webview_window(
                             crate::window::main_window(&handle)
@@ -349,8 +365,8 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
                         ),
                         EVENT_CHANNEL,
                         FrontendMessage::Event {
-                            revision: event.revision,
-                            event: Box::new(event.event),
+                            revision,
+                            event: Box::new(update),
                         },
                     );
                 }

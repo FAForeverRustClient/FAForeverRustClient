@@ -11,9 +11,10 @@
 //! number), so the revisions below are exported as a plain `number`: one per
 //! state change, they never come near it.
 
+use faf_domain::frontend::FrontendUpdate;
 use faf_domain::protocol::log_analysis::LogIssue;
 use faf_domain::state::Theme;
-use faf_domain::{AppEvent, AppState};
+use faf_domain::AppState;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use specta_typescript::Number;
@@ -27,7 +28,7 @@ pub enum FrontendMessage {
     Event {
         #[specta(type = Number)]
         revision: u64,
-        event: Box<AppEvent>,
+        event: Box<FrontendUpdate>,
     },
     Snapshot {
         #[specta(type = Number)]

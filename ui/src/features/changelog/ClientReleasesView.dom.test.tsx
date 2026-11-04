@@ -6,6 +6,7 @@
 // for that release, a release published without notes says so, and a list
 // that did not load asks for it again.
 
+import { useAppStore } from "../../store/store";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -86,7 +87,7 @@ describe("Changelog client section, mounted", () => {
     ]);
 
     clearSentCommands();
-    applyEvent({ kind: "Nav", event: { type: "changelogSectionSelected", payload: { section: "client" } } });
+    applyEvent({ kind: "Nav", event: { ...useAppStore.getState().state.nav, changelogSection: "client" } });
     expect(screen.getByRole("tab", { name: en["changelog.section.client"] }).getAttribute("aria-selected")).toBe("true");
     expect(sentCommands()).toEqual([{ kind: "ClientUpdate", command: { type: "loadNotes" } }]);
   });
@@ -128,7 +129,7 @@ describe("Changelog client section, mounted", () => {
       { kind: "Nav", command: { type: "selectChangelogClientRelease", payload: { version: "0.3.0" } } },
     ]);
 
-    applyEvent({ kind: "Nav", event: { type: "changelogClientReleaseSelected", payload: { version: "0.3.0" } } });
+    applyEvent({ kind: "Nav", event: { ...useAppStore.getState().state.nav, changelogSection: "client", changelogClientVersion: "0.3.0" } });
     expect(screen.getByRole("heading", { level: 1, name: "FAForever Client v0.3.0" })).toBeTruthy();
     expect(screen.getByText(en["changelog.client.noNotes"])).toBeTruthy();
     expect(screen.getAllByRole("button", { name: en["changelog.client.openOnGithub"] }).length).toBeGreaterThan(0);

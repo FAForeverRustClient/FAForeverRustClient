@@ -293,15 +293,7 @@ describe("LobbyView custom games, mounted", () => {
 /** The backend's answer to a browsing patch: the list's preferences as they now are. */
 function browserChanged(changes: Partial<CustomGameBrowserPreferences>) {
   const browsing = useAppStore.getState().state.settings.browsing;
-  applyEvent({
-    kind: "Settings",
-    event: {
-      type: "browsingChanged",
-      payload: {
-        preferences: { ...browsing, customGamesBrowser: { ...browsing.customGamesBrowser, ...changes } },
-      },
-    },
-  });
+  applyEvent({ kind: "Settings", event: { field: "browsing", value: { ...browsing, customGamesBrowser: { ...browsing.customGamesBrowser, ...changes } } } });
 }
 
 const toolbar = () => {
