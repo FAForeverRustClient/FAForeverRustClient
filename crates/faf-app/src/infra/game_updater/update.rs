@@ -5,6 +5,7 @@
 //! Separate from `install`, which finishes an install once its files are in
 //! place, and from `replay_version`, which decides which release to ask for.
 
+use std::io::ErrorKind;
 use std::path::Path;
 
 use serde::Deserialize;
@@ -1198,31 +1199,33 @@ async fn update_file(
     // The target is replaced, never copied over in place: it may be a hard
     // link to some other store entry, left there by replay staging, and an
     // in-place copy would rewrite that entry under its old checksum.
-    let cached = {
-        let (root, group, md5) = (
+    // Keep the install lease through the copy, even if the caller cancels.
+    // Cache cleanup can still remove the source after verification. Treat
+    // a missing path as a miss. Other copy errors still fail immediately.
+    let installed_from_cache = {
+        let (cache, group, md5, target, name) = (
             cache_dir.to_path_buf(),
             file.group.clone(),
             file.md5.clone(),
-        );
-        off_runtime(move || ContentStore::new(&root).verified(&group, &md5)).await??
-    };
-    // The writes into the install hold its lease until they return, so one
-    // left running by a cancelled launch still keeps the next one out. The
-    // store calls around them only touch the cache, which no install lease
-    // covers.
-    if let Some(entry) = cached {
-        let (target, cache, md5) = (
             target_path.clone(),
-            cache_dir.to_path_buf(),
-            file.md5.clone(),
+            file.name.clone(),
         );
-        off_runtime_leased(lease, move || {
-            replace_with_copy(&entry, &target)?;
+        off_runtime_leased(lease, move || -> Result<bool, String> {
+            let Some(entry) = ContentStore::new(&cache).verified(&group, &md5)? else {
+                return Ok(false);
+            };
+            if let Err(error) = replace_with_copy(&entry, &target) {
+                if error.kind() == ErrorKind::NotFound {
+                    return Ok(false);
+                }
+                return Err(format!("could not copy cached {name}: {error}"));
+            }
             checksums::record(&cache, &target, &md5);
-            Ok::<_, std::io::Error>(())
+            Ok(true)
         })
-        .await?
-        .map_err(|e| format!("could not copy cached {}: {e}", file.name))?;
+        .await??
+    };
+    if installed_from_cache {
         progress(PreparationStep::counted(
             PreparationPhase::Downloading,
             detail,
@@ -1294,25 +1297,22 @@ async fn update_file(
     })
     .await?;
 
-    // Into the store first (whole, under its checksum), then from the store
-    // into the install, replacing the target for the reason given above.
-    let entry = {
-        let (root, group, md5) = (
+    // Cache the verified download for reuse, but install it from its own
+    // temporary file. Cleanup can interrupt cache writes or remove the new
+    // entry without invalidating the bytes this preparation needs.
+    {
+        let (target, cache, group, md5) = (
+            target_path.clone(),
             cache_dir.to_path_buf(),
             file.group.clone(),
             file.md5.clone(),
         );
-        let source = downloaded.path().to_path_buf();
-        off_runtime(move || ContentStore::new(&root).insert(&group, &md5, &source)).await??
-    };
-    {
-        let (target, cache, md5) = (
-            target_path.clone(),
-            cache_dir.to_path_buf(),
-            file.md5.clone(),
-        );
         off_runtime_leased(lease, move || {
-            replace_with_copy(&entry, &target)?;
+            let source = downloaded.path();
+            if let Err(error) = ContentStore::new(&cache).insert(&group, &md5, source) {
+                tracing::warn!(%error, "could not cache a verified game download");
+            }
+            replace_with_copy(source, &target)?;
             checksums::record(&cache, &target, &md5);
             Ok::<_, std::io::Error>(())
         })
@@ -1610,6 +1610,73 @@ mod tests {
                 "{overlay} must pull faf in first"
             );
         }
+    }
+
+    #[tokio::test]
+    async fn clearing_the_cache_during_a_copy_does_not_abort_game_preparation() {
+        use crate::infra::game_updater::test_support::{probe, FakeServer};
+        use std::time::Duration;
+
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        let target = temp.path().join("game");
+        let bytes = b"units for build 3838";
+        let md5 = put_in_store(&cache, "gamedata", bytes);
+        let entry = cache.join("gamedata").join(&md5);
+        let server = FakeServer::start(vec![("/units.nx2".into(), bytes.to_vec())]).await;
+        let file = FeaturedModFile {
+            md5,
+            cacheable_url: format!("{}/units.nx2", server.base),
+            ..file("gamedata", "units.nx2", Some(3838))
+        };
+        let http = reqwest::Client::builder().no_proxy().build().unwrap();
+        let lease = lease_install(&target).await;
+        let called_off = CancellationToken::new();
+        let (mut writes, release_copy) = probe::watch(&target);
+
+        let clear_during_copies = async {
+            assert_eq!(writes.recv().await, Some(probe::Event::Writing));
+            assert!(entry.is_file());
+            super::super::clear_game_cache(&cache).await.unwrap();
+            assert!(!entry.exists());
+
+            // Hold the next copy as well, after the download was cached.
+            let (mut writes, release_install) = probe::watch(&target);
+            release_copy.send(()).unwrap();
+            assert_eq!(writes.recv().await, Some(probe::Event::Writing));
+            assert!(entry.is_file());
+            super::super::clear_game_cache(&cache).await.unwrap();
+            assert!(!entry.exists());
+            release_install.send(()).unwrap();
+        };
+        let update = update_file(
+            &http,
+            &server.base,
+            &cache,
+            &target,
+            &file,
+            "faf",
+            3838,
+            0,
+            1,
+            &|_| {},
+            &lease,
+            &called_off,
+        );
+        tokio::pin!(update);
+        tokio::time::timeout(Duration::from_secs(5), async {
+            tokio::select! {
+                result = &mut update => panic!("update finished before both clears: {result:?}"),
+                () = clear_during_copies => update.await.unwrap(),
+            }
+        })
+        .await
+        .expect("both copies should finish");
+        assert_eq!(server.requests(), ["/units.nx2"]);
+        assert_eq!(
+            std::fs::read(target.join("gamedata/units.nx2")).unwrap(),
+            bytes
+        );
     }
 
     #[tokio::test]
